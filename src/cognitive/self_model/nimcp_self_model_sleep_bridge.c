@@ -31,7 +31,7 @@ static nimcp_health_agent_t* g_self_model_sleep_bridge_health_agent = NULL;
  * @brief Set health agent for self_model_sleep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void self_model_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void self_model_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_self_model_sleep_bridge_health_agent = agent;
 }
 
@@ -116,6 +116,10 @@ static void self_model_on_sleep_state_change(sleep_state_t new_state, void* user
 
 int self_model_sleep_default_config(self_model_sleep_config_t* config) {
     if (!config) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    self_model_sleep_bridge_heartbeat("self_model_s_self_model_sleep_def", 0.0f);
+
+
     config->enable_awareness_modulation = true;
     config->enable_reflection_modulation = true;
     config->modulation_strength = 1.0f;
@@ -133,6 +137,10 @@ self_model_sleep_bridge_t self_model_sleep_bridge_create(
         return NULL;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    self_model_sleep_bridge_heartbeat("self_model_s_create", 0.0f);
+
 
     struct self_model_sleep_bridge_struct* bridge =
         (struct self_model_sleep_bridge_struct*)nimcp_malloc(sizeof(struct self_model_sleep_bridge_struct));
@@ -183,6 +191,10 @@ void self_model_sleep_bridge_destroy(self_model_sleep_bridge_t bridge) {
     if (!bridge) return;
 
     /* Unregister callback if it was registered */
+    /* Phase 8: Heartbeat at operation start */
+    self_model_sleep_bridge_heartbeat("self_model_s_destroy", 0.0f);
+
+
     if (bridge->callback_registered && bridge->sleep_system) {
         bool unregistered = sleep_unregister_state_callback(
             bridge->sleep_system,
@@ -200,6 +212,10 @@ void self_model_sleep_bridge_destroy(self_model_sleep_bridge_t bridge) {
 
 int self_model_sleep_update(self_model_sleep_bridge_t bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    self_model_sleep_bridge_heartbeat("self_model_s_self_model_sleep_upd", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -245,6 +261,10 @@ int self_model_sleep_update(self_model_sleep_bridge_t bridge) {
 
 int self_model_sleep_get_effects(const self_model_sleep_bridge_t bridge, self_model_sleep_effects_t* effects) {
     if (!bridge || !effects) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    self_model_sleep_bridge_heartbeat("self_model_s_self_model_sleep_get", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -253,6 +273,10 @@ int self_model_sleep_get_effects(const self_model_sleep_bridge_t bridge, self_mo
 
 float self_model_sleep_get_awareness(const self_model_sleep_bridge_t bridge) {
     if (!bridge) return 1.0f;
+    /* Phase 8: Heartbeat at operation start */
+    self_model_sleep_bridge_heartbeat("self_model_s_self_model_sleep_get", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.self_awareness_factor;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -261,6 +285,10 @@ float self_model_sleep_get_awareness(const self_model_sleep_bridge_t bridge) {
 
 bool self_model_sleep_is_offline(const self_model_sleep_bridge_t bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    self_model_sleep_bridge_heartbeat("self_model_s_self_model_sleep_is_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.self_awareness_offline;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -268,6 +296,10 @@ bool self_model_sleep_is_offline(const self_model_sleep_bridge_t bridge) {
 }
 
 float self_model_sleep_awareness_for_state(sleep_state_t state) {
+    /* Phase 8: Heartbeat at operation start */
+    self_model_sleep_bridge_heartbeat("self_model_s_self_model_sleep_awa", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return SELF_MODEL_SLEEP_AWARENESS_AWAKE;
         case SLEEP_STATE_DROWSY:     return SELF_MODEL_SLEEP_AWARENESS_DROWSY;
@@ -279,6 +311,10 @@ float self_model_sleep_awareness_for_state(sleep_state_t state) {
 }
 
 float self_model_sleep_reflection_for_state(sleep_state_t state) {
+    /* Phase 8: Heartbeat at operation start */
+    self_model_sleep_bridge_heartbeat("self_model_s_self_model_sleep_ref", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return SELF_MODEL_SLEEP_REFLECTION_AWAKE;
         case SLEEP_STATE_DROWSY:     return SELF_MODEL_SLEEP_REFLECTION_DROWSY;
@@ -305,10 +341,20 @@ int self_model_sleep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
     /* Query our own entity from the knowledge graph */
+    /* Phase 8: Heartbeat at operation start */
+    self_model_sleep_bridge_heartbeat("self_model_s_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Self_Model_Sleep_Bridge");
     if (self) {
         /* Module now knows its own capabilities from KG */
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                self_model_sleep_bridge_heartbeat("self_model_s_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Self-model sleep bridge self-knowledge: %s", self->observations[i]);
         }
     }

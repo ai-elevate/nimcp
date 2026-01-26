@@ -64,7 +64,7 @@ static nimcp_health_agent_t* g_omni_wm_tom_bridge_health_agent = NULL;
  * @brief Set health agent for omni_wm_tom_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void omni_wm_tom_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void omni_wm_tom_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_omni_wm_tom_bridge_health_agent = agent;
 }
 
@@ -271,6 +271,12 @@ static int32_t find_tracked_agent(const omni_wm_tom_bridge_t* bridge, agent_id_t
     if (!bridge || !bridge->tracked_agents) return -1;
 
     for (uint32_t i = 0; i < bridge->tracked_agent_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->tracked_agent_count > 256) {
+            omni_wm_tom_bridge_heartbeat("omni_wm_tom__loop",
+                             (float)(i + 1) / (float)bridge->tracked_agent_count);
+        }
+
         if (bridge->tracked_agents[i].agent_id == agent_id) {
             return (int32_t)i;
         }
@@ -286,6 +292,12 @@ static int32_t find_belief_gap(const omni_wm_tom_bridge_t* bridge, agent_id_t ag
     if (!bridge || !bridge->belief_gaps) return -1;
 
     for (uint32_t i = 0; i < bridge->belief_gap_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->belief_gap_count > 256) {
+            omni_wm_tom_bridge_heartbeat("omni_wm_tom__loop",
+                             (float)(i + 1) / (float)bridge->belief_gap_count);
+        }
+
         if (bridge->belief_gaps[i].agent_id == agent_id) {
             return (int32_t)i;
         }
@@ -301,6 +313,12 @@ static float compute_state_divergence(const float* state1, const float* state2, 
 
     float sum_sq = 0.0f;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            omni_wm_tom_bridge_heartbeat("omni_wm_tom__loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         float diff = state1[i] - state2[i];
         sum_sq += diff * diff;
     }
@@ -364,6 +382,12 @@ static nimcp_error_t update_belief_reality_gaps(omni_wm_tom_bridge_t* bridge) {
     if (!bridge->config.enable_false_belief_detection) return NIMCP_SUCCESS;
 
     for (uint32_t i = 0; i < bridge->tracked_agent_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->tracked_agent_count > 256) {
+            omni_wm_tom_bridge_heartbeat("omni_wm_tom__loop",
+                             (float)(i + 1) / (float)bridge->tracked_agent_count);
+        }
+
         tom_agent_mental_state_t* agent = &bridge->tracked_agents[i];
 
         /* Find or create belief gap entry */
@@ -401,6 +425,12 @@ static nimcp_error_t update_belief_reality_gaps(omni_wm_tom_bridge_t* bridge) {
         gap->false_belief_dimensions = 0;
         gap->max_dimension_divergence = 0.0f;
         for (uint32_t d = 0; d < OMNI_WM_STATE_DIM; d++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((d & 0xFF) == 0 && OMNI_WM_STATE_DIM > 256) {
+                omni_wm_tom_bridge_heartbeat("omni_wm_tom__loop",
+                                 (float)(d + 1) / (float)OMNI_WM_STATE_DIM);
+            }
+
             float diff = fabsf(gap->reality_state[d] - gap->believed_state[d]);
             if (diff > 0.1f) {
                 gap->false_belief_dimensions++;
@@ -553,6 +583,10 @@ static nimcp_error_t handle_empathy_simulation(const void* msg, size_t msg_size,
 nimcp_error_t omni_wm_tom_bridge_default_config(
     omni_wm_tom_bridge_config_t* config) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(omni_wm_tom_bridge_config_t));
@@ -606,6 +640,10 @@ omni_wm_tom_bridge_t* omni_wm_tom_bridge_create(
     const omni_wm_tom_bridge_config_t* config) {
 
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__create", 0.0f);
+
+
     omni_wm_tom_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_wm_tom_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate WM ToM bridge");
@@ -683,6 +721,10 @@ void omni_wm_tom_bridge_destroy(omni_wm_tom_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         omni_wm_tom_bridge_disconnect_bio_async(bridge);
     }
@@ -709,6 +751,10 @@ void omni_wm_tom_bridge_destroy(omni_wm_tom_bridge_t* bridge) {
 }
 
 nimcp_error_t omni_wm_tom_bridge_reset(omni_wm_tom_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__reset", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -765,6 +811,10 @@ nimcp_error_t omni_wm_tom_bridge_connect(
     theory_of_mind_t tom,
     mirror_neurons_t mirror) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__connect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_INVALID_PARAM, "world_model is NULL");
     NIMCP_CHECK_THROW(tom, NIMCP_ERROR_INVALID_PARAM, "tom is NULL");
@@ -794,6 +844,10 @@ nimcp_error_t omni_wm_tom_bridge_connect_world_model(
     omni_wm_tom_bridge_t* bridge,
     omni_world_model_t* world_model) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__connect_world_model", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_NULL_POINTER, "world_model is NULL");
 
@@ -810,6 +864,10 @@ nimcp_error_t omni_wm_tom_bridge_connect_world_model(
 nimcp_error_t omni_wm_tom_bridge_connect_tom(
     omni_wm_tom_bridge_t* bridge,
     theory_of_mind_t tom) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__connect_tom", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(tom, NIMCP_ERROR_NULL_POINTER, "tom is NULL");
@@ -828,6 +886,10 @@ nimcp_error_t omni_wm_tom_bridge_connect_mirror(
     omni_wm_tom_bridge_t* bridge,
     mirror_neurons_t mirror) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__connect_mirror", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(mirror, NIMCP_ERROR_NULL_POINTER, "mirror is NULL");
 
@@ -842,6 +904,10 @@ nimcp_error_t omni_wm_tom_bridge_connect_social(
     omni_wm_tom_bridge_t* bridge,
     tom_social_bridge_t* social_bridge) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__connect_social", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(social_bridge, NIMCP_ERROR_NULL_POINTER, "social_bridge is NULL");
 
@@ -854,6 +920,10 @@ nimcp_error_t omni_wm_tom_bridge_connect_social(
 
 bool omni_wm_tom_bridge_is_connected(const omni_wm_tom_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__is_connected", 0.0f);
+
+
     return (bridge->world_model != NULL && bridge->tom != NULL);
 }
 
@@ -864,6 +934,10 @@ bool omni_wm_tom_bridge_is_connected(const omni_wm_tom_bridge_t* bridge) {
 nimcp_error_t omni_wm_tom_bridge_update(
     omni_wm_tom_bridge_t* bridge,
     float dt) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__update", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_modulation) return NIMCP_SUCCESS;
@@ -885,6 +959,12 @@ nimcp_error_t omni_wm_tom_bridge_update(
     if (bridge->config.agent_attention_decay > 0.0f) {
         float decay = expf(-bridge->config.agent_attention_decay * dt);
         for (uint32_t i = 0; i < WM_TOM_MAX_AGENTS; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && WM_TOM_MAX_AGENTS > 256) {
+                omni_wm_tom_bridge_heartbeat("omni_wm_tom__loop",
+                                 (float)(i + 1) / (float)WM_TOM_MAX_AGENTS);
+            }
+
             bridge->tom_to_wm.social_attention_weights[i] *= decay;
         }
     }
@@ -917,6 +997,10 @@ nimcp_error_t omni_wm_tom_bridge_predict_mental_state(
     agent_id_t agent_id,
     uint32_t horizon_steps,
     tom_agent_mental_state_t* out_predicted_state) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__predict_mental_state", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(out_predicted_state, NIMCP_ERROR_NULL_POINTER, "out_predicted_state is NULL");
@@ -977,6 +1061,10 @@ nimcp_error_t omni_wm_tom_bridge_update_mental_state(
     agent_id_t agent_id,
     const tom_agent_mental_state_t* observed_state) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__update_mental_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(observed_state, NIMCP_ERROR_NULL_POINTER, "observed_state is NULL");
 
@@ -997,18 +1085,36 @@ nimcp_error_t omni_wm_tom_bridge_update_mental_state(
 
     /* Update belief state */
     for (uint32_t i = 0; i < OMNI_WM_STATE_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && OMNI_WM_STATE_DIM > 256) {
+            omni_wm_tom_bridge_heartbeat("omni_wm_tom__loop",
+                             (float)(i + 1) / (float)OMNI_WM_STATE_DIM);
+        }
+
         current->belief_state[i] = beta * current->belief_state[i] +
                                    alpha * observed_state->belief_state[i];
     }
 
     /* Update desire state */
     for (uint32_t i = 0; i < OMNI_WM_STATE_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && OMNI_WM_STATE_DIM > 256) {
+            omni_wm_tom_bridge_heartbeat("omni_wm_tom__loop",
+                             (float)(i + 1) / (float)OMNI_WM_STATE_DIM);
+        }
+
         current->desire_state[i] = beta * current->desire_state[i] +
                                    alpha * observed_state->desire_state[i];
     }
 
     /* Update intention vector */
     for (uint32_t i = 0; i < OMNI_WM_ACTION_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && OMNI_WM_ACTION_DIM > 256) {
+            omni_wm_tom_bridge_heartbeat("omni_wm_tom__loop",
+                             (float)(i + 1) / (float)OMNI_WM_ACTION_DIM);
+        }
+
         current->intention_vector[i] = beta * current->intention_vector[i] +
                                        alpha * observed_state->intention_vector[i];
     }
@@ -1039,6 +1145,10 @@ nimcp_error_t omni_wm_tom_bridge_predict_social_trajectory(
     agent_id_t agent_id,
     uint32_t horizon_steps,
     tom_social_trajectory_t* out_trajectory) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__predict_social_traje", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(out_trajectory, NIMCP_ERROR_NULL_POINTER, "out_trajectory is NULL");
@@ -1072,6 +1182,12 @@ nimcp_error_t omni_wm_tom_bridge_predict_social_trajectory(
     float cumulative_confidence = agent->confidence;
 
     for (uint32_t t = 0; t < horizon_steps; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && horizon_steps > 256) {
+            omni_wm_tom_bridge_heartbeat("omni_wm_tom__loop",
+                             (float)(t + 1) / (float)horizon_steps);
+        }
+
         /* Placeholder: constant position with slight noise */
         out_trajectory->predicted_positions[t][0] = (float)t * 0.1f;
         out_trajectory->predicted_positions[t][1] = 0.0f;
@@ -1117,6 +1233,10 @@ nimcp_error_t omni_wm_tom_bridge_predict_joint_trajectory(
     uint32_t horizon_steps,
     tom_social_trajectory_t* out_trajectories) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__predict_joint_trajec", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(agent_ids, NIMCP_ERROR_NULL_POINTER, "agent_ids is NULL");
     NIMCP_CHECK_THROW(out_trajectories, NIMCP_ERROR_NULL_POINTER, "out_trajectories is NULL");
@@ -1128,6 +1248,12 @@ nimcp_error_t omni_wm_tom_bridge_predict_joint_trajectory(
 
     /* Predict each agent's trajectory */
     for (uint32_t i = 0; i < agent_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && agent_count > 256) {
+            omni_wm_tom_bridge_heartbeat("omni_wm_tom__loop",
+                             (float)(i + 1) / (float)agent_count);
+        }
+
         nimcp_error_t err = omni_wm_tom_bridge_predict_social_trajectory(
             bridge, agent_ids[i], horizon_steps, &out_trajectories[i]);
         if (err != NIMCP_SUCCESS) {
@@ -1154,6 +1280,10 @@ nimcp_error_t omni_wm_tom_bridge_counterfactual_belief(
     agent_id_t agent_id,
     const float* hypothetical_belief,
     tom_social_trajectory_t* out_trajectory) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__counterfactual_belie", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(hypothetical_belief, NIMCP_ERROR_NULL_POINTER, "hypothetical_belief is NULL");
@@ -1192,6 +1322,12 @@ nimcp_error_t omni_wm_tom_bridge_counterfactual_belief(
 
     /* Placeholder trajectory prediction */
     for (uint32_t t = 0; t < out_trajectory->horizon_steps; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && out_trajectory->horizon_steps > 256) {
+            omni_wm_tom_bridge_heartbeat("omni_wm_tom__loop",
+                             (float)(t + 1) / (float)out_trajectory->horizon_steps);
+        }
+
         out_trajectory->step_confidences[t] = out_trajectory->trajectory_confidence *
                                               powf(0.95f, (float)t);
         out_trajectory->predicted_emotions[t] = WM_TOM_EMOTION_NEUTRAL;
@@ -1216,6 +1352,10 @@ nimcp_error_t omni_wm_tom_bridge_counterfactual_action(
     const float* hypothetical_action,
     uint32_t action_dim,
     tom_social_trajectory_t* out_trajectory) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__counterfactual_actio", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(hypothetical_action, NIMCP_ERROR_NULL_POINTER, "hypothetical_action is NULL");
@@ -1249,6 +1389,12 @@ nimcp_error_t omni_wm_tom_bridge_counterfactual_action(
     out_trajectory->trajectory_confidence = agent->confidence * 0.8f;
 
     for (uint32_t t = 0; t < out_trajectory->horizon_steps; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && out_trajectory->horizon_steps > 256) {
+            omni_wm_tom_bridge_heartbeat("omni_wm_tom__loop",
+                             (float)(t + 1) / (float)out_trajectory->horizon_steps);
+        }
+
         out_trajectory->step_confidences[t] = out_trajectory->trajectory_confidence *
                                               powf(0.95f, (float)t);
         out_trajectory->predicted_emotions[t] = agent->emotional_state;
@@ -1270,6 +1416,10 @@ nimcp_error_t omni_wm_tom_bridge_detect_false_beliefs(
     omni_wm_tom_bridge_t* bridge,
     tom_belief_reality_gap_t* out_gaps,
     uint32_t* out_gap_count) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__detect_false_beliefs", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(out_gaps, NIMCP_ERROR_NULL_POINTER, "out_gaps is NULL");
@@ -1307,6 +1457,10 @@ nimcp_error_t omni_wm_tom_bridge_get_belief_gap(
     agent_id_t agent_id,
     tom_belief_reality_gap_t* out_gap) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__get_belief_gap", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(out_gap, NIMCP_ERROR_NULL_POINTER, "out_gap is NULL");
 
@@ -1332,6 +1486,10 @@ nimcp_error_t omni_wm_tom_bridge_get_belief_gap(
 nimcp_error_t omni_wm_tom_bridge_train_from_interaction(
     omni_wm_tom_bridge_t* bridge,
     const tom_social_interaction_t* interaction) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__train_from_interacti", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(interaction, NIMCP_ERROR_NULL_POINTER, "interaction is NULL");
@@ -1380,6 +1538,10 @@ nimcp_error_t omni_wm_tom_bridge_train_from_interaction(
 }
 
 nimcp_error_t omni_wm_tom_bridge_train_batch(omni_wm_tom_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__train_batch", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_social_training) return NIMCP_SUCCESS;
 
@@ -1415,6 +1577,10 @@ nimcp_error_t omni_wm_tom_bridge_on_mirror_action(
     uint32_t action_dim,
     float confidence) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__on_mirror_action", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(action, NIMCP_ERROR_NULL_POINTER, "action is NULL");
     NIMCP_CHECK_THROW(action_dim > 0, NIMCP_ERROR_INVALID_PARAM, "action_dim must be greater than 0");
@@ -1438,6 +1604,12 @@ nimcp_error_t omni_wm_tom_bridge_on_mirror_action(
         /* Integrate observed action into intention */
         float alpha = confidence * 0.5f;
         for (uint32_t i = 0; i < action_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && action_dim > 256) {
+                omni_wm_tom_bridge_heartbeat("omni_wm_tom__loop",
+                                 (float)(i + 1) / (float)action_dim);
+            }
+
             agent->intention_vector[i] = (1.0f - alpha) * agent->intention_vector[i] +
                                          alpha * action[i];
         }
@@ -1466,6 +1638,10 @@ nimcp_error_t omni_wm_tom_bridge_empathy_simulation(
     agent_id_t agent_id,
     float* out_simulated_state) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__empathy_simulation", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(out_simulated_state, NIMCP_ERROR_NULL_POINTER, "out_simulated_state is NULL");
     if (!bridge->config.enable_empathy_simulation) return NIMCP_SUCCESS;
@@ -1489,6 +1665,12 @@ nimcp_error_t omni_wm_tom_bridge_empathy_simulation(
 
     float empathy = bridge->config.empathy_strength;
     for (uint32_t i = 0; i < OMNI_WM_STATE_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && OMNI_WM_STATE_DIM > 256) {
+            omni_wm_tom_bridge_heartbeat("omni_wm_tom__loop",
+                             (float)(i + 1) / (float)OMNI_WM_STATE_DIM);
+        }
+
         out_simulated_state[i] = agent->belief_state[i] * empathy;
     }
 
@@ -1518,6 +1700,10 @@ nimcp_error_t omni_wm_tom_bridge_track_agent(
     omni_wm_tom_bridge_t* bridge,
     agent_id_t agent_id,
     const tom_agent_mental_state_t* initial_state) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__track_agent", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -1560,6 +1746,10 @@ nimcp_error_t omni_wm_tom_bridge_untrack_agent(
     omni_wm_tom_bridge_t* bridge,
     agent_id_t agent_id) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__untrack_agent", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1597,6 +1787,10 @@ nimcp_error_t omni_wm_tom_bridge_get_agent_state(
     agent_id_t agent_id,
     tom_agent_mental_state_t* out_state) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__get_agent_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(out_state, NIMCP_ERROR_NULL_POINTER, "out_state is NULL");
 
@@ -1619,6 +1813,10 @@ nimcp_error_t omni_wm_tom_bridge_set_focus_agent(
     omni_wm_tom_bridge_t* bridge,
     agent_id_t agent_id) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__set_focus_agent", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1633,6 +1831,12 @@ nimcp_error_t omni_wm_tom_bridge_set_focus_agent(
 
     /* Boost attention weight for focus agent */
     for (uint32_t i = 0; i < bridge->tracked_agent_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->tracked_agent_count > 256) {
+            omni_wm_tom_bridge_heartbeat("omni_wm_tom__loop",
+                             (float)(i + 1) / (float)bridge->tracked_agent_count);
+        }
+
         if (bridge->tracked_agents[i].agent_id == agent_id) {
             bridge->tom_to_wm.social_attention_weights[i] = 1.0f;
         }
@@ -1651,6 +1855,10 @@ nimcp_error_t omni_wm_tom_bridge_set_cooperative_context(
     omni_wm_tom_bridge_t* bridge,
     bool is_cooperative) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__set_cooperative_cont", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1668,6 +1876,10 @@ nimcp_error_t omni_wm_tom_bridge_set_cooperative_context(
 nimcp_error_t omni_wm_tom_bridge_set_competitive_context(
     omni_wm_tom_bridge_t* bridge,
     bool is_competitive) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__set_competitive_cont", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -1700,6 +1912,10 @@ const omni_wm_to_tom_effects_t* omni_wm_tom_bridge_get_wm_effects(
 
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__get_wm_effects", 0.0f);
+
+
     return &bridge->wm_to_tom;
 }
 
@@ -1716,12 +1932,20 @@ const tom_to_omni_wm_effects_t* omni_wm_tom_bridge_get_tom_effects(
 
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__get_tom_effects", 0.0f);
+
+
     return &bridge->tom_to_wm;
 }
 
 nimcp_error_t omni_wm_tom_bridge_get_stats(
     const omni_wm_tom_bridge_t* bridge,
     omni_wm_tom_bridge_stats_t* stats) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__get_stats", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
@@ -1735,6 +1959,10 @@ nimcp_error_t omni_wm_tom_bridge_get_stats(
 
 nimcp_error_t omni_wm_tom_bridge_reset_stats(
     omni_wm_tom_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__reset_stats", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -1751,6 +1979,10 @@ nimcp_error_t omni_wm_tom_bridge_reset_stats(
 
 nimcp_error_t omni_wm_tom_bridge_connect_bio_async(
     omni_wm_tom_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__connect_bio_async", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_bio_async) return NIMCP_SUCCESS;
@@ -1805,6 +2037,10 @@ nimcp_error_t omni_wm_tom_bridge_connect_bio_async(
 nimcp_error_t omni_wm_tom_bridge_disconnect_bio_async(
     omni_wm_tom_bridge_t* bridge) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__disconnect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
@@ -1821,6 +2057,10 @@ nimcp_error_t omni_wm_tom_bridge_disconnect_bio_async(
 
 bool omni_wm_tom_bridge_is_bio_async_connected(
     const omni_wm_tom_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__is_bio_async_connect", 0.0f);
+
 
     return bridge_base_is_bio_async_connected(bridge ? &bridge->base : NULL);
 }
@@ -1919,6 +2159,10 @@ const char* omni_wm_tom_emotion_to_string(wm_tom_emotion_t emotion) {
 
 nimcp_error_t omni_wm_tom_bridge_validate_config(
     const omni_wm_tom_bridge_config_t* config) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_tom_bridge_heartbeat("omni_wm_tom__validate_config", 0.0f);
+
 
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 

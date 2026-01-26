@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_intuitive_reasoning_health_agent = NULL;
  * @brief Set health agent for intuitive_reasoning heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void intuitive_reasoning_set_health_agent(nimcp_health_agent_t* agent) {
+void intuitive_reasoning_set_health_agent(nimcp_health_agent_t* agent) {
     g_intuitive_reasoning_health_agent = agent;
 }
 
@@ -145,6 +145,12 @@ static float cosine_similarity(const float* a, const float* b, uint32_t dim) {
     float dot = 0.0f, norm_a = 0.0f, norm_b = 0.0f;
 
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            intuitive_reasoning_heartbeat("intuitive_re_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         dot += a[i] * b[i];
         norm_a += a[i] * a[i];
         norm_b += b[i] * b[i];
@@ -176,6 +182,12 @@ static float compute_entropy(const float* data, uint32_t dim) {
     if (range < 1e-10f) return 0.0f;  /* All same value = no entropy */
 
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            intuitive_reasoning_heartbeat("intuitive_re_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         int bin = (int)((data[i] - min_val) / range * (NUM_BINS - 1));
         if (bin >= NUM_BINS) bin = NUM_BINS - 1;
         bins[bin]++;
@@ -183,6 +195,12 @@ static float compute_entropy(const float* data, uint32_t dim) {
 
     float entropy = 0.0f;
     for (int i = 0; i < NUM_BINS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && NUM_BINS > 256) {
+            intuitive_reasoning_heartbeat("intuitive_re_loop",
+                             (float)(i + 1) / (float)NUM_BINS);
+        }
+
         if (bins[i] > 0) {
             float p = (float)bins[i] / dim;
             entropy -= p * log2f(p);
@@ -201,6 +219,12 @@ static float detect_trend(const float* data, uint32_t length) {
     /* Simple linear regression slope */
     float sum_x = 0, sum_y = 0, sum_xy = 0, sum_xx = 0;
     for (uint32_t i = 0; i < length; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && length > 256) {
+            intuitive_reasoning_heartbeat("intuitive_re_loop",
+                             (float)(i + 1) / (float)length);
+        }
+
         sum_x += i;
         sum_y += data[i];
         sum_xy += i * data[i];
@@ -216,6 +240,12 @@ static float detect_trend(const float* data, uint32_t length) {
     /* Normalize slope to [-1, 1] range */
     float range = 0.0f;
     for (uint32_t i = 0; i < length; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && length > 256) {
+            intuitive_reasoning_heartbeat("intuitive_re_loop",
+                             (float)(i + 1) / (float)length);
+        }
+
         float abs_val = fabsf(data[i]);
         if (abs_val > range) range = abs_val;
     }
@@ -256,6 +286,12 @@ static float detect_periodicity(const float* data, uint32_t length) {
     for (uint32_t i = 0; i < length; i++) mean += data[i];
     mean /= length;
     for (uint32_t i = 0; i < length; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && length > 256) {
+            intuitive_reasoning_heartbeat("intuitive_re_loop",
+                             (float)(i + 1) / (float)length);
+        }
+
         float diff = data[i] - mean;
         variance += diff * diff;
     }
@@ -285,6 +321,10 @@ static float apply_modulation(const intuitive_engine_t* engine, float value) {
  * ============================================================================ */
 
 intuitive_config_t intuitive_engine_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_engine_def", 0.0f);
+
+
     intuitive_config_t config = {
         .plausibility_threshold = 0.3f,
         .confidence_threshold = 0.5f,
@@ -305,6 +345,10 @@ intuitive_config_t intuitive_engine_default_config(void) {
 }
 
 intuitive_engine_t* intuitive_engine_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_engine_cre", 0.0f);
+
+
     intuitive_config_t config = intuitive_engine_default_config();
     return intuitive_engine_create_custom(&config);
 }
@@ -316,6 +360,10 @@ intuitive_engine_t* intuitive_engine_create_custom(const intuitive_config_t* con
 
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_engine_cre", 0.0f);
+
 
     intuitive_engine_t* engine = nimcp_calloc(1, sizeof(intuitive_engine_t));
     if (!engine) {
@@ -366,8 +414,18 @@ void intuitive_engine_destroy(intuitive_engine_t* engine) {
     if (!engine) return;
 
     /* Free pattern memory */
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_engine_des", 0.0f);
+
+
     if (engine->patterns) {
         for (uint32_t i = 0; i < engine->num_patterns; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && engine->num_patterns > 256) {
+                intuitive_reasoning_heartbeat("intuitive_re_loop",
+                                 (float)(i + 1) / (float)engine->num_patterns);
+            }
+
             if (engine->patterns[i].data) {
                 nimcp_free(engine->patterns[i].data);
             }
@@ -378,6 +436,12 @@ void intuitive_engine_destroy(intuitive_engine_t* engine) {
     /* Free incubation queue */
     if (engine->incubation_queue) {
         for (uint32_t i = 0; i < engine->num_incubating; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && engine->num_incubating > 256) {
+                intuitive_reasoning_heartbeat("intuitive_re_loop",
+                                 (float)(i + 1) / (float)engine->num_incubating);
+            }
+
             incubation_entry_t* entry = &engine->incubation_queue[i];
             if (entry->partial_solution) {
                 nimcp_free(entry->partial_solution);
@@ -415,6 +479,10 @@ hunch_t* intuitive_form_hunch(
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_form_hunch", 0.0f);
+
+
     uint64_t start_time = get_timestamp_us();
 
     hunch_t* hunch = nimcp_calloc(1, sizeof(hunch_t));
@@ -434,6 +502,12 @@ hunch_t* intuitive_form_hunch(
     float total_reliability = 0.0f;
 
     for (uint32_t i = 0; i < num_observations; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_observations > 256) {
+            intuitive_reasoning_heartbeat("intuitive_re_loop",
+                             (float)(i + 1) / (float)num_observations);
+        }
+
         if (observations[i].dim > max_dim) {
             max_dim = observations[i].dim;
         }
@@ -456,12 +530,24 @@ hunch_t* intuitive_form_hunch(
     float weight_sum = 0.0f;
 
     for (uint32_t i = 0; i < num_observations; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_observations > 256) {
+            intuitive_reasoning_heartbeat("intuitive_re_loop",
+                             (float)(i + 1) / (float)num_observations);
+        }
+
         weights[i] = observations[i].salience * observations[i].reliability;
         weight_sum += weights[i];
     }
 
     if (weight_sum > 0.0f) {
         for (uint32_t i = 0; i < num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_observations > 256) {
+                intuitive_reasoning_heartbeat("intuitive_re_loop",
+                                 (float)(i + 1) / (float)num_observations);
+            }
+
             weights[i] /= weight_sum;
             for (uint32_t j = 0; j < observations[i].dim && j < max_dim; j++) {
                 hunch->predicted_pattern[j] += weights[i] * observations[i].data[j];
@@ -483,6 +569,12 @@ hunch_t* intuitive_form_hunch(
     /* Novelty: higher if less similar to known patterns */
     float max_similarity = 0.0f;
     for (uint32_t i = 0; i < engine->num_patterns; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && engine->num_patterns > 256) {
+            intuitive_reasoning_heartbeat("intuitive_re_loop",
+                             (float)(i + 1) / (float)engine->num_patterns);
+        }
+
         if (engine->patterns[i].dim == max_dim) {
             float sim = cosine_similarity(hunch->predicted_pattern,
                                          engine->patterns[i].data, max_dim);
@@ -534,6 +626,12 @@ hunch_t* intuitive_form_hunch(
     hunch->supporting_obs = nimcp_calloc(num_observations, sizeof(uint32_t));
     hunch->num_supporting = num_observations;
     for (uint32_t i = 0; i < num_observations; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_observations > 256) {
+            intuitive_reasoning_heartbeat("intuitive_re_loop",
+                             (float)(i + 1) / (float)num_observations);
+        }
+
         hunch->supporting_obs[i] = i;
     }
 
@@ -558,6 +656,10 @@ hunch_t* intuitive_form_hunch_from_data(
     }
 
     /* Create a single observation from raw data */
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_form_hunch", 0.0f);
+
+
     observation_t obs;
     obs.data = (float*)data;  /* Const cast - we won't modify */
     obs.dim = length;
@@ -580,6 +682,10 @@ int intuitive_update_hunch(
     }
 
     /* Update pattern with new observation */
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_update_hun", 0.0f);
+
+
     float learning_rate = engine->config.learning_rate;
     float weight = observation->salience * observation->reliability;
 
@@ -627,9 +733,19 @@ int intuitive_refine_hunch(
     }
 
     /* Use context to adjust pattern */
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_refine_hun", 0.0f);
+
+
     uint32_t min_dim = (context_dim < hunch->pattern_dim) ? context_dim : hunch->pattern_dim;
 
     for (uint32_t i = 0; i < min_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && min_dim > 256) {
+            intuitive_reasoning_heartbeat("intuitive_re_loop",
+                             (float)(i + 1) / (float)min_dim);
+        }
+
         /* Context modulates pattern */
         hunch->predicted_pattern[i] *= (1.0f + 0.1f * context[i]);
     }
@@ -643,6 +759,10 @@ int intuitive_refine_hunch(
 
 void intuitive_free_hunch(hunch_t* hunch) {
     if (!hunch) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_free_hunch", 0.0f);
+
 
     if (hunch->predicted_pattern) {
         nimcp_free(hunch->predicted_pattern);
@@ -669,6 +789,10 @@ float intuitive_estimate_plausibility(
         set_error("Invalid parameters");
         return 0.0f;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_estimate_p", 0.0f);
+
 
     float plausibility = 0.5f;  /* Start neutral */
 
@@ -699,6 +823,10 @@ int intuitive_score_hypothesis(
         set_error("Invalid parameters");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_score_hypo", 0.0f);
+
 
     score->plausibility = intuitive_estimate_plausibility(engine, hypothesis);
 
@@ -737,6 +865,10 @@ int intuitive_rank_hypotheses(
     }
 
     /* Compute plausibility for each */
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_rank_hypot", 0.0f);
+
+
     float* scores = nimcp_calloc(num_hypotheses, sizeof(float));
     if (!scores) {
         set_error("Failed to allocate scores");
@@ -744,6 +876,12 @@ int intuitive_rank_hypotheses(
     }
 
     for (uint32_t i = 0; i < num_hypotheses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_hypotheses > 256) {
+            intuitive_reasoning_heartbeat("intuitive_re_loop",
+                             (float)(i + 1) / (float)num_hypotheses);
+        }
+
         scores[i] = intuitive_estimate_plausibility(engine, &hypotheses[i]);
         rankings[i] = i;
     }
@@ -774,6 +912,10 @@ float intuitive_estimate_statement_plausibility(
         return 0.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_estimate_s", 0.0f);
+
+
     float plausibility = 0.5f;
 
     /* Simple heuristics based on statement length */
@@ -788,6 +930,12 @@ float intuitive_estimate_statement_plausibility(
     if (domain_features && num_features > 0) {
         float feature_sum = 0.0f;
         for (uint32_t i = 0; i < num_features; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_features > 256) {
+                intuitive_reasoning_heartbeat("intuitive_re_loop",
+                                 (float)(i + 1) / (float)num_features);
+            }
+
             feature_sum += domain_features[i];
         }
         float avg_feature = feature_sum / num_features;
@@ -811,6 +959,10 @@ int intuitive_track_confidence(
         set_error("Invalid parameters");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_track_conf", 0.0f);
+
 
     gradient->confidence_values = nimcp_calloc(num_steps, sizeof(float));
     if (!gradient->confidence_values) {
@@ -860,6 +1012,10 @@ float intuitive_propagate_confidence(
     if (!engine) return current_confidence;
 
     /* Confidence decays based on step reliability */
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_propagate_", 0.0f);
+
+
     float decay = CONFIDENCE_DECAY_BASE + 0.05f * step_reliability;
     float new_confidence = current_confidence * decay * step_reliability;
 
@@ -879,6 +1035,10 @@ int intuitive_find_weak_links(
     }
 
     *num_found = 0;
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_find_weak_", 0.0f);
+
+
     float threshold = gradient->min_confidence + 0.2f * (gradient->max_confidence - gradient->min_confidence);
 
     for (uint32_t i = 0; i < gradient->num_steps && *num_found < max_weak; i++) {
@@ -893,6 +1053,10 @@ int intuitive_find_weak_links(
 
 void intuitive_free_gradient(confidence_gradient_t* gradient) {
     if (!gradient) return;
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_free_gradi", 0.0f);
+
+
     if (gradient->confidence_values) {
         nimcp_free(gradient->confidence_values);
         gradient->confidence_values = NULL;
@@ -907,6 +1071,10 @@ insight_t* intuitive_leap(
     intuitive_engine_t* engine,
     const problem_t* problem
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_leap", 0.0f);
+
+
     return intuitive_leap_with_strategy(engine, problem, INTUITIVE_STRATEGY_RECOGNITION);
 }
 
@@ -919,6 +1087,10 @@ insight_t* intuitive_leap_with_strategy(
         set_error("Invalid parameters");
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_leap_with_", 0.0f);
+
 
     uint64_t start_time = get_timestamp_us();
 
@@ -957,6 +1129,12 @@ insight_t* intuitive_leap_with_strategy(
                 uint32_t best_idx = 0;
 
                 for (uint32_t i = 0; i < engine->num_patterns; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && engine->num_patterns > 256) {
+                        intuitive_reasoning_heartbeat("intuitive_re_loop",
+                                         (float)(i + 1) / (float)engine->num_patterns);
+                    }
+
                     if (engine->patterns[i].dim == problem->state_dim) {
                         float sim = cosine_similarity(problem->initial_state,
                                                      engine->patterns[i].data,
@@ -981,6 +1159,12 @@ insight_t* intuitive_leap_with_strategy(
             /* Mental simulation: interpolate toward goal */
             if (problem->initial_state && problem->goal_state && problem->goal_known) {
                 for (uint32_t i = 0; i < insight->solution_dim; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && insight->solution_dim > 256) {
+                        intuitive_reasoning_heartbeat("intuitive_re_loop",
+                                         (float)(i + 1) / (float)insight->solution_dim);
+                    }
+
                     insight->solution[i] = problem->initial_state[i] +
                         0.8f * (problem->goal_state[i] - problem->initial_state[i]);
                 }
@@ -992,6 +1176,12 @@ insight_t* intuitive_leap_with_strategy(
             /* Apply simple heuristics */
             if (problem->initial_state) {
                 for (uint32_t i = 0; i < insight->solution_dim; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && insight->solution_dim > 256) {
+                        intuitive_reasoning_heartbeat("intuitive_re_loop",
+                                         (float)(i + 1) / (float)insight->solution_dim);
+                    }
+
                     /* Heuristic: move away from extremes */
                     float val = problem->initial_state[i];
                     if (val > 0.5f) {
@@ -1052,6 +1242,10 @@ float intuitive_can_leap(
 ) {
     if (!engine || !problem) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_can_leap", 0.0f);
+
+
     float probability = 0.5f;
 
     /* Higher probability if problem is simpler */
@@ -1061,6 +1255,12 @@ float intuitive_can_leap(
     if (engine->num_patterns > 0 && problem->initial_state) {
         float max_sim = 0.0f;
         for (uint32_t i = 0; i < engine->num_patterns; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && engine->num_patterns > 256) {
+                intuitive_reasoning_heartbeat("intuitive_re_loop",
+                                 (float)(i + 1) / (float)engine->num_patterns);
+            }
+
             if (engine->patterns[i].dim == problem->state_dim) {
                 float sim = cosine_similarity(problem->initial_state,
                                              engine->patterns[i].data,
@@ -1089,6 +1289,10 @@ float intuitive_can_leap(
 
 void intuitive_free_insight(insight_t* insight) {
     if (!insight) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_free_insig", 0.0f);
+
 
     if (insight->solution) {
         nimcp_free(insight->solution);
@@ -1132,6 +1336,10 @@ int intuitive_gestalt_perceive(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_gestalt_pe", 0.0f);
+
+
     memset(result, 0, sizeof(gestalt_result_t));
 
     /* Compute whole representation (mean + variance summary) */
@@ -1145,6 +1353,12 @@ int intuitive_gestalt_perceive(
     /* Mean */
     float mean = 0.0f;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            intuitive_reasoning_heartbeat("intuitive_re_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         mean += data[i];
     }
     mean /= dim;
@@ -1153,6 +1367,12 @@ int intuitive_gestalt_perceive(
     /* Variance */
     float variance = 0.0f;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            intuitive_reasoning_heartbeat("intuitive_re_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         float diff = data[i] - mean;
         variance += diff * diff;
     }
@@ -1212,15 +1432,30 @@ int intuitive_gestalt_group(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_gestalt_gr", 0.0f);
+
     /* Simple proximity-based grouping */
     const float PROXIMITY_THRESHOLD = 0.5f;
 
     *num_groups = 0;
     for (uint32_t i = 0; i < num_elements; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_elements > 256) {
+            intuitive_reasoning_heartbeat("intuitive_re_loop",
+                             (float)(i + 1) / (float)num_elements);
+        }
+
         group_assignments[i] = UINT32_MAX;  /* Unassigned */
     }
 
     for (uint32_t i = 0; i < num_elements; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_elements > 256) {
+            intuitive_reasoning_heartbeat("intuitive_re_loop",
+                             (float)(i + 1) / (float)num_elements);
+        }
+
         if (group_assignments[i] == UINT32_MAX) {
             /* Start new group */
             group_assignments[i] = *num_groups;
@@ -1248,6 +1483,10 @@ int intuitive_gestalt_group(
 
 void intuitive_free_gestalt(gestalt_result_t* result) {
     if (!result) return;
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_free_gesta", 0.0f);
+
+
     if (result->whole_representation) {
         nimcp_free(result->whole_representation);
         result->whole_representation = NULL;
@@ -1272,6 +1511,10 @@ int intuitive_match_patterns(
     }
 
     *num_found = 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_match_patt", 0.0f);
+
 
     for (uint32_t i = 0; i < engine->num_patterns && *num_found < max_matches; i++) {
         stored_pattern_t* pattern = &engine->patterns[i];
@@ -1315,6 +1558,10 @@ uint32_t intuitive_register_pattern(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_register_p", 0.0f);
+
+
     if (engine->num_patterns >= engine->pattern_capacity) {
         set_error("Pattern memory full");
         return 0;
@@ -1354,7 +1601,17 @@ int intuitive_forget_pattern(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_forget_pat", 0.0f);
+
+
     for (uint32_t i = 0; i < engine->num_patterns; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && engine->num_patterns > 256) {
+            intuitive_reasoning_heartbeat("intuitive_re_loop",
+                             (float)(i + 1) / (float)engine->num_patterns);
+        }
+
         if (engine->patterns[i].id == pattern_id) {
             if (engine->patterns[i].data) {
                 nimcp_free(engine->patterns[i].data);
@@ -1391,6 +1648,10 @@ uint32_t intuitive_incubate(
         set_error("Incubation disabled");
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_incubate", 0.0f);
+
 
     if (engine->num_incubating >= engine->config.max_incubation_problems) {
         set_error("Incubation queue full");
@@ -1449,7 +1710,17 @@ int intuitive_check_incubation(
 
     *insight = NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_check_incu", 0.0f);
+
+
     for (uint32_t i = 0; i < engine->num_incubating; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && engine->num_incubating > 256) {
+            intuitive_reasoning_heartbeat("intuitive_re_loop",
+                             (float)(i + 1) / (float)engine->num_incubating);
+        }
+
         if (engine->incubation_queue[i].id == problem_id) {
             if (engine->incubation_queue[i].ready) {
                 *insight = engine->incubation_queue[i].result;
@@ -1473,10 +1744,20 @@ int intuitive_process_incubation(intuitive_engine_t* engine) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_process_in", 0.0f);
+
+
     int insights_generated = 0;
     float progress_rate = 0.1f * (1.0f - engine->fatigue);  /* Fatigue slows incubation */
 
     for (uint32_t i = 0; i < engine->num_incubating; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && engine->num_incubating > 256) {
+            intuitive_reasoning_heartbeat("intuitive_re_loop",
+                             (float)(i + 1) / (float)engine->num_incubating);
+        }
+
         incubation_entry_t* entry = &engine->incubation_queue[i];
 
         if (entry->ready) continue;
@@ -1487,6 +1768,12 @@ int intuitive_process_incubation(intuitive_engine_t* engine) {
         /* Update partial solution */
         if (entry->partial_solution && entry->problem.goal_state && entry->problem.goal_known) {
             for (uint32_t j = 0; j < entry->solution_dim; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && entry->solution_dim > 256) {
+                    intuitive_reasoning_heartbeat("intuitive_re_loop",
+                                     (float)(j + 1) / (float)entry->solution_dim);
+                }
+
                 entry->partial_solution[j] +=
                     progress_rate * (entry->problem.goal_state[j] - entry->partial_solution[j]);
             }
@@ -1520,7 +1807,17 @@ int intuitive_cancel_incubation(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_cancel_inc", 0.0f);
+
+
     for (uint32_t i = 0; i < engine->num_incubating; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && engine->num_incubating > 256) {
+            intuitive_reasoning_heartbeat("intuitive_re_loop",
+                             (float)(i + 1) / (float)engine->num_incubating);
+        }
+
         if (engine->incubation_queue[i].id == problem_id) {
             incubation_entry_t* entry = &engine->incubation_queue[i];
 
@@ -1567,6 +1864,10 @@ int intuitive_set_inflammation(intuitive_engine_t* engine, float level) {
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_set_inflam", 0.0f);
+
+
     engine->inflammation = fmaxf(0.0f, fminf(1.0f, level));
     return 0;
 }
@@ -1579,6 +1880,10 @@ int intuitive_set_fatigue(intuitive_engine_t* engine, float level) {
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_set_fatigu", 0.0f);
+
+
     engine->fatigue = fmaxf(0.0f, fminf(1.0f, level));
     return 0;
 }
@@ -1591,6 +1896,10 @@ int intuitive_set_emotional_valence(intuitive_engine_t* engine, float valence) {
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_set_emotio", 0.0f);
+
+
     engine->emotional_valence = fmaxf(-1.0f, fminf(1.0f, valence));
     return 0;
 }
@@ -1602,11 +1911,19 @@ int intuitive_set_emotional_valence(intuitive_engine_t* engine, float valence) {
 int intuitive_get_stats(const intuitive_engine_t* engine, intuitive_stats_t* stats) {
     if (!engine || !stats) return -1;
     *stats = engine->stats;
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_get_stats", 0.0f);
+
+
     return 0;
 }
 
 void intuitive_reset_stats(intuitive_engine_t* engine) {
     if (!engine) return;
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_reset_stat", 0.0f);
+
+
     memset(&engine->stats, 0, sizeof(engine->stats));
 }
 
@@ -1623,6 +1940,10 @@ observation_t intuitive_create_observation(
     uint32_t dim,
     float salience
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_create_obs", 0.0f);
+
+
     observation_t obs;
     memset(&obs, 0, sizeof(obs));
 
@@ -1642,6 +1963,10 @@ problem_t intuitive_create_problem(
     uint32_t dim,
     const char* description
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_create_pro", 0.0f);
+
+
     problem_t prob;
     memset(&prob, 0, sizeof(prob));
 
@@ -1663,6 +1988,10 @@ hypothesis_t intuitive_create_hypothesis(
     const float* parameters,
     uint32_t num_params
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_intuitive_create_hyp", 0.0f);
+
+
     hypothesis_t hyp;
     memset(&hyp, 0, sizeof(hyp));
 
@@ -1702,9 +2031,19 @@ const char* intuitive_strategy_name(intuitive_strategy_t strategy) {
 
 int intuitive_reasoning_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    intuitive_reasoning_heartbeat("intuitive_re_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Intuitive_Reasoning");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                intuitive_reasoning_heartbeat("intuitive_re_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Module self-knowledge logged */
         }
     }

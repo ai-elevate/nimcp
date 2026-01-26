@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_mirror_multimodal_health_agent = NULL;
  * @brief Set health agent for mirror_multimodal heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_multimodal_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_multimodal_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_multimodal_health_agent = agent;
 }
 
@@ -73,6 +73,12 @@ static inline float clamp_f(float value, float min_val, float max_val) {
 static float dot_product(const float* a, const float* b, size_t len) {
     float sum = 0.0f;
     for (size_t i = 0; i < len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && len > 256) {
+            mirror_multimodal_heartbeat("mirror_multi_loop",
+                             (float)(i + 1) / (float)len);
+        }
+
         sum += a[i] * b[i];
     }
     return sum;
@@ -191,6 +197,10 @@ static void flatten_semantic(const semantic_features_t* s, float* out, size_t* l
  * ============================================================================ */
 
 multimodal_action_features_t multimodal_features_init(void) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_multimodal_heartbeat("mirror_multi_multimodal_features_", 0.0f);
+
+
     multimodal_action_features_t features;
     memset(&features, 0, sizeof(features));
 
@@ -207,6 +217,10 @@ multimodal_action_features_t multimodal_features_init(void) {
 }
 
 fusion_config_t multimodal_get_default_fusion_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_multimodal_heartbeat("mirror_multi_multimodal_get_defau", 0.0f);
+
+
     fusion_config_t config;
 
     config.visual_weight = NIMCP_MULTIMODAL_VISUAL_WEIGHT;
@@ -235,6 +249,10 @@ bool multimodal_from_action(const action_t* action,
     /* features[8-15]  -> motor */
     /* features[16-23] -> auditory */
     /* features[24-31] -> semantic */
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_multimodal_heartbeat("mirror_multi_multimodal_from_acti", 0.0f);
+
 
     uint32_t nf = action->num_features;
 
@@ -318,6 +336,10 @@ bool multimodal_to_action(const multimodal_action_features_t* features,
                           action_t* out_action) {
     if (!features || !out_action) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_multimodal_heartbeat("mirror_multi_multimodal_to_action", 0.0f);
+
+
     memset(out_action, 0, sizeof(action_t));
     out_action->action_id = features->action_id;
     out_action->timestamp = features->timestamp;
@@ -327,6 +349,12 @@ bool multimodal_to_action(const multimodal_action_features_t* features,
     /* Use fused if available, otherwise reconstruct from modalities */
     if (features->fused_valid) {
         for (size_t i = 0; i < 32; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && 32 > 256) {
+                mirror_multimodal_heartbeat("mirror_multi_loop",
+                                 (float)(i + 1) / (float)32);
+            }
+
             out_action->features[i] = features->fused[i];
         }
         return true;
@@ -344,12 +372,24 @@ bool multimodal_to_action(const multimodal_action_features_t* features,
 
     /* Motor (8-15) */
     for (size_t i = 0; i < 4; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 4 > 256) {
+            mirror_multimodal_heartbeat("mirror_multi_loop",
+                             (float)(i + 1) / (float)4);
+        }
+
         out_action->features[8 + i] = features->motor.effector[i];
         out_action->features[12 + i] = features->motor.grip_type[i];
     }
 
     /* Auditory (16-23) */
     for (size_t i = 0; i < 4; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 4 > 256) {
+            mirror_multimodal_heartbeat("mirror_multi_loop",
+                             (float)(i + 1) / (float)4);
+        }
+
         out_action->features[16 + i] = features->auditory.action_sound[i];
     }
     out_action->features[20] = features->auditory.vocalization[0];
@@ -359,6 +399,12 @@ bool multimodal_to_action(const multimodal_action_features_t* features,
 
     /* Semantic (24-31) */
     for (size_t i = 0; i < 4; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 4 > 256) {
+            mirror_multimodal_heartbeat("mirror_multi_loop",
+                             (float)(i + 1) / (float)4);
+        }
+
         out_action->features[24 + i] = features->semantic.category[i];
     }
     out_action->features[28] = features->semantic.transitivity;
@@ -377,6 +423,10 @@ bool multimodal_set_visual(multimodal_action_features_t* features,
                            const visual_features_t* visual) {
     if (!features || !visual) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_multimodal_heartbeat("mirror_multi_multimodal_set_visua", 0.0f);
+
+
     features->visual = *visual;
     features->fused_valid = false;  /* Invalidate fusion */
     return true;
@@ -385,6 +435,10 @@ bool multimodal_set_visual(multimodal_action_features_t* features,
 bool multimodal_set_motor(multimodal_action_features_t* features,
                           const motor_features_t* motor) {
     if (!features || !motor) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_multimodal_heartbeat("mirror_multi_multimodal_set_motor", 0.0f);
+
 
     features->motor = *motor;
     features->fused_valid = false;
@@ -395,6 +449,10 @@ bool multimodal_set_auditory(multimodal_action_features_t* features,
                              const auditory_features_t* auditory) {
     if (!features || !auditory) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_multimodal_heartbeat("mirror_multi_multimodal_set_audit", 0.0f);
+
+
     features->auditory = *auditory;
     features->fused_valid = false;
     return true;
@@ -403,6 +461,10 @@ bool multimodal_set_auditory(multimodal_action_features_t* features,
 bool multimodal_set_semantic(multimodal_action_features_t* features,
                              const semantic_features_t* semantic) {
     if (!features || !semantic) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_multimodal_heartbeat("mirror_multi_multimodal_set_seman", 0.0f);
+
 
     features->semantic = *semantic;
     features->fused_valid = false;
@@ -426,6 +488,10 @@ bool multimodal_compute_fusion(multimodal_action_features_t* features,
         }
 
     /* Use provided config or defaults */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_multimodal_heartbeat("mirror_multi_multimodal_compute_f", 0.0f);
+
+
     fusion_config_t cfg = config ? *config : multimodal_get_default_fusion_config();
 
     /* Apply weights */
@@ -521,6 +587,10 @@ bool multimodal_set_weights(multimodal_action_features_t* features,
 
         }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_multimodal_heartbeat("mirror_multi_multimodal_set_weigh", 0.0f);
+
+
     features->visual_weight = clamp_f(visual_weight, 0.0f, 1.0f);
     features->motor_weight = clamp_f(motor_weight, 0.0f, 1.0f);
     features->auditory_weight = clamp_f(auditory_weight, 0.0f, 1.0f);
@@ -544,6 +614,10 @@ float multimodal_compare(const multimodal_action_features_t* features_a,
     if (!features_a || !features_b) return -1.0f;
 
     /* Use fused vectors if available for both */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_multimodal_heartbeat("mirror_multi_multimodal_compare", 0.0f);
+
+
     if (features_a->fused_valid && features_b->fused_valid) {
         float sim = cosine_similarity(features_a->fused, features_b->fused,
                                       NIMCP_MULTIMODAL_FUSED_DIM);
@@ -577,6 +651,10 @@ float multimodal_compare_visual(const multimodal_action_features_t* features_a,
                                 const multimodal_action_features_t* features_b) {
     if (!features_a || !features_b) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_multimodal_heartbeat("mirror_multi_multimodal_compare_v", 0.0f);
+
+
     float flat_a[NIMCP_MULTIMODAL_VISUAL_DIM];
     float flat_b[NIMCP_MULTIMODAL_VISUAL_DIM];
     size_t len_a, len_b;
@@ -594,6 +672,10 @@ float multimodal_compare_visual(const multimodal_action_features_t* features_a,
 float multimodal_compare_motor(const multimodal_action_features_t* features_a,
                                const multimodal_action_features_t* features_b) {
     if (!features_a || !features_b) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_multimodal_heartbeat("mirror_multi_multimodal_compare_m", 0.0f);
+
 
     float flat_a[NIMCP_MULTIMODAL_MOTOR_DIM];
     float flat_b[NIMCP_MULTIMODAL_MOTOR_DIM];
@@ -613,6 +695,10 @@ float multimodal_compare_auditory(const multimodal_action_features_t* features_a
                                   const multimodal_action_features_t* features_b) {
     if (!features_a || !features_b) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_multimodal_heartbeat("mirror_multi_multimodal_compare_a", 0.0f);
+
+
     float flat_a[NIMCP_MULTIMODAL_AUDITORY_DIM];
     float flat_b[NIMCP_MULTIMODAL_AUDITORY_DIM];
     size_t len_a, len_b;
@@ -630,6 +716,10 @@ float multimodal_compare_auditory(const multimodal_action_features_t* features_a
 float multimodal_compare_semantic(const multimodal_action_features_t* features_a,
                                   const multimodal_action_features_t* features_b) {
     if (!features_a || !features_b) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_multimodal_heartbeat("mirror_multi_multimodal_compare_s", 0.0f);
+
 
     float flat_a[NIMCP_MULTIMODAL_SEMANTIC_DIM];
     float flat_b[NIMCP_MULTIMODAL_SEMANTIC_DIM];
@@ -654,6 +744,10 @@ bool multimodal_check_coherence(const multimodal_action_features_t* features,
 
     /* Check cross-modal consistency */
     /* Visual-Motor correlation: movement kinematics should match */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_multimodal_heartbeat("mirror_multi_multimodal_check_coh", 0.0f);
+
+
     float visual_flat[NIMCP_MULTIMODAL_VISUAL_DIM];
     float motor_flat[NIMCP_MULTIMODAL_MOTOR_DIM];
     size_t vlen, mlen;
@@ -741,6 +835,10 @@ const char* multimodal_semantic_type_name(semantic_feature_type_t type) {
 void multimodal_print(const multimodal_action_features_t* features,
                       const char* prefix) {
     if (!features) return;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_multimodal_heartbeat("mirror_multi_multimodal_print", 0.0f);
+
+
     const char* pfx = prefix ? prefix : "";
 
     nimcp_log(LOG_LEVEL_DEBUG, "%sMultimodal Features (action_id=%u):", pfx, features->action_id);

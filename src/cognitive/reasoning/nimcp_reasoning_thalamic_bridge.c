@@ -29,7 +29,7 @@ static nimcp_health_agent_t* g_reasoning_thalamic_bridge_health_agent = NULL;
  * @brief Set health agent for reasoning_thalamic_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void reasoning_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void reasoning_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_reasoning_thalamic_bridge_health_agent = agent;
 }
 
@@ -51,6 +51,10 @@ struct reasoning_thalamic_bridge {
 };
 
 reasoning_thalamic_config_t reasoning_thalamic_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_thalamic_bridge_heartbeat("reasoning_th_reasoning_thalamic_d", 0.0f);
+
+
     return (reasoning_thalamic_config_t){
         .enable_attention_gating = true,
         .enable_depth_routing = true,
@@ -65,6 +69,10 @@ reasoning_thalamic_bridge_t* reasoning_thalamic_bridge_create(
     thalamic_router_t* router,
     const reasoning_thalamic_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_thalamic_bridge_heartbeat("reasoning_th_create", 0.0f);
+
+
     reasoning_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(reasoning_thalamic_bridge_t));
     if (!bridge) {
 
@@ -90,6 +98,10 @@ reasoning_thalamic_bridge_t* reasoning_thalamic_bridge_create(
 
 void reasoning_thalamic_bridge_destroy(reasoning_thalamic_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_thalamic_bridge_heartbeat("reasoning_th_destroy", 0.0f);
+
+
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
     }
@@ -98,6 +110,10 @@ void reasoning_thalamic_bridge_destroy(reasoning_thalamic_bridge_t* bridge) {
 
 int reasoning_thalamic_bridge_reset(reasoning_thalamic_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_thalamic_bridge_heartbeat("reasoning_th_reset", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -110,6 +126,10 @@ int reasoning_thalamic_route_signal(
     const reasoning_thalamic_signal_t* signal
 ) {
     if (!bridge || !signal) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_thalamic_bridge_heartbeat("reasoning_th_reasoning_thalamic_r", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->config.enable_attention_gating) {
@@ -169,6 +189,10 @@ int reasoning_thalamic_route_inference(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_thalamic_bridge_heartbeat("reasoning_th_reasoning_thalamic_r", 0.0f);
+
+
     reasoning_thalamic_signal_t signal = {
         .signal_type = REASONING_SIGNAL_INFERENCE,
         .reasoning_urgency = 0.5f + (depth * 0.3f),
@@ -190,6 +214,10 @@ int reasoning_thalamic_route_conclusion(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_thalamic_bridge_heartbeat("reasoning_th_reasoning_thalamic_r", 0.0f);
+
+
     reasoning_thalamic_signal_t signal = {
         .signal_type = REASONING_SIGNAL_CONCLUSION,
         .reasoning_urgency = urgency < 0.0f ? 0.0f : (urgency > 1.0f ? 1.0f : urgency),
@@ -206,6 +234,10 @@ int reasoning_thalamic_route_conclusion(
 
 int reasoning_thalamic_set_attention(reasoning_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_thalamic_bridge_heartbeat("reasoning_th_reasoning_thalamic_s", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -214,6 +246,10 @@ int reasoning_thalamic_set_attention(reasoning_thalamic_bridge_t* bridge, float 
 
 int reasoning_thalamic_get_attention(const reasoning_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_thalamic_bridge_heartbeat("reasoning_th_reasoning_thalamic_g", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -225,6 +261,10 @@ int reasoning_thalamic_bridge_get_stats(
     reasoning_thalamic_stats_t* stats
 ) {
     if (!bridge || !stats) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_thalamic_bridge_heartbeat("reasoning_th_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -237,9 +277,19 @@ int reasoning_thalamic_bridge_get_stats(
 
 int reasoning_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_thalamic_bridge_heartbeat("reasoning_th_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Reasoning_Thalamic_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                reasoning_thalamic_bridge_heartbeat("reasoning_th_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Reasoning_Thalamic_Bridge self-knowledge: %s", self->observations[i]);
         }
     }

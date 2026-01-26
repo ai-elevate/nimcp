@@ -30,7 +30,7 @@ static nimcp_health_agent_t* g_memory_immune_integration_health_agent = NULL;
  * @brief Set health agent for memory_immune_integration heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void memory_immune_integration_set_health_agent(nimcp_health_agent_t* agent) {
+void memory_immune_integration_set_health_agent(nimcp_health_agent_t* agent) {
     g_memory_immune_integration_health_agent = agent;
 }
 
@@ -212,6 +212,10 @@ int memory_immune_default_config(memory_immune_config_t* config) {
     }
 
     /* Working memory modulation */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_defaul", 0.0f);
+
+
     config->enable_wm_capacity_modulation = true;
     config->enable_wm_decay_modulation = true;
     config->inflammation_threshold_mild = 0.3f;
@@ -263,6 +267,10 @@ memory_immune_integration_t* memory_immune_integration_create(
     }
 
     /* Allocate integration structure */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_create", 0.0f);
+
+
     memory_immune_integration_t* integration =
         (memory_immune_integration_t*)nimcp_malloc(sizeof(memory_immune_integration_t));
     if (!integration) {
@@ -340,6 +348,10 @@ void memory_immune_integration_destroy(memory_immune_integration_t* integration)
     if (!integration) return;
 
     /* Stop if running */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_destroy", 0.0f);
+
+
     if (integration->running) {
         memory_immune_integration_stop(integration);
     }
@@ -369,6 +381,10 @@ int memory_immune_integration_start(memory_immune_integration_t* integration) {
     }
 
     /* Guard: already running */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_start", 0.0f);
+
+
     if (integration->running) {
         NIMCP_LOGGING_WARN(MEMORY_IMMUNE_MODULE_NAME,
                       "Integration already running");
@@ -406,6 +422,10 @@ int memory_immune_integration_stop(memory_immune_integration_t* integration) {
     }
 
     /* Mark as stopped */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_stop", 0.0f);
+
+
     integration->running = false;
 
     if (integration->config.enable_logging) {
@@ -432,6 +452,10 @@ uint32_t memory_immune_update_wm_capacity(
     }
 
     /* Lock mutex */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_update", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
 
     /* Determine inflammation level - use pre-set value if available (for testing),
@@ -522,6 +546,10 @@ float memory_immune_update_wm_decay_rate(
     }
 
     /* Lock mutex */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_update", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
 
     /* Compute decay multiplier from cytokine balance */
@@ -556,6 +584,10 @@ float memory_immune_compute_encoding_strength(
     }
 
     /* Lock mutex */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_comput", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
 
     /* Compute encoding strength from cytokine profile */
@@ -625,6 +657,10 @@ float memory_immune_modulate_salience(
     if (!integration) return base_salience;
 
     /* Apply encoding strength modulation */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_modula", 0.0f);
+
+
     float modulated = base_salience * integration->metrics.encoding_strength_multiplier;
 
     /* Clamp to valid range */
@@ -650,6 +686,10 @@ int memory_immune_consolidate_with_immune_memory(
     }
 
     /* Lock mutex */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_consol", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
 
     /* Mark immune memory formation as active */
@@ -686,6 +726,10 @@ float memory_immune_get_consolidation_boost(
     if (!integration) return 1.0f;
 
     /* Check if in memory formation phase */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_get_co", 0.0f);
+
+
     if (integration->metrics.immune_phase == IMMUNE_PHASE_MEMORY) {
         return CONSOLIDATION_IMMUNE_MEMORY_BOOST;
     }
@@ -709,6 +753,10 @@ int memory_immune_create_memory_link(
     if (!integration || !pattern_name) return -1;
 
     /* Guard: at capacity */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_create", 0.0f);
+
+
     if (integration->memory_link_count >= integration->memory_link_capacity) {
         NIMCP_LOGGING_ERROR(MEMORY_IMMUNE_MODULE_NAME,
                        "Memory link array at capacity");
@@ -771,11 +819,21 @@ int memory_immune_reactivate_linked_pattern(
     }
 
     /* Lock mutex */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_reacti", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
 
     /* Find link for this immune cell */
     immune_cognitive_memory_link_t* link = NULL;
     for (size_t i = 0; i < integration->memory_link_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && integration->memory_link_count > 256) {
+            memory_immune_integration_heartbeat("memory_immun_loop",
+                             (float)(i + 1) / (float)integration->memory_link_count);
+        }
+
         if (integration->memory_links[i].immune_cell_id == immune_cell_id) {
             link = &integration->memory_links[i];
             break;
@@ -812,6 +870,10 @@ const immune_cognitive_memory_link_t* memory_immune_get_memory_links(
     if (!integration || !count) return NULL;
 
     *count = integration->memory_link_count;
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_get_me", 0.0f);
+
+
     return integration->memory_links;
 }
 
@@ -830,6 +892,10 @@ int memory_immune_update_state(
     if (!integration->running) return 0;
 
     /* Check if update interval elapsed */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_update", 0.0f);
+
+
     uint64_t elapsed = current_time_ms - integration->last_update_time;
     if (elapsed < integration->config.state_update_interval_ms) {
         return 0;  /* Too soon */
@@ -915,6 +981,10 @@ memory_immune_state_t memory_immune_get_state(
     /* Guard: null check */
     if (!integration) return MEM_IMMUNE_NORMAL;
 
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_get_st", 0.0f);
+
+
     return integration->state;
 }
 
@@ -926,6 +996,10 @@ int memory_immune_get_metrics(
     if (!integration || !metrics) return -1;
 
     /* Copy metrics */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_get_me", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
     memcpy(metrics, &integration->metrics, sizeof(memory_immune_metrics_t));
     pthread_mutex_unlock((pthread_mutex_t*)integration->mutex);
@@ -941,6 +1015,10 @@ int memory_immune_get_stats(
     if (!integration || !stats) return -1;
 
     /* Copy stats */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_get_st", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
     memcpy(stats, &integration->stats, sizeof(memory_immune_stats_t));
     pthread_mutex_unlock((pthread_mutex_t*)integration->mutex);
@@ -953,6 +1031,10 @@ void memory_immune_reset_stats(memory_immune_integration_t* integration) {
     if (!integration) return;
 
     /* Lock and reset stats */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_reset_", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
     memset(&integration->stats, 0, sizeof(memory_immune_stats_t));
     pthread_mutex_unlock((pthread_mutex_t*)integration->mutex);
@@ -976,6 +1058,10 @@ int memory_immune_set_wm_capacity_callback(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_set_wm", 0.0f);
+
+
     integration->on_wm_capacity_change = callback;
     integration->callback_user_data = user_data;
     return 0;
@@ -994,6 +1080,10 @@ int memory_immune_set_encoding_callback(
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_set_en", 0.0f);
+
 
     integration->on_encoding_change = callback;
     integration->callback_user_data = user_data;
@@ -1014,6 +1104,10 @@ int memory_immune_set_memory_formed_callback(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_set_me", 0.0f);
+
+
     integration->on_memory_formed = callback;
     integration->callback_user_data = user_data;
     return 0;
@@ -1032,6 +1126,10 @@ int memory_immune_set_state_change_callback(
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_set_st", 0.0f);
+
 
     integration->on_state_change = callback;
     integration->callback_user_data = user_data;
@@ -1075,6 +1173,10 @@ int memory_immune_connect_engram_system(
     if (!integration || !engram_system) return -1;
 
     /* Lock mutex */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_connec", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
 
     /* Store engram system handle */
@@ -1096,6 +1198,10 @@ float memory_immune_modulate_engram_consolidation(
     if (!integration || !integration->engram_system) return 1.0f;
 
     /* Get IL-1β concentration */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_modula", 0.0f);
+
+
     float il1_concentration = integration->metrics.il1_concentration;
 
     /* Base multiplier */
@@ -1128,6 +1234,10 @@ float memory_immune_modulate_engram_retrieval(
     if (!integration) return base_confidence;
 
     /* Get inflammation level */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_modula", 0.0f);
+
+
     brain_inflammation_level_t inflammation = integration->metrics.inflammation_level;
 
     /* Inflammation impairs retrieval */
@@ -1169,6 +1279,10 @@ int memory_immune_check_threat_memory_in_engrams(
     if (!engram_id || !affinity) return -1;
 
     /* Get antigen */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_check_", 0.0f);
+
+
     const brain_antigen_t* antigen = brain_immune_get_antigen(
         integration->immune_system,
         antigen_id
@@ -1190,6 +1304,12 @@ int memory_immune_check_threat_memory_in_engrams(
 
     /* Iterate through active engrams */
     for (uint32_t i = 0; i < engram_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && engram_count > 256) {
+            memory_immune_integration_heartbeat("memory_immun_loop",
+                             (float)(i + 1) / (float)engram_count);
+        }
+
         /* Get engram - assuming engrams array is accessible */
         /* This would require accessing internal engram structure */
         /* For now, use simplified matching based on emotional tag */
@@ -1218,6 +1338,10 @@ int memory_immune_trigger_from_engram_recall(
     if (!integration->engram_system) return -1;
 
     /* Get engram */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_trigge", 0.0f);
+
+
     memory_engram_t* engram = engram_get_by_id(
         integration->engram_system,
         engram_id
@@ -1262,6 +1386,10 @@ int memory_immune_connect_semantic_memory(
     if (!integration || !semantic_memory) return -1;
 
     /* Lock mutex */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_connec", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
 
     /* Store semantic memory handle */
@@ -1291,6 +1419,10 @@ int memory_immune_create_semantic_immune_concept(
     }
 
     /* Extract features from immune cell receptor pattern */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_create", 0.0f);
+
+
     float features[32];  /* Standard semantic feature dimension */
     memset(features, 0, sizeof(features));
 
@@ -1298,6 +1430,12 @@ int memory_immune_create_semantic_immune_concept(
     /* This is a simplified abstraction - real implementation would */
     /* use sophisticated feature extraction */
     for (int i = 0; i < 32; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 32 > 256) {
+            memory_immune_integration_heartbeat("memory_immun_loop",
+                             (float)(i + 1) / (float)32);
+        }
+
         features[i] = ((float)immune_cell_id + i) / 1000.0f;
     }
 
@@ -1334,6 +1472,10 @@ uint32_t memory_immune_query_semantic_threats(
     if (!concept_ids || !similarities) return 0;
 
     /* Get antigen */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_query_", 0.0f);
+
+
     const brain_antigen_t* antigen = brain_immune_get_antigen(
         integration->immune_system,
         antigen_id
@@ -1361,6 +1503,12 @@ uint32_t memory_immune_query_semantic_threats(
     /* Copy results */
     uint32_t count = result->count < max_results ? result->count : max_results;
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            memory_immune_integration_heartbeat("memory_immun_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         concept_ids[i] = result->concept_ids[i];
         similarities[i] = result->activation_levels[i];
     }
@@ -1383,6 +1531,10 @@ int memory_immune_connect_systems_consolidation(
     if (!integration || !systems_consolidation) return -1;
 
     /* Lock mutex */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_connec", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
 
     /* Store systems consolidation handle */
@@ -1403,6 +1555,10 @@ float memory_immune_modulate_replay_rate(
     if (!integration) return base_replay_rate;
 
     /* Inflammation disrupts slow-wave sleep and replay */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_modula", 0.0f);
+
+
     brain_inflammation_level_t inflammation = integration->metrics.inflammation_level;
 
     float replay_multiplier = 1.0f;
@@ -1433,6 +1589,10 @@ float memory_immune_modulate_systems_transfer(
     if (!integration) return base_transfer_rate;
 
     /* IL-1β biphasic effect on hippocampal-cortical transfer */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_modula", 0.0f);
+
+
     float il1_concentration = integration->metrics.il1_concentration;
 
     float transfer_multiplier = 1.0f;
@@ -1461,6 +1621,10 @@ float memory_immune_get_consolidation_priority_boost(
     if (!integration || !integration->engram_system) return 1.0f;
 
     /* Get engram */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_get_co", 0.0f);
+
+
     memory_engram_t* engram = engram_get_by_id(
         integration->engram_system,
         engram_id
@@ -1487,6 +1651,10 @@ int memory_immune_connect_wm_transfer(
     if (!integration || !wm_transfer) return -1;
 
     /* Lock mutex */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_connec", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
 
     /* Store WM transfer handle */
@@ -1511,6 +1679,10 @@ int memory_immune_modulate_transfer_criteria(
     *modulated_criteria = *base_criteria;
 
     /* Inflammation increases thresholds (more selective transfer) */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_modula", 0.0f);
+
+
     brain_inflammation_level_t inflammation = integration->metrics.inflammation_level;
 
     if (inflammation >= INFLAMMATION_REGIONAL) {
@@ -1554,6 +1726,10 @@ float memory_immune_get_transfer_priority(
     if (!integration) return 1.0f;
 
     /* Threat-related items get priority boost */
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_get_tr", 0.0f);
+
+
     if (is_threat_related) {
         return 1.8f;  /* 80% priority boost for survival-relevant info */
     }
@@ -1577,9 +1753,19 @@ float memory_immune_get_transfer_priority(
  */
 int memory_immune_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    memory_immune_integration_heartbeat("memory_immun_memory_immune_query_", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Memory_Immune_Integration");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                memory_immune_integration_heartbeat("memory_immun_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Memory immune integration self-knowledge: %s", self->observations[i]);
         }
     }

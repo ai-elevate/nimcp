@@ -46,7 +46,7 @@ static nimcp_health_agent_t* g_prospective_scheduler_health_agent = NULL;
  * @brief Set health agent for prospective_scheduler heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void prospective_scheduler_set_health_agent(nimcp_health_agent_t* agent) {
+void prospective_scheduler_set_health_agent(nimcp_health_agent_t* agent) {
     g_prospective_scheduler_health_agent = agent;
 }
 
@@ -289,6 +289,12 @@ static scheduled_intention_t* scheduled_intention_create(prospective_intention_t
 
     // Initialize reminder tracking
     for (int i = 0; i < 6; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 6 > 256) {
+            prospective_scheduler_heartbeat("prospective__loop",
+                             (float)(i + 1) / (float)6);
+        }
+
         scheduled->reminded_at_level[i] = false;
     }
 
@@ -312,6 +318,12 @@ static scheduled_intention_t* find_scheduled_by_id(
     uint64_t intention_id
 ) {
     for (size_t i = 0; i < scheduler->num_intentions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && scheduler->num_intentions > 256) {
+            prospective_scheduler_heartbeat("prospective__loop",
+                             (float)(i + 1) / (float)scheduler->num_intentions);
+        }
+
         if (scheduler->all_intentions[i] &&
             scheduler->all_intentions[i]->intention &&
             scheduler->all_intentions[i]->intention->intention_id == intention_id) {
@@ -362,6 +374,12 @@ static bool time_ordered_insert(prospective_scheduler_t* scheduler, scheduled_in
  */
 static bool time_ordered_remove(prospective_scheduler_t* scheduler, scheduled_intention_t* item) {
     for (size_t i = 0; i < scheduler->num_time_ordered; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && scheduler->num_time_ordered > 256) {
+            prospective_scheduler_heartbeat("prospective__loop",
+                             (float)(i + 1) / (float)scheduler->num_time_ordered);
+        }
+
         if (scheduler->time_ordered[i] == item) {
             // Shift elements
             for (size_t j = i; j < scheduler->num_time_ordered - 1; j++) {
@@ -386,8 +404,20 @@ static pr_conflict_group_t* find_conflict_group_for_intention(
     uint64_t intention_id
 ) {
     for (size_t g = 0; g < scheduler->num_conflict_groups; g++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((g & 0xFF) == 0 && scheduler->num_conflict_groups > 256) {
+            prospective_scheduler_heartbeat("prospective__loop",
+                             (float)(g + 1) / (float)scheduler->num_conflict_groups);
+        }
+
         pr_conflict_group_t* group = &scheduler->conflict_groups[g];
         for (size_t i = 0; i < group->num_intentions; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && group->num_intentions > 256) {
+                prospective_scheduler_heartbeat("prospective__loop",
+                                 (float)(i + 1) / (float)group->num_intentions);
+            }
+
             if (group->intention_ids[i] == intention_id) {
                 return group;
             }
@@ -404,6 +434,12 @@ static pr_conflict_group_t* find_conflict_group_by_id(
     uint32_t group_id
 ) {
     for (size_t i = 0; i < scheduler->num_conflict_groups; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && scheduler->num_conflict_groups > 256) {
+            prospective_scheduler_heartbeat("prospective__loop",
+                             (float)(i + 1) / (float)scheduler->num_conflict_groups);
+        }
+
         if (scheduler->conflict_groups[i].group_id == group_id) {
             return &scheduler->conflict_groups[i];
         }
@@ -416,6 +452,10 @@ static pr_conflict_group_t* find_conflict_group_by_id(
 //=============================================================================
 
 prospective_scheduler_config_t prospective_scheduler_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__config_default", 0.0f);
+
+
     prospective_scheduler_config_t config = {
         .max_intentions = PR_SCHED_DEFAULT_MAX_INTENTIONS,
         .max_conflict_groups = PR_SCHED_MAX_CONFLICT_GROUPS,
@@ -452,6 +492,10 @@ bool prospective_scheduler_config_validate(const prospective_scheduler_config_t*
     }
 
     // Check capacity
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__config_validate", 0.0f);
+
+
     if (config->max_intentions == 0) {
         return false;
     }
@@ -486,6 +530,10 @@ prospective_scheduler_t* prospective_scheduler_create(
     const prospective_scheduler_config_t* config
 ) {
     // Use defaults if no config
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__create", 0.0f);
+
+
     prospective_scheduler_config_t cfg;
     if (config) {
         cfg = *config;
@@ -584,7 +632,17 @@ void prospective_scheduler_destroy(prospective_scheduler_t* scheduler) {
     }
 
     // Free scheduled intention wrappers (but NOT the intentions themselves)
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__destroy", 0.0f);
+
+
     for (size_t i = 0; i < scheduler->num_intentions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && scheduler->num_intentions > 256) {
+            prospective_scheduler_heartbeat("prospective__loop",
+                             (float)(i + 1) / (float)scheduler->num_intentions);
+        }
+
         if (scheduler->all_intentions[i]) {
             scheduled_intention_destroy(scheduler->all_intentions[i]);
         }
@@ -592,6 +650,12 @@ void prospective_scheduler_destroy(prospective_scheduler_t* scheduler) {
 
     // Free conflict group arrays
     for (size_t i = 0; i < scheduler->num_conflict_groups; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && scheduler->num_conflict_groups > 256) {
+            prospective_scheduler_heartbeat("prospective__loop",
+                             (float)(i + 1) / (float)scheduler->num_conflict_groups);
+        }
+
         if (scheduler->conflict_groups[i].intention_ids) {
             free(scheduler->conflict_groups[i].intention_ids);
         }
@@ -620,7 +684,17 @@ pr_sched_error_t prospective_scheduler_reset(prospective_scheduler_t* scheduler)
     }
 
     // Free scheduled intention wrappers
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__reset", 0.0f);
+
+
     for (size_t i = 0; i < scheduler->num_intentions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && scheduler->num_intentions > 256) {
+            prospective_scheduler_heartbeat("prospective__loop",
+                             (float)(i + 1) / (float)scheduler->num_intentions);
+        }
+
         if (scheduler->all_intentions[i]) {
             scheduled_intention_destroy(scheduler->all_intentions[i]);
             scheduler->all_intentions[i] = NULL;
@@ -633,6 +707,12 @@ pr_sched_error_t prospective_scheduler_reset(prospective_scheduler_t* scheduler)
 
     // Free and reset conflict groups
     for (size_t i = 0; i < scheduler->num_conflict_groups; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && scheduler->num_conflict_groups > 256) {
+            prospective_scheduler_heartbeat("prospective__loop",
+                             (float)(i + 1) / (float)scheduler->num_conflict_groups);
+        }
+
         if (scheduler->conflict_groups[i].intention_ids) {
             free(scheduler->conflict_groups[i].intention_ids);
             scheduler->conflict_groups[i].intention_ids = NULL;
@@ -665,6 +745,10 @@ prospective_intention_t* prospective_intention_create(
     pr_intent_trigger_type_t trigger_type,
     float importance
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__prospective_intentio", 0.0f);
+
+
     prospective_intention_t* intention = (prospective_intention_t*)malloc(
         sizeof(prospective_intention_t));
     if (!intention) {
@@ -712,6 +796,10 @@ void prospective_intention_destroy(prospective_intention_t* intention) {
     // Note: Does NOT free action_data, user_data, or event_trigger.cue_signature
     // Caller must free those separately
 
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__prospective_intentio", 0.0f);
+
+
     free(intention);
 }
 
@@ -725,6 +813,10 @@ pr_sched_error_t prospective_intention_set_time_window(
     if (!intention) {
         return PR_SCHED_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__prospective_intentio", 0.0f);
+
 
     if (end_time <= start_time) {
         return PR_SCHED_ERROR_INVALID_TIME;
@@ -753,6 +845,10 @@ pr_sched_error_t prospective_intention_set_event_trigger(
         return PR_SCHED_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__prospective_intentio", 0.0f);
+
+
     intention->trigger_type = PR_INTENT_TRIGGER_EVENT;
     safe_strcpy(intention->event_trigger.event_type, event_type ? event_type : "",
                 sizeof(intention->event_trigger.event_type));
@@ -772,6 +868,10 @@ pr_sched_error_t prospective_intention_set_activity_trigger(
     if (!intention) {
         return PR_SCHED_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__prospective_intentio", 0.0f);
+
 
     intention->trigger_type = PR_INTENT_TRIGGER_ACTIVITY;
     safe_strcpy(intention->activity_trigger.activity_name, activity_name ? activity_name : "",
@@ -796,6 +896,10 @@ pr_sched_error_t prospective_scheduler_add(
     }
 
     // Check capacity
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__add", 0.0f);
+
+
     if (scheduler->num_intentions >= scheduler->config.max_intentions) {
         return PR_SCHED_ERROR_CAPACITY_EXCEEDED;
     }
@@ -867,6 +971,10 @@ pr_sched_error_t prospective_scheduler_remove(
     }
 
     // Find scheduled intention
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__remove", 0.0f);
+
+
     scheduled_intention_t* scheduled = find_scheduled_by_id(scheduler, intention_id);
     if (!scheduled) {
         return PR_SCHED_ERROR_NOT_FOUND;
@@ -880,6 +988,12 @@ pr_sched_error_t prospective_scheduler_remove(
 
     // Remove from all_intentions array
     for (size_t i = 0; i < scheduler->num_intentions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && scheduler->num_intentions > 256) {
+            prospective_scheduler_heartbeat("prospective__loop",
+                             (float)(i + 1) / (float)scheduler->num_intentions);
+        }
+
         if (scheduler->all_intentions[i] == scheduled) {
             // Shift remaining elements
             for (size_t j = i; j < scheduler->num_intentions - 1; j++) {
@@ -913,11 +1027,21 @@ pr_sched_error_t prospective_scheduler_update(
         return PR_SCHED_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__update", 0.0f);
+
+
     scheduler->current_time = current_time;
     scheduler->last_update_ms = get_current_time_ms();
 
     // Update all scheduled intentions
     for (size_t i = 0; i < scheduler->num_intentions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && scheduler->num_intentions > 256) {
+            prospective_scheduler_heartbeat("prospective__loop",
+                             (float)(i + 1) / (float)scheduler->num_intentions);
+        }
+
         scheduled_intention_t* scheduled = scheduler->all_intentions[i];
         if (!scheduled || !scheduled->intention) {
             continue;
@@ -994,6 +1118,10 @@ prospective_intention_t* prospective_scheduler_get_next(
     }
 
     // Get and remove top of heap
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__get_next", 0.0f);
+
+
     scheduled_intention_t* scheduled = heap_remove_at(scheduler, 0);
     if (!scheduled) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scheduled is NULL");
@@ -1008,6 +1136,12 @@ prospective_intention_t* prospective_scheduler_get_next(
 
     // Remove from all_intentions array
     for (size_t i = 0; i < scheduler->num_intentions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && scheduler->num_intentions > 256) {
+            prospective_scheduler_heartbeat("prospective__loop",
+                             (float)(i + 1) / (float)scheduler->num_intentions);
+        }
+
         if (scheduler->all_intentions[i] == scheduled) {
             for (size_t j = i; j < scheduler->num_intentions - 1; j++) {
                 scheduler->all_intentions[j] = scheduler->all_intentions[j + 1];
@@ -1035,6 +1169,10 @@ prospective_intention_t* prospective_scheduler_peek(
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__peek", 0.0f);
+
+
     if (scheduler->heap[0].item && scheduler->heap[0].item->intention) {
         return scheduler->heap[0].item->intention;
     }
@@ -1050,6 +1188,10 @@ int prospective_scheduler_get_due(
     if (!scheduler || !out_intentions) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__get_due", 0.0f);
+
 
     int count = 0;
     for (size_t i = 0; i < scheduler->num_intentions && (size_t)count < max_count; i++) {
@@ -1077,6 +1219,10 @@ int prospective_scheduler_get_in_window(
     if (!scheduler || !out_intentions) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__get_in_window", 0.0f);
+
 
     int count = 0;
     for (size_t i = 0; i < scheduler->num_intentions && (size_t)count < max_count; i++) {
@@ -1120,9 +1266,19 @@ int prospective_scheduler_check_reminders(prospective_scheduler_t* scheduler) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__check_reminders", 0.0f);
+
+
     int reminders_fired = 0;
 
     for (size_t i = 0; i < scheduler->num_intentions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && scheduler->num_intentions > 256) {
+            prospective_scheduler_heartbeat("prospective__loop",
+                             (float)(i + 1) / (float)scheduler->num_intentions);
+        }
+
         scheduled_intention_t* scheduled = scheduler->all_intentions[i];
         if (!scheduled || !scheduled->intention) {
             continue;
@@ -1170,6 +1326,10 @@ pr_sched_error_t prospective_scheduler_set_reminder_callback(
         return PR_SCHED_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__set_reminder_callbac", 0.0f);
+
+
     scheduler->reminder_callback = callback;
     scheduler->reminder_user_data = user_data;
 
@@ -1189,6 +1349,10 @@ pr_sched_error_t prospective_scheduler_snooze(
         return PR_SCHED_ERROR_INVALID_STATE;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__snooze", 0.0f);
+
+
     scheduled_intention_t* scheduled = find_scheduled_by_id(scheduler, intention_id);
     if (!scheduled) {
         return PR_SCHED_ERROR_NOT_FOUND;
@@ -1201,6 +1365,12 @@ pr_sched_error_t prospective_scheduler_snooze(
 
     // Reset reminded flags (will re-trigger at appropriate level after snooze)
     for (int i = 0; i < 6; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 6 > 256) {
+            prospective_scheduler_heartbeat("prospective__loop",
+                             (float)(i + 1) / (float)6);
+        }
+
         scheduled->reminded_at_level[i] = false;
     }
 
@@ -1222,6 +1392,10 @@ reminder_level_t prospective_scheduler_get_reminder_level(
     if (!scheduler) {
         return REMINDER_NONE;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__get_reminder_level", 0.0f);
+
 
     scheduled_intention_t* scheduled = find_scheduled_by_id(
         (prospective_scheduler_t*)scheduler, intention_id);
@@ -1246,6 +1420,10 @@ uint32_t prospective_scheduler_add_conflict(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__add_conflict", 0.0f);
+
+
     if (scheduler->num_conflict_groups >= scheduler->config.max_conflict_groups) {
         return 0;
     }
@@ -1265,6 +1443,12 @@ uint32_t prospective_scheduler_add_conflict(
     // Copy intention IDs and update scheduled intentions
     group->num_intentions = 0;
     for (size_t i = 0; i < num_intentions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_intentions > 256) {
+            prospective_scheduler_heartbeat("prospective__loop",
+                             (float)(i + 1) / (float)num_intentions);
+        }
+
         scheduled_intention_t* scheduled = find_scheduled_by_id(scheduler, intention_ids[i]);
         if (scheduled) {
             group->intention_ids[group->num_intentions++] = intention_ids[i];
@@ -1293,6 +1477,10 @@ pr_sched_error_t prospective_scheduler_remove_conflict(
     }
 
     // Find the group
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__remove_conflict", 0.0f);
+
+
     pr_conflict_group_t* group = find_conflict_group_by_id(scheduler, group_id);
     if (!group) {
         return PR_SCHED_ERROR_NOT_FOUND;
@@ -1300,6 +1488,12 @@ pr_sched_error_t prospective_scheduler_remove_conflict(
 
     // Clear conflict_group_id from scheduled intentions
     for (size_t i = 0; i < group->num_intentions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && group->num_intentions > 256) {
+            prospective_scheduler_heartbeat("prospective__loop",
+                             (float)(i + 1) / (float)group->num_intentions);
+        }
+
         scheduled_intention_t* scheduled = find_scheduled_by_id(
             scheduler, group->intention_ids[i]);
         if (scheduled) {
@@ -1334,6 +1528,10 @@ uint64_t prospective_scheduler_resolve_conflict(
         return PR_SCHED_INVALID_ID;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__resolve_conflict", 0.0f);
+
+
     pr_conflict_group_t* group = find_conflict_group_by_id(scheduler, group_id);
     if (!group || group->num_intentions == 0) {
         return PR_SCHED_INVALID_ID;
@@ -1351,6 +1549,12 @@ uint64_t prospective_scheduler_resolve_conflict(
             float best_priority = -1.0f;
 
             for (size_t i = 0; i < group->num_intentions; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && group->num_intentions > 256) {
+                    prospective_scheduler_heartbeat("prospective__loop",
+                                     (float)(i + 1) / (float)group->num_intentions);
+                }
+
                 scheduled_intention_t* scheduled = find_scheduled_by_id(
                     scheduler, group->intention_ids[i]);
                 if (scheduled && scheduled->priority > best_priority) {
@@ -1371,6 +1575,12 @@ uint64_t prospective_scheduler_resolve_conflict(
             float earliest_deadline = 1e10f;
 
             for (size_t i = 0; i < group->num_intentions; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && group->num_intentions > 256) {
+                    prospective_scheduler_heartbeat("prospective__loop",
+                                     (float)(i + 1) / (float)group->num_intentions);
+                }
+
                 scheduled_intention_t* scheduled = find_scheduled_by_id(
                     scheduler, group->intention_ids[i]);
                 if (scheduled && scheduled->intention) {
@@ -1432,6 +1642,10 @@ pr_sched_error_t prospective_scheduler_set_conflict_callback(
         return PR_SCHED_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__set_conflict_callbac", 0.0f);
+
+
     scheduler->conflict_callback = callback;
     scheduler->conflict_user_data = user_data;
 
@@ -1445,6 +1659,10 @@ bool prospective_scheduler_has_conflict(
     if (!scheduler) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__has_conflict", 0.0f);
+
 
     scheduled_intention_t* scheduled = find_scheduled_by_id(
         (prospective_scheduler_t*)scheduler, intention_id);
@@ -1470,6 +1688,10 @@ pr_sched_error_t prospective_scheduler_reschedule(
         return PR_SCHED_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__reschedule", 0.0f);
+
+
     scheduled_intention_t* scheduled = find_scheduled_by_id(scheduler, intention_id);
     if (!scheduled) {
         return PR_SCHED_ERROR_NOT_FOUND;
@@ -1490,6 +1712,12 @@ pr_sched_error_t prospective_scheduler_reschedule(
 
     // Reset reminder tracking
     for (int i = 0; i < 6; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 6 > 256) {
+            prospective_scheduler_heartbeat("prospective__loop",
+                             (float)(i + 1) / (float)6);
+        }
+
         scheduled->reminded_at_level[i] = false;
     }
 
@@ -1504,6 +1732,10 @@ pr_sched_error_t prospective_scheduler_update_importance(
     if (!scheduler) {
         return PR_SCHED_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__update_importance", 0.0f);
+
 
     scheduled_intention_t* scheduled = find_scheduled_by_id(scheduler, intention_id);
     if (!scheduled) {
@@ -1534,6 +1766,10 @@ pr_sched_error_t prospective_scheduler_mark_completed(
     if (!scheduler) {
         return PR_SCHED_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__mark_completed", 0.0f);
+
 
     scheduled_intention_t* scheduled = find_scheduled_by_id(scheduler, intention_id);
     if (!scheduled) {
@@ -1579,6 +1815,10 @@ pr_sched_error_t prospective_scheduler_mark_failed(
         return PR_SCHED_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__mark_failed", 0.0f);
+
+
     scheduled_intention_t* scheduled = find_scheduled_by_id(scheduler, intention_id);
     if (!scheduled) {
         return PR_SCHED_ERROR_NOT_FOUND;
@@ -1602,6 +1842,10 @@ pr_sched_error_t prospective_scheduler_cancel(
     if (!scheduler) {
         return PR_SCHED_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__cancel", 0.0f);
+
 
     scheduled_intention_t* scheduled = find_scheduled_by_id(scheduler, intention_id);
     if (!scheduled) {
@@ -1635,6 +1879,10 @@ int prospective_scheduler_get_timeline(
     }
 
     // Collect entries for all pending intentions within horizon
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__get_timeline", 0.0f);
+
+
     size_t count = 0;
     float horizon_end = scheduler->current_time + time_horizon;
 
@@ -1674,6 +1922,12 @@ int prospective_scheduler_get_timeline(
 
     // Sort by start time (simple bubble sort for small N)
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            prospective_scheduler_heartbeat("prospective__loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         for (size_t j = i + 1; j < count; j++) {
             if (out_entries[j].start_time < out_entries[i].start_time) {
                 pr_timeline_entry_t temp = out_entries[i];
@@ -1695,6 +1949,10 @@ pr_sched_error_t prospective_scheduler_estimate_load(
         return PR_SCHED_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__estimate_load", 0.0f);
+
+
     memset(out_load, 0, sizeof(pr_cognitive_load_t));
 
     float horizon_end = scheduler->current_time + time_horizon;
@@ -1704,6 +1962,12 @@ pr_sched_error_t prospective_scheduler_estimate_load(
     size_t num_in_horizon = 0;
 
     for (size_t i = 0; i < scheduler->num_intentions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && scheduler->num_intentions > 256) {
+            prospective_scheduler_heartbeat("prospective__loop",
+                             (float)(i + 1) / (float)scheduler->num_intentions);
+        }
+
         scheduled_intention_t* scheduled = scheduler->all_intentions[i];
         if (!scheduled || !scheduled->intention) {
             continue;
@@ -1774,6 +2038,10 @@ bool prospective_scheduler_has_capacity(const prospective_scheduler_t* scheduler
     if (!scheduler) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__has_capacity", 0.0f);
+
+
     return scheduler->num_intentions < scheduler->config.max_intentions;
 }
 
@@ -1781,6 +2049,10 @@ size_t prospective_scheduler_get_count(const prospective_scheduler_t* scheduler)
     if (!scheduler) {
         return 0;
     }
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__get_count", 0.0f);
+
+
     return scheduler->num_intentions;
 }
 
@@ -1797,9 +2069,19 @@ int prospective_scheduler_notify_event(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__notify_event", 0.0f);
+
+
     int triggered_count = 0;
 
     for (size_t i = 0; i < scheduler->num_intentions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && scheduler->num_intentions > 256) {
+            prospective_scheduler_heartbeat("prospective__loop",
+                             (float)(i + 1) / (float)scheduler->num_intentions);
+        }
+
         scheduled_intention_t* scheduled = scheduler->all_intentions[i];
         if (!scheduled || !scheduled->intention) {
             continue;
@@ -1863,9 +2145,19 @@ int prospective_scheduler_notify_activity(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__notify_activity", 0.0f);
+
+
     int triggered_count = 0;
 
     for (size_t i = 0; i < scheduler->num_intentions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && scheduler->num_intentions > 256) {
+            prospective_scheduler_heartbeat("prospective__loop",
+                             (float)(i + 1) / (float)scheduler->num_intentions);
+        }
+
         scheduled_intention_t* scheduled = scheduler->all_intentions[i];
         if (!scheduled || !scheduled->intention) {
             continue;
@@ -1919,6 +2211,10 @@ pr_sched_error_t prospective_scheduler_set_trigger_callback(
         return PR_SCHED_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__set_trigger_callback", 0.0f);
+
+
     scheduler->trigger_callback = callback;
     scheduler->trigger_user_data = user_data;
 
@@ -1938,6 +2234,10 @@ prospective_intention_t* prospective_scheduler_find(
 
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__find", 0.0f);
+
 
     scheduled_intention_t* scheduled = find_scheduled_by_id(
         (prospective_scheduler_t*)scheduler, intention_id);
@@ -1959,6 +2259,10 @@ pr_sched_error_t prospective_scheduler_get_scheduled_info(
         return PR_SCHED_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__get_scheduled_info", 0.0f);
+
+
     scheduled_intention_t* scheduled = find_scheduled_by_id(
         (prospective_scheduler_t*)scheduler, intention_id);
     if (!scheduled) {
@@ -1976,6 +2280,10 @@ float prospective_scheduler_get_priority(
     if (!scheduler) {
         return -1.0f;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__get_priority", 0.0f);
+
 
     scheduled_intention_t* scheduled = find_scheduled_by_id(
         (prospective_scheduler_t*)scheduler, intention_id);
@@ -1999,6 +2307,10 @@ pr_sched_error_t prospective_scheduler_get_stats(
     }
 
     *out_stats = scheduler->stats;
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__get_stats", 0.0f);
+
+
     return PR_SCHED_SUCCESS;
 }
 
@@ -2010,6 +2322,10 @@ pr_sched_error_t prospective_scheduler_reset_stats(
     }
 
     // Keep current counts, reset historical
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__reset_stats", 0.0f);
+
+
     size_t current_pending = scheduler->stats.current_pending;
     size_t current_active = scheduler->stats.current_active;
 
@@ -2028,6 +2344,10 @@ void prospective_scheduler_print_state(const prospective_scheduler_t* scheduler)
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__print_state", 0.0f);
+
+
     printf("=== Prospective Scheduler State ===\n");
     printf("Intentions: %zu / %zu\n", scheduler->num_intentions,
            scheduler->config.max_intentions);
@@ -2039,6 +2359,12 @@ void prospective_scheduler_print_state(const prospective_scheduler_t* scheduler)
 
     printf("Scheduled Intentions:\n");
     for (size_t i = 0; i < scheduler->num_intentions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && scheduler->num_intentions > 256) {
+            prospective_scheduler_heartbeat("prospective__loop",
+                             (float)(i + 1) / (float)scheduler->num_intentions);
+        }
+
         scheduled_intention_t* s = scheduler->all_intentions[i];
         if (!s || !s->intention) continue;
 
@@ -2136,6 +2462,10 @@ const char* pr_conflict_strategy_name(pr_conflict_strategy_t strategy) {
 }
 
 uint64_t pr_sched_current_time_ms(void) {
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__pr_sched_current_tim", 0.0f);
+
+
     return get_current_time_ms();
 }
 
@@ -2150,12 +2480,20 @@ float pr_sched_compute_priority(
         return 0.4f * urgency + 0.4f * importance + 0.2f * recency;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__pr_sched_compute_pri", 0.0f);
+
+
     return config->urgency_weight * urgency +
            config->importance_weight * importance +
            config->recency_weight * recency;
 }
 
 float pr_sched_compute_urgency(float time_until_trigger, float urgency_tau) {
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__pr_sched_compute_urg", 0.0f);
+
+
     if (urgency_tau <= 0) {
         urgency_tau = PR_SCHED_URGENCY_TAU;
     }
@@ -2188,5 +2526,9 @@ reminder_level_t pr_sched_compute_reminder_level(
     if (time_until_trigger <= config->reminder_soon) return REMINDER_SOON;
     if (time_until_trigger <= config->reminder_moderate) return REMINDER_MODERATE;
     if (time_until_trigger <= config->reminder_far) return REMINDER_FAR;
+    /* Phase 8: Heartbeat at operation start */
+    prospective_scheduler_heartbeat("prospective__pr_sched_compute_rem", 0.0f);
+
+
     return REMINDER_NONE;
 }

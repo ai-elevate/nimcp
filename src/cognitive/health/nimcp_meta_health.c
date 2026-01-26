@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_meta_health_health_agent = NULL;
  * @brief Set health agent for meta_health heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void meta_health_set_health_agent(nimcp_health_agent_t* agent) {
+void meta_health_set_health_agent(nimcp_health_agent_t* agent) {
     g_meta_health_health_agent = agent;
 }
 
@@ -123,6 +123,10 @@ static uint64_t get_time_us(void) {
  * ============================================================================ */
 
 meta_health_config_t meta_health_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    meta_health_heartbeat("meta_health_default_config", 0.0f);
+
+
     meta_health_config_t config = {
         .enable_auto_reflection = true,
         .reflection_interval_ms = META_HEALTH_DEFAULT_REFLECTION_INTERVAL_MS,
@@ -146,6 +150,10 @@ meta_health_reflector_t* meta_health_create(
     rcog_engine_t* rcog,
     const meta_health_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    meta_health_heartbeat("meta_health_create", 0.0f);
+
+
     meta_health_reflector_t* reflector = calloc(1, sizeof(meta_health_reflector_t));
     if (!reflector) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reflector is NULL");
@@ -213,6 +221,10 @@ void meta_health_destroy(meta_health_reflector_t* reflector) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    meta_health_heartbeat("meta_health_destroy", 0.0f);
+
+
     free(reflector->patterns);
     free(reflector->pending);
     free(reflector->applied_adjustments);
@@ -226,6 +238,10 @@ int meta_health_start(meta_health_reflector_t* reflector) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    meta_health_heartbeat("meta_health_start", 0.0f);
+
+
     reflector->running = true;
     reflector->last_reflection_us = get_time_us();
 
@@ -238,6 +254,10 @@ int meta_health_stop(meta_health_reflector_t* reflector) {
 
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    meta_health_heartbeat("meta_health_stop", 0.0f);
+
 
     reflector->running = false;
 
@@ -255,6 +275,10 @@ int meta_health_record_decision(
     if (!reflector || !decision) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    meta_health_heartbeat("meta_health_record_decision", 0.0f);
+
 
     meta_health_decision_log_t* log = &reflector->decision_log;
 
@@ -286,10 +310,20 @@ int meta_health_record_outcome(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    meta_health_heartbeat("meta_health_record_outcome", 0.0f);
+
+
     meta_health_decision_log_t* log = &reflector->decision_log;
 
     /* Find the decision and update it */
     for (uint32_t i = 0; i < log->num_decisions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && log->num_decisions > 256) {
+            meta_health_heartbeat("meta_health_loop",
+                             (float)(i + 1) / (float)log->num_decisions);
+        }
+
         if (log->decisions[i].timestamp_us == timestamp_us) {
             log->decisions[i].outcome = outcome;
             log->decisions[i].recovery_succeeded = recovery_succeeded;
@@ -311,6 +345,10 @@ int meta_health_get_decision_log(
     }
 
     *log = reflector->decision_log;
+    /* Phase 8: Heartbeat at operation start */
+    meta_health_heartbeat("meta_health_get_decision_log", 0.0f);
+
+
     return 0;
 }
 
@@ -342,6 +380,12 @@ static void compute_assessment(
     uint32_t recovery_count = 0;
 
     for (uint32_t i = 0; i < log->num_decisions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && log->num_decisions > 256) {
+            meta_health_heartbeat("meta_health_loop",
+                             (float)(i + 1) / (float)log->num_decisions);
+        }
+
         const meta_health_decision_t* d = &log->decisions[i];
         total++;
 
@@ -425,6 +469,12 @@ static void compute_weaknesses(
     uint32_t type_count[HEALTH_MSG_COUNT] = {0};
 
     for (uint32_t i = 0; i < log->num_decisions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && log->num_decisions > 256) {
+            meta_health_heartbeat("meta_health_loop",
+                             (float)(i + 1) / (float)log->num_decisions);
+        }
+
         const meta_health_decision_t* d = &log->decisions[i];
 
         if (d->anomaly_source < HEALTH_SOURCE_COUNT) {
@@ -456,6 +506,12 @@ static void compute_weaknesses(
     health_agent_source_t weakest_source = HEALTH_SOURCE_UNKNOWN;
 
     for (int s = 0; s < HEALTH_SOURCE_COUNT; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && HEALTH_SOURCE_COUNT > 256) {
+            meta_health_heartbeat("meta_health_loop",
+                             (float)(s + 1) / (float)HEALTH_SOURCE_COUNT);
+        }
+
         if (source_total[s] >= 3) {  /* Need minimum samples */
             float accuracy = (float)source_success[s] / (float)source_total[s];
             if (accuracy < lowest_accuracy) {
@@ -473,6 +529,12 @@ static void compute_weaknesses(
     health_agent_recovery_t worst_recovery = HEALTH_RECOVERY_NONE;
 
     for (int r = 0; r < HEALTH_RECOVERY_COUNT; r++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((r & 0xFF) == 0 && HEALTH_RECOVERY_COUNT > 256) {
+            meta_health_heartbeat("meta_health_loop",
+                             (float)(r + 1) / (float)HEALTH_RECOVERY_COUNT);
+        }
+
         if (recovery_total[r] >= 3) {
             float success = (float)recovery_success[r] / (float)recovery_total[r];
             if (success < lowest_recovery) {
@@ -490,6 +552,12 @@ static void compute_weaknesses(
     health_agent_source_t fp_source = HEALTH_SOURCE_UNKNOWN;
 
     for (int s = 0; s < HEALTH_SOURCE_COUNT; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && HEALTH_SOURCE_COUNT > 256) {
+            meta_health_heartbeat("meta_health_loop",
+                             (float)(s + 1) / (float)HEALTH_SOURCE_COUNT);
+        }
+
         if (source_fp[s] > max_fp) {
             max_fp = source_fp[s];
             fp_source = (health_agent_source_t)s;
@@ -505,6 +573,12 @@ static void compute_weaknesses(
     health_agent_msg_type_t slow_type = HEALTH_MSG_ANOMALY_DETECTED;
 
     for (int t = 0; t < HEALTH_MSG_COUNT; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && HEALTH_MSG_COUNT > 256) {
+            meta_health_heartbeat("meta_health_loop",
+                             (float)(t + 1) / (float)HEALTH_MSG_COUNT);
+        }
+
         if (type_count[t] > 0) {
             float avg = type_response_time[t] / type_count[t];
             if (avg > slowest) {
@@ -525,6 +599,10 @@ int meta_health_reflect(
     if (!reflector || !result) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    meta_health_heartbeat("meta_health_reflect", 0.0f);
+
 
     uint64_t start_time = get_time_us();
 
@@ -662,6 +740,10 @@ int meta_health_reflect_async(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    meta_health_heartbeat("meta_health_reflect_async", 0.0f);
+
+
     if (reflector->num_pending >= reflector->max_pending) {
         return -1;  /* Queue full */
     }
@@ -686,7 +768,17 @@ int meta_health_get_reflection_result(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    meta_health_heartbeat("meta_health_get_reflection_resul", 0.0f);
+
+
     for (uint32_t i = 0; i < reflector->num_pending; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && reflector->num_pending > 256) {
+            meta_health_heartbeat("meta_health_loop",
+                             (float)(i + 1) / (float)reflector->num_pending);
+        }
+
         if (reflector->pending[i].request_id == request_id) {
             pending_reflection_t* pending = &reflector->pending[i];
 
@@ -721,6 +813,10 @@ int meta_health_get_assessment(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    meta_health_heartbeat("meta_health_get_assessment", 0.0f);
+
+
     compute_assessment(reflector, assessment);
     return 0;
 }
@@ -732,6 +828,10 @@ int meta_health_get_weaknesses(
     if (!reflector || !weaknesses) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    meta_health_heartbeat("meta_health_get_weaknesses", 0.0f);
+
 
     compute_weaknesses(reflector, weaknesses);
     return 0;
@@ -749,9 +849,19 @@ int meta_health_apply_learnings(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    meta_health_heartbeat("meta_health_apply_learnings", 0.0f);
+
+
     int applied = 0;
 
     for (uint32_t i = 0; i < result->num_adjustments; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && result->num_adjustments > 256) {
+            meta_health_heartbeat("meta_health_loop",
+                             (float)(i + 1) / (float)result->num_adjustments);
+        }
+
         const meta_health_adjustment_t* adj = &result->adjustments[i];
 
         /* Only apply if confidence is high enough */
@@ -765,6 +875,12 @@ int meta_health_apply_learnings(
     /* Register new patterns */
     if (reflector->config.enable_pattern_learning) {
         for (uint32_t i = 0; i < result->num_new_patterns; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && result->num_new_patterns > 256) {
+                meta_health_heartbeat("meta_health_loop",
+                                 (float)(i + 1) / (float)result->num_new_patterns);
+            }
+
             meta_health_register_pattern(reflector, &result->new_patterns[i]);
         }
     }
@@ -779,6 +895,10 @@ int meta_health_apply_adjustment(
     if (!reflector || !adjustment) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    meta_health_heartbeat("meta_health_apply_adjustment", 0.0f);
+
 
     if (reflector->num_applied >= reflector->max_applied) {
         return -1;  /* No room */
@@ -807,7 +927,17 @@ int meta_health_register_pattern(
     }
 
     /* Check if pattern already exists */
+    /* Phase 8: Heartbeat at operation start */
+    meta_health_heartbeat("meta_health_register_pattern", 0.0f);
+
+
     for (uint32_t i = 0; i < reflector->num_patterns; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && reflector->num_patterns > 256) {
+            meta_health_heartbeat("meta_health_loop",
+                             (float)(i + 1) / (float)reflector->num_patterns);
+        }
+
         if (strcmp(reflector->patterns[i].pattern_description, pattern->pattern_description) == 0) {
             /* Update existing pattern */
             reflector->patterns[i].occurrences += pattern->occurrences;
@@ -837,6 +967,10 @@ int meta_health_revert_learnings(meta_health_reflector_t* reflector) {
 
     /* In a real implementation, this would restore original parameter values.
      * For now, we just clear the applied adjustments list. */
+    /* Phase 8: Heartbeat at operation start */
+    meta_health_heartbeat("meta_health_revert_learnings", 0.0f);
+
+
     reflector->num_applied = 0;
 
     return 0;
@@ -857,6 +991,10 @@ int meta_health_get_stats(
     *stats = reflector->stats;
 
     /* Calculate trends (simplified) */
+    /* Phase 8: Heartbeat at operation start */
+    meta_health_heartbeat("meta_health_get_stats", 0.0f);
+
+
     stats->accuracy_trend = 0.0f;  /* Would need historical data */
     stats->response_time_trend = 0.0f;
 
@@ -867,6 +1005,10 @@ void meta_health_reset_stats(meta_health_reflector_t* reflector) {
     if (!reflector) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    meta_health_heartbeat("meta_health_reset_stats", 0.0f);
+
 
     memset(&reflector->stats, 0, sizeof(meta_health_stats_t));
 }
@@ -892,6 +1034,10 @@ void meta_health_init_decision(meta_health_decision_t* decision) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    meta_health_heartbeat("meta_health_init_decision", 0.0f);
+
+
     memset(decision, 0, sizeof(meta_health_decision_t));
     decision->timestamp_us = get_time_us();
     decision->outcome = META_HEALTH_OUTCOME_UNKNOWN;
@@ -905,6 +1051,10 @@ void meta_health_init_reflection_result(meta_health_reflection_result_t* result)
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    meta_health_heartbeat("meta_health_init_reflection_resu", 0.0f);
+
+
     memset(result, 0, sizeof(meta_health_reflection_result_t));
     result->timestamp_us = get_time_us();
     result->insight_confidence = 0.0f;
@@ -915,6 +1065,10 @@ void meta_health_dump_reflection(const meta_health_reflection_result_t* result) 
     if (!result) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    meta_health_heartbeat("meta_health_dump_reflection", 0.0f);
+
 
     printf("=== Meta-Health Reflection Result ===\n");
     printf("Timestamp: %lu us\n", (unsigned long)result->timestamp_us);
@@ -928,6 +1082,12 @@ void meta_health_dump_reflection(const meta_health_reflection_result_t* result) 
     printf("Decisions Analyzed: %u\n", result->decisions_analyzed);
     printf("\n--- Adjustments (%u) ---\n", result->num_adjustments);
     for (uint32_t i = 0; i < result->num_adjustments; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && result->num_adjustments > 256) {
+            meta_health_heartbeat("meta_health_loop",
+                             (float)(i + 1) / (float)result->num_adjustments);
+        }
+
         printf("  %s.%s: %.2f -> %.2f (%s)\n",
                result->adjustments[i].detector_name,
                result->adjustments[i].param_name,
@@ -937,6 +1097,12 @@ void meta_health_dump_reflection(const meta_health_reflection_result_t* result) 
     }
     printf("\n--- New Patterns (%u) ---\n", result->num_new_patterns);
     for (uint32_t i = 0; i < result->num_new_patterns; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && result->num_new_patterns > 256) {
+            meta_health_heartbeat("meta_health_loop",
+                             (float)(i + 1) / (float)result->num_new_patterns);
+        }
+
         printf("  %s (confidence: %.2f)\n",
                result->new_patterns[i].pattern_description,
                result->new_patterns[i].confidence);

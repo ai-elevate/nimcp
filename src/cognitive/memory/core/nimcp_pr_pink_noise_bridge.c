@@ -46,7 +46,7 @@ static nimcp_health_agent_t* g_pr_pink_noise_bridge_health_agent = NULL;
  * @brief Set health agent for pr_pink_noise_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void pr_pink_noise_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void pr_pink_noise_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_pr_pink_noise_bridge_health_agent = agent;
 }
 
@@ -267,12 +267,24 @@ static bool compute_cholesky_4x4(
 
     /* Cholesky-Banachiewicz algorithm */
     for (int i = 0; i < 4; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 4 > 256) {
+            pr_pink_noise_bridge_heartbeat("pr_pink_nois_loop",
+                             (float)(i + 1) / (float)4);
+        }
+
         for (int j = 0; j <= i; j++) {
             float sum = 0.0f;
 
             if (j == i) {
                 /* Diagonal element */
                 for (int k = 0; k < j; k++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((k & 0xFF) == 0 && j > 256) {
+                        pr_pink_noise_bridge_heartbeat("pr_pink_nois_loop",
+                                         (float)(k + 1) / (float)j);
+                    }
+
                     sum += cholesky_L[j][k] * cholesky_L[j][k];
                 }
                 float diag = correlation[j][j] - sum;
@@ -284,6 +296,12 @@ static bool compute_cholesky_4x4(
             } else {
                 /* Off-diagonal element */
                 for (int k = 0; k < j; k++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((k & 0xFF) == 0 && j > 256) {
+                        pr_pink_noise_bridge_heartbeat("pr_pink_nois_loop",
+                                         (float)(k + 1) / (float)j);
+                    }
+
                     sum += cholesky_L[i][k] * cholesky_L[j][k];
                 }
                 if (fabsf(cholesky_L[j][j]) < PR_PINK_EPSILON) {
@@ -557,6 +575,12 @@ NIMCP_EXPORT bool pr_pink_bridge_validate_config(
     };
 
     for (int i = 0; i < PR_PINK_NUM_TARGETS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_PINK_NUM_TARGETS > 256) {
+            pr_pink_noise_bridge_heartbeat("pr_pink_nois_loop",
+                             (float)(i + 1) / (float)PR_PINK_NUM_TARGETS);
+        }
+
         if (params[i]->amplitude < PR_PINK_MIN_AMPLITUDE ||
             params[i]->amplitude > PR_PINK_MAX_AMPLITUDE) {
             return false;
@@ -653,10 +677,22 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
     };
 
     for (int i = 0; i < PR_PINK_NUM_TARGETS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_PINK_NUM_TARGETS > 256) {
+            pr_pink_noise_bridge_heartbeat("pr_pink_nois_loop",
+                             (float)(i + 1) / (float)PR_PINK_NUM_TARGETS);
+        }
+
         if (!init_target_generator(&bridge->targets[i], params[i],
                                    cfg.sample_rate_hz, base_seed + i)) {
             /* Cleanup on failure */
             for (int j = 0; j < i; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && i > 256) {
+                    pr_pink_noise_bridge_heartbeat("pr_pink_nois_loop",
+                                     (float)(j + 1) / (float)i);
+                }
+
                 destroy_target_generator(&bridge->targets[j]);
             }
             pthread_mutex_destroy(&bridge->base.mutex);
@@ -679,6 +715,12 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
     bridge->quat_generators.quat_state = pr_quat_pink_create(&quat_params, correlation);
     if (bridge->quat_generators.quat_state == NULL) {
         for (int i = 0; i < PR_PINK_NUM_TARGETS; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && PR_PINK_NUM_TARGETS > 256) {
+                pr_pink_noise_bridge_heartbeat("pr_pink_nois_loop",
+                                 (float)(i + 1) / (float)PR_PINK_NUM_TARGETS);
+            }
+
             destroy_target_generator(&bridge->targets[i]);
         }
         pthread_mutex_destroy(&bridge->base.mutex);
@@ -695,6 +737,12 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
     if (bridge->consolidation_timer.timing == NULL) {
         pr_quat_pink_destroy(bridge->quat_generators.quat_state);
         for (int i = 0; i < PR_PINK_NUM_TARGETS; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && PR_PINK_NUM_TARGETS > 256) {
+                pr_pink_noise_bridge_heartbeat("pr_pink_nois_loop",
+                                 (float)(i + 1) / (float)PR_PINK_NUM_TARGETS);
+            }
+
             destroy_target_generator(&bridge->targets[i]);
         }
         pthread_mutex_destroy(&bridge->base.mutex);
@@ -716,6 +764,12 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
         pr_fractal_timing_destroy(bridge->consolidation_timer.timing);
         pr_quat_pink_destroy(bridge->quat_generators.quat_state);
         for (int i = 0; i < PR_PINK_NUM_TARGETS; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && PR_PINK_NUM_TARGETS > 256) {
+                pr_pink_noise_bridge_heartbeat("pr_pink_nois_loop",
+                                 (float)(i + 1) / (float)PR_PINK_NUM_TARGETS);
+            }
+
             destroy_target_generator(&bridge->targets[i]);
         }
         pthread_mutex_destroy(&bridge->base.mutex);
@@ -775,6 +829,12 @@ NIMCP_EXPORT void pr_pink_bridge_destroy(pr_pink_bridge_t bridge) {
 
     /* Destroy per-target generators */
     for (int i = 0; i < PR_PINK_NUM_TARGETS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_PINK_NUM_TARGETS > 256) {
+            pr_pink_noise_bridge_heartbeat("pr_pink_nois_loop",
+                             (float)(i + 1) / (float)PR_PINK_NUM_TARGETS);
+        }
+
         destroy_target_generator(&bridge->targets[i]);
     }
 
@@ -805,6 +865,12 @@ NIMCP_EXPORT bool pr_pink_bridge_reset(pr_pink_bridge_t bridge, uint32_t new_see
 
     /* Reset all target generators */
     for (int i = 0; i < PR_PINK_NUM_TARGETS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_PINK_NUM_TARGETS > 256) {
+            pr_pink_noise_bridge_heartbeat("pr_pink_nois_loop",
+                             (float)(i + 1) / (float)PR_PINK_NUM_TARGETS);
+        }
+
         if (bridge->targets[i].generator != NULL) {
             pink_noise_reset(bridge->targets[i].generator, seed + i);
             bridge->targets[i].current_noise = 0.0f;
@@ -1031,6 +1097,12 @@ NIMCP_EXPORT bool pr_pink_bridge_modulate_resonance_batch(
 
     /* Apply modulation */
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_pink_noise_bridge_heartbeat("pr_pink_nois_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         scores[i] = scores[i] * (1.0f + amplitude * noise_batch[i]);
         scores[i] = clamp_float(scores[i], 0.0f, 1.0f);
     }
@@ -1123,6 +1195,12 @@ NIMCP_EXPORT bool pr_pink_modulate_decay_batch(
 
     /* Apply modulation to each node */
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_pink_noise_bridge_heartbeat("pr_pink_nois_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (nodes[i] == NULL) continue;
 
         pr_memory_tier_t tier = nodes[i]->tier;
@@ -1441,6 +1519,12 @@ NIMCP_EXPORT bool pr_pink_modulate_retrieval_order(
 
     /* Apply small perturbations */
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_pink_noise_bridge_heartbeat("pr_pink_nois_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         scores[i] = scores[i] + amplitude * noise_batch[i];
         /* Don't clamp - allow small negative/> 1 for ranking purposes */
     }
@@ -1556,6 +1640,12 @@ NIMCP_EXPORT bool pr_pink_set_amplitude(
     if (target == PR_PINK_TARGET_ALL) {
         /* Set all targets */
         for (int i = 0; i < PR_PINK_NUM_TARGETS; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && PR_PINK_NUM_TARGETS > 256) {
+                pr_pink_noise_bridge_heartbeat("pr_pink_nois_loop",
+                                 (float)(i + 1) / (float)PR_PINK_NUM_TARGETS);
+            }
+
             bridge->targets[i].params.amplitude = amplitude;
         }
     } else if (is_valid_target(target)) {
@@ -1595,6 +1685,12 @@ NIMCP_EXPORT bool pr_pink_set_enabled(
 
     if (target == PR_PINK_TARGET_ALL) {
         for (int i = 0; i < PR_PINK_NUM_TARGETS; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && PR_PINK_NUM_TARGETS > 256) {
+                pr_pink_noise_bridge_heartbeat("pr_pink_nois_loop",
+                                 (float)(i + 1) / (float)PR_PINK_NUM_TARGETS);
+            }
+
             bridge->targets[i].params.enabled = enabled;
         }
     } else if (is_valid_target(target)) {
@@ -1785,6 +1881,12 @@ NIMCP_EXPORT bool pr_pink_bridge_get_stats(
         size_t count = bridge->history->sample_count;
 
         for (size_t i = 0; i < count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && count > 256) {
+                pr_pink_noise_bridge_heartbeat("pr_pink_nois_loop",
+                                 (float)(i + 1) / (float)count);
+            }
+
             float val = bridge->history->intervals[i];
             sum += val;
             sum_sq += val * val;
@@ -1843,6 +1945,12 @@ NIMCP_EXPORT void pr_pink_bridge_reset_stats(pr_pink_bridge_t bridge) {
     atomic_store(&bridge->mutex_contentions, 0);
 
     for (int i = 0; i < PR_PINK_NUM_TARGETS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_PINK_NUM_TARGETS > 256) {
+            pr_pink_noise_bridge_heartbeat("pr_pink_nois_loop",
+                             (float)(i + 1) / (float)PR_PINK_NUM_TARGETS);
+        }
+
         bridge->targets[i].samples_generated = 0;
     }
 }
@@ -1899,6 +2007,12 @@ NIMCP_EXPORT void pr_pink_bridge_print_diagnostics(pr_pink_bridge_t bridge) {
     };
 
     for (int i = 0; i < PR_PINK_NUM_TARGETS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_PINK_NUM_TARGETS > 256) {
+            pr_pink_noise_bridge_heartbeat("pr_pink_nois_loop",
+                             (float)(i + 1) / (float)PR_PINK_NUM_TARGETS);
+        }
+
         printf("|   %-12s: %s  amplitude=%.3f                     |\n",
                target_names[i],
                bridge->targets[i].params.enabled ? "ON " : "OFF",
@@ -2030,6 +2144,12 @@ NIMCP_EXPORT bool pr_pink_bridge_validate(pr_pink_bridge_t bridge) {
 
     /* Check all target generators are valid */
     for (int i = 0; i < PR_PINK_NUM_TARGETS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_PINK_NUM_TARGETS > 256) {
+            pr_pink_noise_bridge_heartbeat("pr_pink_nois_loop",
+                             (float)(i + 1) / (float)PR_PINK_NUM_TARGETS);
+        }
+
         if (bridge->targets[i].initialized &&
             bridge->targets[i].generator == NULL) {
             return false;

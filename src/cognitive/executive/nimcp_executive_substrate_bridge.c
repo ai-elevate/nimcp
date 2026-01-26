@@ -41,7 +41,7 @@ static nimcp_health_agent_t* g_executive_substrate_bridge_health_agent = NULL;
  * @brief Set health agent for executive_substrate_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void executive_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void executive_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_executive_substrate_bridge_health_agent = agent;
 }
 
@@ -80,6 +80,10 @@ void executive_substrate_default_config(executive_substrate_config_t* config)
     }
 
     /* Enable all modulations by default */
+    /* Phase 8: Heartbeat at operation start */
+    executive_substrate_bridge_heartbeat("executive_su_executive_substrate_", 0.0f);
+
+
     config->enable_decision_modulation = true;
     config->enable_inhibition_modulation = true;
     config->enable_planning_modulation = true;
@@ -124,6 +128,10 @@ executive_substrate_bridge_t* executive_substrate_bridge_create(
     }
 
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    executive_substrate_bridge_heartbeat("executive_su_create", 0.0f);
+
+
     executive_substrate_bridge_t* bridge =
         (executive_substrate_bridge_t*)nimcp_malloc(sizeof(executive_substrate_bridge_t));
     if (!bridge) {
@@ -197,6 +205,10 @@ void executive_substrate_bridge_destroy(executive_substrate_bridge_t* bridge)
     }
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    executive_substrate_bridge_heartbeat("executive_su_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         executive_substrate_disconnect_bio_async(bridge);
     }
@@ -223,6 +235,10 @@ int executive_substrate_connect_bio_async(executive_substrate_bridge_t* bridge)
 
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    executive_substrate_bridge_heartbeat("executive_su_executive_substrate_", 0.0f);
+
 
     if (bridge->base.bio_async_enabled) {
         return 0;  /* Already connected */
@@ -252,6 +268,10 @@ int executive_substrate_disconnect_bio_async(executive_substrate_bridge_t* bridg
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    executive_substrate_bridge_heartbeat("executive_su_executive_substrate_", 0.0f);
+
+
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_ctx = NULL;
     bridge->base.bio_async_enabled = false;
@@ -263,6 +283,10 @@ int executive_substrate_disconnect_bio_async(executive_substrate_bridge_t* bridg
 
 bool executive_substrate_is_bio_async_connected(const executive_substrate_bridge_t* bridge)
 {
+    /* Phase 8: Heartbeat at operation start */
+    executive_substrate_bridge_heartbeat("executive_su_executive_substrate_", 0.0f);
+
+
     return bridge && bridge->base.bio_async_enabled;
 }
 
@@ -275,6 +299,10 @@ int executive_substrate_update(executive_substrate_bridge_t* bridge)
     if (!bridge || !bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    executive_substrate_bridge_heartbeat("executive_su_executive_substrate_", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -458,6 +486,10 @@ float executive_substrate_get_decision_quality(const executive_substrate_bridge_
     if (!bridge || !bridge->config.enable_decision_modulation) {
         return 1.0f;
     }
+    /* Phase 8: Heartbeat at operation start */
+    executive_substrate_bridge_heartbeat("executive_su_executive_substrate_", 0.0f);
+
+
     return bridge->effects.decision_quality;
 }
 
@@ -466,6 +498,10 @@ float executive_substrate_get_inhibition_strength(const executive_substrate_brid
     if (!bridge || !bridge->config.enable_inhibition_modulation) {
         return 1.0f;
     }
+    /* Phase 8: Heartbeat at operation start */
+    executive_substrate_bridge_heartbeat("executive_su_executive_substrate_", 0.0f);
+
+
     return bridge->effects.inhibition_strength;
 }
 
@@ -474,6 +510,10 @@ float executive_substrate_get_planning_depth(const executive_substrate_bridge_t*
     if (!bridge || !bridge->config.enable_planning_modulation) {
         return 1.0f;
     }
+    /* Phase 8: Heartbeat at operation start */
+    executive_substrate_bridge_heartbeat("executive_su_executive_substrate_", 0.0f);
+
+
     return bridge->effects.planning_depth;
 }
 
@@ -482,6 +522,10 @@ float executive_substrate_get_cognitive_flexibility(const executive_substrate_br
     if (!bridge || !bridge->config.enable_flexibility_modulation) {
         return 1.0f;
     }
+    /* Phase 8: Heartbeat at operation start */
+    executive_substrate_bridge_heartbeat("executive_su_executive_substrate_", 0.0f);
+
+
     return bridge->effects.cognitive_flexibility;
 }
 
@@ -490,12 +534,20 @@ float executive_substrate_get_fatigue(const executive_substrate_bridge_t* bridge
     if (!bridge || !bridge->config.enable_fatigue_tracking) {
         return 0.0f;
     }
+    /* Phase 8: Heartbeat at operation start */
+    executive_substrate_bridge_heartbeat("executive_su_executive_substrate_", 0.0f);
+
+
     return bridge->effects.fatigue_level;
 }
 
 executive_substrate_effects_t executive_substrate_get_effects(
     const executive_substrate_bridge_t* bridge)
 {
+    /* Phase 8: Heartbeat at operation start */
+    executive_substrate_bridge_heartbeat("executive_su_executive_substrate_", 0.0f);
+
+
     executive_substrate_effects_t effects = {0};
 
     if (!bridge) {
@@ -521,6 +573,10 @@ bool executive_substrate_is_impaired(const executive_substrate_bridge_t* bridge)
     if (!bridge) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    executive_substrate_bridge_heartbeat("executive_su_executive_substrate_", 0.0f);
+
+
     return bridge->effects.is_impaired;
 }
 
@@ -531,6 +587,10 @@ bool executive_substrate_is_impaired(const executive_substrate_bridge_t* bridge)
 executive_substrate_stats_t executive_substrate_get_stats(
     const executive_substrate_bridge_t* bridge)
 {
+    /* Phase 8: Heartbeat at operation start */
+    executive_substrate_bridge_heartbeat("executive_su_executive_substrate_", 0.0f);
+
+
     executive_substrate_stats_t stats = {0};
 
     if (!bridge) {
@@ -555,9 +615,19 @@ executive_substrate_stats_t executive_substrate_get_stats(
  */
 int executive_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    executive_substrate_bridge_heartbeat("executive_su_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Executive_Substrate_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                executive_substrate_bridge_heartbeat("executive_su_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Executive Substrate Bridge self-knowledge: %s", self->observations[i]);
         }
     }

@@ -30,7 +30,7 @@ static nimcp_health_agent_t* g_mechanical_engineering_health_agent = NULL;
  * @brief Set health agent for mechanical_engineering heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mechanical_engineering_set_health_agent(nimcp_health_agent_t* agent) {
+void mechanical_engineering_set_health_agent(nimcp_health_agent_t* agent) {
     g_mechanical_engineering_health_agent = agent;
 }
 
@@ -66,6 +66,10 @@ static void set_error(const char* msg) {
  * ============================================================================ */
 
 me_config_t mechanical_eng_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_defau", 0.0f);
+
+
     me_config_t config = {0};
     config.failure_criterion = ME_FAILURE_VON_MISES;
     config.safety_factor_target = 2.0f;
@@ -82,10 +86,18 @@ me_config_t mechanical_eng_default_config(void) {
 }
 
 mechanical_eng_t* mechanical_eng_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_creat", 0.0f);
+
+
     return mechanical_eng_create_custom(NULL);
 }
 
 mechanical_eng_t* mechanical_eng_create_custom(const me_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_creat", 0.0f);
+
+
     mechanical_eng_t* me = calloc(1, sizeof(mechanical_eng_t));
     if (!me) {
         set_error("Failed to allocate mechanical_eng");
@@ -98,6 +110,10 @@ mechanical_eng_t* mechanical_eng_create_custom(const me_config_t* config) {
 }
 
 void mechanical_eng_destroy(mechanical_eng_t* me) {
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_destr", 0.0f);
+
+
     if (me) {
         free(me);
     }
@@ -115,6 +131,10 @@ int mechanical_eng_get_material(me_material_type_t type, me_material_t* material
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_get_m", 0.0f);
+
+
     memset(material, 0, sizeof(*material));
     material->type = type;
 
@@ -162,6 +182,10 @@ int mechanical_eng_create_material(
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_creat", 0.0f);
+
+
     memset(material, 0, sizeof(*material));
     material->type = ME_MATERIAL_CUSTOM;
     if (name) {
@@ -189,6 +213,10 @@ int mechanical_eng_static_analysis(
     uint32_t num_loads,
     me_structural_result_t* result
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_stati", 0.0f);
+
+
     (void)me; (void)nodes; (void)num_nodes; (void)elements; (void)num_elements;
     (void)loads; (void)num_loads;
     if (result) {
@@ -205,6 +233,10 @@ int mechanical_eng_compute_stress(
     const me_displacement_result_t* displacements,
     me_stress_result_t* stress
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_compu", 0.0f);
+
+
     (void)me; (void)element; (void)displacements;
     if (stress) {
         memset(stress, 0, sizeof(*stress));
@@ -218,6 +250,10 @@ float mechanical_eng_evaluate_failure(
     const me_material_t* material,
     me_failure_criterion_t criterion
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_evalu", 0.0f);
+
+
     (void)me; (void)stress; (void)criterion;
     if (!material || material->yield_strength <= 0.0f) {
         return 0.0f;
@@ -235,6 +271,10 @@ int mechanical_eng_beam_deflection(
     float* max_deflection,
     float* max_slope
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_beam_", 0.0f);
+
+
     (void)me; (void)length; (void)elastic_modulus; (void)moment_of_inertia;
     (void)loads; (void)num_loads;
     if (max_deflection) *max_deflection = 0.0f;
@@ -243,6 +283,10 @@ int mechanical_eng_beam_deflection(
 }
 
 void mechanical_eng_free_structural_result(me_structural_result_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_free_", 0.0f);
+
+
     if (result) {
         free(result->displacements);
         free(result->stresses);
@@ -264,6 +308,10 @@ int mechanical_eng_modal_analysis(
     uint32_t num_modes,
     me_vibration_result_t* result
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_modal", 0.0f);
+
+
     (void)me; (void)nodes; (void)num_nodes; (void)elements; (void)num_elements;
     (void)num_modes;
     if (result) {
@@ -280,6 +328,10 @@ int mechanical_eng_harmonic_response(
     float damping_ratio,
     me_displacement_result_t* response
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_harmo", 0.0f);
+
+
     (void)me; (void)modes; (void)excitation_freq; (void)excitation; (void)damping_ratio;
     if (response) {
         memset(response, 0, sizeof(*response));
@@ -292,6 +344,10 @@ float mechanical_eng_natural_frequency(
     float stiffness,
     float mass
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_natur", 0.0f);
+
+
     (void)me;
     if (mass <= 0.0f || stiffness <= 0.0f) {
         return 0.0f;
@@ -300,9 +356,19 @@ float mechanical_eng_natural_frequency(
 }
 
 void mechanical_eng_free_vibration_result(me_vibration_result_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_free_", 0.0f);
+
+
     if (result) {
         if (result->modes) {
             for (uint32_t i = 0; i < result->num_modes; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && result->num_modes > 256) {
+                    mechanical_engineering_heartbeat("mechanical_e_loop",
+                                     (float)(i + 1) / (float)result->num_modes);
+                }
+
                 free(result->modes[i].mode_shape);
             }
             free(result->modes);
@@ -325,6 +391,10 @@ int mechanical_eng_thermal_steady(
     const float* heat_sources,
     me_thermal_result_t* result
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_therm", 0.0f);
+
+
     (void)me; (void)nodes; (void)num_nodes; (void)elements; (void)num_elements;
     (void)temperatures_bc; (void)heat_sources;
     if (result) {
@@ -338,6 +408,10 @@ float mechanical_eng_conduction_resistance(
     float thermal_conductivity,
     float area
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_condu", 0.0f);
+
+
     if (thermal_conductivity <= 0.0f || area <= 0.0f) {
         return 0.0f;
     }
@@ -352,12 +426,20 @@ float mechanical_eng_convection_coefficient(
     float fluid_viscosity,
     float fluid_prandtl
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_conve", 0.0f);
+
+
     (void)me; (void)velocity; (void)characteristic_length;
     (void)fluid_thermal_conductivity; (void)fluid_viscosity; (void)fluid_prandtl;
     return 10.0f; /* Default h value for natural convection */
 }
 
 void mechanical_eng_free_thermal_result(me_thermal_result_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_free_", 0.0f);
+
+
     if (result) {
         free(result->temperatures);
         free(result->heat_flux);
@@ -377,6 +459,10 @@ int mechanical_eng_fatigue_analysis(
     float stress_ratio,
     me_fatigue_result_t* result
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_fatig", 0.0f);
+
+
     (void)me; (void)stresses; (void)num_elements; (void)material; (void)stress_ratio;
     if (result) {
         memset(result, 0, sizeof(*result));
@@ -393,6 +479,10 @@ float mechanical_eng_sn_life(
         return 0.0f;
     }
     /* Simplified S-N curve: N = (Se/S)^b */
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_sn_li", 0.0f);
+
+
     float se = material->fatigue_limit > 0.0f ? material->fatigue_limit : material->yield_strength * 0.5f;
     if (stress_amplitude >= se) {
         float ratio = se / stress_amplitude;
@@ -402,6 +492,10 @@ float mechanical_eng_sn_life(
 }
 
 void mechanical_eng_free_fatigue_result(me_fatigue_result_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_free_", 0.0f);
+
+
     if (result) {
         free(result->cycles_to_failure);
         free(result->damage);
@@ -414,15 +508,27 @@ void mechanical_eng_free_fatigue_result(me_fatigue_result_t* result) {
  * ============================================================================ */
 
 float mechanical_eng_moment_of_inertia_rectangle(float width, float height) {
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_momen", 0.0f);
+
+
     return (width * height * height * height) / 12.0f;
 }
 
 float mechanical_eng_moment_of_inertia_circle(float diameter) {
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_momen", 0.0f);
+
+
     float r = diameter / 2.0f;
     return 3.14159265f * r * r * r * r / 4.0f;
 }
 
 float mechanical_eng_moment_of_inertia_tube(float outer_d, float inner_d) {
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_momen", 0.0f);
+
+
     float ro = outer_d / 2.0f;
     float ri = inner_d / 2.0f;
     return 3.14159265f * (ro * ro * ro * ro - ri * ri * ri * ri) / 4.0f;
@@ -430,6 +536,10 @@ float mechanical_eng_moment_of_inertia_tube(float outer_d, float inner_d) {
 
 float mechanical_eng_section_modulus(float moment_of_inertia, float c) {
     if (c <= 0.0f) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_secti", 0.0f);
+
+
     return moment_of_inertia / c;
 }
 
@@ -439,6 +549,10 @@ float mechanical_eng_stress_concentration(
     float section_width,
     float notch_depth
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_stres", 0.0f);
+
+
     (void)me;
     if (notch_radius <= 0.0f) return 3.0f;
     /* Peterson's approximation for notch */
@@ -458,6 +572,10 @@ int mechanical_eng_set_inflammation(mechanical_eng_t* me, float level) {
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_set_i", 0.0f);
+
+
     me->inflammation_level = level < 0.0f ? 0.0f : (level > 1.0f ? 1.0f : level);
     return 0;
 }
@@ -470,6 +588,10 @@ int mechanical_eng_set_fatigue(mechanical_eng_t* me, float level) {
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_set_f", 0.0f);
+
+
     me->fatigue_level = level < 0.0f ? 0.0f : (level > 1.0f ? 1.0f : level);
     return 0;
 }
@@ -481,10 +603,18 @@ int mechanical_eng_set_fatigue(mechanical_eng_t* me, float level) {
 int mechanical_eng_get_stats(const mechanical_eng_t* me, me_stats_t* stats) {
     if (!me || !stats) return -1;
     *stats = me->stats;
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_get_s", 0.0f);
+
+
     return 0;
 }
 
 void mechanical_eng_reset_stats(mechanical_eng_t* me) {
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_reset", 0.0f);
+
+
     if (me) {
         memset(&me->stats, 0, sizeof(me->stats));
     }
@@ -500,9 +630,19 @@ const char* mechanical_eng_get_last_error(void) {
 
 int mechanical_engineering_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    mechanical_engineering_heartbeat("mechanical_e_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Mechanical_Engineering");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                mechanical_engineering_heartbeat("mechanical_e_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Module self-knowledge logged */
         }
     }

@@ -58,7 +58,7 @@ static nimcp_health_agent_t* g_mirror_substrate_health_agent = NULL;
  * @brief Set health agent for mirror_substrate heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_substrate_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_substrate_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_substrate_health_agent = agent;
 }
 
@@ -168,6 +168,10 @@ static bool is_coactivated(uint64_t time1, uint64_t time2)
 mirror_substrate_pool_t* mirror_substrate_pool_create(uint32_t capacity)
 {
     /* Guard: Validate capacity */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_pool_create", 0.0f);
+
+
     if (capacity == 0) {
         SUBSTRATE_LOG_ERROR("Mirror substrate pool: capacity cannot be zero");
         return NULL;
@@ -230,6 +234,10 @@ void mirror_substrate_pool_destroy(mirror_substrate_pool_t* pool)
     if (!pool) return;
 
     /* Free buffer and bitmap */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_pool_destroy", 0.0f);
+
+
     if (pool->buffer) nimcp_free(pool->buffer);
     if (pool->bitmap) nimcp_free(pool->bitmap);
 
@@ -246,6 +254,10 @@ mirror_substrate_backing_t* mirror_substrate_pool_alloc(mirror_substrate_pool_t*
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_pool_alloc", 0.0f);
+
+
     nimcp_spinlock_lock(&pool->lock);
 
     /* Check if pool is full */
@@ -260,6 +272,12 @@ mirror_substrate_backing_t* mirror_substrate_pool_alloc(mirror_substrate_pool_t*
     uint32_t found_slot = UINT32_MAX;
 
     for (uint32_t i = 0; i < pool->num_bitmap_words; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pool->num_bitmap_words > 256) {
+            mirror_substrate_heartbeat("mirror_subst_loop",
+                             (float)(i + 1) / (float)pool->num_bitmap_words);
+        }
+
         uint32_t word_idx = (start_word + i) % pool->num_bitmap_words;
 
         if (pool->bitmap[word_idx] != 0) {
@@ -302,6 +320,10 @@ void mirror_substrate_pool_free(mirror_substrate_pool_t* pool,
     if (!pool || !backing) return;
 
     /* Calculate slot index */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_pool_free", 0.0f);
+
+
     ptrdiff_t offset = backing - pool->buffer;
     if (offset < 0 || (uint32_t)offset >= pool->capacity) {
         SUBSTRATE_LOG_ERROR("Mirror substrate pool: invalid backing pointer");
@@ -348,6 +370,10 @@ void mirror_substrate_pool_stats(const mirror_substrate_pool_t* pool,
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_pool_stats", 0.0f);
+
+
     if (allocated) *allocated = pool->allocated_count;
     if (capacity) *capacity = pool->capacity;
     if (high_water) *high_water = pool->high_water_mark;
@@ -362,6 +388,10 @@ mirror_substrate_backing_t* mirror_substrate_backing_create(
     const mirror_substrate_config_t* config,
     mirror_substrate_pool_t* pool)
 {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_backing_create", 0.0f);
+
+
     mirror_substrate_backing_t* backing = NULL;
 
     /* Allocate from pool or heap */
@@ -399,6 +429,10 @@ void mirror_substrate_backing_destroy(mirror_substrate_backing_t* backing,
     if (!backing) return;
 
     /* Handle CoW: decrement ref count */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_backing_destroy", 0.0f);
+
+
     if (backing->cow_ref_count > 1) {
         backing->cow_ref_count--;
         return;
@@ -418,6 +452,10 @@ void mirror_substrate_backing_init(mirror_substrate_backing_t* backing,
     if (!backing) return;
 
     /* Zero-init structure */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_backing_init", 0.0f);
+
+
     memset(backing, 0, sizeof(mirror_substrate_backing_t));
 
     /* Set biological defaults */
@@ -462,6 +500,10 @@ mirror_substrate_backing_t* mirror_substrate_cow_copy(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_cow_copy", 0.0f);
+
+
     nimcp_spinlock_lock(&backing->lock);
 
     /* Increment reference count on original */
@@ -502,6 +544,10 @@ mirror_substrate_backing_t* mirror_substrate_cow_copy(
 
 nimcp_result_t mirror_substrate_cow_prepare_write(mirror_substrate_backing_t* backing)
 {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_cow_prepare_write", 0.0f);
+
+
     NIMCP_CHECK_THROW(backing, NIMCP_ERROR_INVALID_PARAM, "backing is NULL");
 
     nimcp_spinlock_lock(&backing->lock);
@@ -544,6 +590,10 @@ void mirror_substrate_cow_release(mirror_substrate_backing_t* backing,
 {
     if (!backing) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_cow_release", 0.0f);
+
+
     nimcp_spinlock_lock(&backing->lock);
 
     if (backing->cow_ref_count > 1) {
@@ -569,6 +619,10 @@ void mirror_substrate_cow_release(mirror_substrate_backing_t* backing,
 bool mirror_substrate_is_cow_copy(const mirror_substrate_backing_t* backing)
 {
     if (!backing) return false;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_is_cow_copy", 0.0f);
+
+
     return backing->cow_original != NULL;
 }
 
@@ -580,6 +634,10 @@ nimcp_result_t mirror_substrate_bind_observation_axon(
     mirror_substrate_backing_t* backing,
     void* axon_ptr)
 {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_bind_observation_axo", 0.0f);
+
+
     NIMCP_CHECK_THROW(backing, NIMCP_ERROR_INVALID_PARAM, "backing is NULL");
 
     backing->observation_axon = axon_ptr;
@@ -601,6 +659,10 @@ nimcp_result_t mirror_substrate_bind_execution_axon(
     mirror_substrate_backing_t* backing,
     void* axon_ptr)
 {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_bind_execution_axon", 0.0f);
+
+
     NIMCP_CHECK_THROW(backing, NIMCP_ERROR_INVALID_PARAM, "backing is NULL");
 
     backing->execution_axon = axon_ptr;
@@ -621,6 +683,10 @@ float mirror_substrate_get_observation_delay(const mirror_substrate_backing_t* b
 {
     if (!backing) return NIMCP_MIRROR_BASE_DELAY_MS;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_get_observation_dela", 0.0f);
+
+
     float base_delay = backing->observation_delay_ms;
 
     /* Apply myelination speedup */
@@ -636,6 +702,10 @@ float mirror_substrate_get_observation_delay(const mirror_substrate_backing_t* b
 float mirror_substrate_get_execution_delay(const mirror_substrate_backing_t* backing)
 {
     if (!backing) return NIMCP_MIRROR_BASE_DELAY_MS;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_get_execution_delay", 0.0f);
+
 
     float base_delay = backing->execution_delay_ms;
 
@@ -653,6 +723,10 @@ nimcp_result_t mirror_substrate_bind_myelin_sheath(
     mirror_substrate_backing_t* backing,
     void* sheath_ptr)
 {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_bind_myelin_sheath", 0.0f);
+
+
     NIMCP_CHECK_THROW(backing, NIMCP_ERROR_INVALID_PARAM, "backing is NULL");
 
     backing->myelin_sheath = sheath_ptr;
@@ -676,6 +750,10 @@ float mirror_substrate_update_myelination(mirror_substrate_backing_t* backing)
 {
     if (!backing) return 0.0F;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_update_myelination", 0.0f);
+
+
     if (backing->myelin_sheath) {
         myelin_sheath_t* sheath = (myelin_sheath_t*)backing->myelin_sheath;
         backing->myelination_level = sheath->coverage_fraction;
@@ -693,6 +771,10 @@ void mirror_substrate_apply_activity_to_myelin(
     if (!backing || !backing->myelin_sheath) return;
 
     /* Forward activity to myelin sheath for activity-dependent plasticity */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_apply_activity_to_my", 0.0f);
+
+
     myelin_sheath_t* sheath = (myelin_sheath_t*)backing->myelin_sheath;
 
     /* High activity promotes myelination */
@@ -712,6 +794,10 @@ nimcp_result_t mirror_substrate_bind_dendrite(
     mirror_substrate_backing_t* backing,
     void* dendrite_ptr)
 {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_bind_dendrite", 0.0f);
+
+
     NIMCP_CHECK_THROW(backing, NIMCP_ERROR_INVALID_PARAM, "backing is NULL");
 
     backing->dendrite = dendrite_ptr;
@@ -734,6 +820,10 @@ int32_t mirror_substrate_add_spine(
     if (!backing) return -1;
 
     /* Check capacity */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_add_spine", 0.0f);
+
+
     if (backing->num_spines >= NIMCP_MIRROR_SUBSTRATE_MAX_SPINES) {
         SUBSTRATE_LOG_WARN("Mirror substrate: max spines reached for unit %u",
                           backing->mirror_unit_id);
@@ -763,10 +853,20 @@ void mirror_substrate_update_spine_plasticity(
     if (!backing || backing->num_spines == 0) return;
 
     /* Get astrocyte modulation factor */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_update_spine_plastic", 0.0f);
+
+
     float mod_factor = backing->astrocyte_modulation;
 
     /* Update each spine */
     for (uint32_t i = 0; i < backing->num_spines; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && backing->num_spines > 256) {
+            mirror_substrate_heartbeat("mirror_subst_loop",
+                             (float)(i + 1) / (float)backing->num_spines);
+        }
+
         /* Skip pruned spines */
         if (backing->spine_states[i] == MIRROR_SPINE_STATE_PRUNED) continue;
 
@@ -811,8 +911,18 @@ float mirror_substrate_get_total_spine_weight(const mirror_substrate_backing_t* 
 {
     if (!backing) return 0.0F;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_get_total_spine_weig", 0.0f);
+
+
     float total = 0.0F;
     for (uint32_t i = 0; i < backing->num_spines; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && backing->num_spines > 256) {
+            mirror_substrate_heartbeat("mirror_subst_loop",
+                             (float)(i + 1) / (float)backing->num_spines);
+        }
+
         if (backing->spine_states[i] != MIRROR_SPINE_STATE_PRUNED) {
             total += backing->spine_weights[i];
         }
@@ -829,6 +939,10 @@ nimcp_result_t mirror_substrate_bind_astrocyte(
     mirror_substrate_backing_t* backing,
     void* astrocyte)
 {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_bind_astrocyte", 0.0f);
+
+
     NIMCP_CHECK_THROW(backing, NIMCP_ERROR_INVALID_PARAM, "backing is NULL");
 
     backing->astrocyte = astrocyte;
@@ -842,6 +956,10 @@ nimcp_result_t mirror_substrate_bind_oligodendrocyte(
     mirror_substrate_backing_t* backing,
     void* oligo)
 {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_bind_oligodendrocyte", 0.0f);
+
+
     NIMCP_CHECK_THROW(backing, NIMCP_ERROR_INVALID_PARAM, "backing is NULL");
 
     backing->oligodendrocyte = oligo;
@@ -855,6 +973,10 @@ nimcp_result_t mirror_substrate_bind_microglia(
     mirror_substrate_backing_t* backing,
     void* microglia)
 {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_bind_microglia", 0.0f);
+
+
     NIMCP_CHECK_THROW(backing, NIMCP_ERROR_INVALID_PARAM, "backing is NULL");
 
     backing->microglia = microglia;
@@ -868,6 +990,10 @@ nimcp_result_t mirror_substrate_bind_microglia(
 float mirror_substrate_get_astrocyte_modulation(const mirror_substrate_backing_t* backing)
 {
     if (!backing) return 1.0F;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_get_astrocyte_modula", 0.0f);
+
+
     return backing->astrocyte_modulation;
 }
 
@@ -879,6 +1005,10 @@ void mirror_substrate_update_glial(
     if (!backing) return;
 
     /* Update astrocyte modulation based on activity */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_update_glial", 0.0f);
+
+
     if (backing->astrocyte_id > 0) {
         /* Higher activity increases Ca2+ which boosts modulation */
         float target_mod = NIMCP_MIRROR_ASTROCYTE_MOD_MIN +
@@ -919,6 +1049,10 @@ void mirror_substrate_update_glial(
 bool mirror_substrate_is_marked_for_pruning(const mirror_substrate_backing_t* backing)
 {
     if (!backing) return false;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_is_marked_for_prunin", 0.0f);
+
+
     return backing->marked_for_pruning;
 }
 
@@ -934,6 +1068,10 @@ void mirror_substrate_step(
     if (!backing) return;
 
     /* Calculate combined activity level */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_step", 0.0f);
+
+
     float activity = (backing->observation_activity_ema + backing->execution_activity_ema) * 0.5F;
 
     /* Decay activity EMAs */
@@ -972,6 +1110,10 @@ void mirror_substrate_record_observation(
     if (!backing) return;
 
     /* Update EMA */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_record_observation", 0.0f);
+
+
     backing->observation_activity_ema = clamp_f(
         backing->observation_activity_ema + strength, 0.0F, 1.0F);
 
@@ -986,6 +1128,10 @@ void mirror_substrate_record_execution(
     if (!backing) return;
 
     /* Update EMA */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_record_execution", 0.0f);
+
+
     backing->execution_activity_ema = clamp_f(
         backing->execution_activity_ema + strength, 0.0F, 1.0F);
 
@@ -1000,6 +1146,10 @@ nimcp_result_t mirror_substrate_get_stats(
     mirror_neurons_t mirror,
     mirror_substrate_stats_t* stats)
 {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(stats, NIMCP_ERROR_INVALID_PARAM, "stats is NULL");
 
     /* Zero initialize */
@@ -1020,6 +1170,10 @@ nimcp_result_t mirror_substrate_get_stats(
 
 mirror_substrate_config_t mirror_substrate_get_default_config(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_get_default_config", 0.0f);
+
+
     mirror_substrate_config_t config = {
         /* Mode selection */
         .mode = MIRROR_SUBSTRATE_MODE_PARTIAL,
@@ -1064,6 +1218,10 @@ nimcp_result_t mirror_substrate_integrate_system(
     mirror_neurons_t mirror,
     const mirror_substrate_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_integrate_system", 0.0f);
+
+
     NIMCP_CHECK_THROW(mirror, NIMCP_ERROR_INVALID_PARAM, "mirror is NULL");
 
     /* Get default config if none provided */
@@ -1087,6 +1245,10 @@ nimcp_result_t mirror_substrate_connect_glial_integration(
     mirror_neurons_t mirror,
     void* glial_integration)
 {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_connect_glial_integr", 0.0f);
+
+
     NIMCP_CHECK_THROW(mirror, NIMCP_ERROR_INVALID_PARAM, "mirror is NULL");
 
     /* Wire to existing glial integration via mirror_neurons_integrate_glial */
@@ -1105,6 +1267,10 @@ nimcp_result_t mirror_substrate_connect_myelin_network(
     mirror_neurons_t mirror,
     void* myelin_network)
 {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_connect_myelin_netwo", 0.0f);
+
+
     NIMCP_CHECK_THROW(mirror && myelin_network, NIMCP_ERROR_INVALID_PARAM, "mirror or myelin_network is NULL");
 
     SUBSTRATE_LOG_INFO("Mirror substrate: connected to myelin sheath network");
@@ -1119,6 +1285,10 @@ nimcp_result_t mirror_substrate_connect_axon_network(
     mirror_neurons_t mirror,
     void* axon_network)
 {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_connect_axon_network", 0.0f);
+
+
     NIMCP_CHECK_THROW(mirror && axon_network, NIMCP_ERROR_INVALID_PARAM, "mirror or axon_network is NULL");
 
     SUBSTRATE_LOG_INFO("Mirror substrate: connected to axon network");
@@ -1130,6 +1300,10 @@ nimcp_result_t mirror_substrate_connect_dendrite_network(
     mirror_neurons_t mirror,
     void* dendrite_network)
 {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_connect_dendrite_net", 0.0f);
+
+
     NIMCP_CHECK_THROW(mirror && dendrite_network, NIMCP_ERROR_INVALID_PARAM, "mirror or dendrite_network is NULL");
 
     SUBSTRATE_LOG_INFO("Mirror substrate: connected to dendrite network");
@@ -1143,9 +1317,19 @@ nimcp_result_t mirror_substrate_connect_dendrite_network(
 
 int mirror_substrate_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_substrate_heartbeat("mirror_subst_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Mirror_Substrate");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                mirror_substrate_heartbeat("mirror_subst_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             SUBSTRATE_LOG_DEBUG("Mirror substrate self-knowledge: %s", self->observations[i]);
         }
     }

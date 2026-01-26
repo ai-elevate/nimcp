@@ -31,7 +31,7 @@ static nimcp_health_agent_t* g_audio_logic_bridge_health_agent = NULL;
  * @brief Set health agent for audio_logic_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void audio_logic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void audio_logic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_audio_logic_bridge_health_agent = agent;
 }
 
@@ -130,6 +130,10 @@ const char* audio_logic_category_name(sound_category_t category) {
 //=============================================================================
 
 audio_logic_config_t audio_logic_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    audio_logic_bridge_heartbeat("audio_logic__audio_logic_default_", 0.0f);
+
+
     return (audio_logic_config_t){
         .enable_speech_grounding = true,
         .enable_sound_grounding = true,
@@ -153,6 +157,10 @@ audio_logic_bridge_t* audio_logic_bridge_create(
     void* logic,
     const audio_logic_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    audio_logic_bridge_heartbeat("audio_logic__create", 0.0f);
+
+
     audio_logic_bridge_t* bridge = nimcp_calloc(1, sizeof(audio_logic_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "audio_logic_bridge_create: failed to allocate bridge");
@@ -180,6 +188,10 @@ audio_logic_bridge_t* audio_logic_bridge_create(
 }
 
 void audio_logic_bridge_destroy(audio_logic_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    audio_logic_bridge_heartbeat("audio_logic__destroy", 0.0f);
+
+
     if (bridge) {
         nimcp_free(bridge);
     }
@@ -187,6 +199,10 @@ void audio_logic_bridge_destroy(audio_logic_bridge_t* bridge) {
 
 int audio_logic_bridge_reset(audio_logic_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    audio_logic_bridge_heartbeat("audio_logic__reset", 0.0f);
+
 
     memset(bridge->speakers, 0, sizeof(bridge->speakers));
     memset(bridge->recent_sounds, 0, sizeof(bridge->recent_sounds));
@@ -204,6 +220,12 @@ int audio_logic_bridge_reset(audio_logic_bridge_t* bridge) {
 
 static int find_speaker(audio_logic_bridge_t* bridge, const char* speaker_id) {
     for (uint32_t i = 0; i < MAX_ACTIVE_SPEAKERS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MAX_ACTIVE_SPEAKERS > 256) {
+            audio_logic_bridge_heartbeat("audio_logic__loop",
+                             (float)(i + 1) / (float)MAX_ACTIVE_SPEAKERS);
+        }
+
         if (bridge->speakers[i].active &&
             strncmp(bridge->speakers[i].speaker_id, speaker_id, 32) == 0) {
             return (int)i;
@@ -214,6 +236,12 @@ static int find_speaker(audio_logic_bridge_t* bridge, const char* speaker_id) {
 
 static int find_free_speaker_slot(audio_logic_bridge_t* bridge) {
     for (uint32_t i = 0; i < MAX_ACTIVE_SPEAKERS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MAX_ACTIVE_SPEAKERS > 256) {
+            audio_logic_bridge_heartbeat("audio_logic__loop",
+                             (float)(i + 1) / (float)MAX_ACTIVE_SPEAKERS);
+        }
+
         if (!bridge->speakers[i].active) {
             return (int)i;
         }
@@ -247,6 +275,10 @@ int audio_logic_ground_observation(
     if (!bridge || !obs) return -1;
 
     /* Filter by confidence and salience */
+    /* Phase 8: Heartbeat at operation start */
+    audio_logic_bridge_heartbeat("audio_logic__audio_logic_ground_o", 0.0f);
+
+
     if (obs->confidence < bridge->config.min_confidence_threshold) {
         return 0;
     }
@@ -344,6 +376,10 @@ int audio_logic_report_speech(
     if (!bridge || !words) return -1;
     if (!bridge->config.enable_speech_grounding) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    audio_logic_bridge_heartbeat("audio_logic__audio_logic_report_s", 0.0f);
+
+
     audio_logic_observation_t obs = {0};
     obs.signal_type = AUDIO_LOGIC_WORD_RECOGNIZED;
     obs.category = SOUND_CAT_SPEECH;
@@ -367,6 +403,10 @@ int audio_logic_report_sound(
     if (!bridge || !sound_name) return -1;
     if (!bridge->config.enable_sound_grounding) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    audio_logic_bridge_heartbeat("audio_logic__audio_logic_report_s", 0.0f);
+
+
     audio_logic_observation_t obs = {0};
     obs.signal_type = AUDIO_LOGIC_SOUND_DETECTED;
     obs.category = category;
@@ -385,8 +425,18 @@ int audio_logic_process_batch(
 ) {
     if (!bridge || !observations) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    audio_logic_bridge_heartbeat("audio_logic__audio_logic_process_", 0.0f);
+
+
     int processed = 0;
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            audio_logic_bridge_heartbeat("audio_logic__loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (audio_logic_ground_observation(bridge, &observations[i]) == 0) {
             processed++;
         }
@@ -406,6 +456,10 @@ int audio_logic_request_attention(
 ) {
     if (!bridge || category >= SOUND_CAT_COUNT) return -1;
     if (!bridge->config.enable_top_down_attention) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    audio_logic_bridge_heartbeat("audio_logic__audio_logic_request_", 0.0f);
+
 
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
         return -1;
@@ -431,6 +485,10 @@ int audio_logic_focus_speaker(
     if (!bridge || !speaker_id) return -1;
     if (!bridge->config.enable_top_down_attention) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    audio_logic_bridge_heartbeat("audio_logic__audio_logic_focus_sp", 0.0f);
+
+
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
         return -1;
     }
@@ -452,6 +510,10 @@ int audio_logic_expect_word(
     const char* expected_word
 ) {
     if (!bridge || !expected_word) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    audio_logic_bridge_heartbeat("audio_logic__audio_logic_expect_w", 0.0f);
+
 
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
         return -1;
@@ -480,6 +542,10 @@ int audio_logic_verify_predicate(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    audio_logic_bridge_heartbeat("audio_logic__audio_logic_verify_p", 0.0f);
+
+
     bridge->stats.verifications_requested++;
 
     /* Search recent sounds for match */
@@ -488,6 +554,12 @@ int audio_logic_verify_predicate(
     *confidence = 0.0f;
 
     for (uint32_t i = 0; i < bridge->recent_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->recent_count > 256) {
+            audio_logic_bridge_heartbeat("audio_logic__loop",
+                             (float)(i + 1) / (float)bridge->recent_count);
+        }
+
         uint32_t idx = (bridge->recent_head + MAX_RECENT_SOUNDS - 1 - i) % MAX_RECENT_SOUNDS;
         recent_sound_t* sound = &bridge->recent_sounds[idx];
 
@@ -525,6 +597,10 @@ int audio_logic_send_command(
 ) {
     if (!bridge || !command) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    audio_logic_bridge_heartbeat("audio_logic__audio_logic_send_com", 0.0f);
+
+
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
         return -1;
     }
@@ -558,7 +634,17 @@ int audio_logic_is_speaker_active(
 ) {
     if (!bridge || !speaker_id || !active) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    audio_logic_bridge_heartbeat("audio_logic__audio_logic_is_speak", 0.0f);
+
+
     for (uint32_t i = 0; i < MAX_ACTIVE_SPEAKERS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MAX_ACTIVE_SPEAKERS > 256) {
+            audio_logic_bridge_heartbeat("audio_logic__loop",
+                             (float)(i + 1) / (float)MAX_ACTIVE_SPEAKERS);
+        }
+
         if (bridge->speakers[i].active &&
             strncmp(bridge->speakers[i].speaker_id, speaker_id, 32) == 0) {
             *active = true;
@@ -572,6 +658,10 @@ int audio_logic_is_speaker_active(
 
 int audio_logic_get_active_speaker_count(const audio_logic_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    audio_logic_bridge_heartbeat("audio_logic__audio_logic_get_acti", 0.0f);
+
+
     return (int)bridge->speaker_count;
 }
 
@@ -583,12 +673,22 @@ int audio_logic_category_heard_recently(
 ) {
     if (!bridge || category >= SOUND_CAT_COUNT || !heard) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    audio_logic_bridge_heartbeat("audio_logic__audio_logic_category", 0.0f);
+
+
     uint64_t now = nimcp_time_get_us();
     uint64_t window_us = (uint64_t)recent_ms * 1000ULL;
 
     *heard = false;
 
     for (uint32_t i = 0; i < bridge->recent_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->recent_count > 256) {
+            audio_logic_bridge_heartbeat("audio_logic__loop",
+                             (float)(i + 1) / (float)bridge->recent_count);
+        }
+
         uint32_t idx = (bridge->recent_head + MAX_RECENT_SOUNDS - 1 - i) % MAX_RECENT_SOUNDS;
         recent_sound_t* sound = &bridge->recent_sounds[idx];
 
@@ -615,10 +715,18 @@ int audio_logic_bridge_get_stats(
 ) {
     if (!bridge || !stats) return -1;
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    audio_logic_bridge_heartbeat("audio_logic__get_stats", 0.0f);
+
+
     return 0;
 }
 
 void audio_logic_bridge_reset_stats(audio_logic_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    audio_logic_bridge_heartbeat("audio_logic__reset_stats", 0.0f);
+
+
     if (bridge) {
         memset(&bridge->stats, 0, sizeof(bridge->stats));
         bridge->speech_confidence_sum = 0.0f;
@@ -635,9 +743,19 @@ void audio_logic_bridge_reset_stats(audio_logic_bridge_t* bridge) {
 int audio_logic_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    audio_logic_bridge_heartbeat("audio_logic__query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Audio_Logic_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                audio_logic_bridge_heartbeat("audio_logic__loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

@@ -46,7 +46,7 @@ static nimcp_health_agent_t* g_memory_consolidation_substrate_bridge_health_agen
  * @brief Set health agent for memory_consolidation_substrate_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void memory_consolidation_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void memory_consolidation_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_memory_consolidation_substrate_bridge_health_agent = agent;
 }
 
@@ -295,6 +295,10 @@ void consolidation_substrate_default_config(consolidation_substrate_config_t* co
     }
 
     /* Enable all modulation features by default */
+    /* Phase 8: Heartbeat at operation start */
+    memory_consolidation_substrate_bridge_heartbeat("memory_conso_consolidation_substr", 0.0f);
+
+
     config->enable_atp_modulation = true;
     config->enable_stress_modulation = true;
     config->enable_hypoxia_modulation = true;
@@ -321,6 +325,10 @@ consolidation_substrate_bridge_t* consolidation_substrate_bridge_create(
     }
 
     /* Allocate bridge */
+    /* Phase 8: Heartbeat at operation start */
+    memory_consolidation_substrate_bridge_heartbeat("memory_conso_consolidation_substr", 0.0f);
+
+
     consolidation_substrate_bridge_t* bridge =
         (consolidation_substrate_bridge_t*)nimcp_malloc(sizeof(consolidation_substrate_bridge_t));
     if (!bridge) {
@@ -390,6 +398,10 @@ void consolidation_substrate_bridge_destroy(consolidation_substrate_bridge_t* br
     }
 
     /* Disconnect bio-async if enabled */
+    /* Phase 8: Heartbeat at operation start */
+    memory_consolidation_substrate_bridge_heartbeat("memory_conso_consolidation_substr", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         consolidation_substrate_disconnect_bio_async(bridge);
     }
@@ -415,6 +427,10 @@ int consolidation_substrate_connect_bio_async(consolidation_substrate_bridge_t* 
         NIMCP_LOGGING_ERROR("Cannot connect NULL bridge to bio-async");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    memory_consolidation_substrate_bridge_heartbeat("memory_conso_consolidation_substr", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -450,6 +466,10 @@ int consolidation_substrate_disconnect_bio_async(consolidation_substrate_bridge_
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    memory_consolidation_substrate_bridge_heartbeat("memory_conso_consolidation_substr", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     if (bridge->base.bio_async_enabled && bridge->base.bio_ctx) {
@@ -467,6 +487,10 @@ bool consolidation_substrate_is_bio_async_connected(const consolidation_substrat
     if (!bridge) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    memory_consolidation_substrate_bridge_heartbeat("memory_conso_consolidation_substr", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -484,6 +508,10 @@ int consolidation_substrate_update(consolidation_substrate_bridge_t* bridge) {
         NIMCP_LOGGING_ERROR("Bridge has NULL substrate");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    memory_consolidation_substrate_bridge_heartbeat("memory_conso_consolidation_substr", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -574,6 +602,10 @@ float consolidation_substrate_get_consolidation_rate(const consolidation_substra
         return 1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    memory_consolidation_substrate_bridge_heartbeat("memory_conso_consolidation_substr", 0.0f);
+
+
     return bridge->effects.consolidation_rate;
 }
 
@@ -582,6 +614,10 @@ float consolidation_substrate_get_protein_synthesis_rate(const consolidation_sub
         NIMCP_LOGGING_ERROR("Cannot get protein synthesis rate from NULL bridge");
         return 1.0f;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    memory_consolidation_substrate_bridge_heartbeat("memory_conso_consolidation_substr", 0.0f);
+
 
     return bridge->effects.protein_synthesis_rate;
 }
@@ -592,6 +628,10 @@ float consolidation_substrate_get_replay_efficiency(const consolidation_substrat
         return 1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    memory_consolidation_substrate_bridge_heartbeat("memory_conso_consolidation_substr", 0.0f);
+
+
     return bridge->effects.replay_efficiency;
 }
 
@@ -601,12 +641,20 @@ float consolidation_substrate_get_transfer_rate(const consolidation_substrate_br
         return 1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    memory_consolidation_substrate_bridge_heartbeat("memory_conso_consolidation_substr", 0.0f);
+
+
     return bridge->effects.transfer_rate;
 }
 
 consolidation_substrate_effects_t consolidation_substrate_get_effects(
     const consolidation_substrate_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    memory_consolidation_substrate_bridge_heartbeat("memory_conso_consolidation_substr", 0.0f);
+
+
     consolidation_substrate_effects_t effects = {0};
 
     if (!bridge) {
@@ -630,12 +678,20 @@ bool consolidation_substrate_is_impaired(const consolidation_substrate_bridge_t*
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    memory_consolidation_substrate_bridge_heartbeat("memory_conso_consolidation_substr", 0.0f);
+
+
     return bridge->effects.is_impaired;
 }
 
 consolidation_substrate_stats_t consolidation_substrate_get_stats(
     const consolidation_substrate_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    memory_consolidation_substrate_bridge_heartbeat("memory_conso_consolidation_substr", 0.0f);
+
+
     consolidation_substrate_stats_t stats = {0};
 
     if (!bridge) {
@@ -660,9 +716,19 @@ consolidation_substrate_stats_t consolidation_substrate_get_stats(
 int consolidation_substrate_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    memory_consolidation_substrate_bridge_heartbeat("memory_conso_consolidation_substr", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Memory_Consolidation_Substrate_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                memory_consolidation_substrate_bridge_heartbeat("memory_conso_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Consolidation substrate bridge self-knowledge: %s", self->observations[i]);
         }
     }

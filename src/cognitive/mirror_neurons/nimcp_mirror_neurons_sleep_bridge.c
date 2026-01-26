@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_mirror_neurons_sleep_bridge_health_agent = NULL;
  * @brief Set health agent for mirror_neurons_sleep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_neurons_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_neurons_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_neurons_sleep_bridge_health_agent = agent;
 }
 
@@ -168,6 +168,10 @@ int mirror_neurons_sleep_default_config(mirror_neurons_sleep_config_t* config)
     /* Guard clause: Validate config */
     if (!config) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_mirror_neurons_sleep", 0.0f);
+
+
     config->enable_activity_modulation = true;
     config->enable_empathy_modulation = true;
     config->enable_observation_modulation = true;
@@ -191,6 +195,10 @@ mirror_neurons_sleep_bridge_t mirror_neurons_sleep_bridge_create(
     }
 
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_create", 0.0f);
+
+
     struct mirror_neurons_sleep_bridge_struct* bridge =
         (struct mirror_neurons_sleep_bridge_struct*)nimcp_malloc(
             sizeof(struct mirror_neurons_sleep_bridge_struct));
@@ -260,6 +268,10 @@ void mirror_neurons_sleep_bridge_destroy(mirror_neurons_sleep_bridge_t bridge)
     if (!bridge) return;
 
     /* Disconnect from bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         mirror_neurons_sleep_disconnect_bio_async(bridge);
     }
@@ -289,6 +301,10 @@ int mirror_neurons_sleep_update(mirror_neurons_sleep_bridge_t bridge)
 {
     /* Guard clause: Validate bridge */
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_mirror_neurons_sleep", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -320,6 +336,10 @@ int mirror_neurons_sleep_get_effects(
     /* Guard clause: Validate inputs */
     if (!bridge || !effects) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_mirror_neurons_sleep", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -331,6 +351,10 @@ float mirror_neurons_sleep_get_activity(const mirror_neurons_sleep_bridge_t brid
 {
     /* Guard clause: Handle NULL */
     if (!bridge) return 1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_mirror_neurons_sleep", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.mirroring_activity_factor;
@@ -344,6 +368,10 @@ bool mirror_neurons_sleep_is_replay_active(const mirror_neurons_sleep_bridge_t b
     /* Guard clause: Handle NULL */
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_mirror_neurons_sleep", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.replay_active;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -353,6 +381,10 @@ bool mirror_neurons_sleep_is_replay_active(const mirror_neurons_sleep_bridge_t b
 
 float mirror_neurons_sleep_activity_for_state(sleep_state_t state)
 {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_mirror_neurons_sleep", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return MIRROR_SLEEP_ACTIVITY_AWAKE;
         case SLEEP_STATE_DROWSY:     return MIRROR_SLEEP_ACTIVITY_DROWSY;
@@ -365,6 +397,10 @@ float mirror_neurons_sleep_activity_for_state(sleep_state_t state)
 
 float mirror_neurons_sleep_empathy_for_state(sleep_state_t state)
 {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_mirror_neurons_sleep", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return MIRROR_SLEEP_EMPATHY_AWAKE;
         case SLEEP_STATE_DROWSY:     return MIRROR_SLEEP_EMPATHY_DROWSY;
@@ -377,6 +413,10 @@ float mirror_neurons_sleep_empathy_for_state(sleep_state_t state)
 
 float mirror_neurons_sleep_observation_for_state(sleep_state_t state)
 {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_mirror_neurons_sleep", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return MIRROR_SLEEP_OBSERVATION_AWAKE;
         case SLEEP_STATE_DROWSY:     return MIRROR_SLEEP_OBSERVATION_DROWSY;
@@ -389,6 +429,10 @@ float mirror_neurons_sleep_observation_for_state(sleep_state_t state)
 
 float mirror_neurons_sleep_replay_for_state(sleep_state_t state)
 {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_mirror_neurons_sleep", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return MIRROR_SLEEP_REPLAY_AWAKE;
         case SLEEP_STATE_DROWSY:     return MIRROR_SLEEP_REPLAY_DROWSY;
@@ -418,6 +462,10 @@ int mirror_neurons_sleep_connect_bio_async(mirror_neurons_sleep_bridge_t bridge)
     }
 
     /* Guard clause: Already connected */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_mirror_neurons_sleep", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         NIMCP_LOGGING_DEBUG("Bio-async already connected for mirror neurons sleep bridge");
         return 0;
@@ -464,6 +512,10 @@ int mirror_neurons_sleep_disconnect_bio_async(mirror_neurons_sleep_bridge_t brid
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_mirror_neurons_sleep", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Unregister from bio-async router */
@@ -489,6 +541,10 @@ bool mirror_neurons_sleep_is_bio_async_connected(const mirror_neurons_sleep_brid
     /* Guard clause: Handle NULL */
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_mirror_neurons_sleep", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->base.bio_async_enabled;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -502,9 +558,19 @@ bool mirror_neurons_sleep_is_bio_async_connected(const mirror_neurons_sleep_brid
 
 int mirror_neurons_sleep_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_mirror_neurons_sleep", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Mirror_Neurons_Sleep_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Mirror neurons sleep bridge self-knowledge: %s", self->observations[i]);
         }
     }

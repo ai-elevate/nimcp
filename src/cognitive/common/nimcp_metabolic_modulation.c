@@ -36,7 +36,7 @@ static nimcp_health_agent_t* g_metabolic_modulation_health_agent = NULL;
  * @brief Set health agent for metabolic_modulation heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void metabolic_modulation_set_health_agent(nimcp_health_agent_t* agent) {
+void metabolic_modulation_set_health_agent(nimcp_health_agent_t* agent) {
     g_metabolic_modulation_health_agent = agent;
 }
 
@@ -53,6 +53,10 @@ static inline void metabolic_modulation_heartbeat(const char* operation, float p
  * ============================================================================ */
 
 metabolic_effect_multipliers_t metabolic_default_multipliers(void) {
+    /* Phase 8: Heartbeat at operation start */
+    metabolic_modulation_heartbeat("metabolic_mo_metabolic_default_mu", 0.0f);
+
+
     metabolic_effect_multipliers_t mult = {
         .atp_primary_mult = 1.0f,
         .atp_secondary_mult = 1.1f,
@@ -63,6 +67,10 @@ metabolic_effect_multipliers_t metabolic_default_multipliers(void) {
 }
 
 metabolic_modulation_config_t metabolic_modulation_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    metabolic_modulation_heartbeat("metabolic_mo_default_config", 0.0f);
+
+
     metabolic_modulation_config_t cfg = {
         .enable_atp_modulation = true,
         .enable_fatigue_modulation = true,
@@ -90,6 +98,10 @@ float metabolic_compute_atp_effect(
     float effect_multiplier,
     float min_capacity
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    metabolic_modulation_heartbeat("metabolic_mo_metabolic_compute_at", 0.0f);
+
+
     float value = atp_level * effect_multiplier * sensitivity;
     return nimcp_clamp_f(value, min_capacity, 1.0f);
 }
@@ -100,12 +112,20 @@ float metabolic_compute_fatigue_effect(
     float effect_multiplier,
     float min_capacity
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    metabolic_modulation_heartbeat("metabolic_mo_metabolic_compute_fa", 0.0f);
+
+
     float value = metabolic_capacity * effect_multiplier * sensitivity;
     return nimcp_clamp_f(value, min_capacity, 1.0f);
 }
 
 void metabolic_effects_init_full(metabolic_effects_t* effects) {
     if (!effects) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    metabolic_modulation_heartbeat("metabolic_mo_metabolic_effects_in", 0.0f);
+
 
     effects->primary_atp = 1.0f;
     effects->secondary_atp = 1.0f;
@@ -117,6 +137,10 @@ void metabolic_effects_init_full(metabolic_effects_t* effects) {
 float metabolic_compute_overall_capacity(const metabolic_effects_t* effects) {
     if (!effects) return 1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    metabolic_modulation_heartbeat("metabolic_mo_metabolic_compute_ov", 0.0f);
+
+
     return (effects->primary_atp + effects->secondary_atp +
             effects->primary_fatigue + effects->secondary_fatigue) / 4.0f;
 }
@@ -127,6 +151,10 @@ int metabolic_compute_effects(
     metabolic_effects_t* effects
 ) {
     /* Validate parameters using API exception macros */
+    /* Phase 8: Heartbeat at operation start */
+    metabolic_modulation_heartbeat("metabolic_mo_metabolic_compute_ef", 0.0f);
+
+
     NIMCP_API_CHECK_NULL(input, NIMCP_ERROR_NULL_POINTER, "metabolic_compute_effects: NULL input");
     NIMCP_API_CHECK_NULL(config, NIMCP_ERROR_NULL_POINTER, "metabolic_compute_effects: NULL config");
     NIMCP_API_CHECK_NULL(effects, NIMCP_ERROR_NULL_POINTER, "metabolic_compute_effects: NULL effects");
@@ -178,6 +206,10 @@ metabolic_modulation_config_t metabolic_config_from_fields(
     float min_capacity,
     const metabolic_effect_multipliers_t* multipliers
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    metabolic_modulation_heartbeat("metabolic_mo_metabolic_config_fro", 0.0f);
+
+
     metabolic_modulation_config_t cfg = {
         .enable_atp_modulation = enable_atp,
         .enable_fatigue_modulation = enable_fatigue,
@@ -195,6 +227,10 @@ metabolic_modulation_config_t metabolic_config_from_fields(
  * ============================================================================ */
 
 metabolic_effects_tensor_t* metabolic_effects_tensor_create(uint32_t batch_size) {
+    /* Phase 8: Heartbeat at operation start */
+    metabolic_modulation_heartbeat("metabolic_mo_metabolic_effects_te", 0.0f);
+
+
     NIMCP_API_CHECK(batch_size > 0, NIMCP_ERROR_INVALID_PARAM,
         "metabolic_effects_tensor_create: batch_size must be > 0");
 
@@ -223,6 +259,10 @@ metabolic_effects_tensor_t* metabolic_effects_tensor_create(uint32_t batch_size)
 void metabolic_effects_tensor_destroy(metabolic_effects_tensor_t* effects) {
     if (!effects) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    metabolic_modulation_heartbeat("metabolic_mo_metabolic_effects_te", 0.0f);
+
+
     if (effects->owns_tensor && effects->effects) {
         nimcp_tensor_destroy(effects->effects);
     }
@@ -230,6 +270,10 @@ void metabolic_effects_tensor_destroy(metabolic_effects_tensor_t* effects) {
 }
 
 metabolic_input_tensor_t* metabolic_input_tensor_create(uint32_t batch_size) {
+    /* Phase 8: Heartbeat at operation start */
+    metabolic_modulation_heartbeat("metabolic_mo_metabolic_input_tens", 0.0f);
+
+
     NIMCP_API_CHECK(batch_size > 0, NIMCP_ERROR_INVALID_PARAM,
         "metabolic_input_tensor_create: batch_size must be > 0");
 
@@ -262,12 +306,20 @@ metabolic_input_tensor_t* metabolic_input_tensor_create(uint32_t batch_size) {
 void metabolic_input_tensor_destroy(metabolic_input_tensor_t* input) {
     if (!input) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    metabolic_modulation_heartbeat("metabolic_mo_metabolic_input_tens", 0.0f);
+
+
     nimcp_tensor_destroy(input->atp_levels);
     nimcp_tensor_destroy(input->metabolic_capacities);
     nimcp_free(input);
 }
 
 metabolic_multipliers_tensor_t* metabolic_multipliers_tensor_create(uint32_t batch_size) {
+    /* Phase 8: Heartbeat at operation start */
+    metabolic_modulation_heartbeat("metabolic_mo_metabolic_multiplier", 0.0f);
+
+
     NIMCP_API_CHECK(batch_size > 0, NIMCP_ERROR_INVALID_PARAM,
         "metabolic_multipliers_tensor_create: batch_size must be > 0");
 
@@ -294,6 +346,10 @@ metabolic_multipliers_tensor_t* metabolic_multipliers_tensor_create(uint32_t bat
 void metabolic_multipliers_tensor_destroy(metabolic_multipliers_tensor_t* mult) {
     if (!mult) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    metabolic_modulation_heartbeat("metabolic_mo_metabolic_multiplier", 0.0f);
+
+
     nimcp_tensor_destroy(mult->multipliers);
     nimcp_free(mult);
 }
@@ -306,10 +362,26 @@ int metabolic_multipliers_tensor_init_default(metabolic_multipliers_tensor_t* mu
     if (!mult || !mult->multipliers) return -1;
 
     /* Default multipliers: [1.0, 1.1, 1.0, 0.9] */
+    /* Phase 8: Heartbeat at operation start */
+    metabolic_modulation_heartbeat("metabolic_mo_metabolic_multiplier", 0.0f);
+
+
     const float defaults[4] = { 1.0f, 1.1f, 1.0f, 0.9f };
 
     for (uint32_t i = 0; i < mult->batch_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mult->batch_size > 256) {
+            metabolic_modulation_heartbeat("metabolic_mo_loop",
+                             (float)(i + 1) / (float)mult->batch_size);
+        }
+
         for (uint32_t j = 0; j < 4; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && 4 > 256) {
+                metabolic_modulation_heartbeat("metabolic_mo_loop",
+                                 (float)(j + 1) / (float)4);
+            }
+
             size_t flat_idx = (mult->batch_size == 1) ? j : (i * 4 + j);
             if (nimcp_tensor_set_flat(mult->multipliers, flat_idx, defaults[j]) != 0) {
                 return -1;
@@ -330,9 +402,19 @@ int metabolic_multipliers_tensor_set_region(
     if (!mult || !mult->multipliers) return -1;
     if (region_idx >= mult->batch_size) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    metabolic_modulation_heartbeat("metabolic_mo_metabolic_multiplier", 0.0f);
+
+
     float values[4] = { atp_primary, atp_secondary, fatigue_primary, fatigue_secondary };
 
     for (uint32_t j = 0; j < 4; j++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((j & 0xFF) == 0 && 4 > 256) {
+            metabolic_modulation_heartbeat("metabolic_mo_loop",
+                             (float)(j + 1) / (float)4);
+        }
+
         size_t flat_idx = (mult->batch_size == 1) ? j : (region_idx * 4 + j);
         if (nimcp_tensor_set_flat(mult->multipliers, flat_idx, values[j]) != 0) {
             return -1;
@@ -344,8 +426,18 @@ int metabolic_multipliers_tensor_set_region(
 int metabolic_effects_tensor_init_full(metabolic_effects_tensor_t* effects) {
     if (!effects || !effects->effects) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    metabolic_modulation_heartbeat("metabolic_mo_metabolic_effects_te", 0.0f);
+
+
     size_t numel = nimcp_tensor_numel(effects->effects);
     for (size_t i = 0; i < numel; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && numel > 256) {
+            metabolic_modulation_heartbeat("metabolic_mo_loop",
+                             (float)(i + 1) / (float)numel);
+        }
+
         if (nimcp_tensor_set_flat(effects->effects, i, 1.0) != 0) {
             return -1;
         }
@@ -372,6 +464,10 @@ int metabolic_compute_effects_tensor(
     metabolic_effects_tensor_t* effects
 ) {
     /* Validate parameters using API exception macros */
+    /* Phase 8: Heartbeat at operation start */
+    metabolic_modulation_heartbeat("metabolic_mo_metabolic_compute_ef", 0.0f);
+
+
     NIMCP_API_CHECK_NULL(input, NIMCP_ERROR_NULL_POINTER, "metabolic_compute_effects_tensor: NULL input");
     NIMCP_API_CHECK_NULL(config, NIMCP_ERROR_NULL_POINTER, "metabolic_compute_effects_tensor: NULL config");
     NIMCP_API_CHECK_NULL(effects, NIMCP_ERROR_NULL_POINTER, "metabolic_compute_effects_tensor: NULL effects");
@@ -386,6 +482,12 @@ int metabolic_compute_effects_tensor(
     metabolic_effect_multipliers_t default_mult = metabolic_default_multipliers();
 
     for (uint32_t i = 0; i < batch; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && batch > 256) {
+            metabolic_modulation_heartbeat("metabolic_mo_loop",
+                             (float)(i + 1) / (float)batch);
+        }
+
         float atp = (float)nimcp_tensor_get_flat(input->atp_levels, i);
         float cap = (float)nimcp_tensor_get_flat(input->metabolic_capacities, i);
         float min = config->min_capacity;
@@ -437,11 +539,27 @@ int metabolic_compute_effects_tensor(
 int metabolic_compute_overall_capacity_tensor(metabolic_effects_tensor_t* effects) {
     if (!effects || !effects->effects) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    metabolic_modulation_heartbeat("metabolic_mo_metabolic_compute_ov", 0.0f);
+
+
     for (uint32_t i = 0; i < effects->batch_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && effects->batch_size > 256) {
+            metabolic_modulation_heartbeat("metabolic_mo_loop",
+                             (float)(i + 1) / (float)effects->batch_size);
+        }
+
         size_t base_idx = (effects->batch_size == 1) ? 0 : (i * METABOLIC_EFFECT_COUNT);
 
         float sum = 0.0f;
         for (int j = 0; j < 4; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && 4 > 256) {
+                metabolic_modulation_heartbeat("metabolic_mo_loop",
+                                 (float)(j + 1) / (float)4);
+            }
+
             sum += (float)nimcp_tensor_get_flat(effects->effects, base_idx + j);
         }
         nimcp_tensor_set_flat(effects->effects, base_idx + METABOLIC_IDX_OVERALL_CAPACITY, sum / 4.0f);
@@ -461,6 +579,10 @@ int metabolic_effects_tensor_to_scalar(
 ) {
     if (!tensor_effects || !tensor_effects->effects || !scalar_effects) return -1;
     if (region_idx >= tensor_effects->batch_size) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    metabolic_modulation_heartbeat("metabolic_mo_metabolic_effects_te", 0.0f);
+
 
     size_t base_idx = (tensor_effects->batch_size == 1) ? 0 : (region_idx * METABOLIC_EFFECT_COUNT);
 
@@ -485,6 +607,10 @@ int metabolic_effects_scalar_to_tensor(
 ) {
     if (!tensor_effects || !tensor_effects->effects || !scalar_effects) return -1;
     if (region_idx >= tensor_effects->batch_size) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    metabolic_modulation_heartbeat("metabolic_mo_metabolic_effects_sc", 0.0f);
+
 
     size_t base_idx = (tensor_effects->batch_size == 1) ? 0 : (region_idx * METABOLIC_EFFECT_COUNT);
 
@@ -511,6 +637,10 @@ float metabolic_effects_tensor_get(
     if (region_idx >= effects->batch_size) return NAN;
     if (effect_idx >= METABOLIC_EFFECT_COUNT) return NAN;
 
+    /* Phase 8: Heartbeat at operation start */
+    metabolic_modulation_heartbeat("metabolic_mo_metabolic_effects_te", 0.0f);
+
+
     size_t base_idx = (effects->batch_size == 1) ? 0 : (region_idx * METABOLIC_EFFECT_COUNT);
     return (float)nimcp_tensor_get_flat(effects->effects, base_idx + effect_idx);
 }
@@ -525,6 +655,10 @@ int metabolic_effects_tensor_set(
     if (region_idx >= effects->batch_size) return -1;
     if (effect_idx >= METABOLIC_EFFECT_COUNT) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    metabolic_modulation_heartbeat("metabolic_mo_metabolic_effects_te", 0.0f);
+
+
     size_t base_idx = (effects->batch_size == 1) ? 0 : (region_idx * METABOLIC_EFFECT_COUNT);
     return nimcp_tensor_set_flat(effects->effects, base_idx + effect_idx, value);
 }
@@ -533,6 +667,10 @@ metabolic_input_tensor_t* metabolic_input_tensor_from_scalar(
     float atp_level,
     float metabolic_capacity
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    metabolic_modulation_heartbeat("metabolic_mo_metabolic_input_tens", 0.0f);
+
+
     metabolic_input_tensor_t* input = metabolic_input_tensor_create(1);
     if (!input) return NULL;
 
@@ -551,6 +689,10 @@ int metabolic_input_tensor_set_region(
     if (!input || !input->atp_levels || !input->metabolic_capacities) return -1;
     if (region_idx >= input->batch_size) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    metabolic_modulation_heartbeat("metabolic_mo_metabolic_input_tens", 0.0f);
+
+
     nimcp_tensor_set_flat(input->atp_levels, region_idx, atp_level);
     nimcp_tensor_set_flat(input->metabolic_capacities, region_idx, metabolic_capacity);
 
@@ -564,9 +706,19 @@ int metabolic_input_tensor_set_region(
 int metabolic_modulation_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    metabolic_modulation_heartbeat("metabolic_mo_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Metabolic_Modulation");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                metabolic_modulation_heartbeat("metabolic_mo_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

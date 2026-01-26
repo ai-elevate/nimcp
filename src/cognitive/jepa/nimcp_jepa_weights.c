@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_jepa_weights_health_agent = NULL;
  * @brief Set health agent for jepa_weights heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void jepa_weights_set_health_agent(nimcp_health_agent_t* agent) {
+void jepa_weights_set_health_agent(nimcp_health_agent_t* agent) {
     g_jepa_weights_health_agent = agent;
 }
 
@@ -64,8 +64,20 @@ static pthread_once_t crc32_init_once = PTHREAD_ONCE_INIT;
 
 static void init_crc32_table_impl(void) {
     for (uint32_t i = 0; i < 256; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 256 > 256) {
+            jepa_weights_heartbeat("jepa_weights_loop",
+                             (float)(i + 1) / (float)256);
+        }
+
         uint32_t crc = i;
         for (int j = 0; j < 8; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && 8 > 256) {
+                jepa_weights_heartbeat("jepa_weights_loop",
+                                 (float)(j + 1) / (float)8);
+            }
+
             if (crc & 1) {
                 crc = (crc >> 1) ^ CRC32_POLYNOMIAL;
             } else {
@@ -86,12 +98,22 @@ uint32_t jepa_weights_crc32(const void* data, size_t size) {
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_weights_heartbeat("jepa_weights_crc32", 0.0f);
+
+
     init_crc32_table();
 
     const uint8_t* bytes = (const uint8_t*)data;
     uint32_t crc = 0xFFFFFFFF;
 
     for (size_t i = 0; i < size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && size > 256) {
+            jepa_weights_heartbeat("jepa_weights_loop",
+                             (float)(i + 1) / (float)size);
+        }
+
         uint8_t index = (uint8_t)((crc ^ bytes[i]) & 0xFF);
         crc = (crc >> 8) ^ crc32_table[index];
     }
@@ -154,6 +176,12 @@ static int read_tensor_desc(FILE* fp, jepa_tensor_desc_t* tensor) {
 
     tensor->num_elements = 1;
     for (uint32_t i = 0; i < ndims; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ndims > 256) {
+            jepa_weights_heartbeat("jepa_weights_loop",
+                             (float)(i + 1) / (float)ndims);
+        }
+
         if (fread(&tensor->dims[i], sizeof(uint32_t), 1, fp) != 1) {
             return NIMCP_ERROR_FILE_READ;
         }
@@ -203,6 +231,10 @@ jepa_weights_t* jepa_weights_open(const char* path) {
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_weights_heartbeat("jepa_weights_open", 0.0f);
+
+
     FILE* fp = fopen(path, "rb");
     if (!fp) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to open: %s", path);
@@ -241,6 +273,12 @@ jepa_weights_t* jepa_weights_open(const char* path) {
 
     /* Read tensor descriptors */
     for (uint32_t i = 0; i < weights->header.num_tensors; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && weights->header.num_tensors > 256) {
+            jepa_weights_heartbeat("jepa_weights_loop",
+                             (float)(i + 1) / (float)weights->header.num_tensors);
+        }
+
         if (read_tensor_desc(fp, &weights->tensors[i]) != NIMCP_SUCCESS) {
             jepa_weights_close(weights);
             fclose(fp);
@@ -250,6 +288,12 @@ jepa_weights_t* jepa_weights_open(const char* path) {
 
     /* Read tensor data */
     for (uint32_t i = 0; i < weights->header.num_tensors; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && weights->header.num_tensors > 256) {
+            jepa_weights_heartbeat("jepa_weights_loop",
+                             (float)(i + 1) / (float)weights->header.num_tensors);
+        }
+
         if (read_tensor_data(fp, &weights->tensors[i]) != NIMCP_SUCCESS) {
             jepa_weights_close(weights);
             fclose(fp);
@@ -270,8 +314,18 @@ jepa_weights_t* jepa_weights_open(const char* path) {
 void jepa_weights_close(jepa_weights_t* weights) {
     if (!weights) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_weights_heartbeat("jepa_weights_close", 0.0f);
+
+
     if (weights->tensors) {
         for (uint32_t i = 0; i < weights->header.num_tensors; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && weights->header.num_tensors > 256) {
+                jepa_weights_heartbeat("jepa_weights_loop",
+                                 (float)(i + 1) / (float)weights->header.num_tensors);
+            }
+
             if (weights->tensors[i].data) {
                 nimcp_free(weights->tensors[i].data);
             }
@@ -283,6 +337,10 @@ void jepa_weights_close(jepa_weights_t* weights) {
 }
 
 int jepa_weights_validate(const char* path, uint32_t expected_latent_dim) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_weights_heartbeat("jepa_weights_validate", 0.0f);
+
+
     jepa_weights_header_t header;
     int result = jepa_weights_info(path, &header);
 
@@ -300,6 +358,10 @@ int jepa_weights_validate(const char* path, uint32_t expected_latent_dim) {
 }
 
 int jepa_weights_info(const char* path, jepa_weights_header_t* header) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_weights_heartbeat("jepa_weights_info", 0.0f);
+
+
     NIMCP_CHECK_THROW(path, NIMCP_ERROR_NULL_POINTER, "path is NULL");
 
     FILE* fp = fopen(path, "rb");
@@ -324,6 +386,10 @@ int jepa_weights_info(const char* path, jepa_weights_header_t* header) {
 
 jepa_load_result_t jepa_weights_load(const char* path,
                                       jepa_predictor_t* predictor) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_weights_heartbeat("jepa_weights_load", 0.0f);
+
+
     jepa_load_result_t result = {0};
     result.status = JEPA_LOAD_FAILED;
 
@@ -353,6 +419,12 @@ jepa_load_result_t jepa_weights_load(const char* path,
     jepa_mlp_t* mlp = &predictor->network.mlp;
 
     for (uint32_t layer_idx = 0; layer_idx < mlp->num_layers; layer_idx++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((layer_idx & 0xFF) == 0 && mlp->num_layers > 256) {
+            jepa_weights_heartbeat("jepa_weights_loop",
+                             (float)(layer_idx + 1) / (float)mlp->num_layers);
+        }
+
         jepa_mlp_layer_t* layer = &mlp->layers[layer_idx];
 
         /* Try to find matching weight tensor */
@@ -445,6 +517,10 @@ int jepa_weights_load_tensor(jepa_weights_t* weights,
                               const char* layer_name,
                               float* output,
                               uint64_t expected_size) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_weights_heartbeat("jepa_weights_load_tensor", 0.0f);
+
+
     NIMCP_CHECK_THROW(weights && layer_name && output, NIMCP_ERROR_NULL_POINTER, "weights, layer_name, or output is NULL");
 
     const jepa_tensor_desc_t* tensor = jepa_weights_get_tensor(weights, layer_name);
@@ -468,6 +544,10 @@ jepa_load_result_t jepa_weights_load_adaptive(const char* path,
                                                bool allow_resize) {
     /* For now, just use regular load */
     /* Future: implement dimension adaptation (truncation/padding) */
+    /* Phase 8: Heartbeat at operation start */
+    jepa_weights_heartbeat("jepa_weights_load_adaptive", 0.0f);
+
+
     (void)allow_resize;
     return jepa_weights_load(path, predictor);
 }
@@ -477,6 +557,10 @@ jepa_load_result_t jepa_weights_load_adaptive(const char* path,
  * ============================================================================ */
 
 int jepa_weights_save(const char* path, const jepa_predictor_t* predictor) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_weights_heartbeat("jepa_weights_save", 0.0f);
+
+
     return jepa_weights_save_with_meta(path, predictor, JEPA_MODEL_CUSTOM, NULL);
 }
 
@@ -484,6 +568,10 @@ int jepa_weights_save_with_meta(const char* path,
                                  const jepa_predictor_t* predictor,
                                  jepa_model_type_t model_type,
                                  const char* extra_metadata) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_weights_heartbeat("jepa_weights_save_with_meta", 0.0f);
+
+
     (void)extra_metadata;  /* Reserved for future use */
 
     NIMCP_CHECK_THROW(path && predictor, NIMCP_ERROR_NULL_POINTER, "path or predictor is NULL");
@@ -514,6 +602,12 @@ int jepa_weights_save_with_meta(const char* path,
     /* Count total params */
     header.total_params = 0;
     for (uint32_t i = 0; i < mlp->num_layers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mlp->num_layers > 256) {
+            jepa_weights_heartbeat("jepa_weights_loop",
+                             (float)(i + 1) / (float)mlp->num_layers);
+        }
+
         const jepa_mlp_layer_t* layer = &mlp->layers[i];
         header.total_params += layer->in_dim * layer->out_dim + layer->out_dim;
     }
@@ -526,6 +620,12 @@ int jepa_weights_save_with_meta(const char* path,
 
     /* Write tensors */
     for (uint32_t layer_idx = 0; layer_idx < mlp->num_layers; layer_idx++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((layer_idx & 0xFF) == 0 && mlp->num_layers > 256) {
+            jepa_weights_heartbeat("jepa_weights_loop",
+                             (float)(layer_idx + 1) / (float)mlp->num_layers);
+        }
+
         const jepa_mlp_layer_t* layer = &mlp->layers[layer_idx];
 
         /* Write weight tensor */
@@ -574,6 +674,10 @@ int jepa_weights_save_with_meta(const char* path,
 void jepa_weights_list_tensors(const jepa_weights_t* weights) {
     if (!weights) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_weights_heartbeat("jepa_weights_list_tensors", 0.0f);
+
+
     NIMCP_LOGGING_INFO(LOG_MODULE " Weight file: %s", weights->filepath);
     NIMCP_LOGGING_INFO(LOG_MODULE " Model: %s, Version: %u",
                       jepa_model_type_to_string(weights->header.model_type),
@@ -583,11 +687,23 @@ void jepa_weights_list_tensors(const jepa_weights_t* weights) {
                       (unsigned long)weights->header.total_params);
 
     for (uint32_t i = 0; i < weights->header.num_tensors; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && weights->header.num_tensors > 256) {
+            jepa_weights_heartbeat("jepa_weights_loop",
+                             (float)(i + 1) / (float)weights->header.num_tensors);
+        }
+
         const jepa_tensor_desc_t* t = &weights->tensors[i];
         char dims_str[128] = "";
         int offset = 0;
 
         for (uint32_t d = 0; d < t->ndims; d++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((d & 0xFF) == 0 && t->ndims > 256) {
+                jepa_weights_heartbeat("jepa_weights_loop",
+                                 (float)(d + 1) / (float)t->ndims);
+            }
+
             if (d > 0) {
                 offset += snprintf(dims_str + offset, sizeof(dims_str) - offset, "×");
             }
@@ -605,7 +721,17 @@ const jepa_tensor_desc_t* jepa_weights_get_tensor(const jepa_weights_t* weights,
                                                     const char* name) {
     if (!weights || !name) return NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_weights_heartbeat("jepa_weights_get_tensor", 0.0f);
+
+
     for (uint32_t i = 0; i < weights->header.num_tensors; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && weights->header.num_tensors > 256) {
+            jepa_weights_heartbeat("jepa_weights_loop",
+                             (float)(i + 1) / (float)weights->header.num_tensors);
+        }
+
         if (strcmp(weights->tensors[i].name, name) == 0) {
             return &weights->tensors[i];
         }
@@ -657,9 +783,19 @@ const char* jepa_load_status_to_string(jepa_load_status_t status) {
 int jepa_weights_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_weights_heartbeat("jepa_weights_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "JEPA_Weights_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                jepa_weights_heartbeat("jepa_weights_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

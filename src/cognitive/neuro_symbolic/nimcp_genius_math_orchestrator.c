@@ -47,7 +47,7 @@ static nimcp_health_agent_t* g_genius_math_orchestrator_health_agent = NULL;
  * @brief Set health agent for genius_math_orchestrator heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void genius_math_orchestrator_set_health_agent(nimcp_health_agent_t* agent) {
+void genius_math_orchestrator_set_health_agent(nimcp_health_agent_t* agent) {
     g_genius_math_orchestrator_health_agent = agent;
 }
 
@@ -487,6 +487,12 @@ NIMCP_API nimcp_error_t genius_orchestrator_conjecture(
         float total_confidence = 0.0f;
         float total_novelty = 0.0f;
         for (uint32_t i = 0; i < result->num_conjectures; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && result->num_conjectures > 256) {
+                genius_math_orchestrator_heartbeat("genius_math__loop",
+                                 (float)(i + 1) / (float)result->num_conjectures);
+            }
+
             total_confidence += conjectures[i].confidence;
             total_novelty += conjectures[i].novelty;
         }

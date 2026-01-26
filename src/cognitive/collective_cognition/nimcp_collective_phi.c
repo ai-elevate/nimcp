@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_collective_phi_health_agent = NULL;
  * @brief Set health agent for collective_phi heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void collective_phi_set_health_agent(nimcp_health_agent_t* agent) {
+void collective_phi_set_health_agent(nimcp_health_agent_t* agent) {
     g_collective_phi_health_agent = agent;
 }
 
@@ -132,6 +132,12 @@ static phi_instance_t* find_instance(
     uint32_t instance_id
 ) {
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            collective_phi_heartbeat("collective_p_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (cps->instances[i].active && cps->instances[i].instance_id == instance_id) {
             return &cps->instances[i];
         }
@@ -141,6 +147,12 @@ static phi_instance_t* find_instance(
 
 static phi_instance_t* find_free_instance_slot(collective_phi_system_t* cps) {
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            collective_phi_heartbeat("collective_p_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (!cps->instances[i].active) {
             return &cps->instances[i];
         }
@@ -153,6 +165,12 @@ static int find_instance_index(
     uint32_t instance_id
 ) {
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            collective_phi_heartbeat("collective_p_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (cps->instances[i].active && cps->instances[i].instance_id == instance_id) {
             return (int)i;
         }
@@ -170,6 +188,12 @@ static flow_entry_t* find_flow(
     uint32_t to_id
 ) {
     for (uint32_t i = 0; i < cps->flow_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && cps->flow_count > 256) {
+            collective_phi_heartbeat("collective_p_loop",
+                             (float)(i + 1) / (float)cps->flow_count);
+        }
+
         if (cps->flows[i].active &&
             cps->flows[i].from_id == from_id &&
             cps->flows[i].to_id == to_id) {
@@ -212,6 +236,12 @@ static flow_entry_t* get_or_create_flow(
 static float compute_local_phi_sum(const collective_phi_system_t* cps) {
     float sum = 0.0f;
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            collective_phi_heartbeat("collective_p_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (cps->instances[i].active) {
             sum += cps->instances[i].local_phi;
         }
@@ -229,6 +259,12 @@ static float compute_network_phi(collective_phi_system_t* cps) {
     float total_mi = 0.0f;
 
     for (uint32_t i = 0; i < cps->flow_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && cps->flow_count > 256) {
+            collective_phi_heartbeat("collective_p_loop",
+                             (float)(i + 1) / (float)cps->flow_count);
+        }
+
         if (!cps->flows[i].active) continue;
         total_flow += cps->flows[i].flow.flow_rate;
         total_mi += cps->flows[i].flow.mutual_information;
@@ -250,6 +286,12 @@ static void update_integration_matrix(collective_phi_system_t* cps) {
 
     /* Fill from flows */
     for (uint32_t i = 0; i < cps->flow_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && cps->flow_count > 256) {
+            collective_phi_heartbeat("collective_p_loop",
+                             (float)(i + 1) / (float)cps->flow_count);
+        }
+
         if (!cps->flows[i].active) continue;
 
         int from_idx = find_instance_index(cps, cps->flows[i].from_id);
@@ -281,6 +323,12 @@ static void compute_topology_metrics(collective_phi_system_t* cps) {
     uint32_t actual_edges = 0;
 
     for (uint32_t i = 0; i < cps->flow_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && cps->flow_count > 256) {
+            collective_phi_heartbeat("collective_p_loop",
+                             (float)(i + 1) / (float)cps->flow_count);
+        }
+
         if (cps->flows[i].active && cps->flows[i].flow.mutual_information > 0.1f) {
             actual_edges++;
         }
@@ -295,6 +343,12 @@ static void compute_topology_metrics(collective_phi_system_t* cps) {
     uint32_t count = 0;
 
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            collective_phi_heartbeat("collective_p_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (!cps->instances[i].active) continue;
         for (uint32_t j = i + 1; j < COLLECTIVE_MAX_INSTANCES; j++) {
             if (!cps->instances[j].active) continue;
@@ -373,6 +427,10 @@ static void record_event(
  *===========================================================================*/
 
 collective_phi_system_t* collective_phi_create(const collective_phi_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    collective_phi_heartbeat("collective_p_create", 0.0f);
+
+
     collective_phi_system_t* cps = nimcp_malloc(sizeof(collective_phi_system_t));
     if (!cps) {
 
@@ -409,6 +467,10 @@ collective_phi_system_t* collective_phi_create(const collective_phi_config_t* co
 
 void collective_phi_destroy(collective_phi_system_t* cps) {
     if (!cps) return;
+    /* Phase 8: Heartbeat at operation start */
+    collective_phi_heartbeat("collective_p_destroy", 0.0f);
+
+
     nimcp_free(cps);
 }
 
@@ -416,6 +478,10 @@ int collective_phi_reset(collective_phi_system_t* cps) {
     if (!cps) return -1;
 
     /* Clear instances */
+    /* Phase 8: Heartbeat at operation start */
+    collective_phi_heartbeat("collective_p_reset", 0.0f);
+
+
     memset(cps->instances, 0, sizeof(cps->instances));
     cps->instance_count = 0;
 
@@ -454,6 +520,10 @@ int collective_phi_register_instance(
     if (find_instance(cps, instance_id)) return -1;
 
     /* Find free slot */
+    /* Phase 8: Heartbeat at operation start */
+    collective_phi_heartbeat("collective_p_register_instance", 0.0f);
+
+
     phi_instance_t* slot = find_free_instance_slot(cps);
     if (!slot) return -1;
 
@@ -466,6 +536,12 @@ int collective_phi_register_instance(
 
     /* Create flows to/from all existing instances */
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            collective_phi_heartbeat("collective_p_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (cps->instances[i].active && cps->instances[i].instance_id != instance_id) {
             /* Bidirectional flows */
             flow_entry_t* f1 = get_or_create_flow(cps, instance_id, cps->instances[i].instance_id);
@@ -491,6 +567,10 @@ int collective_phi_unregister_instance(
 ) {
     if (!cps) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_phi_heartbeat("collective_p_unregister_instance", 0.0f);
+
+
     phi_instance_t* inst = find_instance(cps, instance_id);
     if (!inst) return -1;
 
@@ -499,6 +579,12 @@ int collective_phi_unregister_instance(
 
     /* Deactivate related flows */
     for (uint32_t i = 0; i < cps->flow_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && cps->flow_count > 256) {
+            collective_phi_heartbeat("collective_p_loop",
+                             (float)(i + 1) / (float)cps->flow_count);
+        }
+
         if (cps->flows[i].from_id == instance_id ||
             cps->flows[i].to_id == instance_id) {
             cps->flows[i].active = false;
@@ -514,6 +600,10 @@ int collective_phi_update_local(
     float local_phi
 ) {
     if (!cps) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_phi_heartbeat("collective_p_update_local", 0.0f);
+
 
     phi_instance_t* inst = find_instance(cps, instance_id);
     if (!inst) return -1;
@@ -534,6 +624,10 @@ int collective_phi_update_flow(
 ) {
     if (!cps || !flow) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_phi_heartbeat("collective_p_update_flow", 0.0f);
+
+
     flow_entry_t* f = get_or_create_flow(cps, from_instance, to_instance);
     if (!f) return -1;
 
@@ -552,6 +646,10 @@ int collective_phi_get_flow(
 ) {
     if (!cps || !flow) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_phi_heartbeat("collective_p_get_flow", 0.0f);
+
+
     flow_entry_t* f = find_flow((collective_phi_system_t*)cps, from_instance, to_instance);
     if (!f) return -1;
 
@@ -565,6 +663,10 @@ int collective_phi_get_flow(
 
 int collective_phi_update(collective_phi_system_t* cps) {
     if (!cps || !cps->initialized) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_phi_heartbeat("collective_p_update", 0.0f);
+
 
     float old_phi = cps->phi.phi_total;
 
@@ -612,10 +714,22 @@ int collective_phi_update(collective_phi_system_t* cps) {
 
     /* Update instance contributions */
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            collective_phi_heartbeat("collective_p_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (!cps->instances[i].active) continue;
 
         float in_flow = 0.0f, out_flow = 0.0f;
         for (uint32_t j = 0; j < cps->flow_count; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && cps->flow_count > 256) {
+                collective_phi_heartbeat("collective_p_loop",
+                                 (float)(j + 1) / (float)cps->flow_count);
+            }
+
             if (!cps->flows[j].active) continue;
             if (cps->flows[j].to_id == cps->instances[i].instance_id) {
                 in_flow += cps->flows[j].flow.flow_rate;
@@ -652,6 +766,12 @@ int collective_phi_update(collective_phi_system_t* cps) {
     /* Average information flow */
     float total_flow = 0.0f;
     for (uint32_t i = 0; i < cps->flow_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && cps->flow_count > 256) {
+            collective_phi_heartbeat("collective_p_loop",
+                             (float)(i + 1) / (float)cps->flow_count);
+        }
+
         if (cps->flows[i].active) {
             total_flow += cps->flows[i].flow.flow_rate;
         }
@@ -670,6 +790,10 @@ int collective_phi_get(
 ) {
     if (!cps || !phi) return -1;
     *phi = cps->phi;
+    /* Phase 8: Heartbeat at operation start */
+    collective_phi_heartbeat("collective_p_get", 0.0f);
+
+
     return 0;
 }
 
@@ -677,6 +801,10 @@ collective_consciousness_level_t collective_phi_get_level(
     const collective_phi_system_t* cps
 ) {
     if (!cps) return COLLECTIVE_CONSCIOUSNESS_NONE;
+    /* Phase 8: Heartbeat at operation start */
+    collective_phi_heartbeat("collective_p_get_level", 0.0f);
+
+
     return phi_to_level(cps->phi.phi_total);
 }
 
@@ -686,6 +814,10 @@ int collective_phi_get_contribution(
     instance_phi_contribution_t* contribution
 ) {
     if (!cps || !contribution) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_phi_heartbeat("collective_p_get_contribution", 0.0f);
+
 
     phi_instance_t* inst = find_instance((collective_phi_system_t*)cps, instance_id);
     if (!inst) return -1;
@@ -710,6 +842,10 @@ int collective_phi_get_qualia(
 ) {
     if (!cps || !report) return -1;
     *report = cps->qualia;
+    /* Phase 8: Heartbeat at operation start */
+    collective_phi_heartbeat("collective_p_get_qualia", 0.0f);
+
+
     return 0;
 }
 
@@ -718,6 +854,10 @@ int collective_phi_update_qualia(
     const qualia_report_t* report
 ) {
     if (!cps || !report) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    collective_phi_heartbeat("collective_p_update_qualia", 0.0f);
+
+
     cps->qualia = *report;
     return 0;
 }
@@ -733,13 +873,29 @@ int collective_phi_get_integration_matrix(
 ) {
     if (!cps || !matrix || !size) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_phi_heartbeat("collective_p_get_integration_matr", 0.0f);
+
+
     uint32_t n = cps->instance_count;
     if (n > *size) n = *size;
 
     /* Copy matrix entries */
     uint32_t idx = 0;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            collective_phi_heartbeat("collective_p_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         for (uint32_t j = 0; j < n; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && n > 256) {
+                collective_phi_heartbeat("collective_p_loop",
+                                 (float)(j + 1) / (float)n);
+            }
+
             matrix[idx++] = cps->integration_matrix[i][j];
         }
     }
@@ -759,8 +915,18 @@ float collective_phi_compute_mip(
     /* For now, just return a trivial partition */
     *num_groups = cps->instance_count > 1 ? 2 : 1;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_phi_heartbeat("collective_p_compute_mip", 0.0f);
+
+
     uint32_t idx = 0;
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            collective_phi_heartbeat("collective_p_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (cps->instances[i].active) {
             partition[idx++] = idx % 2;  /* Alternate groups */
         }
@@ -780,9 +946,19 @@ uint32_t collective_phi_get_events(
 ) {
     if (!cps || !events) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_phi_heartbeat("collective_p_get_events", 0.0f);
+
+
     uint32_t count = cps->event_count < max_events ? cps->event_count : max_events;
 
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            collective_phi_heartbeat("collective_p_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         uint32_t idx = (cps->event_head - cps->event_count + i + MAX_EVENTS) % MAX_EVENTS;
         events[i] = cps->events[idx];
     }
@@ -792,6 +968,10 @@ uint32_t collective_phi_get_events(
 
 void collective_phi_clear_events(collective_phi_system_t* cps) {
     if (!cps) return;
+    /* Phase 8: Heartbeat at operation start */
+    collective_phi_heartbeat("collective_p_clear_events", 0.0f);
+
+
     cps->event_count = 0;
     cps->event_head = 0;
 }
@@ -806,11 +986,19 @@ int collective_phi_get_stats(
 ) {
     if (!cps || !stats) return -1;
     *stats = cps->stats;
+    /* Phase 8: Heartbeat at operation start */
+    collective_phi_heartbeat("collective_p_get_stats", 0.0f);
+
+
     return 0;
 }
 
 void collective_phi_reset_stats(collective_phi_system_t* cps) {
     if (!cps) return;
+    /* Phase 8: Heartbeat at operation start */
+    collective_phi_heartbeat("collective_p_reset_stats", 0.0f);
+
+
     memset(&cps->stats, 0, sizeof(cps->stats));
 }
 
@@ -823,6 +1011,10 @@ void collective_phi_dump(const collective_phi_system_t* cps) {
         printf("Collective Phi: NULL\n");
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_phi_heartbeat("collective_p_dump", 0.0f);
+
 
     printf("=== Collective Phi State ===\n");
     printf("Initialized: %s\n", cps->initialized ? "yes" : "no");
@@ -854,6 +1046,12 @@ void collective_phi_dump(const collective_phi_system_t* cps) {
 
     printf("\nInstances:\n");
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            collective_phi_heartbeat("collective_p_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (!cps->instances[i].active) continue;
         printf("  [%u] phi=%.3f in=%.2f out=%.2f int=%.2f\n",
                cps->instances[i].instance_id,
@@ -882,9 +1080,19 @@ void collective_phi_dump(const collective_phi_system_t* cps) {
  */
 int collective_phi_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    collective_phi_heartbeat("collective_p_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Collective_Phi");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                collective_phi_heartbeat("collective_p_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             printf("Collective Phi self-knowledge: %s\n", self->observations[i]);
         }
     }

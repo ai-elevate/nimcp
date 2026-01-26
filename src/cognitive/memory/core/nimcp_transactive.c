@@ -39,7 +39,7 @@ static nimcp_health_agent_t* g_transactive_health_agent = NULL;
  * @brief Set health agent for transactive heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void transactive_set_health_agent(nimcp_health_agent_t* agent) {
+void transactive_set_health_agent(nimcp_health_agent_t* agent) {
     g_transactive_health_agent = agent;
 }
 
@@ -212,6 +212,12 @@ static expertise_entry_t* find_expertise_entry(
     if (!agent || !domain_sig) return NULL;
 
     for (size_t i = 0; i < agent->num_expertise; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && agent->num_expertise > 256) {
+            transactive_heartbeat("transactive_loop",
+                             (float)(i + 1) / (float)agent->num_expertise);
+        }
+
         if (prime_sig_jaccard(&agent->expertise[i].domain_signature, domain_sig) > 0.95f) {
             return &agent->expertise[i];
         }
@@ -234,6 +240,12 @@ static float calculate_agent_score(
 
     // Find best matching expertise
     for (size_t i = 0; i < agent->num_expertise; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && agent->num_expertise > 256) {
+            transactive_heartbeat("transactive_loop",
+                             (float)(i + 1) / (float)agent->num_expertise);
+        }
+
         float similarity = prime_sig_jaccard(
             &agent->expertise[i].domain_signature,
             query_sig
@@ -280,6 +292,12 @@ static delegation_state_t* find_free_delegation(transactive_memory_t tm) {
 
     // Find inactive slot
     for (size_t i = 0; i < tm->delegation_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && tm->delegation_capacity > 256) {
+            transactive_heartbeat("transactive_loop",
+                             (float)(i + 1) / (float)tm->delegation_capacity);
+        }
+
         if (!tm->delegations[i].is_active) {
             return &tm->delegations[i];
         }
@@ -333,6 +351,12 @@ static delegation_state_t* find_delegation(
     }
 
     for (size_t i = 0; i < tm->delegation_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && tm->delegation_capacity > 256) {
+            transactive_heartbeat("transactive_loop",
+                             (float)(i + 1) / (float)tm->delegation_capacity);
+        }
+
         if (tm->delegations[i].delegation_id == delegation_id &&
             tm->delegations[i].is_active) {
             return &tm->delegations[i];
@@ -505,6 +529,12 @@ NIMCP_EXPORT void transactive_destroy(transactive_memory_t tm) {
 
     // Free agents
     for (size_t i = 0; i < tm->agent_table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && tm->agent_table_size > 256) {
+            transactive_heartbeat("transactive_loop",
+                             (float)(i + 1) / (float)tm->agent_table_size);
+        }
+
         agent_entry_t* entry = tm->agent_table[i];
         while (entry) {
             agent_entry_t* next = entry->next;
@@ -517,6 +547,12 @@ NIMCP_EXPORT void transactive_destroy(transactive_memory_t tm) {
 
     // Free domains
     for (size_t i = 0; i < tm->domain_table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && tm->domain_table_size > 256) {
+            transactive_heartbeat("transactive_loop",
+                             (float)(i + 1) / (float)tm->domain_table_size);
+        }
+
         domain_entry_t* entry = tm->domain_table[i];
         while (entry) {
             domain_entry_t* next = entry->next;
@@ -722,6 +758,12 @@ NIMCP_EXPORT transactive_error_t transactive_update_agent(
     // Update accessibility for all expertise entries
     if (accessibility >= 0.0f && accessibility <= 1.0f) {
         for (size_t i = 0; i < entry->agent.num_expertise; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && entry->agent.num_expertise > 256) {
+                transactive_heartbeat("transactive_loop",
+                                 (float)(i + 1) / (float)entry->agent.num_expertise);
+            }
+
             entry->agent.expertise[i].accessibility = accessibility;
         }
     }
@@ -862,6 +904,12 @@ NIMCP_EXPORT transactive_error_t transactive_remove_expertise(
     }
 
     for (size_t i = 0; i < entry->agent.num_expertise; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && entry->agent.num_expertise > 256) {
+            transactive_heartbeat("transactive_loop",
+                             (float)(i + 1) / (float)entry->agent.num_expertise);
+        }
+
         if (prime_sig_jaccard(&entry->agent.expertise[i].domain_signature,
                               domain_signature) > 0.95f) {
             // Shift remaining entries
@@ -1036,12 +1084,24 @@ NIMCP_EXPORT transactive_error_t transactive_lookup_constrained(
 
     // Score all agents
     for (size_t i = 0; i < tm->agent_table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && tm->agent_table_size > 256) {
+            transactive_heartbeat("transactive_loop",
+                             (float)(i + 1) / (float)tm->agent_table_size);
+        }
+
         agent_entry_t* entry = tm->agent_table[i];
         while (entry) {
             // Check exclusion
             bool excluded = false;
             if (exclude_agents) {
                 for (size_t j = 0; j < num_exclude; j++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((j & 0xFF) == 0 && num_exclude > 256) {
+                        transactive_heartbeat("transactive_loop",
+                                         (float)(j + 1) / (float)num_exclude);
+                    }
+
                     if (exclude_agents[j] == entry->agent_id) {
                         excluded = true;
                         break;
@@ -1068,6 +1128,12 @@ NIMCP_EXPORT transactive_error_t transactive_lookup_constrained(
 
     // Sort by score (descending)
     for (size_t i = 0; i < num_scores; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_scores > 256) {
+            transactive_heartbeat("transactive_loop",
+                             (float)(i + 1) / (float)num_scores);
+        }
+
         for (size_t j = i + 1; j < num_scores; j++) {
             if (scores[j].score > scores[i].score) {
                 score_pair_t tmp = scores[i];
@@ -1098,6 +1164,12 @@ NIMCP_EXPORT transactive_error_t transactive_lookup_constrained(
         }
 
         for (size_t i = 0; i < result_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && result_count > 256) {
+                transactive_heartbeat("transactive_loop",
+                                 (float)(i + 1) / (float)result_count);
+            }
+
             result->recommended_agents[i] = scores[i].agent_id;
             result->agent_scores[i] = scores[i].score;
         }
@@ -1109,6 +1181,12 @@ NIMCP_EXPORT transactive_error_t transactive_lookup_constrained(
     // Calculate coverage
     float total_coverage = 0.0f;
     for (size_t i = 0; i < num_scores; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_scores > 256) {
+            transactive_heartbeat("transactive_loop",
+                             (float)(i + 1) / (float)num_scores);
+        }
+
         total_coverage += scores[i].score;
     }
     result->coverage = fminf(1.0f, total_coverage);
@@ -1143,6 +1221,12 @@ NIMCP_EXPORT transactive_error_t transactive_get_top_experts(
     if (n > k) n = k;
 
     for (size_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            transactive_heartbeat("transactive_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         agent_ids[i] = result.recommended_agents[i];
         if (scores) {
             scores[i] = result.agent_scores[i];
@@ -1396,6 +1480,12 @@ NIMCP_EXPORT float transactive_predict_retrieval_success(
     float best_confidence = 0.0f;
 
     for (size_t i = 0; i < entry->agent.num_expertise; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && entry->agent.num_expertise > 256) {
+            transactive_heartbeat("transactive_loop",
+                             (float)(i + 1) / (float)entry->agent.num_expertise);
+        }
+
         float similarity = prime_sig_jaccard(
             &entry->agent.expertise[i].domain_signature,
             query_signature
@@ -1440,9 +1530,21 @@ NIMCP_EXPORT transactive_error_t transactive_compute_domain_coverage(
 
     // Scan all agents
     for (size_t i = 0; i < tm->agent_table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && tm->agent_table_size > 256) {
+            transactive_heartbeat("transactive_loop",
+                             (float)(i + 1) / (float)tm->agent_table_size);
+        }
+
         agent_entry_t* entry = tm->agent_table[i];
         while (entry) {
             for (size_t j = 0; j < entry->agent.num_expertise; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && entry->agent.num_expertise > 256) {
+                    transactive_heartbeat("transactive_loop",
+                                     (float)(j + 1) / (float)entry->agent.num_expertise);
+                }
+
                 float similarity = prime_sig_jaccard(
                     &entry->agent.expertise[j].domain_signature,
                     domain_signature
@@ -1487,6 +1589,12 @@ NIMCP_EXPORT float transactive_compute_overall_coverage(transactive_memory_t tm)
     size_t domains_checked = 0;
 
     for (size_t i = 0; i < tm->domain_table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && tm->domain_table_size > 256) {
+            transactive_heartbeat("transactive_loop",
+                             (float)(i + 1) / (float)tm->domain_table_size);
+        }
+
         domain_entry_t* domain = tm->domain_table[i];
         while (domain) {
             domain_coverage_t cov;
@@ -1623,9 +1731,21 @@ NIMCP_EXPORT size_t transactive_apply_decay(
     float decay_factor = expf(-tm->config.verification_decay_rate * elapsed_seconds / 86400.0f);
 
     for (size_t i = 0; i < tm->agent_table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && tm->agent_table_size > 256) {
+            transactive_heartbeat("transactive_loop",
+                             (float)(i + 1) / (float)tm->agent_table_size);
+        }
+
         agent_entry_t* entry = tm->agent_table[i];
         while (entry) {
             for (size_t j = 0; j < entry->agent.num_expertise; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && entry->agent.num_expertise > 256) {
+                    transactive_heartbeat("transactive_loop",
+                                     (float)(j + 1) / (float)entry->agent.num_expertise);
+                }
+
                 float old_confidence = entry->agent.expertise[j].confidence;
                 entry->agent.expertise[j].confidence *= decay_factor;
                 if (entry->agent.expertise[j].confidence != old_confidence) {
@@ -1797,6 +1917,12 @@ NIMCP_EXPORT transactive_error_t transactive_get_stats(
     mem += tm->delegation_capacity * sizeof(delegation_state_t);
 
     for (size_t i = 0; i < tm->agent_table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && tm->agent_table_size > 256) {
+            transactive_heartbeat("transactive_loop",
+                             (float)(i + 1) / (float)tm->agent_table_size);
+        }
+
         agent_entry_t* entry = tm->agent_table[i];
         while (entry) {
             mem += sizeof(agent_entry_t);
@@ -1879,6 +2005,12 @@ NIMCP_EXPORT void transactive_print_agent(
     printf("Expertise entries: %zu\n", entry->agent.num_expertise);
 
     for (size_t i = 0; i < entry->agent.num_expertise; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && entry->agent.num_expertise > 256) {
+            transactive_heartbeat("transactive_loop",
+                             (float)(i + 1) / (float)entry->agent.num_expertise);
+        }
+
         expertise_entry_t* exp = &entry->agent.expertise[i];
         printf("  - Domain (hash=%lx): level=%.2f, conf=%.2f, success=%lu, fail=%lu\n",
                (unsigned long)exp->domain_signature.hash,
@@ -1895,6 +2027,12 @@ NIMCP_EXPORT bool transactive_validate(transactive_memory_t tm) {
     // Verify agent count
     size_t agent_count = 0;
     for (size_t i = 0; i < tm->agent_table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && tm->agent_table_size > 256) {
+            transactive_heartbeat("transactive_loop",
+                             (float)(i + 1) / (float)tm->agent_table_size);
+        }
+
         agent_entry_t* entry = tm->agent_table[i];
         while (entry) {
             agent_count++;
@@ -1910,6 +2048,12 @@ NIMCP_EXPORT bool transactive_validate(transactive_memory_t tm) {
     // Verify domain count
     size_t domain_count = 0;
     for (size_t i = 0; i < tm->domain_table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && tm->domain_table_size > 256) {
+            transactive_heartbeat("transactive_loop",
+                             (float)(i + 1) / (float)tm->domain_table_size);
+        }
+
         domain_entry_t* entry = tm->domain_table[i];
         while (entry) {
             domain_count++;
@@ -1925,6 +2069,12 @@ NIMCP_EXPORT bool transactive_validate(transactive_memory_t tm) {
     // Verify delegation count
     size_t active_delegations = 0;
     for (size_t i = 0; i < tm->delegation_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && tm->delegation_capacity > 256) {
+            transactive_heartbeat("transactive_loop",
+                             (float)(i + 1) / (float)tm->delegation_capacity);
+        }
+
         if (tm->delegations[i].is_active) {
             active_delegations++;
         }

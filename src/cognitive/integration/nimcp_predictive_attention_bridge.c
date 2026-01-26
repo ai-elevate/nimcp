@@ -46,7 +46,7 @@ static nimcp_health_agent_t* g_predictive_attention_bridge_health_agent = NULL;
  * @brief Set health agent for predictive_attention_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void predictive_attention_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void predictive_attention_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_predictive_attention_bridge_health_agent = agent;
 }
 
@@ -371,6 +371,10 @@ int predictive_attention_bridge_default_config(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_bridge_heartbeat("predictive_a_default_config", 0.0f);
+
+
     config->enable_logging = false;
     config->prediction_error_weight = 0.6f;
     config->surprise_attention_weight = PRED_ATTN_DEFAULT_SURPRISE_WEIGHT;
@@ -395,6 +399,10 @@ predictive_attention_bridge_t* predictive_attention_bridge_create(
     const predictive_attention_bridge_config_t* config
 ) {
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_bridge_heartbeat("predictive_a_create", 0.0f);
+
+
     predictive_attention_bridge_t* bridge = (predictive_attention_bridge_t*)nimcp_calloc(
         1, sizeof(predictive_attention_bridge_t));
     if (!bridge) {
@@ -448,6 +456,10 @@ void predictive_attention_bridge_destroy(predictive_attention_bridge_t* bridge) 
     }
 
     /* Disconnect from hub if connected */
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_bridge_heartbeat("predictive_a_destroy", 0.0f);
+
+
     if (bridge->connected) {
         predictive_attention_bridge_unregister_from_hub(bridge);
     }
@@ -471,6 +483,10 @@ int predictive_attention_bridge_register_with_hub(
     if (!bridge || !bridge->initialized || !hub) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_bridge_heartbeat("predictive_a_register_with_hub", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -559,6 +575,10 @@ int predictive_attention_bridge_unregister_from_hub(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_bridge_heartbeat("predictive_a_unregister_from_hub", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->hub) {
@@ -600,6 +620,10 @@ bool predictive_attention_bridge_is_connected(
     }
 
     /* Cast away const for mutex lock (safe - only reading) */
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_bridge_heartbeat("predictive_a_is_connected", 0.0f);
+
+
     predictive_attention_bridge_t* mutable_bridge = (predictive_attention_bridge_t*)bridge;
 
     nimcp_mutex_lock(mutable_bridge->base.mutex);
@@ -621,6 +645,10 @@ int predictive_attention_publish_prediction_error(
     if (!bridge || !bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_bridge_heartbeat("predictive_a_predictive_attention", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -682,6 +710,10 @@ int predictive_attention_request_attention_to_error(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_bridge_heartbeat("predictive_a_predictive_attention", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->hub) {
@@ -737,6 +769,10 @@ int predictive_attention_publish_precision_estimate(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_bridge_heartbeat("predictive_a_predictive_attention", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->hub) {
@@ -785,6 +821,10 @@ int predictive_attention_notify_attended_prediction(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_bridge_heartbeat("predictive_a_predictive_attention", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->hub) {
@@ -826,6 +866,10 @@ int predictive_attention_request_prediction_for_focus(
     if (!bridge || !bridge->initialized || !focus) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_bridge_heartbeat("predictive_a_predictive_attention", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -873,6 +917,10 @@ int predictive_attention_set_prediction_callback(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_bridge_heartbeat("predictive_a_predictive_attention", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->prediction_callback = callback;
     bridge->prediction_callback_user_data = user_data;
@@ -890,6 +938,10 @@ int predictive_attention_set_attention_callback(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_bridge_heartbeat("predictive_a_predictive_attention", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_callback = callback;
     bridge->attention_callback_user_data = user_data;
@@ -906,6 +958,10 @@ int predictive_attention_set_error_callback(
     if (!bridge || !bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_bridge_heartbeat("predictive_a_predictive_attention", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->error_callback = callback;
@@ -928,6 +984,10 @@ int predictive_attention_bridge_get_stats(
     }
 
     /* Cast away const for mutex lock */
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_bridge_heartbeat("predictive_a_get_stats", 0.0f);
+
+
     predictive_attention_bridge_t* mutable_bridge = (predictive_attention_bridge_t*)bridge;
 
     nimcp_mutex_lock(mutable_bridge->base.mutex);
@@ -943,6 +1003,10 @@ int predictive_attention_bridge_reset_stats(
     if (!bridge || !bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_bridge_heartbeat("predictive_a_reset_stats", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(predictive_attention_bridge_stats_t));

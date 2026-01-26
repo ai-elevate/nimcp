@@ -80,7 +80,7 @@ static nimcp_health_agent_t* g_introspection_health_agent = NULL;
  * @brief Set health agent for introspection heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void introspection_set_health_agent(nimcp_health_agent_t* agent) {
+void introspection_set_health_agent(nimcp_health_agent_t* agent) {
     g_introspection_health_agent = agent;
 }
 
@@ -218,6 +218,12 @@ static int introspection_wiring_handler_callback(
 
     int registered = 0;
     for (uint32_t i = 0; i < message_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && message_count > 256) {
+            introspection_heartbeat("introspectio_loop",
+                             (float)(i + 1) / (float)message_count);
+        }
+
         switch (message_types[i]) {
             case BIO_MSG_INTROSPECTION_QUERY:
                 bio_router_register_handler(ctx, message_types[i], handle_introspection_query);
@@ -300,6 +306,10 @@ static float compute_cosine_similarity(const float* a, const float* b, uint32_t 
  */
 introspection_config_t introspection_default_config(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_default_config", 0.0f);
+
+
     introspection_config_t config = {.default_strategy = STATE_STRATEGY_BALANCED,
                                      .activity_threshold = 0.3F,
                                      .history_size = 100,
@@ -336,6 +346,10 @@ introspection_context_t introspection_context_create(brain_t brain,
     }
 
     /* WHAT: Allocate context */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_context_create", 0.0f);
+
+
     introspection_context_t context =
         (introspection_context_t) nimcp_calloc(1, sizeof(struct introspection_context_struct));
     if (context == NULL) {
@@ -464,6 +478,10 @@ void introspection_context_destroy(introspection_context_t context)
     }
 
     /* WHAT: Unregister from bio-async router */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_context_destroy", 0.0f);
+
+
     if (context->bio_async_enabled && context->bio_ctx) {
         bio_router_unregister_module(context->bio_ctx);
         context->bio_ctx = NULL;
@@ -475,6 +493,12 @@ void introspection_context_destroy(introspection_context_t context)
     if (context->pattern_registry) {
         nimcp_mutex_lock(&context->pattern_registry->lock);
         for (uint32_t i = 0; i < 256; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && 256 > 256) {
+                introspection_heartbeat("introspectio_loop",
+                                 (float)(i + 1) / (float)256);
+            }
+
             pattern_entry_t* entry = context->pattern_registry->buckets[i];
             while (entry) {
                 pattern_entry_t* next = entry->next;
@@ -532,6 +556,10 @@ void introspection_context_destroy(introspection_context_t context)
  */
 neuron_population_t brain_get_active_population(introspection_context_t context, float threshold)
 {
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_brain_get_active_pop", 0.0f);
+
+
     neuron_population_t population;
     memset(&population, 0, sizeof(neuron_population_t));
 
@@ -620,6 +648,10 @@ void neuron_population_free(neuron_population_t* population)
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_neuron_population_fr", 0.0f);
+
+
     nimcp_free(population->neuron_ids);
     nimcp_free(population->activation_levels);
     memset(population, 0, sizeof(neuron_population_t));
@@ -634,6 +666,10 @@ void neuron_population_free(neuron_population_t* population)
  */
 neuron_activity_t brain_get_neuron_activity(introspection_context_t context, uint32_t neuron_id)
 {
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_brain_get_neuron_act", 0.0f);
+
+
     neuron_activity_t activity;
     memset(&activity, 0, sizeof(neuron_activity_t));
 
@@ -702,6 +738,10 @@ neuron_activity_t brain_get_neuron_activity(introspection_context_t context, uin
 brain_state_t brain_get_internal_state(introspection_context_t context,
                                        state_extraction_strategy_t strategy)
 {
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_brain_get_internal_s", 0.0f);
+
+
     brain_state_t state;
     memset(&state, 0, sizeof(brain_state_t));
 
@@ -769,6 +809,12 @@ brain_state_t brain_get_internal_state(introspection_context_t context,
     const float PEAK_POTENTIAL = 30.0F;
 
     for (uint32_t i = 0; i < sampled_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sampled_neurons > 256) {
+            introspection_heartbeat("introspectio_loop",
+                             (float)(i + 1) / (float)sampled_neurons);
+        }
+
         uint32_t neuron_id = i * stride;
         if (neuron_id >= total_neurons) {
             neuron_id = total_neurons - 1; /* Clamp to valid range */
@@ -821,6 +867,10 @@ void brain_state_free(brain_state_t* state)
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_brain_state_free", 0.0f);
+
+
     nimcp_free(state->state_vector);
     nimcp_free(state->interpretation);
     memset(state, 0, sizeof(brain_state_t));
@@ -840,6 +890,10 @@ float brain_state_similarity(const brain_state_t* state1, const brain_state_t* s
     }
 
     /* WHAT: States must have same dimension */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_brain_state_similari", 0.0f);
+
+
     if (state1->dimension != state2->dimension) {
         return 0.0F;
     }
@@ -888,6 +942,10 @@ float brain_state_similarity(const brain_state_t* state1, const brain_state_t* s
 brain_uncertainty_t brain_get_uncertainty(introspection_context_t context, const float* features,
                                           uint32_t num_features)
 {
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_brain_get_uncertaint", 0.0f);
+
+
     brain_uncertainty_t uncertainty;
     memset(&uncertainty, 0, sizeof(brain_uncertainty_t));
 
@@ -976,12 +1034,24 @@ brain_uncertainty_t brain_get_uncertainty(introspection_context_t context, const
                 if (pop.activation_levels != NULL) {
                     float mean_act = 0.0F;
                     for (uint32_t i = 0; i < pop.num_active; i++) {
+                        /* Phase 8: Loop progress heartbeat */
+                        if ((i & 0xFF) == 0 && pop.num_active > 256) {
+                            introspection_heartbeat("introspectio_loop",
+                                             (float)(i + 1) / (float)pop.num_active);
+                        }
+
                         mean_act += pop.activation_levels[i];
                     }
                     mean_act /= pop.num_active;
 
                     float var = 0.0F;
                     for (uint32_t i = 0; i < pop.num_active; i++) {
+                        /* Phase 8: Loop progress heartbeat */
+                        if ((i & 0xFF) == 0 && pop.num_active > 256) {
+                            introspection_heartbeat("introspectio_loop",
+                                             (float)(i + 1) / (float)pop.num_active);
+                        }
+
                         float diff = pop.activation_levels[i] - mean_act;
                         var += diff * diff;
                     }
@@ -994,6 +1064,12 @@ brain_uncertainty_t brain_get_uncertainty(introspection_context_t context, const
         /* WHAT: Generate simulated ensemble predictions */
         float mean_prediction = 0.0F;
         for (uint32_t i = 0; i < ensemble_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && ensemble_size > 256) {
+                introspection_heartbeat("introspectio_loop",
+                                 (float)(i + 1) / (float)ensemble_size);
+            }
+
             /* Add noise based on estimated variance */
             float noise = ((float) rand() / RAND_MAX - 0.5F) * variance_estimate * 2.0F;
             uncertainty.ensemble_predictions[i] = base_prediction + noise;
@@ -1009,6 +1085,12 @@ brain_uncertainty_t brain_get_uncertainty(introspection_context_t context, const
         /* WHAT: Compute epistemic uncertainty (variance of predictions) */
         float variance = 0.0F;
         for (uint32_t i = 0; i < ensemble_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && ensemble_size > 256) {
+                introspection_heartbeat("introspectio_loop",
+                                 (float)(i + 1) / (float)ensemble_size);
+            }
+
             float diff = uncertainty.ensemble_predictions[i] - mean_prediction;
             variance += diff * diff;
         }
@@ -1139,6 +1221,10 @@ void brain_uncertainty_free(brain_uncertainty_t* uncertainty)
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_brain_uncertainty_fr", 0.0f);
+
+
     nimcp_free(uncertainty->ensemble_predictions);
     memset(uncertainty, 0, sizeof(brain_uncertainty_t));
 }
@@ -1246,6 +1332,10 @@ static void pattern_registry_update(pattern_registry_t* registry, const char* na
 bool brain_is_pattern_active(introspection_context_t context, const char* pattern_name)
 {
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_brain_is_pattern_act", 0.0f);
+
+
     if (context && context->bio_ctx) {
         bio_router_process_inbox(context->bio_ctx, 5);
     }
@@ -1289,6 +1379,10 @@ pattern_info_t* brain_get_pattern_info(introspection_context_t context, const ch
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_brain_get_pattern_in", 0.0f);
+
+
     nimcp_mutex_lock(&context->pattern_registry->lock);
     pattern_entry_t* entry = pattern_registry_lookup(context->pattern_registry, pattern_name);
 
@@ -1327,6 +1421,10 @@ void pattern_info_free(pattern_info_t* info)
     if (info == NULL) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_pattern_info_free", 0.0f);
+
 
     nimcp_free(info->pattern_name);
     nimcp_free(info);
@@ -1369,6 +1467,12 @@ char** brain_list_patterns(introspection_context_t context, uint32_t* num_patter
     /* WHAT: Collect pattern names from all buckets */
     uint32_t index = 0;
     for (uint32_t bucket = 0; bucket < 256; bucket++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((bucket & 0xFF) == 0 && 256 > 256) {
+            introspection_heartbeat("introspectio_loop",
+                             (float)(bucket + 1) / (float)256);
+        }
+
         pattern_entry_t* entry = context->pattern_registry->buckets[bucket];
         while (entry) {
             pattern_list[index++] = nimcp_strdup(entry->name);
@@ -1392,7 +1496,17 @@ void pattern_list_free(char** pattern_list, uint32_t num_patterns)
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_pattern_list_free", 0.0f);
+
+
     for (uint32_t i = 0; i < num_patterns; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_patterns > 256) {
+            introspection_heartbeat("introspectio_loop",
+                             (float)(i + 1) / (float)num_patterns);
+        }
+
         nimcp_free(pattern_list[i]);
     }
     nimcp_free(pattern_list);
@@ -1543,6 +1657,10 @@ network_topology_t brain_get_topology(introspection_context_t context)
         return empty;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_brain_get_topology", 0.0f);
+
+
     nimcp_mutex_lock(&context->lock);
 
     /* CASE 1: Return cached topology (most common path) */
@@ -1575,6 +1693,10 @@ void network_topology_free(network_topology_t* topology)
     if (topology == NULL) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_network_topology_fre", 0.0f);
+
 
     nimcp_free(topology->neurons_per_layer);
     memset(topology, 0, sizeof(network_topology_t));
@@ -1639,6 +1761,10 @@ activity_history_entry_t* brain_get_activity_history(introspection_context_t con
     }
 
     // Get current queue size
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_brain_get_activity_h", 0.0f);
+
+
     size_t queue_size = nimcp_queue_get_size(context->activity_queue);
     *num_entries = (uint32_t) queue_size;
 
@@ -1658,6 +1784,12 @@ activity_history_entry_t* brain_get_activity_history(introspection_context_t con
     // Dequeue all entries (empties the queue)
     // WHY CONSUME: No peek_all API, and "get history" implies reading it out
     for (uint32_t i = 0; i < queue_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && queue_size > 256) {
+            introspection_heartbeat("introspectio_loop",
+                             (float)(i + 1) / (float)queue_size);
+        }
+
         nimcp_result_t result = nimcp_queue_dequeue(context->activity_queue, &history[i], 0);
         if (result != NIMCP_SUCCESS) {
             // Partial failure - return what we got
@@ -1691,6 +1823,10 @@ bool introspection_set_ensemble(introspection_context_t context,
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_set_ensemble", 0.0f);
+
+
     nimcp_mutex_lock(&context->lock);
     context->ensemble = ensemble;
     nimcp_mutex_unlock(&context->lock);
@@ -1713,6 +1849,10 @@ ensemble_context_t introspection_get_ensemble(introspection_context_t context)
     if (context == NULL) {
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_get_ensemble", 0.0f);
+
 
     nimcp_mutex_lock(&context->lock);
     ensemble_context_t ensemble = context->ensemble;
@@ -1738,6 +1878,10 @@ bool introspection_get_stats(introspection_context_t context, introspection_stat
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(&context->lock);
     *stats = context->stats;
     nimcp_mutex_unlock(&context->lock);
@@ -1757,6 +1901,10 @@ void introspection_reset_stats(introspection_context_t context)
     if (context == NULL) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_reset_stats", 0.0f);
+
 
     nimcp_mutex_lock(&context->lock);
 
@@ -1792,6 +1940,10 @@ bool introspection_sample_activity(introspection_context_t context)
     }
 
     /* WHAT: Get brain's underlying network */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_sample_activity", 0.0f);
+
+
     adaptive_network_t network = brain_get_network(context->brain);
     if (network == NULL) {
         return false;
@@ -1817,6 +1969,12 @@ bool introspection_sample_activity(introspection_context_t context)
     /* WHAT: Scan all neurons to compute statistics */
     /* HOW: Sample activations, normalize to [0,1], compute aggregates */
     for (uint32_t i = 0; i < total_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && total_neurons > 256) {
+            introspection_heartbeat("introspectio_loop",
+                             (float)(i + 1) / (float)total_neurons);
+        }
+
         float raw_activation;
         if (adaptive_network_get_neuron_activation(network, i, &raw_activation)) {
             /* Normalize biological potential to [0,1] */
@@ -1929,6 +2087,10 @@ bool introspection_set_sample_interval(introspection_context_t context, uint32_t
     }
 
     /* WHAT: Update interval with mutex protection */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_set_sample_interval", 0.0f);
+
+
     nimcp_mutex_lock(&context->lock);
     context->config.history_sample_interval_ms = interval_ms;
     nimcp_mutex_unlock(&context->lock);
@@ -1955,6 +2117,10 @@ bool introspection_get_history_stats(introspection_context_t context,
     }
 
     /* WHAT: Get queue statistics */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_get_history_stats", 0.0f);
+
+
     size_t size = nimcp_queue_get_size(context->activity_queue);
     size_t cap = nimcp_queue_get_capacity(context->activity_queue);
 
@@ -1982,6 +2148,10 @@ bool introspection_clear_history(introspection_context_t context)
     }
 
     /* WHAT: Clear queue */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_clear_history", 0.0f);
+
+
     nimcp_result_t result = nimcp_queue_clear(context->activity_queue);
     if (result != NIMCP_SUCCESS) {
         LOG_WARN(LOG_MODULE, "Failed to clear activity history: %d", result);
@@ -2015,6 +2185,10 @@ bool introspection_set_activity_callback(introspection_context_t context,
     }
 
     /* WHAT: Update callback with mutex protection */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_set_activity_callbac", 0.0f);
+
+
     nimcp_mutex_lock(&context->lock);
     context->sample_callback = callback;
     context->sample_callback_context = user_data;
@@ -2049,6 +2223,10 @@ bool introspection_connect_immune(introspection_context_t context,
     }
 
     /* WHAT: Store immune system reference with thread safety */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_connect_immune", 0.0f);
+
+
     nimcp_mutex_lock(&context->lock);
     context->immune_system = immune_system;
     nimcp_mutex_unlock(&context->lock);
@@ -2102,6 +2280,12 @@ static float compute_entropy(const float* values, uint32_t count)
     /* WHAT: Normalize values to probabilities */
     float sum = 0.0F;
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            introspection_heartbeat("introspectio_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         sum += fabsf(values[i]);
     }
 
@@ -2112,6 +2296,12 @@ static float compute_entropy(const float* values, uint32_t count)
     /* WHAT: Compute entropy */
     float entropy = 0.0F;
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            introspection_heartbeat("introspectio_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         float p = fabsf(values[i]) / sum;
         if (p > 1e-10F) {
             entropy -= p * log2f(p);
@@ -2148,6 +2338,10 @@ bool introspection_connect_internal_kg(introspection_context_t context, brain_t 
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_connect_internal_kg", 0.0f);
+
+
     nimcp_mutex_lock(&context->lock);
 
     /* Initialize KG context */
@@ -2179,6 +2373,10 @@ void introspection_disconnect_internal_kg(introspection_context_t context)
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_disconnect_internal_", 0.0f);
+
+
     nimcp_mutex_lock(&context->lock);
 
     context->kg_context.kg = NULL;
@@ -2196,6 +2394,10 @@ brain_kg_node_list_t* introspection_get_active_modules(introspection_context_t c
     if (context == NULL) {
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_get_active_modules", 0.0f);
+
 
     nimcp_mutex_lock(&context->lock);
 
@@ -2224,6 +2426,10 @@ brain_kg_node_list_t* introspection_get_module_topology(
     if (context == NULL || center_name == NULL) {
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_get_module_topology", 0.0f);
+
 
     nimcp_mutex_lock(&context->lock);
 
@@ -2260,6 +2466,10 @@ bool introspection_is_module_set_active(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_is_module_set_active", 0.0f);
+
+
     nimcp_mutex_lock(&context->lock);
 
     /* Check if KG is connected */
@@ -2270,6 +2480,12 @@ bool introspection_is_module_set_active(
 
     /* Check each module */
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            introspection_heartbeat("introspectio_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (module_names[i] == NULL) {
             nimcp_mutex_unlock(&context->lock);
             return false;
@@ -2314,10 +2530,20 @@ int introspection_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
     /* Query our own entity from the knowledge graph */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_heartbeat("introspectio_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Introspection_Module");
     if (self) {
         /* Module now knows its own capabilities from KG */
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                introspection_heartbeat("introspectio_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Introspection self-knowledge: %s", self->observations[i]);
         }
     }

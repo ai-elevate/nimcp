@@ -37,7 +37,7 @@ static nimcp_health_agent_t* g_mucosal_immunity_health_agent = NULL;
  * @brief Set health agent for mucosal_immunity heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mucosal_immunity_set_health_agent(nimcp_health_agent_t* agent) {
+void mucosal_immunity_set_health_agent(nimcp_health_agent_t* agent) {
     g_mucosal_immunity_health_agent = agent;
 }
 
@@ -79,6 +79,12 @@ static mucosal_site_t* find_site(mucosal_system_t* system, uint32_t site_id) {
     }
 
     for (size_t i = 0; i < system->site_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->site_count > 256) {
+            mucosal_immunity_heartbeat("mucosal_immu_loop",
+                             (float)(i + 1) / (float)system->site_count);
+        }
+
         if (system->sites[i].id == site_id) {
             return &system->sites[i];
         }
@@ -101,6 +107,12 @@ static mucosal_siga_t* find_siga(mucosal_system_t* system, uint32_t siga_id) {
     }
 
     for (size_t i = 0; i < system->siga_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->siga_count > 256) {
+            mucosal_immunity_heartbeat("mucosal_immu_loop",
+                             (float)(i + 1) / (float)system->siga_count);
+        }
+
         if (system->siga_antibodies[i].id == siga_id) {
             return &system->siga_antibodies[i];
         }
@@ -123,6 +135,12 @@ static mucosal_tolerance_t* find_tolerance(mucosal_system_t* system, uint32_t to
     }
 
     for (size_t i = 0; i < system->tolerance_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->tolerance_count > 256) {
+            mucosal_immunity_heartbeat("mucosal_immu_loop",
+                             (float)(i + 1) / (float)system->tolerance_count);
+        }
+
         if (system->tolerances[i].id == tolerance_id) {
             return &system->tolerances[i];
         }
@@ -151,6 +169,10 @@ int mucosal_default_config(mucosal_config_t* config) {
     if (!config) return -1;
 
     /* Set defaults */
+    /* Phase 8: Heartbeat at operation start */
+    mucosal_immunity_heartbeat("mucosal_immu_mucosal_default_conf", 0.0f);
+
+
     config->max_sites = MUCOSAL_MAX_SITES;
     config->max_siga_antibodies = MUCOSAL_MAX_SIGA_ANTIBODIES;
     config->max_tolerance_entries = MUCOSAL_MAX_TOLERANCE_ENTRIES;
@@ -192,6 +214,10 @@ mucosal_system_t* mucosal_create(
     }
 
     /* Allocate system */
+    /* Phase 8: Heartbeat at operation start */
+    mucosal_immunity_heartbeat("mucosal_immu_mucosal_create", 0.0f);
+
+
     mucosal_system_t* system = (mucosal_system_t*)nimcp_malloc(sizeof(mucosal_system_t));
     if (!system) {
 
@@ -250,6 +276,10 @@ void mucosal_destroy(mucosal_system_t* system) {
     if (!system) return;
 
     /* Free pools */
+    /* Phase 8: Heartbeat at operation start */
+    mucosal_immunity_heartbeat("mucosal_immu_mucosal_destroy", 0.0f);
+
+
     if (system->sites) nimcp_free(system->sites);
     if (system->siga_antibodies) nimcp_free(system->siga_antibodies);
     if (system->tolerances) nimcp_free(system->tolerances);
@@ -264,6 +294,10 @@ int mucosal_start(mucosal_system_t* system) {
     /* Guard clause */
     if (!system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mucosal_immunity_heartbeat("mucosal_immu_mucosal_start", 0.0f);
+
+
     system->running = true;
     system->start_time = get_current_time_ms();
 
@@ -274,6 +308,10 @@ int mucosal_start(mucosal_system_t* system) {
 int mucosal_stop(mucosal_system_t* system) {
     /* Guard clause */
     if (!system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mucosal_immunity_heartbeat("mucosal_immu_mucosal_stop", 0.0f);
+
 
     system->running = false;
 
@@ -296,6 +334,10 @@ int mucosal_register_boundary(
     if (system->site_count >= system->site_capacity) return -1;
 
     /* Create site */
+    /* Phase 8: Heartbeat at operation start */
+    mucosal_immunity_heartbeat("mucosal_immu_mucosal_register_bou", 0.0f);
+
+
     mucosal_site_t* site = &system->sites[system->site_count++];
     site->id = system->next_site_id++;
     site->site_type = site_type;
@@ -329,6 +371,10 @@ int mucosal_unregister_boundary(
     /* Guard clause */
     if (!system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mucosal_immunity_heartbeat("mucosal_immu_mucosal_unregister_b", 0.0f);
+
+
     mucosal_site_t* site = find_site(system, site_id);
     if (!site) return -1;
 
@@ -354,6 +400,10 @@ int mucosal_sample_antigen(
     if (!system || !data || !sample_id) return -1;
     if (data_len == 0 || data_len > MUCOSAL_EPITOPE_SIZE) return -1;
     if (system->m_cell_sample_count >= system->m_cell_sample_capacity) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mucosal_immunity_heartbeat("mucosal_immu_mucosal_sample_antig", 0.0f);
+
 
     mucosal_site_t* site = find_site(system, site_id);
     if (!site || !site->active) return -1;
@@ -388,8 +438,18 @@ int mucosal_process_m_cell_sample(
     if (!system) return -1;
 
     /* Find sample */
+    /* Phase 8: Heartbeat at operation start */
+    mucosal_immunity_heartbeat("mucosal_immu_mucosal_process_m_ce", 0.0f);
+
+
     m_cell_sample_t* sample = NULL;
     for (size_t i = 0; i < system->m_cell_sample_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->m_cell_sample_count > 256) {
+            mucosal_immunity_heartbeat("mucosal_immu_loop",
+                             (float)(i + 1) / (float)system->m_cell_sample_count);
+        }
+
         if (system->m_cell_samples[i].id == sample_id) {
             sample = &system->m_cell_samples[i];
             break;
@@ -469,6 +529,10 @@ int mucosal_produce_siga(
     if (!system || !siga_id) return -1;
     if (system->siga_count >= system->siga_capacity) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mucosal_immunity_heartbeat("mucosal_immu_mucosal_produce_siga", 0.0f);
+
+
     mucosal_site_t* site = find_site(system, site_id);
     if (!site || !site->active) return -1;
 
@@ -515,6 +579,10 @@ int mucosal_neutralize_with_siga(
     /* Guard clause */
     if (!system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mucosal_immunity_heartbeat("mucosal_immu_mucosal_neutralize_w", 0.0f);
+
+
     mucosal_siga_t* siga = find_siga(system, siga_id);
     if (!siga || siga->state != MUCOSAL_SIGA_ACTIVE) return -1;
 
@@ -551,11 +619,21 @@ int mucosal_induce_oral_tolerance(
     if (antigen_len == 0 || antigen_len > MUCOSAL_EPITOPE_SIZE) return -1;
     if (system->tolerance_count >= system->tolerance_capacity) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mucosal_immunity_heartbeat("mucosal_immu_mucosal_induce_oral_", 0.0f);
+
+
     mucosal_site_t* site = find_site(system, site_id);
     if (!site || !site->active) return -1;
 
     /* Check for existing tolerance entry */
     for (size_t i = 0; i < system->tolerance_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->tolerance_count > 256) {
+            mucosal_immunity_heartbeat("mucosal_immu_loop",
+                             (float)(i + 1) / (float)system->tolerance_count);
+        }
+
         mucosal_tolerance_t* existing = &system->tolerances[i];
         if (existing->site_id == site_id &&
             existing->epitope_len == antigen_len &&
@@ -611,7 +689,17 @@ int mucosal_check_tolerance(
     if (antigen_len == 0 || antigen_len > MUCOSAL_EPITOPE_SIZE) return -1;
 
     /* Search tolerance entries */
+    /* Phase 8: Heartbeat at operation start */
+    mucosal_immunity_heartbeat("mucosal_immu_mucosal_check_tolera", 0.0f);
+
+
     for (size_t i = 0; i < system->tolerance_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->tolerance_count > 256) {
+            mucosal_immunity_heartbeat("mucosal_immu_loop",
+                             (float)(i + 1) / (float)system->tolerance_count);
+        }
+
         mucosal_tolerance_t* tolerance = &system->tolerances[i];
 
         /* Skip broken tolerances */
@@ -642,6 +730,10 @@ int mucosal_break_tolerance(
     /* Guard clause */
     if (!system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mucosal_immunity_heartbeat("mucosal_immu_mucosal_break_tolera", 0.0f);
+
+
     mucosal_tolerance_t* tolerance = find_tolerance(system, tolerance_id);
     if (!tolerance) return -1;
 
@@ -664,6 +756,10 @@ int mucosal_get_barrier_integrity(
     /* Guard clauses */
     if (!system || !integrity_out) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mucosal_immunity_heartbeat("mucosal_immu_mucosal_get_barrier_", 0.0f);
+
+
     mucosal_site_t* site = find_site(system, site_id);
     if (!site) return -1;
 
@@ -679,6 +775,10 @@ int mucosal_set_tolerance_threshold(
     /* Guard clauses */
     if (!system) return -1;
     if (threshold < 0.0f || threshold > 1.0f) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mucosal_immunity_heartbeat("mucosal_immu_mucosal_set_toleranc", 0.0f);
+
 
     mucosal_site_t* site = find_site(system, site_id);
     if (!site) return -1;
@@ -696,6 +796,10 @@ int mucosal_update_barrier_integrity(
 ) {
     /* Guard clause */
     if (!system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mucosal_immunity_heartbeat("mucosal_immu_mucosal_update_barri", 0.0f);
+
 
     mucosal_site_t* site = find_site(system, site_id);
     if (!site) return -1;
@@ -732,10 +836,20 @@ int mucosal_update(
     /* Guard clause */
     if (!system || !system->running) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mucosal_immunity_heartbeat("mucosal_immu_mucosal_update", 0.0f);
+
+
     uint64_t current_time = get_current_time_ms();
 
     /* Process M cell samples */
     for (size_t i = 0; i < system->m_cell_sample_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->m_cell_sample_count > 256) {
+            mucosal_immunity_heartbeat("mucosal_immu_loop",
+                             (float)(i + 1) / (float)system->m_cell_sample_count);
+        }
+
         m_cell_sample_t* sample = &system->m_cell_samples[i];
 
         if (sample->state == M_CELL_SAMPLING) {
@@ -754,6 +868,12 @@ int mucosal_update(
 
     /* Decay sIgA antibodies */
     for (size_t i = 0; i < system->siga_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->siga_count > 256) {
+            mucosal_immunity_heartbeat("mucosal_immu_loop",
+                             (float)(i + 1) / (float)system->siga_count);
+        }
+
         mucosal_siga_t* siga = &system->siga_antibodies[i];
 
         if (siga->state == MUCOSAL_SIGA_ACTIVE) {
@@ -775,6 +895,12 @@ int mucosal_update(
     uint32_t active_sites = 0;
 
     for (size_t i = 0; i < system->site_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->site_count > 256) {
+            mucosal_immunity_heartbeat("mucosal_immu_loop",
+                             (float)(i + 1) / (float)system->site_count);
+        }
+
         if (system->sites[i].active) {
             total_integrity += system->sites[i].barrier_integrity;
             active_sites++;
@@ -796,6 +922,10 @@ int mucosal_get_stats(
     if (!system || !stats) return -1;
 
     *stats = system->stats;
+    /* Phase 8: Heartbeat at operation start */
+    mucosal_immunity_heartbeat("mucosal_immu_mucosal_get_stats", 0.0f);
+
+
     return 0;
 }
 
@@ -811,6 +941,10 @@ const mucosal_site_t* mucosal_get_site(
         return NULL;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mucosal_immunity_heartbeat("mucosal_immu_mucosal_get_site", 0.0f);
+
 
     return find_site(system, site_id);
 }
@@ -873,9 +1007,19 @@ const char* mucosal_m_cell_state_to_string(m_cell_state_t state) {
  */
 int mucosal_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    mucosal_immunity_heartbeat("mucosal_immu_mucosal_query_self_k", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Mucosal_Immunity");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                mucosal_immunity_heartbeat("mucosal_immu_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Mucosal immunity self-knowledge: %s", self->observations[i]);
         }
     }

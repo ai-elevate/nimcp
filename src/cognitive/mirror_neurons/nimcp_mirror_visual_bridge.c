@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_mirror_visual_bridge_health_agent = NULL;
  * @brief Set health agent for mirror_visual_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_visual_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_visual_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_visual_bridge_health_agent = agent;
 }
 
@@ -304,6 +304,10 @@ int mirror_visual_bridge_default_config(mirror_visual_config_t* config) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_visual_bridge_heartbeat("mirror_visua_default_config", 0.0f);
+
+
     memset(config, 0, sizeof(mirror_visual_config_t));
 
     /* Agent detection */
@@ -341,6 +345,10 @@ int mirror_visual_bridge_default_config(mirror_visual_config_t* config) {
 mirror_visual_bridge_t* mirror_visual_bridge_create(
     const mirror_visual_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_visual_bridge_heartbeat("mirror_visua_create", 0.0f);
+
+
     mirror_visual_bridge_t* bridge = nimcp_calloc(1, sizeof(mirror_visual_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate mirror-visual bridge");
@@ -385,6 +393,10 @@ mirror_visual_bridge_t* mirror_visual_bridge_create(
 void mirror_visual_bridge_destroy(mirror_visual_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_visual_bridge_heartbeat("mirror_visua_destroy", 0.0f);
+
+
     NIMCP_LOGGING_DEBUG("Destroying mirror-visual bridge");
 
     /* Free visual features buffer */
@@ -408,6 +420,10 @@ int mirror_visual_bridge_reset(mirror_visual_bridge_t* bridge) {
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_visual_bridge_heartbeat("mirror_visua_reset", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -448,6 +464,10 @@ int mirror_visual_bridge_connect_mirror_neurons(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_visual_bridge_heartbeat("mirror_visua_connect_mirror_neuro", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->mirror_neurons = mirror_neurons;
     bridge->base.system_a = mirror_neurons;
@@ -478,6 +498,10 @@ int mirror_visual_bridge_connect_visual_cortex(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_visual_bridge_heartbeat("mirror_visua_connect_visual_corte", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->visual_cortex = visual_cortex;
     bridge->base.system_b = visual_cortex;
@@ -491,6 +515,10 @@ int mirror_visual_bridge_connect_visual_cortex(
 
 bool mirror_visual_bridge_is_connected(const mirror_visual_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_visual_bridge_heartbeat("mirror_visua_is_connected", 0.0f);
+
+
     return bridge->base.bridge_active;
 }
 
@@ -505,6 +533,10 @@ int mirror_visual_process_agent_detection(
     agent_detection_t* detection
 ) {
     if (!bridge || !features || !detection) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_visual_bridge_heartbeat("mirror_visua_mirror_visual_proces", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -548,6 +580,10 @@ int mirror_visual_process_bio_motion(
 ) {
     if (!bridge || !motion_vectors || !analysis) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_visual_bridge_heartbeat("mirror_visua_mirror_visual_proces", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Analyze biological motion */
@@ -586,6 +622,10 @@ int mirror_visual_process_face(
 ) {
     if (!bridge || !features || !face) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_visual_bridge_heartbeat("mirror_visua_mirror_visual_proces", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Extract face features */
@@ -623,6 +663,10 @@ int mirror_visual_trigger_observation_mode(
 ) {
     if (!bridge || !detection) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_visual_bridge_heartbeat("mirror_visua_mirror_visual_trigge", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Only trigger if agent detected with sufficient confidence */
@@ -654,6 +698,10 @@ int mirror_visual_get_social_salience(
 ) {
     if (!bridge || !salience) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_visual_bridge_heartbeat("mirror_visua_mirror_visual_get_so", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     compute_social_salience_unlocked(bridge, salience);
     bridge->state.current_salience = *salience;
@@ -667,6 +715,10 @@ int mirror_visual_apply_attention_modulation(
     const social_salience_t* salience
 ) {
     if (!bridge || !salience) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_visual_bridge_heartbeat("mirror_visua_mirror_visual_apply_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -703,6 +755,10 @@ int mirror_visual_apply_action_prediction(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_visual_bridge_heartbeat("mirror_visua_mirror_visual_apply_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Apply motion priming based on predicted action */
@@ -728,6 +784,10 @@ int mirror_visual_boost_face_attention(
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_visual_bridge_heartbeat("mirror_visua_mirror_visual_boost_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -765,6 +825,10 @@ int mirror_visual_update_sts(mirror_visual_bridge_t* bridge) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_visual_bridge_heartbeat("mirror_visua_mirror_visual_update", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     update_sts_state_unlocked(bridge);
 
@@ -783,6 +847,10 @@ int mirror_visual_get_sts_state(
     sts_state_t* sts_state
 ) {
     if (!bridge || !sts_state) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_visual_bridge_heartbeat("mirror_visua_mirror_visual_get_st", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     *sts_state = bridge->effects.sts_state;
@@ -806,6 +874,10 @@ int mirror_visual_bridge_update(
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    mirror_visual_bridge_heartbeat("mirror_visua_update", 0.0f);
+
+
     (void)delta_ms;  /* Used for time-dependent effects */
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -903,6 +975,10 @@ int mirror_visual_bridge_get_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_visual_bridge_heartbeat("mirror_visua_get_state", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -916,6 +992,10 @@ int mirror_visual_bridge_get_effects(
 ) {
     if (!bridge || !effects) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_visual_bridge_heartbeat("mirror_visua_get_effects", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -928,6 +1008,10 @@ int mirror_visual_bridge_get_stats(
     mirror_visual_stats_t* stats
 ) {
     if (!bridge || !stats) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_visual_bridge_heartbeat("mirror_visua_get_stats", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -948,6 +1032,10 @@ int mirror_visual_bridge_connect_bio_async(mirror_visual_bridge_t* bridge) {
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    mirror_visual_bridge_heartbeat("mirror_visua_connect_bio_async", 0.0f);
+
+
     return bridge_base_connect_bio_async(&bridge->base);
 }
 
@@ -959,6 +1047,10 @@ int mirror_visual_bridge_disconnect_bio_async(mirror_visual_bridge_t* bridge) {
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    mirror_visual_bridge_heartbeat("mirror_visua_disconnect_bio_async", 0.0f);
+
+
     return bridge_base_disconnect_bio_async(&bridge->base);
 }
 
@@ -966,6 +1058,10 @@ bool mirror_visual_bridge_is_bio_async_connected(
     const mirror_visual_bridge_t* bridge
 ) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_visual_bridge_heartbeat("mirror_visua_is_bio_async_connect", 0.0f);
+
+
     return bridge_base_is_bio_async_connected(&bridge->base);
 }
 
@@ -978,6 +1074,10 @@ int mirror_visual_broadcast_agent_detection(
     if (!bridge->base.bio_async_enabled) return 0;
 
     /* In full implementation, would broadcast via bio_router_send */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_visual_bridge_heartbeat("mirror_visua_mirror_visual_broadc", 0.0f);
+
+
     NIMCP_LOGGING_DEBUG("Broadcasting agent detection: detected=%d, conf=%.2f",
                         detection->agent_detected, detection->confidence);
 
@@ -993,6 +1093,10 @@ int mirror_visual_broadcast_social_salience(
     if (!bridge->base.bio_async_enabled) return 0;
 
     /* In full implementation, would broadcast via bio_router_send */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_visual_bridge_heartbeat("mirror_visua_mirror_visual_broadc", 0.0f);
+
+
     NIMCP_LOGGING_DEBUG("Broadcasting social salience: level=%.2f, boost=%.2f",
                         salience->overall_salience, salience->attention_boost_factor);
 

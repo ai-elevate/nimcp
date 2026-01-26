@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_gt_repeated_health_agent = NULL;
  * @brief Set health agent for gt_repeated heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void gt_repeated_set_health_agent(nimcp_health_agent_t* agent) {
+void gt_repeated_set_health_agent(nimcp_health_agent_t* agent) {
     g_gt_repeated_health_agent = agent;
 }
 
@@ -303,8 +303,20 @@ static void ensure_minmax_computed(struct nimcp_repeated_game_struct* ctx) {
         // Player 0: max over own actions of min over opponent actions
         float minmax0 = -FLT_MAX;
         for (uint32_t a0 = 0; a0 < n1; a0++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((a0 & 0xFF) == 0 && n1 > 256) {
+                gt_repeated_heartbeat("gt_repeated_loop",
+                                 (float)(a0 + 1) / (float)n1);
+            }
+
             float min_payoff = FLT_MAX;
             for (uint32_t a1 = 0; a1 < n2; a1++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((a1 & 0xFF) == 0 && n2 > 256) {
+                    gt_repeated_heartbeat("gt_repeated_loop",
+                                     (float)(a1 + 1) / (float)n2);
+                }
+
                 uint32_t actions[2] = {a0, a1};
                 float p = get_stage_payoff(&ctx->stage_game, actions, 0);
                 if (p < min_payoff) min_payoff = p;
@@ -316,8 +328,20 @@ static void ensure_minmax_computed(struct nimcp_repeated_game_struct* ctx) {
         // Player 1: max over own actions of min over opponent actions
         float minmax1 = -FLT_MAX;
         for (uint32_t a1 = 0; a1 < n2; a1++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((a1 & 0xFF) == 0 && n2 > 256) {
+                gt_repeated_heartbeat("gt_repeated_loop",
+                                 (float)(a1 + 1) / (float)n2);
+            }
+
             float min_payoff = FLT_MAX;
             for (uint32_t a0 = 0; a0 < n1; a0++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((a0 & 0xFF) == 0 && n1 > 256) {
+                    gt_repeated_heartbeat("gt_repeated_loop",
+                                     (float)(a0 + 1) / (float)n1);
+                }
+
                 uint32_t actions[2] = {a0, a1};
                 float p = get_stage_payoff(&ctx->stage_game, actions, 1);
                 if (p < min_payoff) min_payoff = p;
@@ -335,6 +359,10 @@ static void ensure_minmax_computed(struct nimcp_repeated_game_struct* ctx) {
 //=============================================================================
 
 nimcp_repeated_config_t nimcp_repeated_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_repeated_heartbeat("gt_repeated_repeated_default_con", 0.0f);
+
+
     nimcp_repeated_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -361,6 +389,9 @@ nimcp_repeated_game_t nimcp_repeated_create(
         num_players > NIMCP_GT_MAX_PLAYERS) {
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_repeated_heartbeat("gt_repeated_repeated_create", 0.0f);
 
     nimcp_repeated_game_t ctx = nimcp_calloc(1, sizeof(struct nimcp_repeated_game_struct));
     if (!ctx) {
@@ -398,6 +429,12 @@ nimcp_repeated_game_t nimcp_repeated_create(
     ctx->stage_game.num_players = num_players;
     size_t matrix_size = 1;
     for (uint32_t i = 0; i < num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_players > 256) {
+            gt_repeated_heartbeat("gt_repeated_loop",
+                             (float)(i + 1) / (float)num_players);
+        }
+
         ctx->stage_game.num_actions[i] = num_actions[i];
         matrix_size *= num_actions[i];
     }
@@ -414,6 +451,12 @@ nimcp_repeated_game_t nimcp_repeated_create(
 
     // Initialize player states with default strategies
     for (uint32_t i = 0; i < num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_players > 256) {
+            gt_repeated_heartbeat("gt_repeated_loop",
+                             (float)(i + 1) / (float)num_players);
+        }
+
         ctx->player_states[i].strategy.type = NIMCP_STRATEGY_TIT_FOR_TAT;
         ctx->player_states[i].strategy.forgiveness_prob = 0.1f;
         ctx->player_states[i].strategy.exploration_rate = 0.0f;
@@ -439,6 +482,10 @@ nimcp_repeated_game_t nimcp_repeated_create(
 void nimcp_repeated_destroy(nimcp_repeated_game_t ctx) {
     if (!ctx) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_repeated_heartbeat("gt_repeated_repeated_destroy", 0.0f);
+
+
     nimcp_platform_mutex_destroy(&ctx->mutex);
     nimcp_free(ctx->stage_game.payoff_matrix);
     nimcp_free(ctx->history);
@@ -456,6 +503,10 @@ nimcp_error_t nimcp_repeated_set_discount(
     if (!ctx) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+    /* Phase 8: Heartbeat at operation start */
+    gt_repeated_heartbeat("gt_repeated_repeated_set_discoun", 0.0f);
+
+
     if (discount_factor <= 0.0f || discount_factor > 1.0f) {
         return NIMCP_GT_ERROR_INVALID_PARAMETER;
     }
@@ -475,6 +526,10 @@ nimcp_error_t nimcp_repeated_set_strategy(
     if (!ctx || !strategy) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+    /* Phase 8: Heartbeat at operation start */
+    gt_repeated_heartbeat("gt_repeated_repeated_set_strateg", 0.0f);
+
+
     if (player >= ctx->config.num_players) {
         return NIMCP_GT_ERROR_INVALID_PARAMETER;
     }
@@ -502,10 +557,20 @@ nimcp_error_t nimcp_repeated_play_round(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_repeated_heartbeat("gt_repeated_repeated_play_round", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
 
     // Validate actions
     for (uint32_t i = 0; i < ctx->config.num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->config.num_players > 256) {
+            gt_repeated_heartbeat("gt_repeated_loop",
+                             (float)(i + 1) / (float)ctx->config.num_players);
+        }
+
         if (actions[i] >= ctx->stage_game.num_actions[i]) {
             nimcp_platform_mutex_unlock(&ctx->mutex);
             return NIMCP_GT_ERROR_INVALID_PARAMETER;
@@ -515,12 +580,24 @@ nimcp_error_t nimcp_repeated_play_round(
     // Compute payoffs
     float payoffs[NIMCP_GT_MAX_PLAYERS];
     for (uint32_t i = 0; i < ctx->config.num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->config.num_players > 256) {
+            gt_repeated_heartbeat("gt_repeated_loop",
+                             (float)(i + 1) / (float)ctx->config.num_players);
+        }
+
         payoffs[i] = get_stage_payoff(&ctx->stage_game, actions, i);
     }
 
     // Record in history (circular buffer)
     nimcp_round_record_t* record = &ctx->history[ctx->history_head];
     for (uint32_t i = 0; i < ctx->config.num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->config.num_players > 256) {
+            gt_repeated_heartbeat("gt_repeated_loop",
+                             (float)(i + 1) / (float)ctx->config.num_players);
+        }
+
         record->actions[i] = actions[i];
         record->payoffs[i] = payoffs[i];
     }
@@ -534,6 +611,12 @@ nimcp_error_t nimcp_repeated_play_round(
     // Update statistics
     float discount_power = powf(ctx->config.discount_factor, (float)ctx->rounds_played);
     for (uint32_t i = 0; i < ctx->config.num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->config.num_players > 256) {
+            gt_repeated_heartbeat("gt_repeated_loop",
+                             (float)(i + 1) / (float)ctx->config.num_players);
+        }
+
         ctx->total_payoffs[i] += payoffs[i];
         ctx->discounted_sum[i] += discount_power * payoffs[i];
     }
@@ -546,6 +629,12 @@ nimcp_error_t nimcp_repeated_play_round(
 
     // Update player states
     for (uint32_t i = 0; i < ctx->config.num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->config.num_players > 256) {
+            gt_repeated_heartbeat("gt_repeated_loop",
+                             (float)(i + 1) / (float)ctx->config.num_players);
+        }
+
         update_player_state(ctx, i, actions, payoffs);
     }
 
@@ -554,6 +643,12 @@ nimcp_error_t nimcp_repeated_play_round(
     // Copy payoffs out if requested
     if (payoffs_out) {
         for (uint32_t i = 0; i < ctx->config.num_players; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && ctx->config.num_players > 256) {
+                gt_repeated_heartbeat("gt_repeated_loop",
+                                 (float)(i + 1) / (float)ctx->config.num_players);
+            }
+
             payoffs_out[i] = payoffs[i];
         }
     }
@@ -569,6 +664,10 @@ nimcp_error_t nimcp_repeated_get_history(
     if (!ctx || !history_out) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_repeated_heartbeat("gt_repeated_repeated_get_history", 0.0f);
+
 
     nimcp_platform_mutex_lock(&ctx->mutex);
 
@@ -588,6 +687,10 @@ float nimcp_repeated_compute_avg_payoff(
     if (!ctx || player >= ctx->config.num_players) {
         return NAN;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_repeated_heartbeat("gt_repeated_repeated_compute_avg", 0.0f);
+
 
     nimcp_platform_mutex_lock(&ctx->mutex);
 
@@ -609,6 +712,10 @@ float nimcp_repeated_compute_discounted_payoff(
     if (!ctx || player >= ctx->config.num_players) {
         return NAN;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_repeated_heartbeat("gt_repeated_repeated_compute_dis", 0.0f);
+
 
     nimcp_platform_mutex_lock(&ctx->mutex);
 
@@ -642,10 +749,20 @@ bool nimcp_repeated_is_sustainable(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_repeated_heartbeat("gt_repeated_repeated_is_sustaina", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
 
     // Check individual rationality: each player gets at least minmax
     for (uint32_t i = 0; i < ctx->config.num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->config.num_players > 256) {
+            gt_repeated_heartbeat("gt_repeated_loop",
+                             (float)(i + 1) / (float)ctx->config.num_players);
+        }
+
         if (target_payoffs[i] < ctx->minmax_payoffs[i]) {
             nimcp_platform_mutex_unlock(&ctx->mutex);
             return false;
@@ -659,6 +776,12 @@ bool nimcp_repeated_is_sustainable(
     // Find best single-stage payoff for each player
     float max_payoffs[NIMCP_GT_MAX_PLAYERS];
     for (uint32_t i = 0; i < ctx->config.num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->config.num_players > 256) {
+            gt_repeated_heartbeat("gt_repeated_loop",
+                             (float)(i + 1) / (float)ctx->config.num_players);
+        }
+
         max_payoffs[i] = -FLT_MAX;
     }
 
@@ -667,9 +790,27 @@ bool nimcp_repeated_is_sustainable(
         uint32_t n2 = ctx->stage_game.num_actions[1];
 
         for (uint32_t a0 = 0; a0 < n1; a0++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((a0 & 0xFF) == 0 && n1 > 256) {
+                gt_repeated_heartbeat("gt_repeated_loop",
+                                 (float)(a0 + 1) / (float)n1);
+            }
+
             for (uint32_t a1 = 0; a1 < n2; a1++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((a1 & 0xFF) == 0 && n2 > 256) {
+                    gt_repeated_heartbeat("gt_repeated_loop",
+                                     (float)(a1 + 1) / (float)n2);
+                }
+
                 uint32_t actions[2] = {a0, a1};
                 for (uint32_t i = 0; i < 2; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && 2 > 256) {
+                        gt_repeated_heartbeat("gt_repeated_loop",
+                                         (float)(i + 1) / (float)2);
+                    }
+
                     float p = get_stage_payoff(&ctx->stage_game, actions, i);
                     if (p > max_payoffs[i]) max_payoffs[i] = p;
                 }
@@ -679,6 +820,12 @@ bool nimcp_repeated_is_sustainable(
 
     // Target should not exceed max achievable
     for (uint32_t i = 0; i < ctx->config.num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->config.num_players > 256) {
+            gt_repeated_heartbeat("gt_repeated_loop",
+                             (float)(i + 1) / (float)ctx->config.num_players);
+        }
+
         if (target_payoffs[i] > max_payoffs[i]) {
             nimcp_platform_mutex_unlock(&ctx->mutex);
             return false;
@@ -690,6 +837,12 @@ bool nimcp_repeated_is_sustainable(
     // This is a simplified check
     float delta = ctx->config.discount_factor;
     for (uint32_t i = 0; i < ctx->config.num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->config.num_players > 256) {
+            gt_repeated_heartbeat("gt_repeated_loop",
+                             (float)(i + 1) / (float)ctx->config.num_players);
+        }
+
         float deviation_gain = max_payoffs[i] - target_payoffs[i];
         float punishment = target_payoffs[i] - ctx->minmax_payoffs[i];
 
@@ -720,6 +873,10 @@ nimcp_error_t nimcp_repeated_feasibility_set(
     if (!ctx || !vertices || !num_vertices) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_repeated_heartbeat("gt_repeated_repeated_feasibility", 0.0f);
+
 
     nimcp_platform_mutex_lock(&ctx->mutex);
 
@@ -756,6 +913,10 @@ float nimcp_repeated_minmax_payoff(
         return NAN;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_repeated_heartbeat("gt_repeated_repeated_minmax_payo", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
     float result = ctx->minmax_payoffs[player];
     nimcp_platform_mutex_unlock(&ctx->mutex);
@@ -771,11 +932,21 @@ float nimcp_repeated_critical_discount(
         return 1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_repeated_heartbeat("gt_repeated_repeated_critical_di", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
 
     // Find max achievable payoffs
     float max_payoffs[NIMCP_GT_MAX_PLAYERS];
     for (uint32_t i = 0; i < ctx->config.num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->config.num_players > 256) {
+            gt_repeated_heartbeat("gt_repeated_loop",
+                             (float)(i + 1) / (float)ctx->config.num_players);
+        }
+
         max_payoffs[i] = -FLT_MAX;
     }
 
@@ -784,9 +955,27 @@ float nimcp_repeated_critical_discount(
         uint32_t n2 = ctx->stage_game.num_actions[1];
 
         for (uint32_t a0 = 0; a0 < n1; a0++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((a0 & 0xFF) == 0 && n1 > 256) {
+                gt_repeated_heartbeat("gt_repeated_loop",
+                                 (float)(a0 + 1) / (float)n1);
+            }
+
             for (uint32_t a1 = 0; a1 < n2; a1++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((a1 & 0xFF) == 0 && n2 > 256) {
+                    gt_repeated_heartbeat("gt_repeated_loop",
+                                     (float)(a1 + 1) / (float)n2);
+                }
+
                 uint32_t actions[2] = {a0, a1};
                 for (uint32_t i = 0; i < 2; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && 2 > 256) {
+                        gt_repeated_heartbeat("gt_repeated_loop",
+                                         (float)(i + 1) / (float)2);
+                    }
+
                     float p = get_stage_payoff(&ctx->stage_game, actions, i);
                     if (p > max_payoffs[i]) max_payoffs[i] = p;
                 }
@@ -798,6 +987,12 @@ float nimcp_repeated_critical_discount(
     float max_critical = 0.0f;
 
     for (uint32_t i = 0; i < ctx->config.num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->config.num_players > 256) {
+            gt_repeated_heartbeat("gt_repeated_loop",
+                             (float)(i + 1) / (float)ctx->config.num_players);
+        }
+
         float deviation_gain = max_payoffs[i] - target_payoffs[i];
         float punishment = target_payoffs[i] - ctx->minmax_payoffs[i];
 
@@ -831,6 +1026,10 @@ uint32_t nimcp_repeated_get_strategy_action(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_repeated_heartbeat("gt_repeated_repeated_get_strateg", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
 
     uint32_t action;
@@ -863,6 +1062,10 @@ bool nimcp_repeated_trigger_activated(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_repeated_heartbeat("gt_repeated_repeated_trigger_act", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
     bool activated = ctx->player_states[player].trigger_activated;
     nimcp_platform_mutex_unlock(&ctx->mutex);
@@ -877,6 +1080,10 @@ int32_t nimcp_repeated_trigger_threshold(
     if (!ctx || player >= ctx->config.num_players) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_repeated_heartbeat("gt_repeated_repeated_trigger_thr", 0.0f);
+
 
     nimcp_platform_mutex_lock(&ctx->mutex);
     int32_t round = ctx->player_states[player].trigger_round;
@@ -898,6 +1105,10 @@ nimcp_error_t nimcp_repeated_simulate(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_repeated_heartbeat("gt_repeated_repeated_simulate", 0.0f);
+
+
     memset(result, 0, sizeof(nimcp_repeated_result_t));
 
     uint32_t actions[NIMCP_GT_MAX_PLAYERS];
@@ -906,8 +1117,20 @@ nimcp_error_t nimcp_repeated_simulate(
     uint32_t initial_rounds = ctx->rounds_played;
 
     for (uint32_t r = 0; r < num_rounds; r++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((r & 0xFF) == 0 && num_rounds > 256) {
+            gt_repeated_heartbeat("gt_repeated_loop",
+                             (float)(r + 1) / (float)num_rounds);
+        }
+
         // Get actions from strategies
         for (uint32_t p = 0; p < ctx->config.num_players; p++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((p & 0xFF) == 0 && ctx->config.num_players > 256) {
+                gt_repeated_heartbeat("gt_repeated_loop",
+                                 (float)(p + 1) / (float)ctx->config.num_players);
+            }
+
             actions[p] = nimcp_repeated_get_strategy_action(ctx, p);
         }
 
@@ -924,6 +1147,12 @@ nimcp_error_t nimcp_repeated_simulate(
     result->rounds_played = num_rounds;
 
     for (uint32_t i = 0; i < ctx->config.num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->config.num_players > 256) {
+            gt_repeated_heartbeat("gt_repeated_loop",
+                             (float)(i + 1) / (float)ctx->config.num_players);
+        }
+
         result->total_payoffs[i] = ctx->total_payoffs[i];
         result->avg_payoffs[i] = ctx->total_payoffs[i] / (float)ctx->rounds_played;
 
@@ -957,6 +1186,10 @@ nimcp_error_t nimcp_repeated_reset(nimcp_repeated_game_t ctx) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_repeated_heartbeat("gt_repeated_repeated_reset", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
 
     // Clear history
@@ -972,6 +1205,12 @@ nimcp_error_t nimcp_repeated_reset(nimcp_repeated_game_t ctx) {
 
     // Reset player states
     for (uint32_t i = 0; i < ctx->config.num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->config.num_players > 256) {
+            gt_repeated_heartbeat("gt_repeated_loop",
+                             (float)(i + 1) / (float)ctx->config.num_players);
+        }
+
         ctx->player_states[i].trigger_activated = false;
         ctx->player_states[i].trigger_round = -1;
         ctx->player_states[i].last_opponent_action = 0;
@@ -995,6 +1234,10 @@ nimcp_cooperation_level_t nimcp_repeated_detect_cooperation(
 
     // Note: caller may already hold lock, but we need thread safety
     // For internal use, assume lock is held; for external, lock is acquired
+    /* Phase 8: Heartbeat at operation start */
+    gt_repeated_heartbeat("gt_repeated_repeated_detect_coop", 0.0f);
+
+
     float rate = (float)ctx->mutual_cooperation_count / (float)ctx->rounds_played;
 
     if (rate >= 0.95f) {
@@ -1014,6 +1257,10 @@ float nimcp_repeated_cooperation_rate(const nimcp_repeated_game_t ctx) {
     if (!ctx || ctx->rounds_played == 0) {
         return 0.0f;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_repeated_heartbeat("gt_repeated_repeated_cooperation", 0.0f);
+
 
     nimcp_platform_mutex_lock(&ctx->mutex);
     float rate = (float)ctx->mutual_cooperation_count / (float)ctx->rounds_played;
@@ -1037,11 +1284,21 @@ bool nimcp_repeated_is_stable(
     // For internal call (from simulate), lock is already held
     // This is a simplified implementation
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_repeated_heartbeat("gt_repeated_repeated_is_stable", 0.0f);
+
+
     const nimcp_round_record_t* first = get_history_record(ctx, window_size - 1);
     if (!first) return false;
 
     uint32_t first_actions[NIMCP_GT_MAX_PLAYERS];
     for (uint32_t i = 0; i < ctx->config.num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->config.num_players > 256) {
+            gt_repeated_heartbeat("gt_repeated_loop",
+                             (float)(i + 1) / (float)ctx->config.num_players);
+        }
+
         first_actions[i] = first->actions[i];
     }
 
@@ -1051,6 +1308,12 @@ bool nimcp_repeated_is_stable(
         if (!rec) return false;
 
         for (uint32_t i = 0; i < ctx->config.num_players; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && ctx->config.num_players > 256) {
+                gt_repeated_heartbeat("gt_repeated_loop",
+                                 (float)(i + 1) / (float)ctx->config.num_players);
+            }
+
             if (rec->actions[i] != first_actions[i]) {
                 return false;
             }
@@ -1080,16 +1343,28 @@ const char* nimcp_repeated_coop_level_name(nimcp_cooperation_level_t level) {
 
 float nimcp_repeated_get_discount(const nimcp_repeated_game_t ctx) {
     if (!ctx) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    gt_repeated_heartbeat("gt_repeated_repeated_get_discoun", 0.0f);
+
+
     return ctx->config.discount_factor;
 }
 
 uint32_t nimcp_repeated_get_num_rounds(const nimcp_repeated_game_t ctx) {
     if (!ctx) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    gt_repeated_heartbeat("gt_repeated_repeated_get_num_rou", 0.0f);
+
+
     return ctx->rounds_played;
 }
 
 uint32_t nimcp_repeated_get_num_players(const nimcp_repeated_game_t ctx) {
     if (!ctx) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    gt_repeated_heartbeat("gt_repeated_repeated_get_num_pla", 0.0f);
+
+
     return ctx->config.num_players;
 }
 
@@ -1100,6 +1375,10 @@ nimcp_repeated_strategy_type_t nimcp_repeated_get_strategy_type(
     if (!ctx || player >= ctx->config.num_players) {
         return NIMCP_STRATEGY_TIT_FOR_TAT;  // Default
     }
+    /* Phase 8: Heartbeat at operation start */
+    gt_repeated_heartbeat("gt_repeated_repeated_get_strateg", 0.0f);
+
+
     return ctx->player_states[player].strategy.type;
 }
 
@@ -1114,9 +1393,19 @@ nimcp_repeated_strategy_type_t nimcp_repeated_get_strategy_type(
  */
 int gt_repeated_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    gt_repeated_heartbeat("gt_repeated_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "GT_Repeated");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                gt_repeated_heartbeat("gt_repeated_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* GT Repeated self-knowledge logged */
         }
     }

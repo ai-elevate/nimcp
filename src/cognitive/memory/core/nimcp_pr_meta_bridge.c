@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_pr_meta_bridge_health_agent = NULL;
  * @brief Set health agent for pr_meta_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void pr_meta_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void pr_meta_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_pr_meta_bridge_health_agent = agent;
 }
 
@@ -262,6 +262,10 @@ static float compute_task_similarity(
 //=============================================================================
 
 pr_meta_config_t pr_meta_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_config_defau", 0.0f);
+
+
     pr_meta_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -315,6 +319,10 @@ bool pr_meta_config_validate(const pr_meta_config_t* config) {
     if (config->inner_steps == 0) return false;
 
     /* Threshold validation */
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_config_valid", 0.0f);
+
+
     if (config->resonance_threshold < 0.0f || config->resonance_threshold > 1.0f) {
         return false;
     }
@@ -331,6 +339,12 @@ bool pr_meta_config_validate(const pr_meta_config_t* config) {
 
     /* Tier rate validation */
     for (int t = 0; t < PR_META_NUM_TIERS; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && PR_META_NUM_TIERS > 256) {
+            pr_meta_bridge_heartbeat("pr_meta_brid_loop",
+                             (float)(t + 1) / (float)PR_META_NUM_TIERS);
+        }
+
         if (config->tier_adaptation_rate[t] <= 0.0f) return false;
     }
 
@@ -347,6 +361,10 @@ bool pr_meta_config_validate(const pr_meta_config_t* config) {
 //=============================================================================
 
 pr_meta_bridge_t pr_meta_bridge_create(const pr_meta_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_create", 0.0f);
+
+
     pr_meta_bridge_t bridge = nimcp_calloc(1, sizeof(struct pr_meta_bridge_struct));
     if (!bridge) {
 
@@ -411,6 +429,12 @@ pr_meta_bridge_t pr_meta_bridge_create(const pr_meta_config_t* config) {
 
     /* Initialize tier tracking */
     for (int t = 0; t < PR_META_NUM_TIERS; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && PR_META_NUM_TIERS > 256) {
+            pr_meta_bridge_heartbeat("pr_meta_brid_loop",
+                             (float)(t + 1) / (float)PR_META_NUM_TIERS);
+        }
+
         bridge->tier_counts[t] = 0;
         bridge->tier_avg_success[t] = 0.5f;
     }
@@ -429,7 +453,17 @@ void pr_meta_bridge_destroy(pr_meta_bridge_t bridge) {
     if (!bridge) return;
 
     /* Free task memory entries */
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_destroy", 0.0f);
+
+
     for (uint32_t i = 0; i < bridge->task_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->task_count > 256) {
+            pr_meta_bridge_heartbeat("pr_meta_brid_loop",
+                             (float)(i + 1) / (float)bridge->task_count);
+        }
+
         if (bridge->task_memory[i].result.adapted_params) {
             nimcp_free(bridge->task_memory[i].result.adapted_params);
         }
@@ -449,10 +483,20 @@ void pr_meta_bridge_destroy(pr_meta_bridge_t bridge) {
 int pr_meta_bridge_reset(pr_meta_bridge_t bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_reset", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Free adapted parameters */
     for (uint32_t i = 0; i < bridge->task_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->task_count > 256) {
+            pr_meta_bridge_heartbeat("pr_meta_brid_loop",
+                             (float)(i + 1) / (float)bridge->task_count);
+        }
+
         if (bridge->task_memory[i].result.adapted_params) {
             nimcp_free(bridge->task_memory[i].result.adapted_params);
             bridge->task_memory[i].result.adapted_params = NULL;
@@ -473,6 +517,12 @@ int pr_meta_bridge_reset(pr_meta_bridge_t bridge) {
 
     /* Reset tier tracking */
     for (int t = 0; t < PR_META_NUM_TIERS; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && PR_META_NUM_TIERS > 256) {
+            pr_meta_bridge_heartbeat("pr_meta_brid_loop",
+                             (float)(t + 1) / (float)PR_META_NUM_TIERS);
+        }
+
         bridge->tier_counts[t] = 0;
         bridge->tier_avg_success[t] = 0.5f;
     }
@@ -497,6 +547,10 @@ int pr_meta_maml_inner_loop(
     pr_meta_result_t* result)
 {
     if (!bridge || !task || !result) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_maml_inner_l", 0.0f);
+
 
     uint64_t start_time_us = nimcp_time_get_us();
 
@@ -577,6 +631,12 @@ int pr_meta_maml_inner_loop(
         if (num_found > 0) {
             float avg_sim = 0.0f;
             for (uint32_t i = 0; i < num_found; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && num_found > 256) {
+                    pr_meta_bridge_heartbeat("pr_meta_brid_loop",
+                                     (float)(i + 1) / (float)num_found);
+                }
+
                 avg_sim += recalls[i].similarity;
             }
             avg_sim /= (float)num_found;
@@ -616,6 +676,12 @@ int pr_meta_maml_inner_loop(
     if (num_found > 0) {
         float avg_sim = 0.0f;
         for (uint32_t i = 0; i < num_found; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_found > 256) {
+                pr_meta_bridge_heartbeat("pr_meta_brid_loop",
+                                 (float)(i + 1) / (float)num_found);
+            }
+
             avg_sim += recalls[i].similarity;
         }
         avg_sim /= (float)num_found;
@@ -645,11 +711,21 @@ int pr_meta_maml_outer_step(
 {
     if (!bridge || !tasks || num_tasks == 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_maml_outer_s", 0.0f);
+
+
     float total_loss = 0.0f;
     uint32_t successful_tasks = 0;
 
     /* Process each task through inner loop */
     for (uint32_t i = 0; i < num_tasks; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_tasks > 256) {
+            pr_meta_bridge_heartbeat("pr_meta_brid_loop",
+                             (float)(i + 1) / (float)num_tasks);
+        }
+
         pr_meta_result_t result;
         int ret = pr_meta_maml_inner_loop(bridge, &tasks[i], forward_fn, model, &result);
         if (ret == 0) {
@@ -686,6 +762,10 @@ int pr_meta_memory_init(
     if (!bridge || !task || !base_params || !init_params) return -1;
     if (num_params == 0) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_memory_init", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Start with base parameters */
@@ -708,6 +788,12 @@ int pr_meta_memory_init(
 
     /* Initialize weighted sum with base parameters */
     for (uint32_t p = 0; p < num_params; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && num_params > 256) {
+            pr_meta_bridge_heartbeat("pr_meta_brid_loop",
+                             (float)(p + 1) / (float)num_params);
+        }
+
         weighted_sum[p] = base_params[p];
     }
 
@@ -723,6 +809,12 @@ int pr_meta_memory_init(
         /* Add weighted contribution */
         float weight = sim;
         for (uint32_t p = 0; p < num_params; p++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((p & 0xFF) == 0 && num_params > 256) {
+                pr_meta_bridge_heartbeat("pr_meta_brid_loop",
+                                 (float)(p + 1) / (float)num_params);
+            }
+
             weighted_sum[p] += weight * entry->result.adapted_params[p];
         }
         total_weight += weight;
@@ -732,6 +824,12 @@ int pr_meta_memory_init(
     /* Compute weighted average */
     if (total_weight > 0.0f) {
         for (uint32_t p = 0; p < num_params; p++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((p & 0xFF) == 0 && num_params > 256) {
+                pr_meta_bridge_heartbeat("pr_meta_brid_loop",
+                                 (float)(p + 1) / (float)num_params);
+            }
+
             init_params[p] = weighted_sum[p] / total_weight;
         }
     }
@@ -749,12 +847,22 @@ float pr_meta_memory_lr(
 {
     if (!bridge || !task) return base_lr;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_memory_lr", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float max_sim = 0.0f;
 
     /* Find maximum similarity to stored tasks */
     for (uint32_t i = 0; i < bridge->task_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->task_count > 256) {
+            pr_meta_bridge_heartbeat("pr_meta_brid_loop",
+                             (float)(i + 1) / (float)bridge->task_count);
+        }
+
         pr_meta_task_entry_t* entry = &bridge->task_memory[i];
         float sim = compute_task_similarity(bridge, task, &entry->task);
         if (sim > max_sim) {
@@ -779,6 +887,10 @@ float pr_meta_resonance_task_similarity(
     const pr_meta_task_t* task2)
 {
     if (!bridge || !task1 || !task2) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_resonance_ta", 0.0f);
+
+
     return compute_task_similarity(bridge, task1, task2);
 }
 
@@ -789,6 +901,10 @@ float pr_meta_signature_similarity(
     if (!task1 || !task2) return 0.0f;
     if (!task1->signature || !task2->signature) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_signature_si", 0.0f);
+
+
     float sim = resonance_jaccard(task1->signature, task2->signature);
     return sim >= 0.0f ? sim : 0.0f;
 }
@@ -798,6 +914,10 @@ float pr_meta_quaternion_similarity(
     const pr_meta_task_t* task2)
 {
     if (!task1 || !task2) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_quaternion_s", 0.0f);
+
+
     return resonance_quaternion_similarity(task1->quaternion, task2->quaternion);
 }
 
@@ -810,6 +930,10 @@ int pr_meta_task_embedding(
     if (!bridge || !task || !embedding || embed_dim == 0) return -1;
 
     /* Simple embedding from quaternion + signature hash */
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_task_embeddi", 0.0f);
+
+
     memset(embedding, 0, embed_dim * sizeof(float));
 
     /* First 4 dimensions from quaternion */
@@ -837,6 +961,12 @@ int pr_meta_task_embedding(
 
         /* Simple hash-based embedding from signature */
         for (uint32_t i = 0; i < remaining; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && remaining > 256) {
+                pr_meta_bridge_heartbeat("pr_meta_brid_loop",
+                                 (float)(i + 1) / (float)remaining);
+            }
+
             /* Use signature data to generate pseudo-random embedding */
             uint64_t hash = (task->task_id * 0x9E3779B97F4A7C15ULL + i) % 1000000;
             embedding[start + i] = (float)hash / 1000000.0f - 0.5f;
@@ -854,6 +984,10 @@ int pr_meta_recall_similar_tasks(
     uint32_t* num_found)
 {
     if (!bridge || !task || !recalls || !num_found) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_recall_simil", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -882,6 +1016,12 @@ int pr_meta_recall_similar_tasks(
 
     uint32_t valid_count = 0;
     for (uint32_t i = 0; i < bridge->task_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->task_count > 256) {
+            pr_meta_bridge_heartbeat("pr_meta_brid_loop",
+                             (float)(i + 1) / (float)bridge->task_count);
+        }
+
         pr_meta_task_entry_t* entry = &bridge->task_memory[i];
         if (entry->task.task_id == task->task_id) continue;
 
@@ -917,6 +1057,12 @@ int pr_meta_recall_similar_tasks(
     if (to_return > 0) {
         float avg_sim = 0.0f;
         for (uint32_t i = 0; i < to_return; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && to_return > 256) {
+                pr_meta_bridge_heartbeat("pr_meta_brid_loop",
+                                 (float)(i + 1) / (float)to_return);
+            }
+
             avg_sim += recalls[i].similarity;
         }
         avg_sim /= (float)to_return;
@@ -941,6 +1087,10 @@ int pr_meta_adapt_quaternion(
     nimcp_quaternion_t* adapted_quat)
 {
     if (!bridge || !task || !result || !adapted_quat) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_adapt_quater", 0.0f);
+
 
     float rate = bridge->config.quat_adaptation_rate;
 
@@ -999,6 +1149,10 @@ int pr_meta_task_to_quaternion(
     if (!bridge || !task || !quat) return -1;
 
     /* Default initialization based on tier */
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_task_to_quat", 0.0f);
+
+
     float tier_factor = 1.0f - (float)task->tier / (float)PR_META_NUM_TIERS;
 
     /* w: Consolidation - lower for newer tiers */
@@ -1020,6 +1174,12 @@ int pr_meta_task_to_quaternion(
     nimcp_quaternion_t most_similar_quat = *quat;
 
     for (uint32_t i = 0; i < bridge->task_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->task_count > 256) {
+            pr_meta_bridge_heartbeat("pr_meta_brid_loop",
+                             (float)(i + 1) / (float)bridge->task_count);
+        }
+
         pr_meta_task_entry_t* entry = &bridge->task_memory[i];
         float sim = compute_task_similarity(bridge, task, &entry->task);
         if (sim > max_sim) {
@@ -1060,6 +1220,10 @@ int pr_meta_quaternion_to_lr(
 {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_quaternion_t", 0.0f);
+
+
     float base_inner = bridge->config.inner_lr;
     float base_outer = bridge->config.outer_lr;
 
@@ -1099,6 +1263,10 @@ int pr_meta_blend_quaternions(
     /* Use quaternion blending function */
     *result = quat_blend_memories(quats, weights, count);
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_blend_quater", 0.0f);
+
+
     return 0;
 }
 
@@ -1116,6 +1284,10 @@ uint32_t pr_meta_transfer_entanglement(
     if (!bridge || !graph || !source_task || !target_task) return 0;
 
     /* Compute similarity */
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_transfer_ent", 0.0f);
+
+
     float sim = compute_task_similarity(bridge, source_task, target_task);
 
     if (transfer) {
@@ -1185,6 +1357,10 @@ uint32_t pr_meta_transfer_batch(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_transfer_bat", 0.0f);
+
+
     uint32_t total_transferred = 0;
     uint32_t edges_per_source = max_edges_total / num_sources;
     if (edges_per_source == 0) edges_per_source = 1;
@@ -1210,6 +1386,10 @@ float pr_meta_graph_similarity(
     if (!bridge || !graph || !task1 || !task2) return 0.0f;
 
     /* Get edges for both tasks */
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_graph_simila", 0.0f);
+
+
     entangle_edge_t edges1[256], edges2[256];
     size_t count1, count2;
 
@@ -1228,8 +1408,20 @@ float pr_meta_graph_similarity(
     uint32_t union_count = (uint32_t)count1;
 
     for (size_t i = 0; i < count2; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count2 > 256) {
+            pr_meta_bridge_heartbeat("pr_meta_brid_loop",
+                             (float)(i + 1) / (float)count2);
+        }
+
         bool found = false;
         for (size_t j = 0; j < count1; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && count1 > 256) {
+                pr_meta_bridge_heartbeat("pr_meta_brid_loop",
+                                 (float)(j + 1) / (float)count1);
+            }
+
             if (edges2[i].to_id == edges1[j].to_id) {
                 intersection++;
                 found = true;
@@ -1253,12 +1445,22 @@ uint32_t pr_meta_merge_entanglement(
 {
     if (!bridge || !graph || !tasks || num_tasks == 0) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_merge_entang", 0.0f);
+
+
     uint32_t total_edges = 0;
 
     /* Use equal weights if not provided */
     float equal_weight = 1.0f / (float)num_tasks;
 
     for (uint32_t t = 0; t < num_tasks; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && num_tasks > 256) {
+            pr_meta_bridge_heartbeat("pr_meta_brid_loop",
+                             (float)(t + 1) / (float)num_tasks);
+        }
+
         float task_weight = weights ? weights[t] : equal_weight;
 
         entangle_edge_t edges[256];
@@ -1268,6 +1470,12 @@ uint32_t pr_meta_merge_entanglement(
         }
 
         for (size_t i = 0; i < count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && count > 256) {
+                pr_meta_bridge_heartbeat("pr_meta_brid_loop",
+                                 (float)(i + 1) / (float)count);
+            }
+
             /* Scale edge weight by task weight */
             edges[i].weight *= task_weight;
 
@@ -1295,6 +1503,10 @@ float pr_meta_tier_adaptation_rate(
 {
     if (!bridge) return 1.0f;
     if (tier >= PR_META_NUM_TIERS) return 1.0f;
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_tier_adaptat", 0.0f);
+
+
     return bridge->config.tier_adaptation_rate[tier];
 }
 
@@ -1305,6 +1517,10 @@ int pr_meta_get_tier_params(
 {
     if (!bridge || !params) return -1;
     if (tier >= PR_META_NUM_TIERS) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_get_tier_par", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1332,6 +1548,10 @@ pr_meta_tier_t pr_meta_classify_tier(
     if (!bridge || !task) return PR_META_TIER_Z0;
 
     /* Classification based on multiple factors */
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_classify_tie", 0.0f);
+
+
     float score = 0.0f;
 
     /* Access count (more access -> lower tier) */
@@ -1374,6 +1594,10 @@ int pr_meta_move_tier(
     if (!bridge) return -1;
     if (new_tier >= PR_META_NUM_TIERS) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_move_tier", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     int32_t slot = find_task_slot(bridge, task_id);
@@ -1413,6 +1637,10 @@ int pr_meta_store_task_memory(
 {
     if (!bridge || !task) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_store_task_m", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if task already exists */
@@ -1450,6 +1678,12 @@ int pr_meta_store_task_memory(
     /* Find empty slot */
     uint32_t slot = bridge->task_count;
     for (uint32_t i = 0; i < bridge->task_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->task_capacity > 256) {
+            pr_meta_bridge_heartbeat("pr_meta_brid_loop",
+                             (float)(i + 1) / (float)bridge->task_capacity);
+        }
+
         if (bridge->task_memory[i].task.task_id == 0) {
             slot = i;
             break;
@@ -1504,6 +1738,10 @@ bool pr_meta_recall_task(
 {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_recall_task", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     int32_t slot = find_task_slot(bridge, task_id);
@@ -1541,6 +1779,10 @@ bool pr_meta_forget_task(
 {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_forget_task", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     int32_t slot = find_task_slot(bridge, task_id);
@@ -1576,6 +1818,10 @@ bool pr_meta_forget_task(
 
 uint32_t pr_meta_memory_size(pr_meta_bridge_t bridge) {
     if (!bridge) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_memory_size", 0.0f);
+
+
     return bridge->task_count;
 }
 
@@ -1584,6 +1830,10 @@ uint32_t pr_meta_evict_tasks(
     uint32_t count)
 {
     if (!bridge || count == 0) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_evict_tasks", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1608,6 +1858,12 @@ uint32_t pr_meta_evict_tasks(
     uint64_t now_ms = nimcp_time_get_ms();
 
     for (uint32_t i = 0; i < bridge->task_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->task_capacity > 256) {
+            pr_meta_bridge_heartbeat("pr_meta_brid_loop",
+                             (float)(i + 1) / (float)bridge->task_capacity);
+        }
+
         pr_meta_task_entry_t* entry = &bridge->task_memory[i];
         if (entry->task.task_id == 0) continue;
 
@@ -1683,6 +1939,10 @@ int pr_meta_get_stats(
 {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1693,6 +1953,10 @@ int pr_meta_get_stats(
 int pr_meta_reset_stats(pr_meta_bridge_t bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(pr_meta_bridge_stats_t));
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1702,6 +1966,10 @@ int pr_meta_reset_stats(pr_meta_bridge_t bridge) {
 
 void pr_meta_print_stats(pr_meta_bridge_t bridge) {
     if (!bridge) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_print_stats", 0.0f);
+
 
     pr_meta_bridge_stats_t stats;
     if (pr_meta_get_stats(bridge, &stats) != 0) return;
@@ -1739,6 +2007,12 @@ void pr_meta_print_stats(pr_meta_bridge_t bridge) {
 
     printf("\nPer-Tier Statistics:\n");
     for (int t = 0; t < PR_META_NUM_TIERS; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && PR_META_NUM_TIERS > 256) {
+            pr_meta_bridge_heartbeat("pr_meta_brid_loop",
+                             (float)(t + 1) / (float)PR_META_NUM_TIERS);
+        }
+
         printf("  %s: %lu tasks, rate %.4f\n",
                pr_meta_tier_name((pr_meta_tier_t)t),
                (unsigned long)stats.tasks_per_tier[t],
@@ -1763,6 +2037,10 @@ int pr_meta_connect_meta_ctx(
 {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_connect_meta", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->meta_ctx = meta_ctx;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1775,6 +2053,10 @@ int pr_meta_connect_graph(
     entangle_graph_t graph)
 {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_connect_grap", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->graph = graph;
@@ -1789,6 +2071,10 @@ int pr_meta_bridge_update(
 {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_update", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t now_ms = nimcp_time_get_ms();
@@ -1796,6 +2082,12 @@ int pr_meta_bridge_update(
     /* Decay relevance scores */
     float decay = fast_exp(-dt_ms / (1000.0f * 3600.0f));  /* 1 hour time constant */
     for (uint32_t i = 0; i < bridge->task_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->task_capacity > 256) {
+            pr_meta_bridge_heartbeat("pr_meta_brid_loop",
+                             (float)(i + 1) / (float)bridge->task_capacity);
+        }
+
         pr_meta_task_entry_t* entry = &bridge->task_memory[i];
         if (entry->task.task_id == 0) continue;
 
@@ -1804,6 +2096,12 @@ int pr_meta_bridge_update(
 
     /* Update tier statistics */
     for (int t = 0; t < PR_META_NUM_TIERS; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && PR_META_NUM_TIERS > 256) {
+            pr_meta_bridge_heartbeat("pr_meta_brid_loop",
+                             (float)(t + 1) / (float)PR_META_NUM_TIERS);
+        }
+
         bridge->stats.adaptation_rate_per_tier[t] =
             bridge->config.tier_adaptation_rate[t];
     }
@@ -1857,6 +2155,10 @@ const char* pr_meta_similarity_name(pr_meta_similarity_t metric) {
 void pr_meta_task_print(const pr_meta_task_t* task) {
     if (!task) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_task_print", 0.0f);
+
+
     printf("Meta Task:\n");
     printf("  ID:        %lu\n", (unsigned long)task->task_id);
     if (task->name) {
@@ -1872,6 +2174,10 @@ void pr_meta_task_print(const pr_meta_task_t* task) {
 
 void pr_meta_result_print(const pr_meta_result_t* result) {
     if (!result) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_result_print", 0.0f);
+
 
     printf("Meta Result:\n");
     printf("  Task ID:      %lu\n", (unsigned long)result->task_id);
@@ -1893,6 +2199,10 @@ bool pr_meta_task_validate(const pr_meta_task_t* task) {
     if (task->tier >= PR_META_NUM_TIERS) return false;
 
     /* Quaternion should be normalized (or close) */
+    /* Phase 8: Heartbeat at operation start */
+    pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_task_validat", 0.0f);
+
+
     float mag = task->quaternion.w * task->quaternion.w +
                 task->quaternion.x * task->quaternion.x +
                 task->quaternion.y * task->quaternion.y +

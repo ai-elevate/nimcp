@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_trained_immunity_health_agent = NULL;
  * @brief Set health agent for trained_immunity heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void trained_immunity_set_health_agent(nimcp_health_agent_t* agent) {
+void trained_immunity_set_health_agent(nimcp_health_agent_t* agent) {
     g_trained_immunity_health_agent = agent;
 }
 
@@ -245,6 +245,12 @@ static float recalculate_total_enhancement(const trained_immunity_t* system) {
 
     float total_enhancement = 1.0f;
     for (size_t i = 0; i < system->training_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->training_count > 256) {
+            trained_immunity_heartbeat("trained_immu_loop",
+                             (float)(i + 1) / (float)system->training_count);
+        }
+
         if (system->training_history[i].active) {
             total_enhancement += (system->training_history[i].current_enhancement - 1.0f);
         }
@@ -321,6 +327,10 @@ int trained_immunity_default_config(trained_immunity_config_t* config) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    trained_immunity_heartbeat("trained_immu_default_config", 0.0f);
+
+
     config->max_training_intensity = 1.0f;
     config->decay_rate_multiplier = 1.0f;
     config->enable_cross_protection = true;
@@ -342,6 +352,10 @@ trained_immunity_t* trained_immunity_create(
 
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    trained_immunity_heartbeat("trained_immu_create", 0.0f);
+
 
     trained_immunity_t* system = (trained_immunity_t*)nimcp_calloc(1, sizeof(trained_immunity_t));
     if (!system) {
@@ -407,6 +421,10 @@ trained_immunity_t* trained_immunity_create(
 void trained_immunity_destroy(trained_immunity_t* system) {
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    trained_immunity_heartbeat("trained_immu_destroy", 0.0f);
+
+
     if (system->config.enable_logging) {
         NIMCP_LOGGING_INFO("Destroying trained immunity system");
     }
@@ -438,6 +456,10 @@ int trained_immunity_train(
     if (intensity <= 0.0f || intensity > 1.0f) return -1;  /* Reject zero intensity */
 
     /* Check minimum threshold */
+    /* Phase 8: Heartbeat at operation start */
+    trained_immunity_heartbeat("trained_immu_train", 0.0f);
+
+
     if (intensity < system->config.min_training_threshold) {
         return 0;  /* Too weak to train */
     }
@@ -484,11 +506,19 @@ int trained_immunity_train(
 
 float trained_immunity_get_enhancement_factor(const trained_immunity_t* system) {
     if (!system) return 1.0f;
+    /* Phase 8: Heartbeat at operation start */
+    trained_immunity_heartbeat("trained_immu_get_enhancement_fact", 0.0f);
+
+
     return system->current_enhancement_factor;
 }
 
 float trained_immunity_get_prr_sensitivity(const trained_immunity_t* system) {
     if (!system) return TRAINED_PRR_BASE_SENSITIVITY;
+    /* Phase 8: Heartbeat at operation start */
+    trained_immunity_heartbeat("trained_immu_get_prr_sensitivity", 0.0f);
+
+
     return system->prr_sensitivity_factor;
 }
 
@@ -506,6 +536,12 @@ static void apply_decay_to_history(
     if (!system) return;
 
     for (size_t i = 0; i < system->training_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->training_count > 256) {
+            trained_immunity_heartbeat("trained_immu_loop",
+                             (float)(i + 1) / (float)system->training_count);
+        }
+
         training_history_entry_t* entry = &system->training_history[i];
         if (!entry->active) continue;
 
@@ -538,6 +574,10 @@ int trained_immunity_decay(
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    trained_immunity_heartbeat("trained_immu_decay", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -574,6 +614,10 @@ bool trained_immunity_check_cross_protection(
     if (!system || !antigen) return false;
     if (!system->config.enable_cross_protection) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    trained_immunity_heartbeat("trained_immu_check_cross_protecti", 0.0f);
+
+
     return system->cross_protection_active;
 }
 
@@ -581,6 +625,10 @@ metabolic_state_t trained_immunity_get_metabolic_state(
     const trained_immunity_t* system
 ) {
     if (!system) return METABOLIC_STATE_OXIDATIVE;
+    /* Phase 8: Heartbeat at operation start */
+    trained_immunity_heartbeat("trained_immu_get_metabolic_state", 0.0f);
+
+
     return system->metabolic.state;
 }
 
@@ -594,6 +642,10 @@ int trained_immunity_get_epigenetic_state(
 ) {
     if (!system || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    trained_immunity_heartbeat("trained_immu_get_epigenetic_state", 0.0f);
+
+
     memcpy(state, &system->epigenetic, sizeof(epigenetic_state_t));
     return 0;
 }
@@ -603,6 +655,10 @@ int trained_immunity_get_metabolic_reprogramming(
     metabolic_reprogramming_t* state
 ) {
     if (!system || !state) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    trained_immunity_heartbeat("trained_immu_get_metabolic_reprog", 0.0f);
+
 
     memcpy(state, &system->metabolic, sizeof(metabolic_reprogramming_t));
     return 0;
@@ -614,17 +670,29 @@ int trained_immunity_get_prr_state(
 ) {
     if (!system || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    trained_immunity_heartbeat("trained_immu_get_prr_state", 0.0f);
+
+
     memcpy(state, &system->prr, sizeof(prr_sensitivity_t));
     return 0;
 }
 
 bool trained_immunity_is_active(const trained_immunity_t* system) {
     if (!system) return false;
+    /* Phase 8: Heartbeat at operation start */
+    trained_immunity_heartbeat("trained_immu_is_active", 0.0f);
+
+
     return system->current_enhancement_factor > 1.05f;
 }
 
 size_t trained_immunity_get_history_count(const trained_immunity_t* system) {
     if (!system) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    trained_immunity_heartbeat("trained_immu_get_history_count", 0.0f);
+
+
     return system->training_count;
 }
 
@@ -634,6 +702,10 @@ uint64_t trained_immunity_time_since_training(
 ) {
     if (!system) return 0;
     if (system->last_training_time == 0) return UINT64_MAX;
+    /* Phase 8: Heartbeat at operation start */
+    trained_immunity_heartbeat("trained_immu_time_since_training", 0.0f);
+
+
     return current_time - system->last_training_time;
 }
 
@@ -677,9 +749,19 @@ const char* trained_immunity_metabolic_state_to_string(metabolic_state_t state) 
  */
 int trained_immunity_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    trained_immunity_heartbeat("trained_immu_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Trained_Immunity");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                trained_immunity_heartbeat("trained_immu_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Trained immunity self-knowledge: %s", self->observations[i]);
         }
     }

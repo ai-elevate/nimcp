@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_fep_neuromod_health_agent = NULL;
  * @brief Set health agent for fep_neuromod heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void fep_neuromod_set_health_agent(nimcp_health_agent_t* agent) {
+void fep_neuromod_set_health_agent(nimcp_health_agent_t* agent) {
     g_fep_neuromod_health_agent = agent;
 }
 
@@ -89,6 +89,10 @@ int fep_neuromod_default_config(fep_neuromod_config_t* config) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_neuromod_heartbeat("fep_neuromod_default_config", 0.0f);
+
+
     config->ach_baseline = FEP_NEUROMOD_DEFAULT_ACH_BASELINE;
     config->ne_baseline = FEP_NEUROMOD_DEFAULT_NE_BASELINE;
     config->da_baseline = FEP_NEUROMOD_DEFAULT_DA_BASELINE;
@@ -110,6 +114,10 @@ int fep_neuromod_default_config(fep_neuromod_config_t* config) {
 }
 
 fep_neuromod_system_t* fep_neuromod_create(const fep_neuromod_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_neuromod_heartbeat("fep_neuromod_create", 0.0f);
+
+
     fep_neuromod_system_t* sys = (fep_neuromod_system_t*)nimcp_calloc(
         1, sizeof(fep_neuromod_system_t));
     if (!sys) {
@@ -153,6 +161,10 @@ fep_neuromod_system_t* fep_neuromod_create(const fep_neuromod_config_t* config) 
 void fep_neuromod_destroy(fep_neuromod_system_t* sys) {
     if (!sys) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_neuromod_heartbeat("fep_neuromod_destroy", 0.0f);
+
+
     if (sys->bio_async_enabled) {
         fep_neuromod_disconnect_bio_async(sys);
     }
@@ -177,6 +189,10 @@ int fep_neuromod_update(fep_neuromod_system_t* sys, uint64_t delta_ms) {
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    fep_neuromod_heartbeat("fep_neuromod_update", 0.0f);
+
 
     nimcp_platform_mutex_lock(sys->mutex);
 
@@ -237,6 +253,10 @@ int fep_neuromod_release(
     }
     if (type >= FEP_NEUROMOD_COUNT) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_neuromod_heartbeat("fep_neuromod_release", 0.0f);
+
+
     nimcp_platform_mutex_lock(sys->mutex);
 
     sys->state.levels[type] = clamp_f(
@@ -277,6 +297,10 @@ int fep_neuromod_set_level(
     }
     if (type >= FEP_NEUROMOD_COUNT) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_neuromod_heartbeat("fep_neuromod_set_level", 0.0f);
+
+
     nimcp_platform_mutex_lock(sys->mutex);
     sys->state.levels[type] = clamp_f(level, FEP_NEUROMOD_MIN_LEVEL, FEP_NEUROMOD_MAX_LEVEL);
 
@@ -297,6 +321,10 @@ float fep_neuromod_get_level(
     if (!sys) return -1.0f;
     if (type >= FEP_NEUROMOD_COUNT) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_neuromod_heartbeat("fep_neuromod_get_level", 0.0f);
+
+
     return sys->state.levels[type];
 }
 
@@ -309,6 +337,10 @@ float fep_neuromod_compute_precision(
     float base_precision
 ) {
     if (!sys) return base_precision;
+
+    /* Phase 8: Heartbeat at operation start */
+    fep_neuromod_heartbeat("fep_neuromod_compute_precision", 0.0f);
+
 
     nimcp_platform_mutex_lock(sys->mutex);
 
@@ -326,13 +358,29 @@ int fep_neuromod_apply_to_fep(
 ) {
     if (!neuromod || !fep) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_neuromod_heartbeat("fep_neuromod_apply_to_fep", 0.0f);
+
+
     nimcp_platform_mutex_lock(neuromod->mutex);
 
     /* Apply precision modulation to FEP levels */
     for (uint32_t l = 0; l < fep->num_levels; l++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((l & 0xFF) == 0 && fep->num_levels > 256) {
+            fep_neuromod_heartbeat("fep_neuromod_loop",
+                             (float)(l + 1) / (float)fep->num_levels);
+        }
+
         fep_hierarchy_level_t* level = &fep->levels[l];
 
         for (uint32_t i = 0; i < level->errors.dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && level->errors.dim > 256) {
+                fep_neuromod_heartbeat("fep_neuromod_loop",
+                                 (float)(i + 1) / (float)level->errors.dim);
+            }
+
             float base_precision = level->errors.precision[i];
             float modulated = base_precision * neuromod->state.precision_multiplier;
             level->errors.precision[i] = clamp_f(
@@ -364,6 +412,10 @@ int fep_neuromod_on_prediction_error(
     }
 
     /* Large errors indicate unreliable predictions → decrease ACh */
+    /* Phase 8: Heartbeat at operation start */
+    fep_neuromod_heartbeat("fep_neuromod_on_prediction_error", 0.0f);
+
+
     float normalized_error = clamp_f(error_magnitude / 10.0f, 0.0f, 1.0f);
     float ach_change = -0.2f * normalized_error;
 
@@ -383,6 +435,10 @@ int fep_neuromod_on_surprise(
     }
 
     /* Surprise → NE release */
+    /* Phase 8: Heartbeat at operation start */
+    fep_neuromod_heartbeat("fep_neuromod_on_surprise", 0.0f);
+
+
     float normalized_surprise = clamp_f(surprise / 10.0f, 0.0f, 0.5f);
     return fep_neuromod_release(sys, FEP_NEUROMOD_NE, normalized_surprise);
 }
@@ -400,6 +456,10 @@ int fep_neuromod_on_reward(
     }
 
     /* Reward prediction error → DA release (can be negative) */
+    /* Phase 8: Heartbeat at operation start */
+    fep_neuromod_heartbeat("fep_neuromod_on_reward", 0.0f);
+
+
     float da_change = clamp_f(reward * 0.3f, -0.3f, 0.3f);
     return fep_neuromod_release(sys, FEP_NEUROMOD_DA, da_change);
 }
@@ -417,6 +477,10 @@ int fep_neuromod_on_uncertainty(
     }
 
     /* High uncertainty → decrease ACh (predictions unreliable) */
+    /* Phase 8: Heartbeat at operation start */
+    fep_neuromod_heartbeat("fep_neuromod_on_uncertainty", 0.0f);
+
+
     float ach_change = 0.2f * (1.0f - uncertainty);
     return fep_neuromod_release(sys, FEP_NEUROMOD_ACH, ach_change - 0.1f);
 }
@@ -431,6 +495,10 @@ int fep_neuromod_get_state(
 ) {
     if (!sys || !state) return -1;
     *state = sys->state;
+    /* Phase 8: Heartbeat at operation start */
+    fep_neuromod_heartbeat("fep_neuromod_get_state", 0.0f);
+
+
     return 0;
 }
 
@@ -443,6 +511,10 @@ int fep_neuromod_connect(
     fep_system_t* fep
 ) {
     if (!neuromod || !fep) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    fep_neuromod_heartbeat("fep_neuromod_connect", 0.0f);
+
 
     nimcp_platform_mutex_lock(neuromod->mutex);
     neuromod->fep_system = fep;
@@ -465,6 +537,10 @@ int fep_neuromod_connect_bio_async(fep_neuromod_system_t* sys) {
 
     }
     if (sys->bio_async_enabled) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    fep_neuromod_heartbeat("fep_neuromod_connect_bio_async", 0.0f);
+
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_NEUROMOD,
@@ -493,6 +569,10 @@ int fep_neuromod_disconnect_bio_async(fep_neuromod_system_t* sys) {
     }
     if (!sys->bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_neuromod_heartbeat("fep_neuromod_disconnect_bio_async", 0.0f);
+
+
     if (sys->bio_ctx) {
         bio_router_unregister_module(sys->bio_ctx);
         sys->bio_ctx = NULL;
@@ -503,6 +583,10 @@ int fep_neuromod_disconnect_bio_async(fep_neuromod_system_t* sys) {
 
 bool fep_neuromod_is_bio_async_connected(const fep_neuromod_system_t* sys) {
     if (!sys) return false;
+    /* Phase 8: Heartbeat at operation start */
+    fep_neuromod_heartbeat("fep_neuromod_is_bio_async_connect", 0.0f);
+
+
     return sys->bio_async_enabled;
 }
 
@@ -531,9 +615,19 @@ const char* fep_neuromod_type_to_string(fep_neuromod_type_t type) {
  */
 int fep_neuromod_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    fep_neuromod_heartbeat("fep_neuromod_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "FEP_Neuromodulation");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                fep_neuromod_heartbeat("fep_neuromod_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("FEP Neuromod self-knowledge: %s", self->observations[i]);
         }
     }

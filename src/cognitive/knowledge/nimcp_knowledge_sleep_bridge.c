@@ -31,7 +31,7 @@ static nimcp_health_agent_t* g_knowledge_sleep_bridge_health_agent = NULL;
  * @brief Set health agent for knowledge_sleep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void knowledge_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void knowledge_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_knowledge_sleep_bridge_health_agent = agent;
 }
 
@@ -118,6 +118,10 @@ static void knowledge_on_sleep_state_change(sleep_state_t new_state, void* user_
 
 int knowledge_sleep_default_config(knowledge_sleep_config_t* config) {
     if (!config) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_sleep_bridge_heartbeat("knowledge_sl_knowledge_sleep_defa", 0.0f);
+
+
     config->enable_retrieval_modulation = true;
     config->enable_consolidation_modulation = true;
     config->modulation_strength = 1.0f;
@@ -132,6 +136,10 @@ knowledge_sleep_bridge_t knowledge_sleep_bridge_create(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_sleep_bridge_create: sleep is NULL");
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_sleep_bridge_heartbeat("knowledge_sl_create", 0.0f);
+
 
     struct knowledge_sleep_bridge_struct* bridge =
         (struct knowledge_sleep_bridge_struct*)nimcp_malloc(sizeof(struct knowledge_sleep_bridge_struct));
@@ -187,6 +195,10 @@ void knowledge_sleep_bridge_destroy(knowledge_sleep_bridge_t bridge) {
     if (!bridge) return;
 
     /* Unregister callback if it was registered */
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_sleep_bridge_heartbeat("knowledge_sl_destroy", 0.0f);
+
+
     if (bridge->callback_registered && bridge->sleep_system) {
         bool unregistered = sleep_unregister_state_callback(
             bridge->sleep_system,
@@ -204,6 +216,10 @@ void knowledge_sleep_bridge_destroy(knowledge_sleep_bridge_t bridge) {
 
 int knowledge_sleep_update(knowledge_sleep_bridge_t bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_sleep_bridge_heartbeat("knowledge_sl_knowledge_sleep_upda", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -247,6 +263,10 @@ int knowledge_sleep_update(knowledge_sleep_bridge_t bridge) {
 
 int knowledge_sleep_get_effects(const knowledge_sleep_bridge_t bridge, knowledge_sleep_effects_t* effects) {
     if (!bridge || !effects) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_sleep_bridge_heartbeat("knowledge_sl_knowledge_sleep_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -255,6 +275,10 @@ int knowledge_sleep_get_effects(const knowledge_sleep_bridge_t bridge, knowledge
 
 float knowledge_sleep_get_retrieval_speed(const knowledge_sleep_bridge_t bridge) {
     if (!bridge) return 1.0f;
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_sleep_bridge_heartbeat("knowledge_sl_knowledge_sleep_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.retrieval_speed_factor;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -263,6 +287,10 @@ float knowledge_sleep_get_retrieval_speed(const knowledge_sleep_bridge_t bridge)
 
 bool knowledge_sleep_is_consolidation_active(const knowledge_sleep_bridge_t bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_sleep_bridge_heartbeat("knowledge_sl_knowledge_sleep_is_c", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.consolidation_active;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -270,6 +298,10 @@ bool knowledge_sleep_is_consolidation_active(const knowledge_sleep_bridge_t brid
 }
 
 float knowledge_sleep_retrieval_for_state(sleep_state_t state) {
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_sleep_bridge_heartbeat("knowledge_sl_knowledge_sleep_retr", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return KNOWLEDGE_SLEEP_RETRIEVAL_AWAKE;
         case SLEEP_STATE_DROWSY:     return KNOWLEDGE_SLEEP_RETRIEVAL_DROWSY;
@@ -281,6 +313,10 @@ float knowledge_sleep_retrieval_for_state(sleep_state_t state) {
 }
 
 float knowledge_sleep_consolidation_for_state(sleep_state_t state) {
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_sleep_bridge_heartbeat("knowledge_sl_knowledge_sleep_cons", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return KNOWLEDGE_SLEEP_CONSOLIDATION_AWAKE;
         case SLEEP_STATE_DROWSY:     return KNOWLEDGE_SLEEP_CONSOLIDATION_DROWSY;
@@ -308,9 +344,19 @@ float knowledge_sleep_consolidation_for_state(sleep_state_t state) {
 int knowledge_sleep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_sleep_bridge_heartbeat("knowledge_sl_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Knowledge_Sleep_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                knowledge_sleep_bridge_heartbeat("knowledge_sl_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

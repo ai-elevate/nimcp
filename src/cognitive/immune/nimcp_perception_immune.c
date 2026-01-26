@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_perception_immune_health_agent = NULL;
  * @brief Set health agent for perception_immune heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void perception_immune_set_health_agent(nimcp_health_agent_t* agent) {
+void perception_immune_set_health_agent(nimcp_health_agent_t* agent) {
     g_perception_immune_health_agent = agent;
 }
 
@@ -91,6 +91,12 @@ static void hash_features_to_epitope(
 
     /* Simple hash: sum and modulo for each byte */
     for (size_t i = 0; i < epitope_len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && epitope_len > 256) {
+            perception_immune_heartbeat("perception_i_loop",
+                             (float)(i + 1) / (float)epitope_len);
+        }
+
         uint32_t sum = 0;
         for (uint32_t j = i; j < feature_dim; j += epitope_len) {
             sum += (uint32_t)(fabsf(features[j]) * 1000.0f);
@@ -113,6 +119,10 @@ perception_immune_context_t* perception_immune_create(
     }
 
     /* Allocate context */
+    /* Phase 8: Heartbeat at operation start */
+    perception_immune_heartbeat("perception_i_create", 0.0f);
+
+
     perception_immune_context_t* ctx = (perception_immune_context_t*)
         nimcp_malloc(sizeof(perception_immune_context_t));
     if (!ctx) {
@@ -150,6 +160,10 @@ perception_immune_context_t* perception_immune_create(
 void perception_immune_destroy(perception_immune_context_t* ctx) {
     if (!ctx) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    perception_immune_heartbeat("perception_i_destroy", 0.0f);
+
+
     if (ctx->anomalies) {
         nimcp_free(ctx->anomalies);
     }
@@ -166,6 +180,10 @@ int perception_immune_connect_visual(
     if (!ctx) return -1;
     if (!visual) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    perception_immune_heartbeat("perception_i_connect_visual", 0.0f);
+
+
     ctx->visual_cortex = visual;
     NIMCP_LOGGING_INFO("perception_immune", "Connected visual cortex");
     return 0;
@@ -178,6 +196,10 @@ int perception_immune_connect_audio(
     if (!ctx) return -1;
     if (!audio) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    perception_immune_heartbeat("perception_i_connect_audio", 0.0f);
+
+
     ctx->audio_cortex = audio;
     NIMCP_LOGGING_INFO("perception_immune", "Connected audio cortex");
     return 0;
@@ -189,6 +211,10 @@ int perception_immune_connect_speech(
 ) {
     if (!ctx) return -1;
     if (!speech) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    perception_immune_heartbeat("perception_i_connect_speech", 0.0f);
+
 
     ctx->speech_cortex = speech;
     NIMCP_LOGGING_INFO("perception_immune", "Connected speech cortex");
@@ -214,6 +240,10 @@ int perception_immune_report_visual_anomaly(
     if (ctx->anomaly_count >= ctx->anomaly_capacity) return -1;
 
     /* Create anomaly entry */
+    /* Phase 8: Heartbeat at operation start */
+    perception_immune_heartbeat("perception_i_report_visual_anomal", 0.0f);
+
+
     perception_anomaly_t* anomaly = &ctx->anomalies[ctx->anomaly_count];
     anomaly->id = ctx->next_anomaly_id++;
     anomaly->type = type;
@@ -272,6 +302,10 @@ int perception_immune_report_audio_anomaly(
     if (!spectrum || num_bins == 0) return -1;
     if (ctx->anomaly_count >= ctx->anomaly_capacity) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    perception_immune_heartbeat("perception_i_report_audio_anomaly", 0.0f);
+
+
     perception_anomaly_t* anomaly = &ctx->anomalies[ctx->anomaly_count];
     anomaly->id = ctx->next_anomaly_id++;
     anomaly->type = type;
@@ -324,6 +358,10 @@ int perception_immune_report_speech_anomaly(
     if (!ctx || !ctx->immune_system) return -1;
     if (!phoneme_features || num_phonemes == 0) return -1;
     if (ctx->anomaly_count >= ctx->anomaly_capacity) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    perception_immune_heartbeat("perception_i_report_speech_anomal", 0.0f);
+
 
     perception_anomaly_t* anomaly = &ctx->anomalies[ctx->anomaly_count];
     anomaly->id = ctx->next_anomaly_id++;
@@ -378,6 +416,10 @@ int perception_immune_update_modulation(perception_immune_context_t* ctx) {
     if (!ctx || !ctx->immune_system) return -1;
 
     /* Query immune system state */
+    /* Phase 8: Heartbeat at operation start */
+    perception_immune_heartbeat("perception_i_update_modulation", 0.0f);
+
+
     brain_immune_stats_t stats;
     brain_immune_get_stats(ctx->immune_system, &stats);
 
@@ -456,6 +498,10 @@ int perception_immune_apply_visual_modulation(
     /* In full implementation, would use visual_cortex API to adjust gains */
     /* For now, store in modulation state for external access */
 
+    /* Phase 8: Heartbeat at operation start */
+    perception_immune_heartbeat("perception_i_apply_visual_modulat", 0.0f);
+
+
     return 0;
 }
 
@@ -464,6 +510,10 @@ int perception_immune_apply_audio_modulation(
 ) {
     if (!ctx || !ctx->audio_cortex) return -1;
     /* Apply gain/threshold to audio cortex */
+    /* Phase 8: Heartbeat at operation start */
+    perception_immune_heartbeat("perception_i_apply_audio_modulati", 0.0f);
+
+
     return 0;
 }
 
@@ -472,6 +522,10 @@ int perception_immune_apply_speech_modulation(
 ) {
     if (!ctx || !ctx->speech_cortex) return -1;
     /* Apply gain/threshold to speech cortex */
+    /* Phase 8: Heartbeat at operation start */
+    perception_immune_heartbeat("perception_i_apply_speech_modulat", 0.0f);
+
+
     return 0;
 }
 
@@ -488,14 +542,30 @@ int perception_immune_check_visual_overload(
     if (!ctx || !features || !overload) return -1;
 
     /* Compute feature variance as overload metric */
+    /* Phase 8: Heartbeat at operation start */
+    perception_immune_heartbeat("perception_i_check_visual_overloa", 0.0f);
+
+
     float mean = 0.0f;
     for (uint32_t i = 0; i < num_features; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_features > 256) {
+            perception_immune_heartbeat("perception_i_loop",
+                             (float)(i + 1) / (float)num_features);
+        }
+
         mean += features[i];
     }
     mean /= num_features;
 
     float variance = 0.0f;
     for (uint32_t i = 0; i < num_features; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_features > 256) {
+            perception_immune_heartbeat("perception_i_loop",
+                             (float)(i + 1) / (float)num_features);
+        }
+
         float diff = features[i] - mean;
         variance += diff * diff;
     }
@@ -515,8 +585,18 @@ int perception_immune_check_audio_overload(
     if (!ctx || !spectrum || !overload) return -1;
 
     /* Compute spectral energy */
+    /* Phase 8: Heartbeat at operation start */
+    perception_immune_heartbeat("perception_i_check_audio_overload", 0.0f);
+
+
     float energy = 0.0f;
     for (uint32_t i = 0; i < num_bins; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_bins > 256) {
+            perception_immune_heartbeat("perception_i_loop",
+                             (float)(i + 1) / (float)num_bins);
+        }
+
         energy += spectrum[i] * spectrum[i];
     }
 
@@ -536,8 +616,18 @@ int perception_immune_check_speech_overload(
     if (!ctx || !phoneme_confidence || !overload) return -1;
 
     /* Low average confidence indicates overload */
+    /* Phase 8: Heartbeat at operation start */
+    perception_immune_heartbeat("perception_i_check_speech_overloa", 0.0f);
+
+
     float avg_conf = 0.0f;
     for (uint32_t i = 0; i < num_phonemes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_phonemes > 256) {
+            perception_immune_heartbeat("perception_i_loop",
+                             (float)(i + 1) / (float)num_phonemes);
+        }
+
         avg_conf += phoneme_confidence[i];
     }
     avg_conf /= num_phonemes;
@@ -553,6 +643,10 @@ int perception_immune_trigger_overload_protection(
     if (!ctx || !ctx->immune_system) return -1;
 
     /* Trigger inflammation for modality */
+    /* Phase 8: Heartbeat at operation start */
+    perception_immune_heartbeat("perception_i_trigger_overload_pro", 0.0f);
+
+
     switch (modality) {
         case PERCEPTION_VISUAL:
             ctx->modulation.visual_overload_protection = true;
@@ -586,6 +680,10 @@ int perception_immune_release_overload_protection(
 ) {
     if (!ctx) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    perception_immune_heartbeat("perception_i_release_overload_pro", 0.0f);
+
+
     switch (modality) {
         case PERCEPTION_VISUAL:
             ctx->modulation.visual_overload_protection = false;
@@ -617,6 +715,10 @@ int perception_immune_get_modulation(
 ) {
     if (!ctx || !modulation) return -1;
     *modulation = ctx->modulation;
+    /* Phase 8: Heartbeat at operation start */
+    perception_immune_heartbeat("perception_i_get_modulation", 0.0f);
+
+
     return 0;
 }
 
@@ -632,7 +734,17 @@ const perception_anomaly_t* perception_immune_get_anomaly(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    perception_immune_heartbeat("perception_i_get_anomaly", 0.0f);
+
+
     for (size_t i = 0; i < ctx->anomaly_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->anomaly_count > 256) {
+            perception_immune_heartbeat("perception_i_loop",
+                             (float)(i + 1) / (float)ctx->anomaly_count);
+        }
+
         if (ctx->anomalies[i].id == anomaly_id) {
             return &ctx->anomalies[i];
         }
@@ -645,6 +757,10 @@ bool perception_immune_is_protected(
     perception_modality_t modality
 ) {
     if (!ctx) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    perception_immune_heartbeat("perception_i_is_protected", 0.0f);
+
 
     switch (modality) {
         case PERCEPTION_VISUAL:
@@ -661,18 +777,30 @@ bool perception_immune_is_protected(
 float perception_immune_get_visual_gain(
     const perception_immune_context_t* ctx
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    perception_immune_heartbeat("perception_i_get_visual_gain", 0.0f);
+
+
     return ctx ? ctx->modulation.visual_gain : 1.0f;
 }
 
 float perception_immune_get_audio_gain(
     const perception_immune_context_t* ctx
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    perception_immune_heartbeat("perception_i_get_audio_gain", 0.0f);
+
+
     return ctx ? ctx->modulation.audio_gain : 1.0f;
 }
 
 float perception_immune_get_speech_gain(
     const perception_immune_context_t* ctx
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    perception_immune_heartbeat("perception_i_get_speech_gain", 0.0f);
+
+
     return ctx ? ctx->modulation.speech_gain : 1.0f;
 }
 
@@ -724,9 +852,19 @@ const char* perception_immune_modality_to_string(
  */
 int perception_immune_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    perception_immune_heartbeat("perception_i_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Perception_Immune");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                perception_immune_heartbeat("perception_i_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Perception immune self-knowledge: %s", self->observations[i]);
         }
     }

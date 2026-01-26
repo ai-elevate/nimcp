@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_skill_acquisition_health_agent = NULL;
  * @brief Set health agent for skill_acquisition heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void skill_acquisition_set_health_agent(nimcp_health_agent_t* agent) {
+void skill_acquisition_set_health_agent(nimcp_health_agent_t* agent) {
     g_skill_acquisition_health_agent = agent;
 }
 
@@ -112,6 +112,12 @@ static float compute_mean(const float* data, size_t count) {
 
     float sum = 0.0f;
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            skill_acquisition_heartbeat("skill_acquis_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         sum += data[i];
     }
     return sum / (float)count;
@@ -127,6 +133,12 @@ static float compute_variance(const float* data, size_t count) {
     float sum_sq_diff = 0.0f;
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            skill_acquisition_heartbeat("skill_acquis_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         float diff = data[i] - mean;
         sum_sq_diff += diff * diff;
     }
@@ -151,6 +163,12 @@ static float compute_slope(const float* y, size_t count) {
     float sum_x = 0.0f, sum_y = 0.0f, sum_xy = 0.0f, sum_xx = 0.0f;
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            skill_acquisition_heartbeat("skill_acquis_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         float x = (float)i;
         sum_x += x;
         sum_y += y[i];
@@ -175,6 +193,12 @@ static float compute_r_squared(const float* actual, const float* predicted, size
     float ss_tot = 0.0f, ss_res = 0.0f;
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            skill_acquisition_heartbeat("skill_acquis_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         float diff_tot = actual[i] - mean_actual;
         float diff_res = actual[i] - predicted[i];
         ss_tot += diff_tot * diff_tot;
@@ -203,6 +227,12 @@ static skill_acquisition_state_t* find_state(skill_acquisition_t* sa, uint64_t s
     }
 
     for (size_t i = 0; i < sa->num_states; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sa->num_states > 256) {
+            skill_acquisition_heartbeat("skill_acquis_loop",
+                             (float)(i + 1) / (float)sa->num_states);
+        }
+
         if (sa->states[i] && sa->states[i]->skill &&
             sa->states[i]->skill->skill_id == skill_id) {
             return sa->states[i];
@@ -218,6 +248,12 @@ static size_t find_state_index(skill_acquisition_t* sa, uint64_t skill_id) {
     if (!sa) return SIZE_MAX;
 
     for (size_t i = 0; i < sa->num_states; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sa->num_states > 256) {
+            skill_acquisition_heartbeat("skill_acquis_loop",
+                             (float)(i + 1) / (float)sa->num_states);
+        }
+
         if (sa->states[i] && sa->states[i]->skill &&
             sa->states[i]->skill->skill_id == skill_id) {
             return i;
@@ -314,6 +350,12 @@ static skill_acquisition_state_t* create_state(procedural_skill_t* skill,
 
         // Initialize difficulty to 0.5 (unknown)
         for (size_t i = 0; i < skill->num_steps; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && skill->num_steps > 256) {
+                skill_acquisition_heartbeat("skill_acquis_loop",
+                                 (float)(i + 1) / (float)skill->num_steps);
+            }
+
             state->step_difficulty[i] = 0.5f;
         }
     }
@@ -488,10 +530,22 @@ static skill_error_t fit_power_law_internal(skill_acquisition_state_t* state) {
     float best_a = a, best_b = b, best_c = c;
 
     for (int iter = 0; iter < SKILL_FIT_MAX_ITERATIONS; iter++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((iter & 0xFF) == 0 && SKILL_FIT_MAX_ITERATIONS > 256) {
+            skill_acquisition_heartbeat("skill_acquis_loop",
+                             (float)(iter + 1) / (float)SKILL_FIT_MAX_ITERATIONS);
+        }
+
         // Compute current error
         float total_error = 0.0f;
 
         for (size_t i = 0; i < state->history_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && state->history_count > 256) {
+                skill_acquisition_heartbeat("skill_acquis_loop",
+                                 (float)(i + 1) / (float)state->history_count);
+            }
+
             float n = (float)(i + 1);
             float predicted = a * powf(n, -b) + c;
             float diff = state->performance_history[i] - predicted;
@@ -520,6 +574,12 @@ static skill_error_t fit_power_law_internal(skill_acquisition_state_t* state) {
         // Gradient for a
         float error_plus_a = 0.0f;
         for (size_t i = 0; i < state->history_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && state->history_count > 256) {
+                skill_acquisition_heartbeat("skill_acquis_loop",
+                                 (float)(i + 1) / (float)state->history_count);
+            }
+
             float n = (float)(i + 1);
             float predicted = (a + da) * powf(n, -b) + c;
             float diff = state->performance_history[i] - predicted;
@@ -532,6 +592,12 @@ static skill_error_t fit_power_law_internal(skill_acquisition_state_t* state) {
         // Gradient for b
         float error_plus_b = 0.0f;
         for (size_t i = 0; i < state->history_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && state->history_count > 256) {
+                skill_acquisition_heartbeat("skill_acquis_loop",
+                                 (float)(i + 1) / (float)state->history_count);
+            }
+
             float n = (float)(i + 1);
             float predicted = a * powf(n, -(b + db)) + c;
             float diff = state->performance_history[i] - predicted;
@@ -544,6 +610,12 @@ static skill_error_t fit_power_law_internal(skill_acquisition_state_t* state) {
         // Gradient for c
         float error_plus_c = 0.0f;
         for (size_t i = 0; i < state->history_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && state->history_count > 256) {
+                skill_acquisition_heartbeat("skill_acquis_loop",
+                                 (float)(i + 1) / (float)state->history_count);
+            }
+
             float n = (float)(i + 1);
             float predicted = a * powf(n, -b) + (c + dc);
             float diff = state->performance_history[i] - predicted;
@@ -577,6 +649,12 @@ static skill_error_t fit_power_law_internal(skill_acquisition_state_t* state) {
     float* predicted = (float*)malloc(state->history_count * sizeof(float));
     if (predicted) {
         for (size_t i = 0; i < state->history_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && state->history_count > 256) {
+                skill_acquisition_heartbeat("skill_acquis_loop",
+                                 (float)(i + 1) / (float)state->history_count);
+            }
+
             predicted[i] = power_law_predict(&state->power_law, i + 1);
         }
         state->power_law.fit_r_squared = compute_r_squared(
@@ -693,6 +771,12 @@ NIMCP_EXPORT void skill_acquisition_destroy(skill_acquisition_t* sa) {
     // Destroy all states
     if (sa->states) {
         for (size_t i = 0; i < sa->num_states; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && sa->num_states > 256) {
+                skill_acquisition_heartbeat("skill_acquis_loop",
+                                 (float)(i + 1) / (float)sa->num_states);
+            }
+
             destroy_state(sa->states[i]);
         }
         free(sa->states);
@@ -701,6 +785,12 @@ NIMCP_EXPORT void skill_acquisition_destroy(skill_acquisition_t* sa) {
     // Free transfer matrix
     if (sa->transfer_matrix) {
         for (size_t i = 0; i < sa->matrix_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && sa->matrix_size > 256) {
+                skill_acquisition_heartbeat("skill_acquis_loop",
+                                 (float)(i + 1) / (float)sa->matrix_size);
+            }
+
             free(sa->transfer_matrix[i]);
         }
         free(sa->transfer_matrix);
@@ -717,6 +807,12 @@ NIMCP_EXPORT skill_error_t skill_acquisition_reset(skill_acquisition_t* sa) {
 
     // Destroy all states
     for (size_t i = 0; i < sa->num_states; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sa->num_states > 256) {
+            skill_acquisition_heartbeat("skill_acquis_loop",
+                             (float)(i + 1) / (float)sa->num_states);
+        }
+
         destroy_state(sa->states[i]);
         sa->states[i] = NULL;
     }
@@ -726,6 +822,12 @@ NIMCP_EXPORT skill_error_t skill_acquisition_reset(skill_acquisition_t* sa) {
     // Free transfer matrix
     if (sa->transfer_matrix) {
         for (size_t i = 0; i < sa->matrix_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && sa->matrix_size > 256) {
+                skill_acquisition_heartbeat("skill_acquis_loop",
+                                 (float)(i + 1) / (float)sa->matrix_size);
+            }
+
             free(sa->transfer_matrix[i]);
         }
         free(sa->transfer_matrix);
@@ -797,6 +899,12 @@ NIMCP_EXPORT uint64_t skill_acquisition_register_skill(
         skill->step_names = (char**)calloc(num_steps, sizeof(char*));
         if (skill->step_names) {
             for (size_t i = 0; i < num_steps; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && num_steps > 256) {
+                    skill_acquisition_heartbeat("skill_acquis_loop",
+                                     (float)(i + 1) / (float)num_steps);
+                }
+
                 if (step_names[i]) {
                     skill->step_names[i] = strdup(step_names[i]);
                 }
@@ -824,6 +932,12 @@ NIMCP_EXPORT uint64_t skill_acquisition_register_skill(
         set_error("Failed to create acquisition state");
         if (skill->step_names) {
             for (size_t i = 0; i < num_steps; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && num_steps > 256) {
+                    skill_acquisition_heartbeat("skill_acquis_loop",
+                                     (float)(i + 1) / (float)num_steps);
+                }
+
                 free(skill->step_names[i]);
             }
             free(skill->step_names);
@@ -952,6 +1066,12 @@ NIMCP_EXPORT skill_error_t skill_acquisition_record_trial(
                           ? result->num_steps : state->skill->num_steps;
 
         for (size_t i = 0; i < num_steps; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_steps > 256) {
+                skill_acquisition_heartbeat("skill_acquis_loop",
+                                 (float)(i + 1) / (float)num_steps);
+            }
+
             state->step_practice_count[i]++;
             // Consider high performance (time) as an error indicator
             float mean_perf = compute_mean(state->performance_history, state->history_count);
@@ -1022,6 +1142,12 @@ NIMCP_EXPORT size_t skill_acquisition_record_trials(
 
     size_t recorded = 0;
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            skill_acquisition_heartbeat("skill_acquis_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (skill_acquisition_record_trial(sa, skill_id, &results[i]) == SKILL_SUCCESS) {
             recorded++;
         }
@@ -1365,6 +1491,12 @@ NIMCP_EXPORT skill_error_t skill_acquisition_find_best_transfer(
     uint64_t best_source = SKILL_INVALID_ID;
 
     for (size_t i = 0; i < sa->num_states; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sa->num_states > 256) {
+            skill_acquisition_heartbeat("skill_acquis_loop",
+                             (float)(i + 1) / (float)sa->num_states);
+        }
+
         if (!sa->states[i] || !sa->states[i]->skill) continue;
 
         uint64_t candidate_id = sa->states[i]->skill->skill_id;
@@ -1713,6 +1845,12 @@ NIMCP_EXPORT skill_error_t skill_acquisition_plan_deliberate_practice(
             if (plan->focus_steps && plan->focus_durations) {
                 float equal_time = 1.0f / (float)plan->num_focus_steps;
                 for (size_t i = 0; i < plan->num_focus_steps; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && plan->num_focus_steps > 256) {
+                        skill_acquisition_heartbeat("skill_acquis_loop",
+                                         (float)(i + 1) / (float)plan->num_focus_steps);
+                    }
+
                     plan->focus_steps[i] = i;
                     plan->focus_durations[i] = equal_time;
                 }
@@ -1733,10 +1871,22 @@ NIMCP_EXPORT skill_error_t skill_acquisition_plan_deliberate_practice(
             // Allocate time proportional to difficulty
             float total_difficulty = 0.0f;
             for (size_t i = 0; i < weak_analysis.num_weak_steps; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && weak_analysis.num_weak_steps > 256) {
+                    skill_acquisition_heartbeat("skill_acquis_loop",
+                                     (float)(i + 1) / (float)weak_analysis.num_weak_steps);
+                }
+
                 total_difficulty += weak_analysis.weak_step_errors[i];
             }
 
             for (size_t i = 0; i < plan->num_focus_steps; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && plan->num_focus_steps > 256) {
+                    skill_acquisition_heartbeat("skill_acquis_loop",
+                                     (float)(i + 1) / (float)plan->num_focus_steps);
+                }
+
                 plan->focus_durations[i] = weak_analysis.weak_step_errors[i] / total_difficulty;
             }
         }
@@ -1955,6 +2105,12 @@ NIMCP_EXPORT skill_error_t skill_acquisition_get_learning_curve(
 
     // Fill arrays
     for (size_t i = 0; i < state->history_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && state->history_count > 256) {
+            skill_acquisition_heartbeat("skill_acquis_loop",
+                             (float)(i + 1) / (float)state->history_count);
+        }
+
         curve->trial_numbers[i] = (float)(i + 1);
         curve->performances[i] = state->performance_history[i];
         curve->predicted[i] = power_law_predict(&state->power_law, i + 1);
@@ -2031,6 +2187,12 @@ NIMCP_EXPORT skill_error_t skill_acquisition_get_statistics(
     if (avg_learning_rate && sa->num_states > 0) {
         float sum = 0.0f;
         for (size_t i = 0; i < sa->num_states; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && sa->num_states > 256) {
+                skill_acquisition_heartbeat("skill_acquis_loop",
+                                 (float)(i + 1) / (float)sa->num_states);
+            }
+
             if (sa->states[i]) {
                 sum += sa->states[i]->power_law.learning_rate;
             }
@@ -2167,6 +2329,12 @@ NIMCP_EXPORT void skill_acquisition_print_power_law(const power_law_state_t* sta
         printf("  Predictions:\n");
         size_t trials[] = {1, 10, 100, 1000};
         for (size_t i = 0; i < 4; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && 4 > 256) {
+                skill_acquisition_heartbeat("skill_acquis_loop",
+                                 (float)(i + 1) / (float)4);
+            }
+
             if (trials[i] > state->practice_count * 10) break;
             printf("    Trial %zu: %.2f\n", trials[i], power_law_predict(state, trials[i]));
         }

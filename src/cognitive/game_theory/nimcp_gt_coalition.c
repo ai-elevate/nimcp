@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_gt_coalition_health_agent = NULL;
  * @brief Set health agent for gt_coalition heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void gt_coalition_set_health_agent(nimcp_health_agent_t* agent) {
+void gt_coalition_set_health_agent(nimcp_health_agent_t* agent) {
     g_gt_coalition_health_agent = agent;
 }
 
@@ -226,6 +226,12 @@ static int32_t find_player_coalition_internal(
 ) {
     uint32_t player_bit = 1u << player;
     for (uint32_t i = 0; i < structure->num_coalitions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && structure->num_coalitions > 256) {
+            gt_coalition_heartbeat("gt_coalition_loop",
+                             (float)(i + 1) / (float)structure->num_coalitions);
+        }
+
         if (structure->coalitions[i].members & player_bit) {
             return (int32_t)i;
         }
@@ -242,6 +248,12 @@ static float compute_structure_value(
 ) {
     float total = 0.0f;
     for (uint32_t i = 0; i < structure->num_coalitions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && structure->num_coalitions > 256) {
+            gt_coalition_heartbeat("gt_coalition_loop",
+                             (float)(i + 1) / (float)structure->num_coalitions);
+        }
+
         structure->coalitions[i].value = get_coalition_value_cached(game, structure->coalitions[i].members);
         total += structure->coalitions[i].value;
     }
@@ -264,6 +276,12 @@ static bool is_individually_rational_unlocked(
     uint32_t n = game->config.num_players;
 
     for (uint32_t p = 0; p < n; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && n > 256) {
+            gt_coalition_heartbeat("gt_coalition_loop",
+                             (float)(p + 1) / (float)n);
+        }
+
         uint32_t player_bit = 1u << p;
 
         // Find player's current coalition
@@ -305,12 +323,24 @@ static bool is_in_core_unlocked(
     // Compute payoffs in current structure
     float payoffs[NIMCP_GT_MAX_PLAYERS] = {0};
     for (uint32_t c = 0; c < structure->num_coalitions; c++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((c & 0xFF) == 0 && structure->num_coalitions > 256) {
+            gt_coalition_heartbeat("gt_coalition_loop",
+                             (float)(c + 1) / (float)structure->num_coalitions);
+        }
+
         uint32_t coal = structure->coalitions[c].members;
         float value = get_coalition_value_cached(game, coal);
         uint32_t size = popcount32(coal);
         float per_player = (size > 0) ? value / (float)size : 0.0f;
 
         for (uint32_t p = 0; p < n; p++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((p & 0xFF) == 0 && n > 256) {
+                gt_coalition_heartbeat("gt_coalition_loop",
+                                 (float)(p + 1) / (float)n);
+            }
+
             if (coal & (1u << p)) {
                 payoffs[p] = per_player;
             }
@@ -321,6 +351,12 @@ static bool is_in_core_unlocked(
     for (uint32_t S = 1; S < num_coalitions; S++) {
         float payoff_sum = 0.0f;
         for (uint32_t p = 0; p < n; p++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((p & 0xFF) == 0 && n > 256) {
+                gt_coalition_heartbeat("gt_coalition_loop",
+                                 (float)(p + 1) / (float)n);
+            }
+
             if (S & (1u << p)) {
                 payoff_sum += payoffs[p];
             }
@@ -340,6 +376,10 @@ static bool is_in_core_unlocked(
 //=============================================================================
 
 nimcp_coalition_config_t nimcp_coalition_default_config(uint32_t num_players) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_coalition_heartbeat("gt_coalition_coalition_default_co", 0.0f);
+
+
     nimcp_coalition_config_t config = {
         .num_players = (num_players > NIMCP_GT_MAX_PLAYERS) ? NIMCP_GT_MAX_PLAYERS : num_players,
         .algorithm = NIMCP_FORMATION_GREEDY,
@@ -356,6 +396,10 @@ nimcp_coalition_config_t nimcp_coalition_default_config(uint32_t num_players) {
 //=============================================================================
 
 nimcp_coalition_game_t nimcp_coalition_create(const nimcp_coalition_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_coalition_heartbeat("gt_coalition_coalition_create", 0.0f);
+
+
     nimcp_coalition_config_t default_config = nimcp_coalition_default_config(4);
     if (!config) {
         config = &default_config;
@@ -395,6 +439,12 @@ nimcp_coalition_game_t nimcp_coalition_create(const nimcp_coalition_config_t* co
 
     // Initialize player preferences
     for (uint32_t i = 0; i < NIMCP_GT_MAX_PLAYERS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && NIMCP_GT_MAX_PLAYERS > 256) {
+            gt_coalition_heartbeat("gt_coalition_loop",
+                             (float)(i + 1) / (float)NIMCP_GT_MAX_PLAYERS);
+        }
+
         game->player_prefs[i].is_set = false;
         game->player_prefs[i].num_preferences = 0;
     }
@@ -411,6 +461,10 @@ nimcp_coalition_game_t nimcp_coalition_create(const nimcp_coalition_config_t* co
 
 void nimcp_coalition_destroy(nimcp_coalition_game_t game) {
     if (!game) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_coalition_heartbeat("gt_coalition_coalition_destroy", 0.0f);
+
 
     nimcp_platform_mutex_destroy(&game->mutex);
     nimcp_free(game->value_cache);
@@ -430,6 +484,10 @@ nimcp_error_t nimcp_coalition_set_value_function(
     if (!game) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_coalition_heartbeat("gt_coalition_coalition_set_value_", 0.0f);
+
 
     nimcp_platform_mutex_lock(&game->mutex);
     game->value_fn = value_fn;
@@ -453,6 +511,10 @@ nimcp_error_t nimcp_coalition_set_preferences(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_coalition_heartbeat("gt_coalition_coalition_set_prefer", 0.0f);
+
+
     nimcp_platform_mutex_lock(&game->mutex);
     game->pref_fn = pref_fn;
     game->pref_user_data = user_data;
@@ -469,6 +531,10 @@ nimcp_error_t nimcp_coalition_set_preference_order(
     if (!game || !preferences) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_coalition_heartbeat("gt_coalition_coalition_set_prefer", 0.0f);
+
 
     if (player >= game->config.num_players) {
         return NIMCP_GT_ERROR_INVALID_PARAMETER;
@@ -504,6 +570,10 @@ nimcp_error_t nimcp_coalition_form_greedy(
         return NIMCP_GT_ERROR_VALUE_FN_NOT_SET;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_coalition_heartbeat("gt_coalition_coalition_form_greed", 0.0f);
+
+
     nimcp_platform_mutex_lock(&game->mutex);
 
     float start_time = get_time_ms();
@@ -524,6 +594,12 @@ nimcp_error_t nimcp_coalition_form_greedy(
 
         // For each player, try joining each existing coalition
         for (uint32_t player = 0; player < n; player++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((player & 0xFF) == 0 && n > 256) {
+                gt_coalition_heartbeat("gt_coalition_loop",
+                                 (float)(player + 1) / (float)n);
+            }
+
             uint32_t player_bit = 1u << player;
             int32_t current_coal_idx = find_player_coalition_internal(&result->structure, player);
             if (current_coal_idx < 0) continue;
@@ -536,6 +612,12 @@ nimcp_error_t nimcp_coalition_form_greedy(
             int32_t best_target = -1;
 
             for (uint32_t c = 0; c < result->structure.num_coalitions; c++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((c & 0xFF) == 0 && result->structure.num_coalitions > 256) {
+                    gt_coalition_heartbeat("gt_coalition_loop",
+                                     (float)(c + 1) / (float)result->structure.num_coalitions);
+                }
+
                 if ((int32_t)c == current_coal_idx) continue;
 
                 uint32_t target_coal = result->structure.coalitions[c].members | player_bit;
@@ -580,6 +662,12 @@ nimcp_error_t nimcp_coalition_form_greedy(
                 // Remove empty coalitions
                 uint32_t write_idx = 0;
                 for (uint32_t read_idx = 0; read_idx < result->structure.num_coalitions; read_idx++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((read_idx & 0xFF) == 0 && result->structure.num_coalitions > 256) {
+                        gt_coalition_heartbeat("gt_coalition_loop",
+                                         (float)(read_idx + 1) / (float)result->structure.num_coalitions);
+                    }
+
                     if (result->structure.coalitions[read_idx].members != 0) {
                         if (write_idx != read_idx) {
                             result->structure.coalitions[write_idx] = result->structure.coalitions[read_idx];
@@ -626,6 +714,10 @@ nimcp_error_t nimcp_coalition_form_optimal(
     }
 
     // Optimal is only feasible for small n
+    /* Phase 8: Heartbeat at operation start */
+    gt_coalition_heartbeat("gt_coalition_coalition_form_optim", 0.0f);
+
+
     if (game->config.num_players > 15) {
         return NIMCP_GT_ERROR_CAPACITY;
     }
@@ -719,6 +811,10 @@ nimcp_error_t nimcp_coalition_form_merge_split(
     if (!game->value_fn) {
         return NIMCP_GT_ERROR_VALUE_FN_NOT_SET;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_coalition_heartbeat("gt_coalition_coalition_form_merge", 0.0f);
+
 
     nimcp_platform_mutex_lock(&game->mutex);
 
@@ -832,6 +928,10 @@ bool nimcp_coalition_is_stable(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_coalition_heartbeat("gt_coalition_coalition_is_stable", 0.0f);
+
+
     switch (stability_type) {
         case NIMCP_STABILITY_CORE:
             return nimcp_coalition_is_in_core(game, structure);
@@ -842,7 +942,19 @@ bool nimcp_coalition_is_stable(
         case NIMCP_STABILITY_NASH: {
             // Check no player wants to unilaterally deviate
             for (uint32_t p = 0; p < game->config.num_players; p++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((p & 0xFF) == 0 && game->config.num_players > 256) {
+                    gt_coalition_heartbeat("gt_coalition_loop",
+                                     (float)(p + 1) / (float)game->config.num_players);
+                }
+
                 for (uint32_t c = 0; c < structure->num_coalitions; c++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((c & 0xFF) == 0 && structure->num_coalitions > 256) {
+                        gt_coalition_heartbeat("gt_coalition_loop",
+                                         (float)(c + 1) / (float)structure->num_coalitions);
+                    }
+
                     if (nimcp_coalition_player_would_deviate(game, structure, p, (int32_t)c)) {
                         return false;
                     }
@@ -879,6 +991,10 @@ bool nimcp_coalition_is_in_core(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_coalition_heartbeat("gt_coalition_coalition_is_in_core", 0.0f);
+
+
     nimcp_platform_mutex_lock(&game->mutex);
 
     uint32_t n = game->config.num_players;
@@ -887,12 +1003,24 @@ bool nimcp_coalition_is_in_core(
     // Compute payoffs in current structure
     float payoffs[NIMCP_GT_MAX_PLAYERS] = {0};
     for (uint32_t c = 0; c < structure->num_coalitions; c++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((c & 0xFF) == 0 && structure->num_coalitions > 256) {
+            gt_coalition_heartbeat("gt_coalition_loop",
+                             (float)(c + 1) / (float)structure->num_coalitions);
+        }
+
         uint32_t coal = structure->coalitions[c].members;
         float value = get_coalition_value_cached(game, coal);
         uint32_t size = popcount32(coal);
         float per_player = (size > 0) ? value / (float)size : 0.0f;
 
         for (uint32_t p = 0; p < n; p++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((p & 0xFF) == 0 && n > 256) {
+                gt_coalition_heartbeat("gt_coalition_loop",
+                                 (float)(p + 1) / (float)n);
+            }
+
             if (coal & (1u << p)) {
                 payoffs[p] = per_player;
             }
@@ -904,6 +1032,12 @@ bool nimcp_coalition_is_in_core(
     for (uint32_t S = 1; S < num_coalitions && in_core; S++) {
         float payoff_sum = 0.0f;
         for (uint32_t p = 0; p < n; p++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((p & 0xFF) == 0 && n > 256) {
+                gt_coalition_heartbeat("gt_coalition_loop",
+                                 (float)(p + 1) / (float)n);
+            }
+
             if (S & (1u << p)) {
                 payoff_sum += payoffs[p];
             }
@@ -926,6 +1060,10 @@ bool nimcp_coalition_is_individually_rational(
     if (!game || !structure || !game->value_fn) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_coalition_heartbeat("gt_coalition_coalition_is_individ", 0.0f);
+
 
     nimcp_platform_mutex_lock(&game->mutex);
 
@@ -971,6 +1109,10 @@ nimcp_error_t nimcp_coalition_find_blocking(
         return NIMCP_GT_ERROR_VALUE_FN_NOT_SET;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_coalition_heartbeat("gt_coalition_coalition_find_block", 0.0f);
+
+
     nimcp_platform_mutex_lock(&game->mutex);
 
     uint32_t n = game->config.num_players;
@@ -980,12 +1122,24 @@ nimcp_error_t nimcp_coalition_find_blocking(
     // Compute current payoffs
     float payoffs[NIMCP_GT_MAX_PLAYERS] = {0};
     for (uint32_t c = 0; c < structure->num_coalitions; c++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((c & 0xFF) == 0 && structure->num_coalitions > 256) {
+            gt_coalition_heartbeat("gt_coalition_loop",
+                             (float)(c + 1) / (float)structure->num_coalitions);
+        }
+
         uint32_t coal = structure->coalitions[c].members;
         float value = get_coalition_value_cached(game, coal);
         uint32_t size = popcount32(coal);
         float per_player = (size > 0) ? value / (float)size : 0.0f;
 
         for (uint32_t p = 0; p < n; p++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((p & 0xFF) == 0 && n > 256) {
+                gt_coalition_heartbeat("gt_coalition_loop",
+                                 (float)(p + 1) / (float)n);
+            }
+
             if (coal & (1u << p)) {
                 payoffs[p] = per_player;
             }
@@ -1034,6 +1188,10 @@ nimcp_error_t nimcp_coalition_merge(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_coalition_heartbeat("gt_coalition_coalition_merge", 0.0f);
+
+
     if (coal_idx1 >= structure->num_coalitions || coal_idx2 >= structure->num_coalitions) {
         return NIMCP_GT_ERROR_COALITION_INVALID;
     }
@@ -1069,6 +1227,12 @@ nimcp_error_t nimcp_coalition_merge(
     // Recompute total value
     new_structure->total_value = 0.0f;
     for (uint32_t i = 0; i < new_structure->num_coalitions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && new_structure->num_coalitions > 256) {
+            gt_coalition_heartbeat("gt_coalition_loop",
+                             (float)(i + 1) / (float)new_structure->num_coalitions);
+        }
+
         new_structure->total_value += new_structure->coalitions[i].value;
     }
 
@@ -1085,6 +1249,10 @@ nimcp_error_t nimcp_coalition_split(
     if (!game || !structure || !new_structure) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_coalition_heartbeat("gt_coalition_coalition_split", 0.0f);
+
 
     if (coal_idx >= structure->num_coalitions) {
         return NIMCP_GT_ERROR_COALITION_INVALID;
@@ -1143,6 +1311,12 @@ nimcp_error_t nimcp_coalition_split(
     // Recompute total value
     new_structure->total_value = 0.0f;
     for (uint32_t i = 0; i < new_structure->num_coalitions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && new_structure->num_coalitions > 256) {
+            gt_coalition_heartbeat("gt_coalition_loop",
+                             (float)(i + 1) / (float)new_structure->num_coalitions);
+        }
+
         new_structure->total_value += new_structure->coalitions[i].value;
     }
 
@@ -1159,6 +1333,10 @@ bool nimcp_coalition_player_would_deviate(
     if (!game || !structure) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_coalition_heartbeat("gt_coalition_coalition_player_wou", 0.0f);
+
 
     if (player >= game->config.num_players) {
         return false;
@@ -1226,6 +1404,10 @@ nimcp_error_t nimcp_coalition_compute_value(
         return NIMCP_GT_ERROR_VALUE_FN_NOT_SET;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_coalition_heartbeat("gt_coalition_coalition_compute_va", 0.0f);
+
+
     nimcp_platform_mutex_lock(&game->mutex);
     *value = get_coalition_value_cached(game, coalition);
     nimcp_platform_mutex_unlock(&game->mutex);
@@ -1242,6 +1424,10 @@ nimcp_error_t nimcp_coalition_compute_payoff(
     if (!game || !payoff) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_coalition_heartbeat("gt_coalition_coalition_compute_pa", 0.0f);
+
 
     if (player >= game->config.num_players) {
         return NIMCP_GT_ERROR_INVALID_PARAMETER;
@@ -1271,18 +1457,34 @@ nimcp_error_t nimcp_coalition_compute_payoffs(
         return NIMCP_GT_ERROR_VALUE_FN_NOT_SET;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_coalition_heartbeat("gt_coalition_coalition_compute_pa", 0.0f);
+
+
     nimcp_platform_mutex_lock(&game->mutex);
 
     uint32_t n = game->config.num_players;
     memset(payoffs, 0, n * sizeof(float));
 
     for (uint32_t c = 0; c < structure->num_coalitions; c++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((c & 0xFF) == 0 && structure->num_coalitions > 256) {
+            gt_coalition_heartbeat("gt_coalition_loop",
+                             (float)(c + 1) / (float)structure->num_coalitions);
+        }
+
         uint32_t coal = structure->coalitions[c].members;
         float value = get_coalition_value_cached(game, coal);
         uint32_t size = popcount32(coal);
         float per_player = (size > 0) ? value / (float)size : 0.0f;
 
         for (uint32_t p = 0; p < n; p++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((p & 0xFF) == 0 && n > 256) {
+                gt_coalition_heartbeat("gt_coalition_loop",
+                                 (float)(p + 1) / (float)n);
+            }
+
             if (coal & (1u << p)) {
                 payoffs[p] = per_player;
             }
@@ -1303,6 +1505,10 @@ void nimcp_coalition_structure_init_singletons(
 ) {
     if (!structure) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_coalition_heartbeat("gt_coalition_coalition_structure_", 0.0f);
+
+
     memset(structure, 0, sizeof(nimcp_coalition_structure_t));
 
     if (num_players > NIMCP_GT_MAX_PLAYERS) {
@@ -1313,6 +1519,12 @@ void nimcp_coalition_structure_init_singletons(
     structure->all_players = (1u << num_players) - 1;
 
     for (uint32_t i = 0; i < num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_players > 256) {
+            gt_coalition_heartbeat("gt_coalition_loop",
+                             (float)(i + 1) / (float)num_players);
+        }
+
         structure->coalitions[i].members = 1u << i;
         structure->coalitions[i].size = 1;
         structure->coalitions[i].value = 0.0f;
@@ -1324,6 +1536,10 @@ void nimcp_coalition_structure_init_grand(
     uint32_t num_players
 ) {
     if (!structure) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_coalition_heartbeat("gt_coalition_coalition_structure_", 0.0f);
+
 
     memset(structure, 0, sizeof(nimcp_coalition_structure_t));
 
@@ -1346,10 +1562,20 @@ bool nimcp_coalition_structure_is_valid(
     if (!structure) return false;
     if (num_players > NIMCP_GT_MAX_PLAYERS) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_coalition_heartbeat("gt_coalition_coalition_structure_", 0.0f);
+
+
     uint32_t all_players = (1u << num_players) - 1;
     uint32_t covered = 0;
 
     for (uint32_t i = 0; i < structure->num_coalitions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && structure->num_coalitions > 256) {
+            gt_coalition_heartbeat("gt_coalition_loop",
+                             (float)(i + 1) / (float)structure->num_coalitions);
+        }
+
         uint32_t coal = structure->coalitions[i].members;
 
         // Check coalition is non-empty and within player set
@@ -1373,6 +1599,10 @@ int32_t nimcp_coalition_find_player_coalition(
     const nimcp_coalition_structure_t* structure,
     uint32_t player
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_coalition_heartbeat("gt_coalition_coalition_find_playe", 0.0f);
+
+
     return find_player_coalition_internal(structure, player);
 }
 
@@ -1392,11 +1622,19 @@ const char* nimcp_formation_algorithm_name(nimcp_formation_algorithm_t algorithm
 
 uint32_t nimcp_coalition_get_num_players(const nimcp_coalition_game_t game) {
     if (!game) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    gt_coalition_heartbeat("gt_coalition_coalition_get_num_pl", 0.0f);
+
+
     return game->config.num_players;
 }
 
 void nimcp_coalition_clear_cache(nimcp_coalition_game_t game) {
     if (!game) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_coalition_heartbeat("gt_coalition_coalition_clear_cach", 0.0f);
+
 
     nimcp_platform_mutex_lock(&game->mutex);
     if (game->cache_valid) {
@@ -1417,9 +1655,19 @@ void nimcp_coalition_clear_cache(nimcp_coalition_game_t game) {
  */
 int gt_coalition_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    gt_coalition_heartbeat("gt_coalition_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "GT_Coalition");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                gt_coalition_heartbeat("gt_coalition_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* GT Coalition self-knowledge logged */
         }
     }

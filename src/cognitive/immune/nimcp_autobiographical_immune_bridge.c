@@ -38,7 +38,7 @@ static nimcp_health_agent_t* g_autobiographical_immune_bridge_health_agent = NUL
  * @brief Set health agent for autobiographical_immune_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void autobiographical_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void autobiographical_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_autobiographical_immune_bridge_health_agent = agent;
 }
 
@@ -83,6 +83,12 @@ static float get_cytokine_concentration(
     /* Iterate through active cytokines */
     float total = 0.0f;
     for (size_t i = 0; i < immune->cytokine_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && immune->cytokine_count > 256) {
+            autobiographical_immune_bridge_heartbeat("autobiograph_loop",
+                             (float)(i + 1) / (float)immune->cytokine_count);
+        }
+
         if (immune->cytokines[i].type == type) {
             total += immune->cytokines[i].concentration;
         }
@@ -133,6 +139,12 @@ static brain_inflammation_level_t get_max_inflammation_level(
 
     brain_inflammation_level_t max_level = INFLAMMATION_NONE;
     for (size_t i = 0; i < immune->inflammation_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && immune->inflammation_count > 256) {
+            autobiographical_immune_bridge_heartbeat("autobiograph_loop",
+                             (float)(i + 1) / (float)immune->inflammation_count);
+        }
+
         if (immune->inflammation_sites[i].level > max_level) {
             max_level = immune->inflammation_sites[i].level;
         }
@@ -155,6 +167,10 @@ int autobio_immune_default_config(autobio_immune_config_t* config) {
     }
 
     /* All features enabled by default */
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_defau", 0.0f);
+
+
     config->enable_cytokine_encoding_modulation = true;
     config->enable_inflammation_consolidation_impairment = true;
     config->enable_sickness_landmark_creation = true;
@@ -190,6 +206,10 @@ autobio_immune_bridge_t* autobio_immune_bridge_create(
     }
 
     /* Allocate bridge */
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_bridg", 0.0f);
+
+
     autobio_immune_bridge_t* bridge = (autobio_immune_bridge_t*)
         nimcp_malloc(sizeof(autobio_immune_bridge_t));
     if (!bridge) {
@@ -244,6 +264,10 @@ void autobio_immune_bridge_destroy(autobio_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_bridg", 0.0f);
+
+
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
     }
@@ -273,6 +297,10 @@ int autobio_immune_apply_cytokine_encoding_effects(autobio_immune_bridge_t* brid
     }
     if (!bridge->enable_cytokine_encoding_modulation) return 0;
     if (!bridge->immune_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_apply", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -332,6 +360,10 @@ int autobio_immune_apply_inflammation_consolidation_effects(
     if (!bridge->enable_inflammation_consolidation_impairment) return 0;
     if (!bridge->immune_system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_apply", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Get inflammation state */
@@ -382,6 +414,10 @@ float autobio_immune_modulate_memory_salience(
     if (!bridge || !memory) return 1.0f;
     if (!bridge->enable_cytokine_encoding_modulation) return 1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_modul", 0.0f);
+
+
     float modulation = 1.0f;
 
     /* Enhance negative memories during inflammation */
@@ -406,6 +442,10 @@ int autobio_immune_create_sickness_landmark(
     if (!bridge->enable_sickness_landmark_creation) return 0;
     if (!bridge->autobio_memory) return -1;
     if (severity < INFLAMMATION_SYSTEMIC) return 0; /* Only create for systemic+ */
+
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_creat", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -483,11 +523,21 @@ int autobio_immune_close_sickness_landmark(
     if (!bridge->autobio_memory) return -1;
     if (landmark_id == 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_close", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Find landmark */
     sickness_landmark_t* landmark = NULL;
     for (uint32_t i = 0; i < bridge->sickness_landmark_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->sickness_landmark_count > 256) {
+            autobiographical_immune_bridge_heartbeat("autobiograph_loop",
+                             (float)(i + 1) / (float)bridge->sickness_landmark_count);
+        }
+
         if (bridge->sickness_landmarks[i].memory_id == landmark_id) {
             landmark = &bridge->sickness_landmarks[i];
             break;
@@ -527,6 +577,10 @@ int autobio_immune_close_sickness_landmark(
 
 float autobio_immune_get_encoding_efficiency(const autobio_immune_bridge_t* bridge) {
     if (!bridge) return 1.0f;
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_get_e", 0.0f);
+
+
     return bridge->cytokine_effects.total_encoding_modulation;
 }
 
@@ -544,6 +598,10 @@ int autobio_immune_trigger_from_trauma_recall(
     if (!bridge->immune_system) return -1;
 
     /* Check if memory is traumatic enough to trigger immune */
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_trigg", 0.0f);
+
+
     bool is_trauma = (memory->type == AUTOBIO_FAILURE ||
                       memory->type == AUTOBIO_CRISIS) &&
                      (memory->valence <= VALENCE_NEGATIVE) &&
@@ -596,6 +654,10 @@ int autobio_immune_ruminate_on_negative_memory(
     if (!bridge->enable_rumination_tracking) return 0;
     if (!bridge->autobio_memory) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_rumin", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Track rumination */
@@ -626,6 +688,10 @@ int autobio_immune_boost_from_positive_memory(
     if (!bridge->immune_system) return -1;
 
     /* Check if memory is positive enough to boost immune */
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_boost", 0.0f);
+
+
     bool is_positive = (memory->valence > VALENCE_NEUTRAL) &&
                        (memory->importance > 0.4f);
 
@@ -666,6 +732,10 @@ bool autobio_immune_is_identity_threatening(
     if (!memory) return false;
 
     /* Identity-threatening: core memory + negative + high importance */
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_is_id", 0.0f);
+
+
     return memory->is_core_memory &&
            (memory->valence <= VALENCE_NEGATIVE) &&
            (memory->importance >= 0.7f);
@@ -687,6 +757,10 @@ int autobio_immune_bridge_update(
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_bridg", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -738,6 +812,10 @@ int autobio_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_get_c", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_memory_effects_t));
     pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
@@ -751,6 +829,10 @@ int autobio_immune_get_inflammation_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_get_i", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_memory_state_t));
     pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
@@ -760,6 +842,10 @@ int autobio_immune_get_inflammation_state(
 
 bool autobio_immune_is_sickness_affecting_memory(const autobio_immune_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_is_si", 0.0f);
+
 
     return (bridge->inflammation_state.current_level >= INFLAMMATION_REGIONAL) &&
            (bridge->cytokine_effects.total_encoding_modulation < 0.8f);
@@ -772,6 +858,10 @@ int autobio_immune_get_sickness_landmarks(
     uint32_t* num_found
 ) {
     if (!bridge || !landmarks || !num_found) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_get_s", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -790,11 +880,19 @@ float autobio_immune_get_consolidation_impairment(
     const autobio_immune_bridge_t* bridge
 ) {
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_get_c", 0.0f);
+
+
     return bridge->cytokine_effects.consolidation_impairment;
 }
 
 float autobio_immune_get_memory_decline_rate(const autobio_immune_bridge_t* bridge) {
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_get_m", 0.0f);
+
+
     return bridge->inflammation_state.memory_decline_rate;
 }
 
@@ -816,6 +914,10 @@ int autobiographical_immune_connect_bio_async(autobio_immune_bridge_t* bridge) {
 
     }
     if (bridge->base.bio_async_enabled) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobiographical_imm", 0.0f);
+
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_AUTOBIOGRAPHICAL,
@@ -848,6 +950,10 @@ int autobiographical_immune_disconnect_bio_async(autobio_immune_bridge_t* bridge
     }
     if (!bridge->base.bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobiographical_imm", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -863,6 +969,10 @@ int autobiographical_immune_disconnect_bio_async(autobio_immune_bridge_t* bridge
  */
 bool autobiographical_immune_is_bio_async_connected(const autobio_immune_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobiographical_imm", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -882,9 +992,19 @@ bool autobiographical_immune_is_bio_async_connected(const autobio_immune_bridge_
  */
 int autobiographical_immune_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_immune_bridge_heartbeat("autobiograph_autobiographical_imm", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Autobiographical_Immune_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                autobiographical_immune_bridge_heartbeat("autobiograph_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Autobiographical immune bridge self-knowledge: %s", self->observations[i]);
         }
     }

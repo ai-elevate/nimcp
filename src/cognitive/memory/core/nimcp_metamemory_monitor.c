@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_metamemory_monitor_health_agent = NULL;
  * @brief Set health agent for metamemory_monitor heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void metamemory_monitor_set_health_agent(nimcp_health_agent_t* agent) {
+void metamemory_monitor_set_health_agent(nimcp_health_agent_t* agent) {
     g_metamemory_monitor_health_agent = agent;
 }
 
@@ -138,6 +138,10 @@ static float linear_regression_slope(const float* values, size_t count);
 //=============================================================================
 
 metamem_config_t metamem_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_config_defau", 0.0f);
+
+
     metamem_config_t config = {
         // Monitoring intervals
         .monitor_interval_sec = METAMEM_DEFAULT_INTERVAL,
@@ -189,6 +193,10 @@ bool metamem_config_validate(const metamem_config_t* config) {
     if (config->risk_threshold_critical > 1.0f) return false;
 
     // Validate weights (should sum to ~1.0 but we normalize internally)
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_config_valid", 0.0f);
+
+
     float weight_sum = config->risk_weight_consolidation +
                        config->risk_weight_time +
                        config->risk_weight_tier +
@@ -219,6 +227,10 @@ metamem_monitor_t metamem_monitor_create(
     }
 
     // Use default config if none provided
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_monitor_crea", 0.0f);
+
+
     metamem_config_t cfg = config ? *config : metamem_config_default();
     if (!metamem_config_validate(&cfg)) {
         return NULL;
@@ -267,6 +279,10 @@ metamem_monitor_t metamem_monitor_create(
 void metamem_monitor_destroy(metamem_monitor_t monitor) {
     if (!monitor) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_monitor_dest", 0.0f);
+
+
     domains_cleanup(monitor);
     at_risk_cleanup(monitor);
     history_cleanup(monitor);
@@ -283,6 +299,10 @@ metamem_error_t metamem_monitor_update(
     uint64_t current_time_ms
 ) {
     if (!monitor) return METAMEM_ERROR_NULL_POINTER;
+
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_monitor_upda", 0.0f);
+
 
     float elapsed_sec = (float)(current_time_ms - monitor->last_monitor_time_ms) / 1000.0f;
 
@@ -305,6 +325,12 @@ metamem_error_t metamem_monitor_update(
         float total_access = 0.0f;
 
         for (int tier = 0; tier < PR_MEMORY_TIER_COUNT; tier++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((tier & 0xFF) == 0 && PR_MEMORY_TIER_COUNT > 256) {
+                metamemory_monitor_heartbeat("metamemory_m_loop",
+                                 (float)(tier + 1) / (float)PR_MEMORY_TIER_COUNT);
+            }
+
             size_t count = z_ladder_get_count(monitor->z_ladder, (pr_memory_tier_t)tier);
             if (count == 0) continue;
 
@@ -314,6 +340,12 @@ metamem_error_t metamem_monitor_update(
                 z_ladder_get_nodes(monitor->z_ladder, (pr_memory_tier_t)tier, nodes, count, &actual);
 
                 for (size_t i = 0; i < actual; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && actual > 256) {
+                        metamemory_monitor_heartbeat("metamemory_m_loop",
+                                         (float)(i + 1) / (float)actual);
+                    }
+
                     if (nodes[i]) {
                         nimcp_quaternion_t state = pr_memory_node_get_state(nodes[i]);
                         total_consol += state.w;
@@ -351,6 +383,12 @@ metamem_error_t metamem_monitor_update(
 
         // Critical risk alerts
         for (size_t i = 0; i < monitor->num_at_risk; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && monitor->num_at_risk > 256) {
+                metamemory_monitor_heartbeat("metamemory_m_loop",
+                                 (float)(i + 1) / (float)monitor->num_at_risk);
+            }
+
             if (monitor->at_risk[i].urgency == META_URGENCY_CRITICAL) {
                 send_alert(monitor, METAMEM_ALERT_FORGETTING_RISK, &monitor->at_risk[i]);
             }
@@ -363,6 +401,10 @@ metamem_error_t metamem_monitor_update(
 metamem_error_t metamem_monitor_full_scan(metamem_monitor_t monitor) {
     if (!monitor) return METAMEM_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_monitor_full", 0.0f);
+
+
     monitor->total_scans++;
 
     // Rebuild domain inventory
@@ -374,6 +416,12 @@ metamem_error_t metamem_monitor_full_scan(metamem_monitor_t monitor) {
     // Compute overall coverage
     float total_coverage = 0.0f;
     for (size_t i = 0; i < monitor->num_domains; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && monitor->num_domains > 256) {
+            metamemory_monitor_heartbeat("metamemory_m_loop",
+                             (float)(i + 1) / (float)monitor->num_domains);
+        }
+
         total_coverage += monitor->domains[i].coverage_score;
     }
     if (monitor->num_domains > 0) {
@@ -391,7 +439,17 @@ int metamem_monitor_inventory_domains(metamem_monitor_t monitor) {
     if (!monitor) return -1;
 
     // Clear existing domain stats (keep domain definitions)
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_monitor_inve", 0.0f);
+
+
     for (size_t i = 0; i < monitor->num_domains; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && monitor->num_domains > 256) {
+            metamemory_monitor_heartbeat("metamemory_m_loop",
+                             (float)(i + 1) / (float)monitor->num_domains);
+        }
+
         monitor->domains[i].memory_count = 0;
         monitor->domains[i].mean_consolidation = 0.0f;
         monitor->domains[i].mean_accessibility = 0.0f;
@@ -404,6 +462,12 @@ int metamem_monitor_inventory_domains(metamem_monitor_t monitor) {
     size_t total_processed = 0;
 
     for (int tier = 0; tier < PR_MEMORY_TIER_COUNT; tier++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((tier & 0xFF) == 0 && PR_MEMORY_TIER_COUNT > 256) {
+            metamemory_monitor_heartbeat("metamemory_m_loop",
+                             (float)(tier + 1) / (float)PR_MEMORY_TIER_COUNT);
+        }
+
         size_t count = z_ladder_get_count(monitor->z_ladder, (pr_memory_tier_t)tier);
         if (count == 0) continue;
 
@@ -414,6 +478,12 @@ int metamem_monitor_inventory_domains(metamem_monitor_t monitor) {
         z_ladder_get_nodes(monitor->z_ladder, (pr_memory_tier_t)tier, nodes, count, &actual);
 
         for (size_t i = 0; i < actual; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && actual > 256) {
+                metamemory_monitor_heartbeat("metamemory_m_loop",
+                                 (float)(i + 1) / (float)actual);
+            }
+
             if (!nodes[i]) continue;
 
             const prime_signature_t* sig = pr_memory_node_get_signature(nodes[i]);
@@ -440,6 +510,12 @@ int metamem_monitor_inventory_domains(metamem_monitor_t monitor) {
                 size_t weakest_idx = 0;
                 float weakest_consol = 1.0f;
                 for (size_t j = 0; j < domain->num_top; j++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((j & 0xFF) == 0 && domain->num_top > 256) {
+                        metamemory_monitor_heartbeat("metamemory_m_loop",
+                                         (float)(j + 1) / (float)domain->num_top);
+                    }
+
                     nimcp_quaternion_t top_state = pr_memory_node_get_state(domain->top_memories[j]);
                     if (top_state.w < weakest_consol) {
                         weakest_consol = top_state.w;
@@ -459,6 +535,12 @@ int metamem_monitor_inventory_domains(metamem_monitor_t monitor) {
 
     // Finalize domain statistics
     for (size_t i = 0; i < monitor->num_domains; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && monitor->num_domains > 256) {
+            metamemory_monitor_heartbeat("metamemory_m_loop",
+                             (float)(i + 1) / (float)monitor->num_domains);
+        }
+
         if (monitor->domains[i].memory_count > 0) {
             float count_f = (float)monitor->domains[i].memory_count;
             monitor->domains[i].mean_consolidation /= count_f;
@@ -480,8 +562,18 @@ metamem_error_t metamem_monitor_get_domain_summary(
     if (!monitor || !summary) return METAMEM_ERROR_NULL_POINTER;
 
     // Find domain
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_monitor_get_", 0.0f);
+
+
     knowledge_domain_t* domain = NULL;
     for (size_t i = 0; i < monitor->num_domains; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && monitor->num_domains > 256) {
+            metamemory_monitor_heartbeat("metamemory_m_loop",
+                             (float)(i + 1) / (float)monitor->num_domains);
+        }
+
         if (monitor->domains[i].domain_hash == domain_hash) {
             domain = &monitor->domains[i];
             break;
@@ -515,10 +607,20 @@ metamem_error_t metamem_monitor_get_all_domains(
 ) {
     if (!monitor || !summaries || !count) return METAMEM_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_monitor_get_", 0.0f);
+
+
     size_t to_return = (monitor->num_domains < max_summaries) ?
                         monitor->num_domains : max_summaries;
 
     for (size_t i = 0; i < to_return; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && to_return > 256) {
+            metamemory_monitor_heartbeat("metamemory_m_loop",
+                             (float)(i + 1) / (float)to_return);
+        }
+
         strncpy(summaries[i].name, monitor->domains[i].domain_name, METAMEM_MAX_DOMAIN_NAME - 1);
         summaries[i].name[METAMEM_MAX_DOMAIN_NAME - 1] = '\0';
         summaries[i].hash = monitor->domains[i].domain_hash;
@@ -541,7 +643,17 @@ float metamem_monitor_compute_coverage(
 ) {
     if (!monitor) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_monitor_comp", 0.0f);
+
+
     for (size_t i = 0; i < monitor->num_domains; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && monitor->num_domains > 256) {
+            metamemory_monitor_heartbeat("metamemory_m_loop",
+                             (float)(i + 1) / (float)monitor->num_domains);
+        }
+
         if (monitor->domains[i].domain_hash == domain_hash) {
             return compute_domain_coverage(&monitor->domains[i]);
         }
@@ -556,7 +668,17 @@ uint64_t metamem_monitor_find_domain(
 ) {
     if (!monitor || !name) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_monitor_find", 0.0f);
+
+
     for (size_t i = 0; i < monitor->num_domains; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && monitor->num_domains > 256) {
+            metamemory_monitor_heartbeat("metamemory_m_loop",
+                             (float)(i + 1) / (float)monitor->num_domains);
+        }
+
         if (strcmp(monitor->domains[i].domain_name, name) == 0) {
             return monitor->domains[i].domain_hash;
         }
@@ -571,6 +693,10 @@ uint64_t metamem_monitor_register_domain(
     const prime_signature_t* seed_signature
 ) {
     if (!monitor || !name) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_monitor_regi", 0.0f);
+
 
     if (monitor->num_domains >= monitor->max_domains) {
         return 0;  // Capacity exceeded
@@ -614,6 +740,10 @@ uint64_t metamem_monitor_register_domain(
 int metamem_monitor_detect_at_risk(metamem_monitor_t monitor) {
     if (!monitor) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_monitor_dete", 0.0f);
+
+
     uint64_t current_time = metamem_current_time_ms();
 
     // Clear existing at-risk list
@@ -621,6 +751,12 @@ int metamem_monitor_detect_at_risk(metamem_monitor_t monitor) {
 
     // Scan all memories for risk
     for (int tier = 0; tier < PR_MEMORY_TIER_COUNT; tier++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((tier & 0xFF) == 0 && PR_MEMORY_TIER_COUNT > 256) {
+            metamemory_monitor_heartbeat("metamemory_m_loop",
+                             (float)(tier + 1) / (float)PR_MEMORY_TIER_COUNT);
+        }
+
         // Skip Z3 (permanent) tier - these don't decay
         if (tier == PR_MEMORY_TIER_Z3) continue;
 
@@ -634,6 +770,12 @@ int metamem_monitor_detect_at_risk(metamem_monitor_t monitor) {
         z_ladder_get_nodes(monitor->z_ladder, (pr_memory_tier_t)tier, nodes, count, &actual);
 
         for (size_t i = 0; i < actual; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && actual > 256) {
+                metamemory_monitor_heartbeat("metamemory_m_loop",
+                                 (float)(i + 1) / (float)actual);
+            }
+
             if (!nodes[i]) continue;
             if (monitor->num_at_risk >= monitor->max_at_risk) break;
 
@@ -686,6 +828,10 @@ metamem_error_t metamem_monitor_get_at_risk(
 ) {
     if (!monitor || !at_risk || !count) return METAMEM_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_monitor_get_", 0.0f);
+
+
     size_t to_return = (monitor->num_at_risk < max_count) ?
                         monitor->num_at_risk : max_count;
 
@@ -704,6 +850,10 @@ metamem_error_t metamem_monitor_get_at_risk_by_urgency(
 ) {
     if (!monitor || !at_risk || !count) return METAMEM_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_monitor_get_", 0.0f);
+
+
     size_t written = 0;
     for (size_t i = 0; i < monitor->num_at_risk && written < max_count; i++) {
         if (monitor->at_risk[i].urgency >= min_urgency) {
@@ -720,6 +870,10 @@ float metamem_monitor_compute_risk(
     const pr_memory_node_t* node
 ) {
     if (!monitor || !node) return -1.0f;
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_monitor_comp", 0.0f);
+
+
     return compute_memory_risk(monitor, node, metamem_current_time_ms());
 }
 
@@ -728,6 +882,10 @@ meta_urgency_t metamem_monitor_classify_urgency(
     float risk_score
 ) {
     if (!monitor) return META_URGENCY_NONE;
+
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_monitor_clas", 0.0f);
+
 
     if (risk_score >= monitor->config.risk_threshold_critical) {
         return META_URGENCY_CRITICAL;
@@ -751,6 +909,10 @@ metamem_error_t metamem_monitor_get_health_report(
 ) {
     if (!monitor || !report) return METAMEM_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_monitor_get_", 0.0f);
+
+
     memset(report, 0, sizeof(metamem_health_report_t));
 
     // Overall metrics
@@ -763,6 +925,12 @@ metamem_error_t metamem_monitor_get_health_report(
     // Tier health
     size_t total = 0;
     for (int tier = 0; tier < PR_MEMORY_TIER_COUNT; tier++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((tier & 0xFF) == 0 && PR_MEMORY_TIER_COUNT > 256) {
+            metamemory_monitor_heartbeat("metamemory_m_loop",
+                             (float)(tier + 1) / (float)PR_MEMORY_TIER_COUNT);
+        }
+
         report->tier_counts[tier] = z_ladder_get_count(monitor->z_ladder, (pr_memory_tier_t)tier);
         total += report->tier_counts[tier];
 
@@ -787,6 +955,12 @@ metamem_error_t metamem_monitor_get_health_report(
                 z_ladder_get_nodes(monitor->z_ladder, (pr_memory_tier_t)tier,
                                    nodes, report->tier_counts[tier], &actual);
                 for (size_t i = 0; i < actual; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && actual > 256) {
+                        metamemory_monitor_heartbeat("metamemory_m_loop",
+                                         (float)(i + 1) / (float)actual);
+                    }
+
                     if (nodes[i]) {
                         total_strength += nodes[i]->current_strength;
                     }
@@ -802,6 +976,12 @@ metamem_error_t metamem_monitor_get_health_report(
     report->critical_count = 0;
     report->high_risk_count = 0;
     for (size_t i = 0; i < monitor->num_at_risk; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && monitor->num_at_risk > 256) {
+            metamemory_monitor_heartbeat("metamemory_m_loop",
+                             (float)(i + 1) / (float)monitor->num_at_risk);
+        }
+
         if (monitor->at_risk[i].urgency == META_URGENCY_CRITICAL) {
             report->critical_count++;
         } else if (monitor->at_risk[i].urgency == META_URGENCY_HIGH) {
@@ -813,6 +993,12 @@ metamem_error_t metamem_monitor_get_health_report(
     report->domain_count = monitor->num_domains;
     report->weak_domains = 0;
     for (size_t i = 0; i < monitor->num_domains; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && monitor->num_domains > 256) {
+            metamemory_monitor_heartbeat("metamemory_m_loop",
+                             (float)(i + 1) / (float)monitor->num_domains);
+        }
+
         if (monitor->domains[i].coverage_score < 0.3f) {
             report->weak_domains++;
         }
@@ -832,6 +1018,10 @@ float metamem_monitor_get_overall_health(metamem_monitor_t monitor) {
     if (!monitor) return -1.0f;
 
     // Health factors
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_monitor_get_", 0.0f);
+
+
     float health = 0.0f;
 
     // 1. Consolidation health (25%)
@@ -859,6 +1049,12 @@ float metamem_monitor_get_overall_health(metamem_monitor_t monitor) {
     // 5. Critical count penalty (15%)
     size_t critical = 0;
     for (size_t i = 0; i < monitor->num_at_risk; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && monitor->num_at_risk > 256) {
+            metamemory_monitor_heartbeat("metamemory_m_loop",
+                             (float)(i + 1) / (float)monitor->num_at_risk);
+        }
+
         if (monitor->at_risk[i].urgency == META_URGENCY_CRITICAL) {
             critical++;
         }
@@ -883,10 +1079,20 @@ metamem_error_t metamem_monitor_recommend_review(
     if (!monitor || !recommendations || !count) return METAMEM_ERROR_NULL_POINTER;
 
     // Use at-risk memories as basis for recommendations
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_monitor_reco", 0.0f);
+
+
     size_t to_recommend = (monitor->num_at_risk < max_count) ?
                            monitor->num_at_risk : max_count;
 
     for (size_t i = 0; i < to_recommend; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && to_recommend > 256) {
+            metamemory_monitor_heartbeat("metamemory_m_loop",
+                             (float)(i + 1) / (float)to_recommend);
+        }
+
         recommendations[i].memory = monitor->at_risk[i].memory;
         recommendations[i].memory_id = monitor->at_risk[i].memory_id;
         recommendations[i].risk_score = monitor->at_risk[i].risk_score;
@@ -929,10 +1135,20 @@ metamem_error_t metamem_monitor_predict_forgetting(
 ) {
     if (!monitor || !predictions || !count) return METAMEM_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_monitor_pred", 0.0f);
+
+
     size_t to_predict = (monitor->num_at_risk < max_count) ?
                          monitor->num_at_risk : max_count;
 
     for (size_t i = 0; i < to_predict; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && to_predict > 256) {
+            metamemory_monitor_heartbeat("metamemory_m_loop",
+                             (float)(i + 1) / (float)to_predict);
+        }
+
         metamem_monitor_predict_memory(monitor, monitor->at_risk[i].memory,
                                         &predictions[i]);
     }
@@ -947,6 +1163,10 @@ metamem_error_t metamem_monitor_predict_memory(
     metamem_forgetting_pred_t* prediction
 ) {
     if (!monitor || !node || !prediction) return METAMEM_ERROR_NULL_POINTER;
+
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_monitor_pred", 0.0f);
+
 
     prediction->memory = (pr_memory_node_t*)node;  // Cast away const for output
     prediction->memory_id = pr_memory_node_get_id(node);
@@ -1007,11 +1227,21 @@ metamem_error_t metamem_monitor_get_trends(
 ) {
     if (!monitor || !points || !count) return METAMEM_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_monitor_get_", 0.0f);
+
+
     size_t to_return = (monitor->history_len < max_points) ?
                         monitor->history_len : max_points;
 
     // Return in reverse chronological order (most recent first)
     for (size_t i = 0; i < to_return; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && to_return > 256) {
+            metamemory_monitor_heartbeat("metamemory_m_loop",
+                             (float)(i + 1) / (float)to_return);
+        }
+
         size_t idx = (monitor->history_index + monitor->history_capacity - 1 - i) %
                      monitor->history_capacity;
 
@@ -1033,6 +1263,10 @@ float metamem_monitor_compute_trend(
     if (monitor->history_len < 3) return 0.0f;  // Need at least 3 points
 
     // Select history array based on metric
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_monitor_comp", 0.0f);
+
+
     float* history = NULL;
     switch (metric) {
         case 0: history = monitor->consolidation_history; break;
@@ -1046,6 +1280,12 @@ float metamem_monitor_compute_trend(
     float values[10];
 
     for (size_t i = 0; i < num_samples; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_samples > 256) {
+            metamemory_monitor_heartbeat("metamemory_m_loop",
+                             (float)(i + 1) / (float)num_samples);
+        }
+
         size_t idx = (monitor->history_index + monitor->history_capacity - num_samples + i) %
                      monitor->history_capacity;
         values[i] = history[idx];
@@ -1065,6 +1305,10 @@ metamem_error_t metamem_monitor_set_alert_callback(
 ) {
     if (!monitor) return METAMEM_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_monitor_set_", 0.0f);
+
+
     monitor->alert_callback = callback;
     monitor->alert_user_data = user_data;
 
@@ -1073,6 +1317,10 @@ metamem_error_t metamem_monitor_set_alert_callback(
 
 metamem_error_t metamem_monitor_clear_alert_callback(metamem_monitor_t monitor) {
     if (!monitor) return METAMEM_ERROR_NULL_POINTER;
+
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_monitor_clea", 0.0f);
+
 
     monitor->alert_callback = NULL;
     monitor->alert_user_data = NULL;
@@ -1121,6 +1369,10 @@ const char* metamem_alert_type_string(metamem_alert_type_t alert_type) {
 }
 
 uint64_t metamem_current_time_ms(void) {
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_current_time", 0.0f);
+
+
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
     return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
@@ -1128,6 +1380,10 @@ uint64_t metamem_current_time_ms(void) {
 
 void metamem_print_health_report(const metamem_health_report_t* report) {
     if (!report) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_print_health", 0.0f);
+
 
     printf("=== Metamemory Health Report ===\n");
     printf("Overall Health: %.2f%%\n", report->overall_health * 100.0f);
@@ -1158,6 +1414,10 @@ void metamem_print_health_report(const metamem_health_report_t* report) {
 void metamem_print_domain_summary(const metamem_domain_summary_t* summary) {
     if (!summary) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_print_domain", 0.0f);
+
+
     printf("Domain: %s (0x%016lx)\n", summary->name, (unsigned long)summary->hash);
     printf("  Memories: %zu\n", summary->memory_count);
     printf("  Coverage: %.2f%%\n", summary->coverage * 100.0f);
@@ -1175,6 +1435,10 @@ bool metamem_monitor_validate(metamem_monitor_t monitor) {
     }
 
     // Check domain array
+    /* Phase 8: Heartbeat at operation start */
+    metamemory_monitor_heartbeat("metamemory_m_metamem_monitor_vali", 0.0f);
+
+
     if (monitor->num_domains > monitor->max_domains) {
         return false;
     }
@@ -1208,6 +1472,12 @@ static void domains_init(metamem_monitor_t monitor) {
 
     if (monitor->domains) {
         for (size_t i = 0; i < monitor->max_domains; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && monitor->max_domains > 256) {
+                metamemory_monitor_heartbeat("metamemory_m_loop",
+                                 (float)(i + 1) / (float)monitor->max_domains);
+            }
+
             monitor->domains[i].max_top = monitor->config.max_top_per_domain;
             monitor->domains[i].top_memories = (pr_memory_node_t**)calloc(
                 monitor->domains[i].max_top, sizeof(pr_memory_node_t*));
@@ -1218,6 +1488,12 @@ static void domains_init(metamem_monitor_t monitor) {
 static void domains_cleanup(metamem_monitor_t monitor) {
     if (monitor->domains) {
         for (size_t i = 0; i < monitor->max_domains; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && monitor->max_domains > 256) {
+                metamemory_monitor_heartbeat("metamemory_m_loop",
+                                 (float)(i + 1) / (float)monitor->max_domains);
+            }
+
             if (monitor->domains[i].top_memories) {
                 free(monitor->domains[i].top_memories);
             }
@@ -1367,6 +1643,12 @@ static knowledge_domain_t* find_or_create_domain(metamem_monitor_t monitor,
     knowledge_domain_t* best_domain = NULL;
 
     for (size_t i = 0; i < monitor->num_domains; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && monitor->num_domains > 256) {
+            metamemory_monitor_heartbeat("metamemory_m_loop",
+                             (float)(i + 1) / (float)monitor->num_domains);
+        }
+
         float sim = prime_sig_jaccard(sig, &monitor->domains[i].domain_signature);
         if (sim >= monitor->config.domain_similarity_threshold && sim > best_similarity) {
             best_similarity = sim;
@@ -1384,6 +1666,12 @@ static knowledge_domain_t* find_or_create_domain(metamem_monitor_t monitor,
         size_t min_count = SIZE_MAX;
         size_t min_idx = 0;
         for (size_t i = 0; i < monitor->num_domains; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && monitor->num_domains > 256) {
+                metamemory_monitor_heartbeat("metamemory_m_loop",
+                                 (float)(i + 1) / (float)monitor->num_domains);
+            }
+
             if (monitor->domains[i].memory_count < min_count) {
                 min_count = monitor->domains[i].memory_count;
                 min_idx = i;
@@ -1475,6 +1763,12 @@ static float linear_regression_slope(const float* values, size_t count) {
     float sum_x2 = 0.0f;
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            metamemory_monitor_heartbeat("metamemory_m_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         float x = (float)i;
         float y = values[i];
         sum_x += x;

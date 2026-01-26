@@ -61,7 +61,7 @@ static nimcp_health_agent_t* g_curiosity_hyperbolic_health_agent = NULL;
  * @brief Set health agent for curiosity_hyperbolic heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void curiosity_hyperbolic_set_health_agent(nimcp_health_agent_t* agent) {
+void curiosity_hyperbolic_set_health_agent(nimcp_health_agent_t* agent) {
     g_curiosity_hyperbolic_health_agent = agent;
 }
 
@@ -113,6 +113,10 @@ float curiosity_hyperbolic_priority(const knowledge_item_t *current_knowledge,
     }
 
     // Compute hyperbolic distance
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_hyperbolic_heartbeat("curiosity_hy_priority", 0.0f);
+
+
     float distance = knowledge_hyperbolic_distance(current_knowledge, candidate_knowledge);
     if (distance < 0.0f) {
         return 0.0f;  // Invalid distance
@@ -184,6 +188,10 @@ uint32_t curiosity_find_interesting_hyperbolic(knowledge_system_t system,
     }
 
     // Find more neighbors than needed (oversample)
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_hyperbolic_heartbeat("curiosity_hy_curiosity_find_inter", 0.0f);
+
+
     uint32_t oversample_k = k * 3;
     knowledge_item_t **neighbors = nimcp_malloc(oversample_k * sizeof(knowledge_item_t*));
     float *distances = nimcp_malloc(oversample_k * sizeof(float));
@@ -222,6 +230,12 @@ uint32_t curiosity_find_interesting_hyperbolic(knowledge_system_t system,
     }
 
     for (uint32_t i = 0; i < num_neighbors; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_neighbors > 256) {
+            curiosity_hyperbolic_heartbeat("curiosity_hy_loop",
+                             (float)(i + 1) / (float)num_neighbors);
+        }
+
         scored[i].item = neighbors[i];
         scored[i].priority = curiosity_hyperbolic_priority(current_concept, neighbors[i],
                                                           exploration_radius);
@@ -241,6 +255,12 @@ uint32_t curiosity_find_interesting_hyperbolic(knowledge_system_t system,
     // Copy top k to output
     uint32_t num_interesting = (k < num_neighbors) ? k : num_neighbors;
     for (uint32_t i = 0; i < num_interesting; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_interesting > 256) {
+            curiosity_hyperbolic_heartbeat("curiosity_hy_loop",
+                             (float)(i + 1) / (float)num_interesting);
+        }
+
         interesting_out[i] = scored[i].item;
     }
 
@@ -300,6 +320,10 @@ void curiosity_visualize_hyperbolic_state(const knowledge_item_t *current_knowle
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_hyperbolic_heartbeat("curiosity_hy_curiosity_visualize_", 0.0f);
+
+
     float radius = poincare_norm(current_knowledge->hyperbolic_embedding);
 
     printf("=== Curiosity Hyperbolic State ===\n");
@@ -326,9 +350,19 @@ void curiosity_visualize_hyperbolic_state(const knowledge_item_t *current_knowle
 int curiosity_hyperbolic_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_hyperbolic_heartbeat("curiosity_hy_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Curiosity_Hyperbolic_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                curiosity_hyperbolic_heartbeat("curiosity_hy_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

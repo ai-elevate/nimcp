@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_fep_sleep_health_agent = NULL;
  * @brief Set health agent for fep_sleep heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void fep_sleep_set_health_agent(nimcp_health_agent_t* agent) {
+void fep_sleep_set_health_agent(nimcp_health_agent_t* agent) {
     g_fep_sleep_health_agent = agent;
 }
 
@@ -100,6 +100,10 @@ static fep_sleep_stage_t get_next_stage(fep_sleep_stage_t current) {
 void fep_sleep_default_config(fep_sleep_config_t* config) {
     if (!config) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_sleep_heartbeat("fep_sleep_default_config", 0.0f);
+
+
     config->n1_duration_ms = FEP_SLEEP_N1_DURATION_MS;
     config->n2_duration_ms = FEP_SLEEP_N2_DURATION_MS;
     config->sws_duration_ms = FEP_SLEEP_SWS_DURATION_MS;
@@ -116,6 +120,10 @@ void fep_sleep_default_config(fep_sleep_config_t* config) {
 }
 
 fep_sleep_system_t* fep_sleep_create(const fep_sleep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_sleep_heartbeat("fep_sleep_create", 0.0f);
+
+
     fep_sleep_system_t* sys = (fep_sleep_system_t*)nimcp_calloc(
         1, sizeof(fep_sleep_system_t));
     if (!sys) {
@@ -164,6 +172,10 @@ fep_sleep_system_t* fep_sleep_create(const fep_sleep_config_t* config) {
 void fep_sleep_destroy(fep_sleep_system_t* sys) {
     if (!sys) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_sleep_heartbeat("fep_sleep_destroy", 0.0f);
+
+
     if (sys->bio_async_enabled) {
         fep_sleep_disconnect_bio_async(sys);
     }
@@ -171,6 +183,12 @@ void fep_sleep_destroy(fep_sleep_system_t* sys) {
     /* Free experience buffer */
     if (sys->experience_buffer) {
         for (size_t i = 0; i < sys->buffer_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && sys->buffer_count > 256) {
+                fep_sleep_heartbeat("fep_sleep_loop",
+                                 (float)(i + 1) / (float)sys->buffer_count);
+            }
+
             free_experience(&sys->experience_buffer[i]);
         }
         nimcp_free(sys->experience_buffer);
@@ -196,6 +214,10 @@ int fep_sleep_set_stage(fep_sleep_system_t* sys, fep_sleep_stage_t stage) {
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    fep_sleep_heartbeat("fep_sleep_set_stage", 0.0f);
+
 
     nimcp_platform_mutex_lock(sys->mutex);
 
@@ -243,6 +265,10 @@ int fep_sleep_set_stage(fep_sleep_system_t* sys, fep_sleep_stage_t stage) {
 }
 
 fep_sleep_stage_t fep_sleep_get_stage(const fep_sleep_system_t* sys) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_sleep_heartbeat("fep_sleep_get_stage", 0.0f);
+
+
     return sys ? sys->state.current_stage : SLEEP_STAGE_WAKE;
 }
 
@@ -254,6 +280,10 @@ int fep_sleep_update(fep_sleep_system_t* sys, uint64_t delta_ms) {
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    fep_sleep_heartbeat("fep_sleep_update", 0.0f);
+
 
     nimcp_platform_mutex_lock(sys->mutex);
 
@@ -341,6 +371,10 @@ int fep_sleep_add_experience(
     if (!sys || !state || !observation || !next_state) return -1;
     if (dim == 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_sleep_heartbeat("fep_sleep_add_experience", 0.0f);
+
+
     nimcp_platform_mutex_lock(sys->mutex);
 
     /* Check buffer capacity */
@@ -391,6 +425,10 @@ int fep_sleep_replay_consolidation(
     if (!sys || !fep) return -1;
     if (sys->buffer_count == 0) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_sleep_heartbeat("fep_sleep_replay_consolidation", 0.0f);
+
+
     nimcp_platform_mutex_lock(sys->mutex);
 
     /* Replay experiences and update FEP model */
@@ -409,6 +447,12 @@ int fep_sleep_replay_consolidation(
 
             float error = 0.0f;
             for (size_t i = 0; i < dim; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && dim > 256) {
+                    fep_sleep_heartbeat("fep_sleep_loop",
+                                     (float)(i + 1) / (float)dim);
+                }
+
                 float pred = level->beliefs.mean[i];
                 float actual = exp->next_state[i];
                 float diff = actual - pred;
@@ -447,21 +491,43 @@ int fep_sleep_apply_downscaling(
 ) {
     if (!sys || !fep) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_sleep_heartbeat("fep_sleep_apply_downscaling", 0.0f);
+
+
     nimcp_platform_mutex_lock(sys->mutex);
 
     factor = clamp_f(factor, 0.5f, 1.0f);
 
     /* Apply synaptic downscaling to all FEP levels */
     for (uint32_t l = 0; l < fep->num_levels; l++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((l & 0xFF) == 0 && fep->num_levels > 256) {
+            fep_sleep_heartbeat("fep_sleep_loop",
+                             (float)(l + 1) / (float)fep->num_levels);
+        }
+
         fep_hierarchy_level_t* level = &fep->levels[l];
 
         /* Downscale precision (inverse of variance) */
         for (uint32_t i = 0; i < level->errors.dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && level->errors.dim > 256) {
+                fep_sleep_heartbeat("fep_sleep_loop",
+                                 (float)(i + 1) / (float)level->errors.dim);
+            }
+
             level->errors.precision[i] *= factor;
         }
 
         /* Downscale belief variance */
         for (uint32_t i = 0; i < level->beliefs.dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && level->beliefs.dim > 256) {
+                fep_sleep_heartbeat("fep_sleep_loop",
+                                 (float)(i + 1) / (float)level->beliefs.dim);
+            }
+
             level->beliefs.variance[i] /= factor;
         }
     }
@@ -482,6 +548,10 @@ int fep_sleep_rem_integration(
 ) {
     if (!sys || !fep) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_sleep_heartbeat("fep_sleep_rem_integration", 0.0f);
+
+
     nimcp_platform_mutex_lock(sys->mutex);
 
     /* REM integration: Creative recombination and abstraction */
@@ -499,6 +569,12 @@ int fep_sleep_rem_integration(
         /* Abstract/generalize lower-level beliefs to higher level */
         float smoothing = 0.1f;
         for (size_t i = 0; i < dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && dim > 256) {
+                fep_sleep_heartbeat("fep_sleep_loop",
+                                 (float)(i + 1) / (float)dim);
+            }
+
             float lower_mean = lower->beliefs.mean[i];
             higher->beliefs.mean[i] =
                 (1.0f - smoothing) * higher->beliefs.mean[i] +
@@ -510,6 +586,12 @@ int fep_sleep_rem_integration(
     float avg_precision = 0.0f;
     uint32_t total_dims = 0;
     for (uint32_t l = 0; l < fep->num_levels; l++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((l & 0xFF) == 0 && fep->num_levels > 256) {
+            fep_sleep_heartbeat("fep_sleep_loop",
+                             (float)(l + 1) / (float)fep->num_levels);
+        }
+
         for (uint32_t i = 0; i < fep->levels[l].errors.dim; i++) {
             avg_precision += fep->levels[l].errors.precision[i];
             total_dims++;
@@ -535,6 +617,10 @@ int fep_sleep_get_state(
 ) {
     if (!sys || !state) return -1;
     *state = sys->state;
+    /* Phase 8: Heartbeat at operation start */
+    fep_sleep_heartbeat("fep_sleep_get_state", 0.0f);
+
+
     return 0;
 }
 
@@ -544,11 +630,19 @@ int fep_sleep_get_stats(
 ) {
     if (!sys || !stats) return -1;
     *stats = sys->stats;
+    /* Phase 8: Heartbeat at operation start */
+    fep_sleep_heartbeat("fep_sleep_get_stats", 0.0f);
+
+
     return 0;
 }
 
 float fep_sleep_get_precision_modifier(const fep_sleep_system_t* sys) {
     if (!sys) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    fep_sleep_heartbeat("fep_sleep_get_precision_modifi", 0.0f);
+
 
     switch (sys->state.current_stage) {
         case SLEEP_STAGE_WAKE: return FEP_SLEEP_WAKE_PRECISION;
@@ -566,6 +660,10 @@ float fep_sleep_get_precision_modifier(const fep_sleep_system_t* sys) {
 
 int fep_sleep_connect(fep_sleep_system_t* sleep, fep_system_t* fep) {
     if (!sleep || !fep) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    fep_sleep_heartbeat("fep_sleep_connect", 0.0f);
+
 
     nimcp_platform_mutex_lock(sleep->mutex);
     sleep->fep_system = fep;
@@ -588,6 +686,10 @@ int fep_sleep_connect_bio_async(fep_sleep_system_t* sys) {
 
     }
     if (sys->bio_async_enabled) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    fep_sleep_heartbeat("fep_sleep_connect_bio_async", 0.0f);
+
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_SLEEP,
@@ -616,6 +718,10 @@ int fep_sleep_disconnect_bio_async(fep_sleep_system_t* sys) {
     }
     if (!sys->bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_sleep_heartbeat("fep_sleep_disconnect_bio_async", 0.0f);
+
+
     if (sys->bio_ctx) {
         bio_router_unregister_module(sys->bio_ctx);
         sys->bio_ctx = NULL;
@@ -625,6 +731,10 @@ int fep_sleep_disconnect_bio_async(fep_sleep_system_t* sys) {
 }
 
 bool fep_sleep_is_bio_async_connected(const fep_sleep_system_t* sys) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_sleep_heartbeat("fep_sleep_is_bio_async_connect", 0.0f);
+
+
     return sys && sys->bio_async_enabled;
 }
 
@@ -640,6 +750,10 @@ int fep_sleep_on_prediction_error(fep_sleep_system_t* sys, float prediction_erro
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    fep_sleep_heartbeat("fep_sleep_on_prediction_error", 0.0f);
+
 
     nimcp_platform_mutex_lock(sys->mutex);
 
@@ -683,6 +797,10 @@ int fep_sleep_on_uncertainty(fep_sleep_system_t* sys, float uncertainty) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_sleep_heartbeat("fep_sleep_on_uncertainty", 0.0f);
+
+
     nimcp_platform_mutex_lock(sys->mutex);
 
     /* Update running average of uncertainty */
@@ -718,6 +836,10 @@ int fep_sleep_on_convergence(fep_sleep_system_t* sys, bool converged, float conv
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_sleep_heartbeat("fep_sleep_on_convergence", 0.0f);
+
+
     nimcp_platform_mutex_lock(sys->mutex);
 
     sys->pressure.model_converged = converged;
@@ -747,11 +869,19 @@ int fep_sleep_on_convergence(fep_sleep_system_t* sys, bool converged, float conv
 
 float fep_sleep_get_pressure(const fep_sleep_system_t* sys) {
     if (!sys) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    fep_sleep_heartbeat("fep_sleep_get_pressure", 0.0f);
+
+
     return sys->pressure.sleep_pressure;
 }
 
 int fep_sleep_get_pressure_state(const fep_sleep_system_t* sys, fep_sleep_pressure_t* pressure) {
     if (!sys || !pressure) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    fep_sleep_heartbeat("fep_sleep_get_pressure_state", 0.0f);
+
 
     nimcp_platform_mutex_lock((nimcp_mutex_t*)sys->mutex);
     *pressure = sys->pressure;
@@ -762,6 +892,10 @@ int fep_sleep_get_pressure_state(const fep_sleep_system_t* sys, fep_sleep_pressu
 
 bool fep_sleep_is_sleep_recommended(const fep_sleep_system_t* sys) {
     if (!sys) return false;
+    /* Phase 8: Heartbeat at operation start */
+    fep_sleep_heartbeat("fep_sleep_is_sleep_recommended", 0.0f);
+
+
     return sys->pressure.sleep_recommended;
 }
 
@@ -773,6 +907,10 @@ int fep_sleep_reset_pressure(fep_sleep_system_t* sys) {
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    fep_sleep_heartbeat("fep_sleep_reset_pressure", 0.0f);
+
 
     nimcp_platform_mutex_lock(sys->mutex);
 
@@ -792,6 +930,10 @@ int fep_sleep_update_pressure(fep_sleep_system_t* sys, uint64_t delta_ms) {
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    fep_sleep_heartbeat("fep_sleep_update_pressure", 0.0f);
+
 
     nimcp_platform_mutex_lock(sys->mutex);
 
@@ -844,9 +986,19 @@ const char* fep_sleep_stage_to_string(fep_sleep_stage_t stage) {
  */
 int fep_sleep_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    fep_sleep_heartbeat("fep_sleep_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "FEP_Sleep_System");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                fep_sleep_heartbeat("fep_sleep_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("FEP Sleep self-knowledge: %s", self->observations[i]);
         }
     }

@@ -26,7 +26,7 @@ static nimcp_health_agent_t* g_quantum_mcts_fep_bridge_health_agent = NULL;
  * @brief Set health agent for quantum_mcts_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void quantum_mcts_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void quantum_mcts_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_quantum_mcts_fep_bridge_health_agent = agent;
 }
 
@@ -70,6 +70,12 @@ NIMCP_API float qmcts_fep_bridge_expected_value(
     /* Compute expected value based on state energy */
     float sum = 0.0f;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            quantum_mcts_fep_bridge_heartbeat("quantum_mcts_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         sum += state[i] * state[i];
     }
 

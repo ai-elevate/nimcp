@@ -46,7 +46,7 @@ static nimcp_health_agent_t* g_theta_gamma_health_agent = NULL;
  * @brief Set health agent for theta_gamma heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void theta_gamma_set_health_agent(nimcp_health_agent_t* agent) {
+void theta_gamma_set_health_agent(nimcp_health_agent_t* agent) {
     g_theta_gamma_health_agent = agent;
 }
 
@@ -192,6 +192,12 @@ static float compute_mean(const float* data, uint32_t n) {
 
     double sum = 0.0;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            theta_gamma_heartbeat("theta_gamma_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         sum += data[i];
     }
     return (float)(sum / n);
@@ -205,6 +211,12 @@ static float compute_stddev(const float* data, uint32_t n, float mean) {
 
     double sum_sq = 0.0;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            theta_gamma_heartbeat("theta_gamma_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         double diff = data[i] - mean;
         sum_sq += diff * diff;
     }
@@ -220,6 +232,12 @@ static float compute_stddev(const float* data, uint32_t n, float mean) {
 static float compute_entropy(const float* probs, uint32_t n) {
     float h = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            theta_gamma_heartbeat("theta_gamma_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         if (probs[i] > 1e-10f) {
             h -= probs[i] * logf(probs[i]);
         }
@@ -372,6 +390,10 @@ static void clear_pac_histogram(struct theta_gamma_manager_internal* mgr) {
 //=============================================================================
 
 theta_gamma_config_t theta_gamma_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_config_default", 0.0f);
+
+
     theta_gamma_config_t config = {
         /* Theta frequency range */
         .theta_freq_min = THETA_FREQ_MIN,
@@ -415,6 +437,10 @@ bool theta_gamma_config_validate(theta_gamma_config_t* config) {
     }
 
     /* Validate theta frequency range */
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_config_validate", 0.0f);
+
+
     if (config->theta_freq_min < 1.0f) config->theta_freq_min = 1.0f;
     if (config->theta_freq_max > 12.0f) config->theta_freq_max = 12.0f;
     if (config->theta_freq_min >= config->theta_freq_max) {
@@ -464,6 +490,10 @@ bool theta_gamma_config_validate(theta_gamma_config_t* config) {
 
 theta_gamma_manager_t theta_gamma_create(const theta_gamma_config_t* config) {
     /* Allocate manager structure */
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_create", 0.0f);
+
+
     struct theta_gamma_manager_internal* mgr =
         (struct theta_gamma_manager_internal*)calloc(1,
             sizeof(struct theta_gamma_manager_internal));
@@ -555,6 +585,10 @@ theta_gamma_manager_t theta_gamma_create(const theta_gamma_config_t* config) {
 void theta_gamma_destroy(theta_gamma_manager_t manager) {
     if (!manager) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_destroy", 0.0f);
+
+
     struct theta_gamma_manager_internal* mgr = manager;
 
     /* Free workspace buffers */
@@ -587,6 +621,10 @@ bool theta_gamma_reset(theta_gamma_manager_t manager) {
         set_error("NULL manager");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_reset", 0.0f);
+
 
     struct theta_gamma_manager_internal* mgr = manager;
 
@@ -624,6 +662,10 @@ bool theta_gamma_update(theta_gamma_manager_t manager, uint64_t dt_ns) {
         set_error("NULL manager");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_update", 0.0f);
+
 
     struct theta_gamma_manager_internal* mgr = manager;
 
@@ -698,6 +740,10 @@ bool theta_gamma_set_theta_freq(theta_gamma_manager_t manager, float freq) {
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_set_theta_freq", 0.0f);
+
+
     struct theta_gamma_manager_internal* mgr = manager;
 
     /* Clamp to valid range */
@@ -714,6 +760,10 @@ bool theta_gamma_set_gamma_freq(theta_gamma_manager_t manager, float freq) {
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_set_gamma_freq", 0.0f);
+
+
     struct theta_gamma_manager_internal* mgr = manager;
 
     /* Clamp to valid gamma range (full band) */
@@ -729,6 +779,10 @@ bool theta_gamma_sync_to_external(theta_gamma_manager_t manager, float phase) {
         set_error("NULL manager");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_sync_to_external", 0.0f);
+
 
     struct theta_gamma_manager_internal* mgr = manager;
 
@@ -749,6 +803,10 @@ float theta_gamma_get_theta_phase(const theta_gamma_manager_t manager) {
         return -1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_get_theta_phase", 0.0f);
+
+
     const struct theta_gamma_manager_internal* mgr = manager;
     return mgr->state.theta_phase;
 }
@@ -758,6 +816,10 @@ float theta_gamma_get_gamma_phase(const theta_gamma_manager_t manager) {
         set_error("NULL manager");
         return -1.0f;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_get_gamma_phase", 0.0f);
+
 
     const struct theta_gamma_manager_internal* mgr = manager;
     return mgr->state.gamma_phase;
@@ -769,6 +831,10 @@ theta_phase_window_t theta_gamma_get_window(const theta_gamma_manager_t manager)
         return THETA_PHASE_ENCODE_EARLY;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_get_window", 0.0f);
+
+
     const struct theta_gamma_manager_internal* mgr = manager;
     return mgr->state.current_window;
 }
@@ -778,6 +844,10 @@ theta_op_type_t theta_gamma_get_operation(const theta_gamma_manager_t manager) {
         set_error("NULL manager");
         return THETA_OP_BLOCKED;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_get_operation", 0.0f);
+
 
     const struct theta_gamma_manager_internal* mgr = manager;
     return mgr->state.current_op;
@@ -790,12 +860,20 @@ theta_op_type_t theta_gamma_get_operation(const theta_gamma_manager_t manager) {
 bool theta_gamma_can_encode(const theta_gamma_manager_t manager) {
     if (!manager) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_can_encode", 0.0f);
+
+
     const struct theta_gamma_manager_internal* mgr = manager;
     return (mgr->state.current_op == THETA_OP_ENCODE);
 }
 
 bool theta_gamma_can_retrieve(const theta_gamma_manager_t manager) {
     if (!manager) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_can_retrieve", 0.0f);
+
 
     const struct theta_gamma_manager_internal* mgr = manager;
     return (mgr->state.current_op == THETA_OP_RETRIEVE);
@@ -807,6 +885,10 @@ float theta_gamma_get_encode_strength(const theta_gamma_manager_t manager) {
         return 0.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_get_encode_strength", 0.0f);
+
+
     const struct theta_gamma_manager_internal* mgr = manager;
     return compute_encode_strength(mgr->state.theta_phase);
 }
@@ -817,6 +899,10 @@ float theta_gamma_get_retrieve_strength(const theta_gamma_manager_t manager) {
         return 0.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_get_retrieve_strengt", 0.0f);
+
+
     const struct theta_gamma_manager_internal* mgr = manager;
     return compute_retrieve_strength(mgr->state.theta_phase);
 }
@@ -826,6 +912,10 @@ float theta_gamma_gate_operation(const theta_gamma_manager_t manager, theta_op_t
         set_error("NULL manager");
         return 0.0f;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_gate_operation", 0.0f);
+
 
     const struct theta_gamma_manager_internal* mgr = manager;
 
@@ -864,6 +954,10 @@ float theta_gamma_compute_pac(theta_gamma_manager_t manager,
         set_error("NULL pointer in PAC computation");
         return -1.0f;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_compute_pac", 0.0f);
+
 
     if (n == 0 || n > THETA_GAMMA_MAX_SIGNAL_LEN) {
         set_error("Invalid signal length: %u", n);
@@ -910,6 +1004,10 @@ float theta_gamma_modulation_index(theta_gamma_manager_t manager,
         return -1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_modulation_index", 0.0f);
+
+
     if (n == 0) {
         set_error("Empty signal");
         return -1.0f;
@@ -925,6 +1023,12 @@ float theta_gamma_modulation_index(theta_gamma_manager_t manager,
     float bin_width = M_2PI / (float)num_bins;
 
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            theta_gamma_heartbeat("theta_gamma_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         float phase = wrap_phase_internal(theta_phase[i]);
         uint32_t bin = (uint32_t)(phase / bin_width);
         if (bin >= num_bins) bin = num_bins - 1;
@@ -938,6 +1042,12 @@ float theta_gamma_modulation_index(theta_gamma_manager_t manager,
     uint32_t valid_bins = 0;
 
     for (uint32_t i = 0; i < num_bins; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_bins > 256) {
+            theta_gamma_heartbeat("theta_gamma_loop",
+                             (float)(i + 1) / (float)num_bins);
+        }
+
         if (mgr->pac_bin_counts[i] > 0) {
             mgr->pac_histogram[i] /= (float)mgr->pac_bin_counts[i];
             total_mean += mgr->pac_histogram[i];
@@ -955,6 +1065,12 @@ float theta_gamma_modulation_index(theta_gamma_manager_t manager,
     /* Normalize histogram to probability distribution */
     float sum = 0.0f;
     for (uint32_t i = 0; i < num_bins; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_bins > 256) {
+            theta_gamma_heartbeat("theta_gamma_loop",
+                             (float)(i + 1) / (float)num_bins);
+        }
+
         if (mgr->pac_bin_counts[i] > 0) {
             sum += mgr->pac_histogram[i];
         }
@@ -965,6 +1081,12 @@ float theta_gamma_modulation_index(theta_gamma_manager_t manager,
     }
 
     for (uint32_t i = 0; i < num_bins; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_bins > 256) {
+            theta_gamma_heartbeat("theta_gamma_loop",
+                             (float)(i + 1) / (float)num_bins);
+        }
+
         if (mgr->pac_bin_counts[i] > 0) {
             mgr->pac_histogram[i] /= sum;
         } else {
@@ -1002,6 +1124,10 @@ float theta_gamma_preferred_phase(theta_gamma_manager_t manager,
         return -1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_preferred_phase", 0.0f);
+
+
     if (n == 0) {
         set_error("Empty signal");
         return -1.0f;
@@ -1016,6 +1142,12 @@ float theta_gamma_preferred_phase(theta_gamma_manager_t manager,
     float bin_width = M_2PI / (float)num_bins;
 
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            theta_gamma_heartbeat("theta_gamma_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         float phase = wrap_phase_internal(theta_phase[i]);
         uint32_t bin = (uint32_t)(phase / bin_width);
         if (bin >= num_bins) bin = num_bins - 1;
@@ -1026,6 +1158,12 @@ float theta_gamma_preferred_phase(theta_gamma_manager_t manager,
 
     /* Normalize bins */
     for (uint32_t i = 0; i < num_bins; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_bins > 256) {
+            theta_gamma_heartbeat("theta_gamma_loop",
+                             (float)(i + 1) / (float)num_bins);
+        }
+
         if (mgr->pac_bin_counts[i] > 0) {
             mgr->pac_histogram[i] /= (float)mgr->pac_bin_counts[i];
         }
@@ -1063,6 +1201,10 @@ bool theta_gamma_detect_burst(theta_gamma_manager_t manager,
         set_error("NULL pointer in burst detection");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_detect_burst", 0.0f);
+
 
     if (n == 0 || n > THETA_GAMMA_MAX_SIGNAL_LEN) {
         set_error("Invalid signal length: %u", n);
@@ -1108,6 +1250,12 @@ bool theta_gamma_detect_burst(theta_gamma_manager_t manager,
     uint32_t peak_sample = 0;
 
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            theta_gamma_heartbeat("theta_gamma_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         if (mgr->work_envelope[i] > threshold) {
             if (!in_burst) {
                 current_start = i;
@@ -1190,6 +1338,10 @@ float theta_gamma_burst_phase(theta_gamma_manager_t manager,
         return -1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_burst_phase", 0.0f);
+
+
     if (sample_rate <= 0.0f) {
         set_error("Invalid sample rate: %.2f", sample_rate);
         return -1.0f;
@@ -1219,6 +1371,10 @@ nimcp_quaternion_t theta_gamma_modulate_quaternion(theta_gamma_manager_t manager
         set_error("NULL manager");
         return q;  /* Return unmodified */
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_modulate_quaternion", 0.0f);
+
 
     const struct theta_gamma_manager_internal* mgr = manager;
 
@@ -1260,6 +1416,10 @@ bool theta_gamma_integrate_kuramoto(theta_gamma_manager_t manager,
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_integrate_kuramoto", 0.0f);
+
+
     struct theta_gamma_manager_internal* mgr = manager;
 
     /* Set theta-gamma oscillator phase in Kuramoto system */
@@ -1286,6 +1446,10 @@ bool theta_gamma_get_state(const theta_gamma_manager_t manager,
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_get_state", 0.0f);
+
+
     const struct theta_gamma_manager_internal* mgr = manager;
     *state = mgr->state;
 
@@ -1304,6 +1468,10 @@ bool theta_gamma_get_stats(const theta_gamma_manager_t manager,
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_get_stats", 0.0f);
+
+
     const struct theta_gamma_manager_internal* mgr = manager;
     *stats = mgr->stats;
 
@@ -1316,6 +1484,10 @@ bool theta_gamma_reset_stats(theta_gamma_manager_t manager) {
         set_error("NULL manager");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_reset_stats", 0.0f);
+
 
     struct theta_gamma_manager_internal* mgr = manager;
 
@@ -1376,6 +1548,10 @@ void theta_gamma_print_state(const theta_gamma_manager_t manager) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_print_state", 0.0f);
+
+
     const struct theta_gamma_manager_internal* mgr = manager;
     const theta_gamma_state_t* s = &mgr->state;
 
@@ -1398,13 +1574,25 @@ void theta_gamma_print_state(const theta_gamma_manager_t manager) {
 }
 
 float theta_gamma_wrap_phase(float phase) {
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_wrap_phase", 0.0f);
+
+
     return wrap_phase_internal(phase);
 }
 
 theta_phase_window_t theta_gamma_phase_to_window(float phase) {
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_phase_to_window", 0.0f);
+
+
     return phase_to_window_internal(phase);
 }
 
 theta_op_type_t theta_gamma_window_to_op(theta_phase_window_t window) {
+    /* Phase 8: Heartbeat at operation start */
+    theta_gamma_heartbeat("theta_gamma_window_to_op", 0.0f);
+
+
     return window_to_op_internal(window);
 }

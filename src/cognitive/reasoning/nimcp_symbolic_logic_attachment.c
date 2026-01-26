@@ -45,7 +45,7 @@ static nimcp_health_agent_t* g_symbolic_logic_attachment_health_agent = NULL;
  * @brief Set health agent for symbolic_logic_attachment heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void symbolic_logic_attachment_set_health_agent(nimcp_health_agent_t* agent) {
+void symbolic_logic_attachment_set_health_agent(nimcp_health_agent_t* agent) {
     g_symbolic_logic_attachment_health_agent = agent;
 }
 
@@ -113,6 +113,10 @@ bool brain_attach_symbolic_logic(
     }
 
     // Attach the engine
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_attachment_heartbeat("symbolic_log_brain_attach_symboli", 0.0f);
+
+
     brain->symbolic_logic = logic_engine;
 
     // Publish attachment event
@@ -141,6 +145,10 @@ symbolic_logic_t* brain_detach_symbolic_logic(brain_t brain)
     }
 
     // Get current engine
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_attachment_heartbeat("symbolic_log_brain_detach_symboli", 0.0f);
+
+
     symbolic_logic_t* engine = brain->symbolic_logic;
 
     // Check if anything attached
@@ -187,6 +195,10 @@ bool brain_has_symbolic_logic(brain_t brain)
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_attachment_heartbeat("symbolic_log_brain_has_symbolic_l", 0.0f);
+
+
     return brain->symbolic_logic != NULL;
 }
 
@@ -196,9 +208,19 @@ bool brain_has_symbolic_logic(brain_t brain)
 
 int symbolic_logic_attachment_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_attachment_heartbeat("symbolic_log_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Symbolic_Logic_Attachment");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                symbolic_logic_attachment_heartbeat("symbolic_log_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Symbolic_Logic_Attachment self-knowledge: %s", self->observations[i]);
         }
     }

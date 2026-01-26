@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_visual_logic_bridge_health_agent = NULL;
  * @brief Set health agent for visual_logic_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void visual_logic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void visual_logic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_visual_logic_bridge_health_agent = agent;
 }
 
@@ -98,6 +98,10 @@ struct visual_logic_bridge {
 //=============================================================================
 
 visual_logic_config_t visual_logic_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    visual_logic_bridge_heartbeat("visual_logic_visual_logic_default", 0.0f);
+
+
     return (visual_logic_config_t){
         .enable_object_grounding = true,
         .enable_relation_extraction = true,
@@ -119,6 +123,10 @@ visual_logic_bridge_t* visual_logic_bridge_create(
     void* logic,
     const visual_logic_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    visual_logic_bridge_heartbeat("visual_logic_create", 0.0f);
+
+
     visual_logic_bridge_t* bridge = nimcp_calloc(1, sizeof(visual_logic_bridge_t));
     if (!bridge) {
 
@@ -146,6 +154,10 @@ visual_logic_bridge_t* visual_logic_bridge_create(
 }
 
 void visual_logic_bridge_destroy(visual_logic_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    visual_logic_bridge_heartbeat("visual_logic_destroy", 0.0f);
+
+
     if (bridge) {
         nimcp_free(bridge);
     }
@@ -153,6 +165,10 @@ void visual_logic_bridge_destroy(visual_logic_bridge_t* bridge) {
 
 int visual_logic_bridge_reset(visual_logic_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    visual_logic_bridge_heartbeat("visual_logic_reset", 0.0f);
+
 
     memset(bridge->grounded, 0, sizeof(bridge->grounded));
     bridge->grounded_count = 0;
@@ -167,6 +183,12 @@ int visual_logic_bridge_reset(visual_logic_bridge_t* bridge) {
 
 static int find_grounded_slot(visual_logic_bridge_t* bridge, uint32_t object_id) {
     for (uint32_t i = 0; i < MAX_GROUNDED_OBJECTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MAX_GROUNDED_OBJECTS > 256) {
+            visual_logic_bridge_heartbeat("visual_logic_loop",
+                             (float)(i + 1) / (float)MAX_GROUNDED_OBJECTS);
+        }
+
         if (bridge->grounded[i].active && bridge->grounded[i].object_id == object_id) {
             return (int)i;
         }
@@ -176,6 +198,12 @@ static int find_grounded_slot(visual_logic_bridge_t* bridge, uint32_t object_id)
 
 static int find_free_slot(visual_logic_bridge_t* bridge) {
     for (uint32_t i = 0; i < MAX_GROUNDED_OBJECTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MAX_GROUNDED_OBJECTS > 256) {
+            visual_logic_bridge_heartbeat("visual_logic_loop",
+                             (float)(i + 1) / (float)MAX_GROUNDED_OBJECTS);
+        }
+
         if (!bridge->grounded[i].active) {
             return (int)i;
         }
@@ -195,6 +223,10 @@ int visual_logic_ground_observation(
     if (!bridge->config.enable_object_grounding) return 0;
 
     /* Filter by confidence and salience */
+    /* Phase 8: Heartbeat at operation start */
+    visual_logic_bridge_heartbeat("visual_logic_visual_logic_ground_", 0.0f);
+
+
     if (obs->confidence < bridge->config.min_confidence_threshold) {
         return 0;
     }
@@ -247,6 +279,10 @@ int visual_logic_report_relation(
     if (!bridge->config.enable_relation_extraction) return 0;
 
     /* Validate both objects are grounded */
+    /* Phase 8: Heartbeat at operation start */
+    visual_logic_bridge_heartbeat("visual_logic_visual_logic_report_", 0.0f);
+
+
     if (find_grounded_slot(bridge, relation->subject_id) < 0) {
         return 0; /* Subject not grounded */
     }
@@ -278,6 +314,10 @@ int visual_logic_process_frame(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    visual_logic_bridge_heartbeat("visual_logic_visual_logic_process", 0.0f);
+
+
     int processed = 0;
 
     /* Process observations */
@@ -285,6 +325,12 @@ int visual_logic_process_frame(
                         ? num_observations : bridge->config.max_objects_per_frame;
 
     for (uint32_t i = 0; i < obs_limit; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && obs_limit > 256) {
+            visual_logic_bridge_heartbeat("visual_logic_loop",
+                             (float)(i + 1) / (float)obs_limit);
+        }
+
         if (visual_logic_ground_observation(bridge, &observations[i]) == 0) {
             processed++;
         }
@@ -296,6 +342,12 @@ int visual_logic_process_frame(
                             ? num_relations : bridge->config.max_relations_per_frame;
 
         for (uint32_t i = 0; i < rel_limit; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && rel_limit > 256) {
+                visual_logic_bridge_heartbeat("visual_logic_loop",
+                                 (float)(i + 1) / (float)rel_limit);
+            }
+
             if (visual_logic_report_relation(bridge, &relations[i]) == 0) {
                 processed++;
             }
@@ -316,6 +368,10 @@ int visual_logic_request_attention(
 ) {
     if (!bridge || !concept_name) return -1;
     if (!bridge->config.enable_top_down_attention) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    visual_logic_bridge_heartbeat("visual_logic_visual_logic_request", 0.0f);
+
 
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
         return -1; /* Command queue full */
@@ -353,6 +409,10 @@ int visual_logic_verify_predicate(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    visual_logic_bridge_heartbeat("visual_logic_visual_logic_verify_", 0.0f);
+
+
     bridge->stats.verifications_requested++;
 
     /* Search grounded objects for matching concept */
@@ -360,6 +420,12 @@ int visual_logic_verify_predicate(
     *confidence = 0.0f;
 
     for (uint32_t i = 0; i < MAX_GROUNDED_OBJECTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MAX_GROUNDED_OBJECTS > 256) {
+            visual_logic_bridge_heartbeat("visual_logic_loop",
+                             (float)(i + 1) / (float)MAX_GROUNDED_OBJECTS);
+        }
+
         if (bridge->grounded[i].active) {
             if (strncmp(bridge->grounded[i].concept_name, predicate_name,
                        sizeof(bridge->grounded[i].concept_name)) == 0) {
@@ -383,6 +449,10 @@ int visual_logic_send_command(
     const logic_visual_command_t* command
 ) {
     if (!bridge || !command) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    visual_logic_bridge_heartbeat("visual_logic_visual_logic_send_co", 0.0f);
+
 
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
         return -1;
@@ -416,7 +486,17 @@ int visual_logic_is_grounded(
 ) {
     if (!bridge || !grounded) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    visual_logic_bridge_heartbeat("visual_logic_visual_logic_is_grou", 0.0f);
+
+
     for (uint32_t i = 0; i < MAX_GROUNDED_OBJECTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MAX_GROUNDED_OBJECTS > 256) {
+            visual_logic_bridge_heartbeat("visual_logic_loop",
+                             (float)(i + 1) / (float)MAX_GROUNDED_OBJECTS);
+        }
+
         if (bridge->grounded[i].active && bridge->grounded[i].object_id == object_id) {
             *grounded = true;
             return 0;
@@ -429,6 +509,10 @@ int visual_logic_is_grounded(
 
 int visual_logic_get_grounded_count(const visual_logic_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    visual_logic_bridge_heartbeat("visual_logic_visual_logic_get_gro", 0.0f);
+
+
     return (int)bridge->grounded_count;
 }
 
@@ -442,10 +526,18 @@ int visual_logic_bridge_get_stats(
 ) {
     if (!bridge || !stats) return -1;
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    visual_logic_bridge_heartbeat("visual_logic_get_stats", 0.0f);
+
+
     return 0;
 }
 
 void visual_logic_bridge_reset_stats(visual_logic_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    visual_logic_bridge_heartbeat("visual_logic_reset_stats", 0.0f);
+
+
     if (bridge) {
         memset(&bridge->stats, 0, sizeof(bridge->stats));
         bridge->confidence_sum = 0.0f;
@@ -462,9 +554,19 @@ void visual_logic_bridge_reset_stats(visual_logic_bridge_t* bridge) {
 int visual_logic_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    visual_logic_bridge_heartbeat("visual_logic_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Visual_Logic_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                visual_logic_bridge_heartbeat("visual_logic_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

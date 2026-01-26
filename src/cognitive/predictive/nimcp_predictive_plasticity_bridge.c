@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_predictive_plasticity_bridge_health_agent = NULL;
  * @brief Set health agent for predictive_plasticity_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void predictive_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void predictive_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_predictive_plasticity_bridge_health_agent = agent;
 }
 
@@ -100,6 +100,12 @@ static inline float clamp_f(float x, float min_val, float max_val) {
 
 static synapse_entry_t* find_synapse(predictive_plasticity_bridge_t* bridge, uint32_t synapse_id) {
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            predictive_plasticity_bridge_heartbeat("predictive_p_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use &&
             bridge->synapses[i].synapse.synapse_id == synapse_id) {
             return &bridge->synapses[i];
@@ -110,6 +116,12 @@ static synapse_entry_t* find_synapse(predictive_plasticity_bridge_t* bridge, uin
 
 static synapse_entry_t* find_free_slot(predictive_plasticity_bridge_t* bridge) {
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            predictive_plasticity_bridge_heartbeat("predictive_p_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (!bridge->synapses[i].in_use) {
             return &bridge->synapses[i];
         }
@@ -127,6 +139,10 @@ static bool is_protected_type(predictive_synapse_type_t type) {
 //=============================================================================
 
 predictive_plasticity_config_t predictive_plasticity_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_plasticity_bridge_heartbeat("predictive_p_predictive_plasticit", 0.0f);
+
+
     predictive_plasticity_config_t config = {
         .base_learning_rate = PREDICTIVE_PLASTICITY_DEFAULT_LR,
         .stdp_tau_plus_ms = 20.0f,
@@ -161,6 +177,10 @@ predictive_plasticity_config_t predictive_plasticity_config_default(void) {
 predictive_plasticity_bridge_t* predictive_plasticity_create(
     const predictive_plasticity_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_plasticity_bridge_heartbeat("predictive_p_predictive_plasticit", 0.0f);
+
+
     predictive_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(predictive_plasticity_bridge_t));
     if (!bridge) {
 
@@ -217,6 +237,10 @@ predictive_plasticity_bridge_t* predictive_plasticity_create(
 void predictive_plasticity_destroy(predictive_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_plasticity_bridge_heartbeat("predictive_p_predictive_plasticit", 0.0f);
+
+
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge->synapses);
@@ -226,10 +250,20 @@ void predictive_plasticity_destroy(predictive_plasticity_bridge_t* bridge) {
 int predictive_plasticity_reset(predictive_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_plasticity_bridge_heartbeat("predictive_p_predictive_plasticit", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset all synapses to initial weights */
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            predictive_plasticity_bridge_heartbeat("predictive_p_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             bridge->synapses[i].synapse.weight = bridge->synapses[i].synapse.initial_weight;
             bridge->synapses[i].synapse.eligibility_trace = 0.0f;
@@ -264,6 +298,10 @@ int predictive_plasticity_register_synapse(
     float initial_weight
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_plasticity_bridge_heartbeat("predictive_p_predictive_plasticit", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -308,6 +346,10 @@ int predictive_plasticity_unregister_synapse(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_plasticity_bridge_heartbeat("predictive_p_predictive_plasticit", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
@@ -330,6 +372,10 @@ int predictive_plasticity_get_synapse(
 ) {
     if (!bridge || !synapse) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_plasticity_bridge_heartbeat("predictive_p_predictive_plasticit", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
@@ -350,6 +396,10 @@ int predictive_plasticity_protect_synapse(
     bool protect
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_plasticity_bridge_heartbeat("predictive_p_predictive_plasticit", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -377,6 +427,10 @@ int predictive_plasticity_learn(
     float context
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_plasticity_bridge_heartbeat("predictive_p_predictive_plasticit", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = PREDICTIVE_PLASTICITY_STATE_LEARNING;
@@ -491,6 +545,10 @@ float predictive_plasticity_apply_stdp(
 ) {
     if (!bridge) return NAN;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_plasticity_bridge_heartbeat("predictive_p_predictive_plasticit", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
@@ -544,6 +602,10 @@ int predictive_plasticity_apply_error(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_plasticity_bridge_heartbeat("predictive_p_predictive_plasticit", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     error = clamp_f(error, -1.0f, 1.0f);
@@ -551,6 +613,12 @@ int predictive_plasticity_apply_error(
 
     /* Apply error modulation to all eligible synapses */
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            predictive_plasticity_bridge_heartbeat("predictive_p_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use && !bridge->synapses[i].synapse.is_protected) {
             float trace = bridge->synapses[i].synapse.eligibility_trace;
             if (fabsf(trace) > 0.001f) {
@@ -576,12 +644,22 @@ int predictive_plasticity_update_bcm(
     if (!bridge) return -1;
     if (dt_ms <= 0.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_plasticity_bridge_heartbeat("predictive_p_predictive_plasticit", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = PREDICTIVE_PLASTICITY_STATE_UPDATING;
 
     float decay = expf(-dt_ms / bridge->config.bcm_tau_ms);
 
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            predictive_plasticity_bridge_heartbeat("predictive_p_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             /* Update sliding threshold towards average activity */
             float target = bridge->synapses[i].synapse.avg_activity;
@@ -602,6 +680,10 @@ int predictive_plasticity_homeostatic_update(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_plasticity_bridge_heartbeat("predictive_p_predictive_plasticit", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = PREDICTIVE_PLASTICITY_STATE_UPDATING;
 
@@ -611,6 +693,12 @@ int predictive_plasticity_homeostatic_update(
     float mean_prediction = 0.0f;
     uint32_t prediction_count = 0;
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            predictive_plasticity_bridge_heartbeat("predictive_p_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use &&
             bridge->synapses[i].synapse.type == PREDICTIVE_SYNAPSE_PREDICTION) {
             mean_prediction += bridge->synapses[i].synapse.weight;
@@ -630,6 +718,12 @@ int predictive_plasticity_homeostatic_update(
     }
 
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            predictive_plasticity_bridge_heartbeat("predictive_p_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use && !bridge->synapses[i].synapse.is_protected) {
             float scaled = bridge->synapses[i].synapse.weight * (1.0f + (scale_factor - 1.0f) * (1.0f - decay));
             bridge->synapses[i].synapse.weight = clamp_f(
@@ -651,11 +745,21 @@ int predictive_plasticity_update_traces(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_plasticity_bridge_heartbeat("predictive_p_predictive_plasticit", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float decay = expf(-dt_ms / bridge->config.stdp_tau_plus_ms);
 
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            predictive_plasticity_bridge_heartbeat("predictive_p_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             bridge->synapses[i].synapse.eligibility_trace *= decay;
         }
@@ -668,11 +772,21 @@ int predictive_plasticity_update_traces(
 int predictive_plasticity_consolidate(predictive_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_plasticity_bridge_heartbeat("predictive_p_predictive_plasticit", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = PREDICTIVE_PLASTICITY_STATE_CONSOLIDATING;
 
     /* Clear eligibility traces */
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            predictive_plasticity_bridge_heartbeat("predictive_p_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             bridge->synapses[i].synapse.eligibility_trace = 0.0f;
         }
@@ -685,6 +799,12 @@ int predictive_plasticity_consolidate(predictive_plasticity_bridge_t* bridge) {
     float model_sum = 0.0f, model_count = 0;
 
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            predictive_plasticity_bridge_heartbeat("predictive_p_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             switch (bridge->synapses[i].synapse.type) {
                 case PREDICTIVE_SYNAPSE_PREDICTION:
@@ -739,6 +859,10 @@ int predictive_plasticity_get_model_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_plasticity_bridge_heartbeat("predictive_p_predictive_plasticit", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->model_state;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -752,6 +876,10 @@ int predictive_plasticity_get_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_plasticity_bridge_heartbeat("predictive_p_predictive_plasticit", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
@@ -762,6 +890,12 @@ int predictive_plasticity_get_state(
     float sum = 0.0f;
     float sum_sq = 0.0f;
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            predictive_plasticity_bridge_heartbeat("predictive_p_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             float w = bridge->synapses[i].synapse.weight;
             sum += w;
@@ -788,6 +922,10 @@ int predictive_plasticity_get_stats(
 ) {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_plasticity_bridge_heartbeat("predictive_p_predictive_plasticit", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -797,6 +935,10 @@ int predictive_plasticity_get_stats(
 
 int predictive_plasticity_reset_stats(predictive_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_plasticity_bridge_heartbeat("predictive_p_predictive_plasticit", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(predictive_plasticity_stats_t));
@@ -816,6 +958,10 @@ int predictive_plasticity_register_learn_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_plasticity_bridge_heartbeat("predictive_p_predictive_plasticit", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->learn_callback = callback;
     bridge->learn_callback_data = user_data;
@@ -830,6 +976,10 @@ int predictive_plasticity_register_model_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_plasticity_bridge_heartbeat("predictive_p_predictive_plasticit", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->model_callback = callback;
@@ -847,6 +997,10 @@ int predictive_plasticity_bio_async_connect(predictive_plasticity_bridge_t* brid
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_plasticity_bridge_heartbeat("predictive_p_predictive_plasticit", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
@@ -858,6 +1012,10 @@ int predictive_plasticity_bio_async_connect(predictive_plasticity_bridge_t* brid
 int predictive_plasticity_bio_async_disconnect(predictive_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_plasticity_bridge_heartbeat("predictive_p_predictive_plasticit", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -867,6 +1025,10 @@ int predictive_plasticity_bio_async_disconnect(predictive_plasticity_bridge_t* b
 
 bool predictive_plasticity_is_bio_async_connected(predictive_plasticity_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_plasticity_bridge_heartbeat("predictive_p_predictive_plasticit", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;

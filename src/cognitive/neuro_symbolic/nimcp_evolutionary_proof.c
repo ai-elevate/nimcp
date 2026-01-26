@@ -38,7 +38,7 @@ static nimcp_health_agent_t* g_evolutionary_proof_health_agent = NULL;
  * @brief Set health agent for evolutionary_proof heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void evolutionary_proof_set_health_agent(nimcp_health_agent_t* agent) {
+void evolutionary_proof_set_health_agent(nimcp_health_agent_t* agent) {
     g_evolutionary_proof_health_agent = agent;
 }
 
@@ -152,6 +152,12 @@ static uint64_t compute_state_hash(const proof_state_t* state) {
 static proof_q_entry_t* find_q_entry(evolutionary_proof_search_t* eps,
                                       uint64_t state_hash) {
     for (uint32_t i = 0; i < eps->q_table_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && eps->q_table_count > 256) {
+            evolutionary_proof_heartbeat("evolutionary_loop",
+                             (float)(i + 1) / (float)eps->q_table_count);
+        }
+
         if (eps->q_table[i].state_hash == state_hash) {
             return &eps->q_table[i];
         }
@@ -246,6 +252,12 @@ static void init_strategy(evolutionary_proof_search_t* eps,
     strategy->generation = eps->current_generation;
 
     for (uint32_t i = 0; i < PROOF_GENE_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PROOF_GENE_COUNT > 256) {
+            evolutionary_proof_heartbeat("evolutionary_loop",
+                             (float)(i + 1) / (float)PROOF_GENE_COUNT);
+        }
+
         init_gene(&strategy->genes[i], (proof_gene_type_t)i);
         /* Add some randomness */
         strategy->genes[i].value += eps_random_normal(eps) * 0.2f;
@@ -255,6 +267,12 @@ static void init_strategy(evolutionary_proof_search_t* eps,
 
     /* Initialize action weights */
     for (uint32_t i = 0; i < PROOF_ACTION_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PROOF_ACTION_COUNT > 256) {
+            evolutionary_proof_heartbeat("evolutionary_loop",
+                             (float)(i + 1) / (float)PROOF_ACTION_COUNT);
+        }
+
         strategy->action_weights[i] = 1.0f / PROOF_ACTION_COUNT;
     }
 }
@@ -468,6 +486,12 @@ NIMCP_API nimcp_error_t evolutionary_proof_init_population(
     }
 
     for (uint32_t i = 0; i < eps->population_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && eps->population_count > 256) {
+            evolutionary_proof_heartbeat("evolutionary_loop",
+                             (float)(i + 1) / (float)eps->population_count);
+        }
+
         init_strategy(eps, &eps->population[i], i);
     }
 
@@ -488,6 +512,12 @@ NIMCP_API uint32_t evolutionary_proof_evolve_generation(
 
         /* Compute fitness for all strategies */
         for (uint32_t i = 0; i < eps->population_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && eps->population_count > 256) {
+                evolutionary_proof_heartbeat("evolutionary_loop",
+                                 (float)(i + 1) / (float)eps->population_count);
+            }
+
             eps->population[i].fitness = compute_fitness(eps, &eps->population[i]);
         }
 
@@ -558,6 +588,12 @@ NIMCP_API uint32_t evolutionary_proof_evolve_generation(
         eps->stats.best_fitness = eps->population[0].fitness;
         float sum = 0.0f;
         for (uint32_t i = 0; i < eps->population_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && eps->population_count > 256) {
+                evolutionary_proof_heartbeat("evolutionary_loop",
+                                 (float)(i + 1) / (float)eps->population_count);
+            }
+
             sum += eps->population[i].fitness;
         }
         eps->stats.avg_fitness = sum / eps->population_count;
@@ -606,6 +642,12 @@ NIMCP_API nimcp_error_t evolutionary_proof_select_parents(
             /* Roulette wheel selection */
             float total_fitness = 0.0f;
             for (uint32_t i = 0; i < eps->population_count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && eps->population_count > 256) {
+                    evolutionary_proof_heartbeat("evolutionary_loop",
+                                     (float)(i + 1) / (float)eps->population_count);
+                }
+
                 total_fitness += eps->population[i].fitness + 0.01f;
             }
 
@@ -617,6 +659,12 @@ NIMCP_API nimcp_error_t evolutionary_proof_select_parents(
             *parent2 = 0;
 
             for (uint32_t i = 0; i < eps->population_count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && eps->population_count > 256) {
+                    evolutionary_proof_heartbeat("evolutionary_loop",
+                                     (float)(i + 1) / (float)eps->population_count);
+                }
+
                 cumsum += eps->population[i].fitness + 0.01f;
                 if (cumsum >= r1 && *parent1 == 0) *parent1 = i;
                 if (cumsum >= r2 && *parent2 == 0) *parent2 = i;
@@ -652,6 +700,12 @@ NIMCP_API nimcp_error_t evolutionary_proof_crossover(
             /* BLX-alpha crossover */
             float alpha = 0.5f;
             for (uint32_t i = 0; i < PROOF_GENE_COUNT; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && PROOF_GENE_COUNT > 256) {
+                    evolutionary_proof_heartbeat("evolutionary_loop",
+                                     (float)(i + 1) / (float)PROOF_GENE_COUNT);
+                }
+
                 float p1 = parent1->genes[i].value;
                 float p2 = parent2->genes[i].value;
                 float min_val = (p1 < p2) ? p1 : p2;
@@ -676,6 +730,12 @@ NIMCP_API nimcp_error_t evolutionary_proof_crossover(
 
         case EVOPROOF_CROSS_UNIFORM: {
             for (uint32_t i = 0; i < PROOF_GENE_COUNT; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && PROOF_GENE_COUNT > 256) {
+                    evolutionary_proof_heartbeat("evolutionary_loop",
+                                     (float)(i + 1) / (float)PROOF_GENE_COUNT);
+                }
+
                 const proof_gene_t* src = (eps_random_uniform(eps) < 0.5f)
                                            ? &parent1->genes[i]
                                            : &parent2->genes[i];
@@ -688,6 +748,12 @@ NIMCP_API nimcp_error_t evolutionary_proof_crossover(
             /* Single-point crossover */
             uint32_t point = eps_random_int(eps, PROOF_GENE_COUNT);
             for (uint32_t i = 0; i < PROOF_GENE_COUNT; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && PROOF_GENE_COUNT > 256) {
+                    evolutionary_proof_heartbeat("evolutionary_loop",
+                                     (float)(i + 1) / (float)PROOF_GENE_COUNT);
+                }
+
                 const proof_gene_t* src = (i < point)
                                            ? &parent1->genes[i]
                                            : &parent2->genes[i];
@@ -699,6 +765,12 @@ NIMCP_API nimcp_error_t evolutionary_proof_crossover(
 
     /* Average action weights */
     for (uint32_t i = 0; i < PROOF_ACTION_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PROOF_ACTION_COUNT > 256) {
+            evolutionary_proof_heartbeat("evolutionary_loop",
+                             (float)(i + 1) / (float)PROOF_ACTION_COUNT);
+        }
+
         child->action_weights[i] = (parent1->action_weights[i] +
                                     parent2->action_weights[i]) / 2.0f;
     }
@@ -717,6 +789,12 @@ NIMCP_API nimcp_error_t evolutionary_proof_mutate(
     }
 
     for (uint32_t i = 0; i < PROOF_GENE_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PROOF_GENE_COUNT > 256) {
+            evolutionary_proof_heartbeat("evolutionary_loop",
+                             (float)(i + 1) / (float)PROOF_GENE_COUNT);
+        }
+
         if (eps_random_uniform(eps) < eps->config.mutation_rate) {
             float delta = eps_random_normal(eps) * strategy->genes[i].mutation_sigma;
             strategy->genes[i].value += delta;
@@ -809,6 +887,12 @@ static float update_q_unlocked(
         proof_q_entry_t* next_entry = find_q_entry(eps, next_hash);
         if (next_entry) {
             for (uint32_t i = 0; i < PROOF_ACTION_COUNT; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && PROOF_ACTION_COUNT > 256) {
+                    evolutionary_proof_heartbeat("evolutionary_loop",
+                                     (float)(i + 1) / (float)PROOF_ACTION_COUNT);
+                }
+
                 if (next_entry->q_values[i] > next_max_q) {
                     next_max_q = next_entry->q_values[i];
                 }
@@ -913,6 +997,12 @@ NIMCP_API nimcp_error_t evolutionary_proof_replay_learn(
 
     /* Sample batch and update using unlocked version to avoid deadlock */
     for (uint32_t i = 0; i < eps->config.replay_batch_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && eps->config.replay_batch_size > 256) {
+            evolutionary_proof_heartbeat("evolutionary_loop",
+                             (float)(i + 1) / (float)eps->config.replay_batch_size);
+        }
+
         uint32_t idx = eps_random_int(eps, eps->experience_count);
         proof_experience_t* exp = &eps->experience_buffer[idx];
 
@@ -1073,6 +1163,12 @@ NIMCP_API void evolutionary_proof_trace_cleanup(evoproof_trace_t* trace) {
 
     if (trace->steps) {
         for (uint32_t i = 0; i < trace->num_steps; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && trace->num_steps > 256) {
+                evolutionary_proof_heartbeat("evolutionary_loop",
+                                 (float)(i + 1) / (float)trace->num_steps);
+            }
+
             nimcp_free(trace->steps[i].statement);
             nimcp_free(trace->steps[i].justification);
             nimcp_free(trace->steps[i].premise_ids);

@@ -49,7 +49,7 @@ static nimcp_health_agent_t* g_gw_cognitive_bridge_health_agent = NULL;
  * @brief Set health agent for gw_cognitive_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void gw_cognitive_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void gw_cognitive_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_gw_cognitive_bridge_health_agent = agent;
 }
 
@@ -160,6 +160,10 @@ int gw_cognitive_default_config(gw_cognitive_config_t* config) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_cognitive_bridge_heartbeat("gw_cognitive_gw_cognitive_default", 0.0f);
+
+
     config->broadcast_threshold = 0.5f;
     config->competition_timeout_ms = 100;
     config->max_competitors = 16;
@@ -178,6 +182,10 @@ int gw_cognitive_default_config(gw_cognitive_config_t* config) {
 gw_cognitive_bridge_t* gw_cognitive_bridge_create(
     const gw_cognitive_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    gw_cognitive_bridge_heartbeat("gw_cognitive_create", 0.0f);
+
+
     gw_cognitive_bridge_t* bridge = nimcp_calloc(1, sizeof(gw_cognitive_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -237,11 +245,21 @@ void gw_cognitive_bridge_destroy(gw_cognitive_bridge_t* bridge) {
     }
 
     /* Free current content data if allocated */
+    /* Phase 8: Heartbeat at operation start */
+    gw_cognitive_bridge_heartbeat("gw_cognitive_destroy", 0.0f);
+
+
     free_current_content(bridge);
 
     /* Free competitor content data copies */
     if (bridge->competitors) {
         for (size_t i = 0; i < bridge->competitor_capacity; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->competitor_capacity > 256) {
+                gw_cognitive_bridge_heartbeat("gw_cognitive_loop",
+                                 (float)(i + 1) / (float)bridge->competitor_capacity);
+            }
+
             free_competitor_data(&bridge->competitors[i]);
         }
         nimcp_free(bridge->competitors);
@@ -276,6 +294,10 @@ int gw_cognitive_broadcast(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_cognitive_bridge_heartbeat("gw_cognitive_gw_cognitive_broadca", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update current content */
@@ -295,6 +317,12 @@ int gw_cognitive_broadcast(
 
     /* Iterate all active receivers and call their callbacks */
     for (size_t i = 0; i < bridge->receiver_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->receiver_capacity > 256) {
+            gw_cognitive_bridge_heartbeat("gw_cognitive_loop",
+                             (float)(i + 1) / (float)bridge->receiver_capacity);
+        }
+
         if (bridge->receivers[i].active && bridge->receivers[i].callback) {
             bridge->receivers[i].callback(
                 content_type,
@@ -323,6 +351,10 @@ int gw_cognitive_compete_for_access(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_cognitive_bridge_heartbeat("gw_cognitive_gw_cognitive_compete", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if priority meets threshold */
@@ -340,6 +372,12 @@ int gw_cognitive_compete_for_access(
     /* Find if this module already has a pending entry */
     int existing_slot = -1;
     for (size_t i = 0; i < bridge->competitor_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->competitor_capacity > 256) {
+            gw_cognitive_bridge_heartbeat("gw_cognitive_loop",
+                             (float)(i + 1) / (float)bridge->competitor_capacity);
+        }
+
         if (bridge->competitors[i].pending &&
             bridge->competitors[i].module_id == module_id) {
             existing_slot = (int)i;
@@ -352,6 +390,12 @@ int gw_cognitive_compete_for_access(
     if (slot < 0) {
         /* Find empty slot */
         for (size_t i = 0; i < bridge->competitor_capacity; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->competitor_capacity > 256) {
+                gw_cognitive_bridge_heartbeat("gw_cognitive_loop",
+                                 (float)(i + 1) / (float)bridge->competitor_capacity);
+            }
+
             if (!bridge->competitors[i].pending) {
                 slot = (int)i;
                 break;
@@ -398,6 +442,12 @@ int gw_cognitive_compete_for_access(
     /* Check if this priority wins (highest priority) */
     bool is_winner = true;
     for (size_t i = 0; i < bridge->competitor_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->competitor_capacity > 256) {
+            gw_cognitive_bridge_heartbeat("gw_cognitive_loop",
+                             (float)(i + 1) / (float)bridge->competitor_capacity);
+        }
+
         if (bridge->competitors[i].pending && (int)i != slot) {
             if (bridge->competitors[i].priority > priority) {
                 is_winner = false;
@@ -430,10 +480,20 @@ int gw_cognitive_register_receiver(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_cognitive_bridge_heartbeat("gw_cognitive_gw_cognitive_registe", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if already registered */
     for (size_t i = 0; i < bridge->receiver_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->receiver_capacity > 256) {
+            gw_cognitive_bridge_heartbeat("gw_cognitive_loop",
+                             (float)(i + 1) / (float)bridge->receiver_capacity);
+        }
+
         if (bridge->receivers[i].active &&
             bridge->receivers[i].module_id == module_id) {
             /* Update existing registration */
@@ -446,6 +506,12 @@ int gw_cognitive_register_receiver(
 
     /* Find empty slot */
     for (size_t i = 0; i < bridge->receiver_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->receiver_capacity > 256) {
+            gw_cognitive_bridge_heartbeat("gw_cognitive_loop",
+                             (float)(i + 1) / (float)bridge->receiver_capacity);
+        }
+
         if (!bridge->receivers[i].active) {
             bridge->receivers[i].module_id = module_id;
             bridge->receivers[i].callback = callback;
@@ -470,10 +536,20 @@ int gw_cognitive_unregister_receiver(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_cognitive_bridge_heartbeat("gw_cognitive_gw_cognitive_unregis", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Find and deactivate receiver */
     for (size_t i = 0; i < bridge->receiver_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->receiver_capacity > 256) {
+            gw_cognitive_bridge_heartbeat("gw_cognitive_loop",
+                             (float)(i + 1) / (float)bridge->receiver_capacity);
+        }
+
         if (bridge->receivers[i].active &&
             bridge->receivers[i].module_id == module_id) {
             bridge->receivers[i].active = false;
@@ -499,6 +575,10 @@ int gw_cognitive_get_conscious_content(
     if (!bridge || !bridge->initialized || !content_out) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gw_cognitive_bridge_heartbeat("gw_cognitive_gw_cognitive_get_con", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -541,6 +621,10 @@ int gw_cognitive_resolve_competition(gw_cognitive_bridge_t* bridge) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_cognitive_bridge_heartbeat("gw_cognitive_gw_cognitive_resolve", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Find highest priority competitor */
@@ -548,6 +632,12 @@ int gw_cognitive_resolve_competition(gw_cognitive_bridge_t* bridge) {
     float highest_priority = -1.0f;
 
     for (size_t i = 0; i < bridge->competitor_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->competitor_capacity > 256) {
+            gw_cognitive_bridge_heartbeat("gw_cognitive_loop",
+                             (float)(i + 1) / (float)bridge->competitor_capacity);
+        }
+
         if (bridge->competitors[i].pending) {
             if (bridge->competitors[i].priority > highest_priority) {
                 highest_priority = bridge->competitors[i].priority;
@@ -610,6 +700,12 @@ int gw_cognitive_resolve_competition(gw_cognitive_bridge_t* bridge) {
 
     /* Clear all competitors */
     for (size_t i = 0; i < bridge->competitor_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->competitor_capacity > 256) {
+            gw_cognitive_bridge_heartbeat("gw_cognitive_loop",
+                             (float)(i + 1) / (float)bridge->competitor_capacity);
+        }
+
         if (bridge->competitors[i].pending) {
             free_competitor_data(&bridge->competitors[i]);
             bridge->competitors[i].pending = false;
@@ -620,6 +716,12 @@ int gw_cognitive_resolve_competition(gw_cognitive_bridge_t* bridge) {
 
     /* Broadcast to all receivers (still under lock for consistency) */
     for (size_t i = 0; i < bridge->receiver_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->receiver_capacity > 256) {
+            gw_cognitive_bridge_heartbeat("gw_cognitive_loop",
+                             (float)(i + 1) / (float)bridge->receiver_capacity);
+        }
+
         if (bridge->receivers[i].active && bridge->receivers[i].callback) {
             bridge->receivers[i].callback(
                 broadcast_type,
@@ -656,6 +758,10 @@ int gw_cognitive_get_stats(
     /* Note: For const correctness, we cast away const for mutex lock.
      * This is acceptable because the mutex operation doesn't modify
      * the logical state of the bridge. */
+    /* Phase 8: Heartbeat at operation start */
+    gw_cognitive_bridge_heartbeat("gw_cognitive_gw_cognitive_get_sta", 0.0f);
+
+
     nimcp_mutex_lock(((gw_cognitive_bridge_t*)bridge)->base.mutex);
 
     *stats_out = bridge->stats;
@@ -669,6 +775,10 @@ int gw_cognitive_reset_stats(gw_cognitive_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gw_cognitive_bridge_heartbeat("gw_cognitive_gw_cognitive_reset_s", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 

@@ -118,7 +118,7 @@ static nimcp_health_agent_t* g_curiosity_health_agent = NULL;
  * @brief Set health agent for curiosity heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void curiosity_set_health_agent(nimcp_health_agent_t* agent) {
+void curiosity_set_health_agent(nimcp_health_agent_t* agent) {
     g_curiosity_health_agent = agent;
 }
 
@@ -173,6 +173,12 @@ static void concept_bucket_destructor(void* value, size_t value_size)
     // Free related concepts
     if (bucket->related_concepts) {
         for (uint32_t j = 0; j < bucket->num_related; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && bucket->num_related > 256) {
+                curiosity_heartbeat("curiosity_loop",
+                                 (float)(j + 1) / (float)bucket->num_related);
+            }
+
             nimcp_free(bucket->related_concepts[j]);
         }
         nimcp_free(bucket->related_concepts);
@@ -879,6 +885,10 @@ curiosity_engine_t curiosity_engine_create(brain_t parent_brain, const char* lea
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_engine_create", 0.0f);
+
+
     curiosity_engine_t engine = nimcp_calloc(1, sizeof(struct curiosity_engine_struct));
     if (!engine) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_engine_create: failed to allocate engine");
@@ -1013,6 +1023,10 @@ void curiosity_engine_destroy(curiosity_engine_t engine)
     }
 
     // Disconnect immune system if connected
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_engine_destroy", 0.0f);
+
+
     if (engine->immune_bridge) {
         curiosity_disconnect_immune(engine);
     }
@@ -1105,6 +1119,10 @@ float curiosity_check_familiarity(curiosity_engine_t engine, const char* concept
         return 0.0F;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_check_familiarity", 0.0f);
+
+
     concept_bucket_t* bucket = find_concept_bucket(engine, concept_str);
     if (!bucket) {
         return 0.0F;
@@ -1144,6 +1162,10 @@ static uint32_t count_related_concepts(curiosity_engine_t engine, const char* co
  */
 knowledge_gap_t curiosity_detect_knowledge_gap(curiosity_engine_t engine, const char* concept_str)
 {
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_detect_knowledge_gap", 0.0f);
+
+
     knowledge_gap_t gap = {0};
 
     if (!engine || !concept_str) {
@@ -1207,6 +1229,10 @@ uint32_t curiosity_get_related_concepts(curiosity_engine_t engine, const char* c
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_get_related_concepts", 0.0f);
+
+
     concept_bucket_t* bucket = find_concept_bucket(engine, concept_str);
     if (!bucket) {
         return 0;
@@ -1219,6 +1245,12 @@ uint32_t curiosity_get_related_concepts(curiosity_engine_t engine, const char* c
     uint32_t count = (bucket->num_related < max_related) ? bucket->num_related : max_related;
 
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            curiosity_heartbeat("curiosity_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         related[i] = bucket->related_concepts[i];
     }
 
@@ -1285,6 +1317,10 @@ uint32_t curiosity_generate_questions(curiosity_engine_t engine, const knowledge
     if (!engine || !gap || !questions || max_questions == 0) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_generate_questions", 0.0f);
+
 
     const question_type_t* types = engine->stage_strategy->get_question_types();
     uint32_t num_types = engine->stage_strategy->get_question_types_count();
@@ -1371,6 +1407,10 @@ static float calculate_aesthetic_appeal(float familiarity)
  */
 motivation_state_t curiosity_assess_motivation(curiosity_engine_t engine, const char* concept_str)
 {
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_assess_motivation", 0.0f);
+
+
     motivation_state_t state = {0};
 
     if (!engine || !concept_str) {
@@ -1413,6 +1453,10 @@ void curiosity_set_baseline(curiosity_engine_t engine, float level)
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_set_baseline", 0.0f);
+
+
     engine->baseline_curiosity = fminf(fmaxf(level, 0.0F), 1.0F);
     engine->current_motivation = engine->baseline_curiosity;
 }
@@ -1429,6 +1473,10 @@ float curiosity_get_drive(curiosity_engine_t engine)
     if (!engine) {
         return 0.0F;
     }
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_get_drive", 0.0f);
+
+
     return engine->current_motivation;
 }
 
@@ -1483,6 +1531,10 @@ bool curiosity_learn_answer(curiosity_engine_t engine, const char* question, con
     if (!record_question_history(engine, question, answer)) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_learn_answer", 0.0f);
+
 
     engine->progress.total_answers_learned++;
 
@@ -1547,6 +1599,10 @@ bool curiosity_learn_experience(curiosity_engine_t engine, const char* experienc
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_learn_experience", 0.0f);
+
+
     engine->progress.total_experiences++;
 
     // INTRINSIC REWARD: Release dopamine for experiential learning
@@ -1583,6 +1639,10 @@ bool curiosity_learn_observation(curiosity_engine_t engine, const char* what_obs
     }
 
     // Would update concept_str familiarity and relationships
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_learn_observation", 0.0f);
+
+
     return true;
 }
 
@@ -1639,6 +1699,10 @@ bool curiosity_register_knowledge_source(curiosity_engine_t engine, const char* 
     if (!ensure_source_capacity(engine)) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_register_knowledge_s", 0.0f);
+
 
     knowledge_source_t* source = &engine->sources[engine->num_sources++];
     strncpy(source->name, source_name, sizeof(source->name) - 1);
@@ -1709,6 +1773,10 @@ uint32_t curiosity_seek_knowledge(curiosity_engine_t engine, const knowledge_gap
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_seek_knowledge", 0.0f);
+
+
     uint32_t total_results = 0;
 
     for (uint32_t i = 0; i < engine->num_sources && total_results < max_results; i++) {
@@ -1760,6 +1828,10 @@ bool curiosity_get_progress(curiosity_engine_t engine, learning_progress_t* prog
     }
 
     *progress = engine->progress;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_get_progress", 0.0f);
+
+
     update_progress_statistics(engine, progress);
 
     return true;
@@ -1840,6 +1912,10 @@ float curiosity_get_domain_coverage(curiosity_engine_t engine, const char* domai
         return 0.0F;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_get_domain_coverage", 0.0f);
+
+
     uint32_t domain_concepts = count_domain_concepts(engine, domain);
     return fminf((float) domain_concepts / 100.0F, 1.0F);
 }
@@ -1860,6 +1936,10 @@ learning_stage_t curiosity_get_stage(curiosity_engine_t engine)
     if (!engine) {
         return STAGE_INFANT;
     }
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_get_stage", 0.0f);
+
+
     return engine->stage;
 }
 
@@ -1880,6 +1960,10 @@ void curiosity_set_stage(curiosity_engine_t engine, learning_stage_t stage)
     if (!engine) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_set_stage", 0.0f);
+
 
     engine->stage = stage;
     engine->stage_strategy = get_stage_strategy(stage);
@@ -1904,6 +1988,10 @@ void curiosity_print_gap(const knowledge_gap_t* gap)
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_print_gap", 0.0f);
+
+
     printf("Knowledge Gap:\n");
     printf("  Topic: %s\n", gap->topic);
     printf("  Gap size: %.2f\n", gap->gap_size);
@@ -1925,6 +2013,10 @@ void curiosity_print_question(const generated_question_t* question)
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_print_question", 0.0f);
+
+
     printf("Question:\n");
     printf("  Text: %s\n", question->question);
     printf("  Type: %d\n", question->type);
@@ -1944,6 +2036,10 @@ void curiosity_print_progress(const learning_progress_t* progress)
     if (!progress) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_print_progress", 0.0f);
+
 
     printf("Learning Progress:\n");
     printf("  Questions asked: %lu\n", progress->total_questions_asked);
@@ -1983,6 +2079,10 @@ void curiosity_set_exploration_rate(curiosity_engine_t engine, float exploration
     }
 
     // Clamp exploration rate to [0, 1]
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_set_exploration_rate", 0.0f);
+
+
     exploration_rate = fminf(fmaxf(exploration_rate, 0.0F), 1.0F);
 
     // WHAT: Modulate baseline curiosity based on exploration rate
@@ -2014,6 +2114,10 @@ float curiosity_get_information_gain(curiosity_engine_t engine)
     // WHAT: Estimate information gain from recent learning
     // WHY:  If we're learning a lot, exploration is paying off
     // HOW:  Use knowledge growth rate as proxy for information gain
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_get_information_gain", 0.0f);
+
+
     if (engine->progress.total_questions_asked == 0) {
         return engine->baseline_curiosity;  // No data yet, use baseline
     }
@@ -2057,6 +2161,10 @@ int curiosity_connect_immune(curiosity_engine_t engine, struct brain_immune_syst
     }
 
     // Guard: Already connected
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_connect_immune", 0.0f);
+
+
     if (engine->immune_bridge) {
         LOG_WARN("Curiosity already connected to immune system, disconnecting first");
         curiosity_disconnect_immune(engine);
@@ -2109,6 +2217,10 @@ int curiosity_disconnect_immune(curiosity_engine_t engine)
     // WHAT: Destroy bridge
     // WHY:  Clean up resources, restore curiosity
     // HOW:  Call bridge destructor
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_disconnect_immune", 0.0f);
+
+
     curiosity_immune_bridge_t* bridge = (curiosity_immune_bridge_t*)engine->immune_bridge;
     curiosity_immune_bridge_destroy(bridge);
 
@@ -2140,6 +2252,10 @@ float curiosity_get_immune_suppression(curiosity_engine_t engine)
     // WHAT: Query bridge for suppression factor
     // WHY:  Bridge tracks immune-induced curiosity modulation
     // HOW:  Call bridge getter
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_get_immune_suppressi", 0.0f);
+
+
     curiosity_immune_bridge_t* bridge = (curiosity_immune_bridge_t*)engine->immune_bridge;
     return curiosity_immune_get_suppression_factor(bridge);
 }
@@ -2166,6 +2282,10 @@ float curiosity_get_novelty_vigilance_boost(curiosity_engine_t engine)
     // WHAT: Query bridge for vigilance boost
     // WHY:  Bridge tracks novelty-induced immune alertness
     // HOW:  Call bridge getter
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_get_novelty_vigilanc", 0.0f);
+
+
     curiosity_immune_bridge_t* bridge = (curiosity_immune_bridge_t*)engine->immune_bridge;
     return curiosity_immune_get_vigilance_boost(bridge);
 }
@@ -2190,6 +2310,10 @@ float curiosity_get_novelty_vigilance_boost(curiosity_engine_t engine)
  */
 bool curiosity_should_explore_mc(curiosity_engine_t engine, float epsilon) {
     if (!engine) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_should_explore_mc", 0.0f);
+
 
     if (g_curiosity_mc_seed == 0) {
         g_curiosity_mc_seed = mc_seed_from_time();
@@ -2219,6 +2343,10 @@ uint32_t curiosity_sample_exploration_target_mc(
 ) {
     if (!engine || !concepts || num_concepts == 0) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_sample_exploration_t", 0.0f);
+
+
     if (g_curiosity_mc_seed == 0) {
         g_curiosity_mc_seed = mc_seed_from_time();
     }
@@ -2229,6 +2357,12 @@ uint32_t curiosity_sample_exploration_target_mc(
 
     float sum_weights = 0.0f;
     for (uint32_t i = 0; i < num_concepts; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_concepts > 256) {
+            curiosity_heartbeat("curiosity_loop",
+                             (float)(i + 1) / (float)num_concepts);
+        }
+
         float familiarity = curiosity_check_familiarity(engine, concepts[i]);
         weights[i] = 1.0f - familiarity;  /* Higher novelty = higher weight */
         if (weights[i] < 0.01f) weights[i] = 0.01f;  /* Minimum weight */
@@ -2241,6 +2375,12 @@ uint32_t curiosity_sample_exploration_target_mc(
     uint32_t selected = num_concepts - 1;
 
     for (uint32_t i = 0; i < num_concepts; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_concepts > 256) {
+            curiosity_heartbeat("curiosity_loop",
+                             (float)(i + 1) / (float)num_concepts);
+        }
+
         cumulative += weights[i];
         if (r < cumulative) {
             selected = i;
@@ -2274,6 +2414,10 @@ float curiosity_estimate_info_gain_mc(
 ) {
     if (!engine || !topic || num_simulations == 0) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_estimate_info_gain_m", 0.0f);
+
+
     float current_familiarity = curiosity_check_familiarity(engine, topic);
     float gap_size = 1.0f - current_familiarity;
     float base_gain = gap_size;
@@ -2303,6 +2447,12 @@ float curiosity_estimate_info_gain_mc(
 
                     float total_gain = 0.0f;
                     for (uint32_t s = 0; s < num_simulations; s++) {
+                        /* Phase 8: Loop progress heartbeat */
+                        if ((s & 0xFF) == 0 && num_simulations > 256) {
+                            curiosity_heartbeat("curiosity_loop",
+                                             (float)(s + 1) / (float)num_simulations);
+                        }
+
                         float learning_rate = 0.3f + 0.4f * h_uniform[s];
                         float noise = h_normal[s];
                         float simulated_gain = base_gain * learning_rate + noise;
@@ -2337,6 +2487,12 @@ float curiosity_estimate_info_gain_mc(
 
     float total_gain = 0.0f;
     for (uint32_t s = 0; s < num_simulations; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && num_simulations > 256) {
+            curiosity_heartbeat("curiosity_loop",
+                             (float)(s + 1) / (float)num_simulations);
+        }
+
         float learning_rate = 0.3f + 0.4f * mc_random_uniform(&g_curiosity_mc_seed);
         float noise = mc_random_normal(&g_curiosity_mc_seed, 0.0f, 0.1f);
 
@@ -2371,6 +2527,10 @@ uint32_t curiosity_sample_question_mc(
 ) {
     if (!engine || !questions || num_questions == 0 || temperature <= 0.0f) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_sample_question_mc", 0.0f);
+
+
     if (g_curiosity_mc_seed == 0) {
         g_curiosity_mc_seed = mc_seed_from_time();
     }
@@ -2388,6 +2548,12 @@ uint32_t curiosity_sample_question_mc(
 
     float sum_exp = 0.0f;
     for (uint32_t i = 0; i < num_questions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_questions > 256) {
+            curiosity_heartbeat("curiosity_loop",
+                             (float)(i + 1) / (float)num_questions);
+        }
+
         probs[i] = expf((questions[i].priority - max_priority) / temperature);
         sum_exp += probs[i];
     }
@@ -2398,6 +2564,12 @@ uint32_t curiosity_sample_question_mc(
     uint32_t selected = num_questions - 1;
 
     for (uint32_t i = 0; i < num_questions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_questions > 256) {
+            curiosity_heartbeat("curiosity_loop",
+                             (float)(i + 1) / (float)num_questions);
+        }
+
         cumulative += probs[i];
         if (r < cumulative) {
             selected = i;
@@ -2421,6 +2593,10 @@ uint32_t curiosity_sample_question_mc(
  * @return Noisy intensity clamped to [0, 1]
  */
 float curiosity_add_exploration_noise_mc(float intensity, float noise_scale) {
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_add_exploration_nois", 0.0f);
+
+
     if (g_curiosity_mc_seed == 0) {
         g_curiosity_mc_seed = mc_seed_from_time();
     }
@@ -2464,10 +2640,20 @@ int curiosity_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
     /* Query our own entity from the knowledge graph */
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Curiosity_Module");
     if (self) {
         /* Module now knows its own capabilities from KG */
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                curiosity_heartbeat("curiosity_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Curiosity self-knowledge: %s", self->observations[i]);
         }
     }
@@ -2501,6 +2687,10 @@ int curiosity_compute_empowerment(
 
     if (!engine || !concept_name || !result) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_compute_empowerment", 0.0f);
+
+
     memset(result, 0, sizeof(*result));
 
     if (horizon == 0) horizon = 3;  /* Default lookahead */
@@ -2524,6 +2714,12 @@ int curiosity_compute_empowerment(
 
     /* Simulate action-state transitions */
     for (uint32_t s = 0; s < num_samples; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && num_samples > 256) {
+            curiosity_heartbeat("curiosity_loop",
+                             (float)(s + 1) / (float)num_samples);
+        }
+
         uint32_t action = mc_random_int(seed, num_actions);
         uint32_t next_state;
 
@@ -2550,7 +2746,19 @@ int curiosity_compute_empowerment(
     }
 
     for (uint32_t a = 0; a < num_actions; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && num_actions > 256) {
+            curiosity_heartbeat("curiosity_loop",
+                             (float)(a + 1) / (float)num_actions);
+        }
+
         for (uint32_t s = 0; s < num_actions; s++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((s & 0xFF) == 0 && num_actions > 256) {
+                curiosity_heartbeat("curiosity_loop",
+                                 (float)(s + 1) / (float)num_actions);
+            }
+
             p_a[a] += state_counts[a * num_actions + s];
             p_s[s] += state_counts[a * num_actions + s];
         }
@@ -2558,6 +2766,12 @@ int curiosity_compute_empowerment(
 
     float total = (float)num_samples;
     for (uint32_t i = 0; i < num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_actions > 256) {
+            curiosity_heartbeat("curiosity_loop",
+                             (float)(i + 1) / (float)num_actions);
+        }
+
         p_a[i] /= total;
         p_s[i] /= total;
     }
@@ -2565,6 +2779,12 @@ int curiosity_compute_empowerment(
     /* Entropy H(S') */
     float H_s = 0.0f;
     for (uint32_t s = 0; s < num_actions; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && num_actions > 256) {
+            curiosity_heartbeat("curiosity_loop",
+                             (float)(s + 1) / (float)num_actions);
+        }
+
         if (p_s[s] > 1e-10f) {
             H_s -= p_s[s] * logf(p_s[s]);
         }
@@ -2573,14 +2793,32 @@ int curiosity_compute_empowerment(
     /* Conditional entropy H(S'|A) */
     float H_s_given_a = 0.0f;
     for (uint32_t a = 0; a < num_actions; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && num_actions > 256) {
+            curiosity_heartbeat("curiosity_loop",
+                             (float)(a + 1) / (float)num_actions);
+        }
+
         if (p_a[a] < 1e-10f) continue;
 
         float action_total = 0.0f;
         for (uint32_t s = 0; s < num_actions; s++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((s & 0xFF) == 0 && num_actions > 256) {
+                curiosity_heartbeat("curiosity_loop",
+                                 (float)(s + 1) / (float)num_actions);
+            }
+
             action_total += state_counts[a * num_actions + s];
         }
 
         for (uint32_t s = 0; s < num_actions; s++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((s & 0xFF) == 0 && num_actions > 256) {
+                curiosity_heartbeat("curiosity_loop",
+                                 (float)(s + 1) / (float)num_actions);
+            }
+
             float p_s_given_a = state_counts[a * num_actions + s] / (action_total + 1e-10f);
             if (p_s_given_a > 1e-10f) {
                 H_s_given_a -= p_a[a] * p_s_given_a * logf(p_s_given_a);
@@ -2610,6 +2848,12 @@ int curiosity_compute_empowerment(
 
     /* Free related concepts */
     for (uint32_t i = 0; i < num_related; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_related > 256) {
+            curiosity_heartbeat("curiosity_loop",
+                             (float)(i + 1) / (float)num_related);
+        }
+
         if (related[i]) nimcp_free(related[i]);
     }
 
@@ -2624,6 +2868,10 @@ uint32_t curiosity_sample_by_empowerment(
 
     if (!engine || !concepts || num_concepts == 0) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_sample_by_empowermen", 0.0f);
+
+
     if (temperature <= 0.0f) temperature = 1.0f;
 
     uint32_t* seed = curiosity_get_mc_seed();
@@ -2634,6 +2882,12 @@ uint32_t curiosity_sample_by_empowerment(
 
     float max_score = -1e10f;
     for (uint32_t i = 0; i < num_concepts; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_concepts > 256) {
+            curiosity_heartbeat("curiosity_loop",
+                             (float)(i + 1) / (float)num_concepts);
+        }
+
         curiosity_empowerment_t emp;
         if (curiosity_compute_empowerment(engine, concepts[i], 3, &emp) == 0) {
             scores[i] = emp.empowerment / temperature;
@@ -2646,6 +2900,12 @@ uint32_t curiosity_sample_by_empowerment(
     /* Softmax normalization */
     float sum_exp = 0.0f;
     for (uint32_t i = 0; i < num_concepts; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_concepts > 256) {
+            curiosity_heartbeat("curiosity_loop",
+                             (float)(i + 1) / (float)num_concepts);
+        }
+
         scores[i] = expf(scores[i] - max_score);  /* Numerical stability */
         sum_exp += scores[i];
     }
@@ -2656,6 +2916,12 @@ uint32_t curiosity_sample_by_empowerment(
     uint32_t selected = 0;
 
     for (uint32_t i = 0; i < num_concepts; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_concepts > 256) {
+            curiosity_heartbeat("curiosity_loop",
+                             (float)(i + 1) / (float)num_concepts);
+        }
+
         cumsum += scores[i];
         if (r <= cumsum) {
             selected = i;
@@ -2676,6 +2942,10 @@ float curiosity_compute_intrinsic_reward(
     if (!engine || !concept_name) return 0.0f;
 
     /* Clamp weights */
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_compute_intrinsic_re", 0.0f);
+
+
     if (alpha < 0.0f) alpha = 0.0f;
     if (beta < 0.0f) beta = 0.0f;
     if (alpha + beta > 1.0f) {
@@ -2709,6 +2979,10 @@ float curiosity_estimate_empowerment_change(
     uint32_t num_simulations) {
 
     if (!engine || !concept_name) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_heartbeat("curiosity_estimate_empowerment", 0.0f);
+
+
     if (num_simulations == 0) num_simulations = 100;
 
     uint32_t* seed = curiosity_get_mc_seed();
@@ -2723,6 +2997,12 @@ float curiosity_estimate_empowerment_change(
     float sum_delta = 0.0f;
 
     for (uint32_t i = 0; i < num_simulations; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_simulations > 256) {
+            curiosity_heartbeat("curiosity_loop",
+                             (float)(i + 1) / (float)num_simulations);
+        }
+
         /* Simulate exploration outcome - empowerment typically increases slightly */
         float noise = mc_random_uniform(seed) * 2.0f - 1.0f;  /* [-1, 1] */
         float simulated_delta = 0.1f + noise * 0.2f;  /* Mean 0.1, std 0.2 */

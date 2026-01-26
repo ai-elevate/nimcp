@@ -38,7 +38,7 @@ static nimcp_health_agent_t* g_reasoning_immune_health_agent = NULL;
  * @brief Set health agent for reasoning_immune heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void reasoning_immune_set_health_agent(nimcp_health_agent_t* agent) {
+void reasoning_immune_set_health_agent(nimcp_health_agent_t* agent) {
     g_reasoning_immune_health_agent = agent;
 }
 
@@ -297,6 +297,10 @@ int reasoning_immune_default_config(reasoning_immune_config_t* config) {
     }
 
     /* All features enabled by default */
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_immune_heartbeat("reasoning_im_default_config", 0.0f);
+
+
     config->enable_cytokine_reasoning_modulation = true;
     config->enable_inflammation_cognitive_slowing = true;
     config->enable_reasoning_failure_immune_trigger = true;
@@ -335,6 +339,10 @@ reasoning_immune_bridge_t* reasoning_immune_bridge_create(
     }
 
     /* Allocate bridge */
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_immune_heartbeat("reasoning_im_bridge_create", 0.0f);
+
+
     reasoning_immune_bridge_t* bridge = (reasoning_immune_bridge_t*)
         nimcp_malloc(sizeof(reasoning_immune_bridge_t));
     if (!bridge) {
@@ -399,6 +407,10 @@ reasoning_immune_bridge_t* reasoning_immune_bridge_create(
 void reasoning_immune_bridge_destroy(reasoning_immune_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_immune_heartbeat("reasoning_im_bridge_destroy", 0.0f);
+
+
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
@@ -420,6 +432,10 @@ int reasoning_immune_apply_cytokine_effects(reasoning_immune_bridge_t* bridge) {
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_immune_heartbeat("reasoning_im_apply_cytokine_effec", 0.0f);
+
 
     pthread_mutex_lock(bridge->base.mutex);
 
@@ -472,6 +488,10 @@ int reasoning_immune_apply_inflammation_effects(reasoning_immune_bridge_t* bridg
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_immune_heartbeat("reasoning_im_apply_inflammation_e", 0.0f);
+
+
     pthread_mutex_lock(bridge->base.mutex);
 
     /* Compute inflammation penalty */
@@ -514,6 +534,10 @@ int reasoning_immune_get_impairment(
 ) {
     if (!bridge || !impairment) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_immune_heartbeat("reasoning_im_get_impairment", 0.0f);
+
+
     pthread_mutex_lock(bridge->base.mutex);
     *impairment = bridge->current_impairment;
     pthread_mutex_unlock(bridge->base.mutex);
@@ -537,6 +561,10 @@ int reasoning_immune_report_contradiction(
 
     }
     if (!bridge->enable_contradiction_immune_alert) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_immune_heartbeat("reasoning_im_report_contradiction", 0.0f);
+
 
     pthread_mutex_lock(bridge->base.mutex);
 
@@ -577,6 +605,10 @@ int reasoning_immune_report_proof_failure(
 
     }
     if (!bridge->enable_reasoning_failure_immune_trigger) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_immune_heartbeat("reasoning_im_report_proof_failure", 0.0f);
+
 
     pthread_mutex_lock(bridge->base.mutex);
 
@@ -645,6 +677,10 @@ int reasoning_immune_report_unification_error(
     }
     if (!bridge->enable_reasoning_failure_immune_trigger) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_immune_heartbeat("reasoning_im_report_unification_e", 0.0f);
+
+
     pthread_mutex_lock(bridge->base.mutex);
 
     uint64_t now_ms = get_time_ms();
@@ -683,6 +719,10 @@ int reasoning_immune_clear_failure_tracking(reasoning_immune_bridge_t* bridge) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_immune_heartbeat("reasoning_im_clear_failure_tracki", 0.0f);
+
+
     pthread_mutex_lock(bridge->base.mutex);
 
     /* Reset all failure counters */
@@ -709,6 +749,10 @@ int reasoning_immune_get_failure_state(
 ) {
     if (!bridge || !failure_state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_immune_heartbeat("reasoning_im_get_failure_state", 0.0f);
+
+
     pthread_mutex_lock(bridge->base.mutex);
     *failure_state = bridge->failure_state;
     pthread_mutex_unlock(bridge->base.mutex);
@@ -721,6 +765,10 @@ int reasoning_immune_get_config(
     reasoning_immune_config_t* config
 ) {
     if (!bridge || !config) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_immune_heartbeat("reasoning_im_get_config", 0.0f);
+
 
     pthread_mutex_lock(bridge->base.mutex);
 
@@ -758,6 +806,10 @@ int reasoning_immune_set_config(
     if (config->max_speed_reduction < 0.0f || config->max_speed_reduction > 1.0f) return -1;
     if (config->max_accuracy_reduction < 0.0f || config->max_accuracy_reduction > 1.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_immune_heartbeat("reasoning_im_set_config", 0.0f);
+
+
     pthread_mutex_lock(bridge->base.mutex);
 
     bridge->enable_cytokine_reasoning_modulation = config->enable_cytokine_reasoning_modulation;
@@ -788,6 +840,10 @@ int reasoning_immune_get_stats(
 ) {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_immune_heartbeat("reasoning_im_get_stats", 0.0f);
+
+
     pthread_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     pthread_mutex_unlock(bridge->base.mutex);
@@ -803,6 +859,10 @@ int reasoning_immune_reset_stats(reasoning_immune_bridge_t* bridge) {
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_immune_heartbeat("reasoning_im_reset_stats", 0.0f);
+
 
     pthread_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(reasoning_immune_stats_t));
@@ -828,6 +888,10 @@ reasoning_immune_bridge_t* reasoning_connect_immune(
     }
 
     /* Create bridge */
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_immune_heartbeat("reasoning_im_reasoning_connect_im", 0.0f);
+
+
     reasoning_immune_bridge_t* bridge =
         reasoning_immune_bridge_create(config, immune_system, reasoning_integration);
 
@@ -869,9 +933,19 @@ reasoning_immune_bridge_t* reasoning_connect_immune(
  */
 int reasoning_immune_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_immune_heartbeat("reasoning_im_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Reasoning_Immune");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                reasoning_immune_heartbeat("reasoning_im_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Reasoning immune self-knowledge: %s", self->observations[i]);
         }
     }

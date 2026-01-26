@@ -37,7 +37,7 @@ static nimcp_health_agent_t* g_attention_fep_bridge_health_agent = NULL;
  * @brief Set health agent for attention_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void attention_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void attention_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_attention_fep_bridge_health_agent = agent;
 }
 
@@ -60,6 +60,10 @@ int attention_fep_bridge_default_config(attention_fep_config_t* config) {
     }
 
     /* FEP → Attention */
+    /* Phase 8: Heartbeat at operation start */
+    attention_fep_bridge_heartbeat("attention_fe_default_config", 0.0f);
+
+
     config->precision_gain_scaling = 1.0f;
     config->pe_attention_shift_threshold = ATTENTION_FEP_SURPRISE_SHIFT_THRESHOLD;
     config->efe_info_seeking_threshold = ATTENTION_FEP_EFE_THRESHOLD;
@@ -87,6 +91,10 @@ int attention_fep_bridge_default_config(attention_fep_config_t* config) {
  * ============================================================================ */
 
 attention_fep_bridge_t* attention_fep_bridge_create(const attention_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    attention_fep_bridge_heartbeat("attention_fe_create", 0.0f);
+
+
     attention_fep_bridge_t* bridge = nimcp_malloc(sizeof(attention_fep_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_fep_bridge_create: failed to allocate bridge");
@@ -118,6 +126,10 @@ void attention_fep_bridge_destroy(attention_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    attention_fep_bridge_heartbeat("attention_fe_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         attention_fep_bridge_disconnect_bio_async(bridge);
     }
@@ -144,6 +156,10 @@ int attention_fep_bridge_connect_fep(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_fep_bridge_heartbeat("attention_fe_connect_fep", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -161,6 +177,10 @@ int attention_fep_bridge_connect_attention(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_fep_bridge_heartbeat("attention_fe_connect_attention", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention = attention;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -174,6 +194,10 @@ int attention_fep_bridge_disconnect(attention_fep_bridge_t* bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_bridge_disconnect: bridge is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_fep_bridge_heartbeat("attention_fe_disconnect", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -197,6 +221,10 @@ int attention_fep_apply_precision_gain_modulation(attention_fep_bridge_t* bridge
     if (!bridge->config.enable_precision_gain_modulation) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_fep_bridge_heartbeat("attention_fe_attention_fep_apply_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -243,6 +271,10 @@ int attention_fep_surprise_attention_shift(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_fep_bridge_heartbeat("attention_fe_attention_fep_surpri", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if PE exceeds threshold */
@@ -272,6 +304,10 @@ int attention_fep_efe_info_seeking(attention_fep_bridge_t* bridge) {
     if (!bridge->config.enable_efe_info_seeking) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_fep_bridge_heartbeat("attention_fe_attention_fep_efe_in", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -309,6 +345,10 @@ int attention_fep_apply_attentional_gating(attention_fep_bridge_t* bridge) {
     if (!bridge->config.enable_attentional_gating) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_fep_bridge_heartbeat("attention_fe_attention_fep_apply_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -352,6 +392,10 @@ int attention_fep_modulate_learning_rate(attention_fep_bridge_t* bridge) {
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_fep_bridge_heartbeat("attention_fe_attention_fep_modula", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get attention gain */
@@ -391,6 +435,10 @@ int attention_fep_apply_focus_model_narrowing(attention_fep_bridge_t* bridge) {
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_fep_bridge_heartbeat("attention_fe_attention_fep_apply_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get attention focus */
@@ -425,6 +473,10 @@ int attention_fep_bridge_update(
     }
 
     /* FEP → Attention */
+    /* Phase 8: Heartbeat at operation start */
+    attention_fep_bridge_heartbeat("attention_fe_update", 0.0f);
+
+
     attention_fep_apply_precision_gain_modulation(bridge);
     attention_fep_efe_info_seeking(bridge);
 
@@ -463,6 +515,10 @@ int attention_fep_bridge_get_state(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_fep_bridge_heartbeat("attention_fe_get_state", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -478,6 +534,10 @@ int attention_fep_bridge_get_stats(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_fep_bridge_get_stats: bridge or stats is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_fep_bridge_heartbeat("attention_fe_get_stats", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -496,6 +556,10 @@ int attention_fep_bridge_connect_bio_async(attention_fep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (bridge->base.bio_async_enabled) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_fep_bridge_heartbeat("attention_fe_connect_bio_async", 0.0f);
+
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_ATTENTION_BRIDGE,
@@ -522,6 +586,10 @@ int attention_fep_bridge_disconnect_bio_async(attention_fep_bridge_t* bridge) {
     }
     if (!bridge->base.bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_fep_bridge_heartbeat("attention_fe_disconnect_bio_async", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -536,6 +604,10 @@ int attention_fep_bridge_disconnect_bio_async(attention_fep_bridge_t* bridge) {
 bool attention_fep_bridge_is_bio_async_connected(
     const attention_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    attention_fep_bridge_heartbeat("attention_fe_is_bio_async_connect", 0.0f);
+
+
     return bridge ? bridge->base.bio_async_enabled : false;
 }
 
@@ -550,9 +622,19 @@ bool attention_fep_bridge_is_bio_async_connected(
  */
 int attention_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    attention_fep_bridge_heartbeat("attention_fe_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Attention_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                attention_fep_bridge_heartbeat("attention_fe_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Attention FEP Bridge self-knowledge: %s", self->observations[i]);
         }
     }

@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_code_immune_self_repair_health_agent = NULL;
  * @brief Set health agent for code_immune_self_repair heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void code_immune_self_repair_set_health_agent(nimcp_health_agent_t* agent) {
+void code_immune_self_repair_set_health_agent(nimcp_health_agent_t* agent) {
     g_code_immune_self_repair_health_agent = agent;
 }
 
@@ -115,6 +115,12 @@ static cooldown_entry_t* find_cooldown_entry(
     const char* epitope
 ) {
     for (uint32_t i = 0; i < bridge->cooldown_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->cooldown_count > 256) {
+            code_immune_self_repair_heartbeat("code_immune__loop",
+                             (float)(i + 1) / (float)bridge->cooldown_count);
+        }
+
         if (strcmp(bridge->cooldown_entries[i].epitope, epitope) == 0) {
             return &bridge->cooldown_entries[i];
         }
@@ -178,6 +184,12 @@ static code_immune_repair_tracking_t* find_tracking_record(
     uint64_t repair_id
 ) {
     for (uint32_t i = 0; i < bridge->tracking_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->tracking_count > 256) {
+            code_immune_self_repair_heartbeat("code_immune__loop",
+                             (float)(i + 1) / (float)bridge->tracking_count);
+        }
+
         if (bridge->tracking[i].repair_id == repair_id) {
             return &bridge->tracking[i];
         }
@@ -239,6 +251,10 @@ int code_immune_auto_repair_default_config(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_self_repair_heartbeat("code_immune__code_immune_auto_rep", 0.0f);
+
+
     memset(config, 0, sizeof(*config));
 
     config->enabled = true;
@@ -264,6 +280,10 @@ code_immune_self_repair_bridge_t* code_immune_self_repair_bridge_create(
     if (!code_immune || !self_repair) {
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_self_repair_heartbeat("code_immune__bridge_create", 0.0f);
+
 
     code_immune_self_repair_bridge_t* bridge = nimcp_calloc(
         1, sizeof(code_immune_self_repair_bridge_t));
@@ -335,6 +355,10 @@ void code_immune_self_repair_bridge_destroy(
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_self_repair_heartbeat("code_immune__bridge_destroy", 0.0f);
+
+
     if (bridge->magic != CODE_IMMUNE_SELF_REPAIR_MAGIC) {
         return;
     }
@@ -378,6 +402,10 @@ int code_immune_self_repair_connect_health_agent(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_self_repair_heartbeat("code_immune__connect_health_agent", 0.0f);
+
+
     nimcp_mutex_lock(bridge->mutex);
     bridge->health_agent = health_agent;
     nimcp_mutex_unlock(bridge->mutex);
@@ -396,6 +424,10 @@ int code_immune_antigen_to_diagnostic(
     if (!antigen || !result) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_self_repair_heartbeat("code_immune__code_immune_antigen_", 0.0f);
+
 
     diagnostic_result_t* diag = nimcp_calloc(1, sizeof(diagnostic_result_t));
     if (!diag) {
@@ -437,6 +469,12 @@ int code_immune_antigen_to_diagnostic(
     }
 
     for (uint32_t i = 0; i < diag->stack_depth; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && diag->stack_depth > 256) {
+            code_immune_self_repair_heartbeat("code_immune__loop",
+                             (float)(i + 1) / (float)diag->stack_depth);
+        }
+
         diag->stack_trace[i].address = antigen->backtrace[i];
         diag->stack_trace[i].is_symbolicated = false;
     }
@@ -497,6 +535,10 @@ bool code_immune_should_auto_repair(
     }
 
     /* Check recurrence threshold */
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_self_repair_heartbeat("code_immune__code_immune_should_a", 0.0f);
+
+
     if (antigen->recurrence_count < bridge->config.min_crash_count) {
         return false;
     }
@@ -534,6 +576,10 @@ int code_immune_trigger_auto_repair(
     if (!bridge || !bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_self_repair_heartbeat("code_immune__code_immune_trigger_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -622,6 +668,10 @@ uint32_t code_immune_process_auto_repairs(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_self_repair_heartbeat("code_immune__code_immune_process_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->mutex);
 
     uint32_t repairs_triggered = 0;
@@ -668,6 +718,10 @@ int code_immune_notify_repair_outcome(
     if (!bridge || !bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_self_repair_heartbeat("code_immune__code_immune_notify_r", 0.0f);
+
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -759,6 +813,10 @@ uint32_t code_immune_process_repair_outcomes(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_self_repair_heartbeat("code_immune__code_immune_process_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->mutex);
 
     uint32_t processed = 0;
@@ -811,6 +869,10 @@ const code_immune_repair_tracking_t* code_immune_get_repair_tracking(
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_self_repair_heartbeat("code_immune__code_immune_get_repa", 0.0f);
+
+
     code_immune_self_repair_bridge_t* mutable_bridge =
         (code_immune_self_repair_bridge_t*)bridge;
 
@@ -830,6 +892,10 @@ int code_immune_self_repair_get_stats(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_self_repair_heartbeat("code_immune__get_stats", 0.0f);
+
+
     code_immune_self_repair_bridge_t* mutable_bridge =
         (code_immune_self_repair_bridge_t*)bridge;
 
@@ -847,6 +913,10 @@ void code_immune_self_repair_reset_stats(
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_self_repair_heartbeat("code_immune__reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     bridge->total_repair_time_ms = 0;
@@ -860,6 +930,10 @@ bool code_immune_self_repair_is_ready(
     if (!bridge) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_self_repair_heartbeat("code_immune__is_ready", 0.0f);
+
+
     return bridge->initialized && bridge->magic == CODE_IMMUNE_SELF_REPAIR_MAGIC;
 }
 
@@ -884,9 +958,19 @@ int code_immune_self_repair_broadcast_trigger(
     }
 
     /* Find tracking record for additional info */
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_self_repair_heartbeat("code_immune__broadcast_trigger", 0.0f);
+
+
     const code_immune_repair_tracking_t* tracking = NULL;
     nimcp_mutex_lock(bridge->mutex);
     for (uint32_t i = 0; i < bridge->tracking_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->tracking_count > 256) {
+            code_immune_self_repair_heartbeat("code_immune__loop",
+                             (float)(i + 1) / (float)bridge->tracking_count);
+        }
+
         if (bridge->tracking[i].repair_id == repair_id) {
             tracking = &bridge->tracking[i];
             break;
@@ -938,9 +1022,19 @@ int code_immune_self_repair_broadcast_outcome(
     }
 
     /* Find tracking record for learning info */
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_self_repair_heartbeat("code_immune__broadcast_outcome", 0.0f);
+
+
     const code_immune_repair_tracking_t* tracking = NULL;
     nimcp_mutex_lock(bridge->mutex);
     for (uint32_t i = 0; i < bridge->tracking_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->tracking_count > 256) {
+            code_immune_self_repair_heartbeat("code_immune__loop",
+                             (float)(i + 1) / (float)bridge->tracking_count);
+        }
+
         if (bridge->tracking[i].repair_id == repair_id) {
             tracking = &bridge->tracking[i];
             break;

@@ -46,7 +46,7 @@ static nimcp_health_agent_t* g_heal_bridge_health_agent = NULL;
  * @brief Set health agent for heal_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void heal_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void heal_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_heal_bridge_health_agent = agent;
 }
 
@@ -92,6 +92,12 @@ static pattern_candidate_t* find_candidate_unlocked(
     if (bridge == NULL || bridge->candidates == NULL) return NULL;
 
     for (size_t i = 0; i < bridge->candidate_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->candidate_count > 256) {
+            heal_bridge_heartbeat("heal_bridge_loop",
+                             (float)(i + 1) / (float)bridge->candidate_count);
+        }
+
         if (bridge->candidates[i].id == candidate_id) {
             return &bridge->candidates[i];
         }
@@ -109,6 +115,12 @@ static fix_chain_t* find_chain_unlocked(
     if (bridge == NULL || bridge->active_chains == NULL) return NULL;
 
     for (size_t i = 0; i < bridge->chain_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->chain_count > 256) {
+            heal_bridge_heartbeat("heal_bridge_loop",
+                             (float)(i + 1) / (float)bridge->chain_count);
+        }
+
         if (bridge->active_chains[i].id == chain_id) {
             return &bridge->active_chains[i];
         }
@@ -126,6 +138,12 @@ static rollback_entry_t* find_rollback_entry(
     if (bridge == NULL || bridge->rollback_history == NULL) return NULL;
 
     for (size_t i = 0; i < bridge->rollback_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->rollback_count > 256) {
+            heal_bridge_heartbeat("heal_bridge_loop",
+                             (float)(i + 1) / (float)bridge->rollback_count);
+        }
+
         if (bridge->rollback_history[i].antibody_id == antibody_id) {
             return &bridge->rollback_history[i];
         }
@@ -179,6 +197,12 @@ static float calculate_chain_confidence(const fix_chain_t* chain)
 
     float total = 0.0f;
     for (size_t i = 0; i < chain->fix_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && chain->fix_count > 256) {
+            heal_bridge_heartbeat("heal_bridge_loop",
+                             (float)(i + 1) / (float)chain->fix_count);
+        }
+
         total += chain->fixes[i].fix.confidence;
     }
     return total / (float)chain->fix_count;
@@ -225,6 +249,10 @@ int heal_bridge_default_config(heal_bridge_config_t* config)
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    heal_bridge_heartbeat("heal_bridge_default_config", 0.0f);
+
+
     memset(config, 0, sizeof(heal_bridge_config_t));
 
     /* Validation settings */
@@ -260,6 +288,10 @@ heal_bridge_t* heal_bridge_create(
     code_immune_system_t* code_immune,
     const heal_bridge_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    heal_bridge_heartbeat("heal_bridge_create", 0.0f);
+
+
     heal_bridge_t* bridge = nimcp_calloc(1, sizeof(heal_bridge_t));
     if (bridge == NULL) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "heal_bridge_create: failed to allocate bridge");
@@ -355,6 +387,10 @@ void heal_bridge_destroy(heal_bridge_t* bridge)
     if (bridge == NULL) return;
 
     /* Cleanup base bridge infrastructure */
+    /* Phase 8: Heartbeat at operation start */
+    heal_bridge_heartbeat("heal_bridge_destroy", 0.0f);
+
+
     bridge_base_cleanup(&bridge->base);
 
     if (bridge->rollback_history != NULL) {
@@ -383,6 +419,10 @@ int heal_bridge_process_crash(
     uint64_t* antibody_id_out)
 {
     if (bridge == NULL || source_code == NULL) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    heal_bridge_heartbeat("heal_bridge_process_crash", 0.0f);
+
 
     uint64_t start_time = get_time_ms();
 
@@ -561,6 +601,10 @@ int heal_bridge_process_crash_chain(
     }
 
     /* Create fix chain */
+    /* Phase 8: Heartbeat at operation start */
+    heal_bridge_heartbeat("heal_bridge_process_crash_chain", 0.0f);
+
+
     uint64_t chain_id;
     int ret = heal_bridge_create_chain(bridge, antigen_id, source_code, &chain_id);
     if (ret != 0) return -1;
@@ -592,6 +636,10 @@ int heal_bridge_validate_fix(
         *result_out = SANDBOX_RESULT_SKIPPED;
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    heal_bridge_heartbeat("heal_bridge_validate_fix", 0.0f);
+
 
     uint64_t start_time = get_time_ms();
 
@@ -743,6 +791,10 @@ int heal_bridge_run_regression(
                 sizeof(bridge->sandbox.test_command) - 1);
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    heal_bridge_heartbeat("heal_bridge_run_regression", 0.0f);
+
+
     sandbox_result_t result;
     int ret = heal_bridge_validate_fix(bridge, fix, &result);
 
@@ -764,6 +816,10 @@ int heal_bridge_register_candidate(
 {
     if (bridge == NULL || features == NULL || fix == NULL) return -1;
     if (!bridge->config.enable_pattern_evolution) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    heal_bridge_heartbeat("heal_bridge_register_candidate", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -822,6 +878,10 @@ int heal_bridge_record_candidate_outcome(
     float confidence)
 {
     if (bridge == NULL) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    heal_bridge_heartbeat("heal_bridge_record_candidate_out", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -889,6 +949,10 @@ int heal_bridge_promote_candidate(
 {
     if (bridge == NULL) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    heal_bridge_heartbeat("heal_bridge_promote_candidate", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     pattern_candidate_t* candidate = find_candidate_unlocked(bridge, candidate_id);
@@ -952,6 +1016,10 @@ int heal_bridge_decay_candidates(heal_bridge_t* bridge)
 {
     if (bridge == NULL) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    heal_bridge_heartbeat("heal_bridge_decay_candidates", 0.0f);
+
+
     uint64_t now = get_time_ms();
     uint64_t decay_window = 24 * 60 * 60 * 1000;  /* 24 hours */
     int pruned = 0;
@@ -1005,6 +1073,10 @@ int heal_bridge_create_chain(
     uint64_t* chain_id_out)
 {
     if (bridge == NULL || source_code == NULL) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    heal_bridge_heartbeat("heal_bridge_create_chain", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1089,6 +1161,10 @@ int heal_bridge_add_to_chain(
 {
     if (bridge == NULL || fix == NULL) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    heal_bridge_heartbeat("heal_bridge_add_to_chain", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     fix_chain_t* chain = find_chain_unlocked(bridge, chain_id);
@@ -1120,6 +1196,10 @@ int heal_bridge_execute_chain(
 {
     if (bridge == NULL) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    heal_bridge_heartbeat("heal_bridge_execute_chain", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     fix_chain_t* chain = find_chain_unlocked(bridge, chain_id);
@@ -1136,6 +1216,12 @@ int heal_bridge_execute_chain(
 
     /* Execute fixes in order */
     for (size_t i = 0; i < chain->fix_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && chain->fix_count > 256) {
+            heal_bridge_heartbeat("heal_bridge_loop",
+                             (float)(i + 1) / (float)chain->fix_count);
+        }
+
         chain_fix_t* cf = &chain->fixes[i];
 
         /* Check dependency */
@@ -1218,6 +1304,10 @@ int heal_bridge_get_chain_status(
 {
     if (bridge == NULL) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    heal_bridge_heartbeat("heal_bridge_get_chain_status", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     fix_chain_t* chain = find_chain_unlocked(bridge, chain_id);
@@ -1249,6 +1339,10 @@ int heal_bridge_rollback(
 {
     if (bridge == NULL) return -1;
     if (!bridge->config.enable_rollback) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    heal_bridge_heartbeat("heal_bridge_rollback", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1299,6 +1393,10 @@ int heal_bridge_rollback_chain(
 {
     if (bridge == NULL) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    heal_bridge_heartbeat("heal_bridge_rollback_chain", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     fix_chain_t* chain = find_chain_unlocked(bridge, chain_id);
@@ -1330,6 +1428,10 @@ int heal_bridge_cleanup_rollback_history(heal_bridge_t* bridge)
 {
     if (bridge == NULL) return 0;
     if (!bridge->config.enable_rollback) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    heal_bridge_heartbeat("heal_bridge_cleanup_rollback_his", 0.0f);
+
 
     uint64_t now = get_time_ms();
     int cleaned = 0;
@@ -1369,6 +1471,10 @@ int heal_bridge_get_stats(
 {
     if (bridge == NULL || stats == NULL) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    heal_bridge_heartbeat("heal_bridge_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
 
@@ -1389,6 +1495,10 @@ int heal_bridge_get_stats(
 int heal_bridge_reset_stats(heal_bridge_t* bridge)
 {
     if (bridge == NULL) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    heal_bridge_heartbeat("heal_bridge_reset_stats", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(heal_bridge_stats_t));
@@ -1456,9 +1566,19 @@ const char* heal_bridge_evolution_state_to_string(pattern_evolution_state_t stat
  */
 int heal_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    heal_bridge_heartbeat("heal_bridge_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Heal_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                heal_bridge_heartbeat("heal_bridge_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Heal bridge self-knowledge: %s", self->observations[i]);
         }
     }

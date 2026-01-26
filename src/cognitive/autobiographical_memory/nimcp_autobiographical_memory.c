@@ -28,7 +28,7 @@ static nimcp_health_agent_t* g_autobiographical_memory_health_agent = NULL;
  * @brief Set health agent for autobiographical_memory heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void autobiographical_memory_set_health_agent(nimcp_health_agent_t* agent) {
+void autobiographical_memory_set_health_agent(nimcp_health_agent_t* agent) {
     g_autobiographical_memory_health_agent = agent;
 }
 
@@ -126,6 +126,12 @@ static int autobiographical_memory_wiring_handler_callback(
 
     int registered = 0;
     for (uint32_t i = 0; i < message_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && message_count > 256) {
+            autobiographical_memory_heartbeat("autobiograph_loop",
+                             (float)(i + 1) / (float)message_count);
+        }
+
         switch (message_types[i]) {
             case BIO_MSG_WORKING_MEMORY_RETRIEVE:
                 bio_router_register_handler(ctx, message_types[i], handle_memory_retrieve_request);
@@ -247,6 +253,10 @@ static int compare_by_importance(const void* a, const void* b)
 autobiographical_memory_t autobio_create(uint32_t capacity)
 {
     // Guard: Use default capacity if 0
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_heartbeat("autobiograph_autobio_create", 0.0f);
+
+
     if (capacity == 0) {
         capacity = AUTOBIO_DEFAULT_CAPACITY;
     }
@@ -409,6 +419,10 @@ void autobio_destroy(autobiographical_memory_t system)
     }
 
     // Destroy SNN and Plasticity bridges
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_heartbeat("autobiograph_autobio_destroy", 0.0f);
+
+
     if (system->snn_bridge) {
         autobio_snn_destroy(system->snn_bridge);
         system->snn_bridge = NULL;
@@ -454,6 +468,10 @@ uint64_t autobio_store(autobiographical_memory_t system,
     if (!system || !memory) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_heartbeat("autobiograph_autobio_store", 0.0f);
+
 
     nimcp_mutex_lock(&system->mutex);
 
@@ -517,6 +535,10 @@ bool autobio_retrieve(autobiographical_memory_t system,
                      autobiographical_memory_entry_t* out_memory)
 {
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_heartbeat("autobiograph_autobio_retrieve", 0.0f);
+
+
     if (system && system->bio_ctx) {
         bio_router_process_inbox(system->bio_ctx, 5);
     }
@@ -531,6 +553,12 @@ bool autobio_retrieve(autobiographical_memory_t system,
     // Linear search (could use hash map for O(1))
     bool found = false;
     for (uint32_t i = 0; i < system->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->count > 256) {
+            autobiographical_memory_heartbeat("autobiograph_loop",
+                             (float)(i + 1) / (float)system->count);
+        }
+
         if (system->memories[i].memory_id == memory_id) {
             // Copy memory (use entry_t size, not the pointer typedef)
             memcpy(out_memory, &system->memories[i], sizeof(autobiographical_memory_entry_t));
@@ -560,6 +588,10 @@ bool autobio_query(autobiographical_memory_t system,
     if (!system || !query || !results || !num_found) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_heartbeat("autobiograph_autobio_query", 0.0f);
+
 
     nimcp_mutex_lock(&system->mutex);
 
@@ -601,6 +633,10 @@ bool autobio_get_recent(autobiographical_memory_t system,
                        autobiographical_memory_entry_t* results,
                        uint32_t* num_found)
 {
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_heartbeat("autobiograph_autobio_get_recent", 0.0f);
+
+
     memory_query_t query = {0};
     init_query(&query);
     query.max_results = count;
@@ -618,6 +654,10 @@ bool autobio_get_core_memories(autobiographical_memory_t system,
     if (!system || !results || !num_found) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_heartbeat("autobiograph_autobio_get_core_mem", 0.0f);
+
 
     nimcp_mutex_lock(&system->mutex);
 
@@ -652,10 +692,20 @@ bool autobio_mark_core(autobiographical_memory_t system,
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_heartbeat("autobiograph_autobio_mark_core", 0.0f);
+
+
     nimcp_mutex_lock(&system->mutex);
 
     bool found = false;
     for (uint32_t i = 0; i < system->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->count > 256) {
+            autobiographical_memory_heartbeat("autobiograph_loop",
+                             (float)(i + 1) / (float)system->count);
+        }
+
         if (system->memories[i].memory_id == memory_id) {
             bool was_core = system->memories[i].is_core_memory;
             system->memories[i].is_core_memory = is_core;
@@ -686,10 +736,20 @@ bool autobio_update_importance(autobiographical_memory_t system,
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_heartbeat("autobiograph_autobio_update_impor", 0.0f);
+
+
     nimcp_mutex_lock(&system->mutex);
 
     bool found = false;
     for (uint32_t i = 0; i < system->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->count > 256) {
+            autobiographical_memory_heartbeat("autobiograph_loop",
+                             (float)(i + 1) / (float)system->count);
+        }
+
         if (system->memories[i].memory_id == memory_id) {
             system->memories[i].importance = new_importance;
             found = true;
@@ -710,6 +770,10 @@ bool autobio_get_stats(autobiographical_memory_t system,
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_heartbeat("autobiograph_autobio_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(&system->mutex);
 
     memcpy(stats, &system->stats, sizeof(autobio_stats_t));
@@ -728,6 +792,10 @@ uint32_t autobio_consolidate(autobiographical_memory_t system)
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_heartbeat("autobiograph_autobio_consolidate", 0.0f);
+
+
     nimcp_mutex_lock(&system->mutex);
 
     uint32_t pruned = 0;
@@ -739,6 +807,12 @@ uint32_t autobio_consolidate(autobiographical_memory_t system)
     // 3. Prune very weak, unimportant memories
 
     for (uint32_t i = 0; i < system->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->count > 256) {
+            autobiographical_memory_heartbeat("autobiograph_loop",
+                             (float)(i + 1) / (float)system->count);
+        }
+
         autobiographical_memory_entry_t* mem = &system->memories[i];
 
         // Skip core memories
@@ -772,6 +846,12 @@ uint32_t autobio_consolidate(autobiographical_memory_t system)
     if (pruned > 0) {
         uint32_t write_idx = 0;
         for (uint32_t read_idx = 0; read_idx < system->count; read_idx++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((read_idx & 0xFF) == 0 && system->count > 256) {
+                autobiographical_memory_heartbeat("autobiograph_loop",
+                                 (float)(read_idx + 1) / (float)system->count);
+            }
+
             if (system->memories[read_idx].memory_id != 0) {
                 if (write_idx != read_idx) {
                     memcpy(&system->memories[write_idx], &system->memories[read_idx],
@@ -801,6 +881,10 @@ bool autobio_generate_timeline_summary(autobiographical_memory_t system,
     }
 
     // Query memories in time range
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_heartbeat("autobiograph_autobio_generate_tim", 0.0f);
+
+
     memory_query_t query = {0};
     init_query(&query);
     query.start_time_ms = start_time_ms;
@@ -866,11 +950,21 @@ int autobio_encode_memory_to_snn(autobiographical_memory_t system, uint64_t memo
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_heartbeat("autobiograph_autobio_encode_memor", 0.0f);
+
+
     nimcp_mutex_lock(&system->mutex);
 
     // Find the memory
     autobiographical_memory_entry_t* mem = NULL;
     for (uint32_t i = 0; i < system->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->count > 256) {
+            autobiographical_memory_heartbeat("autobiograph_loop",
+                             (float)(i + 1) / (float)system->count);
+        }
+
         if (system->memories[i].memory_id == memory_id) {
             mem = &system->memories[i];
             break;
@@ -950,11 +1044,21 @@ int autobio_apply_consolidation_plasticity(autobiographical_memory_t system,
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_heartbeat("autobiograph_autobio_apply_consol", 0.0f);
+
+
     nimcp_mutex_lock(&system->mutex);
 
     // Find the memory
     autobiographical_memory_entry_t* mem = NULL;
     for (uint32_t i = 0; i < system->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->count > 256) {
+            autobiographical_memory_heartbeat("autobiograph_loop",
+                             (float)(i + 1) / (float)system->count);
+        }
+
         if (system->memories[i].memory_id == memory_id) {
             mem = &system->memories[i];
             break;
@@ -1048,6 +1152,10 @@ int autobio_get_snn_recall_state(autobiographical_memory_t system, autobio_recal
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_heartbeat("autobiograph_autobio_get_snn_reca", 0.0f);
+
+
     return autobio_snn_get_recall(system->snn_bridge, recall);
 }
 
@@ -1065,6 +1173,10 @@ int autobio_get_consolidation_state(autobiographical_memory_t system,
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_heartbeat("autobiograph_autobio_get_consolid", 0.0f);
+
+
     return autobio_plasticity_get_consolidation_state(system->plasticity_bridge, state);
 }
 
@@ -1079,6 +1191,10 @@ bool autobio_bridges_enabled(autobiographical_memory_t system)
     if (!system) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_heartbeat("autobiograph_autobio_bridges_enab", 0.0f);
+
+
     return system->bridges_enabled;
 }
 
@@ -1089,9 +1205,19 @@ bool autobio_bridges_enabled(autobiographical_memory_t system)
 int autobiographical_memory_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_heartbeat("autobiograph_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Autobiographical_Memory");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                autobiographical_memory_heartbeat("autobiograph_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_remorse_fep_bridge_health_agent = NULL;
  * @brief Set health agent for remorse_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void remorse_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void remorse_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_remorse_fep_bridge_health_agent = agent;
 }
 
@@ -57,6 +57,10 @@ static inline void remorse_fep_bridge_heartbeat(const char* operation, float pro
  * ============================================================================ */
 
 int remorse_fep_default_config(remorse_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    remorse_fep_bridge_heartbeat("remorse_fep__remorse_fep_default_", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* FEP -> Remorse */
@@ -85,6 +89,10 @@ int remorse_fep_default_config(remorse_fep_config_t* config) {
 remorse_fep_bridge_t* remorse_fep_create(
     const remorse_fep_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    remorse_fep_bridge_heartbeat("remorse_fep__remorse_fep_create", 0.0f);
+
+
     remorse_fep_bridge_t* bridge = nimcp_malloc(sizeof(remorse_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate remorse FEP bridge");
@@ -123,6 +131,10 @@ void remorse_fep_destroy(remorse_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    remorse_fep_bridge_heartbeat("remorse_fep__remorse_fep_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         remorse_fep_disconnect_bio_async(bridge);
     }
@@ -144,6 +156,10 @@ int remorse_fep_connect_fep(
     remorse_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    remorse_fep_bridge_heartbeat("remorse_fep__remorse_fep_connect_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -158,6 +174,10 @@ int remorse_fep_connect_remorse(
     remorse_fep_bridge_t* bridge,
     remorse_regret_system_t* remorse
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    remorse_fep_bridge_heartbeat("remorse_fep__remorse_fep_connect_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && remorse, NIMCP_ERROR_NULL_POINTER, "bridge or remorse is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -169,6 +189,10 @@ int remorse_fep_connect_remorse(
 }
 
 int remorse_fep_disconnect(remorse_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    remorse_fep_bridge_heartbeat("remorse_fep__remorse_fep_disconne", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -189,6 +213,10 @@ int remorse_fep_compute_counterfactual_pe(
     float actual_value,
     float alternative_value
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    remorse_fep_bridge_heartbeat("remorse_fep__remorse_fep_compute_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_counterfactual_pe) return 0;
 
@@ -250,6 +278,10 @@ int remorse_fep_compute_counterfactual_pe(
 int remorse_fep_modulate_policy_learning(
     remorse_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    remorse_fep_bridge_heartbeat("remorse_fep__remorse_fep_modulate", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_remorse_policy_learning) return 0;
 
@@ -289,6 +321,10 @@ int remorse_fep_update(
     remorse_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    remorse_fep_bridge_heartbeat("remorse_fep__remorse_fep_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Apply policy learning modulation */
@@ -320,6 +356,10 @@ int remorse_fep_get_state(
     const remorse_fep_bridge_t* bridge,
     remorse_fep_state_t* state
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    remorse_fep_bridge_heartbeat("remorse_fep__remorse_fep_get_stat", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -333,6 +373,10 @@ int remorse_fep_get_stats(
     const remorse_fep_bridge_t* bridge,
     remorse_fep_stats_t* stats
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    remorse_fep_bridge_heartbeat("remorse_fep__remorse_fep_get_stat", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -349,6 +393,10 @@ int remorse_fep_get_stats(
 int remorse_fep_connect_bio_async(
     remorse_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    remorse_fep_bridge_heartbeat("remorse_fep__remorse_fep_connect_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
@@ -373,6 +421,10 @@ int remorse_fep_connect_bio_async(
 int remorse_fep_disconnect_bio_async(
     remorse_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    remorse_fep_bridge_heartbeat("remorse_fep__remorse_fep_disconne", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return 0;
 
@@ -390,6 +442,10 @@ int remorse_fep_disconnect_bio_async(
 bool remorse_fep_is_bio_async_connected(
     const remorse_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    remorse_fep_bridge_heartbeat("remorse_fep__remorse_fep_is_bio_a", 0.0f);
+
+
     return bridge ? bridge->base.bio_async_enabled : false;
 }
 
@@ -400,9 +456,19 @@ bool remorse_fep_is_bio_async_connected(
 int remorse_fep_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    remorse_fep_bridge_heartbeat("remorse_fep__remorse_fep_query_se", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Remorse_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                remorse_fep_bridge_heartbeat("remorse_fep__loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

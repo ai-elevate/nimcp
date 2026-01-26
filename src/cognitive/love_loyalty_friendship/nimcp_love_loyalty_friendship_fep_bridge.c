@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_love_loyalty_friendship_fep_bridge_health_agent =
  * @brief Set health agent for love_loyalty_friendship_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void love_loyalty_friendship_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void love_loyalty_friendship_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_love_loyalty_friendship_fep_bridge_health_agent = agent;
 }
 
@@ -46,6 +46,10 @@ static inline void love_loyalty_friendship_fep_bridge_heartbeat(const char* oper
 
 
 int social_bond_fep_bridge_default_config(social_bond_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_brid", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->pe_anxiety_threshold = SOCIAL_FEP_HIGH_PE_THRESHOLD;
     config->trust_precision_factor = SOCIAL_FEP_TRUST_PRECISION_FACTOR;
@@ -63,6 +67,10 @@ int social_bond_fep_bridge_default_config(social_bond_fep_config_t* config) {
 }
 
 social_bond_fep_bridge_t* social_bond_fep_bridge_create(const social_bond_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_brid", 0.0f);
+
+
     social_bond_fep_bridge_t* bridge = nimcp_malloc(sizeof(social_bond_fep_bridge_t));
     if (!bridge) {
 
@@ -87,6 +95,10 @@ social_bond_fep_bridge_t* social_bond_fep_bridge_create(const social_bond_fep_co
 
 void social_bond_fep_bridge_destroy(social_bond_fep_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_brid", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         social_bond_fep_bridge_disconnect_bio_async(bridge);
     }
@@ -97,6 +109,10 @@ void social_bond_fep_bridge_destroy(social_bond_fep_bridge_t* bridge) {
 }
 
 int social_bond_fep_bridge_connect_fep(social_bond_fep_bridge_t* bridge, fep_system_t* fep) {
+    /* Phase 8: Heartbeat at operation start */
+    love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_brid", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -105,6 +121,10 @@ int social_bond_fep_bridge_connect_fep(social_bond_fep_bridge_t* bridge, fep_sys
 }
 
 int social_bond_fep_bridge_connect_social(social_bond_fep_bridge_t* bridge, social_bond_system_t* social) {
+    /* Phase 8: Heartbeat at operation start */
+    love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_brid", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && social, NIMCP_ERROR_NULL_POINTER, "bridge or social is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->social_system = social;
@@ -113,6 +133,10 @@ int social_bond_fep_bridge_connect_social(social_bond_fep_bridge_t* bridge, soci
 }
 
 int social_bond_fep_bridge_disconnect(social_bond_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_brid", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -122,6 +146,10 @@ int social_bond_fep_bridge_disconnect(social_bond_fep_bridge_t* bridge) {
 }
 
 int social_bond_fep_trigger_attachment_anxiety(social_bond_fep_bridge_t* bridge, float pe_magnitude) {
+    /* Phase 8: Heartbeat at operation start */
+    love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_trig", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_pe_attachment) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -137,6 +165,10 @@ int social_bond_fep_trigger_attachment_anxiety(social_bond_fep_bridge_t* bridge,
 }
 
 int social_bond_fep_modulate_trust_by_precision(social_bond_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_modu", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_trust_precision) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -150,6 +182,10 @@ int social_bond_fep_modulate_trust_by_precision(social_bond_fep_bridge_t* bridge
 }
 
 int social_bond_fep_trigger_relationship_revision(social_bond_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_trig", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->social_system, NIMCP_ERROR_NULL_POINTER, "bridge or social_system is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_effects.trust_update_active = true;
@@ -159,6 +195,10 @@ int social_bond_fep_trigger_relationship_revision(social_bond_fep_bridge_t* brid
 }
 
 int social_bond_fep_apply_attachment_priors(social_bond_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_appl", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_relationship_priors) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -170,6 +210,10 @@ int social_bond_fep_apply_attachment_priors(social_bond_fep_bridge_t* bridge) {
 }
 
 int social_bond_fep_apply_closeness_beliefs(social_bond_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_appl", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_closeness_beliefs) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -181,6 +225,10 @@ int social_bond_fep_apply_closeness_beliefs(social_bond_fep_bridge_t* bridge) {
 }
 
 int social_bond_fep_update_model_from_betrayal(social_bond_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_upda", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_betrayal_updates) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -191,6 +239,10 @@ int social_bond_fep_update_model_from_betrayal(social_bond_fep_bridge_t* bridge)
 }
 
 int social_bond_fep_bridge_update(social_bond_fep_bridge_t* bridge, uint64_t delta_ms) {
+    /* Phase 8: Heartbeat at operation start */
+    love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_brid", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     social_bond_fep_modulate_trust_by_precision(bridge);
     social_bond_fep_apply_attachment_priors(bridge);
@@ -200,6 +252,10 @@ int social_bond_fep_bridge_update(social_bond_fep_bridge_t* bridge, uint64_t del
 }
 
 int social_bond_fep_bridge_get_state(const social_bond_fep_bridge_t* bridge, social_bond_fep_state_t* state) {
+    /* Phase 8: Heartbeat at operation start */
+    love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_brid", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -208,6 +264,10 @@ int social_bond_fep_bridge_get_state(const social_bond_fep_bridge_t* bridge, soc
 }
 
 int social_bond_fep_bridge_get_stats(const social_bond_fep_bridge_t* bridge, social_bond_fep_stats_t* stats) {
+    /* Phase 8: Heartbeat at operation start */
+    love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_brid", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -216,6 +276,10 @@ int social_bond_fep_bridge_get_stats(const social_bond_fep_bridge_t* bridge, soc
 }
 
 int social_bond_fep_bridge_connect_bio_async(social_bond_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_brid", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
@@ -234,6 +298,10 @@ int social_bond_fep_bridge_connect_bio_async(social_bond_fep_bridge_t* bridge) {
 
 int social_bond_fep_bridge_disconnect_bio_async(social_bond_fep_bridge_t* bridge) {
     if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_brid", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
     }
@@ -243,6 +311,10 @@ int social_bond_fep_bridge_disconnect_bio_async(social_bond_fep_bridge_t* bridge
 }
 
 bool social_bond_fep_bridge_is_bio_async_connected(const social_bond_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_brid", 0.0f);
+
+
     return bridge ? bridge->base.bio_async_enabled : false;
 }
 
@@ -253,9 +325,19 @@ bool social_bond_fep_bridge_is_bio_async_connected(const social_bond_fep_bridge_
 int social_bond_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_social_bond_fep_brid", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Love_Loyalty_Friendship_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                love_loyalty_friendship_fep_bridge_heartbeat("love_loyalty_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

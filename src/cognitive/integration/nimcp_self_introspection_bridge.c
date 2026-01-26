@@ -49,7 +49,7 @@ static nimcp_health_agent_t* g_self_introspection_bridge_health_agent = NULL;
  * @brief Set health agent for self_introspection_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void self_introspection_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void self_introspection_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_self_introspection_bridge_health_agent = agent;
 }
 
@@ -148,6 +148,12 @@ static introspection_query_t* find_query_unlocked(
     uint32_t query_id
 ) {
     for (size_t i = 0; i < bridge->query_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->query_count > 256) {
+            self_introspection_bridge_heartbeat("self_introsp_loop",
+                             (float)(i + 1) / (float)bridge->query_count);
+        }
+
         if (bridge->queries[i].query_id == query_id) {
             return &bridge->queries[i];
         }
@@ -215,6 +221,12 @@ static self_introspection_query_type_t get_suggested_focus(
     /* Check emotional awareness */
     float emotional_avg = 0.0f;
     for (int i = 0; i < 4; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 4 > 256) {
+            self_introspection_bridge_heartbeat("self_introsp_loop",
+                             (float)(i + 1) / (float)4);
+        }
+
         emotional_avg += state->emotional_state[i];
     }
     emotional_avg /= 4.0f;
@@ -237,6 +249,10 @@ int self_introspection_default_config(self_introspection_config_t* config) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_introspection_bridge_heartbeat("self_introsp_self_introspection_d", 0.0f);
+
+
     memset(config, 0, sizeof(self_introspection_config_t));
 
     config->introspection_depth = DEFAULT_INTROSPECTION_DEPTH;
@@ -253,6 +269,10 @@ int self_introspection_default_config(self_introspection_config_t* config) {
 self_introspection_bridge_t* self_introspection_bridge_create(
     const self_introspection_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    self_introspection_bridge_heartbeat("self_introsp_create", 0.0f);
+
+
     self_introspection_bridge_t* bridge =
         (self_introspection_bridge_t*)nimcp_malloc(sizeof(self_introspection_bridge_t));
     if (!bridge) {
@@ -293,6 +313,12 @@ self_introspection_bridge_t* self_introspection_bridge_create(
     bridge->self_state.coherence = 0.5f;
     bridge->self_state.continuity = 0.5f;
     for (int i = 0; i < 4; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 4 > 256) {
+            self_introspection_bridge_heartbeat("self_introsp_loop",
+                             (float)(i + 1) / (float)4);
+        }
+
         bridge->self_state.emotional_state[i] = 0.0f;
     }
     bridge->self_state.last_reflection = 0;
@@ -315,8 +341,18 @@ void self_introspection_bridge_destroy(self_introspection_bridge_t* bridge) {
     }
 
     /* Free any result data in queries */
+    /* Phase 8: Heartbeat at operation start */
+    self_introspection_bridge_heartbeat("self_introsp_destroy", 0.0f);
+
+
     if (bridge->queries) {
         for (size_t i = 0; i < bridge->query_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->query_count > 256) {
+                self_introspection_bridge_heartbeat("self_introsp_loop",
+                                 (float)(i + 1) / (float)bridge->query_count);
+            }
+
             if (bridge->queries[i].result_data) {
                 nimcp_free(bridge->queries[i].result_data);
             }
@@ -350,6 +386,10 @@ int self_introspection_guide_query(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_introspection_bridge_heartbeat("self_introsp_self_introspection_g", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Determine suggested focus based on current state */
@@ -372,6 +412,12 @@ int self_introspection_guide_query(
             /* Average emotional state */
             guidance_out->expected_value = 0.0f;
             for (int i = 0; i < 4; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && 4 > 256) {
+                    self_introspection_bridge_heartbeat("self_introsp_loop",
+                                     (float)(i + 1) / (float)4);
+                }
+
                 guidance_out->expected_value += bridge->self_state.emotional_state[i];
             }
             guidance_out->expected_value /= 4.0f;
@@ -426,6 +472,10 @@ int self_introspection_on_result(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_introspection_bridge_heartbeat("self_introsp_self_introspection_o", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Find the query */
@@ -460,6 +510,12 @@ int self_introspection_on_result(
             case SELF_INTROSPECTION_QUERY_EMOTION:
                 /* Update emotional state (simplified - uniform distribution) */
                 for (int i = 0; i < 4; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && 4 > 256) {
+                        self_introspection_bridge_heartbeat("self_introsp_loop",
+                                         (float)(i + 1) / (float)4);
+                    }
+
                     bridge->self_state.emotional_state[i] =
                         bridge->self_state.emotional_state[i] * (1.0f - update_rate) +
                         (result_data->result_value / 4.0f) * update_rate;
@@ -530,6 +586,10 @@ int self_introspection_trigger_reflection(
     if (!bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    self_introspection_bridge_heartbeat("self_introsp_self_introspection_t", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -626,6 +686,10 @@ int self_introspection_get_self_state(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_introspection_bridge_heartbeat("self_introsp_self_introspection_g", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Map internal state to output structure */
@@ -643,6 +707,12 @@ int self_introspection_get_self_state(
     /* Count pending queries */
     state_out->pending_updates = 0;
     for (size_t i = 0; i < bridge->query_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->query_count > 256) {
+            self_introspection_bridge_heartbeat("self_introsp_loop",
+                             (float)(i + 1) / (float)bridge->query_count);
+        }
+
         if (bridge->queries[i].pending) {
             state_out->pending_updates++;
         }
@@ -679,6 +749,10 @@ int self_introspection_get_stats(
     }
 
     /* Cast away const for mutex lock (safe - read-only operation) */
+    /* Phase 8: Heartbeat at operation start */
+    self_introspection_bridge_heartbeat("self_introsp_self_introspection_g", 0.0f);
+
+
     self_introspection_bridge_t* mutable_bridge =
         (self_introspection_bridge_t*)bridge;
 

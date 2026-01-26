@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_hierarchical_fep_bridge_health_agent = NULL;
  * @brief Set health agent for hierarchical_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void hierarchical_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void hierarchical_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_hierarchical_fep_bridge_health_agent = agent;
 }
 
@@ -47,6 +47,10 @@ static inline void hierarchical_fep_bridge_heartbeat(const char* operation, floa
 
 
 int hierarchical_fep_bridge_default_config(hierarchical_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    hierarchical_fep_bridge_heartbeat("hierarchical_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->enable_hierarchical_prediction = true;
     config->enable_pe_propagation = true;
@@ -57,6 +61,10 @@ int hierarchical_fep_bridge_default_config(hierarchical_fep_config_t* config) {
 }
 
 hierarchical_fep_bridge_t* hierarchical_fep_bridge_create(const hierarchical_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    hierarchical_fep_bridge_heartbeat("hierarchical_create", 0.0f);
+
+
     hierarchical_fep_bridge_t* bridge = nimcp_malloc(sizeof(hierarchical_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate hierarchical FEP bridge");
@@ -82,6 +90,10 @@ hierarchical_fep_bridge_t* hierarchical_fep_bridge_create(const hierarchical_fep
 
 void hierarchical_fep_bridge_destroy(hierarchical_fep_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    hierarchical_fep_bridge_heartbeat("hierarchical_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         hierarchical_fep_bridge_disconnect_bio_async(bridge);
     }
@@ -108,6 +120,10 @@ void hierarchical_fep_bridge_destroy(hierarchical_fep_bridge_t* bridge) {
 }
 
 int hierarchical_fep_bridge_connect_fep(hierarchical_fep_bridge_t* bridge, fep_system_t* fep) {
+    /* Phase 8: Heartbeat at operation start */
+    hierarchical_fep_bridge_heartbeat("hierarchical_connect_fep", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -118,6 +134,10 @@ int hierarchical_fep_bridge_connect_fep(hierarchical_fep_bridge_t* bridge, fep_s
 
 int hierarchical_fep_bridge_connect_hierarchical(hierarchical_fep_bridge_t* bridge,
                                                   hierarchical_brain_t hbrain) {
+    /* Phase 8: Heartbeat at operation start */
+    hierarchical_fep_bridge_heartbeat("hierarchical_connect_hierarchical", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->hierarchical_brain = hbrain;
@@ -127,6 +147,10 @@ int hierarchical_fep_bridge_connect_hierarchical(hierarchical_fep_bridge_t* brid
 }
 
 int hierarchical_fep_bridge_disconnect(hierarchical_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    hierarchical_fep_bridge_heartbeat("hierarchical_disconnect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -137,6 +161,10 @@ int hierarchical_fep_bridge_disconnect(hierarchical_fep_bridge_t* bridge) {
 }
 
 int hierarchical_fep_bridge_update(hierarchical_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    hierarchical_fep_bridge_heartbeat("hierarchical_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "bridge or fep_system is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state.current_free_energy = fep_get_free_energy(bridge->fep_system);
@@ -149,6 +177,10 @@ int hierarchical_fep_bridge_update(hierarchical_fep_bridge_t* bridge) {
 
 int hierarchical_fep_bridge_get_state(const hierarchical_fep_bridge_t* bridge,
                                        hierarchical_fep_state_t* state) {
+    /* Phase 8: Heartbeat at operation start */
+    hierarchical_fep_bridge_heartbeat("hierarchical_get_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -158,6 +190,10 @@ int hierarchical_fep_bridge_get_state(const hierarchical_fep_bridge_t* bridge,
 
 int hierarchical_fep_bridge_get_stats(const hierarchical_fep_bridge_t* bridge,
                                        hierarchical_fep_stats_t* stats) {
+    /* Phase 8: Heartbeat at operation start */
+    hierarchical_fep_bridge_heartbeat("hierarchical_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -166,6 +202,10 @@ int hierarchical_fep_bridge_get_stats(const hierarchical_fep_bridge_t* bridge,
 }
 
 int hierarchical_fep_bridge_connect_bio_async(hierarchical_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    hierarchical_fep_bridge_heartbeat("hierarchical_connect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
@@ -184,6 +224,10 @@ int hierarchical_fep_bridge_connect_bio_async(hierarchical_fep_bridge_t* bridge)
 
 int hierarchical_fep_bridge_disconnect_bio_async(hierarchical_fep_bridge_t* bridge) {
     if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    hierarchical_fep_bridge_heartbeat("hierarchical_disconnect_bio_async", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -195,6 +239,10 @@ int hierarchical_fep_bridge_disconnect_bio_async(hierarchical_fep_bridge_t* brid
 
 bool hierarchical_fep_bridge_is_bio_async_connected(const hierarchical_fep_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    hierarchical_fep_bridge_heartbeat("hierarchical_is_bio_async_connect", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -205,9 +253,19 @@ bool hierarchical_fep_bridge_is_bio_async_connected(const hierarchical_fep_bridg
 int hierarchical_fep_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    hierarchical_fep_bridge_heartbeat("hierarchical_hierarchical_fep_que", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Hierarchical_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                hierarchical_fep_bridge_heartbeat("hierarchical_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

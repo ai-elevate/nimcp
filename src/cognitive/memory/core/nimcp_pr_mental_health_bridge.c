@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_pr_mental_health_bridge_health_agent = NULL;
  * @brief Set health agent for pr_mental_health_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void pr_mental_health_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void pr_mental_health_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_pr_mental_health_bridge_health_agent = agent;
 }
 
@@ -175,6 +175,12 @@ static pr_mh_intrusion_record_t* find_or_create_intrusion_record(
 ) {
     // Search existing
     for (size_t i = 0; i < bridge->intrusion_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->intrusion_count > 256) {
+            pr_mental_health_bridge_heartbeat("pr_mental_he_loop",
+                             (float)(i + 1) / (float)bridge->intrusion_count);
+        }
+
         if (bridge->intrusion_records[i].node_id == node_id) {
             return &bridge->intrusion_records[i];
         }
@@ -201,6 +207,12 @@ static pr_mh_rumination_pattern_t* find_rumination_pattern(
     uint64_t node_id
 ) {
     for (size_t i = 0; i < bridge->rumination_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->rumination_count > 256) {
+            pr_mental_health_bridge_heartbeat("pr_mental_he_loop",
+                             (float)(i + 1) / (float)bridge->rumination_count);
+        }
+
         if (bridge->rumination_patterns[i].target_node_id == node_id) {
             return &bridge->rumination_patterns[i];
         }
@@ -241,6 +253,12 @@ static uint32_t count_retrievals_in_window(
 ) {
     uint32_t count = 0;
     for (size_t i = 0; i < bridge->history_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->history_count > 256) {
+            pr_mental_health_bridge_heartbeat("pr_mental_he_loop",
+                             (float)(i + 1) / (float)bridge->history_count);
+        }
+
         pr_mh_retrieval_event_t* event = get_history_entry(bridge, i);
         if (event && event->node_id == node_id &&
             event->timestamp_ms >= window_start_ms &&
@@ -268,6 +286,12 @@ static void compute_valence_stats(
     *total = 0;
 
     for (size_t i = 0; i < bridge->history_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->history_count > 256) {
+            pr_mental_health_bridge_heartbeat("pr_mental_he_loop",
+                             (float)(i + 1) / (float)bridge->history_count);
+        }
+
         pr_mh_retrieval_event_t* event = get_history_entry(bridge, i);
         if (!event || event->timestamp_ms < window_start_ms) continue;
 
@@ -304,6 +328,12 @@ static int invoke_intervention_callbacks(
     nimcp_mutex_unlock(bridge->base.mutex);
 
     for (size_t i = 0; i < bridge->intervention_callback_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->intervention_callback_count > 256) {
+            pr_mental_health_bridge_heartbeat("pr_mental_he_loop",
+                             (float)(i + 1) / (float)bridge->intervention_callback_count);
+        }
+
         if (bridge->intervention_callbacks[i].active &&
             bridge->intervention_callbacks[i].callback) {
             int cb_result = bridge->intervention_callbacks[i].callback(
@@ -323,6 +353,10 @@ static int invoke_intervention_callbacks(
 //=============================================================================
 
 pr_mh_config_t pr_mental_health_bridge_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_default_config", 0.0f);
+
+
     pr_mh_config_t config = {
         // History
         .retrieval_history_size = PR_MH_DEFAULT_HISTORY_SIZE,
@@ -365,6 +399,10 @@ bool pr_mental_health_bridge_validate_config(const pr_mh_config_t* config) {
 
     if (config->retrieval_history_size == 0) return false;
     if (config->rumination_threshold == 0) return false;
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_validate_config", 0.0f);
+
+
     if (config->intrusion_intensity_threshold < 0.0f ||
         config->intrusion_intensity_threshold > 1.0f) return false;
     if (config->valence_bias_healthy_min >= config->valence_bias_healthy_max) return false;
@@ -381,6 +419,10 @@ bool pr_mental_health_bridge_validate_config(const pr_mh_config_t* config) {
 pr_mental_health_bridge_t pr_mental_health_bridge_create(
     const pr_mh_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_create", 0.0f);
+
+
     pr_mh_config_t cfg;
     if (config) {
         if (!pr_mental_health_bridge_validate_config(config)) return NULL;
@@ -468,6 +510,10 @@ pr_mental_health_bridge_t pr_mental_health_bridge_create(
 void pr_mental_health_bridge_destroy(pr_mental_health_bridge_t bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_destroy", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     // Free allocated arrays
@@ -497,6 +543,10 @@ void pr_mental_health_bridge_destroy(pr_mental_health_bridge_t bridge) {
 pr_mh_error_t pr_mental_health_bridge_reset(pr_mental_health_bridge_t bridge) {
     if (!bridge) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_reset", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -544,6 +594,10 @@ pr_mh_error_t pr_mental_health_bridge_track_retrieval(
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
     // Build event from node
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_track_retrieval", 0.0f);
+
+
     pr_mh_retrieval_event_t event;
     memset(&event, 0, sizeof(event));
 
@@ -565,6 +619,10 @@ pr_mh_error_t pr_mental_health_bridge_track_retrieval_event(
 ) {
     if (!bridge || !event) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_track_retrieval_even", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -665,6 +723,10 @@ pr_mh_error_t pr_mental_health_bridge_detect_rumination(
     if (!bridge || !patterns || !count) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_detect_rumination", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     size_t out_count = 0;
@@ -688,6 +750,10 @@ bool pr_mental_health_bridge_is_ruminating_on(
 ) {
     if (!bridge || !bridge->initialized) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_is_ruminating_on", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     pr_mh_rumination_pattern_t* found = find_rumination_pattern(bridge, node_id);
@@ -705,12 +771,22 @@ bool pr_mental_health_bridge_is_ruminating_on(
 float pr_mental_health_bridge_get_rumination_score(pr_mental_health_bridge_t bridge) {
     if (!bridge || !bridge->initialized) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_get_rumination_score", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float total_strength = 0.0f;
     uint32_t active_count = 0;
 
     for (size_t i = 0; i < bridge->rumination_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->rumination_count > 256) {
+            pr_mental_health_bridge_heartbeat("pr_mental_he_loop",
+                             (float)(i + 1) / (float)bridge->rumination_count);
+        }
+
         if (bridge->rumination_patterns[i].is_active) {
             total_strength += bridge->rumination_patterns[i].pattern_strength;
             active_count++;
@@ -736,6 +812,10 @@ pr_mh_error_t pr_mental_health_bridge_track_intrusion(
 ) {
     if (!bridge) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_track_intrusion", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -800,6 +880,10 @@ pr_mh_error_t pr_mental_health_bridge_get_intrusion_records(
     if (!bridge || !records || !count) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_get_intrusion_record", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     size_t out_count = (bridge->intrusion_count < max_records) ?
@@ -820,11 +904,21 @@ float pr_mental_health_bridge_get_intrusion_frequency(
 ) {
     if (!bridge || !bridge->initialized) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_get_intrusion_freque", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float frequency = -1.0f;
 
     for (size_t i = 0; i < bridge->intrusion_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->intrusion_count > 256) {
+            pr_mental_health_bridge_heartbeat("pr_mental_he_loop",
+                             (float)(i + 1) / (float)bridge->intrusion_count);
+        }
+
         if (bridge->intrusion_records[i].node_id == node_id) {
             pr_mh_intrusion_record_t* record = &bridge->intrusion_records[i];
             if (record->intrusion_count > 1 && record->last_intrusion_ms > record->first_intrusion_ms) {
@@ -853,6 +947,10 @@ pr_mh_error_t pr_mental_health_bridge_analyze_valence_bias(
 ) {
     if (!bridge || !bias) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_analyze_valence_bias", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -905,6 +1003,10 @@ pr_mh_error_t pr_mental_health_bridge_analyze_valence_bias(
 float pr_mental_health_bridge_get_valence_bias(pr_mental_health_bridge_t bridge) {
     if (!bridge || !bridge->initialized) return NAN;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_get_valence_bias", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float bias;
@@ -936,6 +1038,10 @@ bool pr_mental_health_bridge_valence_bias_concerning(
 ) {
     if (!bridge || !bridge->initialized) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_valence_bias_concern", 0.0f);
+
+
     pr_mh_valence_bias_t bias;
     if (pr_mental_health_bridge_analyze_valence_bias(bridge, &bias) != PR_MH_SUCCESS) {
         return false;
@@ -965,6 +1071,10 @@ pr_mh_error_t pr_mental_health_bridge_assess_trauma_load(
     if (!bridge || !assessment) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_assess_trauma_load", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     memset(assessment, 0, sizeof(*assessment));
@@ -977,6 +1087,12 @@ pr_mh_error_t pr_mental_health_bridge_assess_trauma_load(
     float total_avoidance = 0;
 
     for (size_t i = 0; i < bridge->intrusion_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->intrusion_count > 256) {
+            pr_mental_health_bridge_heartbeat("pr_mental_he_loop",
+                             (float)(i + 1) / (float)bridge->intrusion_count);
+        }
+
         pr_mh_intrusion_record_t* record = &bridge->intrusion_records[i];
         if (record->is_trauma || record->is_flashbulb ||
             record->distress_level > 0.5f) {
@@ -1046,6 +1162,10 @@ pr_mh_error_t pr_mental_health_bridge_assess_trauma_load(
 float pr_mental_health_bridge_get_trauma_load(pr_mental_health_bridge_t bridge) {
     if (!bridge || !bridge->initialized) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_get_trauma_load", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float load;
@@ -1074,6 +1194,10 @@ pr_mh_error_t pr_mental_health_bridge_mark_trauma_memory(
 ) {
     if (!bridge) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_mark_trauma_memory", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1104,6 +1228,10 @@ pr_mh_error_t pr_mental_health_bridge_get_mood_from_memories(
     if (!bridge || !inference) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_get_mood_from_memori", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     memset(inference, 0, sizeof(*inference));
@@ -1125,6 +1253,12 @@ pr_mh_error_t pr_mental_health_bridge_get_mood_from_memories(
     uint64_t window_start = now - bridge->config.analysis_window_ms;
 
     for (size_t i = 0; i < bridge->history_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->history_count > 256) {
+            pr_mental_health_bridge_heartbeat("pr_mental_he_loop",
+                             (float)(i + 1) / (float)bridge->history_count);
+        }
+
         pr_mh_retrieval_event_t* event = get_history_entry(bridge, i);
         if (!event || event->timestamp_ms < window_start) continue;
 
@@ -1215,6 +1349,10 @@ pr_mh_error_t pr_mental_health_bridge_trigger_intervention(
     if (!bridge) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_trigger_intervention", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t now = get_current_time_ms();
@@ -1255,6 +1393,10 @@ pr_mh_error_t pr_mental_health_bridge_register_intervention_callback(
     if (!bridge || !callback) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_register_interventio", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->intervention_callback_count >= PR_MH_MAX_INTERVENTION_CALLBACKS) {
@@ -1282,6 +1424,10 @@ pr_mh_error_t pr_mental_health_bridge_suggest_intervention(
     if (!bridge || !intervention || !indicator) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_suggest_intervention", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     *intervention = PR_MH_INTERVENTION_NONE;
@@ -1290,6 +1436,12 @@ pr_mh_error_t pr_mental_health_bridge_suggest_intervention(
     // Check rumination score
     float rumination_score = 0;
     for (size_t i = 0; i < bridge->rumination_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->rumination_count > 256) {
+            pr_mental_health_bridge_heartbeat("pr_mental_he_loop",
+                             (float)(i + 1) / (float)bridge->rumination_count);
+        }
+
         if (bridge->rumination_patterns[i].is_active) {
             rumination_score = fmaxf(rumination_score,
                                      bridge->rumination_patterns[i].pattern_strength);
@@ -1351,6 +1503,10 @@ pr_mh_error_t pr_mental_health_bridge_update(
     if (!bridge) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_update", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     // Update uptime
@@ -1360,6 +1516,12 @@ pr_mh_error_t pr_mental_health_bridge_update(
     // Expire old rumination patterns
     uint64_t window_cutoff = current_time_ms - bridge->config.rumination_window_ms;
     for (size_t i = 0; i < bridge->rumination_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->rumination_count > 256) {
+            pr_mental_health_bridge_heartbeat("pr_mental_he_loop",
+                             (float)(i + 1) / (float)bridge->rumination_count);
+        }
+
         pr_mh_rumination_pattern_t* pattern = &bridge->rumination_patterns[i];
         if (pattern->is_active && pattern->last_retrieval_ms < window_cutoff) {
             pattern->is_active = false;
@@ -1395,6 +1557,10 @@ size_t pr_mental_health_bridge_prune_history(
 ) {
     if (!bridge || !bridge->initialized) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_prune_history", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t now = get_current_time_ms();
@@ -1404,6 +1570,12 @@ size_t pr_mental_health_bridge_prune_history(
     // Since it's a circular buffer, we can't easily remove old entries
     // Instead, we mark them as invalid by zeroing node_id and count them
     for (size_t i = 0; i < bridge->history_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->history_count > 256) {
+            pr_mental_health_bridge_heartbeat("pr_mental_he_loop",
+                             (float)(i + 1) / (float)bridge->history_count);
+        }
+
         pr_mh_retrieval_event_t* event = get_history_entry(bridge, i);
         if (event && event->timestamp_ms < cutoff && event->node_id != 0) {
             event->node_id = 0;  // Mark as pruned
@@ -1429,6 +1601,10 @@ pr_mh_error_t pr_mental_health_bridge_get_stats(
     if (!bridge || !stats) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1439,6 +1615,10 @@ pr_mh_error_t pr_mental_health_bridge_get_stats(
 pr_mh_error_t pr_mental_health_bridge_reset_stats(pr_mental_health_bridge_t bridge) {
     if (!bridge) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_reset_stats", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1466,6 +1646,10 @@ pr_mh_error_t pr_mental_health_bridge_reset_stats(pr_mental_health_bridge_t brid
 size_t pr_mental_health_bridge_get_history_count(pr_mental_health_bridge_t bridge) {
     if (!bridge || !bridge->initialized) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_get_history_count", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     size_t count = bridge->history_count;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1482,12 +1666,22 @@ pr_mh_error_t pr_mental_health_bridge_export_history(
     if (!bridge || !events || !count) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_export_history", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     size_t out_count = (bridge->history_count < max_events) ?
                        bridge->history_count : max_events;
 
     for (size_t i = 0; i < out_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && out_count > 256) {
+            pr_mental_health_bridge_heartbeat("pr_mental_he_loop",
+                             (float)(i + 1) / (float)out_count);
+        }
+
         pr_mh_retrieval_event_t* event = get_history_entry(bridge, i);
         if (event) {
             events[i] = *event;
@@ -1535,12 +1729,20 @@ const char* pr_mental_health_bridge_indicator_name(pr_mh_indicator_t indicator) 
 }
 
 uint64_t pr_mental_health_bridge_current_time_ms(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_current_time_ms", 0.0f);
+
+
     return get_current_time_ms();
 }
 
 bool pr_mental_health_bridge_validate(pr_mental_health_bridge_t bridge) {
     if (!bridge) return false;
     if (!bridge->initialized) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_validate", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1575,6 +1777,10 @@ pr_mh_error_t pr_mental_health_bridge_connect_flashbulb(
     if (!bridge) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_connect_flashbulb", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->flashbulb_system = flashbulb_system;
@@ -1588,6 +1794,10 @@ pr_mh_error_t pr_mental_health_bridge_connect_flashbulb(
 pr_mh_error_t pr_mental_health_bridge_sync_flashbulb(pr_mental_health_bridge_t bridge) {
     if (!bridge) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_mental_health_bridge_heartbeat("pr_mental_he_sync_flashbulb", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1623,6 +1833,12 @@ pr_mh_error_t pr_mental_health_bridge_sync_flashbulb(pr_mental_health_bridge_t b
 
     // Update intrusion records from flashbulb trauma memories
     for (size_t i = 0; i < trauma_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && trauma_count > 256) {
+            pr_mental_health_bridge_heartbeat("pr_mental_he_loop",
+                             (float)(i + 1) / (float)trauma_count);
+        }
+
         flashbulb_memory_t* fb_mem = trauma_memories[i];
         if (fb_mem && fb_mem->requires_trauma_handling) {
             nimcp_mutex_lock(bridge->base.mutex);

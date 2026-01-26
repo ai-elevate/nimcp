@@ -71,6 +71,10 @@ emotional_tag_t emotional_tag_create(
     float arousal,
     uint64_t timestamp_ms
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_heartbeat("emotional_ta_emotional_tag_create", 0.0f);
+
+
     emotional_tag_t tag;
 
     /* WHAT: Clamp inputs to valid ranges
@@ -94,6 +98,10 @@ emotional_tag_t emotional_tag_create(
 }
 
 emotional_tag_t emotional_tag_neutral(void) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_heartbeat("emotional_ta_emotional_tag_neutra", 0.0f);
+
+
     emotional_tag_t tag;
     tag.valence = 0.0F;
     tag.arousal = 0.0F;
@@ -112,6 +120,10 @@ emotion_category_t emotional_tag_classify(const emotional_tag_t* tag) {
     if (!tag) {
         return EMOTION_CAT_NEUTRAL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_heartbeat("emotional_ta_emotional_tag_classi", 0.0f);
+
 
     float v = tag->valence;
     float a = tag->arousal;
@@ -170,6 +182,10 @@ float emotional_tag_intensity(const emotional_tag_t* tag) {
     /* WHAT: Compute vector magnitude in valence-arousal space
      * WHY:  Combined measure of emotional strength
      * HOW:  Euclidean distance, normalized by sqrt(2) */
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_heartbeat("emotional_ta_emotional_tag_intens", 0.0f);
+
+
     float intensity = sqrtf(tag->valence * tag->valence +
                            tag->arousal * tag->arousal) / sqrtf(2.0F);
 
@@ -208,6 +224,10 @@ float emotional_compute_salience_boost(const emotional_tag_t* tag) {
      * WHY:  Emotional events get attentional priority
      * HOW:  Arousal and valence intensity both boost salience */
 
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_heartbeat("emotional_ta_emotional_compute_sa", 0.0f);
+
+
     float arousal_boost = tag->arousal * EMOTIONAL_AROUSAL_SALIENCE_FACTOR;
     float valence_boost = fabsf(tag->valence) * EMOTIONAL_VALENCE_SALIENCE_FACTOR;
 
@@ -223,6 +243,10 @@ float emotional_apply_salience_boost(
     if (!tag || base_salience < 0.0F) {
         return base_salience;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_heartbeat("emotional_ta_emotional_apply_sali", 0.0f);
+
 
     float boost = emotional_compute_salience_boost(tag);
     return base_salience * boost;
@@ -242,6 +266,10 @@ emotional_tag_t emotional_tag_from_cognitive_state(
     /* WHAT: Map cognitive assessment to valence-arousal
      * WHY:  Automatic emotion detection during processing
      * HOW:  Heuristic mappings from cognitive signals */
+
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_heartbeat("emotional_ta_emotional_tag_from_c", 0.0f);
+
 
     float valence = 0.0F;
     float arousal = 0.0F;
@@ -290,6 +318,10 @@ bool emotional_tag_is_valid(const emotional_tag_t* tag) {
      * WHY:  Detect corrupted or invalid emotional states
      * HOW:  Range checks on each component */
 
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_heartbeat("emotional_ta_emotional_tag_is_val", 0.0f);
+
+
     if (tag->valence < -1.0F || tag->valence > 1.0F) {
         return false;
     }
@@ -313,6 +345,10 @@ void emotional_tag_clamp(emotional_tag_t* tag) {
      * WHY:  Sanitize potentially invalid states
      * HOW:  Clamp each component */
 
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_heartbeat("emotional_ta_emotional_tag_clamp", 0.0f);
+
+
     tag->valence = CLAMP_VALENCE(tag->valence);
     tag->arousal = CLAMP_01(tag->arousal);
     tag->intensity = CLAMP_01(tag->intensity);
@@ -328,6 +364,10 @@ float emotional_get_valence(const emotional_tag_t* tag) {
         return 0.0F;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_heartbeat("emotional_ta_emotional_get_valenc", 0.0f);
+
+
     return tag->valence;
 }
 
@@ -336,6 +376,10 @@ float emotional_get_arousal(const emotional_tag_t* tag) {
     if (!tag) {
         return 0.0F;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_heartbeat("emotional_ta_emotional_get_arousa", 0.0f);
+
 
     return tag->arousal;
 }
@@ -349,6 +393,10 @@ void emotional_modulate_arousal(emotional_tag_t* tag, float arousal_delta) {
     /* WHAT: Modify arousal level
      * WHY:  Allow salient events to increase emotional arousal
      * HOW:  Add delta and clamp to valid range */
+
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_heartbeat("emotional_ta_emotional_modulate_a", 0.0f);
+
 
     tag->arousal += arousal_delta;
     tag->arousal = CLAMP_01(tag->arousal);
@@ -367,9 +415,19 @@ void emotional_modulate_arousal(emotional_tag_t* tag, float arousal_delta) {
 int cognitive_emotional_tagging_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_heartbeat("emotional_ta_cognitive_emotional_", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Cognitive_Emotional_Tagging");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                emotional_tagging_heartbeat("emotional_ta_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

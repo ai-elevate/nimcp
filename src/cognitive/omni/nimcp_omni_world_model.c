@@ -53,7 +53,7 @@ static nimcp_health_agent_t* g_omni_world_model_health_agent = NULL;
  * @brief Set health agent for omni_world_model heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void omni_world_model_set_health_agent(nimcp_health_agent_t* agent) {
+void omni_world_model_set_health_agent(nimcp_health_agent_t* agent) {
     g_omni_world_model_health_agent = agent;
 }
 
@@ -166,6 +166,10 @@ struct omni_world_model {
 
 float omni_wm_symlog(float x) {
     /* symlog(x) = sign(x) * ln(|x| + 1) */
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_symlog", 0.0f);
+
+
     if (x >= 0.0f) {
         return logf(x + 1.0f);
     } else {
@@ -175,6 +179,10 @@ float omni_wm_symlog(float x) {
 
 float omni_wm_symexp(float x) {
     /* symexp(x) = sign(x) * (exp(|x|) - 1) */
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_symexp", 0.0f);
+
+
     if (x >= 0.0f) {
         return expf(x) - 1.0f;
     } else {
@@ -184,14 +192,34 @@ float omni_wm_symexp(float x) {
 
 void omni_wm_symlog_array(const float* input, float* output, uint32_t size) {
     if (!input || !output) return;
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_symlog_array", 0.0f);
+
+
     for (uint32_t i = 0; i < size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && size > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)size);
+        }
+
         output[i] = omni_wm_symlog(input[i]);
     }
 }
 
 void omni_wm_symexp_array(const float* input, float* output, uint32_t size) {
     if (!input || !output) return;
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_symexp_array", 0.0f);
+
+
     for (uint32_t i = 0; i < size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && size > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)size);
+        }
+
         output[i] = omni_wm_symexp(input[i]);
     }
 }
@@ -296,6 +324,12 @@ static omni_wm_replay_buffer_t* replay_buffer_create(uint32_t capacity) {
 static void replay_buffer_destroy(omni_wm_replay_buffer_t* buf) {
     if (!buf) return;
     for (uint32_t i = 0; i < buf->size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && buf->size > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)buf->size);
+        }
+
         omni_wm_experience_destroy(buf->experiences[i]);
     }
     nimcp_free(buf->experiences);
@@ -308,6 +342,10 @@ static void replay_buffer_destroy(omni_wm_replay_buffer_t* buf) {
  * ============================================================================ */
 
 nimcp_error_t omni_wm_get_default_config(omni_wm_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_get_default_", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     memset(config, 0, sizeof(omni_wm_config_t));
@@ -358,6 +396,10 @@ nimcp_error_t omni_wm_get_default_config(omni_wm_config_t* config) {
 
 omni_world_model_t* omni_wm_create(const omni_wm_config_t* config) {
     /* Validate config dimensions if provided */
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_create", 0.0f);
+
+
     if (config) {
         if (config->state_dim == 0 || config->action_dim == 0 || config->obs_dim == 0) {
             NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "omni_wm_create: zero dimension in config");
@@ -438,6 +480,12 @@ omni_world_model_t* omni_wm_create(const omni_wm_config_t* config) {
 
     /* Initialize encoder/decoder */
     for (uint32_t i = 0; i < enc_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && enc_size > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)enc_size);
+        }
+
         wm->encoder_W[i] = randn(&wm->rand_seed) * 0.01f;
         wm->decoder_W[i] = randn(&wm->rand_seed) * 0.01f;
     }
@@ -468,6 +516,10 @@ omni_world_model_t* omni_wm_create(const omni_wm_config_t* config) {
 omni_world_model_t* omni_wm_create_simple(uint32_t state_dim,
                                            uint32_t action_dim,
                                            uint32_t obs_dim) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_create_simpl", 0.0f);
+
+
     omni_wm_config_t config;
     omni_wm_get_default_config(&config);
     config.state_dim = state_dim;
@@ -481,6 +533,10 @@ omni_world_model_t* omni_wm_create_simple(uint32_t state_dim,
 
 void omni_wm_destroy(omni_world_model_t* wm) {
     if (!wm) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_destroy", 0.0f);
+
 
     dynamics_destroy(wm->forward_dynamics);
     dynamics_destroy(wm->backward_dynamics);
@@ -513,6 +569,10 @@ void omni_wm_destroy(omni_world_model_t* wm) {
 omni_wm_state_t* omni_wm_state_create(uint32_t dim) {
     if (dim == 0 || dim > OMNI_WM_MAX_STATE_DIM) return NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_state_create", 0.0f);
+
+
     omni_wm_state_t* state = nimcp_calloc(1, sizeof(omni_wm_state_t));
     if (!state) return NULL;
 
@@ -533,6 +593,10 @@ omni_wm_state_t* omni_wm_state_create(uint32_t dim) {
 omni_wm_state_t* omni_wm_state_from_values(const float* values, uint32_t dim) {
     if (!values || dim == 0) return NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_state_from_v", 0.0f);
+
+
     omni_wm_state_t* state = omni_wm_state_create(dim);
     if (!state) return NULL;
 
@@ -542,6 +606,10 @@ omni_wm_state_t* omni_wm_state_from_values(const float* values, uint32_t dim) {
 
 omni_wm_state_t* omni_wm_state_clone(const omni_wm_state_t* state) {
     if (!state) return NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_state_clone", 0.0f);
+
 
     omni_wm_state_t* clone = omni_wm_state_create(state->dim);
     if (!clone) return NULL;
@@ -556,12 +624,20 @@ omni_wm_state_t* omni_wm_state_clone(const omni_wm_state_t* state) {
 
 void omni_wm_state_destroy(omni_wm_state_t* state) {
     if (!state) return;
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_state_destro", 0.0f);
+
+
     nimcp_free(state->values);
     nimcp_free(state);
 }
 
 nimcp_error_t omni_wm_set_state(omni_world_model_t* wm,
                                  const omni_wm_state_t* state) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_set_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(state, NIMCP_ERROR_INVALID_PARAM, "state is NULL");
 
@@ -574,6 +650,10 @@ nimcp_error_t omni_wm_set_state(omni_world_model_t* wm,
 }
 
 const omni_wm_state_t* omni_wm_get_state(const omni_world_model_t* wm) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_get_state", 0.0f);
+
+
     return wm ? wm->current_state : NULL;
 }
 
@@ -583,6 +663,10 @@ const omni_wm_state_t* omni_wm_get_state(const omni_world_model_t* wm) {
 
 omni_wm_rssm_state_t* omni_wm_rssm_state_create(uint32_t h_dim, uint32_t z_dim) {
     if (h_dim == 0 || z_dim == 0) return NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_rssm_state_c", 0.0f);
+
 
     omni_wm_rssm_state_t* state = nimcp_calloc(1, sizeof(omni_wm_rssm_state_t));
     if (!state) return NULL;
@@ -602,6 +686,12 @@ omni_wm_rssm_state_t* omni_wm_rssm_state_create(uint32_t h_dim, uint32_t z_dim) 
 
     /* Initialize std to 1 */
     for (uint32_t i = 0; i < z_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && z_dim > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)z_dim);
+        }
+
         state->z_std[i] = 1.0f;
     }
 
@@ -610,6 +700,10 @@ omni_wm_rssm_state_t* omni_wm_rssm_state_create(uint32_t h_dim, uint32_t z_dim) 
 
 omni_wm_rssm_state_t* omni_wm_rssm_state_clone(const omni_wm_rssm_state_t* state) {
     if (!state) return NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_rssm_state_c", 0.0f);
+
 
     omni_wm_rssm_state_t* clone = omni_wm_rssm_state_create(state->h_dim, state->z_dim);
     if (!clone) return NULL;
@@ -625,6 +719,10 @@ omni_wm_rssm_state_t* omni_wm_rssm_state_clone(const omni_wm_rssm_state_t* state
 
 void omni_wm_rssm_state_destroy(omni_wm_rssm_state_t* state) {
     if (!state) return;
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_rssm_state_d", 0.0f);
+
+
     nimcp_free(state->h);
     nimcp_free(state->z);
     nimcp_free(state->z_mean);
@@ -633,11 +731,19 @@ void omni_wm_rssm_state_destroy(omni_wm_rssm_state_t* state) {
 }
 
 const omni_wm_rssm_state_t* omni_wm_get_rssm_state(const omni_world_model_t* wm) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_get_rssm_sta", 0.0f);
+
+
     return wm ? wm->rssm_state : NULL;
 }
 
 nimcp_error_t omni_wm_set_rssm_state(omni_world_model_t* wm,
                                       const omni_wm_rssm_state_t* state) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_set_rssm_sta", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(state, NIMCP_ERROR_INVALID_PARAM, "RSSM state is NULL");
 
@@ -658,6 +764,10 @@ nimcp_error_t omni_wm_rssm_step(omni_world_model_t* wm,
                                  const float* action,
                                  uint32_t action_dim,
                                  omni_wm_rssm_state_t* next_state) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_rssm_step", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(state, NIMCP_ERROR_INVALID_PARAM, "state is NULL");
     NIMCP_CHECK_THROW(action, NIMCP_ERROR_INVALID_PARAM, "action is NULL");
@@ -677,6 +787,12 @@ nimcp_error_t omni_wm_rssm_step(omni_world_model_t* wm,
 
     /* Compute next h: h' = tanh(W_h * [h, z, a] + b_h) */
     for (uint32_t i = 0; i < dyn->h_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dyn->h_dim > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)dyn->h_dim);
+        }
+
         float sum = dyn->b_h[i];
         for (uint32_t j = 0; j < input_dim && j < dyn->h_dim + dyn->z_dim + dyn->action_dim; j++) {
             sum += dyn->W_h[i * (dyn->h_dim + dyn->z_dim + dyn->action_dim) + j] * input[j];
@@ -686,9 +802,21 @@ nimcp_error_t omni_wm_rssm_step(omni_world_model_t* wm,
 
     /* Compute z prior: [mean, log_std] = W_z * h' + b_z */
     for (uint32_t i = 0; i < dyn->z_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dyn->z_dim > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)dyn->z_dim);
+        }
+
         float sum_mean = dyn->b_z[i];
         float sum_std = dyn->b_z[dyn->z_dim + i];
         for (uint32_t j = 0; j < dyn->h_dim; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && dyn->h_dim > 256) {
+                omni_world_model_heartbeat("omni_world_m_loop",
+                                 (float)(j + 1) / (float)dyn->h_dim);
+            }
+
             sum_mean += dyn->W_z[i * dyn->h_dim + j] * next_state->h[j];
             sum_std += dyn->W_z[(dyn->z_dim + i) * dyn->h_dim + j] * next_state->h[j];
         }
@@ -714,6 +842,10 @@ nimcp_error_t omni_wm_rssm_imagine(omni_world_model_t* wm,
                                     const float* const* actions,
                                     uint32_t horizon,
                                     omni_wm_rssm_state_t** trajectory) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_rssm_imagine", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(initial_state, NIMCP_ERROR_INVALID_PARAM, "initial_state is NULL");
     NIMCP_CHECK_THROW(actions, NIMCP_ERROR_INVALID_PARAM, "actions is NULL");
@@ -733,6 +865,12 @@ nimcp_error_t omni_wm_rssm_imagine(omni_world_model_t* wm,
         );
         if (!trajectory[t]) {
             for (uint32_t i = 0; i < t; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && t > 256) {
+                    omni_world_model_heartbeat("omni_world_m_loop",
+                                     (float)(i + 1) / (float)t);
+                }
+
                 omni_wm_rssm_state_destroy(trajectory[i]);
             }
             return NIMCP_ERROR_NO_MEMORY;
@@ -761,6 +899,10 @@ nimcp_error_t omni_wm_predict_forward(omni_world_model_t* wm,
                                        const float* action,
                                        uint32_t action_dim,
                                        omni_wm_transition_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_predict_forw", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(action, NIMCP_ERROR_INVALID_PARAM, "action is NULL");
     NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result is NULL");
@@ -804,6 +946,12 @@ nimcp_error_t omni_wm_predict_forward(omni_world_model_t* wm,
         /* Compute uncertainty from z_std */
         float uncertainty = 0.0f;
         for (uint32_t i = 0; i < next_rssm->z_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && next_rssm->z_dim > 256) {
+                omni_world_model_heartbeat("omni_world_m_loop",
+                                 (float)(i + 1) / (float)next_rssm->z_dim);
+            }
+
             uncertainty += logf(next_rssm->z_std[i]);
         }
         result->next_state->uncertainty = uncertainty / next_rssm->z_dim;
@@ -829,6 +977,12 @@ nimcp_error_t omni_wm_predict_forward(omni_world_model_t* wm,
     uint32_t min_dim = action_dim < result->next_state->dim ?
                        action_dim : result->next_state->dim;
     for (uint32_t i = 0; i < min_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && min_dim > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)min_dim);
+        }
+
         result->next_state->values[i] += action[i] * 0.1f;
     }
 
@@ -841,6 +995,10 @@ nimcp_error_t omni_wm_predict_forward(omni_world_model_t* wm,
 nimcp_error_t omni_wm_infer_backward(omni_world_model_t* wm,
                                       const omni_wm_state_t* current_state,
                                       omni_wm_transition_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_infer_backwa", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(current_state, NIMCP_ERROR_INVALID_PARAM, "current_state is NULL");
     NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result is NULL");
@@ -873,6 +1031,10 @@ nimcp_error_t omni_wm_predict_lateral(omni_world_model_t* wm,
                                        const omni_wm_state_t* source_state,
                                        uint32_t target_modality,
                                        omni_wm_state_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_predict_late", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(source_state, NIMCP_ERROR_INVALID_PARAM, "source_state is NULL");
     NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result is NULL");
@@ -885,6 +1047,12 @@ nimcp_error_t omni_wm_predict_lateral(omni_world_model_t* wm,
     uint32_t min_dim = source_state->dim < result->dim ?
                        source_state->dim : result->dim;
     for (uint32_t i = 0; i < min_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && min_dim > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)min_dim);
+        }
+
         result->values[i] = source_state->values[i] * 0.9f;
     }
 
@@ -898,6 +1066,10 @@ nimcp_error_t omni_wm_predict_hierarchical(omni_world_model_t* wm,
                                             const omni_wm_state_t* state,
                                             uint32_t target_level,
                                             omni_wm_state_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_predict_hier", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(state, NIMCP_ERROR_INVALID_PARAM, "state is NULL");
     NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result is NULL");
@@ -915,6 +1087,12 @@ nimcp_error_t omni_wm_predict_hierarchical(omni_world_model_t* wm,
     uint32_t min_dim = state->dim < result->dim ? state->dim : result->dim;
 
     for (uint32_t i = 0; i < min_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && min_dim > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)min_dim);
+        }
+
         result->values[i] = state->values[i] * scale;
     }
 
@@ -931,6 +1109,10 @@ nimcp_error_t omni_wm_predict_hierarchical(omni_world_model_t* wm,
 omni_wm_latent_t* omni_wm_latent_create(uint32_t dim) {
     if (dim == 0 || dim > OMNI_WM_MAX_LATENT_DIM) return NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_latent_creat", 0.0f);
+
+
     omni_wm_latent_t* latent = nimcp_calloc(1, sizeof(omni_wm_latent_t));
     if (!latent) return NULL;
 
@@ -946,6 +1128,10 @@ omni_wm_latent_t* omni_wm_latent_create(uint32_t dim) {
 
 void omni_wm_latent_destroy(omni_wm_latent_t* latent) {
     if (!latent) return;
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_latent_destr", 0.0f);
+
+
     nimcp_free(latent->embedding);
     nimcp_free(latent);
 }
@@ -954,12 +1140,22 @@ nimcp_error_t omni_wm_encode(omni_world_model_t* wm,
                               const float* observation,
                               uint32_t obs_dim,
                               omni_wm_latent_t* latent) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_encode", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(observation, NIMCP_ERROR_INVALID_PARAM, "observation is NULL");
     NIMCP_CHECK_THROW(latent, NIMCP_ERROR_INVALID_PARAM, "latent is NULL");
 
     /* Linear encoding: latent = ReLU(W * obs + b) */
     for (uint32_t i = 0; i < latent->dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && latent->dim > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)latent->dim);
+        }
+
         float sum = wm->encoder_b[i];
         for (uint32_t j = 0; j < obs_dim && j < wm->config.obs_dim; j++) {
             sum += wm->encoder_W[i * wm->config.obs_dim + j] * observation[j];
@@ -970,6 +1166,12 @@ nimcp_error_t omni_wm_encode(omni_world_model_t* wm,
     /* Compute information content (approximate entropy) */
     float entropy = 0.0f;
     for (uint32_t i = 0; i < latent->dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && latent->dim > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)latent->dim);
+        }
+
         if (latent->embedding[i] > 0.01f) {
             entropy -= latent->embedding[i] * logf(latent->embedding[i]);
         }
@@ -983,6 +1185,10 @@ nimcp_error_t omni_wm_decode(omni_world_model_t* wm,
                               const omni_wm_latent_t* latent,
                               float* observation,
                               uint32_t obs_dim) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_decode", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(latent, NIMCP_ERROR_INVALID_PARAM, "latent is NULL");
     NIMCP_CHECK_THROW(observation, NIMCP_ERROR_INVALID_PARAM, "observation is NULL");
@@ -1004,6 +1210,10 @@ nimcp_error_t omni_wm_predict_latent(omni_world_model_t* wm,
                                       const float* action,
                                       uint32_t action_dim,
                                       omni_wm_latent_t* predicted_latent) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_predict_late", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(latent, NIMCP_ERROR_INVALID_PARAM, "latent is NULL");
     NIMCP_CHECK_THROW(action, NIMCP_ERROR_INVALID_PARAM, "action is NULL");
@@ -1030,6 +1240,10 @@ omni_wm_mdn_prediction_t* omni_wm_mdn_create(uint32_t num_components, uint32_t d
     if (num_components == 0 || dim == 0) return NULL;
     if (num_components > OMNI_WM_MAX_MDN_COMPONENTS) return NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_mdn_create", 0.0f);
+
+
     omni_wm_mdn_prediction_t* pred = nimcp_calloc(1, sizeof(omni_wm_mdn_prediction_t));
     if (!pred) return NULL;
 
@@ -1040,6 +1254,12 @@ omni_wm_mdn_prediction_t* omni_wm_mdn_create(uint32_t num_components, uint32_t d
     }
 
     for (uint32_t k = 0; k < num_components; k++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((k & 0xFF) == 0 && num_components > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(k + 1) / (float)num_components);
+        }
+
         pred->components[k].mean = nimcp_calloc(dim, sizeof(float));
         pred->components[k].std = nimcp_calloc(dim, sizeof(float));
         pred->components[k].dim = dim;
@@ -1052,6 +1272,12 @@ omni_wm_mdn_prediction_t* omni_wm_mdn_create(uint32_t num_components, uint32_t d
 
         /* Initialize std to 1 */
         for (uint32_t i = 0; i < dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && dim > 256) {
+                omni_world_model_heartbeat("omni_world_m_loop",
+                                 (float)(i + 1) / (float)dim);
+            }
+
             pred->components[k].std[i] = 1.0f;
         }
     }
@@ -1064,7 +1290,17 @@ omni_wm_mdn_prediction_t* omni_wm_mdn_create(uint32_t num_components, uint32_t d
 
 void omni_wm_mdn_destroy(omni_wm_mdn_prediction_t* pred) {
     if (!pred) return;
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_mdn_destroy", 0.0f);
+
+
     for (uint32_t k = 0; k < pred->num_components; k++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((k & 0xFF) == 0 && pred->num_components > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(k + 1) / (float)pred->num_components);
+        }
+
         nimcp_free(pred->components[k].mean);
         nimcp_free(pred->components[k].std);
     }
@@ -1077,6 +1313,10 @@ nimcp_error_t omni_wm_predict_mdn(omni_world_model_t* wm,
                                    const float* action,
                                    uint32_t action_dim,
                                    omni_wm_mdn_prediction_t* pred) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_predict_mdn", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(state, NIMCP_ERROR_INVALID_PARAM, "state is NULL");
     NIMCP_CHECK_THROW(action, NIMCP_ERROR_INVALID_PARAM, "action is NULL");
@@ -1084,6 +1324,12 @@ nimcp_error_t omni_wm_predict_mdn(omni_world_model_t* wm,
 
     /* Generate mixture components based on state and action */
     for (uint32_t k = 0; k < pred->num_components; k++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((k & 0xFF) == 0 && pred->num_components > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(k + 1) / (float)pred->num_components);
+        }
+
         /* Each component gets slightly different prediction */
         float offset = (float)k * 0.1f - 0.05f * pred->num_components;
 
@@ -1101,6 +1347,10 @@ nimcp_error_t omni_wm_predict_mdn(omni_world_model_t* wm,
 
 nimcp_error_t omni_wm_mdn_sample(const omni_wm_mdn_prediction_t* pred,
                                   float* sample) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_mdn_sample", 0.0f);
+
+
     NIMCP_CHECK_THROW(pred, NIMCP_ERROR_INVALID_PARAM, "MDN prediction is NULL");
     NIMCP_CHECK_THROW(sample, NIMCP_ERROR_INVALID_PARAM, "sample buffer is NULL");
 
@@ -1111,6 +1361,12 @@ nimcp_error_t omni_wm_mdn_sample(const omni_wm_mdn_prediction_t* pred,
     uint32_t selected = 0;
 
     for (uint32_t k = 0; k < pred->num_components; k++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((k & 0xFF) == 0 && pred->num_components > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(k + 1) / (float)pred->num_components);
+        }
+
         cumsum += pred->components[k].weight;
         if (r <= cumsum) {
             selected = k;
@@ -1121,6 +1377,12 @@ nimcp_error_t omni_wm_mdn_sample(const omni_wm_mdn_prediction_t* pred,
     /* Sample from selected component */
     omni_wm_mdn_component_t* comp = &pred->components[selected];
     for (uint32_t i = 0; i < pred->dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pred->dim > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)pred->dim);
+        }
+
         sample[i] = comp->mean[i] + comp->std[i] * randn(&seed);
     }
 
@@ -1129,6 +1391,10 @@ nimcp_error_t omni_wm_mdn_sample(const omni_wm_mdn_prediction_t* pred,
 
 nimcp_error_t omni_wm_mdn_mode(const omni_wm_mdn_prediction_t* pred,
                                 float* mode) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_mdn_mode", 0.0f);
+
+
     NIMCP_CHECK_THROW(pred, NIMCP_ERROR_INVALID_PARAM, "MDN prediction is NULL");
     NIMCP_CHECK_THROW(mode, NIMCP_ERROR_INVALID_PARAM, "mode buffer is NULL");
 
@@ -1154,14 +1420,30 @@ float omni_wm_mdn_log_prob(const omni_wm_mdn_prediction_t* pred,
     if (!pred || !value) return -FLT_MAX;
 
     /* Log probability under mixture: log(sum_k pi_k * N(x; mu_k, sigma_k)) */
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_mdn_log_prob", 0.0f);
+
+
     float max_log = -FLT_MAX;
     float* log_probs = nimcp_calloc(pred->num_components, sizeof(float));
     if (!log_probs) return -FLT_MAX;
 
     for (uint32_t k = 0; k < pred->num_components; k++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((k & 0xFF) == 0 && pred->num_components > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(k + 1) / (float)pred->num_components);
+        }
+
         float log_prob = logf(pred->components[k].weight);
 
         for (uint32_t i = 0; i < pred->dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && pred->dim > 256) {
+                omni_world_model_heartbeat("omni_world_m_loop",
+                                 (float)(i + 1) / (float)pred->dim);
+            }
+
             float diff = value[i] - pred->components[k].mean[i];
             float std = pred->components[k].std[i];
             log_prob -= 0.5f * (diff * diff) / (std * std);
@@ -1176,6 +1458,12 @@ float omni_wm_mdn_log_prob(const omni_wm_mdn_prediction_t* pred,
     /* Log-sum-exp for numerical stability */
     float sum = 0.0f;
     for (uint32_t k = 0; k < pred->num_components; k++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((k & 0xFF) == 0 && pred->num_components > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(k + 1) / (float)pred->num_components);
+        }
+
         sum += expf(log_probs[k] - max_log);
     }
 
@@ -1191,6 +1479,10 @@ float omni_wm_mdn_log_prob(const omni_wm_mdn_prediction_t* pred,
 omni_wm_experience_t* omni_wm_experience_create(uint32_t state_dim,
                                                   uint32_t action_dim,
                                                   uint32_t obs_dim) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_experience_c", 0.0f);
+
+
     if (state_dim == 0 || action_dim == 0 || obs_dim == 0) {
         NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "omni_wm_experience_create: zero dimension");
         return NULL;
@@ -1220,6 +1512,10 @@ omni_wm_experience_t* omni_wm_experience_create(uint32_t state_dim,
 
 void omni_wm_experience_destroy(omni_wm_experience_t* exp) {
     if (!exp) return;
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_experience_d", 0.0f);
+
+
     omni_wm_rssm_state_destroy(exp->state);
     omni_wm_rssm_state_destroy(exp->next_state);
     nimcp_free(exp->action);
@@ -1229,6 +1525,10 @@ void omni_wm_experience_destroy(omni_wm_experience_t* exp) {
 
 nimcp_error_t omni_wm_add_experience(omni_world_model_t* wm,
                                       const omni_wm_experience_t* exp) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_add_experien", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(exp, NIMCP_ERROR_INVALID_PARAM, "experience is NULL");
 
@@ -1274,6 +1574,10 @@ uint32_t omni_wm_sample_experiences(omni_world_model_t* wm,
                                      uint32_t batch_size) {
     if (!wm || !batch || batch_size == 0) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_sample_exper", 0.0f);
+
+
     omni_wm_replay_buffer_t* buf = wm->replay_buffer;
     if (!buf || buf->size == 0) return 0;
 
@@ -1281,6 +1585,12 @@ uint32_t omni_wm_sample_experiences(omni_world_model_t* wm,
 
     /* Simple uniform sampling - return clones so caller can safely destroy */
     for (uint32_t i = 0; i < actual_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && actual_size > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)actual_size);
+        }
+
         uint32_t idx = rand_r(&wm->rand_seed) % buf->size;
         omni_wm_experience_t* src = buf->experiences[idx];
         if (!src) {
@@ -1297,6 +1607,12 @@ uint32_t omni_wm_sample_experiences(omni_world_model_t* wm,
         if (!clone) {
             /* Clean up already allocated clones */
             for (uint32_t j = 0; j < i; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && i > 256) {
+                    omni_world_model_heartbeat("omni_world_m_loop",
+                                     (float)(j + 1) / (float)i);
+                }
+
                 omni_wm_experience_destroy(batch[j]);
                 batch[j] = NULL;
             }
@@ -1320,10 +1636,18 @@ uint32_t omni_wm_sample_experiences(omni_world_model_t* wm,
 }
 
 uint32_t omni_wm_get_replay_size(const omni_world_model_t* wm) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_get_replay_s", 0.0f);
+
+
     return wm && wm->replay_buffer ? wm->replay_buffer->size : 0;
 }
 
 nimcp_error_t omni_wm_clear_replay(omni_world_model_t* wm) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_clear_replay", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(wm->replay_buffer, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
 
@@ -1347,6 +1671,10 @@ nimcp_error_t omni_wm_update(omni_world_model_t* wm,
                               uint32_t action_dim,
                               const omni_wm_state_t* next_state,
                               float reward) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(state, NIMCP_ERROR_INVALID_PARAM, "state is NULL");
     NIMCP_CHECK_THROW(action, NIMCP_ERROR_INVALID_PARAM, "action is NULL");
@@ -1364,6 +1692,12 @@ nimcp_error_t omni_wm_update(omni_world_model_t* wm,
                        pred.next_state->dim : next_state->dim;
 
     for (uint32_t i = 0; i < min_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && min_dim > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)min_dim);
+        }
+
         float diff = pred.next_state->values[i] - next_state->values[i];
         error += diff * diff;
     }
@@ -1393,10 +1727,20 @@ nimcp_error_t omni_wm_update(omni_world_model_t* wm,
 nimcp_error_t omni_wm_dream(omni_world_model_t* wm,
                              uint32_t num_episodes,
                              uint32_t episode_length) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_dream", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(wm->config.enable_dreaming, NIMCP_ERROR_NOT_IMPLEMENTED, "dreaming not enabled");
 
     for (uint32_t ep = 0; ep < num_episodes; ep++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((ep & 0xFF) == 0 && num_episodes > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(ep + 1) / (float)num_episodes);
+        }
+
         /* Start from random experience or current state */
         omni_wm_rssm_state_t* dream_state = NULL;
 
@@ -1415,11 +1759,23 @@ nimcp_error_t omni_wm_dream(omni_world_model_t* wm,
 
         /* Dream rollout */
         for (uint32_t t = 0; t < episode_length; t++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((t & 0xFF) == 0 && episode_length > 256) {
+                omni_world_model_heartbeat("omni_world_m_loop",
+                                 (float)(t + 1) / (float)episode_length);
+            }
+
             /* Generate random action with noise */
             float* action = nimcp_calloc(wm->config.action_dim, sizeof(float));
             if (!action) break;
 
             for (uint32_t i = 0; i < wm->config.action_dim; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && wm->config.action_dim > 256) {
+                    omni_world_model_heartbeat("omni_world_m_loop",
+                                     (float)(i + 1) / (float)wm->config.action_dim);
+                }
+
                 action[i] = randn(&wm->rand_seed) * wm->config.imagination_noise;
             }
 
@@ -1447,6 +1803,10 @@ nimcp_error_t omni_wm_dream(omni_world_model_t* wm,
 }
 
 nimcp_error_t omni_wm_set_learning_rate(omni_world_model_t* wm, float learning_rate) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_set_learning", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(learning_rate >= 0.0f && learning_rate <= 1.0f, NIMCP_ERROR_INVALID_PARAM,
                       "learning_rate must be between 0.0 and 1.0");
@@ -1467,6 +1827,10 @@ omni_wm_counterfactual_query_t* omni_wm_cf_query_create(
 
     if (!initial_state || !hypothetical_action) return NULL;
     if (horizon == 0) return NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_cf_query_cre", 0.0f);
+
 
     omni_wm_counterfactual_query_t* query = nimcp_calloc(1, sizeof(omni_wm_counterfactual_query_t));
     if (!query) return NULL;
@@ -1489,6 +1853,10 @@ omni_wm_counterfactual_query_t* omni_wm_cf_query_create(
 
 void omni_wm_cf_query_destroy(omni_wm_counterfactual_query_t* query) {
     if (!query) return;
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_cf_query_des", 0.0f);
+
+
     omni_wm_state_destroy(query->initial_state);
     nimcp_free(query->hypothetical_action);
     nimcp_free(query->context);
@@ -1498,6 +1866,10 @@ void omni_wm_cf_query_destroy(omni_wm_counterfactual_query_t* query) {
 nimcp_error_t omni_wm_counterfactual(omni_world_model_t* wm,
                                       const omni_wm_counterfactual_query_t* query,
                                       omni_wm_counterfactual_result_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_counterfactu", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(query, NIMCP_ERROR_INVALID_PARAM, "query is NULL");
     NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result is NULL");
@@ -1543,6 +1915,12 @@ nimcp_error_t omni_wm_counterfactual(omni_world_model_t* wm,
         if (err != NIMCP_SUCCESS || !trans.next_state) {
             /* Cleanup on error */
             for (uint32_t i = 0; i < t; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && t > 256) {
+                    omni_world_model_heartbeat("omni_world_m_loop",
+                                     (float)(i + 1) / (float)t);
+                }
+
                 omni_wm_state_destroy(result->trajectory[i]);
             }
             nimcp_free(result->trajectory);
@@ -1573,6 +1951,10 @@ nimcp_error_t omni_wm_what_if(omni_world_model_t* wm,
                                uint32_t action_dim,
                                uint32_t horizon,
                                omni_wm_counterfactual_result_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_what_if", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(action, NIMCP_ERROR_INVALID_PARAM, "action is NULL");
     NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result is NULL");
@@ -1595,7 +1977,17 @@ nimcp_error_t omni_wm_what_if(omni_world_model_t* wm,
 
 void omni_wm_cf_result_destroy(omni_wm_counterfactual_result_t* result) {
     if (!result) return;
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_cf_result_de", 0.0f);
+
+
     for (uint32_t i = 0; i < result->trajectory_len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && result->trajectory_len > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)result->trajectory_len);
+        }
+
         omni_wm_state_destroy(result->trajectory[i]);
     }
     nimcp_free(result->trajectory);
@@ -1611,6 +2003,10 @@ omni_wm_rollout_t* omni_wm_rollout_create(uint32_t max_length,
                                            uint32_t action_dim,
                                            uint32_t obs_dim) {
     if (max_length == 0 || max_length > OMNI_WM_MAX_HORIZON) return NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_rollout_crea", 0.0f);
+
 
     omni_wm_rollout_t* rollout = nimcp_calloc(1, sizeof(omni_wm_rollout_t));
     if (!rollout) return NULL;
@@ -1632,7 +2028,17 @@ omni_wm_rollout_t* omni_wm_rollout_create(uint32_t max_length,
 void omni_wm_rollout_destroy(omni_wm_rollout_t* rollout) {
     if (!rollout) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_rollout_dest", 0.0f);
+
+
     for (uint32_t i = 0; i < rollout->length; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && rollout->length > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)rollout->length);
+        }
+
         omni_wm_state_destroy(rollout->states[i]);
         nimcp_free(rollout->actions[i]);
         nimcp_free(rollout->observations[i]);
@@ -1650,6 +2056,10 @@ nimcp_error_t omni_wm_rollout(omni_world_model_t* wm,
                                uint32_t horizon,
                                omni_wm_rollout_t* rollout,
                                void* user_data) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_rollout", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(policy, NIMCP_ERROR_INVALID_PARAM, "policy function is NULL");
     NIMCP_CHECK_THROW(rollout, NIMCP_ERROR_INVALID_PARAM, "rollout is NULL");
@@ -1706,11 +2116,21 @@ float omni_wm_evaluate_efe(omni_world_model_t* wm,
                             uint32_t obs_dim) {
     if (!wm || !rollout || !preferred_obs) return FLT_MAX;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_evaluate_efe", 0.0f);
+
+
     float efe = 0.0f;
     float gamma = wm->config.discount_factor;
     float discount = 1.0f;
 
     for (uint32_t t = 0; t < rollout->length; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && rollout->length > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(t + 1) / (float)rollout->length);
+        }
+
         if (!rollout->states[t]) continue;
 
         /* Risk: KL[q(o|pi) || p(o)] - distance from preferred */
@@ -1719,6 +2139,12 @@ float omni_wm_evaluate_efe(omni_world_model_t* wm,
                            rollout->states[t]->dim : obs_dim;
 
         for (uint32_t i = 0; i < min_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && min_dim > 256) {
+                omni_world_model_heartbeat("omni_world_m_loop",
+                                 (float)(i + 1) / (float)min_dim);
+            }
+
             float diff = rollout->states[t]->values[i] - preferred_obs[i];
             risk += diff * diff;
         }
@@ -1742,6 +2168,10 @@ nimcp_error_t omni_wm_predict_observations(omni_world_model_t* wm,
                                             const omni_wm_state_t* state,
                                             float* predicted_obs,
                                             uint32_t obs_dim) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_predict_obse", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(state, NIMCP_ERROR_INVALID_PARAM, "state is NULL");
     NIMCP_CHECK_THROW(predicted_obs, NIMCP_ERROR_INVALID_PARAM, "predicted_obs buffer is NULL");
@@ -1758,6 +2188,10 @@ nimcp_error_t omni_wm_infer_state(omni_world_model_t* wm,
                                    const float* observations,
                                    uint32_t obs_dim,
                                    omni_wm_state_t* inferred_state) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_infer_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(observations, NIMCP_ERROR_INVALID_PARAM, "observations is NULL");
     NIMCP_CHECK_THROW(inferred_state, NIMCP_ERROR_INVALID_PARAM, "inferred_state is NULL");
@@ -1783,6 +2217,10 @@ nimcp_error_t omni_wm_infer_state(omni_world_model_t* wm,
 
 nimcp_error_t omni_wm_connect_active_inference(omni_world_model_t* wm,
                                                 struct omni_active_inference* ai) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_connect_acti", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     wm->ai_ctx = ai;
     return NIMCP_SUCCESS;
@@ -1796,6 +2234,10 @@ float omni_wm_evaluate_policy(omni_world_model_t* wm,
     if (!wm || !policy_actions || !preferred_obs) return FLT_MAX;
     if (!wm->current_state) return FLT_MAX;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_evaluate_pol", 0.0f);
+
+
     float efe = 0.0f;
     float gamma = wm->config.discount_factor;
     float discount = 1.0f;
@@ -1804,6 +2246,12 @@ float omni_wm_evaluate_policy(omni_world_model_t* wm,
     if (!state) return FLT_MAX;
 
     for (uint32_t t = 0; t < horizon; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && horizon > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(t + 1) / (float)horizon);
+        }
+
         /* Get action for this timestep */
         const float* action = policy_actions + t * wm->config.action_dim;
 
@@ -1829,6 +2277,12 @@ float omni_wm_evaluate_policy(omni_world_model_t* wm,
                            trans.next_state->dim : obs_dim;
 
         for (uint32_t i = 0; i < min_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && min_dim > 256) {
+                omni_world_model_heartbeat("omni_world_m_loop",
+                                 (float)(i + 1) / (float)min_dim);
+            }
+
             float diff = trans.next_state->values[i] - preferred_obs[i];
             risk += diff * diff;
         }
@@ -1853,6 +2307,10 @@ float omni_wm_evaluate_policy(omni_world_model_t* wm,
 
 nimcp_error_t omni_wm_get_stats(const omni_world_model_t* wm,
                                  omni_wm_stats_t* stats) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(stats, NIMCP_ERROR_INVALID_PARAM, "stats is NULL");
     memcpy(stats, &wm->stats, sizeof(omni_wm_stats_t));
@@ -1860,6 +2318,10 @@ nimcp_error_t omni_wm_get_stats(const omni_world_model_t* wm,
 }
 
 nimcp_error_t omni_wm_reset_stats(omni_world_model_t* wm) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_reset_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     memset(&wm->stats, 0, sizeof(omni_wm_stats_t));
     return NIMCP_SUCCESS;
@@ -2357,6 +2819,12 @@ static nimcp_error_t handle_omni_wm_rollout(
 
         /* EFE = divergence from preferred + uncertainty */
         for (uint32_t i = 0; i < req->obs_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && req->obs_dim > 256) {
+                omni_world_model_heartbeat("omni_world_m_loop",
+                                 (float)(i + 1) / (float)req->obs_dim);
+            }
+
             float diff = predicted_obs[i] - req->preferred_obs[i];
             efe += diff * diff;
         }
@@ -2397,6 +2865,10 @@ static nimcp_error_t handle_omni_wm_rollout(
  * ============================================================================ */
 
 nimcp_error_t omni_wm_connect_bio_async(omni_world_model_t* wm) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_connect_bio_", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
 
     /* Already connected? */
@@ -2459,6 +2931,10 @@ nimcp_error_t omni_wm_connect_bio_async(omni_world_model_t* wm) {
 }
 
 nimcp_error_t omni_wm_disconnect_bio_async(omni_world_model_t* wm) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_disconnect_b", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
 
     /* Not connected? */
@@ -2494,8 +2970,20 @@ nimcp_error_t omni_wm_disconnect_bio_async(omni_world_model_t* wm) {
 static uint32_t crc32_compute(const uint8_t* data, size_t length) {
     uint32_t crc = 0xFFFFFFFF;
     for (size_t i = 0; i < length; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && length > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)length);
+        }
+
         crc ^= data[i];
         for (int j = 0; j < 8; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && 8 > 256) {
+                omni_world_model_heartbeat("omni_world_m_loop",
+                                 (float)(j + 1) / (float)8);
+            }
+
             crc = (crc >> 1) ^ (0xEDB88320 & -(crc & 1));
         }
     }
@@ -2733,6 +3221,12 @@ static size_t serialize_state(uint8_t* buf, size_t pos, const omni_wm_state_t* s
 
     /* Write values array */
     for (uint32_t i = 0; i < state->dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && state->dim > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)state->dim);
+        }
+
         pos = write_float_be(buf, pos, state->values[i]);
     }
 
@@ -2755,6 +3249,12 @@ static omni_wm_state_t* deserialize_state_from_buf(const uint8_t* buf, size_t* p
     state->level = read_u32(buf, pos);
 
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         state->values[i] = read_float_be(buf, pos);
     }
 
@@ -2777,21 +3277,45 @@ static size_t serialize_rssm_state(uint8_t* buf, size_t pos, const omni_wm_rssm_
 
     /* Write h array */
     for (uint32_t i = 0; i < state->h_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && state->h_dim > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)state->h_dim);
+        }
+
         pos = write_float_be(buf, pos, state->h[i]);
     }
 
     /* Write z array */
     for (uint32_t i = 0; i < state->z_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && state->z_dim > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)state->z_dim);
+        }
+
         pos = write_float_be(buf, pos, state->z[i]);
     }
 
     /* Write z_mean array */
     for (uint32_t i = 0; i < state->z_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && state->z_dim > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)state->z_dim);
+        }
+
         pos = write_float_be(buf, pos, state->z_mean[i]);
     }
 
     /* Write z_std array */
     for (uint32_t i = 0; i < state->z_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && state->z_dim > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)state->z_dim);
+        }
+
         pos = write_float_be(buf, pos, state->z_std[i]);
     }
 
@@ -2814,18 +3338,42 @@ static omni_wm_rssm_state_t* deserialize_rssm_state_from_buf(const uint8_t* buf,
     state->timestamp = read_double_be(buf, pos);
 
     for (uint32_t i = 0; i < h_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && h_dim > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)h_dim);
+        }
+
         state->h[i] = read_float_be(buf, pos);
     }
 
     for (uint32_t i = 0; i < z_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && z_dim > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)z_dim);
+        }
+
         state->z[i] = read_float_be(buf, pos);
     }
 
     for (uint32_t i = 0; i < z_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && z_dim > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)z_dim);
+        }
+
         state->z_mean[i] = read_float_be(buf, pos);
     }
 
     for (uint32_t i = 0; i < z_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && z_dim > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)z_dim);
+        }
+
         state->z_std[i] = read_float_be(buf, pos);
     }
 
@@ -2866,12 +3414,24 @@ static size_t serialize_dynamics_weights(uint8_t* buf, size_t pos, const omni_wm
 
     /* Biases */
     for (uint32_t i = 0; i < dyn->h_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dyn->h_dim > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)dyn->h_dim);
+        }
+
         pos = write_float_be(buf, pos, dyn->b_h[i]);
     }
     for (uint32_t i = 0; i < dyn->z_dim * 2; i++) {
         pos = write_float_be(buf, pos, dyn->b_z[i]);
     }
     for (uint32_t i = 0; i < dyn->obs_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dyn->obs_dim > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)dyn->obs_dim);
+        }
+
         pos = write_float_be(buf, pos, dyn->b_obs[i]);
     }
 
@@ -2908,12 +3468,24 @@ static omni_wm_dynamics_t* deserialize_dynamics_from_buf(const uint8_t* buf, siz
     }
 
     for (uint32_t i = 0; i < h_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && h_dim > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)h_dim);
+        }
+
         dyn->b_h[i] = read_float_be(buf, pos);
     }
     for (uint32_t i = 0; i < z_dim * 2; i++) {
         dyn->b_z[i] = read_float_be(buf, pos);
     }
     for (uint32_t i = 0; i < obs_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && obs_dim > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)obs_dim);
+        }
+
         dyn->b_obs[i] = read_float_be(buf, pos);
     }
 
@@ -2959,6 +3531,10 @@ size_t omni_wm_serialize(const omni_world_model_t* wm,
                           size_t buffer_size) {
     if (!wm) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_serialize", 0.0f);
+
+
     size_t pos = 0;
 
     /* Header */
@@ -2993,17 +3569,41 @@ size_t omni_wm_serialize(const omni_world_model_t* wm,
     uint32_t enc_size = wm->config.obs_dim * wm->config.latent_dim;
     pos = write_u32(buffer, pos, enc_size);
     for (uint32_t i = 0; i < enc_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && enc_size > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)enc_size);
+        }
+
         pos = write_float_be(buffer, pos, wm->encoder_W[i]);
     }
     pos = write_u32(buffer, pos, wm->config.latent_dim);
     for (uint32_t i = 0; i < wm->config.latent_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && wm->config.latent_dim > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)wm->config.latent_dim);
+        }
+
         pos = write_float_be(buffer, pos, wm->encoder_b[i]);
     }
     for (uint32_t i = 0; i < enc_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && enc_size > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)enc_size);
+        }
+
         pos = write_float_be(buffer, pos, wm->decoder_W[i]);
     }
     pos = write_u32(buffer, pos, wm->config.obs_dim);
     for (uint32_t i = 0; i < wm->config.obs_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && wm->config.obs_dim > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)wm->config.obs_dim);
+        }
+
         pos = write_float_be(buffer, pos, wm->decoder_b[i]);
     }
 
@@ -3040,6 +3640,10 @@ size_t omni_wm_serialize(const omni_world_model_t* wm,
 omni_world_model_t* omni_wm_deserialize(const uint8_t* buffer,
                                          size_t buffer_size) {
     if (!buffer || buffer_size < 10) return NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_deserialize", 0.0f);
+
 
     size_t pos = 0;
 
@@ -3105,6 +3709,12 @@ omni_world_model_t* omni_wm_deserialize(const uint8_t* buffer,
     uint32_t enc_size = read_u32(buffer, &pos);
     if (enc_size == wm->config.obs_dim * wm->config.latent_dim) {
         for (uint32_t i = 0; i < enc_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && enc_size > 256) {
+                omni_world_model_heartbeat("omni_world_m_loop",
+                                 (float)(i + 1) / (float)enc_size);
+            }
+
             wm->encoder_W[i] = read_float_be(buffer, &pos);
         }
     }
@@ -3112,17 +3722,35 @@ omni_world_model_t* omni_wm_deserialize(const uint8_t* buffer,
     uint32_t enc_b_size = read_u32(buffer, &pos);
     if (enc_b_size == wm->config.latent_dim) {
         for (uint32_t i = 0; i < enc_b_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && enc_b_size > 256) {
+                omni_world_model_heartbeat("omni_world_m_loop",
+                                 (float)(i + 1) / (float)enc_b_size);
+            }
+
             wm->encoder_b[i] = read_float_be(buffer, &pos);
         }
     }
 
     for (uint32_t i = 0; i < enc_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && enc_size > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)enc_size);
+        }
+
         wm->decoder_W[i] = read_float_be(buffer, &pos);
     }
 
     uint32_t dec_b_size = read_u32(buffer, &pos);
     if (dec_b_size == wm->config.obs_dim) {
         for (uint32_t i = 0; i < dec_b_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && dec_b_size > 256) {
+                omni_world_model_heartbeat("omni_world_m_loop",
+                                 (float)(i + 1) / (float)dec_b_size);
+            }
+
             wm->decoder_b[i] = read_float_be(buffer, &pos);
         }
     }
@@ -3154,6 +3782,10 @@ omni_world_model_t* omni_wm_deserialize(const uint8_t* buffer,
 
 nimcp_error_t omni_wm_save(const omni_world_model_t* wm,
                             const char* filepath) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_save", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(filepath, NIMCP_ERROR_INVALID_PARAM, "filepath is NULL");
 
@@ -3194,6 +3826,10 @@ omni_world_model_t* omni_wm_load(const char* filepath) {
     if (!filepath) return NULL;
 
     /* Open file */
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_load", 0.0f);
+
+
     FILE* fp = fopen(filepath, "rb");
     if (!fp) return NULL;
 
@@ -3251,6 +3887,12 @@ static void checkpoint_store_destroy_internal(omni_wm_checkpoint_store_t* store)
     if (!store) return;
 
     for (uint32_t i = 0; i < store->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && store->count > 256) {
+            omni_world_model_heartbeat("omni_world_m_loop",
+                             (float)(i + 1) / (float)store->count);
+        }
+
         nimcp_free(store->checkpoints[i].data);
     }
     nimcp_free(store);
@@ -3266,6 +3908,10 @@ uint64_t omni_wm_checkpoint(omni_world_model_t* wm) {
     }
 
     /* Check capacity */
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_checkpoint", 0.0f);
+
+
     if (wm->checkpoint_store->count >= OMNI_WM_MAX_CHECKPOINTS) {
         return 0; /* No room for more checkpoints */
     }
@@ -3300,6 +3946,10 @@ uint64_t omni_wm_checkpoint(omni_world_model_t* wm) {
 
 nimcp_error_t omni_wm_restore_checkpoint(omni_world_model_t* wm,
                                           uint64_t checkpoint_id) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_restore_chec", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(wm->checkpoint_store, NIMCP_ERROR_INVALID_PARAM, "checkpoint store is NULL");
     NIMCP_CHECK_THROW(checkpoint_id != 0, NIMCP_ERROR_INVALID_PARAM, "checkpoint_id is zero");
@@ -3375,6 +4025,10 @@ nimcp_error_t omni_wm_restore_checkpoint(omni_world_model_t* wm,
 
 nimcp_error_t omni_wm_delete_checkpoint(omni_world_model_t* wm,
                                          uint64_t checkpoint_id) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_delete_check", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     NIMCP_CHECK_THROW(wm->checkpoint_store, NIMCP_ERROR_INVALID_PARAM, "checkpoint store is NULL");
     NIMCP_CHECK_THROW(checkpoint_id != 0, NIMCP_ERROR_INVALID_PARAM, "checkpoint_id is zero");
@@ -3399,10 +4053,18 @@ nimcp_error_t omni_wm_delete_checkpoint(omni_world_model_t* wm,
 
 uint32_t omni_wm_get_checkpoint_count(const omni_world_model_t* wm) {
     if (!wm || !wm->checkpoint_store) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_get_checkpoi", 0.0f);
+
+
     return wm->checkpoint_store->count;
 }
 
 nimcp_error_t omni_wm_clear_checkpoints(omni_world_model_t* wm) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_world_model_heartbeat("omni_world_m_omni_wm_clear_checkp", 0.0f);
+
+
     NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
 
     if (wm->checkpoint_store) {

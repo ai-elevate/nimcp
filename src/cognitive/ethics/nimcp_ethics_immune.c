@@ -46,7 +46,7 @@ static nimcp_health_agent_t* g_ethics_immune_health_agent = NULL;
  * @brief Set health agent for ethics_immune heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void ethics_immune_set_health_agent(nimcp_health_agent_t* agent) {
+void ethics_immune_set_health_agent(nimcp_health_agent_t* agent) {
     g_ethics_immune_health_agent = agent;
 }
 
@@ -77,6 +77,10 @@ void ethics_set_immune_system(ethics_engine_t engine, brain_immune_system_t* imm
     if (!engine) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_immune_heartbeat("ethics_immun_ethics_set_immune_sy", 0.0f);
+
 
     engine->immune_system = immune;
     engine->immune_integration_enabled = (immune != NULL);
@@ -171,6 +175,10 @@ bool ethics_evaluate_with_immune_check(ethics_engine_t engine,
     // WHAT: Query current inflammation level
     // WHY:  Determine cognitive impairment
     // HOW:  Use cached inflammation query
+    /* Phase 8: Heartbeat at operation start */
+    ethics_immune_heartbeat("ethics_immun_ethics_evaluate_with", 0.0f);
+
+
     float inflammation = get_current_inflammation_level(engine);
 
     // WHAT: Calculate confidence penalty from inflammation
@@ -245,6 +253,10 @@ bool ethics_trigger_immune_response(ethics_engine_t engine,
     // WHAT: Create epitope signature from violation
     // WHY:  Map ethical violation to immune system antigen
     // HOW:  Hash violation type + description into epitope
+    /* Phase 8: Heartbeat at operation start */
+    ethics_immune_heartbeat("ethics_immun_ethics_trigger_immun", 0.0f);
+
+
     uint8_t epitope[BRAIN_IMMUNE_EPITOPE_SIZE];
     memset(epitope, 0, sizeof(epitope));
 
@@ -317,6 +329,10 @@ float ethics_get_immune_adjusted_threshold(ethics_engine_t engine, float base_th
         return base_threshold;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_immune_heartbeat("ethics_immun_ethics_get_immune_ad", 0.0f);
+
+
     float inflammation = get_current_inflammation_level(engine);
 
     // WHAT: Map inflammation [0, 1] to threshold increase [0.0, 0.2]
@@ -344,9 +360,19 @@ float ethics_get_immune_adjusted_threshold(ethics_engine_t engine, float base_th
  */
 int ethics_immune_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    ethics_immune_heartbeat("ethics_immun_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Ethics_Immune_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                ethics_immune_heartbeat("ethics_immun_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_MODULE_DEBUG(LOG_MODULE, "Ethics immune self-knowledge: %s", self->observations[i]);
         }
     }

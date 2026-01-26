@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_curiosity_immune_bridge_health_agent = NULL;
  * @brief Set health agent for curiosity_immune_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void curiosity_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void curiosity_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_curiosity_immune_bridge_health_agent = agent;
 }
 
@@ -87,6 +87,12 @@ static float get_cytokine_concentration(
     uint32_t count = 0;
 
     for (size_t i = 0; i < immune->cytokine_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && immune->cytokine_count > 256) {
+            curiosity_immune_bridge_heartbeat("curiosity_im_loop",
+                             (float)(i + 1) / (float)immune->cytokine_count);
+        }
+
         if (immune->cytokines[i].type == type) {
             total += immune->cytokines[i].concentration;
             count++;
@@ -110,6 +116,12 @@ static brain_inflammation_level_t get_max_inflammation(
 
     brain_inflammation_level_t max_level = INFLAMMATION_NONE;
     for (size_t i = 0; i < immune->inflammation_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && immune->inflammation_count > 256) {
+            curiosity_immune_bridge_heartbeat("curiosity_im_loop",
+                             (float)(i + 1) / (float)immune->inflammation_count);
+        }
+
         if (immune->inflammation_sites[i].level > max_level) {
             max_level = immune->inflammation_sites[i].level;
         }
@@ -134,6 +146,12 @@ static bool is_chronic_inflammation(
     uint64_t now = nimcp_time_get_ms();
 
     for (size_t i = 0; i < immune->inflammation_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && immune->inflammation_count > 256) {
+            curiosity_immune_bridge_heartbeat("curiosity_im_loop",
+                             (float)(i + 1) / (float)immune->inflammation_count);
+        }
+
         uint64_t duration = now - immune->inflammation_sites[i].start_time;
         if (duration >= chronic_threshold_ms) {
             return true;
@@ -175,6 +193,10 @@ int curiosity_immune_default_config(curiosity_immune_config_t* config) {
     }
 
     /* Enable all features by default */
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_immune_bridge_heartbeat("curiosity_im_curiosity_immune_def", 0.0f);
+
+
     config->enable_sickness_behavior = true;
     config->enable_inflammation_suppression = true;
     config->enable_chronic_anhedonia = true;
@@ -208,6 +230,10 @@ curiosity_immune_bridge_t* curiosity_immune_bridge_create(
     }
 
     /* Allocate bridge */
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_immune_bridge_heartbeat("curiosity_im_create", 0.0f);
+
+
     curiosity_immune_bridge_t* bridge = (curiosity_immune_bridge_t*)
         nimcp_malloc(sizeof(curiosity_immune_bridge_t));
     if (!bridge) {
@@ -264,6 +290,10 @@ curiosity_immune_bridge_t* curiosity_immune_bridge_create(
 void curiosity_immune_bridge_destroy(curiosity_immune_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_immune_bridge_heartbeat("curiosity_im_destroy", 0.0f);
+
+
     LOG_MODULE_INFO(LOG_MODULE, "Destroying curiosity-immune bridge");
 
     /* Restore original curiosity if suppressed */
@@ -296,6 +326,10 @@ int curiosity_immune_update_sickness_behavior(curiosity_immune_bridge_t* bridge)
     }
     if (!bridge->config.enable_sickness_behavior) return 0;
     if (!bridge->immune_system || !bridge->curiosity_engine) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_immune_bridge_heartbeat("curiosity_im_curiosity_immune_upd", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -339,6 +373,10 @@ int curiosity_immune_on_cytokine_release(
     if (!bridge || !cytokine) return -1;
     if (!bridge->config.enable_sickness_behavior) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_immune_bridge_heartbeat("curiosity_im_curiosity_immune_on_", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Pro-inflammatory cytokines suppress curiosity */
@@ -376,6 +414,10 @@ int curiosity_immune_on_inflammation(
     /* Guard clauses */
     if (!bridge || !site) return -1;
     if (!bridge->config.enable_inflammation_suppression) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_immune_bridge_heartbeat("curiosity_im_curiosity_immune_on_", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -417,6 +459,10 @@ float curiosity_immune_compute_sickness_level(
     if (!bridge || !bridge->immune_system) return 0.0f;
 
     /* Get pro-inflammatory cytokine levels */
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_immune_bridge_heartbeat("curiosity_im_curiosity_immune_com", 0.0f);
+
+
     float il1 = get_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_IL1);
     float il6 = get_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_IL6);
     float tnf = get_cytokine_concentration(bridge->immune_system, BRAIN_CYTOKINE_TNF);
@@ -457,6 +503,10 @@ int curiosity_immune_apply_suppression(
     if (!bridge->curiosity_engine) return -1;
 
     /* Compute suppression factor (1.0 = no suppression, 0.1 = max suppression) */
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_immune_bridge_heartbeat("curiosity_im_curiosity_immune_app", 0.0f);
+
+
     float suppression_factor = 1.0f - (sickness_level * 0.9f);
     suppression_factor = clamp_f(suppression_factor, MAX_CURIOSITY_SUPPRESSION, 1.0f);
 
@@ -489,6 +539,10 @@ int curiosity_immune_restore_curiosity(curiosity_immune_bridge_t* bridge) {
     if (!bridge->curiosity_engine) return -1;
 
     /* Gradually restore (10% per update) */
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_immune_bridge_heartbeat("curiosity_im_curiosity_immune_res", 0.0f);
+
+
     float recovery_rate = 0.1f;
     bridge->curiosity_suppression_factor +=
         (1.0f - bridge->curiosity_suppression_factor) * recovery_rate;
@@ -522,6 +576,10 @@ int curiosity_immune_update_novelty_vigilance(curiosity_immune_bridge_t* bridge)
     }
     if (!bridge->config.enable_novelty_vigilance) return 0;
     if (!bridge->immune_system || !bridge->curiosity_engine) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_immune_bridge_heartbeat("curiosity_im_curiosity_immune_upd", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -564,6 +622,10 @@ int curiosity_immune_trigger_vigilance(
     }
 
     /* Compute vigilance boost */
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_immune_bridge_heartbeat("curiosity_im_curiosity_immune_tri", 0.0f);
+
+
     float boost = 1.0f + (novelty_level * 0.2f);  /* Up to 1.2x */
     boost *= bridge->config.novelty_sensitivity;
     boost = clamp_f(boost, 1.0f, CURIOSITY_IMMUNE_BOOST);
@@ -587,6 +649,10 @@ int curiosity_immune_on_knowledge_gap(
     if (!bridge || !gap) return -1;
     if (!bridge->config.enable_learning_stress_response) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_immune_bridge_heartbeat("curiosity_im_curiosity_immune_on_", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Large knowledge gaps indicate high novelty */
@@ -606,6 +672,10 @@ float curiosity_immune_compute_novelty_boost(
     const curiosity_immune_bridge_t* bridge
 ) {
     if (!bridge) return 1.0f;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_immune_bridge_heartbeat("curiosity_im_curiosity_immune_com", 0.0f);
+
+
     return bridge->immune_vigilance_boost;
 }
 
@@ -625,6 +695,10 @@ int curiosity_immune_bridge_update(
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_immune_bridge_heartbeat("curiosity_im_update", 0.0f);
+
+
     (void)delta_ms;  /* Currently unused, for future decay logic */
 
     /* Update sickness behavior */
@@ -644,6 +718,10 @@ float curiosity_immune_get_sickness_level(
     const curiosity_immune_bridge_t* bridge
 ) {
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_immune_bridge_heartbeat("curiosity_im_curiosity_immune_get", 0.0f);
+
+
     return bridge->current_sickness_level;
 }
 
@@ -651,6 +729,10 @@ float curiosity_immune_get_suppression_factor(
     const curiosity_immune_bridge_t* bridge
 ) {
     if (!bridge) return 1.0f;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_immune_bridge_heartbeat("curiosity_im_curiosity_immune_get", 0.0f);
+
+
     return bridge->curiosity_suppression_factor;
 }
 
@@ -658,6 +740,10 @@ float curiosity_immune_get_vigilance_boost(
     const curiosity_immune_bridge_t* bridge
 ) {
     if (!bridge) return 1.0f;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_immune_bridge_heartbeat("curiosity_im_curiosity_immune_get", 0.0f);
+
+
     return bridge->immune_vigilance_boost;
 }
 
@@ -665,6 +751,10 @@ bool curiosity_immune_is_chronic_inflammation(
     const curiosity_immune_bridge_t* bridge
 ) {
     if (!bridge || !bridge->immune_system) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_immune_bridge_heartbeat("curiosity_im_curiosity_immune_is_", 0.0f);
+
 
     uint64_t chronic_threshold_ms =
         (uint64_t)(bridge->config.chronic_inflammation_days * 24 * 3600 * 1000);
@@ -690,6 +780,10 @@ int curiosity_immune_connect_bio_async(curiosity_immune_bridge_t* bridge) {
 
     }
     if (bridge->base.bio_async_enabled) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_immune_bridge_heartbeat("curiosity_im_curiosity_immune_con", 0.0f);
+
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_CURIOSITY,
@@ -722,6 +816,10 @@ int curiosity_immune_disconnect_bio_async(curiosity_immune_bridge_t* bridge) {
     }
     if (!bridge->base.bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_immune_bridge_heartbeat("curiosity_im_curiosity_immune_dis", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -737,6 +835,10 @@ int curiosity_immune_disconnect_bio_async(curiosity_immune_bridge_t* bridge) {
  */
 bool curiosity_immune_is_bio_async_connected(const curiosity_immune_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_immune_bridge_heartbeat("curiosity_im_curiosity_immune_is_", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -756,9 +858,19 @@ bool curiosity_immune_is_bio_async_connected(const curiosity_immune_bridge_t* br
  */
 int curiosity_immune_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_immune_bridge_heartbeat("curiosity_im_curiosity_immune_que", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Curiosity_Immune_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                curiosity_immune_bridge_heartbeat("curiosity_im_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Curiosity immune bridge self-knowledge: %s", self->observations[i]);
         }
     }

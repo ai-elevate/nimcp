@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_fep_evidence_health_agent = NULL;
  * @brief Set health agent for fep_evidence heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void fep_evidence_set_health_agent(nimcp_health_agent_t* agent) {
+void fep_evidence_set_health_agent(nimcp_health_agent_t* agent) {
     g_fep_evidence_health_agent = agent;
 }
 
@@ -81,6 +81,12 @@ static float logsumexp(const float* values, size_t n) {
     /* Compute sum of exp(x - max) */
     float sum = 0.0f;
     for (size_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            fep_evidence_heartbeat("fep_evidence_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         sum += safe_exp(values[i] - max_val);
     }
 
@@ -124,12 +130,24 @@ static void softmax(float* probs, size_t n) {
 
     float sum = 0.0f;
     for (size_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            fep_evidence_heartbeat("fep_evidence_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         probs[i] = safe_exp(probs[i] - max_val);
         sum += probs[i];
     }
 
     if (sum > FEP_EVIDENCE_EPSILON) {
         for (size_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                fep_evidence_heartbeat("fep_evidence_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             probs[i] /= sum;
         }
     }
@@ -142,6 +160,10 @@ static void softmax(float* probs, size_t n) {
 void fep_evidence_default_config(fep_evidence_config_t* config) {
     if (!config) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_evidence_heartbeat("fep_evidence_default_config", 0.0f);
+
+
     config->method = EVIDENCE_ELBO;
     config->num_samples = FEP_EVIDENCE_DEFAULT_SAMPLES;
     config->temperature_schedule_start = FEP_EVIDENCE_DEFAULT_TEMP_START;
@@ -151,6 +173,10 @@ void fep_evidence_default_config(fep_evidence_config_t* config) {
 }
 
 fep_evidence_system_t* fep_evidence_create(const fep_evidence_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_evidence_heartbeat("fep_evidence_create", 0.0f);
+
+
     fep_evidence_system_t* sys = (fep_evidence_system_t*)nimcp_calloc(
         1, sizeof(fep_evidence_system_t));
     if (!sys) {
@@ -182,6 +208,10 @@ fep_evidence_system_t* fep_evidence_create(const fep_evidence_config_t* config) 
 void fep_evidence_destroy(fep_evidence_system_t* sys) {
     if (!sys) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_evidence_heartbeat("fep_evidence_destroy", 0.0f);
+
+
     if (sys->bio_async_enabled) {
         fep_evidence_disconnect_bio_async(sys);
     }
@@ -209,6 +239,10 @@ int fep_compute_log_evidence(
     if (!sys || !fep || !observations || !result) return -1;
     if (n_obs == 0 || obs_dim == 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_evidence_heartbeat("fep_evidence_fep_compute_log_evid", 0.0f);
+
+
     memset(result, 0, sizeof(fep_evidence_result_t));
 
     /* Compute based on configured method */
@@ -217,6 +251,12 @@ int fep_compute_log_evidence(
     float total_accuracy = 0.0f;
 
     for (size_t i = 0; i < n_obs; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n_obs > 256) {
+            fep_evidence_heartbeat("fep_evidence_loop",
+                             (float)(i + 1) / (float)n_obs);
+        }
+
         const float* obs = observations + i * obs_dim;
         float elbo, complexity, accuracy;
 
@@ -262,6 +302,10 @@ int fep_compute_elbo(
     if (!sys || !fep || !observation || !elbo) return -1;
 
     /* Use internal computation */
+    /* Phase 8: Heartbeat at operation start */
+    fep_evidence_heartbeat("fep_evidence_fep_compute_elbo", 0.0f);
+
+
     int ret = fep_compute_elbo_internal(sys, fep, observation, obs_dim, elbo);
 
     /* Update statistics */
@@ -286,13 +330,29 @@ int fep_compute_model_complexity(
      *                          - k + ln(|Σ_prior|/|Σ_post|))
      * Simplified: approximate as sum of squared deviations weighted by prior precision */
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_evidence_heartbeat("fep_evidence_fep_compute_model_co", 0.0f);
+
+
     float kl = 0.0f;
 
     for (uint32_t l = 0; l < fep->num_levels; l++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((l & 0xFF) == 0 && fep->num_levels > 256) {
+            fep_evidence_heartbeat("fep_evidence_loop",
+                             (float)(l + 1) / (float)fep->num_levels);
+        }
+
         fep_hierarchy_level_t* level = &fep->levels[l];
         fep_belief_t* beliefs = &level->beliefs;
 
         for (uint32_t i = 0; i < beliefs->dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && beliefs->dim > 256) {
+                fep_evidence_heartbeat("fep_evidence_loop",
+                                 (float)(i + 1) / (float)beliefs->dim);
+            }
+
             /* Deviation from prior */
             float mu_diff = beliefs->mean[i] - level->prior_mean[i];
             /* Prior precision is 1/variance, so prior_variance = 1/prior_precision */
@@ -321,6 +381,10 @@ int fep_compute_model_accuracy(
     /* Accuracy = E_q[log p(o|s)]
      * For Gaussian likelihood: -0.5 * (o - pred)^T Σ^-1 (o - pred) - 0.5 * k * log(2π) - 0.5 * log|Σ| */
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_evidence_heartbeat("fep_evidence_fep_compute_model_ac", 0.0f);
+
+
     float log_lik = 0.0f;
 
     if (fep->num_levels > 0) {
@@ -328,6 +392,12 @@ int fep_compute_model_accuracy(
         size_t dim = obs_dim < level->beliefs.dim ? obs_dim : level->beliefs.dim;
 
         for (size_t i = 0; i < dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && dim > 256) {
+                fep_evidence_heartbeat("fep_evidence_loop",
+                                 (float)(i + 1) / (float)dim);
+            }
+
             float pred = level->beliefs.mean[i];
             float var = level->errors.precision[i] > 0.0f ?
                         1.0f / level->errors.precision[i] : 1.0f;
@@ -357,6 +427,10 @@ int fep_compute_bayes_factor(
 ) {
     if (!sys || !model1 || !model2 || !observations || !log_bf) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_evidence_heartbeat("fep_evidence_fep_compute_bayes_fa", 0.0f);
+
+
     fep_evidence_result_t result1, result2;
 
     fep_compute_log_evidence(sys, model1, observations, n_obs, obs_dim, &result1);
@@ -383,6 +457,10 @@ int fep_compare_models(
     if (!sys || !models || !observations || !scores) return -1;
     if (n_models == 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_evidence_heartbeat("fep_evidence_fep_compare_models", 0.0f);
+
+
     float* log_evidences = (float*)nimcp_calloc(n_models, sizeof(float));
     if (!log_evidences) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "log_evidences is NULL");
@@ -392,6 +470,12 @@ int fep_compare_models(
 
     /* Compute log evidence for each model (no lock - fep_compute_log_evidence locks internally) */
     for (size_t m = 0; m < n_models; m++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((m & 0xFF) == 0 && n_models > 256) {
+            fep_evidence_heartbeat("fep_evidence_loop",
+                             (float)(m + 1) / (float)n_models);
+        }
+
         fep_evidence_result_t result;
         fep_compute_log_evidence(sys, models[m], observations, n_obs, obs_dim, &result);
 
@@ -406,6 +490,12 @@ int fep_compare_models(
     float log_marginal = logsumexp(log_evidences, n_models);
 
     for (size_t m = 0; m < n_models; m++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((m & 0xFF) == 0 && n_models > 256) {
+            fep_evidence_heartbeat("fep_evidence_loop",
+                             (float)(m + 1) / (float)n_models);
+        }
+
         scores[m].posterior_probability = safe_exp(log_evidences[m] - log_marginal);
     }
 
@@ -426,6 +516,10 @@ int fep_select_best_model(
     uint32_t* best_model_id
 ) {
     if (!sys || !scores || !best_model_id || n_models == 0) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    fep_evidence_heartbeat("fep_evidence_fep_select_best_mode", 0.0f);
+
 
     uint32_t best_id = 0;
     float best_prob = scores[0].posterior_probability;
@@ -457,10 +551,20 @@ int fep_model_average_prediction(
     if (n_models == 0 || pred_dim == 0) return -1;
 
     /* Initialize to zero */
+    /* Phase 8: Heartbeat at operation start */
+    fep_evidence_heartbeat("fep_evidence_fep_model_average_pr", 0.0f);
+
+
     memset(averaged_prediction, 0, pred_dim * sizeof(float));
 
     /* Weighted average: prediction = Σ p(M|o) * E[s|M,o] */
     for (size_t m = 0; m < n_models; m++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((m & 0xFF) == 0 && n_models > 256) {
+            fep_evidence_heartbeat("fep_evidence_loop",
+                             (float)(m + 1) / (float)n_models);
+        }
+
         float weight = scores[m].posterior_probability;
 
         if (models[m] && models[m]->num_levels > 0) {
@@ -468,6 +572,12 @@ int fep_model_average_prediction(
             size_t dim = pred_dim < beliefs->dim ? pred_dim : beliefs->dim;
 
             for (size_t i = 0; i < dim; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && dim > 256) {
+                    fep_evidence_heartbeat("fep_evidence_loop",
+                                     (float)(i + 1) / (float)dim);
+                }
+
                 averaged_prediction[i] += weight * beliefs->mean[i];
             }
         }
@@ -482,6 +592,10 @@ int fep_model_average_prediction(
 
 int fep_evidence_connect(fep_evidence_system_t* evidence, fep_system_t* fep) {
     if (!evidence || !fep) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    fep_evidence_heartbeat("fep_evidence_connect", 0.0f);
+
 
     nimcp_platform_mutex_lock(evidence->mutex);
     evidence->fep_system = fep;
@@ -501,6 +615,10 @@ int fep_evidence_set_reference(
     if (!sys || !reference || !observations) return -1;
 
     /* Compute reference evidence BEFORE locking (avoids deadlock) */
+    /* Phase 8: Heartbeat at operation start */
+    fep_evidence_heartbeat("fep_evidence_set_reference", 0.0f);
+
+
     fep_evidence_result_t result;
     fep_compute_log_evidence(sys, reference, observations, n_obs, obs_dim, &result);
 
@@ -521,6 +639,10 @@ int fep_evidence_set_reference(
 int fep_evidence_connect_bio_async(fep_evidence_system_t* sys) {
     if (!sys) return -1;
     if (sys->bio_async_enabled) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    fep_evidence_heartbeat("fep_evidence_connect_bio_async", 0.0f);
+
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_EVIDENCE,
@@ -543,6 +665,10 @@ int fep_evidence_disconnect_bio_async(fep_evidence_system_t* sys) {
     if (!sys) return -1;
     if (!sys->bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_evidence_heartbeat("fep_evidence_disconnect_bio_async", 0.0f);
+
+
     if (sys->bio_ctx) {
         bio_router_unregister_module(sys->bio_ctx);
         sys->bio_ctx = NULL;
@@ -552,6 +678,10 @@ int fep_evidence_disconnect_bio_async(fep_evidence_system_t* sys) {
 }
 
 bool fep_evidence_is_bio_async_connected(const fep_evidence_system_t* sys) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_evidence_heartbeat("fep_evidence_is_bio_async_connect", 0.0f);
+
+
     return sys && sys->bio_async_enabled;
 }
 
@@ -562,10 +692,18 @@ bool fep_evidence_is_bio_async_connected(const fep_evidence_system_t* sys) {
 int fep_evidence_get_stats(const fep_evidence_system_t* sys, fep_evidence_stats_t* stats) {
     if (!sys || !stats) return -1;
     *stats = sys->stats;
+    /* Phase 8: Heartbeat at operation start */
+    fep_evidence_heartbeat("fep_evidence_get_stats", 0.0f);
+
+
     return 0;
 }
 
 fep_bf_strength_t fep_interpret_bayes_factor(float log_bf) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_evidence_heartbeat("fep_evidence_fep_interpret_bayes_", 0.0f);
+
+
     float bf = safe_exp(log_bf);
 
     if (bf < FEP_EVIDENCE_BF_WEAK) return BF_STRENGTH_NONE;
@@ -609,9 +747,19 @@ const char* fep_evidence_method_to_string(fep_evidence_method_t method) {
  */
 int fep_evidence_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    fep_evidence_heartbeat("fep_evidence_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "FEP_Evidence_System");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                fep_evidence_heartbeat("fep_evidence_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("FEP Evidence self-knowledge: %s", self->observations[i]);
         }
     }

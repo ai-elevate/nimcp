@@ -63,7 +63,7 @@ static nimcp_health_agent_t* g_omni_wm_plasticity_bridge_health_agent = NULL;
  * @brief Set health agent for omni_wm_plasticity_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void omni_wm_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void omni_wm_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_omni_wm_plasticity_bridge_health_agent = agent;
 }
 
@@ -207,6 +207,12 @@ static void free_spike_seq_buffer(omni_wm_plasticity_bridge_t* bridge) {
 
     /* Free any internal arrays in sequences */
     for (uint32_t i = 0; i < bridge->spike_seq_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->spike_seq_count > 256) {
+            omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_loop",
+                             (float)(i + 1) / (float)bridge->spike_seq_count);
+        }
+
         nimcp_free(bridge->spike_seq_buffer[i].neuron_ids);
         nimcp_free(bridge->spike_seq_buffer[i].spike_times_ms);
     }
@@ -427,6 +433,12 @@ static nimcp_error_t process_stdp_events(omni_wm_plasticity_bridge_t* bridge) {
 
     /* Accumulate weight changes into encoder deltas */
     for (uint32_t i = 0; i < bridge->stdp_event_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->stdp_event_count > 256) {
+            omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_loop",
+                             (float)(i + 1) / (float)bridge->stdp_event_count);
+        }
+
         wm_stdp_event_t* event = &bridge->stdp_event_buffer[i];
 
         /* Skip small changes */
@@ -449,6 +461,12 @@ static nimcp_error_t process_stdp_events(omni_wm_plasticity_bridge_t* bridge) {
     /* Compute delta norm */
     float norm_sq = 0.0f;
     for (uint32_t i = 0; i < bridge->encoder_delta_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->encoder_delta_dim > 256) {
+            omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_loop",
+                             (float)(i + 1) / (float)bridge->encoder_delta_dim);
+        }
+
         norm_sq += bridge->accumulated_encoder_deltas[i] * bridge->accumulated_encoder_deltas[i];
     }
     bridge->accumulated_delta_norm = sqrtf(norm_sq);
@@ -486,6 +504,12 @@ static nimcp_error_t process_spike_sequences(omni_wm_plasticity_bridge_t* bridge
 
     /* Process each sequence */
     for (uint32_t s = 0; s < bridge->spike_seq_count; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && bridge->spike_seq_count > 256) {
+            omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_loop",
+                             (float)(s + 1) / (float)bridge->spike_seq_count);
+        }
+
         wm_spike_sequence_t* seq = &bridge->spike_seq_buffer[s];
 
         /* Skip sequences too short */
@@ -660,6 +684,10 @@ static nimcp_error_t handle_stp_state(const void* msg, size_t msg_size,
 nimcp_error_t omni_wm_plasticity_bridge_default_config(
     omni_wm_plasticity_bridge_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(omni_wm_plasticity_bridge_config_t));
@@ -720,6 +748,10 @@ nimcp_error_t omni_wm_plasticity_bridge_default_config(
 nimcp_error_t omni_wm_plasticity_bridge_validate_config(
     const omni_wm_plasticity_bridge_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_validate_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* Validate sensitivity range */
@@ -751,6 +783,10 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
     const omni_wm_plasticity_bridge_config_t* config)
 {
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_create", 0.0f);
+
+
     omni_wm_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_wm_plasticity_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate WM plasticity bridge");
@@ -834,6 +870,10 @@ void omni_wm_plasticity_bridge_destroy(omni_wm_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         omni_wm_plasticity_bridge_disconnect_bio_async(bridge);
     }
@@ -860,6 +900,10 @@ void omni_wm_plasticity_bridge_destroy(omni_wm_plasticity_bridge_t* bridge) {
 }
 
 nimcp_error_t omni_wm_plasticity_bridge_reset(omni_wm_plasticity_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_reset", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -906,6 +950,10 @@ nimcp_error_t omni_wm_plasticity_bridge_connect(
     plasticity_coordinator_t* coordinator,
     neural_network_t snn)
 {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_connect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_NULL_POINTER, "world_model is NULL (required)");
 
@@ -934,6 +982,10 @@ nimcp_error_t omni_wm_plasticity_bridge_connect_world_model(
     omni_wm_plasticity_bridge_t* bridge,
     omni_world_model_t* world_model)
 {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_connect_world_model", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_NULL_POINTER, "world_model is NULL");
 
@@ -949,6 +1001,10 @@ nimcp_error_t omni_wm_plasticity_bridge_connect_stdp_bridge(
     omni_wm_plasticity_bridge_t* bridge,
     stdp_omni_bridge_t stdp_bridge)
 {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_connect_stdp_bridge", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(stdp_bridge, NIMCP_ERROR_NULL_POINTER, "stdp_bridge is NULL");
 
@@ -963,6 +1019,10 @@ nimcp_error_t omni_wm_plasticity_bridge_connect_coordinator(
     omni_wm_plasticity_bridge_t* bridge,
     plasticity_coordinator_t* coordinator)
 {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_connect_coordinator", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(coordinator, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
@@ -977,6 +1037,10 @@ nimcp_error_t omni_wm_plasticity_bridge_connect_snn(
     omni_wm_plasticity_bridge_t* bridge,
     neural_network_t snn)
 {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_connect_snn", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(snn, NIMCP_ERROR_NULL_POINTER, "snn is NULL");
 
@@ -989,6 +1053,10 @@ nimcp_error_t omni_wm_plasticity_bridge_connect_snn(
 
 bool omni_wm_plasticity_bridge_is_connected(const omni_wm_plasticity_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_is_connected", 0.0f);
+
+
     return (bridge->world_model != NULL);
 }
 
@@ -1000,6 +1068,10 @@ nimcp_error_t omni_wm_plasticity_bridge_update(
     omni_wm_plasticity_bridge_t* bridge,
     float dt)
 {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(dt > 0.0f, NIMCP_ERROR_INVALID_PARAM, "dt must be positive");
 
@@ -1056,6 +1128,10 @@ nimcp_error_t omni_wm_plasticity_bridge_on_stdp_event(
     omni_wm_plasticity_bridge_t* bridge,
     const wm_stdp_event_t* event)
 {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_on_stdp_event", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(event, NIMCP_ERROR_NULL_POINTER, "event is NULL");
 
@@ -1081,6 +1157,10 @@ nimcp_error_t omni_wm_plasticity_bridge_on_stdp_event(
 nimcp_error_t omni_wm_plasticity_bridge_apply_stdp_to_rssm(
     omni_wm_plasticity_bridge_t* bridge)
 {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_apply_stdp_to_rssm", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1108,6 +1188,10 @@ nimcp_error_t omni_wm_plasticity_bridge_get_stdp_modulation(
     omni_wm_plasticity_bridge_t* bridge,
     wm_to_plasticity_modulation_t* out_modulation)
 {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_get_stdp_modulation", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(out_modulation, NIMCP_ERROR_NULL_POINTER, "out_modulation is NULL");
 
@@ -1126,6 +1210,10 @@ nimcp_error_t omni_wm_plasticity_bridge_set_prediction_error(
     float lateral_pe,
     float precision)
 {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_set_prediction_error", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1183,6 +1271,10 @@ nimcp_error_t omni_wm_plasticity_bridge_train_from_spikes(
     omni_wm_plasticity_bridge_t* bridge,
     const wm_spike_sequence_t* sequence)
 {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_train_from_spikes", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(sequence, NIMCP_ERROR_NULL_POINTER, "sequence is NULL");
 
@@ -1230,6 +1322,10 @@ nimcp_error_t omni_wm_plasticity_bridge_predict_snn_activity(
     uint32_t horizon_ms,
     wm_to_snn_prediction_t* out_prediction)
 {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_predict_snn_activity", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(out_prediction, NIMCP_ERROR_NULL_POINTER, "out_prediction is NULL");
 
@@ -1261,6 +1357,10 @@ nimcp_error_t omni_wm_plasticity_bridge_on_bcm_threshold_shift(
     omni_wm_plasticity_bridge_t* bridge,
     float new_threshold)
 {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_on_bcm_threshold_shi", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1290,6 +1390,10 @@ nimcp_error_t omni_wm_plasticity_bridge_apply_eligibility(
     uint32_t trace_count,
     float reward_signal)
 {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_apply_eligibility", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(eligibility_traces, NIMCP_ERROR_NULL_POINTER, "eligibility_traces is NULL");
     if (trace_count == 0) return NIMCP_SUCCESS;
@@ -1329,6 +1433,12 @@ nimcp_error_t omni_wm_plasticity_bridge_apply_eligibility(
     /* Recompute delta norm */
     float norm_sq = 0.0f;
     for (uint32_t i = 0; i < bridge->encoder_delta_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->encoder_delta_dim > 256) {
+            omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_loop",
+                             (float)(i + 1) / (float)bridge->encoder_delta_dim);
+        }
+
         norm_sq += bridge->accumulated_encoder_deltas[i] * bridge->accumulated_encoder_deltas[i];
     }
     bridge->accumulated_delta_norm = sqrtf(norm_sq);
@@ -1348,6 +1458,10 @@ nimcp_error_t omni_wm_plasticity_bridge_update_stp_state(
     float depression,
     float utilization)
 {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_update_stp_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1386,6 +1500,10 @@ nimcp_error_t omni_wm_plasticity_bridge_get_plasticity_state(
     omni_wm_plasticity_bridge_t* bridge,
     plasticity_to_wm_state_t* out_state)
 {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_get_plasticity_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(out_state, NIMCP_ERROR_NULL_POINTER, "out_state is NULL");
 
@@ -1422,6 +1540,10 @@ const plasticity_to_omni_wm_effects_t* omni_wm_plasticity_bridge_get_plasticity_
         return NULL;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_get_plasticity_effec", 0.0f);
+
+
     return &bridge->plasticity_to_wm;
 }
 
@@ -1435,6 +1557,10 @@ const omni_wm_to_plasticity_effects_t* omni_wm_plasticity_bridge_get_wm_effects(
         return NULL;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_get_wm_effects", 0.0f);
+
+
     return &bridge->wm_to_plasticity;
 }
 
@@ -1442,6 +1568,10 @@ nimcp_error_t omni_wm_plasticity_bridge_get_stats(
     const omni_wm_plasticity_bridge_t* bridge,
     omni_wm_plasticity_bridge_stats_t* stats)
 {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
@@ -1454,6 +1584,10 @@ nimcp_error_t omni_wm_plasticity_bridge_get_stats(
 }
 
 nimcp_error_t omni_wm_plasticity_bridge_reset_stats(omni_wm_plasticity_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_reset_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1470,6 +1604,10 @@ nimcp_error_t omni_wm_plasticity_bridge_reset_stats(omni_wm_plasticity_bridge_t*
 nimcp_error_t omni_wm_plasticity_bridge_connect_bio_async(
     omni_wm_plasticity_bridge_t* bridge)
 {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_connect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1505,6 +1643,10 @@ nimcp_error_t omni_wm_plasticity_bridge_connect_bio_async(
 nimcp_error_t omni_wm_plasticity_bridge_disconnect_bio_async(
     omni_wm_plasticity_bridge_t* bridge)
 {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_disconnect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1522,6 +1664,10 @@ nimcp_error_t omni_wm_plasticity_bridge_disconnect_bio_async(
 bool omni_wm_plasticity_bridge_is_bio_async_connected(
     const omni_wm_plasticity_bridge_t* bridge)
 {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_is_bio_async_connect", 0.0f);
+
+
     return bridge_base_is_bio_async_connected(bridge ? &bridge->base : NULL);
 }
 

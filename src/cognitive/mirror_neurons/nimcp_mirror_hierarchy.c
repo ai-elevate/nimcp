@@ -45,7 +45,7 @@ static nimcp_health_agent_t* g_mirror_hierarchy_health_agent = NULL;
  * @brief Set health agent for mirror_hierarchy heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_hierarchy_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_hierarchy_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_hierarchy_health_agent = agent;
 }
 
@@ -118,6 +118,12 @@ static inline float exp_decay(float dt_ms, float tau_ms) {
  */
 static goal_motor_binding_t* find_binding(goal_representation_t* goal, uint32_t motor_id) {
     for (uint32_t i = 0; i < goal->num_bindings; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && goal->num_bindings > 256) {
+            mirror_hierarchy_heartbeat("mirror_hiera_loop",
+                             (float)(i + 1) / (float)goal->num_bindings);
+        }
+
         if (goal->bindings[i].motor_id == motor_id) {
             return &goal->bindings[i];
         }
@@ -134,6 +140,12 @@ static void softmax_goals(mirror_hierarchy_t hierarchy) {
     // Find max for numerical stability
     float max_act = -1e10F;
     for (uint32_t i = 0; i < hierarchy->num_goals; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hierarchy->num_goals > 256) {
+            mirror_hierarchy_heartbeat("mirror_hiera_loop",
+                             (float)(i + 1) / (float)hierarchy->num_goals);
+        }
+
         if (hierarchy->goals[i].activation > max_act) {
             max_act = hierarchy->goals[i].activation;
         }
@@ -142,12 +154,24 @@ static void softmax_goals(mirror_hierarchy_t hierarchy) {
     // Compute exp sum
     float exp_sum = 0.0F;
     for (uint32_t i = 0; i < hierarchy->num_goals; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hierarchy->num_goals > 256) {
+            mirror_hierarchy_heartbeat("mirror_hiera_loop",
+                             (float)(i + 1) / (float)hierarchy->num_goals);
+        }
+
         exp_sum += expf(hierarchy->goals[i].activation - max_act);
     }
 
     // Normalize
     if (exp_sum > 0.0F) {
         for (uint32_t i = 0; i < hierarchy->num_goals; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && hierarchy->num_goals > 256) {
+                mirror_hierarchy_heartbeat("mirror_hiera_loop",
+                                 (float)(i + 1) / (float)hierarchy->num_goals);
+            }
+
             hierarchy->goals[i].activation =
                 expf(hierarchy->goals[i].activation - max_act) / exp_sum;
         }
@@ -159,6 +183,10 @@ static void softmax_goals(mirror_hierarchy_t hierarchy) {
 //=============================================================================
 
 mirror_hierarchy_config_t mirror_hierarchy_get_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hierarchy_heartbeat("mirror_hiera_get_default_config", 0.0f);
+
+
     mirror_hierarchy_config_t config = {
         // Capacity
         .max_goals = NIMCP_HIERARCHY_MAX_GOALS,
@@ -187,6 +215,10 @@ mirror_hierarchy_config_t mirror_hierarchy_get_default_config(void) {
 }
 
 mirror_hierarchy_t mirror_hierarchy_create(const mirror_hierarchy_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hierarchy_heartbeat("mirror_hiera_create", 0.0f);
+
+
     LOG_DEBUG("Creating mirror hierarchy system");
     mirror_hierarchy_t hierarchy = (mirror_hierarchy_t)nimcp_calloc(1, sizeof(struct mirror_hierarchy_system));
     NIMCP_API_CHECK_ALLOC(hierarchy, "Failed to allocate mirror hierarchy system");
@@ -232,6 +264,10 @@ mirror_hierarchy_t mirror_hierarchy_create(const mirror_hierarchy_config_t* conf
 void mirror_hierarchy_destroy(mirror_hierarchy_t hierarchy) {
     if (!hierarchy) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hierarchy_heartbeat("mirror_hiera_destroy", 0.0f);
+
+
     LOG_DEBUG("Destroying mirror hierarchy with %u goals, %u motors",
               hierarchy->num_goals, hierarchy->num_motors);
 
@@ -254,6 +290,10 @@ uint32_t mirror_hierarchy_create_goal(mirror_hierarchy_t hierarchy,
 
             return UINT32_MAX;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hierarchy_heartbeat("mirror_hiera_create_goal", 0.0f);
+
 
     uint32_t goal_id = hierarchy->num_goals++;
     goal_representation_t* goal = &hierarchy->goals[goal_id];
@@ -291,12 +331,20 @@ bool mirror_hierarchy_get_goal(mirror_hierarchy_t hierarchy, uint32_t goal_id,
     }
 
     *out_goal = hierarchy->goals[goal_id];
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hierarchy_heartbeat("mirror_hiera_get_goal", 0.0f);
+
+
     return true;
 }
 
 void mirror_hierarchy_activate_goal(mirror_hierarchy_t hierarchy,
                                      uint32_t goal_id, float activation) {
     if (!hierarchy || goal_id >= hierarchy->num_goals) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hierarchy_heartbeat("mirror_hiera_activate_goal", 0.0f);
+
 
     goal_representation_t* goal = &hierarchy->goals[goal_id];
 
@@ -320,6 +368,10 @@ void mirror_hierarchy_select_goal(mirror_hierarchy_t hierarchy, int32_t goal_id)
     if (!hierarchy) return;
 
     // Clear previous selection
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hierarchy_heartbeat("mirror_hiera_select_goal", 0.0f);
+
+
     if (hierarchy->selected_goal >= 0 &&
         (uint32_t)hierarchy->selected_goal < hierarchy->num_goals) {
         hierarchy->goals[hierarchy->selected_goal].is_selected = false;
@@ -347,6 +399,10 @@ uint32_t mirror_hierarchy_get_selected_goal(mirror_hierarchy_t hierarchy) {
 
             return UINT32_MAX;
     }
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hierarchy_heartbeat("mirror_hiera_get_selected_goal", 0.0f);
+
+
     return (uint32_t)hierarchy->selected_goal;
 }
 
@@ -364,6 +420,10 @@ uint32_t mirror_hierarchy_create_motor(mirror_hierarchy_t hierarchy,
 
             return UINT32_MAX;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hierarchy_heartbeat("mirror_hiera_create_motor", 0.0f);
+
 
     uint32_t motor_id = hierarchy->num_motors++;
     motor_representation_t* motor = &hierarchy->motors[motor_id];
@@ -400,12 +460,20 @@ bool mirror_hierarchy_get_motor(mirror_hierarchy_t hierarchy, uint32_t motor_id,
     }
 
     *out_motor = hierarchy->motors[motor_id];
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hierarchy_heartbeat("mirror_hiera_get_motor", 0.0f);
+
+
     return true;
 }
 
 void mirror_hierarchy_activate_motor(mirror_hierarchy_t hierarchy,
                                       uint32_t motor_id, float activation) {
     if (!hierarchy || motor_id >= hierarchy->num_motors) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hierarchy_heartbeat("mirror_hiera_activate_motor", 0.0f);
+
 
     motor_representation_t* motor = &hierarchy->motors[motor_id];
 
@@ -426,6 +494,12 @@ void mirror_hierarchy_activate_motor(mirror_hierarchy_t hierarchy,
     if (motor->activation > MOTOR_ACTIVE_THRESHOLD) {
         // Find goals bound to this motor and boost them
         for (uint32_t g = 0; g < hierarchy->num_goals; g++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((g & 0xFF) == 0 && hierarchy->num_goals > 256) {
+                mirror_hierarchy_heartbeat("mirror_hiera_loop",
+                                 (float)(g + 1) / (float)hierarchy->num_goals);
+            }
+
             goal_representation_t* goal = &hierarchy->goals[g];
             goal_motor_binding_t* binding = find_binding(goal, motor_id);
 
@@ -470,6 +544,12 @@ bool mirror_hierarchy_create_binding(mirror_hierarchy_t hierarchy,
             return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hierarchy_heartbeat("mirror_hiera_create_binding", 0.0f);
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hierarchy_heartbeat("mirror_hiera_set_motor_params", 0.0f);
+
     goal_representation_t* goal = &hierarchy->goals[goal_id];
 
     // Check if binding already exists
@@ -504,6 +584,10 @@ void mirror_hierarchy_strengthen_binding(mirror_hierarchy_t hierarchy,
                                           float delta) {
     if (!hierarchy || goal_id >= hierarchy->num_goals) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hierarchy_heartbeat("mirror_hiera_strengthen_binding", 0.0f);
+
+
     goal_representation_t* goal = &hierarchy->goals[goal_id];
     goal_motor_binding_t* binding = find_binding(goal, motor_id);
 
@@ -525,6 +609,10 @@ float mirror_hierarchy_get_binding(mirror_hierarchy_t hierarchy,
                                     uint32_t goal_id,
                                     uint32_t motor_id) {
     if (!hierarchy || goal_id >= hierarchy->num_goals) return -1.0F;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hierarchy_heartbeat("mirror_hiera_get_binding", 0.0f);
+
 
     goal_representation_t* goal = &hierarchy->goals[goal_id];
     goal_motor_binding_t* binding = find_binding(goal, motor_id);
@@ -550,11 +638,20 @@ uint32_t mirror_hierarchy_infer_goal(mirror_hierarchy_t hierarchy,
             return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hierarchy_heartbeat("mirror_hiera_infer_goal", 0.0f);
+
     // Compute likelihood for each goal given this motor
     float* likelihoods = (float*)alloca(hierarchy->num_goals * sizeof(float));
     float total_likelihood = 0.0F;
 
     for (uint32_t g = 0; g < hierarchy->num_goals; g++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((g & 0xFF) == 0 && hierarchy->num_goals > 256) {
+            mirror_hierarchy_heartbeat("mirror_hiera_loop",
+                             (float)(g + 1) / (float)hierarchy->num_goals);
+        }
+
         goal_representation_t* goal = &hierarchy->goals[g];
         goal_motor_binding_t* binding = find_binding(goal, motor_id);
 
@@ -569,6 +666,12 @@ uint32_t mirror_hierarchy_infer_goal(mirror_hierarchy_t hierarchy,
     // Normalize to probabilities
     if (total_likelihood > 0.0F) {
         for (uint32_t g = 0; g < hierarchy->num_goals; g++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((g & 0xFF) == 0 && hierarchy->num_goals > 256) {
+                mirror_hierarchy_heartbeat("mirror_hiera_loop",
+                                 (float)(g + 1) / (float)hierarchy->num_goals);
+            }
+
             likelihoods[g] /= total_likelihood;
         }
     }
@@ -580,6 +683,12 @@ uint32_t mirror_hierarchy_infer_goal(mirror_hierarchy_t hierarchy,
             // Find insertion point (sorted descending)
             uint32_t insert_pos = count;
             for (uint32_t i = 0; i < count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && count > 256) {
+                    mirror_hierarchy_heartbeat("mirror_hiera_loop",
+                                     (float)(i + 1) / (float)count);
+                }
+
                 if (likelihoods[g] > out_probs[i]) {
                     insert_pos = i;
                     break;
@@ -621,12 +730,21 @@ uint32_t mirror_hierarchy_predict_motor(mirror_hierarchy_t hierarchy,
             return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hierarchy_heartbeat("mirror_hiera_predict_motor", 0.0f);
+
     goal_representation_t* goal = &hierarchy->goals[goal_id];
     uint32_t count = 0;
 
     // Normalize binding strengths to probabilities
     float total_strength = 0.0F;
     for (uint32_t i = 0; i < goal->num_bindings; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && goal->num_bindings > 256) {
+            mirror_hierarchy_heartbeat("mirror_hiera_loop",
+                             (float)(i + 1) / (float)goal->num_bindings);
+        }
+
         total_strength += goal->bindings[i].binding_strength;
     }
 
@@ -639,6 +757,12 @@ uint32_t mirror_hierarchy_predict_motor(mirror_hierarchy_t hierarchy,
         // Find insertion point (sorted descending)
         uint32_t insert_pos = count;
         for (uint32_t i = 0; i < count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && count > 256) {
+                mirror_hierarchy_heartbeat("mirror_hiera_loop",
+                                 (float)(i + 1) / (float)count);
+            }
+
             if (prob > out_probs[i]) {
                 insert_pos = i;
                 break;
@@ -680,10 +804,20 @@ uint32_t mirror_hierarchy_infer_goal_contextual(mirror_hierarchy_t hierarchy,
             return UINT32_MAX;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hierarchy_heartbeat("mirror_hiera_infer_goal_contextua", 0.0f);
+
+
     uint32_t best_goal = UINT32_MAX;
     float best_score = -1.0F;
 
     for (uint32_t g = 0; g < hierarchy->num_goals; g++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((g & 0xFF) == 0 && hierarchy->num_goals > 256) {
+            mirror_hierarchy_heartbeat("mirror_hiera_loop",
+                             (float)(g + 1) / (float)hierarchy->num_goals);
+        }
+
         goal_representation_t* goal = &hierarchy->goals[g];
         goal_motor_binding_t* binding = find_binding(goal, motor_id);
 
@@ -699,6 +833,12 @@ uint32_t mirror_hierarchy_infer_goal_contextual(mirror_hierarchy_t hierarchy,
                                    num_features : goal->num_context_features;
 
             for (uint32_t f = 0; f < min_features; f++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((f & 0xFF) == 0 && min_features > 256) {
+                    mirror_hierarchy_heartbeat("mirror_hiera_loop",
+                                     (float)(f + 1) / (float)min_features);
+                }
+
                 similarity += context_features[f] * goal->context_features[f];
             }
 
@@ -730,6 +870,10 @@ uint32_t mirror_hierarchy_infer_goal_contextual(mirror_hierarchy_t hierarchy,
 void mirror_hierarchy_step(mirror_hierarchy_t hierarchy, float dt_ms) {
     if (!hierarchy) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hierarchy_heartbeat("mirror_hiera_step", 0.0f);
+
+
     const mirror_hierarchy_config_t* cfg = &hierarchy->config;
 
     // Decay factors
@@ -738,6 +882,12 @@ void mirror_hierarchy_step(mirror_hierarchy_t hierarchy, float dt_ms) {
 
     // Update goals
     for (uint32_t g = 0; g < hierarchy->num_goals; g++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((g & 0xFF) == 0 && hierarchy->num_goals > 256) {
+            mirror_hierarchy_heartbeat("mirror_hiera_loop",
+                             (float)(g + 1) / (float)hierarchy->num_goals);
+        }
+
         goal_representation_t* goal = &hierarchy->goals[g];
 
         // Decay activation
@@ -763,6 +913,12 @@ void mirror_hierarchy_step(mirror_hierarchy_t hierarchy, float dt_ms) {
 
         // Decay unused bindings
         for (uint32_t b = 0; b < goal->num_bindings; b++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((b & 0xFF) == 0 && goal->num_bindings > 256) {
+                mirror_hierarchy_heartbeat("mirror_hiera_loop",
+                                 (float)(b + 1) / (float)goal->num_bindings);
+            }
+
             goal_motor_binding_t* binding = &goal->bindings[b];
             binding->binding_strength -= cfg->binding_decay_rate * (dt_ms / 1000.0F);
 
@@ -785,6 +941,12 @@ void mirror_hierarchy_step(mirror_hierarchy_t hierarchy, float dt_ms) {
 
     // Update motors
     for (uint32_t m = 0; m < hierarchy->num_motors; m++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((m & 0xFF) == 0 && hierarchy->num_motors > 256) {
+            mirror_hierarchy_heartbeat("mirror_hiera_loop",
+                             (float)(m + 1) / (float)hierarchy->num_motors);
+        }
+
         motor_representation_t* motor = &hierarchy->motors[m];
 
         // Decay activation
@@ -805,6 +967,12 @@ void mirror_hierarchy_step(mirror_hierarchy_t hierarchy, float dt_ms) {
         // Update primary goal association
         float max_evidence = 0.0F;
         for (uint32_t g = 0; g < hierarchy->num_goals; g++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((g & 0xFF) == 0 && hierarchy->num_goals > 256) {
+                mirror_hierarchy_heartbeat("mirror_hiera_loop",
+                                 (float)(g + 1) / (float)hierarchy->num_goals);
+            }
+
             goal_representation_t* goal = &hierarchy->goals[g];
             goal_motor_binding_t* binding = find_binding(goal, m);
 
@@ -821,6 +989,12 @@ void mirror_hierarchy_step(mirror_hierarchy_t hierarchy, float dt_ms) {
         goal_representation_t* selected = &hierarchy->goals[hierarchy->selected_goal];
 
         for (uint32_t b = 0; b < selected->num_bindings; b++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((b & 0xFF) == 0 && selected->num_bindings > 256) {
+                mirror_hierarchy_heartbeat("mirror_hiera_loop",
+                                 (float)(b + 1) / (float)selected->num_bindings);
+            }
+
             goal_motor_binding_t* binding = &selected->bindings[b];
             motor_representation_t* motor = &hierarchy->motors[binding->motor_id];
 
@@ -837,6 +1011,10 @@ void mirror_hierarchy_step(mirror_hierarchy_t hierarchy, float dt_ms) {
 bool mirror_hierarchy_get_stats(mirror_hierarchy_t hierarchy, mirror_hierarchy_stats_t* stats) {
     if (!hierarchy || !stats) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hierarchy_heartbeat("mirror_hiera_get_stats", 0.0f);
+
+
     memset(stats, 0, sizeof(mirror_hierarchy_stats_t));
 
     stats->num_goals = hierarchy->num_goals;
@@ -847,6 +1025,12 @@ bool mirror_hierarchy_get_stats(mirror_hierarchy_t hierarchy, mirror_hierarchy_s
     float sum_motor_act = 0.0F;
 
     for (uint32_t g = 0; g < hierarchy->num_goals; g++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((g & 0xFF) == 0 && hierarchy->num_goals > 256) {
+            mirror_hierarchy_heartbeat("mirror_hiera_loop",
+                             (float)(g + 1) / (float)hierarchy->num_goals);
+        }
+
         goal_representation_t* goal = &hierarchy->goals[g];
 
         stats->num_bindings += goal->num_bindings;
@@ -858,6 +1042,12 @@ bool mirror_hierarchy_get_stats(mirror_hierarchy_t hierarchy, mirror_hierarchy_s
     }
 
     for (uint32_t m = 0; m < hierarchy->num_motors; m++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((m & 0xFF) == 0 && hierarchy->num_motors > 256) {
+            mirror_hierarchy_heartbeat("mirror_hiera_loop",
+                             (float)(m + 1) / (float)hierarchy->num_motors);
+        }
+
         motor_representation_t* motor = &hierarchy->motors[m];
 
         sum_motor_act += motor->activation;
@@ -895,6 +1085,10 @@ bool mirror_hierarchy_get_stats(mirror_hierarchy_t hierarchy, mirror_hierarchy_s
 void mirror_hierarchy_reset_stats(mirror_hierarchy_t hierarchy) {
     if (!hierarchy) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hierarchy_heartbeat("mirror_hiera_reset_stats", 0.0f);
+
+
     hierarchy->goal_inferences = 0;
     hierarchy->motor_predictions = 0;
     hierarchy->sum_prediction_error = 0.0F;
@@ -905,6 +1099,12 @@ void mirror_hierarchy_reset_stats(mirror_hierarchy_t hierarchy) {
     hierarchy->bindings_removed = 0;
 
     for (uint32_t g = 0; g < hierarchy->num_goals; g++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((g & 0xFF) == 0 && hierarchy->num_goals > 256) {
+            mirror_hierarchy_heartbeat("mirror_hiera_loop",
+                             (float)(g + 1) / (float)hierarchy->num_goals);
+        }
+
         goal_representation_t* goal = &hierarchy->goals[g];
         goal->inference_count = 0;
         goal->selection_count = 0;
@@ -912,11 +1112,23 @@ void mirror_hierarchy_reset_stats(mirror_hierarchy_t hierarchy) {
         goal->peak_activation = 0.0F;
 
         for (uint32_t b = 0; b < goal->num_bindings; b++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((b & 0xFF) == 0 && goal->num_bindings > 256) {
+                mirror_hierarchy_heartbeat("mirror_hiera_loop",
+                                 (float)(b + 1) / (float)goal->num_bindings);
+            }
+
             goal->bindings[b].usage_count = 0.0F;
         }
     }
 
     for (uint32_t m = 0; m < hierarchy->num_motors; m++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((m & 0xFF) == 0 && hierarchy->num_motors > 256) {
+            mirror_hierarchy_heartbeat("mirror_hiera_loop",
+                             (float)(m + 1) / (float)hierarchy->num_motors);
+        }
+
         motor_representation_t* motor = &hierarchy->motors[m];
         motor->execution_count = 0;
         motor->total_active_time = 0.0F;
@@ -930,9 +1142,19 @@ void mirror_hierarchy_reset_stats(mirror_hierarchy_t hierarchy) {
 
 int mirror_hierarchy_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hierarchy_heartbeat("mirror_hiera_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Mirror_Hierarchy");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                mirror_hierarchy_heartbeat("mirror_hiera_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Mirror hierarchy self-knowledge: %s", self->observations[i]);
         }
     }

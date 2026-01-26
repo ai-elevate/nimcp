@@ -30,7 +30,7 @@ static nimcp_health_agent_t* g_temporal_replay_health_agent = NULL;
  * @brief Set health agent for temporal_replay heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void temporal_replay_set_health_agent(nimcp_health_agent_t* agent) {
+void temporal_replay_set_health_agent(nimcp_health_agent_t* agent) {
     g_temporal_replay_health_agent = agent;
 }
 
@@ -124,6 +124,12 @@ static float get_max_priority(temporal_replay_t* replay) {
 
     float max_p = REPLAY_MIN_PRIORITY;
     for (uint32_t i = 0; i < replay->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && replay->count > 256) {
+            temporal_replay_heartbeat("temporal_rep_loop",
+                             (float)(i + 1) / (float)replay->count);
+        }
+
         float p = replay->transitions[i].td_error;
         if (p > max_p) {
             max_p = p;
@@ -163,6 +169,10 @@ static inline bool should_use_gpu(const temporal_replay_t* replay, uint32_t batc
  * ============================================================================ */
 
 int replay_default_config(replay_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_replay_default_confi", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     memset(config, 0, sizeof(*config));
@@ -192,6 +202,10 @@ int replay_default_config(replay_config_t* config) {
 }
 
 int replay_validate_config(const replay_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_replay_validate_conf", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
     NIMCP_CHECK_THROW(config->capacity > 0 && config->capacity <= REPLAY_MAX_CAPACITY,
                       NIMCP_ERROR_INVALID_PARAM, "capacity must be in range (0, REPLAY_MAX_CAPACITY]");
@@ -209,6 +223,10 @@ int replay_validate_config(const replay_config_t* config) {
  * ============================================================================ */
 
 temporal_replay_t* temporal_replay_create(const replay_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_create", 0.0f);
+
+
     replay_config_t default_config;
     if (!config) {
         replay_default_config(&default_config);
@@ -243,6 +261,12 @@ temporal_replay_t* temporal_replay_create(const replay_config_t* config) {
     }
 
     for (uint32_t i = 0; i < config->capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && config->capacity > 256) {
+            temporal_replay_heartbeat("temporal_rep_loop",
+                             (float)(i + 1) / (float)config->capacity);
+        }
+
         replay->transitions[i].state = nimcp_calloc(config->state_dim, sizeof(float));
         if (!replay->transitions[i].state) {
             NIMCP_LOG_ERROR("Failed to allocate state buffer");
@@ -323,8 +347,18 @@ void temporal_replay_destroy(temporal_replay_t* replay) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_destroy", 0.0f);
+
+
     if (replay->transitions) {
         for (uint32_t i = 0; i < replay->config.capacity; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && replay->config.capacity > 256) {
+                temporal_replay_heartbeat("temporal_rep_loop",
+                                 (float)(i + 1) / (float)replay->config.capacity);
+            }
+
             if (replay->transitions[i].state) {
                 nimcp_free(replay->transitions[i].state);
             }
@@ -344,6 +378,12 @@ void temporal_replay_destroy(temporal_replay_t* replay) {
 
     if (replay->sequences) {
         for (uint32_t i = 0; i < replay->num_sequences; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && replay->num_sequences > 256) {
+                temporal_replay_heartbeat("temporal_rep_loop",
+                                 (float)(i + 1) / (float)replay->num_sequences);
+            }
+
             if (replay->sequences[i].transition_indices) {
                 nimcp_free(replay->sequences[i].transition_indices);
             }
@@ -371,6 +411,10 @@ void temporal_replay_destroy(temporal_replay_t* replay) {
 }
 
 int temporal_replay_clear(temporal_replay_t* replay) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_clear", 0.0f);
+
+
     NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
 
     nimcp_mutex_lock(replay->mutex);
@@ -381,6 +425,12 @@ int temporal_replay_clear(temporal_replay_t* replay) {
     replay->total_priority = 0.0f;
 
     for (uint32_t i = 0; i < replay->num_sequences; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && replay->num_sequences > 256) {
+            temporal_replay_heartbeat("temporal_rep_loop",
+                             (float)(i + 1) / (float)replay->num_sequences);
+        }
+
         if (replay->sequences[i].transition_indices) {
             nimcp_free(replay->sequences[i].transition_indices);
             replay->sequences[i].transition_indices = NULL;
@@ -410,6 +460,10 @@ int temporal_replay_store(temporal_replay_t* replay,
                            float reward,
                            bool terminal,
                            float priority) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_store", 0.0f);
+
+
     NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
     NIMCP_CHECK_THROW(state, NIMCP_ERROR_INVALID_PARAM, "state is NULL");
 
@@ -459,6 +513,10 @@ uint32_t temporal_replay_start_sequence(temporal_replay_t* replay) {
         return UINT32_MAX;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_start_sequence", 0.0f);
+
+
     nimcp_mutex_lock(replay->mutex);
 
     if (replay->num_sequences >= replay->max_sequences) {
@@ -491,6 +549,10 @@ uint32_t temporal_replay_start_sequence(temporal_replay_t* replay) {
 }
 
 int temporal_replay_end_sequence(temporal_replay_t* replay) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_end_sequence", 0.0f);
+
+
     NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
 
     nimcp_mutex_lock(replay->mutex);
@@ -509,6 +571,10 @@ int temporal_replay_end_sequence(temporal_replay_t* replay) {
 int temporal_replay_update_priority(temporal_replay_t* replay,
                                      uint32_t index,
                                      float priority) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_update_priority", 0.0f);
+
+
     NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
     NIMCP_CHECK_THROW(index < replay->count, NIMCP_ERROR_INVALID_PARAM, "index out of range");
 
@@ -529,12 +595,22 @@ int temporal_replay_update_priorities(temporal_replay_t* replay,
                                        const uint32_t* indices,
                                        const float* priorities,
                                        uint32_t batch_size) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_update_priorities", 0.0f);
+
+
     NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
     NIMCP_CHECK_THROW(indices, NIMCP_ERROR_INVALID_PARAM, "indices is NULL");
     NIMCP_CHECK_THROW(priorities, NIMCP_ERROR_INVALID_PARAM, "priorities is NULL");
     NIMCP_CHECK_THROW(batch_size > 0, NIMCP_ERROR_INVALID_PARAM, "batch_size must be > 0");
 
     for (uint32_t i = 0; i < batch_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && batch_size > 256) {
+            temporal_replay_heartbeat("temporal_rep_loop",
+                             (float)(i + 1) / (float)batch_size);
+        }
+
         int ret = temporal_replay_update_priority(replay, indices[i], priorities[i]);
         if (ret != NIMCP_SUCCESS) {
             return ret;
@@ -552,6 +628,10 @@ int temporal_replay_sample(temporal_replay_t* replay,
                             replay_mode_t mode,
                             uint32_t batch_size,
                             replay_batch_t* batch) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_sample", 0.0f);
+
+
     NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
     NIMCP_CHECK_THROW(batch, NIMCP_ERROR_INVALID_PARAM, "batch output is NULL");
     NIMCP_CHECK_THROW(batch_size > 0, NIMCP_ERROR_INVALID_PARAM, "batch_size must be > 0");
@@ -574,6 +654,12 @@ int temporal_replay_sample(temporal_replay_t* replay,
     }
 
     for (uint32_t i = 0; i < actual_batch; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && actual_batch > 256) {
+            temporal_replay_heartbeat("temporal_rep_loop",
+                             (float)(i + 1) / (float)actual_batch);
+        }
+
         uint32_t idx;
 
         if (mode == REPLAY_MODE_PRIORITY && replay->config.use_priority_tree && total_p > 0.0f) {
@@ -641,6 +727,10 @@ int temporal_replay_sample(temporal_replay_t* replay,
 int temporal_replay_sample_sequence(temporal_replay_t* replay,
                                      uint32_t sequence_length,
                                      replay_batch_t* batch) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_sample_sequence", 0.0f);
+
+
     NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
     NIMCP_CHECK_THROW(batch, NIMCP_ERROR_INVALID_PARAM, "batch output is NULL");
     NIMCP_CHECK_THROW(sequence_length > 0, NIMCP_ERROR_INVALID_PARAM, "sequence_length must be > 0");
@@ -653,6 +743,12 @@ int temporal_replay_sample_sequence(temporal_replay_t* replay,
     uint32_t start_idx = (uint32_t)(((float)rand() / RAND_MAX) * max_start);
 
     for (uint32_t i = 0; i < actual_length; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && actual_length > 256) {
+            temporal_replay_heartbeat("temporal_rep_loop",
+                             (float)(i + 1) / (float)actual_length);
+        }
+
         uint32_t idx = (start_idx + i) % replay->config.capacity;
         replay_transition_t* t = get_transition(replay, idx);
 
@@ -687,6 +783,10 @@ int temporal_replay_forward_sweep(temporal_replay_t* replay,
                                    uint32_t start_idx,
                                    uint32_t length,
                                    replay_sweep_result_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_forward_sweep", 0.0f);
+
+
     NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
     NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result output is NULL");
     NIMCP_CHECK_THROW(length > 0, NIMCP_ERROR_INVALID_PARAM, "length must be > 0");
@@ -704,6 +804,12 @@ int temporal_replay_forward_sweep(temporal_replay_t* replay,
     }
 
     for (uint32_t i = 0; i < actual_length; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && actual_length > 256) {
+            temporal_replay_heartbeat("temporal_rep_loop",
+                             (float)(i + 1) / (float)actual_length);
+        }
+
         uint32_t idx = (start_idx + i) % replay->config.capacity;
         replay_transition_t* t = get_transition(replay, idx);
 
@@ -726,6 +832,10 @@ int temporal_replay_backward_sweep(temporal_replay_t* replay,
                                     uint32_t end_idx,
                                     uint32_t length,
                                     replay_sweep_result_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_backward_sweep", 0.0f);
+
+
     NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
     NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result output is NULL");
     NIMCP_CHECK_THROW(length > 0, NIMCP_ERROR_INVALID_PARAM, "length must be > 0");
@@ -743,6 +853,12 @@ int temporal_replay_backward_sweep(temporal_replay_t* replay,
     }
 
     for (uint32_t i = 0; i < actual_length; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && actual_length > 256) {
+            temporal_replay_heartbeat("temporal_rep_loop",
+                             (float)(i + 1) / (float)actual_length);
+        }
+
         uint32_t idx = end_idx - i;
         replay_transition_t* t = get_transition(replay, idx);
 
@@ -765,6 +881,10 @@ int temporal_replay_replay_sequence(temporal_replay_t* replay,
                                      uint32_t sequence_id,
                                      replay_mode_t mode,
                                      replay_sweep_result_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_replay_sequence", 0.0f);
+
+
     NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
     NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result output is NULL");
     NIMCP_CHECK_THROW(sequence_id < replay->num_sequences, NIMCP_ERROR_INVALID_PARAM, "sequence_id out of range");
@@ -787,6 +907,10 @@ int temporal_replay_replay_sequence(temporal_replay_t* replay,
 int temporal_replay_next(temporal_replay_t* replay,
                           float* state,
                           uint64_t* timestamp) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_next", 0.0f);
+
+
     NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
     NIMCP_CHECK_THROW(state, NIMCP_ERROR_INVALID_PARAM, "state output is NULL");
 
@@ -802,6 +926,10 @@ int temporal_replay_next(temporal_replay_t* replay,
 }
 
 int temporal_replay_pause(temporal_replay_t* replay) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_pause", 0.0f);
+
+
     NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
 
     nimcp_mutex_lock(replay->mutex);
@@ -816,6 +944,10 @@ int temporal_replay_pause(temporal_replay_t* replay) {
 }
 
 int temporal_replay_resume(temporal_replay_t* replay) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_resume", 0.0f);
+
+
     NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
 
     nimcp_mutex_lock(replay->mutex);
@@ -829,6 +961,10 @@ int temporal_replay_resume(temporal_replay_t* replay) {
 }
 
 int temporal_replay_stop(temporal_replay_t* replay) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_stop", 0.0f);
+
+
     NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
 
     nimcp_mutex_lock(replay->mutex);
@@ -846,6 +982,10 @@ int temporal_replay_stop(temporal_replay_t* replay) {
 #ifdef NIMCP_ENABLE_CUDA
 int temporal_replay_init_gpu(temporal_replay_t* replay,
                               struct nimcp_gpu_context_s* gpu_ctx) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_init_gpu", 0.0f);
+
+
     NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
 
     if (gpu_ctx) {
@@ -861,12 +1001,20 @@ int temporal_replay_init_gpu(temporal_replay_t* replay,
 }
 
 int temporal_replay_sync_to_gpu(temporal_replay_t* replay) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_sync_to_gpu", 0.0f);
+
+
     NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
     NIMCP_CHECK_THROW(replay->gpu_initialized, NIMCP_ERROR_INVALID_PARAM, "GPU not initialized");
     return NIMCP_SUCCESS;
 }
 
 bool temporal_replay_has_gpu(const temporal_replay_t* replay) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_has_gpu", 0.0f);
+
+
     return replay && replay->gpu_initialized;
 }
 #endif
@@ -877,6 +1025,10 @@ bool temporal_replay_has_gpu(const temporal_replay_t* replay) {
 
 int temporal_replay_get_stats(const temporal_replay_t* replay,
                                replay_stats_t* stats) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
     NIMCP_CHECK_THROW(stats, NIMCP_ERROR_INVALID_PARAM, "stats output is NULL");
     memcpy(stats, &replay->stats, sizeof(replay_stats_t));
@@ -884,6 +1036,10 @@ int temporal_replay_get_stats(const temporal_replay_t* replay,
 }
 
 int temporal_replay_reset_stats(temporal_replay_t* replay) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_reset_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
 
     nimcp_mutex_lock(replay->mutex);
@@ -903,14 +1059,26 @@ int temporal_replay_reset_stats(temporal_replay_t* replay) {
 }
 
 uint32_t temporal_replay_count(const temporal_replay_t* replay) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_count", 0.0f);
+
+
     return replay ? replay->count : 0;
 }
 
 uint32_t temporal_replay_capacity(const temporal_replay_t* replay) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_capacity", 0.0f);
+
+
     return replay ? replay->config.capacity : 0;
 }
 
 bool temporal_replay_is_full(const temporal_replay_t* replay) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_is_full", 0.0f);
+
+
     return replay && replay->count >= replay->config.capacity;
 }
 
@@ -919,12 +1087,20 @@ bool temporal_replay_is_full(const temporal_replay_t* replay) {
  * ============================================================================ */
 
 int temporal_replay_connect_bio_async(temporal_replay_t* replay) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_connect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
     NIMCP_LOG_INFO("Bio-async connection (stub)");
     return NIMCP_SUCCESS;
 }
 
 int temporal_replay_disconnect_bio_async(temporal_replay_t* replay) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_disconnect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
     return NIMCP_SUCCESS;
 }
@@ -936,6 +1112,10 @@ int temporal_replay_disconnect_bio_async(temporal_replay_t* replay) {
 replay_batch_t* replay_batch_create(uint32_t batch_size,
                                      uint32_t state_dim,
                                      uint32_t action_dim) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_replay_batch_create", 0.0f);
+
+
     if (batch_size == 0 || state_dim == 0) {
         return NULL;
     }
@@ -970,6 +1150,10 @@ void replay_batch_destroy(replay_batch_t* batch) {
     if (!batch) {
         return;
     }
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_replay_batch_destroy", 0.0f);
+
+
     if (batch->states) nimcp_free(batch->states);
     if (batch->actions) nimcp_free(batch->actions);
     if (batch->next_states) nimcp_free(batch->next_states);
@@ -981,6 +1165,10 @@ void replay_batch_destroy(replay_batch_t* batch) {
 
 replay_sweep_result_t* replay_sweep_result_create(uint32_t max_length,
                                                    uint32_t state_dim) {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_replay_sweep_result_", 0.0f);
+
+
     if (max_length == 0 || state_dim == 0) {
         return NULL;
     }
@@ -1002,6 +1190,12 @@ replay_sweep_result_t* replay_sweep_result_create(uint32_t max_length,
     }
 
     for (uint32_t i = 0; i < max_length; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && max_length > 256) {
+            temporal_replay_heartbeat("temporal_rep_loop",
+                             (float)(i + 1) / (float)max_length);
+        }
+
         result->states[i] = nimcp_calloc(state_dim, sizeof(float));
         if (!result->states[i]) {
             result->length = i;
@@ -1018,8 +1212,18 @@ void replay_sweep_result_destroy(replay_sweep_result_t* result) {
     if (!result) {
         return;
     }
+    /* Phase 8: Heartbeat at operation start */
+    temporal_replay_heartbeat("temporal_rep_replay_sweep_result_", 0.0f);
+
+
     if (result->states) {
         for (uint32_t i = 0; i < result->length; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && result->length > 256) {
+                temporal_replay_heartbeat("temporal_rep_loop",
+                                 (float)(i + 1) / (float)result->length);
+            }
+
             if (result->states[i]) {
                 nimcp_free(result->states[i]);
             }

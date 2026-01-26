@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_immune_bridge_coordinator_health_agent = NULL;
  * @brief Set health agent for immune_bridge_coordinator heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void immune_bridge_coordinator_set_health_agent(nimcp_health_agent_t* agent) {
+void immune_bridge_coordinator_set_health_agent(nimcp_health_agent_t* agent) {
     g_immune_bridge_coordinator_health_agent = agent;
 }
 
@@ -91,6 +91,12 @@ static immune_bridge_entry_t* find_bridge(
     }
 
     for (uint32_t i = 0; i < coordinator->bridge_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && coordinator->bridge_count > 256) {
+            immune_bridge_coordinator_heartbeat("immune_bridg_loop",
+                             (float)(i + 1) / (float)coordinator->bridge_count);
+        }
+
         if (coordinator->bridges[i].bridge_id == bridge_id) {
             return &coordinator->bridges[i];
         }
@@ -106,12 +112,22 @@ static immune_bridge_entry_t* find_bridge(
 int immune_bridge_coordinator_default_config(
     immune_bridge_coordinator_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config != NULL, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(*config));
 
     /* Enable all categories by default */
     for (int i = 0; i < IMMUNE_BRIDGE_CATEGORY_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && IMMUNE_BRIDGE_CATEGORY_COUNT > 256) {
+            immune_bridge_coordinator_heartbeat("immune_bridg_loop",
+                             (float)(i + 1) / (float)IMMUNE_BRIDGE_CATEGORY_COUNT);
+        }
+
         config->categories[i].enabled = true;
         config->categories[i].update_priority = i;
     }
@@ -139,6 +155,10 @@ immune_bridge_coordinator_t* immune_bridge_coordinator_create(
     const immune_bridge_coordinator_config_t* config
 ) {
     /* Allocate coordinator */
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_create", 0.0f);
+
+
     immune_bridge_coordinator_t* coordinator =
         (immune_bridge_coordinator_t*)nimcp_malloc(sizeof(immune_bridge_coordinator_t));
     if (!coordinator) {
@@ -203,6 +223,10 @@ void immune_bridge_coordinator_destroy(immune_bridge_coordinator_t* coordinator)
     if (!coordinator) return;
 
     /* Stop if running */
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_destroy", 0.0f);
+
+
     if (coordinator->state == IMMUNE_COORDINATOR_RUNNING) {
         immune_bridge_coordinator_stop(coordinator);
     }
@@ -233,6 +257,10 @@ void immune_bridge_coordinator_destroy(immune_bridge_coordinator_t* coordinator)
 }
 
 int immune_bridge_coordinator_start(immune_bridge_coordinator_t* coordinator) {
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_start", 0.0f);
+
+
     NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     nimcp_platform_mutex_lock(coordinator->mutex);
@@ -258,6 +286,10 @@ int immune_bridge_coordinator_start(immune_bridge_coordinator_t* coordinator) {
 }
 
 int immune_bridge_coordinator_stop(immune_bridge_coordinator_t* coordinator) {
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_stop", 0.0f);
+
+
     NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     nimcp_platform_mutex_lock(coordinator->mutex);
@@ -280,6 +312,10 @@ int immune_bridge_coordinator_stop(immune_bridge_coordinator_t* coordinator) {
 }
 
 int immune_bridge_coordinator_pause(immune_bridge_coordinator_t* coordinator) {
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_pause", 0.0f);
+
+
     NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     nimcp_platform_mutex_lock(coordinator->mutex);
@@ -296,6 +332,10 @@ int immune_bridge_coordinator_pause(immune_bridge_coordinator_t* coordinator) {
 }
 
 int immune_bridge_coordinator_resume(immune_bridge_coordinator_t* coordinator) {
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_resume", 0.0f);
+
+
     NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     nimcp_platform_mutex_lock(coordinator->mutex);
@@ -325,6 +365,10 @@ int immune_bridge_coordinator_register_bridge(
     immune_bridge_health_fn_t health_fn,
     uint32_t* bridge_id_out
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_register_bridge", 0.0f);
+
+
     NIMCP_CHECK_THROW(coordinator != NULL && name != NULL && handle != NULL,
                       NIMCP_ERROR_NULL_POINTER, "NULL parameter in register_bridge");
     NIMCP_CHECK_THROW(category < IMMUNE_BRIDGE_CATEGORY_COUNT,
@@ -386,6 +430,10 @@ int immune_bridge_coordinator_unregister_bridge(
     immune_bridge_coordinator_t* coordinator,
     uint32_t bridge_id
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_unregister_bridge", 0.0f);
+
+
     NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     nimcp_platform_mutex_lock(coordinator->mutex);
@@ -393,6 +441,12 @@ int immune_bridge_coordinator_unregister_bridge(
     /* Find bridge */
     int32_t found_idx = -1;
     for (uint32_t i = 0; i < coordinator->bridge_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && coordinator->bridge_count > 256) {
+            immune_bridge_coordinator_heartbeat("immune_bridg_loop",
+                             (float)(i + 1) / (float)coordinator->bridge_count);
+        }
+
         if (coordinator->bridges[i].bridge_id == bridge_id) {
             found_idx = (int32_t)i;
             break;
@@ -438,6 +492,10 @@ int immune_bridge_coordinator_set_bridge_enabled(
     uint32_t bridge_id,
     bool enabled
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_set_bridge_enabled", 0.0f);
+
+
     NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     nimcp_platform_mutex_lock(coordinator->mutex);
@@ -474,7 +532,17 @@ const immune_bridge_entry_t* immune_bridge_coordinator_get_bridge(
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_get_bridge", 0.0f);
+
+
     for (uint32_t i = 0; i < coordinator->bridge_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && coordinator->bridge_count > 256) {
+            immune_bridge_coordinator_heartbeat("immune_bridg_loop",
+                             (float)(i + 1) / (float)coordinator->bridge_count);
+        }
+
         if (coordinator->bridges[i].bridge_id == bridge_id) {
             return &coordinator->bridges[i];
         }
@@ -492,6 +560,10 @@ uint32_t immune_bridge_coordinator_get_bridges_by_category(
     if (!coordinator || !bridges || max_bridges == 0) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_get_bridges_by_categ", 0.0f);
+
 
     if (category >= IMMUNE_BRIDGE_CATEGORY_COUNT) {
         return 0;
@@ -515,6 +587,10 @@ int immune_bridge_coordinator_update(
     immune_bridge_coordinator_t* coordinator,
     uint64_t current_time_ms
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     nimcp_platform_mutex_lock(coordinator->mutex);
@@ -612,6 +688,10 @@ int immune_bridge_coordinator_update_category(
     immune_bridge_coordinator_t* coordinator,
     immune_bridge_category_t category
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_update_category", 0.0f);
+
+
     NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
     NIMCP_CHECK_THROW(category < IMMUNE_BRIDGE_CATEGORY_COUNT,
                       NIMCP_ERROR_INVALID_PARAM, "Invalid bridge category");
@@ -627,6 +707,12 @@ int immune_bridge_coordinator_update_category(
     uint64_t current_time = get_time_ms();
 
     for (uint32_t i = 0; i < coordinator->bridge_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && coordinator->bridge_count > 256) {
+            immune_bridge_coordinator_heartbeat("immune_bridg_loop",
+                             (float)(i + 1) / (float)coordinator->bridge_count);
+        }
+
         immune_bridge_entry_t* entry = &coordinator->bridges[i];
 
         if (entry->category != category || !entry->enabled || !entry->update_fn) {
@@ -652,6 +738,10 @@ int immune_bridge_coordinator_update_bridge(
     immune_bridge_coordinator_t* coordinator,
     uint32_t bridge_id
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_update_bridge", 0.0f);
+
+
     NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     nimcp_platform_mutex_lock(coordinator->mutex);
@@ -679,6 +769,10 @@ int immune_bridge_coordinator_update_bridge(
 int immune_bridge_coordinator_health_check(
     immune_bridge_coordinator_t* coordinator
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_health_check", 0.0f);
+
+
     NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     nimcp_platform_mutex_lock(coordinator->mutex);
@@ -687,6 +781,12 @@ int immune_bridge_coordinator_health_check(
     uint64_t current_time = get_time_ms();
 
     for (uint32_t i = 0; i < coordinator->bridge_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && coordinator->bridge_count > 256) {
+            immune_bridge_coordinator_heartbeat("immune_bridg_loop",
+                             (float)(i + 1) / (float)coordinator->bridge_count);
+        }
+
         immune_bridge_entry_t* entry = &coordinator->bridges[i];
 
         immune_bridge_health_t old_health = entry->health_status;
@@ -764,6 +864,10 @@ immune_bridge_health_t immune_bridge_coordinator_check_bridge_health(
         return IMMUNE_BRIDGE_ERROR;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_check_bridge_health", 0.0f);
+
+
     nimcp_platform_mutex_lock(coordinator->mutex);
 
     immune_bridge_entry_t* entry = find_bridge(coordinator, bridge_id);
@@ -794,6 +898,10 @@ float immune_bridge_coordinator_get_system_health(
         return 0.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_get_system_health", 0.0f);
+
+
     return coordinator->stats.system_health;
 }
 
@@ -807,6 +915,10 @@ int immune_bridge_coordinator_broadcast_message(
     const void* data,
     size_t data_len
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_broadcast_message", 0.0f);
+
+
     NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     if (!coordinator->bio_async_connected) {
@@ -826,6 +938,10 @@ int immune_bridge_coordinator_send_category_message(
     const void* data,
     size_t data_len
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_send_category_messag", 0.0f);
+
+
     NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
     NIMCP_CHECK_THROW(category < IMMUNE_BRIDGE_CATEGORY_COUNT,
                       NIMCP_ERROR_INVALID_PARAM, "Invalid bridge category");
@@ -837,6 +953,12 @@ int immune_bridge_coordinator_send_category_message(
     /* Count bridges in category */
     uint32_t count = 0;
     for (uint32_t i = 0; i < coordinator->bridge_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && coordinator->bridge_count > 256) {
+            immune_bridge_coordinator_heartbeat("immune_bridg_loop",
+                             (float)(i + 1) / (float)coordinator->bridge_count);
+        }
+
         if (coordinator->bridges[i].category == category) {
             count++;
         }
@@ -854,6 +976,10 @@ int immune_bridge_coordinator_connect_brain_immune(
     immune_bridge_coordinator_t* coordinator,
     brain_immune_system_t* immune
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_connect_brain_immune", 0.0f);
+
+
     NIMCP_CHECK_THROW(coordinator != NULL && immune != NULL,
                       NIMCP_ERROR_NULL_POINTER, "NULL parameter in connect_brain_immune");
 
@@ -872,6 +998,10 @@ int immune_bridge_coordinator_connect_brain_immune(
 int immune_bridge_coordinator_disconnect_brain_immune(
     immune_bridge_coordinator_t* coordinator
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_disconnect_brain_imm", 0.0f);
+
+
     NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     nimcp_platform_mutex_lock(coordinator->mutex);
@@ -885,6 +1015,10 @@ int immune_bridge_coordinator_disconnect_brain_immune(
 int immune_bridge_coordinator_connect_bio_async(
     immune_bridge_coordinator_t* coordinator
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_connect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     if (coordinator->bio_async_connected) {
@@ -918,6 +1052,10 @@ int immune_bridge_coordinator_connect_bio_async(
 int immune_bridge_coordinator_disconnect_bio_async(
     immune_bridge_coordinator_t* coordinator
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_disconnect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     if (coordinator->bio_async_connected && coordinator->bio_context) {
@@ -937,6 +1075,10 @@ int immune_bridge_coordinator_get_stats(
     const immune_bridge_coordinator_t* coordinator,
     immune_coordinator_stats_t* stats
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(coordinator != NULL && stats != NULL,
                       NIMCP_ERROR_NULL_POINTER, "NULL parameter in get_stats");
 
@@ -950,6 +1092,10 @@ void immune_bridge_coordinator_reset_stats(
     if (!coordinator) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_reset_stats", 0.0f);
+
 
     nimcp_platform_mutex_lock(coordinator->mutex);
 
@@ -966,6 +1112,12 @@ void immune_bridge_coordinator_reset_stats(
 
     /* Reset per-bridge stats */
     for (uint32_t i = 0; i < coordinator->bridge_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && coordinator->bridge_count > 256) {
+            immune_bridge_coordinator_heartbeat("immune_bridg_loop",
+                             (float)(i + 1) / (float)coordinator->bridge_count);
+        }
+
         coordinator->bridges[i].update_count = 0;
         coordinator->bridges[i].total_update_time_us = 0;
         coordinator->bridges[i].consecutive_failures = 0;
@@ -980,6 +1132,10 @@ immune_coordinator_state_t immune_bridge_coordinator_get_state(
     if (!coordinator) {
         return IMMUNE_COORDINATOR_ERROR;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_get_state", 0.0f);
+
 
     return coordinator->state;
 }
@@ -1040,9 +1196,19 @@ const char* immune_coordinator_state_to_string(immune_coordinator_state_t state)
  */
 int immune_bridge_coordinator_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    immune_bridge_coordinator_heartbeat("immune_bridg_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Immune_Bridge_Coordinator");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                immune_bridge_coordinator_heartbeat("immune_bridg_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Immune bridge coordinator self-knowledge: %s", self->observations[i]);
         }
     }

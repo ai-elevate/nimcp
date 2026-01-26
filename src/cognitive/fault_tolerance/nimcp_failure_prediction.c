@@ -63,7 +63,7 @@ static nimcp_health_agent_t* g_failure_prediction_health_agent = NULL;
  * @brief Set health agent for failure_prediction heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void failure_prediction_set_health_agent(nimcp_health_agent_t* agent) {
+void failure_prediction_set_health_agent(nimcp_health_agent_t* agent) {
     g_failure_prediction_health_agent = agent;
 }
 
@@ -219,6 +219,12 @@ static void unlock(failure_predictor_t* predictor) {
  */
 static int find_indicator_index(failure_predictor_t* predictor, metric_type_t metric) {
     for (uint32_t i = 0; i < predictor->indicator_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && predictor->indicator_count > 256) {
+            failure_prediction_heartbeat("failure_pred_loop",
+                             (float)(i + 1) / (float)predictor->indicator_count);
+        }
+
         if (predictor->indicators[i].current.metric == metric) {
             return (int)i;
         }
@@ -247,6 +253,10 @@ static int compare_predictions(const void* a, const void* b) {
 //=============================================================================
 
 failure_predictor_config_t failure_predictor_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    failure_prediction_heartbeat("failure_pred_failure_predictor_de", 0.0f);
+
+
     failure_predictor_config_t config = {};
     config.max_predictions = FAILURE_PREDICTOR_DEFAULT_MAX_PREDICTIONS;
     config.max_indicators = FAILURE_PREDICTOR_DEFAULT_MAX_INDICATORS;
@@ -257,6 +267,10 @@ failure_predictor_config_t failure_predictor_default_config(void) {
 }
 
 failure_predictor_t* failure_predictor_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    failure_prediction_heartbeat("failure_pred_failure_predictor_cr", 0.0f);
+
+
     LOG_DEBUG("Creating module");
     failure_predictor_config_t config = failure_predictor_default_config();
     return failure_predictor_create_custom(&config);
@@ -274,6 +288,10 @@ failure_predictor_t* failure_predictor_create_custom(
         LOG_ERROR("NULL config in failure_predictor_create_custom");
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    failure_prediction_heartbeat("failure_pred_failure_predictor_cr", 0.0f);
+
 
     if (config->max_predictions == 0 || config->max_indicators == 0) {
         LOG_ERROR("Invalid config: max_predictions=%u, max_indicators=%u",
@@ -354,6 +372,10 @@ return predictor;
 }
 
 void failure_predictor_destroy(failure_predictor_t* predictor) {
+    /* Phase 8: Heartbeat at operation start */
+    failure_prediction_heartbeat("failure_pred_failure_predictor_de", 0.0f);
+
+
     LOG_DEBUG("Destroying module");
     if (!predictor) {
         return;
@@ -402,6 +424,10 @@ bool failure_predictor_update_indicator(
     }
 
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    failure_prediction_heartbeat("failure_pred_failure_predictor_up", 0.0f);
+
+
     if (predictor->bio_async_enabled && predictor->bio_ctx) {
         bio_router_process_inbox(predictor->bio_ctx, 5);
     }
@@ -531,6 +557,10 @@ bool failure_predictor_update_from_health_metrics(
     // =========================================================================
 
     // Memory usage
+    /* Phase 8: Heartbeat at operation start */
+    failure_prediction_heartbeat("failure_pred_failure_predictor_up", 0.0f);
+
+
     failure_predictor_update_indicator(
         predictor,
         METRIC_TYPE_MEMORY,
@@ -583,6 +613,10 @@ bool failure_predictor_get_indicator(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    failure_prediction_heartbeat("failure_pred_failure_predictor_ge", 0.0f);
+
+
     lock_read(predictor);
 
     int index = find_indicator_index(predictor, metric);
@@ -606,6 +640,10 @@ leading_indicator_t* failure_predictor_get_all_indicators(
     if (!predictor || !count) {
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    failure_prediction_heartbeat("failure_pred_failure_predictor_ge", 0.0f);
+
 
     lock_read(predictor);
 
@@ -650,6 +688,10 @@ bool failure_predictor_detect_memory_leak(
     if (!predictor->config.enable_memory_leak_detection) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    failure_prediction_heartbeat("failure_pred_failure_predictor_de", 0.0f);
+
 
     lock_read(predictor);
 
@@ -696,6 +738,10 @@ bool failure_predictor_detect_gradient_explosion(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    failure_prediction_heartbeat("failure_pred_failure_predictor_de", 0.0f);
+
+
     lock_read(predictor);
 
     int index = find_indicator_index(predictor, METRIC_TYPE_GRADIENT);
@@ -737,6 +783,10 @@ uint64_t failure_predictor_estimate_time_to_oom(
     if (!failure_predictor_detect_memory_leak(predictor, metrics)) {
         return 0;  // No leak detected
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    failure_prediction_heartbeat("failure_pred_failure_predictor_es", 0.0f);
+
 
     lock_read(predictor);
 
@@ -794,6 +844,10 @@ uint64_t failure_predictor_estimate_time_to_explosion(
         return 0;  // Stable
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    failure_prediction_heartbeat("failure_pred_failure_predictor_es", 0.0f);
+
+
     lock_read(predictor);
 
     int index = find_indicator_index(predictor, METRIC_TYPE_GRADIENT);
@@ -848,6 +902,10 @@ failure_prediction_t* failure_predictor_predict(
     if (!predictor || !metrics) {
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    failure_prediction_heartbeat("failure_pred_failure_predictor_pr", 0.0f);
+
 
     lock_write(predictor);
 
@@ -974,6 +1032,10 @@ uint32_t failure_predictor_get_prediction_count(failure_predictor_t* predictor) 
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    failure_prediction_heartbeat("failure_pred_failure_predictor_ge", 0.0f);
+
+
     lock_read(predictor);
     uint32_t count = predictor->prediction_count;
     unlock(predictor);
@@ -991,9 +1053,19 @@ bool failure_predictor_get_prediction_by_type(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    failure_prediction_heartbeat("failure_pred_failure_predictor_ge", 0.0f);
+
+
     lock_read(predictor);
 
     for (uint32_t i = 0; i < predictor->prediction_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && predictor->prediction_count > 256) {
+            failure_prediction_heartbeat("failure_pred_loop",
+                             (float)(i + 1) / (float)predictor->prediction_count);
+        }
+
         if (predictor->predictions[i].type == type) {
             *prediction = predictor->predictions[i];
             unlock(predictor);
@@ -1024,6 +1096,10 @@ failure_prediction_t* failure_predictor_get_highest_probability_prediction(
 {
     /* DEPRECATED: This function is unsafe and now always returns NULL.
      * Use failure_predictor_get_highest_probability_prediction_copy() instead. */
+    /* Phase 8: Heartbeat at operation start */
+    failure_prediction_heartbeat("failure_pred_failure_predictor_ge", 0.0f);
+
+
     (void)predictor;
     return NULL;
 }
@@ -1048,6 +1124,10 @@ bool failure_predictor_get_highest_probability_prediction_copy(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    failure_prediction_heartbeat("failure_pred_failure_predictor_ge", 0.0f);
+
+
     lock_read(predictor);
 
     if (predictor->prediction_count == 0) {
@@ -1068,6 +1148,10 @@ void failure_predictor_clear_predictions(failure_predictor_t* predictor) {
     if (!predictor) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    failure_prediction_heartbeat("failure_pred_failure_predictor_cl", 0.0f);
+
 
     lock_write(predictor);
     predictor->prediction_count = 0;
@@ -1094,6 +1178,10 @@ bool failure_predictor_needs_prevention(
     // CRITERIA:
     // 1. High probability (> 0.8)
     // 2. OR moderate probability (> 0.6) AND urgent (< 10 sec)
+
+    /* Phase 8: Heartbeat at operation start */
+    failure_prediction_heartbeat("failure_pred_failure_predictor_ne", 0.0f);
+
 
     bool high_probability = prediction->probability > PREVENTION_PROBABILITY_THRESHOLD;
     bool urgent = (prediction->probability > PREVENTION_URGENT_PROBABILITY) &&
@@ -1177,9 +1265,19 @@ const char* failure_predictor_get_highest_priority_action(
 int failure_prediction_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    failure_prediction_heartbeat("failure_pred_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Failure_Prediction");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                failure_prediction_heartbeat("failure_pred_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Log self-knowledge observations */
         }
     }

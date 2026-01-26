@@ -41,7 +41,7 @@ static nimcp_health_agent_t* g_pr_curriculum_bridge_health_agent = NULL;
  * @brief Set health agent for pr_curriculum_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void pr_curriculum_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void pr_curriculum_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_pr_curriculum_bridge_health_agent = agent;
 }
 
@@ -405,6 +405,10 @@ static pr_memory_tier_t infer_sample_tier(const pr_curriculum_sample_t* sample) 
 //=============================================================================
 
 pr_curriculum_config_t pr_curriculum_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_config", 0.0f);
+
+
     pr_curriculum_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -449,6 +453,10 @@ pr_curriculum_config_t pr_curriculum_config_default(void) {
 }
 
 pr_curriculum_config_t pr_curriculum_config_resonance(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_config", 0.0f);
+
+
     pr_curriculum_config_t config = pr_curriculum_config_default();
 
     config.type = PR_CURRICULUM_RESONANCE;
@@ -462,6 +470,10 @@ pr_curriculum_config_t pr_curriculum_config_resonance(void) {
 }
 
 pr_curriculum_config_t pr_curriculum_config_curiosity(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_config", 0.0f);
+
+
     pr_curriculum_config_t config = pr_curriculum_config_default();
 
     config.type = PR_CURRICULUM_CURIOSITY;
@@ -473,6 +485,10 @@ pr_curriculum_config_t pr_curriculum_config_curiosity(void) {
 }
 
 pr_curriculum_config_t pr_curriculum_config_adaptive(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_config", 0.0f);
+
+
     pr_curriculum_config_t config = pr_curriculum_config_default();
 
     config.type = PR_CURRICULUM_CONSOLIDATION;
@@ -506,6 +522,10 @@ bool pr_curriculum_config_validate(const pr_curriculum_config_t* config) {
     if (config->type >= PR_CURRICULUM_TYPE_COUNT) return false;
     if (config->difficulty_method > PR_DIFFICULTY_EXTERNAL) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_config", 0.0f);
+
+
     return true;
 }
 
@@ -516,6 +536,10 @@ bool pr_curriculum_config_validate(const pr_curriculum_config_t* config) {
 pr_curriculum_bridge_t pr_curriculum_bridge_create(
     const pr_curriculum_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_create", 0.0f);
+
+
     pr_curriculum_bridge_t bridge = nimcp_calloc(1, sizeof(struct pr_curriculum_bridge_struct));
     if (!bridge) {
 
@@ -602,6 +626,10 @@ pr_curriculum_bridge_t pr_curriculum_bridge_create(
 void pr_curriculum_bridge_destroy(pr_curriculum_bridge_t bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_destroy", 0.0f);
+
+
     if (bridge->difficulty_cache) nimcp_free(bridge->difficulty_cache);
     if (bridge->consolidation_history) nimcp_free(bridge->consolidation_history);
     if (bridge->events) nimcp_free(bridge->events);
@@ -614,6 +642,10 @@ void pr_curriculum_bridge_destroy(pr_curriculum_bridge_t bridge) {
 
 int pr_curriculum_bridge_reset(pr_curriculum_bridge_t bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_reset", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -663,6 +695,10 @@ int pr_curriculum_compute_difficulty(
     pr_difficulty_result_t* result)
 {
     if (!bridge || !sample || !result) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_comput", 0.0f);
+
 
     uint64_t start_time_us = nimcp_time_get_us();
 
@@ -785,8 +821,18 @@ int pr_curriculum_compute_difficulty_batch(
 {
     if (!bridge || !samples || !results || count == 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_comput", 0.0f);
+
+
     int computed = 0;
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_curriculum_bridge_heartbeat("pr_curriculu_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (pr_curriculum_compute_difficulty(bridge, graph, &samples[i], &results[i]) == 0) {
             computed++;
         }
@@ -802,6 +848,10 @@ bool pr_curriculum_get_cached_difficulty(
 {
     if (!bridge || !result) return false;
     if (!bridge->config.enable_difficulty_cache) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_get_ca", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -824,6 +874,10 @@ int pr_curriculum_invalidate_difficulty(
     uint64_t sample_id)
 {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_invali", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -850,6 +904,10 @@ int pr_curriculum_order_by_resonance(
     if (!bridge || !samples || count == 0) return -1;
 
     /* Allocate score array */
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_order_", 0.0f);
+
+
     sample_score_t* scores = nimcp_malloc(count * sizeof(sample_score_t));
     if (!scores) return -1;
 
@@ -857,6 +915,12 @@ int pr_curriculum_order_by_resonance(
 
     /* Compute resonance scores (using 1 - difficulty = resonance) */
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_curriculum_bridge_heartbeat("pr_curriculu_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         pr_difficulty_result_t result;
         pr_curriculum_compute_difficulty(bridge, graph, &samples[i], &result);
 
@@ -886,6 +950,12 @@ int pr_curriculum_order_by_resonance(
 
     memcpy(temp, samples, count * sizeof(pr_curriculum_sample_t));
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_curriculum_bridge_heartbeat("pr_curriculu_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         samples[i] = temp[scores[i].original_index];
     }
 
@@ -904,6 +974,10 @@ int pr_curriculum_order_by_difficulty(
     if (!bridge || !samples || count == 0) return -1;
 
     /* Allocate score array */
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_order_", 0.0f);
+
+
     sample_score_t* scores = nimcp_malloc(count * sizeof(sample_score_t));
     if (!scores) return -1;
 
@@ -911,6 +985,12 @@ int pr_curriculum_order_by_difficulty(
 
     /* Compute difficulty scores */
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_curriculum_bridge_heartbeat("pr_curriculu_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         pr_difficulty_result_t result;
         pr_curriculum_compute_difficulty(bridge, graph, &samples[i], &result);
 
@@ -945,6 +1025,12 @@ int pr_curriculum_order_by_difficulty(
 
     memcpy(temp, samples, count * sizeof(pr_curriculum_sample_t));
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_curriculum_bridge_heartbeat("pr_curriculu_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         samples[i] = temp[scores[i].original_index];
     }
 
@@ -963,6 +1049,10 @@ int pr_curriculum_order_by_curiosity(
     if (!bridge || !samples || count == 0) return -1;
 
     /* Allocate score array */
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_order_", 0.0f);
+
+
     sample_score_t* scores = nimcp_malloc(count * sizeof(sample_score_t));
     if (!scores) return -1;
 
@@ -970,6 +1060,12 @@ int pr_curriculum_order_by_curiosity(
 
     /* Compute curiosity scores */
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_curriculum_bridge_heartbeat("pr_curriculu_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         pr_difficulty_result_t result;
         pr_curriculum_compute_difficulty(bridge, graph, &samples[i], &result);
 
@@ -999,6 +1095,12 @@ int pr_curriculum_order_by_curiosity(
 
     memcpy(temp, samples, count * sizeof(pr_curriculum_sample_t));
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_curriculum_bridge_heartbeat("pr_curriculu_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         samples[i] = temp[scores[i].original_index];
     }
 
@@ -1024,6 +1126,10 @@ int pr_curriculum_select_next_batch(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_select", 0.0f);
+
+
     if (batch_size > sample_count) batch_size = sample_count;
 
     uint64_t start_time_us = nimcp_time_get_us();
@@ -1038,6 +1144,12 @@ int pr_curriculum_select_next_batch(
     }
 
     for (uint32_t i = 0; i < sample_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sample_count > 256) {
+            pr_curriculum_bridge_heartbeat("pr_curriculu_loop",
+                             (float)(i + 1) / (float)sample_count);
+        }
+
         pr_difficulty_result_t diff_result;
         pr_curriculum_compute_difficulty(bridge, graph, &samples[i], &diff_result);
 
@@ -1174,6 +1286,10 @@ int pr_curriculum_select_balanced_batch(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_select", 0.0f);
+
+
     if (batch_size > sample_count) batch_size = sample_count;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1182,11 +1298,23 @@ int pr_curriculum_select_balanced_batch(
     uint32_t tier_targets[PR_CURRICULUM_NUM_TIERS];
     float total_weight = 0.0f;
     for (int t = 0; t < PR_CURRICULUM_NUM_TIERS; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && PR_CURRICULUM_NUM_TIERS > 256) {
+            pr_curriculum_bridge_heartbeat("pr_curriculu_loop",
+                             (float)(t + 1) / (float)PR_CURRICULUM_NUM_TIERS);
+        }
+
         total_weight += tier_weights[t];
     }
 
     uint32_t assigned = 0;
     for (int t = 0; t < PR_CURRICULUM_NUM_TIERS; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && PR_CURRICULUM_NUM_TIERS > 256) {
+            pr_curriculum_bridge_heartbeat("pr_curriculu_loop",
+                             (float)(t + 1) / (float)PR_CURRICULUM_NUM_TIERS);
+        }
+
         tier_targets[t] = (uint32_t)((tier_weights[t] / total_weight) * batch_size);
         assigned += tier_targets[t];
     }
@@ -1198,6 +1326,12 @@ int pr_curriculum_select_balanced_batch(
     uint32_t tier_counts[PR_CURRICULUM_NUM_TIERS] = {0};
 
     for (int t = 0; t < PR_CURRICULUM_NUM_TIERS; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && PR_CURRICULUM_NUM_TIERS > 256) {
+            pr_curriculum_bridge_heartbeat("pr_curriculu_loop",
+                             (float)(t + 1) / (float)PR_CURRICULUM_NUM_TIERS);
+        }
+
         tier_indices[t] = nimcp_malloc(sample_count * sizeof(uint32_t));
         if (!tier_indices[t]) {
             for (int j = 0; j < t; j++) nimcp_free(tier_indices[j]);
@@ -1207,6 +1341,12 @@ int pr_curriculum_select_balanced_batch(
     }
 
     for (uint32_t i = 0; i < sample_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sample_count > 256) {
+            pr_curriculum_bridge_heartbeat("pr_curriculum_loop",
+                             (float)(i + 1) / (float)sample_count);
+        }
+
         pr_memory_tier_t tier = infer_sample_tier(&samples[i]);
         if (tier < PR_CURRICULUM_NUM_TIERS) {
             tier_indices[tier][tier_counts[tier]++] = i;
@@ -1257,6 +1397,12 @@ int pr_curriculum_select_balanced_batch(
     result->exploration_ratio = 0.0f;
 
     for (int t = 0; t < PR_CURRICULUM_NUM_TIERS; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && PR_CURRICULUM_NUM_TIERS > 256) {
+            pr_curriculum_bridge_heartbeat("pr_curriculu_loop",
+                             (float)(t + 1) / (float)PR_CURRICULUM_NUM_TIERS);
+        }
+
         nimcp_free(tier_indices[t]);
     }
 
@@ -1275,6 +1421,10 @@ float pr_curriculum_curiosity_score(
     const pr_curriculum_sample_t* sample)
 {
     if (!bridge || !sample) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_curios", 0.0f);
+
 
     pr_difficulty_result_t result;
     if (pr_curriculum_compute_difficulty(bridge, graph, sample, &result) != 0) {
@@ -1297,6 +1447,10 @@ int pr_curriculum_select_most_curious(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_select", 0.0f);
+
+
     if (k > sample_count) k = sample_count;
 
     /* Compute curiosity scores and sort */
@@ -1304,6 +1458,12 @@ int pr_curriculum_select_most_curious(
     if (!scores) return -1;
 
     for (uint32_t i = 0; i < sample_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sample_count > 256) {
+            pr_curriculum_bridge_heartbeat("pr_curriculu_loop",
+                             (float)(i + 1) / (float)sample_count);
+        }
+
         pr_difficulty_result_t result;
         pr_curriculum_compute_difficulty(bridge, graph, &samples[i], &result);
 
@@ -1317,6 +1477,12 @@ int pr_curriculum_select_most_curious(
 
     /* Select top k */
     for (uint32_t i = 0; i < k; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && k > 256) {
+            pr_curriculum_bridge_heartbeat("pr_curriculu_loop",
+                             (float)(i + 1) / (float)k);
+        }
+
         selected_ids[i] = scores[i].sample_id;
     }
     *selected_count = k;
@@ -1336,6 +1502,10 @@ int pr_curriculum_consolidation_pace(
 {
     if (!bridge || !pacing) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_consol", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t now_ms = nimcp_time_get_ms();
@@ -1346,6 +1516,12 @@ int pr_curriculum_consolidation_pace(
     uint32_t demotions = 0;
 
     for (uint32_t i = 0; i < bridge->history_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->history_count > 256) {
+            pr_curriculum_bridge_heartbeat("pr_curriculu_loop",
+                             (float)(i + 1) / (float)bridge->history_count);
+        }
+
         consolidation_event_t* event = &bridge->consolidation_history[i];
         if (event->timestamp_ms >= window_start) {
             if (event->is_promotion) {
@@ -1426,6 +1602,10 @@ float pr_curriculum_get_epoch_pace(
 {
     if (!bridge) return 1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_get_ep", 0.0f);
+
+
     pr_curriculum_pacing_t pacing;
     if (pr_curriculum_consolidation_pace(bridge, ladder, &pacing) != 0) {
         return 1.0f;
@@ -1450,6 +1630,10 @@ int pr_curriculum_record_consolidation(
     pr_memory_tier_t to_tier)
 {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_record", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1478,6 +1662,10 @@ int pr_curriculum_tier_distribution(
 {
     if (!bridge || !distribution) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_tier_d", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check cache */
@@ -1501,6 +1689,12 @@ int pr_curriculum_tier_distribution(
     } else {
         /* Default balanced distribution */
         for (int t = 0; t < PR_CURRICULUM_NUM_TIERS; t++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((t & 0xFF) == 0 && PR_CURRICULUM_NUM_TIERS > 256) {
+                pr_curriculum_bridge_heartbeat("pr_curriculu_loop",
+                                 (float)(t + 1) / (float)PR_CURRICULUM_NUM_TIERS);
+            }
+
             distribution->counts[t] = 100;
         }
     }
@@ -1508,11 +1702,23 @@ int pr_curriculum_tier_distribution(
     /* Compute totals and proportions */
     distribution->total_nodes = 0;
     for (int t = 0; t < PR_CURRICULUM_NUM_TIERS; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && PR_CURRICULUM_NUM_TIERS > 256) {
+            pr_curriculum_bridge_heartbeat("pr_curriculu_loop",
+                             (float)(t + 1) / (float)PR_CURRICULUM_NUM_TIERS);
+        }
+
         distribution->total_nodes += distribution->counts[t];
     }
 
     if (distribution->total_nodes > 0) {
         for (int t = 0; t < PR_CURRICULUM_NUM_TIERS; t++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((t & 0xFF) == 0 && PR_CURRICULUM_NUM_TIERS > 256) {
+                pr_curriculum_bridge_heartbeat("pr_curriculu_loop",
+                                 (float)(t + 1) / (float)PR_CURRICULUM_NUM_TIERS);
+            }
+
             distribution->proportions[t] =
                 (float)distribution->counts[t] / (float)distribution->total_nodes;
         }
@@ -1522,6 +1728,12 @@ int pr_curriculum_tier_distribution(
     float ideal = 1.0f / PR_CURRICULUM_NUM_TIERS;
     float total_deviation = 0.0f;
     for (int t = 0; t < PR_CURRICULUM_NUM_TIERS; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && PR_CURRICULUM_NUM_TIERS > 256) {
+            pr_curriculum_bridge_heartbeat("pr_curriculu_loop",
+                             (float)(t + 1) / (float)PR_CURRICULUM_NUM_TIERS);
+        }
+
         total_deviation += fabsf(distribution->proportions[t] - ideal);
     }
     distribution->balance_score = 1.0f - (total_deviation / 2.0f);
@@ -1547,6 +1759,10 @@ pr_curriculum_type_t pr_curriculum_recommend_strategy(
 {
     if (!bridge) return PR_CURRICULUM_HYBRID;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_recomm", 0.0f);
+
+
     pr_tier_distribution_t dist;
     if (pr_curriculum_tier_distribution(bridge, ladder, &dist) != 0) {
         return PR_CURRICULUM_HYBRID;
@@ -1556,6 +1772,12 @@ pr_curriculum_type_t pr_curriculum_recommend_strategy(
     int dominant_tier = 0;
     float max_proportion = 0.0f;
     for (int t = 0; t < PR_CURRICULUM_NUM_TIERS; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && PR_CURRICULUM_NUM_TIERS > 256) {
+            pr_curriculum_bridge_heartbeat("pr_curriculu_loop",
+                             (float)(t + 1) / (float)PR_CURRICULUM_NUM_TIERS);
+        }
+
         if (dist.proportions[t] > max_proportion) {
             max_proportion = dist.proportions[t];
             dominant_tier = t;
@@ -1588,12 +1810,22 @@ int pr_curriculum_update_after_step(
 {
     if (!bridge || !results || count == 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_update", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float total_loss = 0.0f;
     uint32_t correct_count = 0;
 
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_curriculum_bridge_heartbeat("pr_curriculu_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         const pr_step_result_t* step = &results[i];
 
         total_loss += step->loss;
@@ -1645,6 +1877,10 @@ float pr_curriculum_update_difficulty_from_loss(
 {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_update", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     difficulty_cache_entry_t* cached = find_cache_entry(bridge, sample_id);
@@ -1681,6 +1917,10 @@ int pr_curriculum_get_stats(
 {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_get_st", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1690,6 +1930,10 @@ int pr_curriculum_get_stats(
 
 int pr_curriculum_reset_stats(pr_curriculum_bridge_t bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_reset_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(pr_curriculum_stats_t));
@@ -1706,6 +1950,10 @@ int pr_curriculum_get_events(
 {
     if (!bridge || !events || !event_count) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_get_ev", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t to_copy = (max_events < bridge->event_count) ? max_events : bridge->event_count;
@@ -1719,6 +1967,12 @@ int pr_curriculum_get_events(
         }
 
         for (uint32_t i = 0; i < to_copy; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && to_copy > 256) {
+                pr_curriculum_bridge_heartbeat("pr_curriculu_loop",
+                                 (float)(i + 1) / (float)to_copy);
+            }
+
             uint32_t idx = (start_idx + i) % bridge->event_capacity;
             events[i] = bridge->events[idx];
         }
@@ -1741,6 +1995,10 @@ int pr_curriculum_set_strategy(
 {
     if (!bridge) return -1;
     if (type >= PR_CURRICULUM_TYPE_COUNT) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_set_st", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1767,6 +2025,10 @@ int pr_curriculum_set_strategy(
 
 pr_curriculum_type_t pr_curriculum_get_strategy(pr_curriculum_bridge_t bridge) {
     if (!bridge) return PR_CURRICULUM_HYBRID;
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_get_st", 0.0f);
+
+
     return bridge->config.type;
 }
 
@@ -1776,6 +2038,10 @@ int pr_curriculum_set_exploration(
 {
     if (!bridge) return -1;
     if (epsilon < 0.0f || epsilon > 1.0f) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_set_ex", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.exploration_epsilon = epsilon;
@@ -1789,6 +2055,10 @@ int pr_curriculum_set_ascending_difficulty(
     bool ascending)
 {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_set_as", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.ascending_difficulty = ascending;
@@ -1837,6 +2107,10 @@ const char* pr_curriculum_event_name(pr_curriculum_event_type_t type) {
 void pr_curriculum_print_difficulty(const pr_difficulty_result_t* result) {
     if (!result) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_print_", 0.0f);
+
+
     printf("Difficulty Result:\n");
     printf("  Sample ID:    %lu\n", (unsigned long)result->sample_id);
     printf("  Total:        %.4f\n", result->total_difficulty);
@@ -1851,6 +2125,10 @@ void pr_curriculum_print_difficulty(const pr_difficulty_result_t* result) {
 void pr_curriculum_print_batch(const pr_batch_result_t* result) {
     if (!result) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_print_", 0.0f);
+
+
     printf("Batch Result:\n");
     printf("  Batch Size:    %u\n", result->batch_size);
     printf("  Avg Difficulty: %.4f\n", result->avg_difficulty);
@@ -1859,12 +2137,22 @@ void pr_curriculum_print_batch(const pr_batch_result_t* result) {
     printf("  Exploration:   %.4f\n", result->exploration_ratio);
     printf("  Tier Representation:\n");
     for (int t = 0; t < PR_CURRICULUM_NUM_TIERS; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && PR_CURRICULUM_NUM_TIERS > 256) {
+            pr_curriculum_bridge_heartbeat("pr_curriculu_loop",
+                             (float)(t + 1) / (float)PR_CURRICULUM_NUM_TIERS);
+        }
+
         printf("    Z%d: %u\n", t, result->tier_representation[t]);
     }
 }
 
 void pr_curriculum_print_pacing(const pr_curriculum_pacing_t* pacing) {
     if (!pacing) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_print_", 0.0f);
+
 
     printf("Curriculum Pacing:\n");
     printf("  Consolidation Rate: %.4f\n", pacing->consolidation_rate);
@@ -1879,6 +2167,10 @@ void pr_curriculum_print_pacing(const pr_curriculum_pacing_t* pacing) {
 
 void pr_curriculum_print_stats(pr_curriculum_bridge_t bridge) {
     if (!bridge) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_print_", 0.0f);
+
 
     pr_curriculum_stats_t stats;
     if (pr_curriculum_get_stats(bridge, &stats) != 0) return;
@@ -1917,6 +2209,10 @@ void pr_curriculum_print_stats(pr_curriculum_bridge_t bridge) {
 void pr_curriculum_sample_init(pr_curriculum_sample_t* sample) {
     if (!sample) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_sample", 0.0f);
+
+
     memset(sample, 0, sizeof(pr_curriculum_sample_t));
 
     /* Set default quaternion (identity-like) */
@@ -1929,6 +2225,10 @@ void pr_curriculum_sample_init(pr_curriculum_sample_t* sample) {
 }
 
 uint64_t pr_curriculum_current_time_ms(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_curren", 0.0f);
+
+
     return nimcp_time_get_ms();
 }
 

@@ -53,7 +53,7 @@ static nimcp_health_agent_t* g_knowledge_fractal_health_agent = NULL;
  * @brief Set health agent for knowledge_fractal heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void knowledge_fractal_set_health_agent(nimcp_health_agent_t* agent) {
+void knowledge_fractal_set_health_agent(nimcp_health_agent_t* agent) {
     g_knowledge_fractal_health_agent = agent;
 }
 
@@ -93,12 +93,22 @@ uint32_t knowledge_fractal_find_anchor_neuron(const fractal_cognitive_cache_t *c
         return UINT32_MAX;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_fractal_heartbeat("knowledge_fr_find_anchor_neuron", 0.0f);
+
+
     uint32_t N = cache->stats.num_neurons;
     uint32_t best_neuron = UINT32_MAX;
     float best_match = INFINITY;
 
     // Find neuron with centrality closest to concept importance
     for (uint32_t i = 0; i < N; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && N > 256) {
+            knowledge_fractal_heartbeat("knowledge_fr_loop",
+                             (float)(i + 1) / (float)N);
+        }
+
         float centrality = fractal_get_centrality(cache, i);
         float match_error = fabsf(centrality - concept_importance);
 
@@ -127,6 +137,10 @@ float knowledge_fractal_learning_boost(const fractal_cognitive_cache_t *cache,
     if (!cache || !cache->valid) {
         return 1.0F;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_fractal_heartbeat("knowledge_fr_learning_boost", 0.0f);
+
 
     float centrality = fractal_get_centrality(cache, neuron_index);
 
@@ -162,6 +176,10 @@ uint32_t knowledge_fractal_get_related(neural_network_t network,
     }
 
     // Simplified: Get k central neighbors within radius
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_fractal_heartbeat("knowledge_fr_get_related", 0.0f);
+
+
     return fractal_get_central_neighbors(network, cache,
                                         concept_neuron,
                                         max_distance,
@@ -187,6 +205,10 @@ float knowledge_fractal_semantic_distance(const fractal_cognitive_cache_t *cache
     if (!cache || !cache->valid) {
         return INFINITY;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_fractal_heartbeat("knowledge_fr_semantic_distance", 0.0f);
+
 
     if (neuron1 == neuron2) {
         return 0.0F;
@@ -220,6 +242,10 @@ void knowledge_fractal_print_concept_context(const fractal_cognitive_cache_t *ca
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_fractal_heartbeat("knowledge_fr_print_concept_contex", 0.0f);
+
+
     printf("=== Concept Fractal Context ===\n");
     printf("Concept: %s\n", concept_name);
     printf("Anchor neuron: %u\n", concept_neuron);
@@ -247,9 +273,19 @@ void knowledge_fractal_print_concept_context(const fractal_cognitive_cache_t *ca
 int knowledge_fractal_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_fractal_heartbeat("knowledge_fr_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Knowledge_Fractal");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                knowledge_fractal_heartbeat("knowledge_fr_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

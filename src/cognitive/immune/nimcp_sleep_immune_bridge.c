@@ -37,7 +37,7 @@ static nimcp_health_agent_t* g_sleep_immune_bridge_health_agent = NULL;
  * @brief Set health agent for sleep_immune_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void sleep_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void sleep_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_sleep_immune_bridge_health_agent = agent;
 }
 
@@ -84,6 +84,12 @@ static float get_cytokine_level(
     /* Query immune system for cytokine concentration */
     /* For now, return 0 - actual implementation would search cytokines array */
     for (size_t i = 0; i < immune->cytokine_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && immune->cytokine_count > 256) {
+            sleep_immune_bridge_heartbeat("sleep_immune_loop",
+                             (float)(i + 1) / (float)immune->cytokine_count);
+        }
+
         if (immune->cytokines[i].type == type && !immune->cytokines[i].delivered) {
             return immune->cytokines[i].concentration;
         }
@@ -106,6 +112,12 @@ static brain_inflammation_level_t get_max_inflammation_level(
 
     brain_inflammation_level_t max_level = INFLAMMATION_NONE;
     for (size_t i = 0; i < immune->inflammation_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && immune->inflammation_count > 256) {
+            sleep_immune_bridge_heartbeat("sleep_immune_loop",
+                             (float)(i + 1) / (float)immune->inflammation_count);
+        }
+
         if (immune->inflammation_sites[i].level > max_level) {
             max_level = immune->inflammation_sites[i].level;
         }
@@ -159,6 +171,10 @@ int sleep_immune_default_config(sleep_immune_config_t* config) {
     }
 
     /* All features enabled by default */
+    /* Phase 8: Heartbeat at operation start */
+    sleep_immune_bridge_heartbeat("sleep_immune_sleep_immune_default", 0.0f);
+
+
     config->enable_cytokine_sleep_modulation = true;
     config->enable_inflammation_sleep_disruption = true;
     config->enable_sleep_immune_enhancement = true;
@@ -190,6 +206,10 @@ sleep_immune_bridge_t* sleep_immune_bridge_create(
     }
 
     /* Allocate bridge */
+    /* Phase 8: Heartbeat at operation start */
+    sleep_immune_bridge_heartbeat("sleep_immune_create", 0.0f);
+
+
     sleep_immune_bridge_t* bridge = (sleep_immune_bridge_t*)
         nimcp_malloc(sizeof(sleep_immune_bridge_t));
     if (!bridge) {
@@ -238,6 +258,10 @@ void sleep_immune_bridge_destroy(sleep_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
+    /* Phase 8: Heartbeat at operation start */
+    sleep_immune_bridge_heartbeat("sleep_immune_destroy", 0.0f);
+
+
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
     }
@@ -262,6 +286,10 @@ int sleep_immune_apply_cytokine_effects(sleep_immune_bridge_t* bridge) {
     }
     if (!bridge->enable_cytokine_sleep_modulation) return 0;
     if (!bridge->immune_system || !bridge->sleep_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    sleep_immune_bridge_heartbeat("sleep_immune_sleep_immune_apply_c", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -319,6 +347,10 @@ int sleep_immune_apply_inflammation_effects(sleep_immune_bridge_t* bridge) {
     if (!bridge->enable_inflammation_sleep_disruption) return 0;
     if (!bridge->immune_system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    sleep_immune_bridge_heartbeat("sleep_immune_sleep_immune_apply_i", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     inflammation_sleep_state_t* state = &bridge->inflammation_state;
@@ -367,11 +399,19 @@ int sleep_immune_apply_inflammation_effects(sleep_immune_bridge_t* bridge) {
 
 float sleep_immune_compute_cytokine_sleep_pressure(const sleep_immune_bridge_t* bridge) {
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    sleep_immune_bridge_heartbeat("sleep_immune_sleep_immune_compute", 0.0f);
+
+
     return bridge->cytokine_effects.total_sleep_pressure_bonus;
 }
 
 bool sleep_immune_is_sleep_fragmented(const sleep_immune_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    sleep_immune_bridge_heartbeat("sleep_immune_sleep_immune_is_slee", 0.0f);
+
+
     return bridge->inflammation_state.fragmentation_severity >= 0.3f;
 }
 
@@ -390,6 +430,10 @@ int sleep_immune_enhance_during_deep_sleep(sleep_immune_bridge_t* bridge) {
     }
     if (!bridge->enable_sleep_immune_enhancement) return 0;
     if (!bridge->sleep_system || !bridge->immune_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    sleep_immune_bridge_heartbeat("sleep_immune_sleep_immune_enhance", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -430,6 +474,10 @@ int sleep_immune_consolidate_memory_during_rem(sleep_immune_bridge_t* bridge) {
     }
     if (!bridge->enable_rem_memory_consolidation) return 0;
     if (!bridge->sleep_system || !bridge->immune_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    sleep_immune_bridge_heartbeat("sleep_immune_sleep_immune_consoli", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -474,6 +522,10 @@ int sleep_immune_suppress_from_deprivation(sleep_immune_bridge_t* bridge) {
     }
     if (!bridge->enable_sleep_deprivation_tracking) return 0;
     if (!bridge->sleep_system || !bridge->immune_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    sleep_immune_bridge_heartbeat("sleep_immune_sleep_immune_suppres", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -530,6 +582,10 @@ int sleep_immune_inflame_from_chronic_loss(sleep_immune_bridge_t* bridge) {
     if (!bridge->enable_sleep_deprivation_tracking) return 0;
     if (!bridge->immune_system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    sleep_immune_bridge_heartbeat("sleep_immune_sleep_immune_inflame", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     sleep_deprivation_state_t* deprivation = &bridge->deprivation_state;
@@ -581,6 +637,10 @@ int sleep_immune_bridge_update(
     /* Apply all bidirectional effects */
 
     /* Immune → Sleep */
+    /* Phase 8: Heartbeat at operation start */
+    sleep_immune_bridge_heartbeat("sleep_immune_update", 0.0f);
+
+
     sleep_immune_apply_cytokine_effects(bridge);
     sleep_immune_apply_inflammation_effects(bridge);
 
@@ -604,6 +664,10 @@ int sleep_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    sleep_immune_bridge_heartbeat("sleep_immune_sleep_immune_get_cyt", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_sleep_effects_t));
     pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
@@ -616,6 +680,10 @@ int sleep_immune_get_inflammation_state(
     inflammation_sleep_state_t* state
 ) {
     if (!bridge || !state) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    sleep_immune_bridge_heartbeat("sleep_immune_sleep_immune_get_inf", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_sleep_state_t));
@@ -630,6 +698,10 @@ int sleep_immune_get_sleep_modulation(
 ) {
     if (!bridge || !modulation) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    sleep_immune_bridge_heartbeat("sleep_immune_sleep_immune_get_sle", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(modulation, &bridge->sleep_modulation, sizeof(sleep_immune_modulation_t));
     pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
@@ -643,6 +715,10 @@ int sleep_immune_get_deprivation_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    sleep_immune_bridge_heartbeat("sleep_immune_sleep_immune_get_dep", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->deprivation_state, sizeof(sleep_deprivation_state_t));
     pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
@@ -654,16 +730,28 @@ bool sleep_immune_is_sickness_sleep(const sleep_immune_bridge_t* bridge) {
     if (!bridge) return false;
 
     /* Sickness sleep threshold */
+    /* Phase 8: Heartbeat at operation start */
+    sleep_immune_bridge_heartbeat("sleep_immune_sleep_immune_is_sick", 0.0f);
+
+
     return bridge->cytokine_effects.sickness_sleep_drive >= 0.5f;
 }
 
 float sleep_immune_get_quality_impairment(const sleep_immune_bridge_t* bridge) {
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    sleep_immune_bridge_heartbeat("sleep_immune_sleep_immune_get_qua", 0.0f);
+
+
     return bridge->inflammation_state.quality_impairment;
 }
 
 bool sleep_immune_is_sleep_deprived(const sleep_immune_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    sleep_immune_bridge_heartbeat("sleep_immune_sleep_immune_is_slee", 0.0f);
+
+
     return bridge->deprivation_state.is_sleep_deprived;
 }
 
@@ -671,6 +759,10 @@ float sleep_immune_get_suppression_level(const sleep_immune_bridge_t* bridge) {
     if (!bridge) return 0.0f;
 
     /* Return maximum suppression across T cell and antibody */
+    /* Phase 8: Heartbeat at operation start */
+    sleep_immune_bridge_heartbeat("sleep_immune_sleep_immune_get_sup", 0.0f);
+
+
     float t_cell_supp = bridge->deprivation_state.t_cell_suppression;
     float antibody_supp = bridge->deprivation_state.antibody_suppression;
 
@@ -695,6 +787,10 @@ int sleep_immune_connect_bio_async(sleep_immune_bridge_t* bridge) {
 
     }
     if (bridge->base.bio_async_enabled) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    sleep_immune_bridge_heartbeat("sleep_immune_sleep_immune_connect", 0.0f);
+
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_SLEEP,
@@ -727,6 +823,10 @@ int sleep_immune_disconnect_bio_async(sleep_immune_bridge_t* bridge) {
     }
     if (!bridge->base.bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    sleep_immune_bridge_heartbeat("sleep_immune_sleep_immune_disconn", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -742,6 +842,10 @@ int sleep_immune_disconnect_bio_async(sleep_immune_bridge_t* bridge) {
  */
 bool sleep_immune_is_bio_async_connected(const sleep_immune_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    sleep_immune_bridge_heartbeat("sleep_immune_sleep_immune_is_bio_", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -761,9 +865,19 @@ bool sleep_immune_is_bio_async_connected(const sleep_immune_bridge_t* bridge) {
  */
 int sleep_immune_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    sleep_immune_bridge_heartbeat("sleep_immune_sleep_immune_query_s", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Sleep_Immune_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                sleep_immune_bridge_heartbeat("sleep_immune_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Sleep immune bridge self-knowledge: %s", self->observations[i]);
         }
     }

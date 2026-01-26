@@ -37,7 +37,7 @@ static nimcp_health_agent_t* g_collective_cognition_health_agent = NULL;
  * @brief Set health agent for collective_cognition heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void collective_cognition_set_health_agent(nimcp_health_agent_t* agent) {
+void collective_cognition_set_health_agent(nimcp_health_agent_t* agent) {
     g_collective_cognition_health_agent = agent;
 }
 
@@ -133,6 +133,12 @@ static registered_instance_t* find_instance(
     uint32_t instance_id
 ) {
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            collective_cognition_heartbeat("collective_c_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (cc->instances[i].active && cc->instances[i].instance_id == instance_id) {
             return &cc->instances[i];
         }
@@ -142,6 +148,12 @@ static registered_instance_t* find_instance(
 
 static registered_instance_t* find_free_slot(collective_cognition_t* cc) {
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            collective_cognition_heartbeat("collective_c_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (!cc->instances[i].active) {
             return &cc->instances[i];
         }
@@ -154,6 +166,12 @@ static int find_instance_index(
     uint32_t instance_id
 ) {
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            collective_cognition_heartbeat("collective_c_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (cc->instances[i].active && cc->instances[i].instance_id == instance_id) {
             return (int)i;
         }
@@ -189,6 +207,12 @@ static float compute_global_sync(collective_cognition_t* cc) {
     uint32_t pair_count = 0;
 
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            collective_cognition_heartbeat("collective_c_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (!cc->instances[i].active) continue;
 
         for (uint32_t j = i + 1; j < COLLECTIVE_MAX_INSTANCES; j++) {
@@ -197,6 +221,12 @@ static float compute_global_sync(collective_cognition_t* cc) {
             /* Compute average PLV across bands */
             float pair_sync = 0.0f;
             for (int b = 0; b < SYNC_BAND_COUNT; b++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((b & 0xFF) == 0 && SYNC_BAND_COUNT > 256) {
+                    collective_cognition_heartbeat("collective_c_loop",
+                                     (float)(b + 1) / (float)SYNC_BAND_COUNT);
+                }
+
                 float plv = compute_plv(&cc->instances[i], &cc->instances[j], (sync_band_t)b);
                 cc->pair_plv[i][j][b] = plv;
                 cc->pair_plv[j][i][b] = plv;
@@ -220,6 +250,12 @@ static void compute_collective_phi(collective_cognition_t* cc) {
     /* Sum local phis */
     phi->phi_local = 0.0f;
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            collective_cognition_heartbeat("collective_c_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (cc->instances[i].active) {
             phi->phi_local += cc->instances[i].local_phi;
         }
@@ -279,6 +315,12 @@ static void update_hyperscanning_state(collective_cognition_t* cc) {
     uint32_t pair_count = 0;
 
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            collective_cognition_heartbeat("collective_c_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (!cc->instances[i].active) continue;
         for (uint32_t j = i + 1; j < COLLECTIVE_MAX_INSTANCES; j++) {
             if (!cc->instances[j].active) continue;
@@ -311,6 +353,12 @@ static void update_hyperscanning_state(collective_cognition_t* cc) {
     float max_gamma = -1.0f;
     uint32_t leader_id = 0;
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            collective_cognition_heartbeat("collective_c_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (cc->instances[i].active &&
             cc->instances[i].band_power[SYNC_BAND_GAMMA] > max_gamma) {
             max_gamma = cc->instances[i].band_power[SYNC_BAND_GAMMA];
@@ -412,6 +460,10 @@ static void update_aggregate_state(collective_cognition_t* cc) {
  *===========================================================================*/
 
 collective_cognition_config_t collective_cognition_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_default_config", 0.0f);
+
+
     collective_cognition_config_t config = {
         .hyperscanning = hyperscanning_default_config(),
         .extended_mind = extended_mind_default_config(),
@@ -429,6 +481,10 @@ collective_cognition_config_t collective_cognition_default_config(void) {
 }
 
 hyperscanning_config_t hyperscanning_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_hyperscanning_defaul", 0.0f);
+
+
     hyperscanning_config_t config = {
         .max_instances = COLLECTIVE_MAX_INSTANCES,
         .sync_threshold = 0.7f,
@@ -440,6 +496,10 @@ hyperscanning_config_t hyperscanning_default_config(void) {
 }
 
 extended_mind_config_t extended_mind_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_extended_mind_defaul", 0.0f);
+
+
     extended_mind_config_t config = {
         .max_extensions = COLLECTIVE_MAX_EXTENSIONS,
         .trust_decay_rate = 0.1f,
@@ -451,6 +511,10 @@ extended_mind_config_t extended_mind_default_config(void) {
 }
 
 collective_phi_config_t collective_phi_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_collective_phi_defau", 0.0f);
+
+
     collective_phi_config_t config = {
         .aggregation_method = 3,  /* SYNERGISTIC */
         .synergy_coefficient = 0.5f,
@@ -462,6 +526,10 @@ collective_phi_config_t collective_phi_default_config(void) {
 }
 
 shared_intentionality_config_t shared_intentionality_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_shared_intentionalit", 0.0f);
+
+
     shared_intentionality_config_t config = {
         .max_shared_goals = COLLECTIVE_MAX_SHARED_GOALS,
         .max_joint_attentions = COLLECTIVE_MAX_JOINT_ATTENTIONS,
@@ -480,6 +548,10 @@ shared_intentionality_config_t shared_intentionality_default_config(void) {
 collective_cognition_t* collective_cognition_create(
     const collective_cognition_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_create", 0.0f);
+
+
     collective_cognition_t* cc = nimcp_malloc(sizeof(collective_cognition_t));
     if (!cc) {
 
@@ -500,6 +572,12 @@ collective_cognition_t* collective_cognition_create(
 
     /* Initialize instances */
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            collective_cognition_heartbeat("collective_c_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         cc->instances[i].active = false;
         cc->instances[i].local_phi = 0.3f;  /* Default individual phi */
         cc->instances[i].atp_level = 1.0f;
@@ -507,6 +585,12 @@ collective_cognition_t* collective_cognition_create(
 
         /* Initialize band states */
         for (int b = 0; b < SYNC_BAND_COUNT; b++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((b & 0xFF) == 0 && SYNC_BAND_COUNT > 256) {
+                collective_cognition_heartbeat("collective_c_loop",
+                                 (float)(b + 1) / (float)SYNC_BAND_COUNT);
+            }
+
             cc->instances[i].band_power[b] = 0.5f;
             cc->instances[i].band_phase[b] = 0.0f;
         }
@@ -540,6 +624,10 @@ void collective_cognition_destroy(collective_cognition_t* cc) {
     if (!cc) return;
 
     /* Destroy subsystem handles */
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_destroy", 0.0f);
+
+
     if (cc->hyperscanning) hyperscanning_destroy(cc->hyperscanning);
     if (cc->extended_mind) extended_mind_destroy(cc->extended_mind);
     if (cc->phi_system) collective_phi_destroy(cc->phi_system);
@@ -557,7 +645,17 @@ int collective_cognition_reset(collective_cognition_t* cc) {
     if (!cc) return -1;
 
     /* Reset all instances */
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_reset", 0.0f);
+
+
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            collective_cognition_heartbeat("collective_c_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         cc->instances[i].active = false;
     }
     cc->instance_count = 0;
@@ -584,6 +682,10 @@ int collective_cognition_register_instance(
     if (!cc) return -1;
 
     /* Check if already registered */
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_register_instance", 0.0f);
+
+
     if (find_instance(cc, instance_id)) {
         return -1;  /* Already exists */
     }
@@ -606,6 +708,12 @@ int collective_cognition_register_instance(
 
     /* Initialize band states with some variation */
     for (int b = 0; b < SYNC_BAND_COUNT; b++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((b & 0xFF) == 0 && SYNC_BAND_COUNT > 256) {
+            collective_cognition_heartbeat("collective_c_loop",
+                             (float)(b + 1) / (float)SYNC_BAND_COUNT);
+        }
+
         slot->band_power[b] = 0.5f + (instance_id % 10) * 0.01f;
         slot->band_phase[b] = (instance_id * 0.5f);  /* Different starting phases */
     }
@@ -622,6 +730,10 @@ int collective_cognition_unregister_instance(
 ) {
     if (!cc) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_unregister_instance", 0.0f);
+
+
     registered_instance_t* inst = find_instance(cc, instance_id);
     if (!inst) {
         return -1;  /* Not found */
@@ -636,6 +748,10 @@ int collective_cognition_unregister_instance(
 }
 
 uint32_t collective_cognition_instance_count(const collective_cognition_t* cc) {
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_instance_count", 0.0f);
+
+
     return cc ? cc->instance_count : 0;
 }
 
@@ -645,7 +761,17 @@ bool collective_cognition_has_instance(
 ) {
     if (!cc) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_has_instance", 0.0f);
+
+
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            collective_cognition_heartbeat("collective_c_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (cc->instances[i].active && cc->instances[i].instance_id == instance_id) {
             return true;
         }
@@ -661,6 +787,10 @@ int collective_cognition_update(collective_cognition_t* cc) {
     if (!cc || !cc->initialized) return -1;
 
     /* Update all subsystem states */
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_update", 0.0f);
+
+
     update_hyperscanning_state(cc);
     compute_collective_phi(cc);
     update_we_mode_state(cc);
@@ -675,8 +805,20 @@ int collective_cognition_update(collective_cognition_t* cc) {
 
     /* Simulate phase evolution for testing */
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            collective_cognition_heartbeat("collective_c_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (cc->instances[i].active) {
             for (int b = 0; b < SYNC_BAND_COUNT; b++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((b & 0xFF) == 0 && SYNC_BAND_COUNT > 256) {
+                    collective_cognition_heartbeat("collective_c_loop",
+                                     (float)(b + 1) / (float)SYNC_BAND_COUNT);
+                }
+
                 /* Phase drift with some coupling */
                 float base_freq = 2.0f + b * 5.0f;  /* Different freq per band */
                 cc->instances[i].band_phase[b] += base_freq * 0.01f;
@@ -701,6 +843,10 @@ int collective_cognition_get_state(
     if (!cc || !state) return -1;
 
     *state = cc->state;
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_get_state", 0.0f);
+
+
     return 0;
 }
 
@@ -708,6 +854,10 @@ collective_consciousness_level_t collective_cognition_get_consciousness_level(
     const collective_cognition_t* cc
 ) {
     if (!cc) return COLLECTIVE_CONSCIOUSNESS_NONE;
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_get_consciousness_le", 0.0f);
+
 
     return phi_to_level(cc->state.phi.phi_total);
 }
@@ -719,6 +869,10 @@ int collective_cognition_get_hyperscan_state(
     if (!cc || !state) return -1;
 
     *state = cc->state.hyperscanning;
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_get_hyperscan_state", 0.0f);
+
+
     return 0;
 }
 
@@ -729,6 +883,10 @@ int collective_cognition_get_extended_mind_state(
     if (!cc || !state) return -1;
 
     *state = cc->state.extended_mind;
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_get_extended_mind_st", 0.0f);
+
+
     return 0;
 }
 
@@ -739,6 +897,10 @@ int collective_cognition_get_phi(
     if (!cc || !phi) return -1;
 
     *phi = cc->state.phi;
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_get_phi", 0.0f);
+
+
     return 0;
 }
 
@@ -749,6 +911,10 @@ int collective_cognition_get_we_mode(
     if (!cc || !state) return -1;
 
     *state = cc->state.we_mode;
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_get_we_mode", 0.0f);
+
+
     return 0;
 }
 
@@ -757,18 +923,34 @@ int collective_cognition_get_we_mode(
  *===========================================================================*/
 
 hyperscanning_t* collective_cognition_get_hyperscanning(collective_cognition_t* cc) {
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_get_hyperscanning", 0.0f);
+
+
     return cc ? (hyperscanning_t*)cc->hyperscanning : NULL;
 }
 
 extended_mind_t* collective_cognition_get_extended_mind(collective_cognition_t* cc) {
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_get_extended_mind", 0.0f);
+
+
     return cc ? (extended_mind_t*)cc->extended_mind : NULL;
 }
 
 collective_phi_system_t* collective_cognition_get_phi_system(collective_cognition_t* cc) {
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_get_phi_system", 0.0f);
+
+
     return cc ? (collective_phi_system_t*)cc->phi_system : NULL;
 }
 
 shared_intentionality_t* collective_cognition_get_intentionality(collective_cognition_t* cc) {
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_get_intentionality", 0.0f);
+
+
     return cc ? (shared_intentionality_t*)cc->intentionality : NULL;
 }
 
@@ -781,6 +963,10 @@ int collective_cognition_connect_bio_async(
     bio_router_t* router
 ) {
     if (!cc || !router) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_connect_bio_async", 0.0f);
+
 
     cc->bio_router = router;
     cc->bio_async_connected = true;
@@ -795,6 +981,10 @@ int collective_cognition_disconnect_bio_async(collective_cognition_t* cc) {
 
     /* TODO: Unregister message handlers */
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_disconnect_bio_async", 0.0f);
+
+
     cc->bio_router = NULL;
     cc->bio_async_connected = false;
 
@@ -802,6 +992,10 @@ int collective_cognition_disconnect_bio_async(collective_cognition_t* cc) {
 }
 
 bool collective_cognition_is_bio_async_connected(const collective_cognition_t* cc) {
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_is_bio_async_connect", 0.0f);
+
+
     return cc ? cc->bio_async_connected : false;
 }
 
@@ -813,12 +1007,22 @@ int collective_cognition_balance_load(collective_cognition_t* cc) {
     if (!cc) return -1;
 
     /* Find overloaded and underloaded instances */
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_balance_load", 0.0f);
+
+
     int overloaded_idx = -1;
     int underloaded_idx = -1;
     float max_load = 0.0f;
     float min_load = 2.0f;
 
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            collective_cognition_heartbeat("collective_c_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (!cc->instances[i].active) continue;
 
         float load = cc->instances[i].fatigue_level;
@@ -854,6 +1058,10 @@ int collective_cognition_offload_task(
 ) {
     if (!cc || !task_data) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_offload_task", 0.0f);
+
+
     registered_instance_t* from = find_instance(cc, from_instance);
     registered_instance_t* to = find_instance(cc, to_instance);
 
@@ -883,11 +1091,19 @@ int collective_cognition_get_stats(
     if (!cc || !stats) return -1;
 
     *stats = cc->stats;
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_get_stats", 0.0f);
+
+
     return 0;
 }
 
 void collective_cognition_reset_stats(collective_cognition_t* cc) {
     if (!cc) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_reset_stats", 0.0f);
+
 
     memset(&cc->stats, 0, sizeof(cc->stats));
 }
@@ -936,6 +1152,10 @@ void collective_cognition_dump(const collective_cognition_t* cc) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_dump", 0.0f);
+
+
     printf("=== Collective Cognition State ===\n");
     printf("Initialized: %s\n", cc->initialized ? "yes" : "no");
     printf("Instances: %u / %d\n", cc->instance_count, COLLECTIVE_MAX_INSTANCES);
@@ -943,6 +1163,12 @@ void collective_cognition_dump(const collective_cognition_t* cc) {
     /* List instances */
     printf("\nRegistered Instances:\n");
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            collective_cognition_heartbeat("collective_c_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (cc->instances[i].active) {
             printf("  [%u] ID=%u phi=%.3f atp=%.3f fatigue=%.3f\n",
                    i, cc->instances[i].instance_id,
@@ -1015,9 +1241,19 @@ void collective_cognition_dump(const collective_cognition_t* cc) {
  */
 int collective_cognition_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_heartbeat("collective_c_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Collective_Cognition");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                collective_cognition_heartbeat("collective_c_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             printf("Collective Cognition self-knowledge: %s\n", self->observations[i]);
         }
     }

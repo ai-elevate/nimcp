@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_pr_training_plasticity_health_agent = NULL;
  * @brief Set health agent for pr_training_plasticity heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void pr_training_plasticity_set_health_agent(nimcp_health_agent_t* agent) {
+void pr_training_plasticity_set_health_agent(nimcp_health_agent_t* agent) {
     g_pr_training_plasticity_health_agent = agent;
 }
 
@@ -313,6 +313,10 @@ static void update_step_stats(
 //=============================================================================
 
 pr_training_plasticity_config_t pr_training_plasticity_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__config_default", 0.0f);
+
+
     pr_training_plasticity_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -387,6 +391,10 @@ bool pr_training_plasticity_config_validate(
     if (config->supervised_weight + config->unsupervised_weight < PR_TRAIN_EPSILON) return false;
 
     /* Alternation period must be positive if alternating */
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__config_validate", 0.0f);
+
+
     if (config->mode == PR_TRAINING_ALTERNATING && config->alternation_period == 0) {
         return false;
     }
@@ -405,6 +413,10 @@ bool pr_training_plasticity_config_validate(
 pr_training_plasticity_t pr_training_plasticity_create(
     const pr_training_plasticity_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__create", 0.0f);
+
+
     pr_training_plasticity_t tp = nimcp_calloc(1, sizeof(struct pr_training_plasticity_struct));
     if (!tp) {
 
@@ -468,6 +480,10 @@ void pr_training_plasticity_destroy(pr_training_plasticity_t tp) {
     if (!tp) return;
 
     /* Free buffers */
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__destroy", 0.0f);
+
+
     free_buffers(tp);
 
     /* Destroy mutex */
@@ -480,6 +496,10 @@ void pr_training_plasticity_destroy(pr_training_plasticity_t tp) {
 
 int pr_training_plasticity_reset(pr_training_plasticity_t tp) {
     if (!tp) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__reset", 0.0f);
+
 
     nimcp_mutex_lock(tp->mutex);
 
@@ -515,6 +535,10 @@ int pr_training_plasticity_connect(
 {
     if (!tp || !plasticity_bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__connect", 0.0f);
+
+
     nimcp_mutex_lock(tp->mutex);
     tp->plasticity_bridge = plasticity_bridge;
     tp->plasticity_connected = true;
@@ -529,6 +553,10 @@ int pr_training_plasticity_connect_z_ladder(
 {
     if (!tp || !z_ladder) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__connect_z_ladder", 0.0f);
+
+
     nimcp_mutex_lock(tp->mutex);
     tp->z_ladder = z_ladder;
     tp->z_ladder_connected = true;
@@ -542,6 +570,10 @@ int pr_training_plasticity_connect_graph(
     entangle_graph_t graph)
 {
     if (!tp || !graph) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__connect_graph", 0.0f);
+
 
     nimcp_mutex_lock(tp->mutex);
     tp->graph = graph;
@@ -565,12 +597,22 @@ int pr_training_gradient_to_stdp(
 {
     if (!tp || !gradients || !timing || !timing_count) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_gradient", 0.0f);
+
+
     nimcp_mutex_lock(tp->mutex);
 
     size_t count = 0;
     size_t limit = (grad_count < max_timing) ? grad_count : max_timing;
 
     for (size_t i = 0; i < limit; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && limit > 256) {
+            pr_training_plasticity_heartbeat("pr_training__loop",
+                             (float)(i + 1) / (float)limit);
+        }
+
         float delta_t = 0.0f;
 
         switch (tp->config.grad_to_stdp_method) {
@@ -667,12 +709,22 @@ int pr_training_plasticity_to_grad(
 {
     if (!tp || !events || !pseudo_grads || !grad_count) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__to_grad", 0.0f);
+
+
     nimcp_mutex_lock(tp->mutex);
 
     size_t count = 0;
     size_t limit = (event_count < max_grads) ? event_count : max_grads;
 
     for (size_t i = 0; i < limit; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && limit > 256) {
+            pr_training_plasticity_heartbeat("pr_training__loop",
+                             (float)(i + 1) / (float)limit);
+        }
+
         float pseudo_grad = 0.0f;
         float confidence = 1.0f;
 
@@ -749,6 +801,12 @@ int pr_training_plasticity_to_grad(
     if (count > 0) {
         float total_confidence = 0.0f;
         for (size_t i = 0; i < count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && count > 256) {
+                pr_training_plasticity_heartbeat("pr_training__loop",
+                                 (float)(i + 1) / (float)count);
+            }
+
             total_confidence += pseudo_grads[i].confidence;
         }
         /* Update running average */
@@ -770,6 +828,10 @@ float pr_training_apply_stdp_timing(
     if (!tp || !graph || !timing) return -1.0f;
 
     /* Use plasticity bridge if connected */
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_apply_st", 0.0f);
+
+
     if (tp->plasticity_connected && tp->plasticity_bridge) {
         /* Convert timing to pre/post spike times */
         float pre_time = 0.0f;
@@ -809,9 +871,19 @@ uint32_t pr_training_batch_apply_stdp(
 {
     if (!tp || !graph || !timing) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_batch_ap", 0.0f);
+
+
     uint32_t updated = 0;
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_training_plasticity_heartbeat("pr_training__loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         float new_weight = pr_training_apply_stdp_timing(tp, graph, &timing[i]);
         if (new_weight >= 0.0f) {
             updated++;
@@ -834,6 +906,10 @@ int pr_training_unified_step(
     pr_training_step_result_t* result)
 {
     if (!tp || !model || !batch) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_unified_", 0.0f);
+
 
     uint64_t start_time_us = nimcp_time_get_us();
 
@@ -904,14 +980,32 @@ int pr_training_unified_step(
         /* Unified: apply both weighted */
         /* Scale gradients by gradient_weight */
         for (size_t i = 0; i < grad_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && grad_count > 256) {
+                pr_training_plasticity_heartbeat("pr_training__loop",
+                                 (float)(i + 1) / (float)grad_count);
+            }
+
             gradients[i].gradient *= tp->config.gradient_weight;
             total_grad_contribution += fabsf(gradients[i].gradient);
         }
 
         /* Add pseudo-gradients scaled by plasticity_weight */
         for (size_t i = 0; i < pseudo_grad_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && pseudo_grad_count > 256) {
+                pr_training_plasticity_heartbeat("pr_training__loop",
+                                 (float)(i + 1) / (float)pseudo_grad_count);
+            }
+
             /* Find matching gradient and add */
             for (size_t j = 0; j < grad_count; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && grad_count > 256) {
+                    pr_training_plasticity_heartbeat("pr_training__loop",
+                                     (float)(j + 1) / (float)grad_count);
+                }
+
                 if (gradients[j].param_id == tp->pseudo_grad_buffer[i].param_id) {
                     float plast_contrib = tp->pseudo_grad_buffer[i].pseudo_gradient *
                                          tp->config.plasticity_weight;
@@ -924,6 +1018,12 @@ int pr_training_unified_step(
     } else if (tp->config.mode == PR_TRAINING_GRADIENT_PRIMARY) {
         /* Gradient primary: plasticity as regularizer */
         for (size_t i = 0; i < grad_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && grad_count > 256) {
+                pr_training_plasticity_heartbeat("pr_training__loop",
+                                 (float)(i + 1) / (float)grad_count);
+            }
+
             total_grad_contribution += fabsf(gradients[i].gradient);
         }
         /* Plasticity contributes to regularization, not gradients */
@@ -931,12 +1031,30 @@ int pr_training_unified_step(
     } else if (tp->config.mode == PR_TRAINING_PLASTICITY_PRIMARY) {
         /* Plasticity primary: use pseudo-gradients primarily */
         for (size_t i = 0; i < grad_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && grad_count > 256) {
+                pr_training_plasticity_heartbeat("pr_training__loop",
+                                 (float)(i + 1) / (float)grad_count);
+            }
+
             gradients[i].gradient *= 0.1f;  /* Small gradient contribution */
             total_grad_contribution += fabsf(gradients[i].gradient);
         }
         for (size_t i = 0; i < pseudo_grad_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && pseudo_grad_count > 256) {
+                pr_training_plasticity_heartbeat("pr_training__loop",
+                                 (float)(i + 1) / (float)pseudo_grad_count);
+            }
+
             /* Find matching gradient and replace */
             for (size_t j = 0; j < grad_count; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && grad_count > 256) {
+                    pr_training_plasticity_heartbeat("pr_training__loop",
+                                     (float)(j + 1) / (float)grad_count);
+                }
+
                 if (gradients[j].param_id == tp->pseudo_grad_buffer[i].param_id) {
                     gradients[j].gradient = tp->pseudo_grad_buffer[i].pseudo_gradient;
                     total_plast_contribution += fabsf(gradients[j].gradient);
@@ -971,12 +1089,30 @@ int pr_training_unified_step(
         adaptive_plast_weight /= total;
 
         for (size_t i = 0; i < grad_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && grad_count > 256) {
+                pr_training_plasticity_heartbeat("pr_training__loop",
+                                 (float)(i + 1) / (float)grad_count);
+            }
+
             gradients[i].gradient *= adaptive_grad_weight;
             total_grad_contribution += fabsf(gradients[i].gradient);
         }
 
         for (size_t i = 0; i < pseudo_grad_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && pseudo_grad_count > 256) {
+                pr_training_plasticity_heartbeat("pr_training__loop",
+                                 (float)(i + 1) / (float)pseudo_grad_count);
+            }
+
             for (size_t j = 0; j < grad_count; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && grad_count > 256) {
+                    pr_training_plasticity_heartbeat("pr_training__loop",
+                                     (float)(j + 1) / (float)grad_count);
+                }
+
                 if (gradients[j].param_id == tp->pseudo_grad_buffer[i].param_id) {
                     float plast_contrib = tp->pseudo_grad_buffer[i].pseudo_gradient *
                                          adaptive_plast_weight;
@@ -998,6 +1134,12 @@ int pr_training_unified_step(
     /* Step 8: Update memory nodes if provided */
     if (memory && memory_count > 0) {
         for (size_t i = 0; i < memory_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && memory_count > 256) {
+                pr_training_plasticity_heartbeat("pr_training__loop",
+                                 (float)(i + 1) / (float)memory_count);
+            }
+
             if (memory[i]) {
                 /* Record access */
                 tp->epoch_access_count++;
@@ -1070,6 +1212,10 @@ int pr_training_alternating_step(
 {
     if (!tp || !model || !batch) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_alternat", 0.0f);
+
+
     uint64_t start_time_us = nimcp_time_get_us();
 
     nimcp_mutex_lock(tp->mutex);
@@ -1107,6 +1253,12 @@ int pr_training_alternating_step(
 
         float total_grad = 0.0f;
         for (size_t i = 0; i < grad_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && grad_count > 256) {
+                pr_training_plasticity_heartbeat("pr_training__loop",
+                                 (float)(i + 1) / (float)grad_count);
+            }
+
             total_grad += fabsf(gradients[i].gradient);
         }
         local_result.total_weight_change = total_grad;
@@ -1133,6 +1285,12 @@ int pr_training_alternating_step(
 
             float total_change = 0.0f;
             for (uint32_t i = 0; i < event_count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && event_count > 256) {
+                    pr_training_plasticity_heartbeat("pr_training__loop",
+                                     (float)(i + 1) / (float)event_count);
+                }
+
                 total_change += fabsf(events[i].delta_weight);
             }
             local_result.total_weight_change = total_change;
@@ -1163,6 +1321,10 @@ int pr_training_alternating_step(
 
 pr_training_phase_t pr_training_advance_phase(pr_training_plasticity_t tp) {
     if (!tp) return PR_PHASE_GRADIENT;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_advance_", 0.0f);
+
 
     nimcp_mutex_lock(tp->mutex);
 
@@ -1196,6 +1358,10 @@ int pr_training_hybrid_loss(
     pr_hybrid_loss_t* loss)
 {
     if (!tp || !loss) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_hybrid_l", 0.0f);
+
 
     nimcp_mutex_lock(tp->mutex);
 
@@ -1241,6 +1407,10 @@ int pr_training_compute_unsupervised_loss(
     /* Note: In full implementation, would query actual plasticity state */
     /* For now, compute placeholder values */
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_compute_", 0.0f);
+
+
     float bcm_loss = 0.0f;
     float homeostatic_loss = 0.0f;
     float resonance_loss = 0.0f;
@@ -1272,6 +1442,12 @@ int pr_training_compute_unsupervised_loss(
             float demotion_rate = 0.0f;
             float promotion_rate = 0.0f;
             for (int i = 0; i < 3; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && 3 > 256) {
+                    pr_training_plasticity_heartbeat("pr_training__loop",
+                                     (float)(i + 1) / (float)3);
+                }
+
                 demotion_rate += z_stats.demotions[i];
                 promotion_rate += z_stats.promotions[i];
             }
@@ -1296,6 +1472,10 @@ float pr_training_compute_loss_component(
     pr_loss_component_t component)
 {
     if (!tp) return NAN;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_compute_", 0.0f);
+
 
     float value = 0.0f;
 
@@ -1351,17 +1531,33 @@ int pr_training_update_loss_weights(
     if (!tp || !recent_loss || loss_count == 0) return -1;
     if (!tp->config.adaptive_loss_weights) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_update_l", 0.0f);
+
+
     nimcp_mutex_lock(tp->mutex);
 
     /* Compute loss statistics */
     float mean = 0.0f;
     for (size_t i = 0; i < loss_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && loss_count > 256) {
+            pr_training_plasticity_heartbeat("pr_training__loop",
+                             (float)(i + 1) / (float)loss_count);
+        }
+
         mean += recent_loss[i];
     }
     mean /= (float)loss_count;
 
     float variance = 0.0f;
     for (size_t i = 0; i < loss_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && loss_count > 256) {
+            pr_training_plasticity_heartbeat("pr_training__loop",
+                             (float)(i + 1) / (float)loss_count);
+        }
+
         float diff = recent_loss[i] - mean;
         variance += diff * diff;
     }
@@ -1410,6 +1606,10 @@ int pr_training_epoch_consolidate(
 {
     if (!tp) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_epoch_co", 0.0f);
+
+
     uint64_t start_time_ms = nimcp_time_get_ms();
 
     nimcp_mutex_lock(tp->mutex);
@@ -1437,6 +1637,12 @@ int pr_training_epoch_consolidate(
 
         /* Compute changes */
         for (int i = 0; i < 3; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && 3 > 256) {
+                pr_training_plasticity_heartbeat("pr_training__loop",
+                                 (float)(i + 1) / (float)3);
+            }
+
             local_result.memories_promoted += (uint32_t)(post_stats.promotions[i] - pre_stats.promotions[i]);
             local_result.memories_demoted += (uint32_t)(post_stats.demotions[i] - pre_stats.demotions[i]);
         }
@@ -1491,6 +1697,10 @@ int pr_training_epoch_start(
 {
     if (!tp) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_epoch_st", 0.0f);
+
+
     nimcp_mutex_lock(tp->mutex);
 
     tp->current_epoch = epoch_number;
@@ -1510,6 +1720,10 @@ int pr_training_epoch_end(
 {
     if (!tp) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_epoch_en", 0.0f);
+
+
     if (trigger_consolidation || tp->config.consolidate_after_epoch) {
         return pr_training_epoch_consolidate(tp, NULL);
     }
@@ -1524,6 +1738,10 @@ int pr_training_epoch_end(
 pr_training_phase_t pr_training_get_phase(pr_training_plasticity_t tp) {
     if (!tp) return PR_PHASE_GRADIENT;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_get_phas", 0.0f);
+
+
     nimcp_mutex_lock(tp->mutex);
     pr_training_phase_t phase = tp->current_phase;
     nimcp_mutex_unlock(tp->mutex);
@@ -1537,6 +1755,10 @@ int pr_training_set_mode(
 {
     if (!tp) return -1;
     if (mode >= PR_TRAINING_MODE_COUNT) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_set_mode", 0.0f);
+
 
     nimcp_mutex_lock(tp->mutex);
     tp->config.mode = mode;
@@ -1553,6 +1775,10 @@ int pr_training_set_mode(
 pr_training_mode_t pr_training_get_mode(pr_training_plasticity_t tp) {
     if (!tp) return PR_TRAINING_UNIFIED;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_get_mode", 0.0f);
+
+
     nimcp_mutex_lock(tp->mutex);
     pr_training_mode_t mode = tp->config.mode;
     nimcp_mutex_unlock(tp->mutex);
@@ -1566,6 +1792,10 @@ int pr_training_get_stats(
 {
     if (!tp || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_get_stat", 0.0f);
+
+
     nimcp_mutex_lock(tp->mutex);
     *stats = tp->stats;
     nimcp_mutex_unlock(tp->mutex);
@@ -1575,6 +1805,10 @@ int pr_training_get_stats(
 
 int pr_training_reset_stats(pr_training_plasticity_t tp) {
     if (!tp) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_reset_st", 0.0f);
+
 
     nimcp_mutex_lock(tp->mutex);
     init_stats(&tp->stats);
@@ -1589,6 +1823,10 @@ int pr_training_get_config(
 {
     if (!tp || !config) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_get_conf", 0.0f);
+
+
     nimcp_mutex_lock(tp->mutex);
     *config = tp->config;
     nimcp_mutex_unlock(tp->mutex);
@@ -1602,6 +1840,10 @@ int pr_training_set_config(
 {
     if (!tp || !config) return -1;
     if (!pr_training_plasticity_config_validate(config)) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_set_conf", 0.0f);
+
 
     nimcp_mutex_lock(tp->mutex);
 
@@ -1637,6 +1879,10 @@ int pr_training_set_config(
 int pr_training_sync_all(pr_training_plasticity_t tp) {
     if (!tp) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_sync_all", 0.0f);
+
+
     int result = 0;
 
     result |= pr_training_sync_plasticity(tp);
@@ -1647,6 +1893,10 @@ int pr_training_sync_all(pr_training_plasticity_t tp) {
 
 int pr_training_sync_plasticity(pr_training_plasticity_t tp) {
     if (!tp) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_sync_pla", 0.0f);
+
 
     nimcp_mutex_lock(tp->mutex);
 
@@ -1663,6 +1913,10 @@ int pr_training_sync_z_ladder(pr_training_plasticity_t tp) {
     if (!tp) return -1;
 
     /* Z-Ladder doesn't have explicit sync, just validate */
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_sync_z_l", 0.0f);
+
+
     nimcp_mutex_lock(tp->mutex);
 
     if (tp->z_ladder_connected && tp->z_ladder) {
@@ -1714,6 +1968,10 @@ const char* pr_loss_component_name(pr_loss_component_t component) {
 void pr_training_print_stats(pr_training_plasticity_t tp) {
     if (!tp) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_print_st", 0.0f);
+
+
     pr_training_stats_t stats;
     if (pr_training_get_stats(tp, &stats) != 0) return;
 
@@ -1755,6 +2013,12 @@ void pr_training_print_stats(pr_training_plasticity_t tp) {
 
     printf("\nMode Usage:\n");
     for (int m = 0; m < PR_TRAINING_MODE_COUNT; m++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((m & 0xFF) == 0 && PR_TRAINING_MODE_COUNT > 256) {
+            pr_training_plasticity_heartbeat("pr_training__loop",
+                             (float)(m + 1) / (float)PR_TRAINING_MODE_COUNT);
+        }
+
         if (stats.mode_step_counts[m] > 0) {
             printf("  %s: %lu steps\n",
                    pr_training_mode_name((pr_training_mode_t)m),
@@ -1766,6 +2030,10 @@ void pr_training_print_stats(pr_training_plasticity_t tp) {
 
 void pr_training_print_step_result(const pr_training_step_result_t* result) {
     if (!result) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_print_st", 0.0f);
+
 
     printf("Step Result:\n");
     printf("  Phase:             %s\n", pr_training_phase_name(result->phase));
@@ -1784,6 +2052,10 @@ void pr_training_print_consolidation_result(
     const pr_epoch_consolidation_result_t* result)
 {
     if (!result) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_print_co", 0.0f);
+
 
     printf("Epoch Consolidation Result:\n");
     printf("  Memories promoted:    %u\n", result->memories_promoted);
@@ -1807,11 +2079,19 @@ bool pr_training_validate_model_interface(const pr_model_interface_t* model) {
     /* Need apply_updates to do anything useful */
     if (!model->apply_updates) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_validate", 0.0f);
+
+
     return true;
 }
 
 size_t pr_training_get_memory_usage(pr_training_plasticity_t tp) {
     if (!tp) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_training_plasticity_heartbeat("pr_training__pr_training_get_memo", 0.0f);
+
 
     size_t usage = sizeof(struct pr_training_plasticity_struct);
 

@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_cognitive_integration_hub_health_agent = NULL;
  * @brief Set health agent for cognitive_integration_hub heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void cognitive_integration_hub_set_health_agent(nimcp_health_agent_t* agent) {
+void cognitive_integration_hub_set_health_agent(nimcp_health_agent_t* agent) {
     g_cognitive_integration_hub_health_agent = agent;
 }
 
@@ -101,6 +101,12 @@ static module_entry_t* find_module_unlocked(cognitive_integration_hub_t hub, uin
     }
 
     for (size_t i = 0; i < hub->config.max_modules; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hub->config.max_modules > 256) {
+            cognitive_integration_hub_heartbeat("cognitive_in_loop",
+                             (float)(i + 1) / (float)hub->config.max_modules);
+        }
+
         if (hub->modules[i].slot_used &&
             hub->modules[i].info.module_id == module_id) {
             return &hub->modules[i];
@@ -119,6 +125,12 @@ static module_entry_t* find_empty_slot_unlocked(cognitive_integration_hub_t hub)
     }
 
     for (size_t i = 0; i < hub->config.max_modules; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hub->config.max_modules > 256) {
+            cognitive_integration_hub_heartbeat("cognitive_in_loop",
+                             (float)(i + 1) / (float)hub->config.max_modules);
+        }
+
         if (!hub->modules[i].slot_used) {
             return &hub->modules[i];
         }
@@ -145,6 +157,12 @@ static subscription_t* find_subscription_unlocked(cognitive_integration_hub_t hu
     size_t count = hub->subscription_counts[event_type];
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            cognitive_integration_hub_heartbeat("cognitive_in_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (subs[i].active && subs[i].subscriber_id == subscriber_id) {
             return &subs[i];
         }
@@ -163,9 +181,21 @@ static uint32_t count_active_subscriptions_unlocked(cognitive_integration_hub_t 
 
     uint32_t total = 0;
     for (int et = 0; et < COG_EVENT_COUNT; et++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((et & 0xFF) == 0 && COG_EVENT_COUNT > 256) {
+            cognitive_integration_hub_heartbeat("cognitive_in_loop",
+                             (float)(et + 1) / (float)COG_EVENT_COUNT);
+        }
+
         subscription_t* subs = hub->subscriptions[et];
         size_t count = hub->subscription_counts[et];
         for (size_t i = 0; i < count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && count > 256) {
+                cognitive_integration_hub_heartbeat("cognitive_in_loop",
+                                 (float)(i + 1) / (float)count);
+            }
+
             if (subs[i].active) {
                 total++;
             }
@@ -184,9 +214,21 @@ static void unsubscribe_all_unlocked(cognitive_integration_hub_t hub, uint32_t m
     }
 
     for (int et = 0; et < COG_EVENT_COUNT; et++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((et & 0xFF) == 0 && COG_EVENT_COUNT > 256) {
+            cognitive_integration_hub_heartbeat("cognitive_in_loop",
+                             (float)(et + 1) / (float)COG_EVENT_COUNT);
+        }
+
         subscription_t* subs = hub->subscriptions[et];
         size_t count = hub->subscription_counts[et];
         for (size_t i = 0; i < count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && count > 256) {
+                cognitive_integration_hub_heartbeat("cognitive_in_loop",
+                                 (float)(i + 1) / (float)count);
+            }
+
             if (subs[i].subscriber_id == module_id) {
                 subs[i].active = false;
             }
@@ -213,6 +255,12 @@ static int deliver_event_unlocked(cognitive_integration_hub_t hub,
     size_t count = hub->subscription_counts[event_type];
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            cognitive_integration_hub_heartbeat("cognitive_in_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (subs[i].active && subs[i].callback) {
             /* Check if subscriber module is active */
             module_entry_t* mod = find_module_unlocked(hub, subs[i].subscriber_id);
@@ -279,6 +327,10 @@ const char* cognitive_query_type_to_string(cognitive_query_type_t query_type) {
  * ======================================================================== */
 
 cognitive_hub_config_t cognitive_hub_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_hub_heartbeat("cognitive_in_cognitive_hub_defaul", 0.0f);
+
+
     cognitive_hub_config_t config = {
         .max_modules = 64,
         .max_subscriptions = 256,
@@ -294,6 +346,10 @@ cognitive_hub_config_t cognitive_hub_default_config(void) {
 
 cognitive_integration_hub_t cognitive_hub_create(const cognitive_hub_config_t* config) {
     /* Use defaults if config not provided */
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_hub_heartbeat("cognitive_in_cognitive_hub_create", 0.0f);
+
+
     cognitive_hub_config_t cfg = config ? *config : cognitive_hub_default_config();
 
     /* Validate configuration */
@@ -327,10 +383,22 @@ cognitive_integration_hub_t cognitive_hub_create(const cognitive_hub_config_t* c
     }
 
     for (int i = 0; i < COG_EVENT_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COG_EVENT_COUNT > 256) {
+            cognitive_integration_hub_heartbeat("cognitive_in_loop",
+                             (float)(i + 1) / (float)COG_EVENT_COUNT);
+        }
+
         hub->subscriptions[i] = nimcp_calloc(cfg.max_subscriptions, sizeof(subscription_t));
         if (!hub->subscriptions[i]) {
             /* Cleanup already allocated */
             for (int j = 0; j < i; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && i > 256) {
+                    cognitive_integration_hub_heartbeat("cognitive_in_loop",
+                                     (float)(j + 1) / (float)i);
+                }
+
                 nimcp_free(hub->subscriptions[j]);
             }
             nimcp_free(hub->subscriptions);
@@ -344,6 +412,12 @@ cognitive_integration_hub_t cognitive_hub_create(const cognitive_hub_config_t* c
     hub->subscription_counts = nimcp_calloc(COG_EVENT_COUNT, sizeof(size_t));
     if (!hub->subscription_counts) {
         for (int i = 0; i < COG_EVENT_COUNT; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && COG_EVENT_COUNT > 256) {
+                cognitive_integration_hub_heartbeat("cognitive_in_loop",
+                                 (float)(i + 1) / (float)COG_EVENT_COUNT);
+            }
+
             nimcp_free(hub->subscriptions[i]);
         }
         nimcp_free(hub->subscriptions);
@@ -358,6 +432,12 @@ cognitive_integration_hub_t cognitive_hub_create(const cognitive_hub_config_t* c
     if (!hub->mutex) {
         nimcp_free(hub->subscription_counts);
         for (int i = 0; i < COG_EVENT_COUNT; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && COG_EVENT_COUNT > 256) {
+                cognitive_integration_hub_heartbeat("cognitive_in_loop",
+                                 (float)(i + 1) / (float)COG_EVENT_COUNT);
+            }
+
             nimcp_free(hub->subscriptions[i]);
         }
         nimcp_free(hub->subscriptions);
@@ -381,11 +461,21 @@ void cognitive_hub_destroy(cognitive_integration_hub_t hub) {
     }
 
     /* Mark as not initialized to prevent further operations */
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_hub_heartbeat("cognitive_in_cognitive_hub_destro", 0.0f);
+
+
     hub->initialized = false;
 
     /* Free subscription arrays */
     if (hub->subscriptions) {
         for (int i = 0; i < COG_EVENT_COUNT; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && COG_EVENT_COUNT > 256) {
+                cognitive_integration_hub_heartbeat("cognitive_in_loop",
+                                 (float)(i + 1) / (float)COG_EVENT_COUNT);
+            }
+
             if (hub->subscriptions[i]) {
                 nimcp_free(hub->subscriptions[i]);
             }
@@ -428,6 +518,10 @@ int cognitive_hub_register_module(cognitive_integration_hub_t hub,
     if (!COG_CATEGORY_IS_VALID(category)) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_hub_heartbeat("cognitive_in_cognitive_hub_regist", 0.0f);
+
 
     nimcp_mutex_lock(hub->mutex);
 
@@ -472,6 +566,10 @@ int cognitive_hub_unregister_module(cognitive_integration_hub_t hub,
     if (!hub || !hub->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_hub_heartbeat("cognitive_in_cognitive_hub_unregi", 0.0f);
+
 
     nimcp_mutex_lock(hub->mutex);
 
@@ -520,6 +618,10 @@ int cognitive_hub_subscribe(cognitive_integration_hub_t hub,
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_hub_heartbeat("cognitive_in_cognitive_hub_subscr", 0.0f);
+
+
     nimcp_mutex_lock(hub->mutex);
 
     /* Check subscriber is registered */
@@ -544,6 +646,12 @@ int cognitive_hub_subscribe(cognitive_integration_hub_t hub,
     /* First try to reuse inactive slot */
     subscription_t* slot = NULL;
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            cognitive_integration_hub_heartbeat("cognitive_in_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (!subs[i].active) {
             slot = &subs[i];
             break;
@@ -582,6 +690,10 @@ int cognitive_hub_unsubscribe(cognitive_integration_hub_t hub,
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_hub_heartbeat("cognitive_in_cognitive_hub_unsubs", 0.0f);
+
+
     nimcp_mutex_lock(hub->mutex);
 
     subscription_t* sub = find_subscription_unlocked(hub, subscriber_id, event_type);
@@ -613,6 +725,10 @@ int cognitive_hub_publish(cognitive_integration_hub_t hub,
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_hub_heartbeat("cognitive_in_cognitive_hub_publis", 0.0f);
+
+
     nimcp_mutex_lock(hub->mutex);
 
     /* Check publisher is registered */
@@ -635,6 +751,10 @@ int cognitive_hub_publish_async(cognitive_integration_hub_t hub,
                                 const cognitive_event_data_t* data) {
     /* For now, just call synchronous publish */
     /* Async processing can be added later with a worker thread */
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_hub_heartbeat("cognitive_in_cognitive_hub_publis", 0.0f);
+
+
     return cognitive_hub_publish(hub, publisher_id, event_type, data);
 }
 
@@ -650,6 +770,10 @@ int cognitive_hub_query_module(cognitive_integration_hub_t hub,
     if (!hub || !hub->initialized || !query || !result) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_hub_heartbeat("cognitive_in_cognitive_hub_query_", 0.0f);
+
 
     nimcp_mutex_lock(hub->mutex);
 
@@ -706,6 +830,10 @@ int cognitive_hub_get_module_info(cognitive_integration_hub_t hub,
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_hub_heartbeat("cognitive_in_cognitive_hub_get_mo", 0.0f);
+
+
     nimcp_mutex_lock(hub->mutex);
 
     module_entry_t* mod = find_module_unlocked(hub, module_id);
@@ -730,6 +858,10 @@ int cognitive_hub_register_query_handler(cognitive_integration_hub_t hub,
     if (!hub || !hub->initialized || !handler) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_hub_heartbeat("cognitive_in_cognitive_hub_regist", 0.0f);
+
 
     nimcp_mutex_lock(hub->mutex);
 
@@ -756,6 +888,10 @@ int cognitive_hub_set_module_active(cognitive_integration_hub_t hub,
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_hub_heartbeat("cognitive_in_cognitive_hub_set_mo", 0.0f);
+
+
     nimcp_mutex_lock(hub->mutex);
 
     module_entry_t* mod = find_module_unlocked(hub, module_id);
@@ -780,6 +916,10 @@ int cognitive_hub_get_stats(cognitive_integration_hub_t hub,
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_hub_heartbeat("cognitive_in_cognitive_hub_get_st", 0.0f);
+
+
     nimcp_mutex_lock(hub->mutex);
 
     *stats = hub->stats;
@@ -792,6 +932,10 @@ int cognitive_hub_reset_stats(cognitive_integration_hub_t hub) {
     if (!hub || !hub->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_hub_heartbeat("cognitive_in_cognitive_hub_reset_", 0.0f);
+
 
     nimcp_mutex_lock(hub->mutex);
 
@@ -824,6 +968,10 @@ int cognitive_hub_get_modules_by_category(cognitive_integration_hub_t hub,
     if (!COG_CATEGORY_IS_VALID(category)) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_hub_heartbeat("cognitive_in_cognitive_hub_get_mo", 0.0f);
+
 
     nimcp_mutex_lock(hub->mutex);
 
@@ -860,6 +1008,10 @@ int cognitive_hub_publish_to_category(cognitive_integration_hub_t hub,
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_hub_heartbeat("cognitive_in_cognitive_hub_publis", 0.0f);
+
+
     nimcp_mutex_lock(hub->mutex);
 
     /* Check publisher is registered */
@@ -875,6 +1027,12 @@ int cognitive_hub_publish_to_category(cognitive_integration_hub_t hub,
     size_t count = hub->subscription_counts[event_type];
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            cognitive_integration_hub_heartbeat("cognitive_in_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (subs[i].active && subs[i].callback) {
             /* Check if subscriber module is active and in the category */
             module_entry_t* mod = find_module_unlocked(hub, subs[i].subscriber_id);
@@ -900,6 +1058,10 @@ int cognitive_hub_flush_async_queue(cognitive_integration_hub_t hub,
     }
 
     /* Currently no async queue implemented - always succeeds */
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_hub_heartbeat("cognitive_in_cognitive_hub_flush_", 0.0f);
+
+
     (void)timeout_ms;
     return 0;
 }
@@ -910,5 +1072,9 @@ uint32_t cognitive_hub_get_async_queue_depth(cognitive_integration_hub_t hub) {
     }
 
     /* Currently no async queue implemented */
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_hub_heartbeat("cognitive_in_cognitive_hub_get_as", 0.0f);
+
+
     return 0;
 }

@@ -37,7 +37,7 @@ static nimcp_health_agent_t* g_security_cognitive_hub_bridge_health_agent = NULL
  * @brief Set health agent for security_cognitive_hub_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void security_cognitive_hub_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void security_cognitive_hub_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_security_cognitive_hub_bridge_health_agent = agent;
 }
 
@@ -270,6 +270,10 @@ static int security_query_handler(
 
 int security_cognitive_default_config(security_cognitive_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    security_cognitive_hub_bridge_heartbeat("security_cog_security_cognitive_d", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(*config));
@@ -305,6 +309,10 @@ security_cognitive_bridge_t security_cognitive_bridge_create(
     const security_cognitive_config_t* config
 )
 {
+    /* Phase 8: Heartbeat at operation start */
+    security_cognitive_hub_bridge_heartbeat("security_cog_security_cognitive_b", 0.0f);
+
+
     security_cognitive_bridge_t bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
 
@@ -339,6 +347,10 @@ void security_cognitive_bridge_destroy(security_cognitive_bridge_t bridge)
     if (!bridge) return;
 
     /* Disconnect from both systems */
+    /* Phase 8: Heartbeat at operation start */
+    security_cognitive_hub_bridge_heartbeat("security_cog_security_cognitive_b", 0.0f);
+
+
     security_cognitive_disconnect_security(bridge);
     security_cognitive_disconnect_cognitive(bridge);
 
@@ -350,6 +362,10 @@ void security_cognitive_bridge_destroy(security_cognitive_bridge_t bridge)
 
 int security_cognitive_bridge_reset(security_cognitive_bridge_t bridge)
 {
+    /* Phase 8: Heartbeat at operation start */
+    security_cognitive_hub_bridge_heartbeat("security_cog_security_cognitive_b", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
@@ -374,6 +390,10 @@ int security_cognitive_connect_security(
     security_orchestrator_t orchestrator
 )
 {
+    /* Phase 8: Heartbeat at operation start */
+    security_cognitive_hub_bridge_heartbeat("security_cog_security_cognitive_c", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && orchestrator, NIMCP_ERROR_NULL_POINTER, "bridge or orchestrator is NULL");
 
     BRIDGE_LOCK(bridge);
@@ -429,6 +449,10 @@ int security_cognitive_connect_cognitive(
     cognitive_integration_hub_t cognitive_hub
 )
 {
+    /* Phase 8: Heartbeat at operation start */
+    security_cognitive_hub_bridge_heartbeat("security_cog_security_cognitive_c", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && cognitive_hub, NIMCP_ERROR_NULL_POINTER, "bridge or cognitive_hub is NULL");
 
     BRIDGE_LOCK(bridge);
@@ -484,6 +508,10 @@ int security_cognitive_connect_cognitive(
 
 int security_cognitive_disconnect_security(security_cognitive_bridge_t bridge)
 {
+    /* Phase 8: Heartbeat at operation start */
+    security_cognitive_hub_bridge_heartbeat("security_cog_security_cognitive_d", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
@@ -511,6 +539,10 @@ int security_cognitive_disconnect_security(security_cognitive_bridge_t bridge)
 
 int security_cognitive_disconnect_cognitive(security_cognitive_bridge_t bridge)
 {
+    /* Phase 8: Heartbeat at operation start */
+    security_cognitive_hub_bridge_heartbeat("security_cog_security_cognitive_d", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
@@ -540,6 +572,10 @@ bool security_cognitive_is_connected(security_cognitive_bridge_t bridge)
 {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    security_cognitive_hub_bridge_heartbeat("security_cog_security_cognitive_i", 0.0f);
+
+
     BRIDGE_LOCK(bridge);
     bool connected = bridge->security_connected && bridge->cognitive_connected;
     BRIDGE_UNLOCK(bridge);
@@ -552,6 +588,10 @@ int security_cognitive_translate_security_event(
     const security_event_data_t* security_event
 )
 {
+    /* Phase 8: Heartbeat at operation start */
+    security_cognitive_hub_bridge_heartbeat("security_cog_security_cognitive_t", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && security_event, NIMCP_ERROR_NULL_POINTER, "bridge or security_event is NULL");
 
     BRIDGE_LOCK(bridge);
@@ -651,6 +691,10 @@ int security_cognitive_translate_cognitive_event(
     const char* description
 )
 {
+    /* Phase 8: Heartbeat at operation start */
+    security_cognitive_hub_bridge_heartbeat("security_cog_security_cognitive_t", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
@@ -714,6 +758,10 @@ int security_cognitive_coordinate_lockdown(
     const char* reason
 )
 {
+    /* Phase 8: Heartbeat at operation start */
+    security_cognitive_hub_bridge_heartbeat("security_cog_security_cognitive_c", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
@@ -747,6 +795,10 @@ int security_cognitive_coordinate_lockdown(
 
 int security_cognitive_release_lockdown(security_cognitive_bridge_t bridge)
 {
+    /* Phase 8: Heartbeat at operation start */
+    security_cognitive_hub_bridge_heartbeat("security_cog_security_cognitive_r", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
@@ -779,6 +831,10 @@ int security_cognitive_protect_memory(
     float threat_level
 )
 {
+    /* Phase 8: Heartbeat at operation start */
+    security_cognitive_hub_bridge_heartbeat("security_cog_security_cognitive_p", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
@@ -814,6 +870,10 @@ int security_cognitive_shift_attention(
     cognitive_category_t target_category
 )
 {
+    /* Phase 8: Heartbeat at operation start */
+    security_cognitive_hub_bridge_heartbeat("security_cog_security_cognitive_s", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
@@ -855,6 +915,10 @@ int security_cognitive_query_cognitive(
     void* result_out
 )
 {
+    /* Phase 8: Heartbeat at operation start */
+    security_cognitive_hub_bridge_heartbeat("security_cog_security_cognitive_q", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && result_out, NIMCP_ERROR_NULL_POINTER, "bridge or result_out is NULL");
 
     BRIDGE_LOCK(bridge);
@@ -895,6 +959,10 @@ int security_cognitive_get_security_assessment(
     security_threat_assessment_t* assessment_out
 )
 {
+    /* Phase 8: Heartbeat at operation start */
+    security_cognitive_hub_bridge_heartbeat("security_cog_security_cognitive_g", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && assessment_out, NIMCP_ERROR_NULL_POINTER, "bridge or assessment_out is NULL");
 
     BRIDGE_LOCK(bridge);
@@ -915,6 +983,10 @@ int security_cognitive_get_state(
     security_cognitive_state_t* state_out
 )
 {
+    /* Phase 8: Heartbeat at operation start */
+    security_cognitive_hub_bridge_heartbeat("security_cog_security_cognitive_g", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state_out, NIMCP_ERROR_NULL_POINTER, "bridge or state_out is NULL");
 
     BRIDGE_LOCK(bridge);
@@ -929,6 +1001,10 @@ int security_cognitive_get_stats(
     security_cognitive_stats_t* stats_out
 )
 {
+    /* Phase 8: Heartbeat at operation start */
+    security_cognitive_hub_bridge_heartbeat("security_cog_security_cognitive_g", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats_out, NIMCP_ERROR_NULL_POINTER, "bridge or stats_out is NULL");
 
     BRIDGE_LOCK(bridge);
@@ -941,6 +1017,10 @@ int security_cognitive_get_stats(
 
 int security_cognitive_reset_stats(security_cognitive_bridge_t bridge)
 {
+    /* Phase 8: Heartbeat at operation start */
+    security_cognitive_hub_bridge_heartbeat("security_cog_security_cognitive_r", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
@@ -977,6 +1057,10 @@ void security_cognitive_print_summary(security_cognitive_bridge_t bridge)
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    security_cognitive_hub_bridge_heartbeat("security_cog_security_cognitive_p", 0.0f);
+
+
     BRIDGE_LOCK(bridge);
 
     printf("\n=== Security-Cognitive Hub Bridge Summary ===\n");
@@ -1002,6 +1086,10 @@ void security_cognitive_print_stats(const security_cognitive_stats_t* stats)
         printf("Statistics: NULL\n");
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    security_cognitive_hub_bridge_heartbeat("security_cog_security_cognitive_p", 0.0f);
+
 
     printf("\n=== Security-Cognitive Bridge Statistics ===\n");
     printf("Event Translation:\n");

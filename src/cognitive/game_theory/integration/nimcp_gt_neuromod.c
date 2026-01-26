@@ -39,7 +39,7 @@ static nimcp_health_agent_t* g_gt_neuromod_health_agent = NULL;
  * @brief Set health agent for gt_neuromod heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void gt_neuromod_set_health_agent(nimcp_health_agent_t* agent) {
+void gt_neuromod_set_health_agent(nimcp_health_agent_t* agent) {
     g_gt_neuromod_health_agent = agent;
 }
 
@@ -104,6 +104,12 @@ static float compute_payoff_for_player(
 ) {
     // Find player in outcome
     for (uint32_t i = 0; i < outcome->num_winners; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && outcome->num_winners > 256) {
+            gt_neuromod_heartbeat("gt_neuromod_loop",
+                             (float)(i + 1) / (float)outcome->num_winners);
+        }
+
         if (outcome->winners[i] == player) {
             return outcome->allocations[i];
         }
@@ -116,6 +122,12 @@ static bool is_winner(
     nimcp_player_id_t player
 ) {
     for (uint32_t i = 0; i < outcome->num_winners; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && outcome->num_winners > 256) {
+            gt_neuromod_heartbeat("gt_neuromod_loop",
+                             (float)(i + 1) / (float)outcome->num_winners);
+        }
+
         if (outcome->winners[i] == player) {
             return true;
         }
@@ -128,6 +140,10 @@ static bool is_winner(
 //=============================================================================
 
 gt_neuromod_config_t gt_neuromod_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_neuromod_heartbeat("gt_neuromod_default_config", 0.0f);
+
+
     gt_neuromod_config_t config = {
         // Dopamine (reward/motivation)
         .payoff_dopamine_gain = 0.1f,
@@ -160,6 +176,10 @@ gt_neuromod_bridge_t gt_neuromod_bridge_create(
     neuromodulator_system_t neuromod,
     const gt_neuromod_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_neuromod_heartbeat("gt_neuromod_bridge_create", 0.0f);
+
+
     gt_neuromod_bridge_t bridge = nimcp_calloc(1, sizeof(struct gt_neuromod_bridge_struct));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -190,6 +210,10 @@ gt_neuromod_bridge_t gt_neuromod_bridge_create(
 }
 
 void gt_neuromod_bridge_destroy(gt_neuromod_bridge_t bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_neuromod_heartbeat("gt_neuromod_bridge_destroy", 0.0f);
+
+
     if (bridge) {
         nimcp_free(bridge);
     }
@@ -205,6 +229,10 @@ nimcp_error_t gt_neuromod_process_outcome(
     const nimcp_game_outcome_t* outcome,
     gt_neuromod_release_t* release
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_neuromod_heartbeat("gt_neuromod_process_outcome", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && outcome && release, NIMCP_ERROR_INVALID_PARAM, "bridge, outcome, or release is NULL");
     NIMCP_CHECK_THROW(bridge->active, NIMCP_GT_ERROR_GAME_OVER, "bridge is not active");
 
@@ -280,6 +308,10 @@ float gt_neuromod_auction_win(
     }
 
     // Consumer surplus: valuation (bid) minus payment
+    /* Phase 8: Heartbeat at operation start */
+    gt_neuromod_heartbeat("gt_neuromod_auction_win", 0.0f);
+
+
     float surplus = winning_bid - payment;
     if (surplus < 0.0f) surplus = 0.0f;
 
@@ -304,6 +336,10 @@ float gt_neuromod_bargaining_success(
     }
 
     // DA for reaching agreement
+    /* Phase 8: Heartbeat at operation start */
+    gt_neuromod_heartbeat("gt_neuromod_bargaining_success", 0.0f);
+
+
     float da = bridge->config.cooperation_dopamine_bonus;
 
     // Bonus for valuable agreement
@@ -331,6 +367,10 @@ float gt_neuromod_bargaining_failure(
     }
 
     // 5-HT release for patience/timeout
+    /* Phase 8: Heartbeat at operation start */
+    gt_neuromod_heartbeat("gt_neuromod_bargaining_failure", 0.0f);
+
+
     float patience_factor = (float)rounds_taken / (float)max_rounds;
     float serotonin = bridge->config.timeout_serotonin_gain +
                       patience_factor * bridge->config.loss_serotonin_gain;
@@ -351,6 +391,10 @@ float gt_neuromod_signal_unfairness(
     }
 
     // NE for threat response to unfairness
+    /* Phase 8: Heartbeat at operation start */
+    gt_neuromod_heartbeat("gt_neuromod_signal_unfairness", 0.0f);
+
+
     float ne = unfairness_magnitude * bridge->config.fairness_violation_ne_gain;
     ne = clamp_release(ne);
 
@@ -370,6 +414,10 @@ float gt_neuromod_strategic_attention(
     }
 
     // ACh for attention/salience
+    /* Phase 8: Heartbeat at operation start */
+    gt_neuromod_heartbeat("gt_neuromod_strategic_attention", 0.0f);
+
+
     float option_factor = logf((float)num_options + 1.0f) / logf(10.0f);  // Log scale
     float ach = option_factor * bridge->config.strategic_ach_gain;
 
@@ -394,6 +442,10 @@ nimcp_error_t gt_neuromod_get_cumulative_release(
     const gt_neuromod_bridge_t bridge,
     gt_neuromod_release_t* cumulative
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_neuromod_heartbeat("gt_neuromod_get_cumulative_relea", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && cumulative, NIMCP_ERROR_INVALID_PARAM, "bridge or cumulative is NULL");
 
     memset(cumulative, 0, sizeof(gt_neuromod_release_t));
@@ -411,6 +463,10 @@ void gt_neuromod_reset_stats(gt_neuromod_bridge_t bridge) {
     if (!bridge) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_neuromod_heartbeat("gt_neuromod_reset_stats", 0.0f);
+
 
     bridge->total_dopamine = 0.0f;
     bridge->total_serotonin = 0.0f;
@@ -432,9 +488,19 @@ void gt_neuromod_reset_stats(gt_neuromod_bridge_t bridge) {
 int gt_neuromod_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_neuromod_heartbeat("gt_neuromod_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Game_Theory_Neuromodulator");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                gt_neuromod_heartbeat("gt_neuromod_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

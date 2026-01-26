@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_attention_snn_bridge_health_agent = NULL;
  * @brief Set health agent for attention_snn_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void attention_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void attention_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_attention_snn_bridge_health_agent = agent;
 }
 
@@ -116,6 +116,12 @@ static void softmax(float* values, uint32_t n) {
     /* Compute exp and sum */
     float sum = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            attention_snn_bridge_heartbeat("attention_sn_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         values[i] = expf(values[i] - max_val);
         sum += values[i];
     }
@@ -123,6 +129,12 @@ static void softmax(float* values, uint32_t n) {
     /* Normalize */
     if (sum > 0.0f) {
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                attention_snn_bridge_heartbeat("attention_sn_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             values[i] /= sum;
         }
     }
@@ -146,6 +158,12 @@ static void winner_take_all(float* values, uint32_t n, float inhibition) {
 
     /* Apply lateral inhibition */
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            attention_snn_bridge_heartbeat("attention_sn_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         if (i == winner) {
             values[i] = max_val;  /* Keep winner */
         } else {
@@ -160,6 +178,12 @@ static void winner_take_all(float* values, uint32_t n, float inhibition) {
 static void find_top_k(const float* values, uint32_t n, int32_t* indices, uint32_t k) {
     /* Initialize indices */
     for (uint32_t i = 0; i < k; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && k > 256) {
+            attention_snn_bridge_heartbeat("attention_sn_loop",
+                             (float)(i + 1) / (float)k);
+        }
+
         indices[i] = -1;
     }
 
@@ -169,9 +193,21 @@ static void find_top_k(const float* values, uint32_t n, int32_t* indices, uint32
         int32_t max_idx = -1;
 
         for (uint32_t j = 0; j < n; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && n > 256) {
+                attention_snn_bridge_heartbeat("attention_sn_loop",
+                                 (float)(j + 1) / (float)n);
+            }
+
             /* Check if already selected */
             bool selected = false;
             for (uint32_t m = 0; m < i; m++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((m & 0xFF) == 0 && i > 256) {
+                    attention_snn_bridge_heartbeat("attention_sn_loop",
+                                     (float)(m + 1) / (float)i);
+                }
+
                 if (indices[m] == (int32_t)j) {
                     selected = true;
                     break;
@@ -193,6 +229,10 @@ static void find_top_k(const float* values, uint32_t n, int32_t* indices, uint32
 //=============================================================================
 
 attention_snn_config_t attention_snn_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    attention_snn_bridge_heartbeat("attention_sn_attention_snn_config", 0.0f);
+
+
     attention_snn_config_t config = {
         .num_heads = 8,
         .neurons_per_head = ATTENTION_SNN_NEURONS_PER_HEAD,
@@ -229,6 +269,10 @@ attention_snn_config_t attention_snn_config_default(void) {
 }
 
 attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    attention_snn_bridge_heartbeat("attention_sn_attention_snn_create", 0.0f);
+
+
     attention_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(attention_snn_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_snn_create: failed to allocate bridge");
@@ -291,6 +335,12 @@ attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* confi
     /* Create populations for each attention head */
     char pop_name[64];
     for (uint32_t h = 0; h < bridge->config.num_heads; h++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((h & 0xFF) == 0 && bridge->config.num_heads > 256) {
+            attention_snn_bridge_heartbeat("attention_sn_loop",
+                             (float)(h + 1) / (float)bridge->config.num_heads);
+        }
+
         snprintf(pop_name, sizeof(pop_name), "attention_head_%u", h);
         bridge->head_pops[h] = snn_network_add_population(
             bridge->snn, bridge->config.neurons_per_head, NEURON_GENERIC_LIF, pop_name);
@@ -310,6 +360,12 @@ attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* confi
 
     /* Connect head populations to competition layer */
     for (uint32_t h = 0; h < bridge->config.num_heads; h++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((h & 0xFF) == 0 && bridge->config.num_heads > 256) {
+            attention_snn_bridge_heartbeat("attention_sn_loop",
+                             (float)(h + 1) / (float)bridge->config.num_heads);
+        }
+
         snn_network_connect_populations(bridge->snn,
             bridge->head_pops[h], bridge->competition_pop,
             SNN_TOPO_RANDOM, 0.5f, SYNAPSE_AMPA, 0.5f, 0.1f);
@@ -361,6 +417,12 @@ attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* confi
     /* Initialize attention weights to uniform distribution for proper temporal smoothing */
     float uniform_weight = 1.0f / (float)bridge->config.num_heads;
     for (uint32_t h = 0; h < bridge->config.num_heads; h++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((h & 0xFF) == 0 && bridge->config.num_heads > 256) {
+            attention_snn_bridge_heartbeat("attention_sn_loop",
+                             (float)(h + 1) / (float)bridge->config.num_heads);
+        }
+
         bridge->attention.attention_weights[h] = uniform_weight;
     }
 
@@ -379,6 +441,10 @@ attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* confi
 
 void attention_snn_destroy(attention_snn_bridge_t* bridge) {
     if (!bridge) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_snn_bridge_heartbeat("attention_sn_attention_snn_destro", 0.0f);
+
 
     if (bridge->bio_async_connected) {
         attention_snn_disconnect_bio_async(bridge);
@@ -411,6 +477,10 @@ int attention_snn_reset(attention_snn_bridge_t* bridge) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_snn_bridge_heartbeat("attention_sn_attention_snn_reset", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->snn) {
@@ -431,6 +501,12 @@ int attention_snn_reset(attention_snn_bridge_t* bridge) {
     /* Reset attention state - use uniform distribution for proper temporal smoothing */
     float uniform_weight = 1.0f / (float)bridge->config.num_heads;
     for (uint32_t h = 0; h < bridge->config.num_heads; h++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((h & 0xFF) == 0 && bridge->config.num_heads > 256) {
+            attention_snn_bridge_heartbeat("attention_sn_loop",
+                             (float)(h + 1) / (float)bridge->config.num_heads);
+        }
+
         bridge->attention.attention_weights[h] = uniform_weight;
     }
     memset(bridge->attention.salience_map, 0, bridge->config.sequence_length * sizeof(float));
@@ -462,6 +538,10 @@ int attention_snn_encode_weights(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_encode_weights: bridge or attention_weights is NULL");
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    attention_snn_bridge_heartbeat("attention_sn_attention_snn_encode", 0.0f);
+
+
     if (num_heads > bridge->config.num_heads) {
         num_heads = bridge->config.num_heads;
     }
@@ -475,6 +555,12 @@ int attention_snn_encode_weights(
 
     /* Encode each attention head as a population activity */
     for (uint32_t h = 0; h < num_heads; h++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((h & 0xFF) == 0 && num_heads > 256) {
+            attention_snn_bridge_heartbeat("attention_sn_loop",
+                             (float)(h + 1) / (float)num_heads);
+        }
+
         float weight = clamp_f(attention_weights[h], 0.0f, 1.0f);
 
         /* WHAT: Store encoded weight for focus/sparsity calculation */
@@ -489,6 +575,12 @@ int attention_snn_encode_weights(
 
         /* Set activity for all neurons in this head's population */
         for (uint32_t n = 0; n < bridge->config.neurons_per_head; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && bridge->config.neurons_per_head > 256) {
+                attention_snn_bridge_heartbeat("attention_sn_loop",
+                                 (float)(n + 1) / (float)bridge->config.neurons_per_head);
+            }
+
             uint32_t idx = h * bridge->config.neurons_per_head + n;
             bridge->head_buffer[idx] = rate;
             if (rate > bridge->config.baseline_rate_hz * 1.5f) {
@@ -527,6 +619,10 @@ int attention_snn_encode_salience(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_snn_bridge_heartbeat("attention_sn_attention_snn_encode", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ATTENTION_SNN_STATE_ENCODING;
@@ -537,6 +633,12 @@ int attention_snn_encode_salience(
 
     /* Encode salience as population activity */
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            attention_snn_bridge_heartbeat("attention_sn_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         float sal = clamp_f(salience[i], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     sal * bridge->config.salience_gain *
@@ -577,6 +679,10 @@ int attention_snn_encode_multihead(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_snn_bridge_heartbeat("attention_sn_attention_snn_encode", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ATTENTION_SNN_STATE_ENCODING;
@@ -599,10 +705,22 @@ int attention_snn_encode_multihead(
         case ATTENTION_SNN_ENCODE_RATE:
             /* Simple rate coding based on attention strength */
             for (uint32_t h = 0; h < bridge->config.num_heads; h++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((h & 0xFF) == 0 && bridge->config.num_heads > 256) {
+                    attention_snn_bridge_heartbeat("attention_sn_loop",
+                                     (float)(h + 1) / (float)bridge->config.num_heads);
+                }
+
                 float rate = bridge->config.baseline_rate_hz +
                             strength * bridge->config.encoding_gain *
                             (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
                 for (uint32_t n = 0; n < bridge->config.neurons_per_head; n++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((n & 0xFF) == 0 && bridge->config.neurons_per_head > 256) {
+                        attention_snn_bridge_heartbeat("attention_sn_loop",
+                                         (float)(n + 1) / (float)bridge->config.neurons_per_head);
+                    }
+
                     uint32_t idx = h * bridge->config.neurons_per_head + n;
                     bridge->head_buffer[idx] = rate;
                     if (rate > bridge->config.baseline_rate_hz * 1.5f) {
@@ -615,6 +733,12 @@ int attention_snn_encode_multihead(
         case ATTENTION_SNN_ENCODE_POPULATION:
             /* Population coding - distribute activity across heads */
             for (uint32_t h = 0; h < bridge->config.num_heads; h++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((h & 0xFF) == 0 && bridge->config.num_heads > 256) {
+                    attention_snn_bridge_heartbeat("attention_sn_loop",
+                                     (float)(h + 1) / (float)bridge->config.num_heads);
+                }
+
                 /* Each head gets activity based on its contribution */
                 float head_weight = strength * (1.0f + 0.2f * sinf((float)h * 0.5f));
                 head_weight = clamp_f(head_weight, 0.0f, 1.0f);
@@ -624,6 +748,12 @@ int attention_snn_encode_multihead(
                             (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
                 for (uint32_t n = 0; n < bridge->config.neurons_per_head; n++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((n & 0xFF) == 0 && bridge->config.neurons_per_head > 256) {
+                        attention_snn_bridge_heartbeat("attention_sn_loop",
+                                         (float)(n + 1) / (float)bridge->config.neurons_per_head);
+                    }
+
                     uint32_t idx = h * bridge->config.neurons_per_head + n;
                     /* Add some variation within population */
                     float var = 0.9f + 0.2f * ((float)(n % 5) / 5.0f);
@@ -638,6 +768,12 @@ int attention_snn_encode_multihead(
         case ATTENTION_SNN_ENCODE_WINNER_TAKE_ALL:
             /* Only active heads get high rates */
             for (uint32_t h = 0; h < bridge->config.num_heads; h++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((h & 0xFF) == 0 && bridge->config.num_heads > 256) {
+                    attention_snn_bridge_heartbeat("attention_sn_loop",
+                                     (float)(h + 1) / (float)bridge->config.num_heads);
+                }
+
                 bool is_active = (h < mha_stats.active_heads);
                 float rate = is_active ?
                     (bridge->config.baseline_rate_hz +
@@ -646,6 +782,12 @@ int attention_snn_encode_multihead(
                     bridge->config.baseline_rate_hz * 0.5f;
 
                 for (uint32_t n = 0; n < bridge->config.neurons_per_head; n++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((n & 0xFF) == 0 && bridge->config.neurons_per_head > 256) {
+                        attention_snn_bridge_heartbeat("attention_sn_loop",
+                                         (float)(n + 1) / (float)bridge->config.neurons_per_head);
+                    }
+
                     uint32_t idx = h * bridge->config.neurons_per_head + n;
                     bridge->head_buffer[idx] = rate;
                     if (rate > bridge->config.baseline_rate_hz * 1.5f) {
@@ -658,12 +800,24 @@ int attention_snn_encode_multihead(
         case ATTENTION_SNN_ENCODE_TEMPORAL:
             /* Temporal coding - higher attention = shorter latency */
             for (uint32_t h = 0; h < bridge->config.num_heads; h++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((h & 0xFF) == 0 && bridge->config.num_heads > 256) {
+                    attention_snn_bridge_heartbeat("attention_sn_loop",
+                                     (float)(h + 1) / (float)bridge->config.num_heads);
+                }
+
                 float latency_factor = 1.0f - strength;  /* Invert for timing */
                 float rate = bridge->config.baseline_rate_hz +
                             (1.0f - latency_factor) * bridge->config.encoding_gain *
                             (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
                 for (uint32_t n = 0; n < bridge->config.neurons_per_head; n++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((n & 0xFF) == 0 && bridge->config.neurons_per_head > 256) {
+                        attention_snn_bridge_heartbeat("attention_sn_loop",
+                                         (float)(n + 1) / (float)bridge->config.neurons_per_head);
+                    }
+
                     uint32_t idx = h * bridge->config.neurons_per_head + n;
                     bridge->head_buffer[idx] = rate;
                     if (rate > bridge->config.baseline_rate_hz * 1.5f) {
@@ -698,6 +852,10 @@ int attention_snn_encode_gate(
     }
     if (!bridge->config.enable_gate_integration) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_snn_bridge_heartbeat("attention_sn_attention_snn_encode", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->current_gate_mod = clamp_f(gate_signal, 0.0f, 1.0f);
@@ -720,12 +878,22 @@ int attention_snn_simulate(attention_snn_bridge_t* bridge, float duration_ms) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_snn_bridge_heartbeat("attention_sn_attention_snn_simula", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ATTENTION_SNN_STATE_SIMULATING;
 
     int steps = (int)(duration_ms / bridge->config.dt_ms);
     for (int s = 0; s < steps; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && steps > 256) {
+            attention_snn_bridge_heartbeat("attention_sn_loop",
+                             (float)(s + 1) / (float)steps);
+        }
+
         snn_network_step(bridge->snn, bridge->config.dt_ms);
     }
 
@@ -745,6 +913,10 @@ int attention_snn_step(attention_snn_bridge_t* bridge) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_snn_bridge_heartbeat("attention_sn_attention_snn_step", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     snn_network_step(bridge->snn, bridge->config.dt_ms);
@@ -761,6 +933,10 @@ int attention_snn_compete(attention_snn_bridge_t* bridge, float duration_ms) {
     }
     if (!bridge->config.enable_competition) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_snn_bridge_heartbeat("attention_sn_attention_snn_compet", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ATTENTION_SNN_STATE_COMPETING;
@@ -768,6 +944,12 @@ int attention_snn_compete(attention_snn_bridge_t* bridge, float duration_ms) {
     /* Run competition simulation */
     int steps = (int)(duration_ms / bridge->config.dt_ms);
     for (int s = 0; s < steps; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && steps > 256) {
+            attention_snn_bridge_heartbeat("attention_sn_loop",
+                             (float)(s + 1) / (float)steps);
+        }
+
         snn_network_step(bridge->snn, bridge->config.dt_ms);
 
         /* Apply winner-take-all dynamics every few steps */
@@ -782,6 +964,12 @@ int attention_snn_compete(attention_snn_bridge_t* bridge, float duration_ms) {
     /* Update competition energy in stats */
     float energy = 0.0f;
     for (uint32_t h = 0; h < bridge->config.num_heads; h++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((h & 0xFF) == 0 && bridge->config.num_heads > 256) {
+            attention_snn_bridge_heartbeat("attention_sn_loop",
+                             (float)(h + 1) / (float)bridge->config.num_heads);
+        }
+
         energy += bridge->competition_buffer[h] * bridge->competition_buffer[h];
     }
     bridge->stats.competition_convergence_rate = energy / (float)bridge->config.num_heads;
@@ -791,12 +979,24 @@ int attention_snn_compete(attention_snn_bridge_t* bridge, float duration_ms) {
     /* HOW: Normalize competition buffer values to [0,1] and copy */
     float max_val = 0.0f;
     for (uint32_t h = 0; h < bridge->config.num_heads; h++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((h & 0xFF) == 0 && bridge->config.num_heads > 256) {
+            attention_snn_bridge_heartbeat("attention_sn_loop",
+                             (float)(h + 1) / (float)bridge->config.num_heads);
+        }
+
         if (bridge->competition_buffer[h] > max_val) {
             max_val = bridge->competition_buffer[h];
         }
     }
     if (max_val > 0.0f) {
         for (uint32_t h = 0; h < bridge->config.num_heads; h++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((h & 0xFF) == 0 && bridge->config.num_heads > 256) {
+                attention_snn_bridge_heartbeat("attention_sn_loop",
+                                 (float)(h + 1) / (float)bridge->config.num_heads);
+            }
+
             bridge->attention.attention_weights[h] = bridge->competition_buffer[h] / max_val;
         }
     }
@@ -822,6 +1022,10 @@ int attention_snn_get_weights(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_snn_bridge_heartbeat("attention_sn_attention_snn_get_we", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ATTENTION_SNN_STATE_DECODING;
@@ -837,6 +1041,12 @@ int attention_snn_get_weights(
     float max_rate = bridge->config.max_rate_hz;
     float min_rate = bridge->config.baseline_rate_hz;
     for (uint32_t h = 0; h < n; h++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((h & 0xFF) == 0 && n > 256) {
+            attention_snn_bridge_heartbeat("attention_sn_loop",
+                             (float)(h + 1) / (float)n);
+        }
+
         weights[h] = (weights[h] - min_rate) / (max_rate - min_rate);
         weights[h] = clamp_f(weights[h], 0.0f, 1.0f);
     }
@@ -845,6 +1055,12 @@ int attention_snn_get_weights(
         case ATTENTION_SNN_DECODE_SOFTMAX:
             /* Apply temperature-scaled softmax */
             for (uint32_t h = 0; h < n; h++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((h & 0xFF) == 0 && n > 256) {
+                    attention_snn_bridge_heartbeat("attention_sn_loop",
+                                     (float)(h + 1) / (float)n);
+                }
+
                 weights[h] /= bridge->config.softmax_temperature;
             }
             softmax(weights, n);
@@ -863,6 +1079,12 @@ int attention_snn_get_weights(
                 avg /= (float)n;
 
                 for (uint32_t h = 0; h < n; h++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((h & 0xFF) == 0 && n > 256) {
+                        attention_snn_bridge_heartbeat("attention_sn_loop",
+                                         (float)(h + 1) / (float)n);
+                    }
+
                     float diff = fabsf(weights[h] - avg);
                     weights[h] = 1.0f - (diff / (avg + 0.001f));
                     weights[h] = clamp_f(weights[h], 0.0f, 1.0f);
@@ -880,6 +1102,12 @@ int attention_snn_get_weights(
     if (bridge->config.temporal_smoothing > 0.0f) {
         float alpha = bridge->config.temporal_smoothing;
         for (uint32_t h = 0; h < n; h++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((h & 0xFF) == 0 && n > 256) {
+                attention_snn_bridge_heartbeat("attention_sn_loop",
+                                 (float)(h + 1) / (float)n);
+            }
+
             weights[h] = alpha * bridge->attention.attention_weights[h] +
                         (1.0f - alpha) * weights[h];
         }
@@ -907,6 +1135,10 @@ int attention_snn_get_salience(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_snn_bridge_heartbeat("attention_sn_attention_snn_get_sa", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t n = (sequence_length < bridge->config.sequence_length) ?
@@ -929,6 +1161,10 @@ int attention_snn_get_top_k(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_snn_bridge_heartbeat("attention_sn_attention_snn_get_to", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t actual_k = (k < bridge->config.top_k) ? k : bridge->config.top_k;
@@ -943,6 +1179,12 @@ int attention_snn_get_top_k(
     /* Count how many valid indices found */
     uint32_t count = 0;
     for (uint32_t i = 0; i < actual_k; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && actual_k > 256) {
+            attention_snn_bridge_heartbeat("attention_sn_loop",
+                             (float)(i + 1) / (float)actual_k);
+        }
+
         if (indices[i] >= 0) count++;
     }
 
@@ -957,12 +1199,24 @@ static float attention_snn_get_focus_strength_unlocked(attention_snn_bridge_t* b
      * High variance = focused (one winner), Low variance = diffuse */
     float mean = 0.0f;
     for (uint32_t h = 0; h < bridge->config.num_heads; h++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((h & 0xFF) == 0 && bridge->config.num_heads > 256) {
+            attention_snn_bridge_heartbeat("attention_sn_loop",
+                             (float)(h + 1) / (float)bridge->config.num_heads);
+        }
+
         mean += bridge->attention.attention_weights[h];
     }
     mean /= (float)bridge->config.num_heads;
 
     float variance = 0.0f;
     for (uint32_t h = 0; h < bridge->config.num_heads; h++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((h & 0xFF) == 0 && bridge->config.num_heads > 256) {
+            attention_snn_bridge_heartbeat("attention_sn_loop",
+                             (float)(h + 1) / (float)bridge->config.num_heads);
+        }
+
         float diff = bridge->attention.attention_weights[h] - mean;
         variance += diff * diff;
     }
@@ -987,6 +1241,10 @@ static float attention_snn_get_focus_strength_unlocked(attention_snn_bridge_t* b
 float attention_snn_get_focus_strength(attention_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_snn_bridge_heartbeat("attention_sn_attention_snn_get_fo", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float focus = attention_snn_get_focus_strength_unlocked(bridge);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1001,6 +1259,12 @@ static float attention_snn_get_sparsity_unlocked(attention_snn_bridge_t* bridge)
     float threshold = bridge->config.decoding_threshold;
 
     for (uint32_t h = 0; h < bridge->config.num_heads; h++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((h & 0xFF) == 0 && bridge->config.num_heads > 256) {
+            attention_snn_bridge_heartbeat("attention_sn_loop",
+                             (float)(h + 1) / (float)bridge->config.num_heads);
+        }
+
         if (bridge->attention.attention_weights[h] < threshold) {
             near_zero++;
         }
@@ -1014,6 +1278,10 @@ static float attention_snn_get_sparsity_unlocked(attention_snn_bridge_t* bridge)
 
 float attention_snn_get_sparsity(attention_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_snn_bridge_heartbeat("attention_sn_attention_snn_get_sp", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     float sparsity = attention_snn_get_sparsity_unlocked(bridge);
@@ -1030,6 +1298,10 @@ int attention_snn_get_attention_state(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_get_attention_state: bridge or attention_state is NULL");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_snn_bridge_heartbeat("attention_sn_attention_snn_get_at", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1061,6 +1333,10 @@ int attention_snn_get_state(
     }
 
     /* Cast away const for mutex - safe as we're only reading */
+    /* Phase 8: Heartbeat at operation start */
+    attention_snn_bridge_heartbeat("attention_sn_attention_snn_get_st", 0.0f);
+
+
     attention_snn_bridge_t* mutable_bridge = (attention_snn_bridge_t*)bridge;
 
     nimcp_mutex_lock(mutable_bridge->base.mutex);
@@ -1071,6 +1347,12 @@ int attention_snn_get_state(
     /* Count active populations */
     state->active_populations = 0;
     for (uint32_t h = 0; h < bridge->config.num_heads; h++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((h & 0xFF) == 0 && bridge->config.num_heads > 256) {
+            attention_snn_bridge_heartbeat("attention_sn_loop",
+                             (float)(h + 1) / (float)bridge->config.num_heads);
+        }
+
         if (bridge->attention.attention_weights[h] > bridge->config.decoding_threshold) {
             state->active_populations++;
         }
@@ -1080,6 +1362,12 @@ int attention_snn_get_state(
     float sum_rate = 0.0f;
     uint32_t head_buffer_size = bridge->config.num_heads * bridge->config.neurons_per_head;
     for (uint32_t i = 0; i < head_buffer_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && head_buffer_size > 256) {
+            attention_snn_bridge_heartbeat("attention_sn_loop",
+                             (float)(i + 1) / (float)head_buffer_size);
+        }
+
         sum_rate += bridge->head_buffer[i];
     }
     state->avg_firing_rate = sum_rate / (float)head_buffer_size;
@@ -1101,6 +1389,10 @@ int attention_snn_get_stats(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_snn_bridge_heartbeat("attention_sn_attention_snn_get_st", 0.0f);
+
+
     attention_snn_bridge_t* mutable_bridge = (attention_snn_bridge_t*)bridge;
 
     nimcp_mutex_lock(mutable_bridge->base.mutex);
@@ -1121,6 +1413,10 @@ int attention_snn_get_stats(
 void attention_snn_reset_stats(attention_snn_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_snn_bridge_heartbeat("attention_sn_attention_snn_reset_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     memset(&bridge->stats, 0, sizeof(attention_snn_stats_t));
@@ -1138,6 +1434,10 @@ int attention_snn_connect_bio_async(attention_snn_bridge_t* bridge) {
         return -1;
     }
     if (!bridge->config.enable_bio_async) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_snn_bridge_heartbeat("attention_sn_attention_snn_connec", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1158,6 +1458,10 @@ int attention_snn_disconnect_bio_async(attention_snn_bridge_t* bridge) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_snn_bridge_heartbeat("attention_sn_attention_snn_discon", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->bio_async_connected) {
@@ -1172,6 +1476,10 @@ int attention_snn_disconnect_bio_async(attention_snn_bridge_t* bridge) {
 
 bool attention_snn_is_bio_async_connected(const attention_snn_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    attention_snn_bridge_heartbeat("attention_sn_attention_snn_is_bio", 0.0f);
+
+
     return bridge->bio_async_connected;
 }
 
@@ -1187,6 +1495,10 @@ int attention_snn_modulate_by_arousal(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_modulate_by_arousal: bridge is NULL");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_snn_bridge_heartbeat("attention_sn_attention_snn_modula", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1206,6 +1518,10 @@ int attention_snn_set_competition_strength(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_snn_bridge_heartbeat("attention_sn_attention_snn_set_co", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->current_competition_strength = clamp_f(strength, 0.0f, 1.0f);
@@ -1223,6 +1539,10 @@ int attention_snn_set_gate_modulation(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_set_gate_modulation: bridge is NULL");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_snn_bridge_heartbeat("attention_sn_attention_snn_set_ga", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 

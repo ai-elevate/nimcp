@@ -65,7 +65,7 @@ static nimcp_health_agent_t* g_pr_kg_bridge_health_agent = NULL;
  * @brief Set health agent for pr_kg_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void pr_kg_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void pr_kg_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_pr_kg_bridge_health_agent = agent;
 }
 
@@ -355,6 +355,12 @@ static int hash_remove_kg(struct pr_kg_bridge_struct* bridge,
 static void hash_clear_all(struct pr_kg_bridge_struct* bridge) {
     /* Clear PR hash table */
     for (uint32_t i = 0; i < HASH_TABLE_SIZE; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && HASH_TABLE_SIZE > 256) {
+            pr_kg_bridge_heartbeat("pr_kg_bridge_loop",
+                             (float)(i + 1) / (float)HASH_TABLE_SIZE);
+        }
+
         pr_hash_entry_t* entry = bridge->pr_to_kg_hash[i];
         while (entry) {
             pr_hash_entry_t* next = entry->next;
@@ -366,6 +372,12 @@ static void hash_clear_all(struct pr_kg_bridge_struct* bridge) {
 
     /* Clear KG hash table */
     for (uint32_t i = 0; i < HASH_TABLE_SIZE; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && HASH_TABLE_SIZE > 256) {
+            pr_kg_bridge_heartbeat("pr_kg_bridge_loop",
+                             (float)(i + 1) / (float)HASH_TABLE_SIZE);
+        }
+
         kg_hash_entry_t* entry = bridge->kg_to_pr_hash[i];
         while (entry) {
             kg_hash_entry_t* next = entry->next;
@@ -431,6 +443,12 @@ static uint32_t allocate_mapping(struct pr_kg_bridge_struct* bridge) {
 
     /* Find first free slot or use next index */
     for (uint32_t i = 0; i < bridge->mapping_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->mapping_capacity > 256) {
+            pr_kg_bridge_heartbeat("pr_kg_bridge_loop",
+                             (float)(i + 1) / (float)bridge->mapping_capacity);
+        }
+
         if (bridge->mappings[i].state == PR_KG_MAPPING_STATE_INVALID) {
             return i;
         }
@@ -444,6 +462,10 @@ static uint32_t allocate_mapping(struct pr_kg_bridge_struct* bridge) {
 //=============================================================================
 
 pr_kg_bridge_config_t pr_kg_bridge_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_config_default", 0.0f);
+
+
     pr_kg_bridge_config_t config = {
         .brain_kg = NULL,
         .auto_register_memories = true,
@@ -468,6 +490,10 @@ pr_kg_bridge_t pr_kg_bridge_create(const pr_kg_bridge_config_t* config) {
     }
 
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_create", 0.0f);
+
+
     struct pr_kg_bridge_struct* bridge =
         (struct pr_kg_bridge_struct*)calloc(1, sizeof(struct pr_kg_bridge_struct));
     if (!bridge) {
@@ -524,6 +550,10 @@ void pr_kg_bridge_destroy(pr_kg_bridge_t bridge) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_destroy", 0.0f);
+
+
     MUTEX_LOCK(bridge->base.mutex);
 
     /* Clear hash tables */
@@ -556,6 +586,10 @@ int pr_kg_bridge_connect(pr_kg_bridge_t bridge, brain_kg_t* brain_kg) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_connect", 0.0f);
+
+
     MUTEX_LOCK(bridge->base.mutex);
 
     /* Clear existing mappings */
@@ -584,6 +618,10 @@ bool pr_kg_bridge_is_connected(const pr_kg_bridge_t bridge) {
     if (!bridge) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_is_connected", 0.0f);
+
+
     return bridge->initialized && bridge->connected && bridge->brain_kg != NULL;
 }
 
@@ -597,6 +635,10 @@ brain_kg_node_id_t pr_kg_register_memory(
     const char* content_desc,
     uint32_t module_id)
 {
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_register_memor", 0.0f);
+
+
     return pr_kg_register_memory_full(bridge, pr_node_id, content_desc,
                                       module_id, NULL, 0.5f);
 }
@@ -613,6 +655,10 @@ brain_kg_node_id_t pr_kg_register_memory_full(
         set_error("Bridge not connected");
         return BRAIN_KG_INVALID_NODE;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_register_memor", 0.0f);
+
 
     MUTEX_LOCK(bridge->base.mutex);
 
@@ -722,6 +768,10 @@ int pr_kg_unregister_memory(pr_kg_bridge_t bridge, uint64_t pr_node_id) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_unregister_mem", 0.0f);
+
+
     MUTEX_LOCK(bridge->base.mutex);
 
     /* Find mapping */
@@ -771,6 +821,10 @@ int pr_kg_sync_memory(
         set_error("Bridge not connected");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_sync_memory", 0.0f);
+
 
     MUTEX_LOCK(bridge->base.mutex);
 
@@ -829,6 +883,10 @@ brain_kg_edge_id_t pr_kg_sync_entanglement(
         set_error("Bridge not connected");
         return BRAIN_KG_INVALID_NODE;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_sync_entanglem", 0.0f);
+
 
     MUTEX_LOCK(bridge->base.mutex);
 
@@ -922,6 +980,10 @@ int pr_kg_remove_entanglement(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_remove_entangl", 0.0f);
+
+
     MUTEX_LOCK(bridge->base.mutex);
 
     /* Find mappings */
@@ -981,6 +1043,10 @@ int pr_kg_query_by_module(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_query_by_modul", 0.0f);
+
+
     MUTEX_LOCK(bridge->base.mutex);
 
     result->count = 0;
@@ -1015,6 +1081,10 @@ int pr_kg_query_by_path(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_query_by_path", 0.0f);
+
+
     MUTEX_LOCK(bridge->base.mutex);
 
     uint32_t found = 0;
@@ -1046,6 +1116,10 @@ int pr_kg_get_context(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_get_context", 0.0f);
+
+
     MUTEX_LOCK(bridge->base.mutex);
 
     /* Get KG node info */
@@ -1076,6 +1150,12 @@ int pr_kg_get_context(
     if (outgoing) {
         context->neighbor_count += outgoing->count;
         for (uint32_t i = 0; i < outgoing->count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && outgoing->count > 256) {
+                pr_kg_bridge_heartbeat("pr_kg_bridge_loop",
+                                 (float)(i + 1) / (float)outgoing->count);
+            }
+
             weight_sum += outgoing->edges[i]->weight;
             edge_count++;
         }
@@ -1085,6 +1165,12 @@ int pr_kg_get_context(
     if (incoming) {
         context->neighbor_count += incoming->count;
         for (uint32_t i = 0; i < incoming->count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && incoming->count > 256) {
+                pr_kg_bridge_heartbeat("pr_kg_bridge_loop",
+                                 (float)(i + 1) / (float)incoming->count);
+            }
+
             weight_sum += incoming->edges[i]->weight;
             edge_count++;
         }
@@ -1123,6 +1209,10 @@ void pr_kg_context_destroy(pr_kg_context_t* context) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_context_destro", 0.0f);
+
+
     if (context->memory_ids) {
         free(context->memory_ids);
         context->memory_ids = NULL;
@@ -1141,6 +1231,10 @@ int pr_kg_query_by_kg_node(
         set_error("Invalid parameters");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_query_by_kg_no", 0.0f);
+
 
     MUTEX_LOCK(bridge->base.mutex);
 
@@ -1167,6 +1261,12 @@ int pr_kg_query_by_kg_node(
         bool already_added = false;
         uint64_t self_pr = bridge->mappings[self_idx].pr_node_id;
         for (uint32_t i = 0; i < found; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && found > 256) {
+                pr_kg_bridge_heartbeat("pr_kg_bridge_loop",
+                                 (float)(i + 1) / (float)found);
+            }
+
             if (pr_node_ids[i] == self_pr) {
                 already_added = true;
                 break;
@@ -1196,6 +1296,10 @@ brain_kg_node_id_t pr_kg_get_kg_node(pr_kg_bridge_t bridge, uint64_t pr_node_id)
         return BRAIN_KG_INVALID_NODE;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_get_kg_node", 0.0f);
+
+
     MUTEX_LOCK(bridge->base.mutex);
 
     uint32_t map_idx = hash_find_pr(bridge, pr_node_id);
@@ -1213,6 +1317,10 @@ uint64_t pr_kg_get_pr_node(pr_kg_bridge_t bridge, brain_kg_node_id_t kg_node_id)
     if (!bridge || !bridge->connected) {
         return PR_KG_INVALID_PR_ID;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_get_pr_node", 0.0f);
+
 
     MUTEX_LOCK(bridge->base.mutex);
 
@@ -1236,6 +1344,10 @@ int pr_kg_get_mapping(
         set_error("Invalid parameters");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_get_mapping", 0.0f);
+
 
     MUTEX_LOCK(bridge->base.mutex);
 
@@ -1262,6 +1374,10 @@ int pr_kg_list_mappings(
         set_error("Invalid parameters");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_list_mappings", 0.0f);
+
 
     MUTEX_LOCK(bridge->base.mutex);
 
@@ -1307,6 +1423,10 @@ int pr_kg_batch_register(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_batch_register", 0.0f);
+
+
     if (count == 0) {
         return 0;
     }
@@ -1314,6 +1434,12 @@ int pr_kg_batch_register(
     int success_count = 0;
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_kg_bridge_heartbeat("pr_kg_bridge_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         const char* desc = (descriptions && descriptions[i]) ? descriptions[i] : NULL;
         brain_kg_node_id_t kg_id = pr_kg_register_memory(bridge, pr_node_ids[i],
                                                           desc, module_id);
@@ -1332,12 +1458,22 @@ int pr_kg_batch_sync(pr_kg_bridge_t bridge) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_batch_sync", 0.0f);
+
+
     MUTEX_LOCK(bridge->base.mutex);
 
     int sync_count = 0;
     uint64_t now = get_time_ms();
 
     for (uint32_t i = 0; i < bridge->mapping_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->mapping_capacity > 256) {
+            pr_kg_bridge_heartbeat("pr_kg_bridge_loop",
+                             (float)(i + 1) / (float)bridge->mapping_capacity);
+        }
+
         pr_kg_mapping_t* mapping = &bridge->mappings[i];
 
         if (mapping->state == PR_KG_MAPPING_STATE_SYNCED ||
@@ -1371,6 +1507,10 @@ int pr_kg_cleanup_stale(pr_kg_bridge_t bridge, uint64_t threshold_ms) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_cleanup_stale", 0.0f);
+
+
     MUTEX_LOCK(bridge->base.mutex);
 
     if (threshold_ms == 0) {
@@ -1381,6 +1521,12 @@ int pr_kg_cleanup_stale(pr_kg_bridge_t bridge, uint64_t threshold_ms) {
     int removed_count = 0;
 
     for (uint32_t i = 0; i < bridge->mapping_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->mapping_capacity > 256) {
+            pr_kg_bridge_heartbeat("pr_kg_bridge_loop",
+                             (float)(i + 1) / (float)bridge->mapping_capacity);
+        }
+
         pr_kg_mapping_t* mapping = &bridge->mappings[i];
 
         if (mapping->state != PR_KG_MAPPING_STATE_INVALID &&
@@ -1417,6 +1563,10 @@ int pr_kg_mark_dirty(pr_kg_bridge_t bridge, uint64_t pr_node_id) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_mark_dirty", 0.0f);
+
+
     MUTEX_LOCK(bridge->base.mutex);
 
     uint32_t map_idx = hash_find_pr(bridge, pr_node_id);
@@ -1446,6 +1596,10 @@ prime_signature_t* pr_kg_signature_from_node(
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_signature_from", 0.0f);
+
+
     MUTEX_LOCK(bridge->base.mutex);
 
     /* Get KG node */
@@ -1467,6 +1621,12 @@ prime_signature_t* pr_kg_signature_from_node(
 
     /* Try to recover signature hash from metadata */
     for (uint32_t i = 0; i < kg_node->metadata_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && kg_node->metadata_count > 256) {
+            pr_kg_bridge_heartbeat("pr_kg_bridge_loop",
+                             (float)(i + 1) / (float)kg_node->metadata_count);
+        }
+
         if (strcmp(kg_node->metadata[i].key, "sig_hash") == 0) {
             /* Parse hex hash value */
             sig->hash = strtoull(kg_node->metadata[i].value, NULL, 16);
@@ -1503,6 +1663,10 @@ int pr_kg_find_similar_memories(
     }
 
     /* Get reference signature from KG node */
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_find_similar_m", 0.0f);
+
+
     prime_signature_t* ref_sig = pr_kg_signature_from_node(bridge, kg_node_id);
     if (!ref_sig) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ref_sig is NULL");
@@ -1530,6 +1694,10 @@ int pr_kg_find_similar_by_signature(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_find_similar_b", 0.0f);
+
+
     MUTEX_LOCK(bridge->base.mutex);
 
     uint32_t found = 0;
@@ -1552,6 +1720,12 @@ int pr_kg_find_similar_by_signature(
         /* Try to get stored hash for comparison */
         uint64_t stored_hash = 0;
         for (uint32_t j = 0; j < kg_node->metadata_count; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && kg_node->metadata_count > 256) {
+                pr_kg_bridge_heartbeat("pr_kg_bridge_loop",
+                                 (float)(j + 1) / (float)kg_node->metadata_count);
+            }
+
             if (strcmp(kg_node->metadata[j].key, "sig_hash") == 0) {
                 stored_hash = strtoull(kg_node->metadata[j].value, NULL, 16);
                 break;
@@ -1590,6 +1764,10 @@ int pr_kg_get_stats(pr_kg_bridge_t bridge, pr_kg_bridge_stats_t* stats) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_get_stats", 0.0f);
+
+
     MUTEX_LOCK(bridge->base.mutex);
     *stats = bridge->stats;
     MUTEX_UNLOCK(bridge->base.mutex);
@@ -1601,6 +1779,10 @@ void pr_kg_reset_stats(pr_kg_bridge_t bridge) {
     if (!bridge) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_reset_stats", 0.0f);
+
 
     MUTEX_LOCK(bridge->base.mutex);
 
@@ -1616,6 +1798,10 @@ size_t pr_kg_generate_summary(pr_kg_bridge_t bridge, char* buf, size_t size) {
     if (!bridge || !buf || size == 0) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_generate_summa", 0.0f);
+
 
     MUTEX_LOCK(bridge->base.mutex);
 
@@ -1662,6 +1848,10 @@ void pr_kg_print_state(pr_kg_bridge_t bridge) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_print_state", 0.0f);
+
+
     char buf[2048];
     pr_kg_generate_summary(bridge, buf, sizeof(buf));
     printf("%s", buf);
@@ -1703,6 +1893,10 @@ const char* pr_kg_get_last_error(void) {
 //=============================================================================
 
 pr_kg_query_result_t* pr_kg_query_result_create(uint32_t capacity) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_query_result_c", 0.0f);
+
+
     if (capacity == 0) {
         capacity = 64;  /* Default capacity */
     }
@@ -1736,6 +1930,10 @@ void pr_kg_query_result_destroy(pr_kg_query_result_t* result) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_query_result_d", 0.0f);
+
+
     if (result->mappings) {
         free(result->mappings);
     }
@@ -1747,6 +1945,10 @@ void pr_kg_query_result_clear(pr_kg_query_result_t* result) {
     if (!result) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_kg_bridge_heartbeat("pr_kg_bridge_pr_kg_query_result_c", 0.0f);
+
 
     if (result->mappings) {
         memset(result->mappings, 0, result->capacity * sizeof(pr_kg_mapping_t));

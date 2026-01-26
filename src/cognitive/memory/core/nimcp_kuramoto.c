@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_kuramoto_health_agent = NULL;
  * @brief Set health agent for kuramoto heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void kuramoto_set_health_agent(nimcp_health_agent_t* agent) {
+void kuramoto_set_health_agent(nimcp_health_agent_t* agent) {
     g_kuramoto_health_agent = agent;
 }
 
@@ -161,6 +161,12 @@ static int32_t find_oscillator_index(const kuramoto_system_t* system,
 
     /* Linear search fallback */
     for (uint32_t i = 0; i < system->num_oscillators; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_oscillators > 256) {
+            kuramoto_heartbeat("kuramoto_loop",
+                             (float)(i + 1) / (float)system->num_oscillators);
+        }
+
         if (system->oscillators[i].active &&
             system->oscillators[i].module_id == module_id) {
             return (int32_t)i;
@@ -221,6 +227,12 @@ static float compute_derivative(const kuramoto_system_t* system,
     /* Count active oscillators for normalization */
     uint32_t active_count = 0;
     for (uint32_t j = 0; j < system->num_oscillators; j++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((j & 0xFF) == 0 && system->num_oscillators > 256) {
+            kuramoto_heartbeat("kuramoto_loop",
+                             (float)(j + 1) / (float)system->num_oscillators);
+        }
+
         if (system->oscillators[j].active) {
             active_count++;
         }
@@ -236,6 +248,12 @@ static float compute_derivative(const kuramoto_system_t* system,
     if (system->use_sparse_coupling) {
         /* Sparse coupling */
         for (uint32_t e = 0; e < system->num_couplings; e++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((e & 0xFF) == 0 && system->num_couplings > 256) {
+                kuramoto_heartbeat("kuramoto_loop",
+                                 (float)(e + 1) / (float)system->num_couplings);
+            }
+
             const kuramoto_coupling_t* edge = &system->sparse_couplings[e];
             if (edge->to_idx == osc_idx &&
                 edge->from_idx < system->num_oscillators &&
@@ -247,6 +265,12 @@ static float compute_derivative(const kuramoto_system_t* system,
     } else {
         /* Dense coupling matrix */
         for (uint32_t j = 0; j < system->num_oscillators; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && system->num_oscillators > 256) {
+                kuramoto_heartbeat("kuramoto_loop",
+                                 (float)(j + 1) / (float)system->num_oscillators);
+            }
+
             if (j != osc_idx && system->oscillators[j].active) {
                 float K_ij = system->coupling_matrix[j * system->max_oscillators + osc_idx];
                 float theta_j = phases[j];
@@ -268,6 +292,12 @@ static void compute_all_derivatives(const kuramoto_system_t* system,
                                      const float* phases,
                                      float* derivatives) {
     for (uint32_t i = 0; i < system->num_oscillators; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_oscillators > 256) {
+            kuramoto_heartbeat("kuramoto_loop",
+                             (float)(i + 1) / (float)system->num_oscillators);
+        }
+
         derivatives[i] = compute_derivative(system, i, phases);
     }
 }
@@ -342,7 +372,19 @@ NIMCP_EXPORT kuramoto_system_t* kuramoto_create(const kuramoto_config_t* config)
 
     /* Initialize default all-to-all coupling */
     for (uint32_t i = 0; i < cfg.max_oscillators; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && cfg.max_oscillators > 256) {
+            kuramoto_heartbeat("kuramoto_loop",
+                             (float)(i + 1) / (float)cfg.max_oscillators);
+        }
+
         for (uint32_t j = 0; j < cfg.max_oscillators; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && cfg.max_oscillators > 256) {
+                kuramoto_heartbeat("kuramoto_loop",
+                                 (float)(j + 1) / (float)cfg.max_oscillators);
+            }
+
             if (i != j) {
                 system->coupling_matrix[j * cfg.max_oscillators + i] = 1.0f;
             }
@@ -370,6 +412,12 @@ NIMCP_EXPORT kuramoto_system_t* kuramoto_create(const kuramoto_config_t* config)
         goto error;
     }
     for (uint32_t i = 0; i < system->module_map_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->module_map_size > 256) {
+            kuramoto_heartbeat("kuramoto_loop",
+                             (float)(i + 1) / (float)system->module_map_size);
+        }
+
         system->module_to_index[i] = UINT32_MAX;
     }
 
@@ -429,6 +477,12 @@ NIMCP_EXPORT bool kuramoto_reset(kuramoto_system_t* system) {
     }
 
     for (uint32_t i = 0; i < system->num_oscillators; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_oscillators > 256) {
+            kuramoto_heartbeat("kuramoto_loop",
+                             (float)(i + 1) / (float)system->num_oscillators);
+        }
+
         if (system->oscillators[i].active) {
             system->oscillators[i].phase = random_phase();
             system->oscillators[i].frequency_offset = 0.0f;
@@ -477,6 +531,12 @@ NIMCP_EXPORT int32_t kuramoto_add_oscillator(kuramoto_system_t* system,
     /* Find free slot */
     uint32_t idx = UINT32_MAX;
     for (uint32_t i = 0; i < system->max_oscillators; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->max_oscillators > 256) {
+            kuramoto_heartbeat("kuramoto_loop",
+                             (float)(i + 1) / (float)system->max_oscillators);
+        }
+
         if (!system->oscillators[i].active) {
             idx = i;
             break;
@@ -530,6 +590,12 @@ NIMCP_EXPORT bool kuramoto_remove_oscillator(kuramoto_system_t* system,
     /* Clear coupling for this oscillator */
     if (!system->use_sparse_coupling && system->coupling_matrix) {
         for (uint32_t i = 0; i < system->max_oscillators; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && system->max_oscillators > 256) {
+                kuramoto_heartbeat("kuramoto_loop",
+                                 (float)(i + 1) / (float)system->max_oscillators);
+            }
+
             system->coupling_matrix[(uint32_t)idx * system->max_oscillators + i] = 0.0f;
             system->coupling_matrix[i * system->max_oscillators + (uint32_t)idx] = 0.0f;
         }
@@ -661,6 +727,12 @@ NIMCP_EXPORT bool kuramoto_set_coupling(kuramoto_system_t* system,
     if (system->use_sparse_coupling) {
         /* Update or add sparse coupling */
         for (uint32_t e = 0; e < system->num_couplings; e++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((e & 0xFF) == 0 && system->num_couplings > 256) {
+                kuramoto_heartbeat("kuramoto_loop",
+                                 (float)(e + 1) / (float)system->num_couplings);
+            }
+
             if (system->sparse_couplings[e].from_idx == (uint32_t)from_idx &&
                 system->sparse_couplings[e].to_idx == (uint32_t)to_idx) {
                 system->sparse_couplings[e].strength = strength;
@@ -691,7 +763,19 @@ NIMCP_EXPORT bool kuramoto_set_global_coupling(kuramoto_system_t* system,
     }
 
     for (uint32_t i = 0; i < system->max_oscillators; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->max_oscillators > 256) {
+            kuramoto_heartbeat("kuramoto_loop",
+                             (float)(i + 1) / (float)system->max_oscillators);
+        }
+
         for (uint32_t j = 0; j < system->max_oscillators; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && system->max_oscillators > 256) {
+                kuramoto_heartbeat("kuramoto_loop",
+                                 (float)(j + 1) / (float)system->max_oscillators);
+            }
+
             if (i != j) {
                 system->coupling_matrix[i * system->max_oscillators + j] = strength;
             }
@@ -735,6 +819,12 @@ NIMCP_EXPORT float kuramoto_get_coupling(const kuramoto_system_t* system,
 
     if (system->use_sparse_coupling) {
         for (uint32_t e = 0; e < system->num_couplings; e++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((e & 0xFF) == 0 && system->num_couplings > 256) {
+                kuramoto_heartbeat("kuramoto_loop",
+                                 (float)(e + 1) / (float)system->num_couplings);
+            }
+
             if (system->sparse_couplings[e].from_idx == (uint32_t)from_idx &&
                 system->sparse_couplings[e].to_idx == (uint32_t)to_idx) {
                 return system->sparse_couplings[e].strength;
@@ -783,7 +873,19 @@ NIMCP_EXPORT bool kuramoto_enable_sparse_coupling(kuramoto_system_t* system,
     /* Convert existing non-zero couplings to sparse format */
     if (system->coupling_matrix) {
         for (uint32_t i = 0; i < system->num_oscillators; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && system->num_oscillators > 256) {
+                kuramoto_heartbeat("kuramoto_loop",
+                                 (float)(i + 1) / (float)system->num_oscillators);
+            }
+
             for (uint32_t j = 0; j < system->num_oscillators; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && system->num_oscillators > 256) {
+                    kuramoto_heartbeat("kuramoto_loop",
+                                     (float)(j + 1) / (float)system->num_oscillators);
+                }
+
                 float K_ij = system->coupling_matrix[i * system->max_oscillators + j];
                 if (fabsf(K_ij) > 1e-6f && system->num_couplings < max_couplings) {
                     system->sparse_couplings[system->num_couplings].from_idx = i;
@@ -829,6 +931,12 @@ NIMCP_EXPORT bool kuramoto_add_sparse_coupling(kuramoto_system_t* system,
 
     /* Check if coupling already exists */
     for (uint32_t e = 0; e < system->num_couplings; e++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((e & 0xFF) == 0 && system->num_couplings > 256) {
+            kuramoto_heartbeat("kuramoto_loop",
+                             (float)(e + 1) / (float)system->num_couplings);
+        }
+
         if (system->sparse_couplings[e].from_idx == (uint32_t)from_idx &&
             system->sparse_couplings[e].to_idx == (uint32_t)to_idx) {
             system->sparse_couplings[e].strength = strength;
@@ -879,6 +987,12 @@ NIMCP_EXPORT bool kuramoto_step(kuramoto_system_t* system, float dt) {
 
     /* Copy current phases */
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            kuramoto_heartbeat("kuramoto_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         system->temp_phases[i] = system->oscillators[i].phase;
     }
 
@@ -889,24 +1003,48 @@ NIMCP_EXPORT bool kuramoto_step(kuramoto_system_t* system, float dt) {
 
     /* k2 = f(y + dt/2 * k1, t + dt/2) */
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            kuramoto_heartbeat("kuramoto_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         system->temp_phases[i] = system->oscillators[i].phase + 0.5f * dt * system->k1[i];
     }
     compute_all_derivatives(system, system->temp_phases, system->k2);
 
     /* k3 = f(y + dt/2 * k2, t + dt/2) */
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            kuramoto_heartbeat("kuramoto_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         system->temp_phases[i] = system->oscillators[i].phase + 0.5f * dt * system->k2[i];
     }
     compute_all_derivatives(system, system->temp_phases, system->k3);
 
     /* k4 = f(y + dt * k3, t + dt) */
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            kuramoto_heartbeat("kuramoto_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         system->temp_phases[i] = system->oscillators[i].phase + dt * system->k3[i];
     }
     compute_all_derivatives(system, system->temp_phases, system->k4);
 
     /* Update phases: y_new = y + dt/6 * (k1 + 2*k2 + 2*k3 + k4) */
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            kuramoto_heartbeat("kuramoto_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         if (system->oscillators[i].active) {
             float delta = (dt / 6.0f) * (system->k1[i] + 2.0f * system->k2[i] +
                                           2.0f * system->k3[i] + system->k4[i]);
@@ -934,6 +1072,12 @@ NIMCP_EXPORT bool kuramoto_step_n(kuramoto_system_t* system,
     }
 
     for (uint32_t i = 0; i < n_steps; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n_steps > 256) {
+            kuramoto_heartbeat("kuramoto_loop",
+                             (float)(i + 1) / (float)n_steps);
+        }
+
         if (!kuramoto_step(system, dt)) {
             return false;
         }
@@ -976,6 +1120,12 @@ NIMCP_EXPORT bool kuramoto_compute_order_parameter(kuramoto_system_t* system) {
     uint32_t active_count = 0;
 
     for (uint32_t i = 0; i < system->num_oscillators; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_oscillators > 256) {
+            kuramoto_heartbeat("kuramoto_loop",
+                             (float)(i + 1) / (float)system->num_oscillators);
+        }
+
         if (system->oscillators[i].active) {
             float theta = system->oscillators[i].phase;
             sum_cos += cosf(theta);
@@ -1068,7 +1218,19 @@ NIMCP_EXPORT bool kuramoto_get_coherence_matrix(const kuramoto_system_t* system,
     uint32_t n = system->num_oscillators;
 
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            kuramoto_heartbeat("kuramoto_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         for (uint32_t j = 0; j < n; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && n > 256) {
+                kuramoto_heartbeat("kuramoto_loop",
+                                 (float)(j + 1) / (float)n);
+            }
+
             if (!system->oscillators[i].active || !system->oscillators[j].active) {
                 out[i * n + j] = 0.0f;
             } else if (i == j) {
@@ -1104,6 +1266,12 @@ NIMCP_EXPORT bool kuramoto_update_noise(kuramoto_system_t* system) {
     float intensity = system->config.noise_intensity;
 
     for (uint32_t i = 0; i < system->num_oscillators; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_oscillators > 256) {
+            kuramoto_heartbeat("kuramoto_loop",
+                             (float)(i + 1) / (float)system->num_oscillators);
+        }
+
         if (system->oscillators[i].active) {
             /* Simple approximation: random walk with decay */
             float noise = (random_float() - 0.5f) * 2.0f * intensity;
@@ -1142,6 +1310,12 @@ NIMCP_EXPORT bool kuramoto_set_noise_enabled(kuramoto_system_t* system,
     /* Reset offsets if disabling */
     if (!enabled) {
         for (uint32_t i = 0; i < system->num_oscillators; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && system->num_oscillators > 256) {
+                kuramoto_heartbeat("kuramoto_loop",
+                                 (float)(i + 1) / (float)system->num_oscillators);
+            }
+
             system->oscillators[i].frequency_offset = 0.0f;
         }
     }
@@ -1240,6 +1414,12 @@ NIMCP_EXPORT bool kuramoto_get_stats(const kuramoto_system_t* system,
     float freq_sq_sum = 0.0f;
 
     for (uint32_t i = 0; i < system->num_oscillators; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_oscillators > 256) {
+            kuramoto_heartbeat("kuramoto_loop",
+                             (float)(i + 1) / (float)system->num_oscillators);
+        }
+
         if (system->oscillators[i].active) {
             active++;
             float freq = system->oscillators[i].natural_frequency;
@@ -1271,7 +1451,19 @@ NIMCP_EXPORT bool kuramoto_get_stats(const kuramoto_system_t* system,
         float coupling_sum = 0.0f;
         uint32_t coupling_count = 0;
         for (uint32_t i = 0; i < system->num_oscillators; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && system->num_oscillators > 256) {
+                kuramoto_heartbeat("kuramoto_loop",
+                                 (float)(i + 1) / (float)system->num_oscillators);
+            }
+
             for (uint32_t j = 0; j < system->num_oscillators; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && system->num_oscillators > 256) {
+                    kuramoto_heartbeat("kuramoto_loop",
+                                     (float)(j + 1) / (float)system->num_oscillators);
+                }
+
                 if (i != j) {
                     coupling_sum += system->coupling_matrix[i * system->max_oscillators + j];
                     coupling_count++;
@@ -1290,6 +1482,12 @@ NIMCP_EXPORT bool kuramoto_get_stats(const kuramoto_system_t* system,
     /* Coupling energy (sum of cos(theta_i - theta_j) for all pairs) */
     float energy = 0.0f;
     for (uint32_t i = 0; i < system->num_oscillators; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_oscillators > 256) {
+            kuramoto_heartbeat("kuramoto_loop",
+                             (float)(i + 1) / (float)system->num_oscillators);
+        }
+
         if (!system->oscillators[i].active) continue;
         for (uint32_t j = i + 1; j < system->num_oscillators; j++) {
             if (!system->oscillators[j].active) continue;
@@ -1332,6 +1530,12 @@ NIMCP_EXPORT void kuramoto_print_state(const kuramoto_system_t* system) {
     printf("  %-6s %-8s %-10s %-10s %-8s\n",
            "Index", "ModuleID", "Phase", "Frequency", "Active");
     for (uint32_t i = 0; i < system->num_oscillators; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_oscillators > 256) {
+            kuramoto_heartbeat("kuramoto_loop",
+                             (float)(i + 1) / (float)system->num_oscillators);
+        }
+
         const kuramoto_oscillator_t* osc = &system->oscillators[i];
         if (osc->active) {
             printf("  %-6u %-8u %-10.4f %-10.4f %-8s\n",
@@ -1349,6 +1553,12 @@ NIMCP_EXPORT uint32_t kuramoto_get_all_phases(const kuramoto_system_t* system,
 
     uint32_t count = 0;
     for (uint32_t i = 0; i < system->num_oscillators; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_oscillators > 256) {
+            kuramoto_heartbeat("kuramoto_loop",
+                             (float)(i + 1) / (float)system->num_oscillators);
+        }
+
         if (system->oscillators[i].active) {
             phases[count++] = system->oscillators[i].phase;
         }
@@ -1384,6 +1594,12 @@ NIMCP_EXPORT uint32_t kuramoto_get_num_oscillators(
 
     uint32_t count = 0;
     for (uint32_t i = 0; i < system->num_oscillators; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_oscillators > 256) {
+            kuramoto_heartbeat("kuramoto_loop",
+                             (float)(i + 1) / (float)system->num_oscillators);
+        }
+
         if (system->oscillators[i].active) {
             count++;
         }

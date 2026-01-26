@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_sleep_imagination_bridge_health_agent = NULL;
  * @brief Set health agent for sleep_imagination_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void sleep_imagination_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void sleep_imagination_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_sleep_imagination_bridge_health_agent = agent;
 }
 
@@ -108,6 +108,10 @@ static const sleep_stage_descriptor_t g_stage_descriptors[SLEEP_STAGE_COUNT] = {
 };
 
 const sleep_stage_descriptor_t* sleep_imagination_get_stage_descriptor(sleep_stage_t stage) {
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_ge", 0.0f);
+
+
     if (stage >= SLEEP_STAGE_COUNT) {
         stage = SLEEP_STAGE_WAKE;
     }
@@ -130,6 +134,10 @@ int sleep_imagination_default_config(sleep_imagination_config_t* config) {
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_de", 0.0f);
+
 
     config->rem_vividness = SLEEP_IMAG_DEFAULT_REM_VIVIDNESS;
     config->rem_creativity_boost = SLEEP_IMAG_DEFAULT_REM_CREATIVITY;
@@ -160,6 +168,10 @@ int sleep_imagination_validate_config(const sleep_imagination_config_t* config) 
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_va", 0.0f);
+
 
     if (config->rem_vividness < 0.0f || config->rem_vividness > 1.0f) {
         return -1;
@@ -194,6 +206,10 @@ int sleep_imagination_validate_config(const sleep_imagination_config_t* config) 
 sleep_imagination_bridge_t* sleep_imagination_bridge_create(
     const sleep_imagination_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_create", 0.0f);
+
+
     sleep_imagination_bridge_t* bridge = nimcp_calloc(
         1, sizeof(sleep_imagination_bridge_t));
     if (!bridge) {
@@ -258,6 +274,10 @@ void sleep_imagination_bridge_destroy(sleep_imagination_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         sleep_imagination_disconnect_bio_async(bridge);
     }
@@ -289,6 +309,10 @@ int sleep_imagination_reset(sleep_imagination_bridge_t* bridge) {
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_re", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -324,6 +348,10 @@ int sleep_imagination_connect_sleep(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_co", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->sleep = sleep;
@@ -351,6 +379,10 @@ int sleep_imagination_connect_imagination(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_co", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->imagination = imagination;
@@ -367,15 +399,27 @@ int sleep_imagination_connect_imagination(
 }
 
 int sleep_imagination_disconnect_sleep(sleep_imagination_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_di", 0.0f);
+
+
     return sleep_imagination_connect_sleep(bridge, NULL);
 }
 
 int sleep_imagination_disconnect_imagination(sleep_imagination_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_di", 0.0f);
+
+
     return sleep_imagination_connect_imagination(bridge, NULL);
 }
 
 bool sleep_imagination_is_connected(const sleep_imagination_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_is", 0.0f);
+
+
     return bridge->base.bridge_active;
 }
 
@@ -395,6 +439,10 @@ int sleep_imagination_update(
 
     }
     if (!bridge->base.bridge_active) return 0;  /* Nothing to do */
+
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_up", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -436,6 +484,10 @@ int sleep_imagination_compute_sleep_effects(sleep_imagination_bridge_t* bridge) 
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_co", 0.0f);
+
 
     const sleep_stage_descriptor_t* desc =
         sleep_imagination_get_stage_descriptor(bridge->current_stage);
@@ -497,6 +549,10 @@ int sleep_imagination_compute_imag_effects(sleep_imagination_bridge_t* bridge) {
     if (!bridge || !bridge->imagination) return -1;
 
     /* Default state */
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_co", 0.0f);
+
+
     bridge->imag_to_sleep.dream_activity_level = 0.0f;
     bridge->imag_to_sleep.emotional_intensity = 0.0f;
     bridge->imag_to_sleep.nightmare_detected = false;
@@ -534,6 +590,10 @@ int sleep_imagination_apply_effects(sleep_imagination_bridge_t* bridge) {
     }
 
     /* Apply sleep effects to imagination */
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_ap", 0.0f);
+
+
     if (bridge->imagination) {
         /* In full implementation, would call imagination APIs to set:
          * - Vividness level
@@ -571,6 +631,10 @@ int sleep_imagination_set_sleep_stage(
 
     }
     if (stage >= SLEEP_STAGE_COUNT) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_se", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -611,6 +675,10 @@ sleep_stage_t sleep_imagination_get_sleep_stage(
     const sleep_imagination_bridge_t* bridge)
 {
     if (!bridge) return SLEEP_STAGE_WAKE;
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_ge", 0.0f);
+
+
     return bridge->current_stage;
 }
 
@@ -618,6 +686,10 @@ uint64_t sleep_imagination_get_stage_duration(
     const sleep_imagination_bridge_t* bridge)
 {
     if (!bridge) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_ge", 0.0f);
+
+
     return nimcp_time_now_ms() - bridge->stage_entry_time_ms;
 }
 
@@ -634,6 +706,10 @@ uint32_t sleep_imagination_start_dream(
     if (!bridge->base.bridge_active) return 0;
 
     /* Dreams require REM or NREM1 */
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_st", 0.0f);
+
+
     if (bridge->current_stage != SLEEP_STAGE_REM &&
         bridge->current_stage != SLEEP_STAGE_NREM1) {
         return 0;
@@ -677,6 +753,10 @@ int sleep_imagination_end_dream(
     }
     if (bridge->num_dream_scenarios == 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_en", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* End the most recent dream */
@@ -707,6 +787,10 @@ int sleep_imagination_trigger_replay(
     }
     if (!bridge->base.bridge_active) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_tr", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->sleep_to_imag.replay_active = true;
@@ -736,6 +820,10 @@ int sleep_imagination_interrupt_nightmare(sleep_imagination_bridge_t* bridge) {
 
     }
     if (!bridge->config.enable_nightmare_interruption) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_in", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -771,6 +859,10 @@ int sleep_imagination_get_sleep_effects(
     if (!bridge || !effects) return -1;
 
     *effects = bridge->sleep_to_imag;
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_ge", 0.0f);
+
+
     return 0;
 }
 
@@ -781,6 +873,10 @@ int sleep_imagination_get_imag_effects(
     if (!bridge || !effects) return -1;
 
     *effects = bridge->imag_to_sleep;
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_ge", 0.0f);
+
+
     return 0;
 }
 
@@ -795,6 +891,10 @@ int sleep_imagination_get_stats(
     if (!bridge || !stats) return -1;
 
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_ge", 0.0f);
+
+
     return 0;
 }
 
@@ -807,6 +907,10 @@ int sleep_imagination_reset_stats(sleep_imagination_bridge_t* bridge) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_re", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -816,16 +920,28 @@ int sleep_imagination_reset_stats(sleep_imagination_bridge_t* bridge) {
 
 uint32_t sleep_imagination_get_dream_count(const sleep_imagination_bridge_t* bridge) {
     if (!bridge) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_ge", 0.0f);
+
+
     return bridge->num_dream_scenarios;
 }
 
 bool sleep_imagination_is_rem(const sleep_imagination_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_is", 0.0f);
+
+
     return bridge->in_rem_period;
 }
 
 float sleep_imagination_get_rem_time(const sleep_imagination_bridge_t* bridge) {
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_ge", 0.0f);
+
+
     return bridge->accumulated_rem_time_ms;
 }
 
@@ -842,6 +958,10 @@ int sleep_imagination_connect_bio_async(sleep_imagination_bridge_t* bridge) {
 
     }
     if (bridge->base.bio_async_enabled) return 0;  /* Already connected */
+
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_co", 0.0f);
+
 
     int result = bridge_base_connect_bio_async(&bridge->base);
     if (result == 0) {
@@ -861,6 +981,10 @@ int sleep_imagination_disconnect_bio_async(sleep_imagination_bridge_t* bridge) {
     }
     if (!bridge->base.bio_async_enabled) return 0;  /* Already disconnected */
 
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_di", 0.0f);
+
+
     int result = bridge_base_disconnect_bio_async(&bridge->base);
     if (result == 0) {
         NIMCP_LOG_INFO("Sleep-imagination bridge disconnected from bio-async");
@@ -873,6 +997,10 @@ bool sleep_imagination_is_bio_async_connected(
     const sleep_imagination_bridge_t* bridge)
 {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_is", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -895,6 +1023,10 @@ int sleep_imagination_process_messages(sleep_imagination_bridge_t* bridge) {
      * - BIO_MSG_REPLAY_REQUEST
      */
 
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_pr", 0.0f);
+
+
     return 0;
 }
 
@@ -909,9 +1041,19 @@ int sleep_imagination_process_messages(sleep_imagination_bridge_t* bridge) {
  */
 int sleep_imagination_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    sleep_imagination_bridge_heartbeat("sleep_imagin_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Sleep_Imagination_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                sleep_imagination_bridge_heartbeat("sleep_imagin_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOG_DEBUG("Sleep Imagination Bridge self-knowledge: %s", self->observations[i]);
         }
     }

@@ -50,7 +50,7 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
 /* Global health agent for consolidation operations */
 static nimcp_health_agent_t* g_consolidation_health_agent = NULL;
 
-static void systems_consolidation_set_health_agent(nimcp_health_agent_t* agent) {
+void systems_consolidation_set_health_agent(nimcp_health_agent_t* agent) {
     g_consolidation_health_agent = agent;
 }
 
@@ -101,6 +101,12 @@ static int systems_consolidation_wiring_handler_callback(
              message_count);
 
     for (uint32_t i = 0; i < message_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && message_count > 256) {
+            consolidation_heartbeat("consolidatio_loop",
+                             (float)(i + 1) / (float)message_count);
+        }
+
         switch (message_types[i]) {
             case BIO_MSG_CONSOLIDATION_TRIGGER:
                 bio_router_register_handler(ctx, message_types[i], handle_consolidation_trigger);
@@ -148,6 +154,12 @@ static float compute_cosine_similarity(
     float magnitude_b = 0.0F;
 
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            consolidation_heartbeat("consolidatio_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         dot_product += features_a[i] * features_b[i];
         magnitude_a += features_a[i] * features_a[i];
         magnitude_b += features_b[i] * features_b[i];
@@ -370,6 +382,10 @@ static bool cortical_node_add_neighbor(
 
 systems_consolidation_system_t* systems_consolidation_create(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
+
+
     LOG_INFO("Creating systems consolidation system");
 
     // WHAT: Allocate main system structure
@@ -490,6 +506,10 @@ void systems_consolidation_destroy(systems_consolidation_system_t* system)
     }
 
     // Unregister from bio-router
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
+
+
     if (system->bio_async_enabled && system->bio_ctx) {
         bio_router_unregister_module(system->bio_ctx);
         system->bio_ctx = NULL;
@@ -500,6 +520,12 @@ void systems_consolidation_destroy(systems_consolidation_system_t* system)
     // WHAT: Free all cortical nodes
     if (system->cortical_nodes) {
         for (uint32_t i = 0; i < system->node_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && system->node_count > 256) {
+                consolidation_heartbeat("consolidatio_loop",
+                                 (float)(i + 1) / (float)system->node_count);
+            }
+
             cortical_node_destroy(system->cortical_nodes[i]);
         }
         nimcp_free(system->cortical_nodes);
@@ -533,7 +559,17 @@ void systems_consolidation_reset(systems_consolidation_system_t* system)
     }
 
     // WHAT: Free all cortical nodes
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
+
+
     for (uint32_t i = 0; i < system->node_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->node_count > 256) {
+            consolidation_heartbeat("consolidatio_loop",
+                             (float)(i + 1) / (float)system->node_count);
+        }
+
         cortical_node_destroy(system->cortical_nodes[i]);
         system->cortical_nodes[i] = NULL;
     }
@@ -562,6 +598,10 @@ bool systems_consolidation_schedule_replay(
     }
 
     // WHAT: Check queue capacity
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
+
+
     if (system->replay_queue_size >= system->replay_queue_capacity) {
         return false;  // Queue full
     }
@@ -647,6 +687,12 @@ uint32_t systems_consolidation_execute_replays(
     // WHY: Keep queue compact
     uint32_t write_idx = 0;
     for (uint32_t read_idx = 0; read_idx < system->replay_queue_size; read_idx++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((read_idx & 0xFF) == 0 && system->replay_queue_size > 256) {
+            consolidation_heartbeat("consolidatio_loop",
+                             (float)(read_idx + 1) / (float)system->replay_queue_size);
+        }
+
         if (!system->replay_queue[read_idx].is_completed) {
             system->replay_queue[write_idx] = system->replay_queue[read_idx];
             write_idx++;
@@ -675,6 +721,10 @@ uint64_t systems_consolidation_transfer_to_cortex(
     // WHAT: Guard against missing engram system (currently optional for testing)
     // WHY: During testing, we may not have a full engram system
     // TODO: Make required once integration phase is complete
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
+
+
     bool have_engram_system = (system->engram_system != NULL);
 
     // WHAT: Extract semantic features (simplified implementation)
@@ -688,11 +738,23 @@ uint64_t systems_consolidation_transfer_to_cortex(
         // TODO: Replace with actual engram_get_neurons() call
         // For now, use deterministic features based on engram ID
         for (uint32_t i = 0; i < SEMANTIC_DIM; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && SEMANTIC_DIM > 256) {
+                consolidation_heartbeat("consolidatio_loop",
+                                 (float)(i + 1) / (float)SEMANTIC_DIM);
+            }
+
             semantic_features[i] = ((float)(engram_id % 100) / 100.0F) + (i * 0.01F);
         }
     } else {
         // Simplified mode for testing without engram system
         for (uint32_t i = 0; i < SEMANTIC_DIM; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && SEMANTIC_DIM > 256) {
+                consolidation_heartbeat("consolidatio_loop",
+                                 (float)(i + 1) / (float)SEMANTIC_DIM);
+            }
+
             semantic_features[i] = ((float)(engram_id % 100) / 100.0F) + (i * 0.01F);
         }
     }
@@ -700,6 +762,12 @@ uint64_t systems_consolidation_transfer_to_cortex(
     // WHAT: Check if cortical node already exists for this engram
     cortical_memory_node_t* existing_node = NULL;
     for (uint32_t i = 0; i < system->node_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->node_count > 256) {
+            consolidation_heartbeat("consolidatio_loop",
+                             (float)(i + 1) / (float)system->node_count);
+        }
+
         if (system->cortical_nodes[i]->source_engram_id == engram_id) {
             existing_node = system->cortical_nodes[i];
             break;
@@ -802,6 +870,12 @@ void systems_consolidation_update(
 
     // WHAT: Update all cortical nodes
     for (uint32_t i = 0; i < system->node_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->node_count > 256) {
+            consolidation_heartbeat("consolidatio_loop",
+                             (float)(i + 1) / (float)system->node_count);
+        }
+
         cortical_memory_node_t* node = system->cortical_nodes[i];
 
         // WHAT: Increase consolidation strength
@@ -855,7 +929,17 @@ cortical_memory_node_t* systems_consolidation_get_node(
     }
 
     // WHAT: Linear search for node
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
+
+
     for (uint32_t i = 0; i < system->node_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->node_count > 256) {
+            consolidation_heartbeat("consolidatio_loop",
+                             (float)(i + 1) / (float)system->node_count);
+        }
+
         if (system->cortical_nodes[i]->id == node_id) {
             return system->cortical_nodes[i];
         }
@@ -877,6 +961,9 @@ uint32_t systems_consolidation_find_similar(
         !results_out || !similarities_out) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
 
     // WHAT: Compute similarities for all nodes
     uint32_t results_found = 0;
@@ -900,6 +987,12 @@ uint32_t systems_consolidation_find_similar(
         // TODO: Use heap for large result sets
         uint32_t insert_pos = results_found;
         for (uint32_t j = 0; j < results_found; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && results_found > 256) {
+                consolidation_heartbeat("consolidatio_loop",
+                                 (float)(j + 1) / (float)results_found);
+            }
+
             if (similarity > similarities_out[j]) {
                 insert_pos = j;
                 break;
@@ -941,6 +1034,10 @@ void systems_consolidation_get_statistics(
     }
 
     // WHAT: Return statistics
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
+
+
     if (total_nodes_out) *total_nodes_out = system->node_count;
     if (total_replays_out) *total_replays_out = system->total_replays;
     if (total_transfers_out) *total_transfers_out = system->total_transfers;
@@ -962,6 +1059,10 @@ void systems_consolidation_set_engram_system(
     }
 
     // WHAT: Store non-owning pointer
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
+
+
     system->engram_system = engram_system;
 }
 
@@ -975,6 +1076,10 @@ void systems_consolidation_set_sleep_system(
     }
 
     // WHAT: Store opaque pointer
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
+
+
     system->sleep_system = sleep_system;
 }
 
@@ -991,9 +1096,19 @@ void systems_consolidation_set_sleep_system(
 int systems_consolidation_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_systems_consolidatio", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Systems_Consolidation_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                consolidation_heartbeat("consolidatio_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Systems consolidation self-knowledge: %s", self->observations[i]);
         }
     }

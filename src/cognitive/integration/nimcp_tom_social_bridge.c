@@ -42,7 +42,7 @@ static nimcp_health_agent_t* g_tom_social_bridge_health_agent = NULL;
  * @brief Set health agent for tom_social_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void tom_social_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void tom_social_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_tom_social_bridge_health_agent = agent;
 }
 
@@ -105,6 +105,12 @@ struct tom_social_bridge {
  */
 static agent_model_t* find_agent_unlocked(tom_social_bridge_t* bridge, uint32_t agent_id) {
     for (size_t i = 0; i < bridge->agent_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->agent_count > 256) {
+            tom_social_bridge_heartbeat("tom_social_b_loop",
+                             (float)(i + 1) / (float)bridge->agent_count);
+        }
+
         if (bridge->agents[i].valid && bridge->agents[i].agent_id == agent_id) {
             return &bridge->agents[i];
         }
@@ -131,6 +137,12 @@ static agent_model_t* find_or_create_agent_unlocked(tom_social_bridge_t* bridge,
 
     /* Find first invalid slot or use next slot */
     for (size_t i = 0; i < bridge->agent_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->agent_capacity > 256) {
+            tom_social_bridge_heartbeat("tom_social_b_loop",
+                             (float)(i + 1) / (float)bridge->agent_capacity);
+        }
+
         if (!bridge->agents[i].valid) {
             agent = &bridge->agents[i];
             break;
@@ -181,6 +193,10 @@ static uint64_t get_current_time_ms(void) {
 int tom_social_default_config(tom_social_config_t* config) {
     if (!config) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    tom_social_bridge_heartbeat("tom_social_b_tom_social_default_c", 0.0f);
+
+
     config->inference_depth = 2;
     config->social_weight = 0.7f;
     config->agent_capacity = 32;
@@ -196,6 +212,10 @@ int tom_social_default_config(tom_social_config_t* config) {
  * ============================================================================ */
 
 tom_social_bridge_t* tom_social_bridge_create(const tom_social_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    tom_social_bridge_heartbeat("tom_social_b_create", 0.0f);
+
+
     tom_social_bridge_t* bridge = nimcp_malloc(sizeof(tom_social_bridge_t));
     if (!bridge) {
 
@@ -245,6 +265,10 @@ tom_social_bridge_t* tom_social_bridge_create(const tom_social_config_t* config)
 void tom_social_bridge_destroy(tom_social_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    tom_social_bridge_heartbeat("tom_social_b_destroy", 0.0f);
+
+
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
     }
@@ -268,6 +292,10 @@ int tom_social_infer_for_response(
     if (!bridge || !mental_state_out) return -1;
     if (!bridge->initialized) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    tom_social_bridge_heartbeat("tom_social_b_tom_social_infer_for", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     agent_model_t* agent = find_agent_unlocked(bridge, agent_id);
@@ -287,6 +315,12 @@ int tom_social_infer_for_response(
     /* Compute emotional valence from belief state (average of first 4 beliefs) */
     float valence_sum = 0.0f;
     for (int i = 0; i < 4; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 4 > 256) {
+            tom_social_bridge_heartbeat("tom_social_b_loop",
+                             (float)(i + 1) / (float)4);
+        }
+
         valence_sum += agent->belief_state[i];
     }
     mental_state_out->emotional_valence = (valence_sum / 4.0f) * bridge->config.social_weight;
@@ -294,6 +328,12 @@ int tom_social_infer_for_response(
     /* Compute arousal from intention state (average of first 4 intentions) */
     float arousal_sum = 0.0f;
     for (int i = 0; i < 4; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 4 > 256) {
+            tom_social_bridge_heartbeat("tom_social_b_loop",
+                             (float)(i + 1) / (float)4);
+        }
+
         arousal_sum += agent->intention_state[i];
     }
     mental_state_out->emotional_arousal = (arousal_sum / 4.0f) * bridge->config.social_weight;
@@ -314,6 +354,12 @@ int tom_social_infer_for_response(
     /* Belief count based on non-zero beliefs */
     mental_state_out->belief_count = 0;
     for (int i = 0; i < 8; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 8 > 256) {
+            tom_social_bridge_heartbeat("tom_social_b_loop",
+                             (float)(i + 1) / (float)8);
+        }
+
         if (agent->belief_state[i] != 0.0f) {
             mental_state_out->belief_count++;
         }
@@ -334,6 +380,10 @@ int tom_social_on_social_cue(
 ) {
     if (!bridge) return -1;
     if (!bridge->initialized) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    tom_social_bridge_heartbeat("tom_social_b_tom_social_on_social", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -419,6 +469,10 @@ int tom_social_update_agent_model(
     if (!bridge || !belief_update) return -1;
     if (!bridge->initialized) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    tom_social_bridge_heartbeat("tom_social_b_tom_social_update_ag", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     agent_model_t* agent = find_or_create_agent_unlocked(bridge, agent_id);
@@ -481,6 +535,10 @@ int tom_social_get_agent_state(
     if (!bridge || !state_out) return -1;
     if (!bridge->initialized) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    tom_social_bridge_heartbeat("tom_social_b_tom_social_get_agent", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     agent_model_t* agent = find_agent_unlocked(bridge, agent_id);
@@ -500,12 +558,24 @@ int tom_social_get_agent_state(
     /* Derive mental state values from internal representation */
     float valence_sum = 0.0f;
     for (int i = 0; i < 4; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 4 > 256) {
+            tom_social_bridge_heartbeat("tom_social_b_loop",
+                             (float)(i + 1) / (float)4);
+        }
+
         valence_sum += agent->belief_state[i];
     }
     state_out->mental_state.emotional_valence = valence_sum / 4.0f;
 
     float arousal_sum = 0.0f;
     for (int i = 0; i < 4; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 4 > 256) {
+            tom_social_bridge_heartbeat("tom_social_b_loop",
+                             (float)(i + 1) / (float)4);
+        }
+
         arousal_sum += agent->intention_state[i];
     }
     state_out->mental_state.emotional_arousal = arousal_sum / 4.0f;
@@ -522,6 +592,12 @@ int tom_social_get_agent_state(
     /* Count non-zero beliefs */
     state_out->mental_state.belief_count = 0;
     for (int i = 0; i < 8; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 8 > 256) {
+            tom_social_bridge_heartbeat("tom_social_b_loop",
+                             (float)(i + 1) / (float)8);
+        }
+
         if (agent->belief_state[i] != 0.0f) {
             state_out->mental_state.belief_count++;
         }
@@ -552,6 +628,10 @@ int tom_social_get_stats(
 ) {
     if (!bridge || !stats_out) return -1;
     if (!bridge->initialized) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    tom_social_bridge_heartbeat("tom_social_b_tom_social_get_stats", 0.0f);
+
 
     nimcp_mutex_lock(((tom_social_bridge_t*)bridge)->base.mutex);
     *stats_out = bridge->stats;

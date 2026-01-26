@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_mirror_vicarious_reward_health_agent = NULL;
  * @brief Set health agent for mirror_vicarious_reward heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_vicarious_reward_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_vicarious_reward_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_vicarious_reward_health_agent = agent;
 }
 
@@ -98,6 +98,12 @@ static vicarious_agent_state_t* find_or_create_agent(
 ) {
     /* Search existing */
     for (uint32_t i = 0; i < system->agent_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->agent_count > 256) {
+            mirror_vicarious_reward_heartbeat("mirror_vicar_loop",
+                             (float)(i + 1) / (float)system->agent_count);
+        }
+
         if (system->agents[i].agent_id == agent_id) {
             return &system->agents[i];
         }
@@ -129,6 +135,12 @@ static action_outcome_assoc_t* find_or_create_association(
 ) {
     /* Search existing */
     for (uint32_t i = 0; i < system->association_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->association_count > 256) {
+            mirror_vicarious_reward_heartbeat("mirror_vicar_loop",
+                             (float)(i + 1) / (float)system->association_count);
+        }
+
         if (system->associations[i].action_id == action_id) {
             return &system->associations[i];
         }
@@ -259,6 +271,10 @@ static void update_agent_history(
 //=============================================================================
 
 vicarious_reward_config_t vicarious_reward_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_con", 0.0f);
+
+
     vicarious_reward_config_t config = {
         .vicarious_gain = 0.5f,              /* 50% of direct reward */
         .social_distance_decay = 2.0f,
@@ -288,6 +304,10 @@ vicarious_reward_config_t vicarious_reward_config_default(void) {
 vicarious_reward_system_t* vicarious_reward_create(
     const vicarious_reward_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_cre", 0.0f);
+
+
     vicarious_reward_system_t* system = nimcp_calloc(1, sizeof(vicarious_reward_system_t));
     if (!system) {
         nimcp_log(LOG_LEVEL_ERROR, "Vicarious Reward: Failed to allocate system");
@@ -332,6 +352,10 @@ vicarious_reward_system_t* vicarious_reward_create(
 void vicarious_reward_destroy(vicarious_reward_system_t* system) {
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_des", 0.0f);
+
+
     if (system->bio_async_registered) {
         vicarious_reward_unregister_bio_async(system);
     }
@@ -354,6 +378,10 @@ bool vicarious_reward_process(
     vicarious_response_result_t* result
 ) {
     if (!system || !observation || !result) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_pro", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -538,8 +566,18 @@ uint32_t vicarious_reward_process_batch(
 ) {
     if (!system || !observations || !results || count == 0) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_pro", 0.0f);
+
+
     uint32_t processed = 0;
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            mirror_vicarious_reward_heartbeat("mirror_vicar_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (vicarious_reward_process(system, &observations[i], &results[i])) {
             processed++;
         }
@@ -559,12 +597,22 @@ float vicarious_reward_predict(
 ) {
     if (!system) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_pre", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     float prediction = 0.0f;
 
     /* Find action association */
     for (uint32_t i = 0; i < system->association_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->association_count > 256) {
+            mirror_vicarious_reward_heartbeat("mirror_vicar_loop",
+                             (float)(i + 1) / (float)system->association_count);
+        }
+
         if (system->associations[i].action_id == action_id) {
             prediction = system->associations[i].expected_reward;
             break;
@@ -574,6 +622,12 @@ float vicarious_reward_predict(
     /* Modulate by agent if known */
     vicarious_agent_state_t* agent = NULL;
     for (uint32_t i = 0; i < system->agent_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->agent_count > 256) {
+            mirror_vicarious_reward_heartbeat("mirror_vicar_loop",
+                             (float)(i + 1) / (float)system->agent_count);
+        }
+
         if (system->agents[i].agent_id == agent_id) {
             agent = &system->agents[i];
             break;
@@ -606,6 +660,10 @@ vicarious_agent_state_t* vicarious_reward_get_agent(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_get", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     vicarious_agent_state_t* agent = find_or_create_agent(system, agent_id);
     nimcp_mutex_unlock(system->mutex);
@@ -619,6 +677,10 @@ void vicarious_reward_set_relation(
     social_relation_t relation
 ) {
     if (!system) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_set", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
     vicarious_agent_state_t* agent = find_or_create_agent(system, agent_id);
@@ -635,6 +697,10 @@ void vicarious_reward_update_familiarity(
 ) {
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_upd", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     vicarious_agent_state_t* agent = find_or_create_agent(system, agent_id);
     if (agent) {
@@ -649,6 +715,10 @@ void vicarious_reward_set_competitive(
     bool is_competitor
 ) {
     if (!system) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_set", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
     vicarious_agent_state_t* agent = find_or_create_agent(system, agent_id);
@@ -668,7 +738,17 @@ float vicarious_reward_get_action_value(
 ) {
     if (!system) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_get", 0.0f);
+
+
     for (uint32_t i = 0; i < system->association_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->association_count > 256) {
+            mirror_vicarious_reward_heartbeat("mirror_vicar_loop",
+                             (float)(i + 1) / (float)system->association_count);
+        }
+
         if (system->associations[i].action_id == action_id) {
             return system->associations[i].expected_reward;
         }
@@ -688,7 +768,17 @@ const action_outcome_assoc_t* vicarious_reward_get_association(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_get", 0.0f);
+
+
     for (uint32_t i = 0; i < system->association_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->association_count > 256) {
+            mirror_vicarious_reward_heartbeat("mirror_vicar_loop",
+                             (float)(i + 1) / (float)system->association_count);
+        }
+
         if (system->associations[i].action_id == action_id) {
             return &system->associations[i];
         }
@@ -702,11 +792,21 @@ void vicarious_reward_decay_predictions(
 ) {
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_dec", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     float decay = expf(-system->config.prediction_decay * dt_sec);
 
     for (uint32_t i = 0; i < system->association_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->association_count > 256) {
+            mirror_vicarious_reward_heartbeat("mirror_vicar_loop",
+                             (float)(i + 1) / (float)system->association_count);
+        }
+
         system->associations[i].expected_reward *= decay;
         system->associations[i].value_confidence *= decay;
     }
@@ -719,6 +819,10 @@ void vicarious_reward_decay_predictions(
 //=============================================================================
 
 float vicarious_reward_get_dopamine(const vicarious_reward_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_get", 0.0f);
+
+
     return system ? system->current_dopamine : 0.5f;
 }
 
@@ -727,6 +831,10 @@ void vicarious_reward_inject_direct(
     float direct_reward
 ) {
     if (!system) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_inj", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -750,8 +858,18 @@ float vicarious_reward_social_modulation(
 ) {
     if (!system) return 1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_soc", 0.0f);
+
+
     const vicarious_agent_state_t* agent = NULL;
     for (uint32_t i = 0; i < system->agent_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->agent_count > 256) {
+            mirror_vicarious_reward_heartbeat("mirror_vicar_loop",
+                             (float)(i + 1) / (float)system->agent_count);
+        }
+
         if (system->agents[i].agent_id == agent_id) {
             agent = &system->agents[i];
             break;
@@ -769,8 +887,18 @@ bool vicarious_reward_is_schadenfreude(
     if (!system || !system->config.enable_schadenfreude) return false;
     if (observed_negative_reward >= 0.0f) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_is_", 0.0f);
+
+
     const vicarious_agent_state_t* agent = NULL;
     for (uint32_t i = 0; i < system->agent_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->agent_count > 256) {
+            mirror_vicarious_reward_heartbeat("mirror_vicar_loop",
+                             (float)(i + 1) / (float)system->agent_count);
+        }
+
         if (system->agents[i].agent_id == agent_id) {
             agent = &system->agents[i];
             break;
@@ -791,8 +919,18 @@ bool vicarious_reward_is_envy(
     if (!system || !system->config.enable_envy) return false;
     if (observed_positive_reward <= 0.0f) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_is_", 0.0f);
+
+
     const vicarious_agent_state_t* agent = NULL;
     for (uint32_t i = 0; i < system->agent_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->agent_count > 256) {
+            mirror_vicarious_reward_heartbeat("mirror_vicar_loop",
+                             (float)(i + 1) / (float)system->agent_count);
+        }
+
         if (system->agents[i].agent_id == agent_id) {
             agent = &system->agents[i];
             break;
@@ -819,7 +957,17 @@ void vicarious_reward_simd_social_mod(
     if (!config) return;
 
     /* Scalar implementation - could be vectorized */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_sim", 0.0f);
+
+
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            mirror_vicarious_reward_heartbeat("mirror_vicar_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         float distance_mod = expf(-distances[i] * config->social_distance_decay);
         float familiarity_mod = 1.0f + familiarities[i] * config->familiarity_boost;
         modulations[i] = relation_weights[i] * distance_mod * familiarity_mod;
@@ -833,7 +981,17 @@ void vicarious_reward_simd_rpe(
     float* rpes,
     uint32_t count
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_sim", 0.0f);
+
+
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            mirror_vicarious_reward_heartbeat("mirror_vicar_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         rpes[i] = (observed_rewards[i] - predicted_rewards[i]) * modulations[i];
     }
 }
@@ -846,6 +1004,10 @@ bool vicarious_reward_register_bio_async(vicarious_reward_system_t* system) {
     if (!system) return false;
 
     /* Bio-async registration would go here */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_reg", 0.0f);
+
+
     system->bio_async_registered = true;
     nimcp_log(LOG_LEVEL_DEBUG, "Vicarious Reward: Registered with bio-async");
     return true;
@@ -853,6 +1015,10 @@ bool vicarious_reward_register_bio_async(vicarious_reward_system_t* system) {
 
 void vicarious_reward_unregister_bio_async(vicarious_reward_system_t* system) {
     if (!system) return;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_unr", 0.0f);
+
+
     system->bio_async_registered = false;
     nimcp_log(LOG_LEVEL_DEBUG, "Vicarious Reward: Unregistered from bio-async");
 }
@@ -867,6 +1033,10 @@ bool vicarious_reward_get_stats(
 ) {
     if (!system || !stats) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_get", 0.0f);
+
+
     nimcp_mutex_lock(((vicarious_reward_system_t*)system)->mutex);
     *stats = system->stats;
     nimcp_mutex_unlock(((vicarious_reward_system_t*)system)->mutex);
@@ -876,6 +1046,10 @@ bool vicarious_reward_get_stats(
 
 void vicarious_reward_reset_stats(vicarious_reward_system_t* system) {
     if (!system) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_res", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
     memset(&system->stats, 0, sizeof(vicarious_reward_stats_t));

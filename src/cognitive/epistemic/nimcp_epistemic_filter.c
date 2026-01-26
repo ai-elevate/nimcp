@@ -45,7 +45,7 @@ static nimcp_health_agent_t* g_epistemic_filter_health_agent = NULL;
  * @brief Set health agent for epistemic_filter heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void epistemic_filter_set_health_agent(nimcp_health_agent_t* agent) {
+void epistemic_filter_set_health_agent(nimcp_health_agent_t* agent) {
     g_epistemic_filter_health_agent = agent;
 }
 
@@ -147,6 +147,12 @@ static float detect_conspiracy_patterns(const char* text) {
     if (!lower_text) return 0.0F;
 
     for (size_t i = 0; i < text_len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && text_len > 256) {
+            epistemic_filter_heartbeat("epistemic_fi_loop",
+                             (float)(i + 1) / (float)text_len);
+        }
+
         lower_text[i] = tolower((unsigned char)text[i]);
     }
     lower_text[text_len] = '\0';
@@ -271,6 +277,10 @@ static float detect_bandwagon_effect(
 //=============================================================================
 
 epistemic_filter_t epistemic_filter_create(float skepticism_level) {
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_filter_heartbeat("epistemic_fi_create", 0.0f);
+
+
     epistemic_filter_t filter = nimcp_calloc(1, sizeof(struct epistemic_filter_struct));
     if (!filter) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "epistemic_filter_create: failed to allocate filter");
@@ -377,6 +387,10 @@ void epistemic_filter_destroy(epistemic_filter_t filter) {
     if (!filter) return;
 
     // Unregister from bio-async router
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_filter_heartbeat("epistemic_fi_destroy", 0.0f);
+
+
     if (filter->bio_async_enabled && filter->bio_ctx) {
         bio_router_unregister_module(filter->bio_ctx);
         filter->bio_ctx = NULL;
@@ -401,6 +415,10 @@ void epistemic_filter_destroy(epistemic_filter_t filter) {
 void epistemic_evidence_init(claim_evidence_t* evidence) {
     if (!evidence) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_filter_heartbeat("epistemic_fi_epistemic_evidence_i", 0.0f);
+
+
     memset(evidence, 0, sizeof(claim_evidence_t));
 
     evidence->evidence_quality = EVIDENCE_NONE;
@@ -419,6 +437,10 @@ void epistemic_evidence_init(claim_evidence_t* evidence) {
 
 void epistemic_assessment_init(epistemic_assessment_t* assessment) {
     if (!assessment) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_filter_heartbeat("epistemic_fi_epistemic_assessment", 0.0f);
+
 
     memset(assessment, 0, sizeof(epistemic_assessment_t));
 
@@ -441,6 +463,10 @@ float epistemic_apply_sagan_standard(
     // "Extraordinary claims require extraordinary evidence" - Carl Sagan
 
     // Map plausibility and evidence to scores
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_filter_heartbeat("epistemic_fi_epistemic_apply_saga", 0.0f);
+
+
     float plausibility_score = 0.0F;
     switch (prior_plausibility) {
         case PLAUSIBLE_IMPOSSIBLE:     plausibility_score = 0.0F; break;
@@ -490,6 +516,10 @@ float epistemic_check_conspiracy_pattern(
         return 0.0F;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_filter_heartbeat("epistemic_fi_epistemic_check_cons", 0.0f);
+
+
     float conspiracy_score = 0.0F;
 
     // Check text patterns
@@ -522,6 +552,10 @@ uint32_t epistemic_detect_biases(
     if (!filter || !reasoning_features || !biases || max_biases == 0) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_filter_heartbeat("epistemic_fi_epistemic_detect_bia", 0.0f);
+
 
     uint32_t bias_count = 0;
 
@@ -606,6 +640,10 @@ bool epistemic_assess_claim(
     epistemic_assessment_t* assessment)
 {
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_filter_heartbeat("epistemic_fi_epistemic_assess_cla", 0.0f);
+
+
     if (filter && filter->bio_ctx) {
         bio_router_process_inbox(filter->bio_ctx, 5);
     }
@@ -799,7 +837,17 @@ bool epistemic_update_source(
     }
 
     // Find existing source
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_filter_heartbeat("epistemic_fi_epistemic_update_sou", 0.0f);
+
+
     for (uint32_t i = 0; i < filter->num_sources; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && filter->num_sources > 256) {
+            epistemic_filter_heartbeat("epistemic_fi_loop",
+                             (float)(i + 1) / (float)filter->num_sources);
+        }
+
         if (strcmp(filter->sources[i].source_id, source_id) == 0) {
             if (was_correct) {
                 filter->sources[i].correct_count++;
@@ -844,7 +892,17 @@ float epistemic_get_source_reliability(
         return -1.0F;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_filter_heartbeat("epistemic_fi_epistemic_get_source", 0.0f);
+
+
     for (uint32_t i = 0; i < filter->num_sources; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && filter->num_sources > 256) {
+            epistemic_filter_heartbeat("epistemic_fi_loop",
+                             (float)(i + 1) / (float)filter->num_sources);
+        }
+
         if (strcmp(filter->sources[i].source_id, source_id) == 0) {
             return filter->sources[i].reliability;
         }
@@ -871,10 +929,20 @@ int epistemic_filter_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
     /* Query our own entity from the knowledge graph */
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_filter_heartbeat("epistemic_fi_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Epistemic_Filter_Module");
     if (self) {
         /* Module now knows its own capabilities from KG */
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                epistemic_filter_heartbeat("epistemic_fi_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Epistemic filter self-knowledge: %s", self->observations[i]);
         }
     }

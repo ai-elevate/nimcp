@@ -60,7 +60,7 @@ static nimcp_health_agent_t* g_omni_wm_parietal_bridge_health_agent = NULL;
  * @brief Set health agent for omni_wm_parietal_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void omni_wm_parietal_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void omni_wm_parietal_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_omni_wm_parietal_bridge_health_agent = agent;
 }
 
@@ -224,6 +224,12 @@ static nimcp_error_t allocate_attention_map(omni_wm_parietal_bridge_t* bridge) {
     /* Initialize uniform attention */
     float uniform_weight = 1.0f / (float)size;
     for (uint32_t i = 0; i < size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && size > 256) {
+            omni_wm_parietal_bridge_heartbeat("omni_wm_pari_loop",
+                             (float)(i + 1) / (float)size);
+        }
+
         bridge->attention_map[i] = uniform_weight;
     }
 
@@ -269,6 +275,12 @@ static void free_trajectory_cache(omni_wm_parietal_bridge_t* bridge) {
 
     if (bridge->trajectory_cache) {
         for (uint32_t i = 0; i < bridge->trajectory_cache_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->trajectory_cache_size > 256) {
+                omni_wm_parietal_bridge_heartbeat("omni_wm_pari_loop",
+                                 (float)(i + 1) / (float)bridge->trajectory_cache_size);
+            }
+
             omni_wm_parietal_trajectory_destroy(bridge->trajectory_cache[i]);
         }
         nimcp_free(bridge->trajectory_cache);
@@ -314,6 +326,12 @@ static int find_tracked_object(const omni_wm_parietal_bridge_t* bridge, uint32_t
     if (!bridge || !bridge->tracked_objects) return -1;
 
     for (uint32_t i = 0; i < bridge->num_tracked_objects; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_tracked_objects > 256) {
+            omni_wm_parietal_bridge_heartbeat("omni_wm_pari_loop",
+                             (float)(i + 1) / (float)bridge->num_tracked_objects);
+        }
+
         if (bridge->tracked_objects[i].object_id == object_id) {
             return (int)i;
         }
@@ -342,6 +360,12 @@ static nimcp_error_t apply_physics_constraints(omni_wm_parietal_bridge_t* bridge
 
     /* Apply each constraint */
     for (uint32_t i = 0; i < bridge->num_constraints; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_constraints > 256) {
+            omni_wm_parietal_bridge_heartbeat("omni_wm_pari_loop",
+                             (float)(i + 1) / (float)bridge->num_constraints);
+        }
+
         wm_parietal_physics_constraint_t* c = &bridge->constraints[i];
         if (!c->enabled) continue;
         if (c->object_id != 0 && c->object_id != state->object_id) continue;
@@ -434,6 +458,12 @@ static nimcp_error_t update_wm_to_parietal_effects(omni_wm_parietal_bridge_t* br
 
     float total_mass = 0.0f;
     for (uint32_t i = 0; i < bridge->num_tracked_objects; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_tracked_objects > 256) {
+            omni_wm_parietal_bridge_heartbeat("omni_wm_pari_loop",
+                             (float)(i + 1) / (float)bridge->num_tracked_objects);
+        }
+
         wm_parietal_spatial_state_t* obj = &bridge->tracked_objects[i];
 
         /* Kinetic energy: 0.5 * m * v^2 */
@@ -467,6 +497,12 @@ static nimcp_error_t update_wm_to_parietal_effects(omni_wm_parietal_bridge_t* br
     /* Compute overall confidence based on tracked object confidences */
     float confidence_sum = 0.0f;
     for (uint32_t i = 0; i < bridge->num_tracked_objects; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_tracked_objects > 256) {
+            omni_wm_parietal_bridge_heartbeat("omni_wm_pari_loop",
+                             (float)(i + 1) / (float)bridge->num_tracked_objects);
+        }
+
         confidence_sum += bridge->tracked_objects[i].confidence;
     }
     if (bridge->num_tracked_objects > 0) {
@@ -616,6 +652,10 @@ static nimcp_error_t handle_attention_update(const void* msg, size_t msg_size,
 nimcp_error_t omni_wm_parietal_bridge_default_config(
     omni_wm_parietal_bridge_config_t* config) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(omni_wm_parietal_bridge_config_t));
@@ -665,6 +705,10 @@ omni_wm_parietal_bridge_t* omni_wm_parietal_bridge_create(
     const omni_wm_parietal_bridge_config_t* config) {
 
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_create", 0.0f);
+
+
     omni_wm_parietal_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_wm_parietal_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate WM parietal bridge");
@@ -749,6 +793,10 @@ void omni_wm_parietal_bridge_destroy(omni_wm_parietal_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         omni_wm_parietal_bridge_disconnect_bio_async(bridge);
     }
@@ -757,6 +805,12 @@ void omni_wm_parietal_bridge_destroy(omni_wm_parietal_bridge_t* bridge) {
     nimcp_free(bridge->wm_to_parietal.predicted_states);
     if (bridge->wm_to_parietal.trajectories) {
         for (uint32_t i = 0; i < bridge->wm_to_parietal.num_trajectories; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->wm_to_parietal.num_trajectories > 256) {
+                omni_wm_parietal_bridge_heartbeat("omni_wm_pari_loop",
+                                 (float)(i + 1) / (float)bridge->wm_to_parietal.num_trajectories);
+            }
+
             omni_wm_parietal_trajectory_destroy(bridge->wm_to_parietal.trajectories[i]);
         }
         nimcp_free(bridge->wm_to_parietal.trajectories);
@@ -782,6 +836,10 @@ void omni_wm_parietal_bridge_destroy(omni_wm_parietal_bridge_t* bridge) {
 }
 
 nimcp_error_t omni_wm_parietal_bridge_reset(omni_wm_parietal_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_reset", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -802,6 +860,12 @@ nimcp_error_t omni_wm_parietal_bridge_reset(omni_wm_parietal_bridge_t* bridge) {
                        bridge->attention_map_dim;
         float uniform = 1.0f / (float)size;
         for (uint32_t i = 0; i < size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && size > 256) {
+                omni_wm_parietal_bridge_heartbeat("omni_wm_pari_loop",
+                                 (float)(i + 1) / (float)size);
+            }
+
             bridge->attention_map[i] = uniform;
         }
     }
@@ -809,6 +873,12 @@ nimcp_error_t omni_wm_parietal_bridge_reset(omni_wm_parietal_bridge_t* bridge) {
 
     /* Clear trajectory cache */
     for (uint32_t i = 0; i < bridge->trajectory_cache_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->trajectory_cache_size > 256) {
+            omni_wm_parietal_bridge_heartbeat("omni_wm_pari_loop",
+                             (float)(i + 1) / (float)bridge->trajectory_cache_size);
+        }
+
         omni_wm_parietal_trajectory_destroy(bridge->trajectory_cache[i]);
         bridge->trajectory_cache[i] = NULL;
     }
@@ -841,6 +911,10 @@ nimcp_error_t omni_wm_parietal_bridge_connect(
     parietal_adapter_t* parietal_adapter,
     spatial_reasoning_t* spatial_reasoning) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_connect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_INVALID_PARAM, "world_model is required");
 
@@ -869,6 +943,10 @@ nimcp_error_t omni_wm_parietal_bridge_connect_world_model(
     omni_wm_parietal_bridge_t* bridge,
     omni_world_model_t* world_model) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_connect_world_model", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_NULL_POINTER, "world_model is NULL");
 
@@ -886,6 +964,10 @@ nimcp_error_t omni_wm_parietal_bridge_connect_parietal_lobe(
     omni_wm_parietal_bridge_t* bridge,
     parietal_lobe_t* parietal_lobe) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_connect_parietal_lob", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(parietal_lobe, NIMCP_ERROR_NULL_POINTER, "parietal_lobe is NULL");
 
@@ -899,6 +981,10 @@ nimcp_error_t omni_wm_parietal_bridge_connect_parietal_lobe(
 nimcp_error_t omni_wm_parietal_bridge_connect_parietal_adapter(
     omni_wm_parietal_bridge_t* bridge,
     parietal_adapter_t* parietal_adapter) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_connect_parietal_ada", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(parietal_adapter, NIMCP_ERROR_NULL_POINTER, "parietal_adapter is NULL");
@@ -914,6 +1000,10 @@ nimcp_error_t omni_wm_parietal_bridge_connect_spatial_reasoning(
     omni_wm_parietal_bridge_t* bridge,
     spatial_reasoning_t* spatial_reasoning) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_connect_spatial_reas", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(spatial_reasoning, NIMCP_ERROR_NULL_POINTER, "spatial_reasoning is NULL");
 
@@ -926,6 +1016,10 @@ nimcp_error_t omni_wm_parietal_bridge_connect_spatial_reasoning(
 
 bool omni_wm_parietal_bridge_is_connected(const omni_wm_parietal_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_is_connected", 0.0f);
+
+
     return bridge->world_model != NULL;
 }
 
@@ -936,6 +1030,10 @@ bool omni_wm_parietal_bridge_is_connected(const omni_wm_parietal_bridge_t* bridg
 nimcp_error_t omni_wm_parietal_bridge_update(
     omni_wm_parietal_bridge_t* bridge,
     float dt) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_update", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_modulation) return NIMCP_SUCCESS;
@@ -951,6 +1049,12 @@ nimcp_error_t omni_wm_parietal_bridge_update(
         /* Fixed timestep physics integration */
         while (bridge->physics_engine->time_accumulator >= bridge->physics_engine->fixed_dt) {
             for (uint32_t i = 0; i < bridge->num_tracked_objects; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && bridge->num_tracked_objects > 256) {
+                    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_loop",
+                                     (float)(i + 1) / (float)bridge->num_tracked_objects);
+                }
+
                 apply_physics_constraints(bridge, &bridge->tracked_objects[i],
                                          bridge->physics_engine->fixed_dt);
             }
@@ -965,6 +1069,12 @@ nimcp_error_t omni_wm_parietal_bridge_update(
                        bridge->attention_map_dim;
         float uniform = 1.0f / (float)size;
         for (uint32_t i = 0; i < size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && size > 256) {
+                omni_wm_parietal_bridge_heartbeat("omni_wm_pari_loop",
+                                 (float)(i + 1) / (float)size);
+            }
+
             bridge->attention_map[i] = bridge->attention_map[i] * (1.0f - decay) +
                                        uniform * decay;
         }
@@ -1001,6 +1111,10 @@ nimcp_error_t omni_wm_parietal_bridge_predict_spatial_state(
     wm_parietal_frame_t target_frame,
     wm_parietal_spatial_state_t* predicted_state) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_predict_spatial_stat", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(predicted_state, NIMCP_ERROR_NULL_POINTER, "predicted_state is NULL");
     if (!bridge->config.enable_spatial_prediction) return NIMCP_SUCCESS;
@@ -1023,6 +1137,12 @@ nimcp_error_t omni_wm_parietal_bridge_predict_spatial_state(
     /* Simulate forward by horizon_steps */
     float dt = bridge->config.prediction_dt;
     for (uint32_t step = 0; step < horizon_steps; step++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((step & 0xFF) == 0 && horizon_steps > 256) {
+            omni_wm_parietal_bridge_heartbeat("omni_wm_pari_loop",
+                             (float)(step + 1) / (float)horizon_steps);
+        }
+
         apply_physics_constraints(bridge, predicted_state, dt);
     }
 
@@ -1050,6 +1170,10 @@ nimcp_error_t omni_wm_parietal_bridge_predict_trajectory(
     float dt,
     wm_parietal_frame_t target_frame,
     wm_parietal_trajectory_t* trajectory) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_predict_trajectory", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(trajectory, NIMCP_ERROR_NULL_POINTER, "trajectory is NULL");
@@ -1083,6 +1207,12 @@ nimcp_error_t omni_wm_parietal_bridge_predict_trajectory(
     /* Roll out trajectory */
     float confidence_sum = 0.0f;
     for (uint32_t step = 0; step < horizon_steps; step++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((step & 0xFF) == 0 && horizon_steps > 256) {
+            omni_wm_parietal_bridge_heartbeat("omni_wm_pari_loop",
+                             (float)(step + 1) / (float)horizon_steps);
+        }
+
         /* Store current state */
         trajectory->states[step] = current;
 
@@ -1112,6 +1242,10 @@ nimcp_error_t omni_wm_parietal_bridge_predict_joint_trajectories(
     uint32_t horizon_steps,
     wm_parietal_trajectory_t** trajectories) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_predict_joint_trajec", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(object_ids, NIMCP_ERROR_NULL_POINTER, "object_ids is NULL");
     NIMCP_CHECK_THROW(trajectories, NIMCP_ERROR_NULL_POINTER, "trajectories is NULL");
@@ -1120,6 +1254,12 @@ nimcp_error_t omni_wm_parietal_bridge_predict_joint_trajectories(
     /* Predict each trajectory individually for now */
     /* In full implementation, would consider interactions */
     for (uint32_t i = 0; i < num_objects; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_objects > 256) {
+            omni_wm_parietal_bridge_heartbeat("omni_wm_pari_loop",
+                             (float)(i + 1) / (float)num_objects);
+        }
+
         if (!trajectories[i]) continue;
 
         nimcp_error_t err = omni_wm_parietal_bridge_predict_trajectory(
@@ -1146,6 +1286,10 @@ nimcp_error_t omni_wm_parietal_bridge_transform_position(
     wm_parietal_frame_t from_frame,
     wm_parietal_frame_t to_frame,
     wm_parietal_vec3_t* result) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_transform_position", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(position, NIMCP_ERROR_NULL_POINTER, "position is NULL");
@@ -1206,6 +1350,10 @@ nimcp_error_t omni_wm_parietal_bridge_transform_state(
     wm_parietal_frame_t to_frame,
     wm_parietal_spatial_state_t* result) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_transform_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL");
     NIMCP_CHECK_THROW(result, NIMCP_ERROR_NULL_POINTER, "result is NULL");
@@ -1229,6 +1377,10 @@ nimcp_error_t omni_wm_parietal_bridge_get_transform_matrix(
     wm_parietal_frame_t from_frame,
     wm_parietal_frame_t to_frame,
     float* matrix) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_get_transform_matrix", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(matrix, NIMCP_ERROR_NULL_POINTER, "matrix is NULL");
@@ -1261,6 +1413,10 @@ nimcp_error_t omni_wm_parietal_bridge_add_physics_constraint(
     omni_wm_parietal_bridge_t* bridge,
     const wm_parietal_physics_constraint_t* constraint) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_add_physics_constrai", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(constraint, NIMCP_ERROR_NULL_POINTER, "constraint is NULL");
 
@@ -1284,11 +1440,21 @@ nimcp_error_t omni_wm_parietal_bridge_remove_physics_constraint(
     wm_parietal_physics_type_t type,
     uint32_t object_id) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_remove_physics_const", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->num_constraints; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_constraints > 256) {
+            omni_wm_parietal_bridge_heartbeat("omni_wm_pari_loop",
+                             (float)(i + 1) / (float)bridge->num_constraints);
+        }
+
         if (bridge->constraints[i].type == type &&
             bridge->constraints[i].object_id == object_id) {
             /* Shift remaining constraints down */
@@ -1308,6 +1474,10 @@ nimcp_error_t omni_wm_parietal_bridge_remove_physics_constraint(
 nimcp_error_t omni_wm_parietal_bridge_clear_physics_constraints(
     omni_wm_parietal_bridge_t* bridge) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_clear_physics_constr", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1325,6 +1495,10 @@ nimcp_error_t omni_wm_parietal_bridge_check_collision(
     bool* will_collide,
     float* time_to_collision,
     wm_parietal_vec3_t* collision_point) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_check_collision", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(will_collide, NIMCP_ERROR_NULL_POINTER, "will_collide is NULL");
@@ -1390,11 +1564,21 @@ nimcp_error_t omni_wm_parietal_bridge_physics_step(
     omni_wm_parietal_bridge_t* bridge,
     float dt) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_physics_step", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->num_tracked_objects; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_tracked_objects > 256) {
+            omni_wm_parietal_bridge_heartbeat("omni_wm_pari_loop",
+                             (float)(i + 1) / (float)bridge->num_tracked_objects);
+        }
+
         apply_physics_constraints(bridge, &bridge->tracked_objects[i], dt);
     }
 
@@ -1411,6 +1595,10 @@ nimcp_error_t omni_wm_parietal_bridge_update_attention(
     omni_wm_parietal_bridge_t* bridge,
     const float* attention_map,
     uint32_t map_dim) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_update_attention", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(attention_map, NIMCP_ERROR_NULL_POINTER, "attention_map is NULL");
@@ -1435,6 +1623,10 @@ nimcp_error_t omni_wm_parietal_bridge_set_attention_focus(
     omni_wm_parietal_bridge_t* bridge,
     const wm_parietal_vec3_t* focus,
     float spread) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_set_attention_focus", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(focus, NIMCP_ERROR_NULL_POINTER, "focus is NULL");
@@ -1461,8 +1653,26 @@ nimcp_error_t omni_wm_parietal_bridge_set_attention_focus(
         float total = 0.0f;
 
         for (uint32_t z = 0; z < dim; z++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((z & 0xFF) == 0 && dim > 256) {
+                omni_wm_parietal_bridge_heartbeat("omni_wm_pari_loop",
+                                 (float)(z + 1) / (float)dim);
+            }
+
             for (uint32_t y = 0; y < dim; y++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((y & 0xFF) == 0 && dim > 256) {
+                    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_loop",
+                                     (float)(y + 1) / (float)dim);
+                }
+
                 for (uint32_t x = 0; x < dim; x++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((x & 0xFF) == 0 && dim > 256) {
+                        omni_wm_parietal_bridge_heartbeat("omni_wm_pari_loop",
+                                         (float)(x + 1) / (float)dim);
+                    }
+
                     /* Map grid to spatial coordinates */
                     float gx = (float)x / (float)(dim - 1) - 0.5f;
                     float gy = (float)y / (float)(dim - 1) - 0.5f;
@@ -1488,6 +1698,12 @@ nimcp_error_t omni_wm_parietal_bridge_set_attention_focus(
         if (total > FLOAT_EPSILON) {
             uint32_t size = dim * dim * dim;
             for (uint32_t i = 0; i < size; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && size > 256) {
+                    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_loop",
+                                     (float)(i + 1) / (float)size);
+                }
+
                 bridge->attention_map[i] /= total;
             }
         }
@@ -1510,6 +1726,10 @@ float omni_wm_parietal_bridge_get_attention_at(
     if (!bridge->attention_map || bridge->attention_map_dim == 0) return 1.0f;
 
     /* Map position to grid coordinates (assuming -0.5 to 0.5 range) */
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_get_attention_at", 0.0f);
+
+
     uint32_t dim = bridge->attention_map_dim;
     float px = (position->x + 0.5f) * (float)(dim - 1);
     float py = (position->y + 0.5f) * (float)(dim - 1);
@@ -1531,6 +1751,10 @@ float omni_wm_parietal_bridge_get_attention_at(
 nimcp_error_t omni_wm_parietal_bridge_track_object(
     omni_wm_parietal_bridge_t* bridge,
     const wm_parietal_spatial_state_t* initial_state) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_track_object", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(initial_state, NIMCP_ERROR_NULL_POINTER, "initial_state is NULL");
@@ -1566,6 +1790,10 @@ nimcp_error_t omni_wm_parietal_bridge_update_object(
     uint32_t object_id,
     const wm_parietal_spatial_state_t* new_state) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_update_object", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(new_state, NIMCP_ERROR_NULL_POINTER, "new_state is NULL");
 
@@ -1588,6 +1816,10 @@ nimcp_error_t omni_wm_parietal_bridge_update_object(
 nimcp_error_t omni_wm_parietal_bridge_untrack_object(
     omni_wm_parietal_bridge_t* bridge,
     uint32_t object_id) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_untrack_object", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -1614,6 +1846,10 @@ nimcp_error_t omni_wm_parietal_bridge_get_object_state(
     const omni_wm_parietal_bridge_t* bridge,
     uint32_t object_id,
     wm_parietal_spatial_state_t* state) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_get_object_state", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL");
@@ -1645,6 +1881,10 @@ nimcp_error_t omni_wm_parietal_bridge_math_predict(
     float* predictions,
     float* confidence) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_math_predict", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(observation_sequence, NIMCP_ERROR_NULL_POINTER, "observation_sequence is NULL");
     NIMCP_CHECK_THROW(predictions, NIMCP_ERROR_NULL_POINTER, "predictions is NULL");
@@ -1662,6 +1902,12 @@ nimcp_error_t omni_wm_parietal_bridge_math_predict(
     float slope = last - second_last;
 
     for (uint32_t i = 0; i < prediction_steps; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && prediction_steps > 256) {
+            omni_wm_parietal_bridge_heartbeat("omni_wm_pari_loop",
+                             (float)(i + 1) / (float)prediction_steps);
+        }
+
         predictions[i] = last + slope * (float)(i + 1);
     }
 
@@ -1684,6 +1930,10 @@ nimcp_error_t omni_wm_parietal_bridge_estimate_quantity(
     float* estimate,
     float* confidence) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_estimate_quantity", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(values, NIMCP_ERROR_NULL_POINTER, "values is NULL");
     NIMCP_CHECK_THROW(estimate, NIMCP_ERROR_NULL_POINTER, "estimate is NULL");
@@ -1697,6 +1947,12 @@ nimcp_error_t omni_wm_parietal_bridge_estimate_quantity(
 
     float sum = 0.0f;
     for (uint32_t i = 0; i < num_values; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_values > 256) {
+            omni_wm_parietal_bridge_heartbeat("omni_wm_pari_loop",
+                             (float)(i + 1) / (float)num_values);
+        }
+
         sum += values[i];
     }
     *estimate = sum / (float)num_values;
@@ -1705,6 +1961,12 @@ nimcp_error_t omni_wm_parietal_bridge_estimate_quantity(
         /* Confidence based on value spread */
         float variance = 0.0f;
         for (uint32_t i = 0; i < num_values; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_values > 256) {
+                omni_wm_parietal_bridge_heartbeat("omni_wm_pari_loop",
+                                 (float)(i + 1) / (float)num_values);
+            }
+
             float diff = values[i] - *estimate;
             variance += diff * diff;
         }
@@ -1736,6 +1998,10 @@ const omni_wm_to_parietal_effects_t* omni_wm_parietal_bridge_get_wm_effects(
 
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_get_wm_effects", 0.0f);
+
+
     return &bridge->wm_to_parietal;
 }
 
@@ -1752,12 +2018,20 @@ const parietal_to_omni_wm_effects_t* omni_wm_parietal_bridge_get_parietal_effect
 
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_get_parietal_effects", 0.0f);
+
+
     return &bridge->parietal_to_wm;
 }
 
 nimcp_error_t omni_wm_parietal_bridge_get_stats(
     const omni_wm_parietal_bridge_t* bridge,
     omni_wm_parietal_bridge_stats_t* stats) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_get_stats", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
@@ -1771,6 +2045,10 @@ nimcp_error_t omni_wm_parietal_bridge_get_stats(
 
 nimcp_error_t omni_wm_parietal_bridge_reset_stats(
     omni_wm_parietal_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_reset_stats", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -1787,6 +2065,10 @@ nimcp_error_t omni_wm_parietal_bridge_reset_stats(
 
 nimcp_error_t omni_wm_parietal_bridge_connect_bio_async(
     omni_wm_parietal_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_connect_bio_async", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_bio_async) return NIMCP_SUCCESS;
@@ -1838,6 +2120,10 @@ nimcp_error_t omni_wm_parietal_bridge_connect_bio_async(
 nimcp_error_t omni_wm_parietal_bridge_disconnect_bio_async(
     omni_wm_parietal_bridge_t* bridge) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_disconnect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
@@ -1854,6 +2140,10 @@ nimcp_error_t omni_wm_parietal_bridge_disconnect_bio_async(
 
 bool omni_wm_parietal_bridge_is_bio_async_connected(
     const omni_wm_parietal_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_is_bio_async_connect", 0.0f);
+
 
     return bridge_base_is_bio_async_connected(bridge ? &bridge->base : NULL);
 }
@@ -1952,6 +2242,10 @@ const char* omni_wm_parietal_physics_type_to_string(wm_parietal_physics_type_t t
 nimcp_error_t omni_wm_parietal_bridge_validate_config(
     const omni_wm_parietal_bridge_config_t* config) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_validate_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* Validate sensitivity range */
@@ -2014,6 +2308,10 @@ wm_parietal_spatial_state_t omni_wm_parietal_create_state(
     float x, float y, float z,
     wm_parietal_frame_t frame) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_omni_wm_parietal_cre", 0.0f);
+
+
     wm_parietal_spatial_state_t state;
     memset(&state, 0, sizeof(wm_parietal_spatial_state_t));
 
@@ -2043,6 +2341,10 @@ wm_parietal_spatial_state_t omni_wm_parietal_create_state(
 wm_parietal_trajectory_t* omni_wm_parietal_trajectory_create(uint32_t max_length) {
     if (max_length == 0) return NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_omni_wm_parietal_tra", 0.0f);
+
+
     wm_parietal_trajectory_t* traj = nimcp_calloc(1, sizeof(wm_parietal_trajectory_t));
     if (!traj) {
 
@@ -2071,6 +2373,10 @@ wm_parietal_trajectory_t* omni_wm_parietal_trajectory_create(uint32_t max_length
 void omni_wm_parietal_trajectory_destroy(wm_parietal_trajectory_t* trajectory) {
     if (!trajectory) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_omni_wm_parietal_tra", 0.0f);
+
+
     nimcp_free(trajectory->states);
     nimcp_free(trajectory);
 }
@@ -2080,6 +2386,10 @@ float omni_wm_parietal_distance(
     const wm_parietal_vec3_t* b) {
 
     if (!a || !b) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_omni_wm_parietal_dis", 0.0f);
+
 
     float dx = a->x - b->x;
     float dy = a->y - b->y;
@@ -2091,6 +2401,10 @@ float omni_wm_parietal_distance(
 nimcp_error_t omni_wm_parietal_normalize(
     const wm_parietal_vec3_t* v,
     wm_parietal_vec3_t* result) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_parietal_bridge_heartbeat("omni_wm_pari_omni_wm_parietal_nor", 0.0f);
+
 
     NIMCP_CHECK_THROW(v, NIMCP_ERROR_NULL_POINTER, "v is NULL");
     NIMCP_CHECK_THROW(result, NIMCP_ERROR_NULL_POINTER, "result is NULL");

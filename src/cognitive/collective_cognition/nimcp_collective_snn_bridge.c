@@ -38,7 +38,7 @@ static nimcp_health_agent_t* g_collective_snn_bridge_health_agent = NULL;
  * @brief Set health agent for collective_snn_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void collective_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void collective_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_collective_snn_bridge_health_agent = agent;
 }
 
@@ -113,12 +113,24 @@ static void softmax(float* values, uint32_t n) {
 
     float sum = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            collective_snn_bridge_heartbeat("collective_s_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         values[i] = expf(values[i] - max_val);
         sum += values[i];
     }
 
     if (sum > 0.0f) {
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                collective_snn_bridge_heartbeat("collective_s_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             values[i] /= sum;
         }
     }
@@ -129,6 +141,10 @@ static void softmax(float* values, uint32_t n) {
 //=============================================================================
 
 collective_snn_config_t collective_snn_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_confi", 0.0f);
+
+
     collective_snn_config_t config = {
         .num_dimensions = COLLECTIVE_DIM_COUNT,
         .neurons_per_dim = COLLECTIVE_SNN_NEURONS_PER_DIM,
@@ -164,6 +180,10 @@ collective_snn_config_t collective_snn_config_default(void) {
 }
 
 collective_snn_bridge_t* collective_snn_create(const collective_snn_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_creat", 0.0f);
+
+
     collective_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(collective_snn_bridge_t));
     if (!bridge) {
 
@@ -223,6 +243,12 @@ collective_snn_bridge_t* collective_snn_create(const collective_snn_config_t* co
 
     /* Initialize dimension states */
     for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            collective_snn_bridge_heartbeat("collective_s_loop",
+                             (float)(i + 1) / (float)bridge->config.num_dimensions);
+        }
+
         bridge->dim_states[i].activation = 0.0f;
         bridge->dim_states[i].accumulated_evidence = 0.0f;
         bridge->dim_states[i].spike_count = 0;
@@ -254,6 +280,10 @@ collective_snn_bridge_t* collective_snn_create(const collective_snn_config_t* co
 void collective_snn_destroy(collective_snn_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_destr", 0.0f);
+
+
     if (bridge->snn) {
         snn_network_destroy(bridge->snn);
     }
@@ -272,6 +302,10 @@ void collective_snn_destroy(collective_snn_bridge_t* bridge) {
 int collective_snn_reset(collective_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_reset", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset SNN network */
@@ -281,6 +315,12 @@ int collective_snn_reset(collective_snn_bridge_t* bridge) {
 
     /* Reset dimension states */
     for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            collective_snn_bridge_heartbeat("collective_s_loop",
+                             (float)(i + 1) / (float)bridge->config.num_dimensions);
+        }
+
         bridge->dim_states[i].activation = 0.0f;
         bridge->dim_states[i].accumulated_evidence = 0.0f;
         bridge->dim_states[i].spike_count = 0;
@@ -321,6 +361,10 @@ int collective_snn_encode_state(
     if (!bridge || !dimensions) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_encod", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = COLLECTIVE_SNN_STATE_ENCODING;
 
@@ -329,6 +373,12 @@ int collective_snn_encode_state(
 
     /* Population encoding for each dimension */
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            collective_snn_bridge_heartbeat("collective_s_loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         float value = clamp_f(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
@@ -339,6 +389,12 @@ int collective_snn_encode_state(
 
         /* Population encode */
         for (uint32_t n = 0; n < neurons_per_dim; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && neurons_per_dim > 256) {
+                collective_snn_bridge_heartbeat("collective_s_loop",
+                                 (float)(n + 1) / (float)neurons_per_dim);
+            }
+
             float preferred = (float)n / (neurons_per_dim - 1);
             float diff = value - preferred;
             float tuning = expf(-diff * diff / 0.1f);
@@ -354,6 +410,12 @@ int collective_snn_encode_state(
     /* Detect state change */
     float change_magnitude = 0.0f;
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            collective_snn_bridge_heartbeat("collective_s_loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         float diff = dimensions[d] - bridge->prev_state[d];
         change_magnitude += diff * diff;
         bridge->prev_state[d] = dimensions[d];
@@ -377,6 +439,10 @@ int collective_snn_encode_swarm(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_encod", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[COLLECTIVE_DIM_COUNT] = {0};
@@ -398,6 +464,10 @@ int collective_snn_encode_decision(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_encod", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[COLLECTIVE_DIM_COUNT] = {0};
@@ -415,6 +485,10 @@ int collective_snn_encode_intention(
     uint32_t intent_type
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_encod", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -448,6 +522,10 @@ int collective_snn_simulate(collective_snn_bridge_t* bridge, float duration_ms) 
     if (!bridge) return -1;
     if (duration_ms <= 0.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_simul", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = COLLECTIVE_SNN_STATE_SIMULATING;
 
@@ -461,6 +539,12 @@ int collective_snn_simulate(collective_snn_bridge_t* bridge, float duration_ms) 
     }
 
     for (uint32_t s = 0; s < steps; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && steps > 256) {
+            collective_snn_bridge_heartbeat("collective_s_loop",
+                             (float)(s + 1) / (float)steps);
+        }
+
         if (bridge->snn) {
             snn_network_step(bridge->snn, dt);
         }
@@ -468,6 +552,12 @@ int collective_snn_simulate(collective_snn_bridge_t* bridge, float duration_ms) 
         /* Update evidence integration */
         float decay = expf(-dt / bridge->config.integration_tau_ms);
         for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+                collective_snn_bridge_heartbeat("collective_s_loop",
+                                 (float)(d + 1) / (float)bridge->config.num_dimensions);
+            }
+
             bridge->dim_states[d].accumulated_evidence *= decay;
             bridge->dim_states[d].accumulated_evidence +=
                 bridge->dim_states[d].activation * dt / bridge->config.integration_tau_ms;
@@ -517,6 +607,10 @@ int collective_snn_simulate(collective_snn_bridge_t* bridge, float duration_ms) 
 
 int collective_snn_step(collective_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_step", 0.0f);
+
+
     return collective_snn_simulate(bridge, bridge->config.dt_ms);
 }
 
@@ -526,6 +620,10 @@ int collective_snn_forward(
     uint32_t input_count
 ) {
     if (!bridge || !inputs) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_forwa", 0.0f);
+
 
     int spike_count = collective_snn_encode_state(bridge, inputs, input_count);
     if (spike_count < 0) return -1;
@@ -547,6 +645,10 @@ int collective_snn_get_drive(
 ) {
     if (!bridge || !drive) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_get_d", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *drive = bridge->last_drive;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -562,8 +664,18 @@ int collective_snn_get_activations(
     if (!bridge || !activations) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_get_a", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            collective_snn_bridge_heartbeat("collective_s_loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         activations[d] = bridge->dim_states[d].activation;
     }
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -576,6 +688,10 @@ bool collective_snn_check_sync(
     float* sync_level
 ) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_check", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_drive.group_sync_level;
@@ -594,6 +710,10 @@ bool collective_snn_check_coordination(
 ) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_check", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_drive.coordination_magnitude;
     if (coordination_level) {
@@ -611,10 +731,20 @@ bool collective_snn_check_state_change(
 ) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_check", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     /* Calculate magnitude from prev_state differences */
     float mag = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            collective_snn_bridge_heartbeat("collective_s_loop",
+                             (float)(d + 1) / (float)bridge->config.num_dimensions);
+        }
+
         float diff = bridge->dim_states[d].activation - bridge->prev_state[d];
         mag += diff * diff;
     }
@@ -641,6 +771,10 @@ int collective_snn_get_dim_state(
     if (!bridge || !state) return -1;
     if (dim >= bridge->config.num_dimensions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_get_d", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->dim_states[dim];
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -654,6 +788,10 @@ int collective_snn_get_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_get_s", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
@@ -665,6 +803,12 @@ int collective_snn_get_state(
     state->active_dimensions = 0;
     state->total_activity = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            collective_snn_bridge_heartbeat("collective_s_loop",
+                             (float)(d + 1) / (float)bridge->config.num_dimensions);
+        }
+
         if (bridge->dim_states[d].activation > 0.1f) {
             state->active_dimensions++;
         }
@@ -678,6 +822,10 @@ int collective_snn_get_state(
 int collective_snn_get_stats(collective_snn_bridge_t* bridge, collective_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_get_s", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -687,6 +835,10 @@ int collective_snn_get_stats(collective_snn_bridge_t* bridge, collective_snn_sta
 
 int collective_snn_reset_stats(collective_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_reset", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(collective_snn_stats_t));
@@ -698,6 +850,10 @@ int collective_snn_reset_stats(collective_snn_bridge_t* bridge) {
 float collective_snn_get_coordination(collective_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_get_c", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float coordination = bridge->last_drive.coordination_drive;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -708,9 +864,19 @@ float collective_snn_get_coordination(collective_snn_bridge_t* bridge) {
 float collective_snn_get_total_activity(collective_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_get_t", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float total = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            collective_snn_bridge_heartbeat("collective_s_loop",
+                             (float)(d + 1) / (float)bridge->config.num_dimensions);
+        }
+
         total += bridge->dim_states[d].activation;
     }
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -729,6 +895,10 @@ int collective_snn_register_sync_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_regis", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->sync_callback = callback;
     bridge->sync_callback_data = user_data;
@@ -744,6 +914,10 @@ int collective_snn_register_drive_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_regis", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->drive_callback = callback;
     bridge->drive_callback_data = user_data;
@@ -758,6 +932,10 @@ int collective_snn_register_coordination_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_regis", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->coordination_callback = callback;
@@ -775,6 +953,10 @@ int collective_snn_bio_async_connect(collective_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_bio_a", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
@@ -786,6 +968,10 @@ int collective_snn_bio_async_connect(collective_snn_bridge_t* bridge) {
 int collective_snn_bio_async_disconnect(collective_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_bio_a", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -795,6 +981,10 @@ int collective_snn_bio_async_disconnect(collective_snn_bridge_t* bridge) {
 
 bool collective_snn_is_bio_async_connected(collective_snn_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_snn_bridge_heartbeat("collective_s_collective_snn_is_bi", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;

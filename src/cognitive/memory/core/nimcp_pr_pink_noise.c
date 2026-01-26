@@ -43,7 +43,7 @@ static nimcp_health_agent_t* g_pr_pink_noise_health_agent = NULL;
  * @brief Set health agent for pr_pink_noise heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void pr_pink_noise_set_health_agent(nimcp_health_agent_t* agent) {
+void pr_pink_noise_set_health_agent(nimcp_health_agent_t* agent) {
     g_pr_pink_noise_health_agent = agent;
 }
 
@@ -119,12 +119,24 @@ static bool cholesky_decompose_4x4(
 
     /* Cholesky decomposition for 4x4 matrix */
     for (int i = 0; i < PR_QUAT_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_QUAT_DIM > 256) {
+            pr_pink_noise_heartbeat("pr_pink_nois_loop",
+                             (float)(i + 1) / (float)PR_QUAT_DIM);
+        }
+
         for (int j = 0; j <= i; j++) {
             float sum = 0.0f;
 
             if (i == j) {
                 /* Diagonal element */
                 for (int k = 0; k < j; k++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((k & 0xFF) == 0 && j > 256) {
+                        pr_pink_noise_heartbeat("pr_pink_nois_loop",
+                                         (float)(k + 1) / (float)j);
+                    }
+
                     sum += L[j][k] * L[j][k];
                 }
                 float diag = A[j][j] - sum;
@@ -138,6 +150,12 @@ static bool cholesky_decompose_4x4(
             } else {
                 /* Off-diagonal element */
                 for (int k = 0; k < j; k++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((k & 0xFF) == 0 && j > 256) {
+                        pr_pink_noise_heartbeat("pr_pink_nois_loop",
+                                         (float)(k + 1) / (float)j);
+                    }
+
                     sum += L[i][k] * L[j][k];
                 }
 
@@ -172,6 +190,12 @@ static void apply_cholesky_transform(
 {
     /* Matrix-vector multiply: correlated = L * independent */
     for (int i = 0; i < PR_QUAT_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_QUAT_DIM > 256) {
+            pr_pink_noise_heartbeat("pr_pink_nois_loop",
+                             (float)(i + 1) / (float)PR_QUAT_DIM);
+        }
+
         correlated[i] = 0.0f;
         for (int j = 0; j <= i; j++) {  /* L is lower triangular */
             correlated[i] += L[i][j] * independent[j];
@@ -206,6 +230,10 @@ static float apply_theta_coupling(
 //=============================================================================
 
 pr_quat_pink_params_t pr_quat_pink_default_params(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_quat_pink_default", 0.0f);
+
+
     pr_quat_pink_params_t params = {
         .alpha = 1.0f,                      /* True pink noise */
         .amplitude = 0.05f,                 /* 5% modulation */
@@ -224,6 +252,10 @@ void pr_quat_pink_default_correlation(
     }
 
     /* Initialize to identity */
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_quat_pink_default", 0.0f);
+
+
     memset(correlation_matrix, 0, sizeof(float) * PR_QUAT_DIM * PR_QUAT_DIM);
 
     /* Diagonal elements (self-correlation = 1.0) */
@@ -268,7 +300,17 @@ bool pr_quat_pink_validate_correlation(
     }
 
     /* Check diagonal elements are 1.0 */
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_quat_pink_validat", 0.0f);
+
+
     for (int i = 0; i < PR_QUAT_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_QUAT_DIM > 256) {
+            pr_pink_noise_heartbeat("pr_pink_nois_loop",
+                             (float)(i + 1) / (float)PR_QUAT_DIM);
+        }
+
         if (fabsf(correlation_matrix[i][i] - 1.0f) > EPSILON) {
             set_error("Diagonal elements must be 1.0");
             return false;
@@ -277,7 +319,19 @@ bool pr_quat_pink_validate_correlation(
 
     /* Check symmetry */
     for (int i = 0; i < PR_QUAT_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_QUAT_DIM > 256) {
+            pr_pink_noise_heartbeat("pr_pink_nois_loop",
+                             (float)(i + 1) / (float)PR_QUAT_DIM);
+        }
+
         for (int j = 0; j < i; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && i > 256) {
+                pr_pink_noise_heartbeat("pr_pink_nois_loop",
+                                 (float)(j + 1) / (float)i);
+            }
+
             if (fabsf(correlation_matrix[i][j] - correlation_matrix[j][i]) > EPSILON) {
                 set_error("Correlation matrix must be symmetric");
                 return false;
@@ -287,7 +341,19 @@ bool pr_quat_pink_validate_correlation(
 
     /* Check correlation bounds [-1, 1] */
     for (int i = 0; i < PR_QUAT_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_QUAT_DIM > 256) {
+            pr_pink_noise_heartbeat("pr_pink_nois_loop",
+                             (float)(i + 1) / (float)PR_QUAT_DIM);
+        }
+
         for (int j = 0; j < PR_QUAT_DIM; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && PR_QUAT_DIM > 256) {
+                pr_pink_noise_heartbeat("pr_pink_nois_loop",
+                                 (float)(j + 1) / (float)PR_QUAT_DIM);
+            }
+
             if (correlation_matrix[i][j] < -1.0f || correlation_matrix[i][j] > 1.0f) {
                 set_error("Correlation values must be in [-1, 1]");
                 return false;
@@ -310,6 +376,10 @@ pr_quat_pink_state_t* pr_quat_pink_create(
     const float correlation_matrix[PR_QUAT_DIM][PR_QUAT_DIM])
 {
     /* Use defaults if NULL */
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_quat_pink_create", 0.0f);
+
+
     pr_quat_pink_params_t default_params = pr_quat_pink_default_params();
     if (!params) {
         params = &default_params;
@@ -412,6 +482,10 @@ void pr_quat_pink_destroy(pr_quat_pink_state_t* state) {
     }
 
     /* Destroy generators */
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_quat_pink_destroy", 0.0f);
+
+
     if (state->gen_w) pink_noise_destroy(state->gen_w);
     if (state->gen_x) pink_noise_destroy(state->gen_x);
     if (state->gen_y) pink_noise_destroy(state->gen_y);
@@ -432,6 +506,10 @@ bool pr_quat_pink_next(
     }
 
     /* Generate 4 independent pink noise samples */
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_quat_pink_next", 0.0f);
+
+
     float independent[PR_QUAT_DIM];
 
     if (!pink_noise_generate_sample(state->gen_w, &independent[PR_QUAT_W]) ||
@@ -488,6 +566,10 @@ bool pr_quat_pink_path(
     }
 
     /* Guard: Invalid steps */
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_quat_pink_path", 0.0f);
+
+
     if (steps == 0) {
         set_error("Steps must be > 0");
         return false;
@@ -551,6 +633,10 @@ bool pr_quat_pink_set_theta_coupling(
     }
 
     /* Guard: Clamp strength */
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_quat_pink_set_the", 0.0f);
+
+
     if (strength < 0.0f) strength = 0.0f;
     if (strength > 1.0f) strength = 1.0f;
 
@@ -574,6 +660,10 @@ float pr_quat_pink_advance_theta(
     }
 
     /* Advance phase: phase += 2*pi*freq*dt */
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_quat_pink_advance", 0.0f);
+
+
     float dt_s = dt_ms / 1000.0f;
     state->theta_phase += TWO_PI * state->theta_frequency_hz * dt_s;
 
@@ -596,6 +686,10 @@ bool pr_quat_pink_reset(
     }
 
     /* Reset all generators */
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_quat_pink_reset", 0.0f);
+
+
     uint32_t base_seed = new_seed;
     if (base_seed == 0) {
         base_seed = (uint32_t)time(NULL);
@@ -624,6 +718,10 @@ bool pr_quat_pink_reset(
 
 pr_fractal_timing_t* pr_fractal_timing_create(float base_interval_ms) {
     /* Use full parameter version with defaults */
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_fractal_timing_cr", 0.0f);
+
+
     return pr_fractal_timing_create_ex(
         base_interval_ms,
         base_interval_ms * 0.1f,    /* Min: 10% of base */
@@ -640,6 +738,10 @@ pr_fractal_timing_t* pr_fractal_timing_create_ex(
     uint32_t seed)
 {
     /* Guard: Invalid intervals */
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_fractal_timing_cr", 0.0f);
+
+
     if (base_interval_ms <= 0.0f || min_interval_ms <= 0.0f ||
         max_interval_ms <= min_interval_ms) {
         set_error("Invalid interval parameters");
@@ -694,6 +796,10 @@ void pr_fractal_timing_destroy(pr_fractal_timing_t* timing) {
     }
 
     /* Destroy generator */
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_fractal_timing_de", 0.0f);
+
+
     if (timing->interval_gen) {
         pink_noise_destroy(timing->interval_gen);
     }
@@ -712,6 +818,10 @@ float pr_fractal_next_event_time(
     }
 
     /* Generate pink noise sample for interval modulation */
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_fractal_next_even", 0.0f);
+
+
     float noise;
     if (!pink_noise_generate_sample(timing->interval_gen, &noise)) {
         /* Fall back to base interval on error */
@@ -760,6 +870,10 @@ bool pr_fractal_event_due(
     }
 
     /* First event is always due at time 0 */
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_fractal_event_due", 0.0f);
+
+
     if (timing->event_count == 0) {
         return true;
     }
@@ -773,11 +887,19 @@ bool pr_fractal_event_due(
 
 float pr_fractal_get_last_event_time(const pr_fractal_timing_t* timing) {
     if (!timing) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_fractal_get_last_", 0.0f);
+
+
     return timing->last_event_time_ms;
 }
 
 uint64_t pr_fractal_get_event_count(const pr_fractal_timing_t* timing) {
     if (!timing) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_fractal_get_event", 0.0f);
+
+
     return timing->event_count;
 }
 
@@ -798,6 +920,10 @@ bool pr_fractal_timing_reset(
     }
 
     /* Reset state */
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_fractal_timing_re", 0.0f);
+
+
     timing->last_event_time_ms = 0.0f;
     timing->event_count = 0;
 
@@ -813,6 +939,10 @@ pr_pink_buffer_t* pr_pink_buffer_create(
     size_t sample_count,
     float sample_rate_hz)
 {
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_pink_buffer_creat", 0.0f);
+
+
     return pr_pink_buffer_create_ex(
         cow_mgr,
         sample_count,
@@ -831,6 +961,10 @@ pr_pink_buffer_t* pr_pink_buffer_create_ex(
     uint32_t seed)
 {
     /* Guard: Invalid parameters */
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_pink_buffer_creat", 0.0f);
+
+
     if (sample_count == 0 || sample_rate_hz <= 0.0f) {
         set_error("Invalid buffer parameters");
         return NULL;
@@ -955,6 +1089,10 @@ pr_pink_buffer_t* pr_pink_buffer_clone(const pr_pink_buffer_t* buffer) {
     }
 
     /* Allocate new buffer structure */
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_pink_buffer_clone", 0.0f);
+
+
     pr_pink_buffer_t* clone = (pr_pink_buffer_t*)nimcp_malloc(
         sizeof(pr_pink_buffer_t));
 
@@ -995,6 +1133,10 @@ void pr_pink_buffer_destroy(pr_pink_buffer_t* buffer) {
     }
 
     /* Release COW handle */
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_pink_buffer_destr", 0.0f);
+
+
     if (buffer->noise_handle) {
         cow_release(buffer->noise_handle);
     }
@@ -1019,6 +1161,10 @@ bool pr_pink_buffer_next(
     }
 
     /* Get read-only pointer to data */
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_pink_buffer_next", 0.0f);
+
+
     const float* data = (const float*)cow_read(buffer->noise_handle);
     if (!data) {
         set_error("Failed to read COW buffer");
@@ -1046,6 +1192,10 @@ bool pr_pink_buffer_get(
     }
 
     /* Guard: Index out of range */
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_pink_buffer_get", 0.0f);
+
+
     if (index >= buffer->sample_count) {
         set_error("Index out of range");
         return false;
@@ -1074,6 +1224,10 @@ bool pr_pink_buffer_write(
     }
 
     /* Guard: Index out of range */
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_pink_buffer_write", 0.0f);
+
+
     if (index >= buffer->sample_count) {
         set_error("Index out of range");
         return false;
@@ -1097,6 +1251,10 @@ bool pr_pink_buffer_write(
 }
 
 void pr_pink_buffer_reset_index(pr_pink_buffer_t* buffer) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_pink_buffer_reset", 0.0f);
+
+
     if (buffer) {
         buffer->current_index = 0;
     }
@@ -1106,6 +1264,10 @@ bool pr_pink_buffer_is_shared(const pr_pink_buffer_t* buffer) {
     if (!buffer || !buffer->noise_handle) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_pink_buffer_is_sh", 0.0f);
+
+
     return cow_is_shared(buffer->noise_handle);
 }
 
@@ -1126,6 +1288,10 @@ bool pr_pink_modulate_resonance(
     }
 
     /* Guard: Clamp depth */
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_pink_modulate_res", 0.0f);
+
+
     if (depth < 0.0f) depth = 0.0f;
     if (depth > 1.0f) depth = 1.0f;
 
@@ -1164,6 +1330,10 @@ bool pr_pink_modulate_quaternion(
     }
 
     /* Guard: Clamp depth */
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_pr_pink_modulate_qua", 0.0f);
+
+
     if (depth < 0.0f) depth = 0.0f;
     if (depth > 1.0f) depth = 1.0f;
 
@@ -1207,10 +1377,18 @@ bool pr_pink_modulate_quaternion(
 
 void pr_pink_noise_get_stats(pr_pink_noise_stats_t* stats) {
     if (!stats) return;
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_get_stats", 0.0f);
+
+
     memcpy(stats, &module_stats, sizeof(pr_pink_noise_stats_t));
 }
 
 void pr_pink_noise_reset_stats(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_pink_noise_heartbeat("pr_pink_nois_reset_stats", 0.0f);
+
+
     memset(&module_stats, 0, sizeof(pr_pink_noise_stats_t));
 }
 

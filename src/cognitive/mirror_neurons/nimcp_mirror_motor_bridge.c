@@ -39,7 +39,7 @@ static nimcp_health_agent_t* g_mirror_motor_bridge_health_agent = NULL;
  * @brief Set health agent for mirror_motor_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_motor_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_motor_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_motor_bridge_health_agent = agent;
 }
 
@@ -79,6 +79,12 @@ static inline float vec3_distance(const motor_vec3_t* a, const motor_vec3_t* b) 
  */
 static int32_t find_program_by_action(const mirror_motor_bridge_t* bridge, uint32_t action_id) {
     for (uint32_t i = 0; i < bridge->num_programs; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_programs > 256) {
+            mirror_motor_bridge_heartbeat("mirror_motor_loop",
+                             (float)(i + 1) / (float)bridge->num_programs);
+        }
+
         if (bridge->programs[i].action_id == action_id) {
             return (int32_t)i;
         }
@@ -91,6 +97,12 @@ static int32_t find_program_by_action(const mirror_motor_bridge_t* bridge, uint3
  */
 static int32_t find_execution_by_program(const mirror_motor_bridge_t* bridge, uint32_t program_id) {
     for (uint32_t i = 0; i < bridge->num_executions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_executions > 256) {
+            mirror_motor_bridge_heartbeat("mirror_motor_loop",
+                             (float)(i + 1) / (float)bridge->num_executions);
+        }
+
         if (bridge->executions[i].program_id == program_id &&
             bridge->executions[i].is_executing) {
             return (int32_t)i;
@@ -116,6 +128,12 @@ static int32_t get_free_program_slot(mirror_motor_bridge_t* bridge) {
 static int32_t get_free_execution_slot(mirror_motor_bridge_t* bridge) {
     /* First look for inactive slot */
     for (uint32_t i = 0; i < bridge->num_executions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_executions > 256) {
+            mirror_motor_bridge_heartbeat("mirror_motor_loop",
+                             (float)(i + 1) / (float)bridge->num_executions);
+        }
+
         if (!bridge->executions[i].is_executing) {
             return (int32_t)i;
         }
@@ -139,6 +157,10 @@ int mirror_motor_bridge_default_config(mirror_motor_config_t* config) {
     }
 
     /* Resonance-motor coupling */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_motor_bridge_heartbeat("mirror_motor_default_config", 0.0f);
+
+
     config->resonance_gain = MIRROR_MOTOR_DEFAULT_GAIN;
     config->execution_threshold = MIRROR_MOTOR_EXEC_THRESHOLD;
     config->f5_m1_delay_ms = MIRROR_MOTOR_F5_M1_DELAY_MS;
@@ -168,6 +190,10 @@ int mirror_motor_bridge_default_config(mirror_motor_config_t* config) {
 mirror_motor_bridge_t* mirror_motor_bridge_create(
     const mirror_motor_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_motor_bridge_heartbeat("mirror_motor_create", 0.0f);
+
+
     LOG_DEBUG("Creating mirror-motor bridge");
 
     /* Allocate bridge */
@@ -228,6 +254,10 @@ mirror_motor_bridge_t* mirror_motor_bridge_create(
 void mirror_motor_bridge_destroy(mirror_motor_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_motor_bridge_heartbeat("mirror_motor_destroy", 0.0f);
+
+
     LOG_DEBUG("Destroying mirror-motor bridge");
 
     /* Free storage */
@@ -252,6 +282,10 @@ int mirror_motor_bridge_connect_resonance(
     mirror_motor_bridge_t* bridge,
     motor_resonance_t resonance
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_motor_bridge_heartbeat("mirror_motor_connect_resonance", 0.0f);
+
+
     BRIDGE_NULL_CHECK(bridge);
     BRIDGE_NULL_CHECK(resonance);
 
@@ -268,6 +302,10 @@ int mirror_motor_bridge_connect_motor(
     mirror_motor_bridge_t* bridge,
     motor_adapter_t* motor
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_motor_bridge_heartbeat("mirror_motor_connect_motor", 0.0f);
+
+
     BRIDGE_NULL_CHECK(bridge);
     BRIDGE_NULL_CHECK(motor);
 
@@ -295,6 +333,10 @@ uint32_t mirror_motor_extract_program(
     }
 
     /* Check minimum observation strength */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_motor_bridge_heartbeat("mirror_motor_mirror_motor_extract", 0.0f);
+
+
     if (observation_strength < bridge->config.min_observation_strength) {
         return UINT32_MAX;
     }
@@ -366,6 +408,10 @@ uint32_t mirror_motor_extract_program_full(
     }
 
     /* First extract basic program */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_motor_bridge_heartbeat("mirror_motor_mirror_motor_extract", 0.0f);
+
+
     uint32_t program_id = mirror_motor_extract_program(
         bridge, action_id, 1.0f, region
     );
@@ -408,6 +454,10 @@ int mirror_motor_get_program(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_motor_bridge_heartbeat("mirror_motor_mirror_motor_get_pro", 0.0f);
+
+
     uint32_t index = program_id - 1; /* 1-indexed */
     if (index >= bridge->num_programs) {
         return -1;
@@ -430,6 +480,10 @@ int mirror_motor_execute_program(
     }
 
     /* Check program exists */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_motor_bridge_heartbeat("mirror_motor_mirror_motor_execute", 0.0f);
+
+
     uint32_t prog_index = program_id - 1;
     if (prog_index >= bridge->num_programs) {
         LOG_WARN("Program %u not found", program_id);
@@ -524,6 +578,10 @@ uint32_t mirror_motor_execute_from_resonance(
     }
 
     /* Find channels above threshold */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_motor_bridge_heartbeat("mirror_motor_mirror_motor_execute", 0.0f);
+
+
     uint32_t active_channels[16];
     uint32_t num_active = motor_resonance_get_active_channels(
         bridge->resonance, active_channels, 16
@@ -538,6 +596,12 @@ uint32_t mirror_motor_execute_from_resonance(
     uint32_t best_program = UINT32_MAX;
 
     for (uint32_t i = 0; i < num_active; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_active > 256) {
+            mirror_motor_bridge_heartbeat("mirror_motor_loop",
+                             (float)(i + 1) / (float)num_active);
+        }
+
         motor_channel_t channel;
         if (motor_resonance_get_channel(bridge->resonance, active_channels[i], &channel)) {
             if (channel.motor_output > best_output) {
@@ -572,6 +636,10 @@ int mirror_motor_get_execution_state(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_motor_bridge_heartbeat("mirror_motor_mirror_motor_get_exe", 0.0f);
+
+
     int32_t exec_idx = find_execution_by_program(bridge, program_id);
     if (exec_idx < 0) {
         return -1;
@@ -590,6 +658,10 @@ int mirror_motor_stop_execution(
 
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_motor_bridge_heartbeat("mirror_motor_mirror_motor_stop_ex", 0.0f);
+
 
     int32_t exec_idx = find_execution_by_program(bridge, program_id);
     if (exec_idx < 0) {
@@ -623,6 +695,10 @@ int mirror_motor_enter_learning_mode(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_motor_bridge_heartbeat("mirror_motor_mirror_motor_enter_l", 0.0f);
+
+
     strength = clamp_f(strength, 0.0f, 1.0f);
 
     bridge->learning_mode = true;
@@ -655,6 +731,10 @@ int mirror_motor_exit_learning_mode(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_motor_bridge_heartbeat("mirror_motor_mirror_motor_exit_le", 0.0f);
+
+
     bridge->learning_mode = false;
     bridge->current_suppression_release = 0.0f;
     bridge->state.in_learning_mode = false;
@@ -672,6 +752,10 @@ int mirror_motor_exit_learning_mode(
 bool mirror_motor_is_learning_mode(
     const mirror_motor_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_motor_bridge_heartbeat("mirror_motor_mirror_motor_is_lear", 0.0f);
+
+
     return bridge ? bridge->learning_mode : false;
 }
 
@@ -688,6 +772,10 @@ int mirror_motor_bridge_update(
 
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_motor_bridge_heartbeat("mirror_motor_update", 0.0f);
+
 
     bridge->last_update_ms += delta_ms;
 
@@ -717,6 +805,12 @@ int mirror_motor_bridge_update(
     uint32_t active_count = 0;
 
     for (uint32_t i = 0; i < bridge->num_executions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_executions > 256) {
+            mirror_motor_bridge_heartbeat("mirror_motor_loop",
+                             (float)(i + 1) / (float)bridge->num_executions);
+        }
+
         imitation_state_t* exec = &bridge->executions[i];
         if (!exec->is_executing) continue;
 
@@ -795,6 +889,10 @@ int mirror_motor_bridge_get_state(
     }
 
     *state = bridge->state;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_motor_bridge_heartbeat("mirror_motor_get_state", 0.0f);
+
+
     return 0;
 }
 
@@ -807,6 +905,10 @@ int mirror_motor_bridge_get_effects(
     }
 
     *effects = bridge->effects;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_motor_bridge_heartbeat("mirror_motor_get_effects", 0.0f);
+
+
     return 0;
 }
 
@@ -819,6 +921,10 @@ int mirror_motor_bridge_get_stats(
     }
 
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_motor_bridge_heartbeat("mirror_motor_get_stats", 0.0f);
+
+
     return 0;
 }
 
@@ -830,6 +936,10 @@ int mirror_motor_bridge_reset_stats(
 
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_motor_bridge_heartbeat("mirror_motor_reset_stats", 0.0f);
+
 
     memset(&bridge->stats, 0, sizeof(mirror_motor_stats_t));
     return 0;

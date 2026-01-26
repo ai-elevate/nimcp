@@ -41,7 +41,7 @@ static nimcp_health_agent_t* g_pr_loss_bridge_health_agent = NULL;
  * @brief Set health agent for pr_loss_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void pr_loss_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void pr_loss_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_pr_loss_bridge_health_agent = agent;
 }
 
@@ -166,6 +166,10 @@ static int ensure_cache_capacity(pr_loss_bridge_t bridge, size_t needed) {
 //=============================================================================
 
 pr_loss_config_t pr_loss_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_config_defau", 0.0f);
+
+
     pr_loss_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -185,6 +189,10 @@ pr_loss_config_t pr_loss_config_default(void) {
 }
 
 pr_loss_config_t pr_loss_config_state_learning(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_config_state", 0.0f);
+
+
     pr_loss_config_t config = pr_loss_config_default();
 
     /* Emphasize geodesic loss for state learning */
@@ -200,6 +208,10 @@ pr_loss_config_t pr_loss_config_state_learning(void) {
 }
 
 pr_loss_config_t pr_loss_config_retrieval(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_config_retri", 0.0f);
+
+
     pr_loss_config_t config = pr_loss_config_default();
 
     /* Emphasize triplet loss for retrieval training */
@@ -213,6 +225,10 @@ pr_loss_config_t pr_loss_config_retrieval(void) {
 }
 
 pr_loss_config_t pr_loss_config_fine_tuning(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_config_fine_", 0.0f);
+
+
     pr_loss_config_t config = pr_loss_config_default();
 
     /* Low overall weights with high consolidation protection */
@@ -240,6 +256,10 @@ bool pr_loss_config_validate(const pr_loss_config_t* config) {
     if (config->entanglement_lambda < 0.0f) return false;
 
     /* At least one component should be active */
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_config_valid", 0.0f);
+
+
     float total_weight = config->geodesic_weight + config->triplet_weight +
                         config->consolidation_weight + config->entanglement_lambda;
     if (total_weight <= 0.0f) return false;
@@ -252,6 +272,12 @@ bool pr_loss_config_validate(const pr_loss_config_t* config) {
 
     /* Tier weight validation */
     for (int t = 0; t < PR_LOSS_NUM_TIERS; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && PR_LOSS_NUM_TIERS > 256) {
+            pr_loss_bridge_heartbeat("pr_loss_brid_loop",
+                             (float)(t + 1) / (float)PR_LOSS_NUM_TIERS);
+        }
+
         if (config->tier_weights[t] < 0.0f || config->tier_weights[t] > 1.0f) {
             return false;
         }
@@ -265,6 +291,10 @@ bool pr_loss_config_validate(const pr_loss_config_t* config) {
 //=============================================================================
 
 pr_loss_bridge_t pr_loss_bridge_create(const pr_loss_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_create", 0.0f);
+
+
     pr_loss_bridge_t bridge = nimcp_calloc(1, sizeof(struct pr_loss_bridge_struct));
     if (!bridge) {
 
@@ -313,6 +343,10 @@ pr_loss_bridge_t pr_loss_bridge_create(const pr_loss_config_t* config) {
 void pr_loss_bridge_destroy(pr_loss_bridge_t bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_destroy", 0.0f);
+
+
     if (bridge->loss_cache) {
         nimcp_free(bridge->loss_cache);
     }
@@ -325,6 +359,10 @@ void pr_loss_bridge_destroy(pr_loss_bridge_t bridge) {
 
 int pr_loss_bridge_reset(pr_loss_bridge_t bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_reset", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -344,6 +382,10 @@ int pr_loss_bridge_set_config(
     if (!bridge || !config) return -1;
     if (!pr_loss_config_validate(config)) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_set_config", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->config = *config;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -356,6 +398,10 @@ int pr_loss_bridge_get_config(
     pr_loss_config_t* config)
 {
     if (!bridge || !config) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_get_config", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     *config = bridge->config;
@@ -373,6 +419,10 @@ float pr_loss_geodesic(
     nimcp_quaternion_t q1,
     nimcp_quaternion_t q2)
 {
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_geodesic", 0.0f);
+
+
     uint64_t start_time = 0;
     if (bridge) {
         start_time = get_time_ns();
@@ -420,6 +470,10 @@ float pr_loss_geodesic_batch(
     if (!quats1 || !quats2 || count == 0) return -1.0f;
     if (count > PR_LOSS_MAX_BATCH_SIZE) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_geodesic_bat", 0.0f);
+
+
     uint64_t start_time = 0;
     if (bridge) {
         start_time = get_time_ns();
@@ -428,6 +482,12 @@ float pr_loss_geodesic_batch(
     float sum = 0.0f;
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_loss_bridge_heartbeat("pr_loss_brid_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         /* Normalize */
         nimcp_quaternion_t q1 = quat_normalize_inline(quats1[i]);
         nimcp_quaternion_t q2 = quat_normalize_inline(quats2[i]);
@@ -479,6 +539,10 @@ int pr_loss_gradient_geodesic(
     if (!grad) return -1;
 
     /* Normalize */
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_gradient_geo", 0.0f);
+
+
     q1 = quat_normalize_inline(q1);
     q2 = quat_normalize_inline(q2);
 
@@ -547,8 +611,18 @@ int pr_loss_gradient_geodesic_batch(
 {
     if (!quats1 || !quats2 || !grads || count == 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_gradient_geo", 0.0f);
+
+
     int computed = 0;
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_loss_bridge_heartbeat("pr_loss_brid_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (pr_loss_gradient_geodesic(bridge, quats1[i], quats2[i], &grads[i]) == 0) {
             computed++;
         }
@@ -568,6 +642,10 @@ float pr_loss_resonance_triplet(
     const pr_memory_node_t* negative)
 {
     if (!anchor || !positive || !negative) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_resonance_tr", 0.0f);
+
 
     uint64_t start_time = 0;
     float margin = PR_LOSS_DEFAULT_TRIPLET_MARGIN;
@@ -644,6 +722,10 @@ float pr_loss_resonance_triplet_quat(
     nimcp_quaternion_t positive,
     nimcp_quaternion_t negative)
 {
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_resonance_tr", 0.0f);
+
+
     float margin = PR_LOSS_DEFAULT_TRIPLET_MARGIN;
     if (bridge) {
         margin = bridge->config.triplet_margin;
@@ -683,9 +765,19 @@ float pr_loss_resonance_triplet_batch(
 {
     if (!anchors || !positives || !negatives || count == 0) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_resonance_tr", 0.0f);
+
+
     float sum = 0.0f;
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_loss_bridge_heartbeat("pr_loss_brid_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         float loss = pr_loss_resonance_triplet(bridge, anchors[i], positives[i], negatives[i]);
         if (loss < 0.0f) {
             loss = 0.0f;  /* Skip invalid triplets */
@@ -714,6 +806,10 @@ int pr_loss_gradient_triplet(
     pr_loss_triplet_gradient_t* grads)
 {
     if (!grads) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_gradient_tri", 0.0f);
+
 
     float margin = PR_LOSS_DEFAULT_TRIPLET_MARGIN;
     if (bridge) {
@@ -784,6 +880,10 @@ float pr_loss_consolidation_weighted(
 {
     if (!predictions || !targets || !nodes || count == 0) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_consolidatio", 0.0f);
+
+
     uint64_t start_time = 0;
     float power = PR_LOSS_DEFAULT_CONSOLIDATION_POWER;
 
@@ -796,6 +896,12 @@ float pr_loss_consolidation_weighted(
     float weight_sum = 0.0f;
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_loss_bridge_heartbeat("pr_loss_brid_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         float consolidation = get_consolidation(nodes[i]);
 
         /* Weight = 1 - consolidation^power */
@@ -832,6 +938,10 @@ float pr_loss_get_consolidation_weight(
 {
     if (!node) return 1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_get_consolid", 0.0f);
+
+
     float power = PR_LOSS_DEFAULT_CONSOLIDATION_POWER;
     if (bridge) {
         power = bridge->config.consolidation_power;
@@ -846,6 +956,10 @@ float pr_loss_consolidation_gradient_scale(
     pr_loss_bridge_t bridge,
     float consolidation)
 {
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_consolidatio", 0.0f);
+
+
     float power = PR_LOSS_DEFAULT_CONSOLIDATION_POWER;
     if (bridge) {
         power = bridge->config.consolidation_power;
@@ -864,6 +978,10 @@ float pr_loss_entanglement_reg(
     entangle_graph_t graph)
 {
     if (!graph) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_entanglement", 0.0f);
+
 
     uint64_t start_time = 0;
     float lambda = PR_LOSS_DEFAULT_ENTANGLEMENT_LAMBDA;
@@ -906,6 +1024,10 @@ float pr_loss_entanglement_reg_nodes(
 {
     if (!graph || !node_ids || count == 0) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_entanglement", 0.0f);
+
+
     float lambda = PR_LOSS_DEFAULT_ENTANGLEMENT_LAMBDA;
     if (bridge) {
         lambda = bridge->config.entanglement_lambda;
@@ -914,6 +1036,12 @@ float pr_loss_entanglement_reg_nodes(
     float sum_isolation = 0.0f;
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_loss_bridge_heartbeat("pr_loss_brid_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         float score = pr_loss_get_entanglement_score(bridge, graph, node_ids[i]);
         float isolation = 1.0f - score;
         sum_isolation += isolation;
@@ -927,6 +1055,10 @@ float pr_loss_get_entanglement_score(
     entangle_graph_t graph,
     uint64_t node_id)
 {
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_get_entangle", 0.0f);
+
+
     (void)bridge;
 
     if (!graph) return 0.0f;
@@ -946,6 +1078,10 @@ int pr_loss_gradient_entanglement(
     size_t max_edges)
 {
     if (!graph || !edge_gradients || max_edges == 0) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_gradient_ent", 0.0f);
+
 
     float lambda = PR_LOSS_DEFAULT_ENTANGLEMENT_LAMBDA;
     if (bridge) {
@@ -975,9 +1111,19 @@ float pr_loss_tier_aware(
 {
     if (!predictions || !targets || !nodes || count == 0) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_tier_aware", 0.0f);
+
+
     float tier_weights[PR_LOSS_NUM_TIERS];
     if (bridge) {
         for (int t = 0; t < PR_LOSS_NUM_TIERS; t++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((t & 0xFF) == 0 && PR_LOSS_NUM_TIERS > 256) {
+                pr_loss_bridge_heartbeat("pr_loss_brid_loop",
+                                 (float)(t + 1) / (float)PR_LOSS_NUM_TIERS);
+            }
+
             tier_weights[t] = bridge->config.tier_weights[t];
         }
     } else {
@@ -992,6 +1138,12 @@ float pr_loss_tier_aware(
     uint64_t tier_counts[PR_LOSS_NUM_TIERS] = {0};
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_loss_bridge_heartbeat("pr_loss_brid_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         pr_memory_tier_t tier = get_tier(nodes[i]);
         if (tier >= PR_LOSS_NUM_TIERS) tier = PR_MEMORY_TIER_Z0;
 
@@ -1010,6 +1162,12 @@ float pr_loss_tier_aware(
     if (bridge) {
         nimcp_mutex_lock(bridge->base.mutex);
         for (int t = 0; t < PR_LOSS_NUM_TIERS; t++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((t & 0xFF) == 0 && PR_LOSS_NUM_TIERS > 256) {
+                pr_loss_bridge_heartbeat("pr_loss_brid_loop",
+                                 (float)(t + 1) / (float)PR_LOSS_NUM_TIERS);
+            }
+
             bridge->stats.samples_per_tier[t] += tier_counts[t];
         }
         nimcp_mutex_unlock(bridge->base.mutex);
@@ -1023,6 +1181,10 @@ float pr_loss_get_tier_weight(
     pr_memory_tier_t tier)
 {
     if (tier >= PR_LOSS_NUM_TIERS) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_get_tier_wei", 0.0f);
+
 
     if (bridge) {
         return bridge->config.tier_weights[tier];
@@ -1046,6 +1208,10 @@ int pr_loss_set_tier_weight(
     if (!bridge || tier >= PR_LOSS_NUM_TIERS) return -1;
     if (weight < 0.0f || weight > 1.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_set_tier_wei", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.tier_weights[tier] = weight;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1067,6 +1233,10 @@ int pr_loss_combined(
     pr_loss_result_t* result)
 {
     if (!bridge || !predictions || !targets || !result) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_combined", 0.0f);
+
+
     if (count == 0) {
         pr_loss_result_init(result);
         return 0;
@@ -1097,6 +1267,12 @@ int pr_loss_combined(
             float* tgt_scalars = bridge->loss_cache + count;
 
             for (size_t i = 0; i < count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && count > 256) {
+                    pr_loss_bridge_heartbeat("pr_loss_brid_loop",
+                                     (float)(i + 1) / (float)count);
+                }
+
                 pred_scalars[i] = predictions[i].w;
                 tgt_scalars[i] = targets[i].w;
             }
@@ -1112,6 +1288,12 @@ int pr_loss_combined(
             float* tgt_scalars = bridge->loss_cache + count;
 
             for (size_t i = 0; i < count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && count > 256) {
+                    pr_loss_bridge_heartbeat("pr_loss_brid_loop",
+                                     (float)(i + 1) / (float)count);
+                }
+
                 pred_scalars[i] = predictions[i].w;
                 tgt_scalars[i] = targets[i].w;
             }
@@ -1174,6 +1356,10 @@ int pr_loss_combined_with_triplets(
     pr_loss_result_t* result)
 {
     /* First compute base combined loss */
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_combined_wit", 0.0f);
+
+
     int ret = pr_loss_combined(bridge, predictions, targets, nodes, graph,
                                sample_count, result);
     if (ret != 0) return ret;
@@ -1183,6 +1369,12 @@ int pr_loss_combined_with_triplets(
         float triplet_sum = 0.0f;
 
         for (size_t i = 0; i < triplet_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && triplet_count > 256) {
+                pr_loss_bridge_heartbeat("pr_loss_brid_loop",
+                                 (float)(i + 1) / (float)triplet_count);
+            }
+
             size_t ai = triplet_anchors[i];
             size_t pi = triplet_positives[i];
             size_t ni = triplet_negatives[i];
@@ -1221,6 +1413,10 @@ int pr_loss_get_stats(
 {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1230,6 +1426,10 @@ int pr_loss_get_stats(
 
 int pr_loss_reset_stats(pr_loss_bridge_t bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_reset_stats", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(pr_loss_stats_t));
@@ -1241,6 +1441,10 @@ int pr_loss_reset_stats(pr_loss_bridge_t bridge) {
 
 void pr_loss_print_stats(pr_loss_bridge_t bridge) {
     if (!bridge) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_print_stats", 0.0f);
+
 
     pr_loss_stats_t stats;
     if (pr_loss_get_stats(bridge, &stats) != 0) return;
@@ -1269,6 +1473,12 @@ void pr_loss_print_stats(pr_loss_bridge_t bridge) {
 
     printf("\nTier Statistics:\n");
     for (int t = 0; t < PR_LOSS_NUM_TIERS; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && PR_LOSS_NUM_TIERS > 256) {
+            pr_loss_bridge_heartbeat("pr_loss_brid_loop",
+                             (float)(t + 1) / (float)PR_LOSS_NUM_TIERS);
+        }
+
         printf("  Z%d: %lu samples, avg loss %.6f\n",
                t, (unsigned long)stats.samples_per_tier[t], stats.loss_per_tier[t]);
     }
@@ -1301,6 +1511,10 @@ const char* pr_loss_type_name(pr_loss_type_t type) {
 void pr_loss_result_print(const pr_loss_result_t* result) {
     if (!result) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_result_print", 0.0f);
+
+
     printf("Loss Result (n=%u, %.3fus):\n", result->sample_count,
            result->compute_time_ns / 1000.0f);
     printf("  Total:        %.6f\n", result->total_loss);
@@ -1319,6 +1533,10 @@ nimcp_quaternion_t pr_loss_apply_gradient(
     if (!grad) return q;
 
     /* Gradient descent step */
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_apply_gradie", 0.0f);
+
+
     nimcp_quaternion_t updated;
     updated.w = q.w - learning_rate * grad->dw;
     updated.x = q.x - learning_rate * grad->dx;
@@ -1334,6 +1552,10 @@ float pr_loss_clip_gradient(
     float max_norm)
 {
     if (!grad || max_norm <= 0.0f) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_clip_gradien", 0.0f);
+
 
     float norm = pr_loss_gradient_norm(grad);
 
@@ -1351,6 +1573,10 @@ float pr_loss_clip_gradient(
 float pr_loss_gradient_norm(const pr_loss_quat_gradient_t* grad) {
     if (!grad) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_gradient_nor", 0.0f);
+
+
     return sqrtf(grad->dw * grad->dw +
                  grad->dx * grad->dx +
                  grad->dy * grad->dy +
@@ -1359,5 +1585,9 @@ float pr_loss_gradient_norm(const pr_loss_quat_gradient_t* grad) {
 
 void pr_loss_result_init(pr_loss_result_t* result) {
     if (!result) return;
+    /* Phase 8: Heartbeat at operation start */
+    pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_result_init", 0.0f);
+
+
     memset(result, 0, sizeof(pr_loss_result_t));
 }

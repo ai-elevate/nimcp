@@ -49,7 +49,7 @@ static nimcp_health_agent_t* g_reasoning_substrate_bridge_health_agent = NULL;
  * @brief Set health agent for reasoning_substrate_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void reasoning_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void reasoning_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_reasoning_substrate_bridge_health_agent = agent;
 }
 
@@ -229,6 +229,10 @@ void reasoning_substrate_default_config(reasoning_substrate_config_t* config)
     }
 
     /* Enable all modulations by default */
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_substrate_bridge_heartbeat("reasoning_su_reasoning_substrate_", 0.0f);
+
+
     config->enable_atp_modulation = true;
     config->enable_fatigue_modulation = true;
     config->enable_stress_modulation = true;
@@ -268,6 +272,10 @@ reasoning_substrate_bridge_t* reasoning_substrate_bridge_create(
     }
 
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_substrate_bridge_heartbeat("reasoning_su_create", 0.0f);
+
+
     reasoning_substrate_bridge_t* bridge =
         (reasoning_substrate_bridge_t*)nimcp_malloc(sizeof(reasoning_substrate_bridge_t));
     if (!bridge) {
@@ -346,6 +354,10 @@ void reasoning_substrate_bridge_destroy(reasoning_substrate_bridge_t* bridge)
     }
 
     /* Disconnect bio-async */
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_substrate_bridge_heartbeat("reasoning_su_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         reasoning_substrate_disconnect_bio_async(bridge);
     }
@@ -372,6 +384,10 @@ int reasoning_substrate_connect_bio_async(reasoning_substrate_bridge_t* bridge)
     }
 
     /* Guard: already connected */
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_substrate_bridge_heartbeat("reasoning_su_reasoning_substrate_", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;
     }
@@ -409,6 +425,10 @@ int reasoning_substrate_disconnect_bio_async(reasoning_substrate_bridge_t* bridg
     }
 
     /* Unregister from bio-async router */
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_substrate_bridge_heartbeat("reasoning_su_reasoning_substrate_", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -424,6 +444,10 @@ bool reasoning_substrate_is_bio_async_connected(const reasoning_substrate_bridge
     if (!bridge) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_substrate_bridge_heartbeat("reasoning_su_reasoning_substrate_", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -444,6 +468,10 @@ int reasoning_substrate_update(reasoning_substrate_bridge_t* bridge)
         NIMCP_LOGGING_ERROR("Cannot update: NULL substrate");
         return NIMCP_ERROR_INVALID_STATE;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_substrate_bridge_heartbeat("reasoning_su_reasoning_substrate_", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -572,6 +600,10 @@ float reasoning_substrate_get_inference_depth(const reasoning_substrate_bridge_t
         return -1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_substrate_bridge_heartbeat("reasoning_su_reasoning_substrate_", 0.0f);
+
+
     return bridge->effects.inference_depth;
 }
 
@@ -581,6 +613,10 @@ float reasoning_substrate_get_logical_accuracy(const reasoning_substrate_bridge_
         NIMCP_LOGGING_ERROR("Cannot get logical accuracy: NULL bridge");
         return -1.0f;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_substrate_bridge_heartbeat("reasoning_su_reasoning_substrate_", 0.0f);
+
 
     return bridge->effects.logical_accuracy;
 }
@@ -592,6 +628,10 @@ float reasoning_substrate_get_processing_speed(const reasoning_substrate_bridge_
         return -1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_substrate_bridge_heartbeat("reasoning_su_reasoning_substrate_", 0.0f);
+
+
     return bridge->effects.processing_speed;
 }
 
@@ -601,6 +641,10 @@ float reasoning_substrate_get_abstraction_capacity(const reasoning_substrate_bri
         NIMCP_LOGGING_ERROR("Cannot get abstraction capacity: NULL bridge");
         return -1.0f;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_substrate_bridge_heartbeat("reasoning_su_reasoning_substrate_", 0.0f);
+
 
     return bridge->effects.abstraction_capacity;
 }
@@ -616,6 +660,10 @@ const reasoning_substrate_effects_t* reasoning_substrate_get_effects(
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_substrate_bridge_heartbeat("reasoning_su_reasoning_substrate_", 0.0f);
+
+
     return &bridge->effects;
 }
 
@@ -624,6 +672,10 @@ bool reasoning_substrate_is_impaired(const reasoning_substrate_bridge_t* bridge)
     if (!bridge) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_substrate_bridge_heartbeat("reasoning_su_reasoning_substrate_", 0.0f);
+
 
     return bridge->effects.is_impaired;
 }
@@ -639,6 +691,10 @@ const reasoning_substrate_stats_t* reasoning_substrate_get_stats(
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_substrate_bridge_heartbeat("reasoning_su_reasoning_substrate_", 0.0f);
+
+
     return &bridge->stats;
 }
 
@@ -648,9 +704,19 @@ const reasoning_substrate_stats_t* reasoning_substrate_get_stats(
 
 int reasoning_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_substrate_bridge_heartbeat("reasoning_su_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Reasoning_Substrate_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                reasoning_substrate_bridge_heartbeat("reasoning_su_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Reasoning_Substrate_Bridge self-knowledge: %s", self->observations[i]);
         }
     }

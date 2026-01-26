@@ -65,7 +65,7 @@ static nimcp_health_agent_t* g_theory_of_mind_health_agent = NULL;
  * @brief Set health agent for theory_of_mind heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void theory_of_mind_set_health_agent(nimcp_health_agent_t* agent) {
+void theory_of_mind_set_health_agent(nimcp_health_agent_t* agent) {
     g_theory_of_mind_health_agent = agent;
 }
 
@@ -263,6 +263,12 @@ static bool add_belief(theory_of_mind_t tom, const char* content, float confiden
 
     // Search for existing belief with same content
     for (uint32_t i = 0; i < tom->num_beliefs; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && tom->num_beliefs > 256) {
+            theory_of_mind_heartbeat("theory_of_mi_loop",
+                             (float)(i + 1) / (float)tom->num_beliefs);
+        }
+
         if (strcmp(tom->beliefs[i].belief_content, content) == 0) {
             // Update existing
             tom->beliefs[i].confidence = confidence;
@@ -475,6 +481,10 @@ static bool infer_goal_from_observation(const tom_observation_t* obs, char* goal
 theory_of_mind_t tom_create(brain_t self_brain)
 {
     // Allocate ToM structure
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_heartbeat("theory_of_mi_tom_create", 0.0f);
+
+
     theory_of_mind_t tom = (theory_of_mind_t)nimcp_malloc(sizeof(struct theory_of_mind_s));
     if (!tom) {
         set_error("Failed to allocate Theory of Mind structure");
@@ -558,6 +568,10 @@ theory_of_mind_t tom_create(brain_t self_brain)
 
 void tom_destroy(theory_of_mind_t tom)
 {
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_heartbeat("theory_of_mi_tom_destroy", 0.0f);
+
+
     LOG_DEBUG("Destroying module");
     if (!tom) {
         return;
@@ -596,6 +610,10 @@ void tom_destroy(theory_of_mind_t tom)
 bool tom_observe(theory_of_mind_t tom, const tom_observation_t* observation)
 {
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_heartbeat("theory_of_mi_tom_observe", 0.0f);
+
+
     if (tom && tom->bio_ctx) {
         bio_router_process_inbox(tom->bio_ctx, 5);
     }
@@ -733,6 +751,10 @@ tom_emotion_t tom_infer_emotion(theory_of_mind_t tom, float* confidence)
         return TOM_EMOTION_UNKNOWN;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_heartbeat("theory_of_mi_tom_infer_emotion", 0.0f);
+
+
     if (confidence) {
         *confidence = tom->emotion_confidence;
     }
@@ -746,6 +768,10 @@ bool tom_infer_goal(theory_of_mind_t tom, char* goal_buffer, size_t buffer_size,
         set_error("Invalid parameters in tom_infer_goal");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_heartbeat("theory_of_mi_tom_infer_goal", 0.0f);
+
 
     strncpy(goal_buffer, tom->current_goal, buffer_size - 1);
     goal_buffer[buffer_size - 1] = '\0';
@@ -765,6 +791,10 @@ bool tom_predict_action(theory_of_mind_t tom, char* predicted_action, size_t act
     }
 
     // Use current intention if available
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_heartbeat("theory_of_mi_tom_predict_action", 0.0f);
+
+
     if (tom->num_intentions > 0) {
         strncpy(predicted_action, tom->intentions[0].action_description, action_buffer_size - 1);
         predicted_action[action_buffer_size - 1] = '\0';
@@ -808,6 +838,10 @@ bool tom_empathize(theory_of_mind_t tom, tom_emotion_t observed_emotion, tom_emo
     }
 
     // Simple empathy mapping: mirror emotions or provide complementary response
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_heartbeat("theory_of_mi_tom_empathize", 0.0f);
+
+
     switch (observed_emotion) {
         case TOM_EMOTION_JOY:
             *empathy_response = TOM_EMOTION_JOY;  // Share joy
@@ -862,6 +896,10 @@ bool tom_detect_false_belief(theory_of_mind_t tom,
     // Compare reality vs. belief
     *is_false_belief = (strcmp(reality_state, believed_state) != 0);
 
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_heartbeat("theory_of_mi_tom_detect_false_bel", 0.0f);
+
+
     if (*is_false_belief) {
         // Record false belief
         add_belief(tom, believed_state, 0.8F, true);
@@ -885,6 +923,10 @@ bool tom_get_bdi_state(theory_of_mind_t tom,
     }
 
     // Copy most recent/relevant belief
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_heartbeat("theory_of_mi_tom_get_bdi_state", 0.0f);
+
+
     if (belief && tom->num_beliefs > 0) {
         *belief = tom->beliefs[0];
     }
@@ -908,6 +950,10 @@ float tom_get_perspective_score(theory_of_mind_t tom)
         return 0.0F;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_heartbeat("theory_of_mi_tom_get_perspective_", 0.0f);
+
+
     return tom->perspective_score;
 }
 
@@ -923,6 +969,10 @@ bool tom_get_statistics(theory_of_mind_t tom, tom_statistics_t* stats)
     }
 
     *stats = tom->stats;
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_heartbeat("theory_of_mi_tom_get_statistics", 0.0f);
+
+
     stats->perspective_taking_score = tom->perspective_score;
 
     return true;
@@ -956,6 +1006,10 @@ bool tom_update_self_model(theory_of_mind_t tom,
         set_error("NULL action_label in tom_update_self_model");
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_heartbeat("theory_of_mi_tom_update_self_mode", 0.0f);
+
+
     if (num_features == 0) {
         set_error("Zero num_features in tom_update_self_model");
         return false;
@@ -980,6 +1034,10 @@ bool tom_reset(theory_of_mind_t tom)
     }
 
     // Clear BDI state
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_heartbeat("theory_of_mi_tom_reset", 0.0f);
+
+
     tom->num_beliefs = 0;
     tom->num_desires = 0;
     tom->num_intentions = 0;
@@ -1043,6 +1101,12 @@ static agent_model_t* find_agent_model(theory_of_mind_t tom, agent_id_t agent_id
     }
 
     for (uint32_t i = 0; i < MAX_TRACKED_AGENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MAX_TRACKED_AGENTS > 256) {
+            theory_of_mind_heartbeat("theory_of_mi_loop",
+                             (float)(i + 1) / (float)MAX_TRACKED_AGENTS);
+        }
+
         if (tom->agent_models[i].active && tom->agent_models[i].agent_id == agent_id) {
             return &tom->agent_models[i];
         }
@@ -1075,6 +1139,12 @@ static agent_model_t* get_or_create_agent_model(theory_of_mind_t tom, agent_id_t
 
     // Find free slot
     for (uint32_t i = 0; i < MAX_TRACKED_AGENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MAX_TRACKED_AGENTS > 256) {
+            theory_of_mind_heartbeat("theory_of_mi_loop",
+                             (float)(i + 1) / (float)MAX_TRACKED_AGENTS);
+        }
+
         if (!tom->agent_models[i].active) {
             tom->agent_models[i].active = true;
             tom->agent_models[i].agent_id = agent_id;
@@ -1217,6 +1287,10 @@ bool tom_connect_immune(theory_of_mind_t tom, brain_immune_system_t* immune)
     }
 
     // Store immune system handle
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_heartbeat("theory_of_mi_tom_connect_immune", 0.0f);
+
+
     tom->immune_system = immune;
     tom->immune_impairment = 0.0f;
     tom->last_immune_update_ms = nimcp_time_monotonic_ms();
@@ -1238,6 +1312,10 @@ float tom_get_immune_impairment(theory_of_mind_t tom)
     }
 
     // Return current impairment level
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_heartbeat("theory_of_mi_tom_get_immune_impai", 0.0f);
+
+
     return tom->immune_impairment;
 }
 
@@ -1254,6 +1332,10 @@ bool tom_trigger_social_stress(theory_of_mind_t tom,
         set_error("No immune system connected");
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_heartbeat("theory_of_mi_tom_trigger_social_s", 0.0f);
+
+
     if (prediction_error < 0.0f || prediction_error > 1.0f) {
         set_error("Invalid prediction_error (must be [0,1])");
         return false;
@@ -1338,9 +1420,19 @@ static void apply_immune_impairment_to_goal(theory_of_mind_t tom, float* confide
 int theory_of_mind_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_heartbeat("theory_of_mi_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Theory_Of_Mind");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                theory_of_mind_heartbeat("theory_of_mi_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

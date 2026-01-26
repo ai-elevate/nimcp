@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_symbolic_logic_hub_bridge_health_agent = NULL;
  * @brief Set health agent for symbolic_logic_hub_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void symbolic_logic_hub_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void symbolic_logic_hub_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_symbolic_logic_hub_bridge_health_agent = agent;
 }
 
@@ -60,6 +60,10 @@ static int on_learning_complete(const cognitive_event_data_t* event, void* user_
  * ============================================================================ */
 
 int symbolic_logic_hub_bridge_default_config(symbolic_logic_hub_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_hub_bridge_heartbeat("symbolic_log_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* Event subscriptions */
@@ -91,6 +95,10 @@ int symbolic_logic_hub_bridge_default_config(symbolic_logic_hub_config_t* config
 symbolic_logic_hub_bridge_t* symbolic_logic_hub_bridge_create(
     const symbolic_logic_hub_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_hub_bridge_heartbeat("symbolic_log_create", 0.0f);
+
+
     symbolic_logic_hub_bridge_t* bridge = nimcp_malloc(sizeof(symbolic_logic_hub_bridge_t));
     if (!bridge) {
 
@@ -130,6 +138,10 @@ void symbolic_logic_hub_bridge_destroy(symbolic_logic_hub_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect from hub */
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_hub_bridge_heartbeat("symbolic_log_destroy", 0.0f);
+
+
     if (bridge->state.is_registered) {
         symbolic_logic_hub_bridge_disconnect(bridge);
     }
@@ -156,6 +168,10 @@ int symbolic_logic_hub_bridge_connect_hub(
     symbolic_logic_hub_bridge_t* bridge,
     cognitive_integration_hub_t hub)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_hub_bridge_heartbeat("symbolic_log_connect_hub", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && hub, NIMCP_ERROR_NULL_POINTER, "bridge or hub is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -207,6 +223,10 @@ int symbolic_logic_hub_bridge_connect_logic(
     symbolic_logic_hub_bridge_t* bridge,
     symbolic_logic_t* logic)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_hub_bridge_heartbeat("symbolic_log_connect_logic", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && logic, NIMCP_ERROR_NULL_POINTER, "bridge or logic is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -218,6 +238,10 @@ int symbolic_logic_hub_bridge_connect_logic(
 }
 
 int symbolic_logic_hub_bridge_disconnect(symbolic_logic_hub_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_hub_bridge_heartbeat("symbolic_log_disconnect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -262,6 +286,10 @@ int symbolic_logic_hub_bridge_publish_inference(
     const char* conclusion,
     float confidence)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_hub_bridge_heartbeat("symbolic_log_publish_inference", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && conclusion, NIMCP_ERROR_NULL_POINTER, "bridge or conclusion is NULL");
     if (!bridge->hub || !bridge->config.publish_inference_results) return 0;
 
@@ -297,6 +325,10 @@ int symbolic_logic_hub_bridge_publish_contradiction(
     const char* fact1,
     const char* fact2)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_hub_bridge_heartbeat("symbolic_log_publish_contradictio", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->hub || !bridge->config.publish_contradiction_found) return 0;
 
@@ -372,6 +404,10 @@ int symbolic_logic_hub_bridge_update(
     symbolic_logic_hub_bridge_t* bridge,
     uint64_t delta_ms)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_hub_bridge_heartbeat("symbolic_log_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     (void)delta_ms;
 
@@ -390,6 +426,10 @@ int symbolic_logic_hub_bridge_update(
 }
 
 int symbolic_logic_hub_bridge_force_update(symbolic_logic_hub_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_hub_bridge_heartbeat("symbolic_log_force_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     return symbolic_logic_hub_bridge_update(bridge, 0);
 }
@@ -402,6 +442,10 @@ int symbolic_logic_hub_bridge_get_state(
     const symbolic_logic_hub_bridge_t* bridge,
     symbolic_logic_hub_state_t* state)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_hub_bridge_heartbeat("symbolic_log_get_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -415,6 +459,10 @@ int symbolic_logic_hub_bridge_get_stats(
     const symbolic_logic_hub_bridge_t* bridge,
     symbolic_logic_hub_stats_t* stats)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_hub_bridge_heartbeat("symbolic_log_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -425,6 +473,10 @@ int symbolic_logic_hub_bridge_get_stats(
 }
 
 int symbolic_logic_hub_bridge_reset_stats(symbolic_logic_hub_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_hub_bridge_heartbeat("symbolic_log_reset_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -439,6 +491,10 @@ int symbolic_logic_hub_bridge_reset_stats(symbolic_logic_hub_bridge_t* bridge) {
  * ============================================================================ */
 
 int symbolic_logic_hub_bridge_connect_bio_async(symbolic_logic_hub_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_hub_bridge_heartbeat("symbolic_log_connect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
@@ -461,6 +517,10 @@ int symbolic_logic_hub_bridge_connect_bio_async(symbolic_logic_hub_bridge_t* bri
 int symbolic_logic_hub_bridge_disconnect_bio_async(symbolic_logic_hub_bridge_t* bridge) {
     if (!bridge || !bridge->base.bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_hub_bridge_heartbeat("symbolic_log_disconnect_bio_async", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
     }
@@ -474,6 +534,10 @@ int symbolic_logic_hub_bridge_disconnect_bio_async(symbolic_logic_hub_bridge_t* 
 bool symbolic_logic_hub_bridge_is_bio_async_connected(
     const symbolic_logic_hub_bridge_t* bridge)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_hub_bridge_heartbeat("symbolic_log_is_bio_async_connect", 0.0f);
+
+
     return bridge ? bridge->base.bio_async_enabled : false;
 }
 

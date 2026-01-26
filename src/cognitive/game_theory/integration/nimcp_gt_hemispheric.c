@@ -41,7 +41,7 @@ static nimcp_health_agent_t* g_gt_hemispheric_health_agent = NULL;
  * @brief Set health agent for gt_hemispheric heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void gt_hemispheric_set_health_agent(nimcp_health_agent_t* agent) {
+void gt_hemispheric_set_health_agent(nimcp_health_agent_t* agent) {
     g_gt_hemispheric_health_agent = agent;
 }
 
@@ -143,6 +143,10 @@ static float hemi_coalition_value(
 //=============================================================================
 
 gt_hemi_config_t gt_hemi_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_hemispheric_heartbeat("gt_hemispher_gt_hemi_default_conf", 0.0f);
+
+
     gt_hemi_config_t config = {
         .left_bargaining_power = 0.5f,
         .right_bargaining_power = 0.5f,
@@ -165,6 +169,10 @@ gt_hemi_bargaining_ctx_t gt_hemi_create(
 
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_hemispheric_heartbeat("gt_hemispher_gt_hemi_create", 0.0f);
+
 
     gt_hemi_bargaining_ctx_t ctx = nimcp_calloc(1, sizeof(struct gt_hemi_bargaining_ctx_struct));
     if (!ctx) {
@@ -223,6 +231,10 @@ void gt_hemi_destroy(gt_hemi_bargaining_ctx_t ctx) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_hemispheric_heartbeat("gt_hemispher_gt_hemi_destroy", 0.0f);
+
+
     if (ctx->bargaining) {
         nimcp_bargaining_destroy(ctx->bargaining);
     }
@@ -246,6 +258,10 @@ nimcp_error_t gt_hemi_process_bargaining(
     uint32_t output_size,
     gt_hemi_outcome_t* outcome
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_hemispheric_heartbeat("gt_hemispher_gt_hemi_process_barg", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx && input && output && outcome, NIMCP_ERROR_INVALID_PARAM, "ctx, input, output, or outcome is NULL");
     NIMCP_CHECK_THROW(ctx->active, NIMCP_GT_ERROR_TIMEOUT, "ctx is not active");
 
@@ -273,6 +289,10 @@ nimcp_error_t gt_hemi_negotiate_resources(
     float total_resources,
     gt_hemi_outcome_t* outcome
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_hemispheric_heartbeat("gt_hemispher_gt_hemi_negotiate_re", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx && outcome && total_resources > 0.0f, NIMCP_ERROR_INVALID_PARAM, "ctx, outcome is NULL or total_resources <= 0");
 
     memset(outcome, 0, sizeof(gt_hemi_outcome_t));
@@ -283,6 +303,12 @@ nimcp_error_t gt_hemi_negotiate_resources(
     nimcp_feasible_point_t feasible[101];
 
     for (uint32_t i = 0; i < num_samples; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_samples > 256) {
+            gt_hemispheric_heartbeat("gt_hemispher_loop",
+                             (float)(i + 1) / (float)num_samples);
+        }
+
         float left_share = (float)i / (num_samples - 1);
         feasible[i].utilities[LEFT_HEMI] = left_share * total_resources;
         feasible[i].utilities[RIGHT_HEMI] = (1.0f - left_share) * total_resources;
@@ -332,6 +358,10 @@ nimcp_error_t gt_hemi_compute_credit(
     uint32_t output_size,
     gt_hemi_credit_t* credit
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_hemispheric_heartbeat("gt_hemispher_gt_hemi_compute_cred", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx && combined_output && output_size > 0 && credit, NIMCP_ERROR_INVALID_PARAM, "ctx, combined_output, credit is NULL or output_size is 0");
 
     memset(credit, 0, sizeof(gt_hemi_credit_t));
@@ -339,6 +369,12 @@ nimcp_error_t gt_hemi_compute_credit(
     // Compute combined output value (L2 norm)
     float total_value = 0.0f;
     for (uint32_t i = 0; i < output_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && output_size > 256) {
+            gt_hemispheric_heartbeat("gt_hemispher_loop",
+                             (float)(i + 1) / (float)output_size);
+        }
+
         total_value += combined_output[i] * combined_output[i];
     }
     total_value = sqrtf(total_value);
@@ -388,6 +424,10 @@ nimcp_error_t gt_hemi_set_bargaining_power(
     gt_hemi_bargaining_ctx_t ctx,
     float left_power
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_hemispheric_heartbeat("gt_hemispher_gt_hemi_set_bargaini", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
     NIMCP_CHECK_THROW(left_power >= 0.0f && left_power <= 1.0f, NIMCP_ERROR_INVALID_PARAM, "left_power out of range [0.0, 1.0]");
 
@@ -404,6 +444,10 @@ nimcp_error_t gt_hemi_set_disagreement(
     float left_disagree,
     float right_disagree
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_hemispheric_heartbeat("gt_hemispher_gt_hemi_set_disagree", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     ctx->config.disagreement_left = left_disagree;
@@ -419,6 +463,10 @@ nimcp_error_t gt_hemi_set_disagreement(
 //=============================================================================
 
 hemispheric_brain_t* gt_hemi_get_brain(const gt_hemi_bargaining_ctx_t ctx) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_hemispheric_heartbeat("gt_hemispher_gt_hemi_get_brain", 0.0f);
+
+
     return ctx ? ctx->brain : NULL;
 }
 
@@ -426,6 +474,10 @@ nimcp_error_t gt_hemi_get_last_outcome(
     const gt_hemi_bargaining_ctx_t ctx,
     gt_hemi_outcome_t* outcome
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_hemispheric_heartbeat("gt_hemispher_gt_hemi_get_last_out", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx && outcome, NIMCP_ERROR_INVALID_PARAM, "ctx or outcome is NULL");
 
     *outcome = ctx->last_outcome;
@@ -436,6 +488,10 @@ nimcp_error_t gt_hemi_get_last_credit(
     const gt_hemi_bargaining_ctx_t ctx,
     gt_hemi_credit_t* credit
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_hemispheric_heartbeat("gt_hemispher_gt_hemi_get_last_cre", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx && credit, NIMCP_ERROR_INVALID_PARAM, "ctx or credit is NULL");
 
     *credit = ctx->last_credit;
@@ -446,6 +502,10 @@ nimcp_error_t gt_hemi_get_stats(
     const gt_hemi_bargaining_ctx_t ctx,
     nimcp_game_stats_t* stats
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_hemispheric_heartbeat("gt_hemispher_gt_hemi_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx && stats, NIMCP_ERROR_INVALID_PARAM, "ctx or stats is NULL");
 
     memset(stats, 0, sizeof(nimcp_game_stats_t));
@@ -472,6 +532,10 @@ nimcp_error_t gt_hemi_get_stats(
 }
 
 bool gt_hemi_is_active(const gt_hemi_bargaining_ctx_t ctx) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_hemispheric_heartbeat("gt_hemispher_gt_hemi_is_active", 0.0f);
+
+
     return ctx ? ctx->active : false;
 }
 
@@ -482,9 +546,19 @@ bool gt_hemi_is_active(const gt_hemi_bargaining_ctx_t ctx) {
 int gt_hemispheric_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_hemispheric_heartbeat("gt_hemispher_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Game_Theory_Hemispheric");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                gt_hemispheric_heartbeat("gt_hemispher_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_wellbeing_mental_health_bridge_health_agent = NUL
  * @brief Set health agent for wellbeing_mental_health_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void wellbeing_mental_health_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void wellbeing_mental_health_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_wellbeing_mental_health_bridge_health_agent = agent;
 }
 
@@ -66,6 +66,10 @@ int mental_health_wellbeing_default_config(mental_health_wellbeing_config_t* con
     }
 
     // Enable all features by default
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_mental_health_bridge_heartbeat("wellbeing_me_mental_health_wellbe", 0.0f);
+
+
     config->enable_disorder_effects = true;
     config->enable_anxiety_modulation = true;
     config->enable_depression_modulation = true;
@@ -97,6 +101,10 @@ int mental_health_wellbeing_default_config(mental_health_wellbeing_config_t* con
  */
 float compute_disorder_distress(disorder_type_t type, disorder_severity_t severity) {
     // Map severity to distress contribution
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_mental_health_bridge_heartbeat("wellbeing_me_compute_disorder_dis", 0.0f);
+
+
     switch (severity) {
         case DISORDER_SEVERITY_NONE:
             return DISORDER_DISTRESS_NONE;
@@ -122,6 +130,10 @@ float compute_disorder_distress(disorder_type_t type, disorder_severity_t severi
  */
 float compute_anxiety_amplification(float anxiety_level, float sensitivity) {
     // Clamp anxiety level to [0, 1]
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_mental_health_bridge_heartbeat("wellbeing_me_compute_anxiety_ampl", 0.0f);
+
+
     if (anxiety_level < 0.0f) anxiety_level = 0.0f;
     if (anxiety_level > 1.0f) anxiety_level = 1.0f;
 
@@ -148,6 +160,10 @@ float compute_anxiety_amplification(float anxiety_level, float sensitivity) {
  */
 float compute_depression_suppression(float depression_level, float sensitivity) {
     // Clamp depression level to [0, 1]
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_mental_health_bridge_heartbeat("wellbeing_me_compute_depression_s", 0.0f);
+
+
     if (depression_level < 0.0f) depression_level = 0.0f;
     if (depression_level > 1.0f) depression_level = 1.0f;
 
@@ -177,6 +193,10 @@ float compute_depression_suppression(float depression_level, float sensitivity) 
  */
 float compute_stress_resilience(float chronic_stress, float base_resilience) {
     // Clamp chronic stress to [0, 1]
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_mental_health_bridge_heartbeat("wellbeing_me_compute_stress_resil", 0.0f);
+
+
     if (chronic_stress < 0.0f) chronic_stress = 0.0f;
     if (chronic_stress > 1.0f) chronic_stress = 1.0f;
 
@@ -337,6 +357,10 @@ int enhanced_wellbeing_update_mental_health(
     }
 
     // Use default config if not provided
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_mental_health_bridge_heartbeat("wellbeing_me_enhanced_wellbeing_u", 0.0f);
+
+
     mental_health_wellbeing_config_t default_config;
     if (!config) {
         mental_health_wellbeing_default_config(&default_config);
@@ -406,6 +430,10 @@ int enhanced_wellbeing_get_mental_health_effects(
     }
 
     // Copy effects structure
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_mental_health_bridge_heartbeat("wellbeing_me_enhanced_wellbeing_g", 0.0f);
+
+
     memcpy(effects_out, effects, sizeof(mental_health_wellbeing_effects_t));
 
     return 0;
@@ -422,9 +450,19 @@ int enhanced_wellbeing_get_mental_health_effects(
  */
 int mental_health_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_mental_health_bridge_heartbeat("wellbeing_me_mental_health_bridge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Mental_Health_Wellbeing_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                wellbeing_mental_health_bridge_heartbeat("wellbeing_me_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Mental Health Wellbeing Bridge self-knowledge: %s", self->observations[i]);
         }
     }

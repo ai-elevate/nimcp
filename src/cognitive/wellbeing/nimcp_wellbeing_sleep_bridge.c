@@ -37,7 +37,7 @@ static nimcp_health_agent_t* g_wellbeing_sleep_bridge_health_agent = NULL;
  * @brief Set health agent for wellbeing_sleep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void wellbeing_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void wellbeing_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_wellbeing_sleep_bridge_health_agent = agent;
 }
 
@@ -70,6 +70,10 @@ int sleep_wellbeing_default_config(sleep_wellbeing_bridge_config_t* config) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_sleep_bridge_heartbeat("wellbeing_sl_sleep_wellbeing_defa", 0.0f);
+
+
     config->enable_sleep_debt_effects = true;
     config->enable_rem_effects = true;
     config->enable_circadian_effects = true;
@@ -99,6 +103,10 @@ sleep_wellbeing_bridge_t* sleep_wellbeing_bridge_create(
 
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_sleep_bridge_heartbeat("wellbeing_sl_sleep_wellbeing_brid", 0.0f);
+
 
     sleep_wellbeing_bridge_t* bridge =
         (sleep_wellbeing_bridge_t*)nimcp_malloc(sizeof(sleep_wellbeing_bridge_t));
@@ -142,6 +150,10 @@ void sleep_wellbeing_bridge_destroy(sleep_wellbeing_bridge_t* bridge) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_sleep_bridge_heartbeat("wellbeing_sl_sleep_wellbeing_brid", 0.0f);
+
+
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
     }
@@ -181,6 +193,10 @@ int enhanced_wellbeing_update_sleep(enhanced_wellbeing_system_t* system) {
     }
 
     // Get sleep state
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_sleep_bridge_heartbeat("wellbeing_sl_enhanced_wellbeing_u", 0.0f);
+
+
     float sleep_pressure = sleep_get_pressure(system->sleep_system);
     sleep_state_t current_state = sleep_get_current_state(system->sleep_system);
 
@@ -287,6 +303,10 @@ int enhanced_wellbeing_update_sleep(enhanced_wellbeing_system_t* system) {
  * HOW:  Sigmoid function above threshold, scaled by sensitivity
  */
 float compute_sleep_debt_distress(float pressure, float threshold, float sensitivity) {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_sleep_bridge_heartbeat("wellbeing_sl_compute_sleep_debt_d", 0.0f);
+
+
     if (pressure < threshold) {
         return 0.0f;
     }
@@ -319,6 +339,10 @@ void compute_rem_deficit_effects(
     // Use consolidation efficiency as proxy for REM quality
     // Normal efficiency: 0.7-0.9
     // Low efficiency (<0.5) suggests REM disruption
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_sleep_bridge_heartbeat("wellbeing_sl_compute_rem_deficit_", 0.0f);
+
+
     float consolidation_eff = stats->avg_consolidation_efficiency;
 
     float rem_deficit = 0.0f;
@@ -348,6 +372,10 @@ void compute_rem_deficit_effects(
  * HOW:  Model distress as quadratic function of deviation
  */
 float compute_circadian_distress(float deviation_hours, float max_deviation) {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_sleep_bridge_heartbeat("wellbeing_sl_compute_circadian_di", 0.0f);
+
+
     if (max_deviation <= 0.0f) {
         return 0.0f;
     }
@@ -368,6 +396,10 @@ float compute_circadian_distress(float deviation_hours, float max_deviation) {
  * HOW:  Return predefined tolerance for each sleep state
  */
 float get_sleep_state_tolerance_modifier(sleep_state_t state) {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_sleep_bridge_heartbeat("wellbeing_sl_get_sleep_state_tole", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:
             return SLEEP_WELLBEING_AWAKE_TOLERANCE;
@@ -415,6 +447,10 @@ int enhanced_wellbeing_get_sleep_effects(
     // Copy effects structure
     *effects = system->sleep_effects;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_sleep_bridge_heartbeat("wellbeing_sl_enhanced_wellbeing_g", 0.0f);
+
+
     return 0;
 }
 
@@ -442,9 +478,19 @@ static float sigmoid(float x) {
  */
 int sleep_wellbeing_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_sleep_bridge_heartbeat("wellbeing_sl_sleep_wellbeing_brid", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Sleep_Wellbeing_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                wellbeing_sleep_bridge_heartbeat("wellbeing_sl_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Sleep Wellbeing Bridge self-knowledge: %s", self->observations[i]);
         }
     }

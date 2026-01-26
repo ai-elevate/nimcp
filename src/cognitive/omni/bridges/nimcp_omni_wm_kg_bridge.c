@@ -60,7 +60,7 @@ static nimcp_health_agent_t* g_omni_wm_kg_bridge_health_agent = NULL;
  * @brief Set health agent for omni_wm_kg_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void omni_wm_kg_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void omni_wm_kg_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_omni_wm_kg_bridge_health_agent = agent;
 }
 
@@ -245,6 +245,12 @@ static nimcp_error_t compute_entity_prediction(omni_wm_kg_bridge_t* bridge,
 
     out->state_dim = 32; /* Placeholder dimension */
     for (uint32_t i = 0; i < out->state_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && out->state_dim > 256) {
+            omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_loop",
+                             (float)(i + 1) / (float)out->state_dim);
+        }
+
         out->predicted_state[i] = 0.5f + 0.1f * (float)(entity_id % 10);
     }
 
@@ -271,6 +277,12 @@ static nimcp_error_t compute_module_failure_prediction(omni_wm_kg_bridge_t* brid
     /* Find module in tracked states */
     const kg_to_wm_module_state_t* module_state = NULL;
     for (uint32_t i = 0; i < bridge->kg_to_wm.module_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->kg_to_wm.module_count > 256) {
+            omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_loop",
+                             (float)(i + 1) / (float)bridge->kg_to_wm.module_count);
+        }
+
         if (bridge->kg_to_wm.module_states[i].module_id == module_id) {
             module_state = &bridge->kg_to_wm.module_states[i];
             break;
@@ -370,6 +382,12 @@ static float compute_anomaly_score(const float* predicted, const float* observed
     float sum_sq_pred = 0.0f;
 
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         float diff = observed[i] - predicted[i];
         sum_sq_diff += diff * diff;
         sum_sq_pred += predicted[i] * predicted[i];
@@ -602,6 +620,10 @@ static nimcp_error_t handle_registry_sync(const void* msg, size_t msg_size,
 nimcp_error_t omni_wm_kg_bridge_default_config(
     omni_wm_kg_bridge_config_t* config) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(omni_wm_kg_bridge_config_t));
@@ -650,6 +672,10 @@ omni_wm_kg_bridge_t* omni_wm_kg_bridge_create(
     const omni_wm_kg_bridge_config_t* config) {
 
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_create", 0.0f);
+
+
     omni_wm_kg_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_wm_kg_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate WM KG bridge");
@@ -697,6 +723,10 @@ void omni_wm_kg_bridge_destroy(omni_wm_kg_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         omni_wm_kg_bridge_disconnect_bio_async(bridge);
     }
@@ -712,6 +742,10 @@ void omni_wm_kg_bridge_destroy(omni_wm_kg_bridge_t* bridge) {
 }
 
 nimcp_error_t omni_wm_kg_bridge_reset(omni_wm_kg_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_reset", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -765,6 +799,10 @@ nimcp_error_t omni_wm_kg_bridge_connect(
     kg_wiring_manager_t* kg_wiring,
     kg_module_registry_t* registry) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_connect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_INVALID_PARAM, "world_model is required");
 
@@ -793,6 +831,10 @@ nimcp_error_t omni_wm_kg_bridge_connect_world_model(
     omni_wm_kg_bridge_t* bridge,
     omni_world_model_t* world_model) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_connect_world_model", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_NULL_POINTER, "world_model is NULL");
 
@@ -810,6 +852,10 @@ nimcp_error_t omni_wm_kg_bridge_connect_kg_wiring(
     omni_wm_kg_bridge_t* bridge,
     kg_wiring_manager_t* kg_wiring) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_connect_kg_wiring", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(kg_wiring, NIMCP_ERROR_NULL_POINTER, "kg_wiring is NULL");
 
@@ -826,6 +872,10 @@ nimcp_error_t omni_wm_kg_bridge_connect_registry(
     omni_wm_kg_bridge_t* bridge,
     kg_module_registry_t* registry) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_connect_registry", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(registry, NIMCP_ERROR_NULL_POINTER, "registry is NULL");
 
@@ -838,6 +888,10 @@ nimcp_error_t omni_wm_kg_bridge_connect_registry(
 
 bool omni_wm_kg_bridge_is_connected(const omni_wm_kg_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_is_connected", 0.0f);
+
+
     return bridge->world_model != NULL;
 }
 
@@ -848,6 +902,10 @@ bool omni_wm_kg_bridge_is_connected(const omni_wm_kg_bridge_t* bridge) {
 nimcp_error_t omni_wm_kg_bridge_update(
     omni_wm_kg_bridge_t* bridge,
     float dt) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_update", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_modulation) return NIMCP_SUCCESS;
@@ -905,6 +963,10 @@ nimcp_error_t omni_wm_kg_bridge_predict_entity(
     uint32_t horizon_steps,
     wm_to_kg_entity_prediction_t* out_prediction) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_predict_entity", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(out_prediction, NIMCP_ERROR_NULL_POINTER, "out_prediction is NULL");
     if (!bridge->config.enable_entity_prediction) return NIMCP_SUCCESS;
@@ -935,6 +997,10 @@ nimcp_error_t omni_wm_kg_bridge_predict_entities_batch(
     uint32_t horizon_steps,
     wm_to_kg_entity_prediction_t* out_predictions) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_predict_entities_bat", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(entity_ids, NIMCP_ERROR_NULL_POINTER, "entity_ids is NULL");
     NIMCP_CHECK_THROW(out_predictions, NIMCP_ERROR_NULL_POINTER, "out_predictions is NULL");
@@ -947,6 +1013,12 @@ nimcp_error_t omni_wm_kg_bridge_predict_entities_batch(
     nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < entity_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && entity_count > 256) {
+            omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_loop",
+                             (float)(i + 1) / (float)entity_count);
+        }
+
         nimcp_error_t err = compute_entity_prediction(bridge, entity_ids[i],
                                                        horizon_steps, &out_predictions[i]);
         if (err == NIMCP_SUCCESS) {
@@ -969,6 +1041,10 @@ nimcp_error_t omni_wm_kg_bridge_predict_relationships(
     omni_wm_kg_bridge_t* bridge,
     uint32_t entity_id,
     float* out_change_probability) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_predict_relationship", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(out_change_probability, NIMCP_ERROR_NULL_POINTER, "out_change_probability is NULL");
@@ -1006,6 +1082,10 @@ nimcp_error_t omni_wm_kg_bridge_predict_relationship_strength(
     float* out_predicted_strength,
     float* out_confidence) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_predict_relationship", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(out_predicted_strength, NIMCP_ERROR_NULL_POINTER, "out_predicted_strength is NULL");
     NIMCP_CHECK_THROW(out_confidence, NIMCP_ERROR_NULL_POINTER, "out_confidence is NULL");
@@ -1022,6 +1102,12 @@ nimcp_error_t omni_wm_kg_bridge_predict_relationship_strength(
     bool found = false;
 
     for (uint32_t i = 0; i < bridge->kg_to_wm.relationship_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->kg_to_wm.relationship_count > 256) {
+            omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_loop",
+                             (float)(i + 1) / (float)bridge->kg_to_wm.relationship_count);
+        }
+
         kg_to_wm_relationship_t* rel = &bridge->kg_to_wm.relationships[i];
         if (rel->source_entity_id == source_id && rel->target_entity_id == target_id) {
             current_strength = rel->relationship_strength;
@@ -1059,6 +1145,10 @@ nimcp_error_t omni_wm_kg_bridge_predict_module_failure(
     uint32_t module_id,
     float* out_failure_probability,
     float* out_time_to_failure) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_predict_module_failu", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(out_failure_probability, NIMCP_ERROR_NULL_POINTER, "out_failure_probability is NULL");
@@ -1099,6 +1189,10 @@ nimcp_error_t omni_wm_kg_bridge_get_module_prediction(
     uint32_t module_id,
     wm_to_kg_failure_prediction_t* out_prediction) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_get_module_predictio", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(out_prediction, NIMCP_ERROR_NULL_POINTER, "out_prediction is NULL");
     if (!bridge->config.enable_module_prediction) {
@@ -1126,6 +1220,10 @@ nimcp_error_t omni_wm_kg_bridge_predict_system_stability(
     float* out_stability_score,
     uint32_t* out_predicted_exceptions) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_predict_system_stabi", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(out_stability_score, NIMCP_ERROR_NULL_POINTER, "out_stability_score is NULL");
     NIMCP_CHECK_THROW(out_predicted_exceptions, NIMCP_ERROR_NULL_POINTER, "out_predicted_exceptions is NULL");
@@ -1147,6 +1245,10 @@ nimcp_error_t omni_wm_kg_bridge_predict_system_stability(
 nimcp_error_t omni_wm_kg_bridge_on_exception(
     omni_wm_kg_bridge_t* bridge,
     const nimcp_kg_wiring_exception_t* exception) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_on_exception", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(exception, NIMCP_ERROR_NULL_POINTER, "exception is NULL");
@@ -1185,6 +1287,10 @@ nimcp_error_t omni_wm_kg_bridge_check_anomaly(
     uint32_t entity_id,
     bool* out_is_anomalous,
     float* out_anomaly_score) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_check_anomaly", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(out_is_anomalous, NIMCP_ERROR_NULL_POINTER, "out_is_anomalous is NULL");
@@ -1230,6 +1336,10 @@ nimcp_error_t omni_wm_kg_bridge_train_from_kg_event(
     omni_wm_kg_bridge_t* bridge,
     const kg_event_t* event) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_train_from_kg_event", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(event, NIMCP_ERROR_NULL_POINTER, "event is NULL");
     if (!bridge->config.enable_training_from_kg) return NIMCP_SUCCESS;
@@ -1261,6 +1371,10 @@ nimcp_error_t omni_wm_kg_bridge_train_from_observation(
     uint32_t state_dim,
     uint64_t timestamp_us) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_train_from_observati", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(observed_state, NIMCP_ERROR_NULL_POINTER, "observed_state is NULL");
     NIMCP_CHECK_THROW(state_dim > 0, NIMCP_ERROR_INVALID_PARAM, "state_dim must be greater than 0");
@@ -1281,6 +1395,12 @@ nimcp_error_t omni_wm_kg_bridge_train_from_observation(
     /* Compute placeholder prediction error */
     float mean_state = 0.0f;
     for (uint32_t i = 0; i < state_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && state_dim > 256) {
+            omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_loop",
+                             (float)(i + 1) / (float)state_dim);
+        }
+
         mean_state += observed_state[i];
     }
     mean_state /= (float)state_dim;
@@ -1303,6 +1423,10 @@ nimcp_error_t omni_wm_kg_bridge_train_from_observation(
 
 nimcp_error_t omni_wm_kg_bridge_flush_training(
     omni_wm_kg_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_flush_training", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_training_from_kg) return NIMCP_SUCCESS;
@@ -1335,6 +1459,10 @@ nimcp_error_t omni_wm_kg_bridge_flush_training(
 nimcp_error_t omni_wm_kg_bridge_sync_registry(
     omni_wm_kg_bridge_t* bridge) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_sync_registry", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_registry_sync) return NIMCP_SUCCESS;
     if (!bridge->registry) return NIMCP_SUCCESS;
@@ -1363,6 +1491,10 @@ nimcp_error_t omni_wm_kg_bridge_update_module_health(
     kg_module_health_t health_state,
     float health_score) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_update_module_health", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(health_score >= 0.0f && health_score <= 1.0f, NIMCP_ERROR_INVALID_PARAM,
                       "health_score must be between 0.0 and 1.0");
@@ -1372,6 +1504,12 @@ nimcp_error_t omni_wm_kg_bridge_update_module_health(
     /* Find or create module state entry */
     kg_to_wm_module_state_t* module_state = NULL;
     for (uint32_t i = 0; i < bridge->kg_to_wm.module_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->kg_to_wm.module_count > 256) {
+            omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_loop",
+                             (float)(i + 1) / (float)bridge->kg_to_wm.module_count);
+        }
+
         if (bridge->kg_to_wm.module_states[i].module_id == module_id) {
             module_state = &bridge->kg_to_wm.module_states[i];
             break;
@@ -1428,6 +1566,10 @@ const omni_wm_to_kg_effects_t* omni_wm_kg_bridge_get_wm_effects(
 
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_get_wm_effects", 0.0f);
+
+
     return &bridge->wm_to_kg;
 }
 
@@ -1444,12 +1586,20 @@ const kg_to_omni_wm_effects_t* omni_wm_kg_bridge_get_kg_effects(
 
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_get_kg_effects", 0.0f);
+
+
     return &bridge->kg_to_wm;
 }
 
 nimcp_error_t omni_wm_kg_bridge_get_stats(
     const omni_wm_kg_bridge_t* bridge,
     omni_wm_kg_bridge_stats_t* stats) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_get_stats", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
@@ -1463,6 +1613,10 @@ nimcp_error_t omni_wm_kg_bridge_get_stats(
 
 nimcp_error_t omni_wm_kg_bridge_reset_stats(
     omni_wm_kg_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_reset_stats", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -1479,6 +1633,10 @@ nimcp_error_t omni_wm_kg_bridge_reset_stats(
 
 nimcp_error_t omni_wm_kg_bridge_connect_bio_async(
     omni_wm_kg_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_connect_bio_async", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_bio_async) return NIMCP_SUCCESS;
@@ -1533,6 +1691,10 @@ nimcp_error_t omni_wm_kg_bridge_connect_bio_async(
 nimcp_error_t omni_wm_kg_bridge_disconnect_bio_async(
     omni_wm_kg_bridge_t* bridge) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_disconnect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
@@ -1549,6 +1711,10 @@ nimcp_error_t omni_wm_kg_bridge_disconnect_bio_async(
 
 bool omni_wm_kg_bridge_is_bio_async_connected(
     const omni_wm_kg_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_is_bio_async_connect", 0.0f);
+
 
     return bridge_base_is_bio_async_connected(bridge ? &bridge->base : NULL);
 }
@@ -1646,6 +1812,10 @@ const char* omni_wm_kg_module_health_to_string(kg_module_health_t health) {
 
 nimcp_error_t omni_wm_kg_bridge_validate_config(
     const omni_wm_kg_bridge_config_t* config) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_validate_config", 0.0f);
+
 
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 

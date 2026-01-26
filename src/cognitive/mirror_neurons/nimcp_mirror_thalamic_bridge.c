@@ -28,7 +28,7 @@ static nimcp_health_agent_t* g_mirror_thalamic_bridge_health_agent = NULL;
  * @brief Set health agent for mirror_thalamic_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_thalamic_bridge_health_agent = agent;
 }
 
@@ -50,6 +50,10 @@ struct mirror_thalamic_bridge {
 };
 
 mirror_thalamic_config_t mirror_thalamic_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_thalamic_bridge_heartbeat("mirror_thala_mirror_thalamic_defa", 0.0f);
+
+
     mirror_thalamic_config_t cfg = {
         .enable_attention_gating = true,
         .enable_empathy_boost = true,
@@ -60,6 +64,10 @@ mirror_thalamic_config_t mirror_thalamic_default_config(void) {
 }
 
 mirror_thalamic_bridge_t* mirror_thalamic_bridge_create(void* mirror, thalamic_router_t* router, const mirror_thalamic_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_thalamic_bridge_heartbeat("mirror_thala_create", 0.0f);
+
+
     mirror_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(mirror_thalamic_bridge_t));
     if (!bridge) {
 
@@ -83,6 +91,10 @@ mirror_thalamic_bridge_t* mirror_thalamic_bridge_create(void* mirror, thalamic_r
 
 void mirror_thalamic_bridge_destroy(mirror_thalamic_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_thalamic_bridge_heartbeat("mirror_thala_destroy", 0.0f);
+
+
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
     }
@@ -91,6 +103,10 @@ void mirror_thalamic_bridge_destroy(mirror_thalamic_bridge_t* bridge) {
 
 int mirror_thalamic_bridge_reset(mirror_thalamic_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_thalamic_bridge_heartbeat("mirror_thala_reset", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -100,6 +116,10 @@ int mirror_thalamic_bridge_reset(mirror_thalamic_bridge_t* bridge) {
 
 int mirror_thalamic_route_action(mirror_thalamic_bridge_t* bridge, const mirror_thalamic_signal_t* signal) {
     if (!bridge || !signal) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_thalamic_bridge_heartbeat("mirror_thala_mirror_thalamic_rout", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_attention_gating && signal->mirroring_strength < bridge->config.min_mirroring_strength) {
         nimcp_mutex_unlock(bridge->base.mutex);
@@ -117,6 +137,10 @@ int mirror_thalamic_route_action(mirror_thalamic_bridge_t* bridge, const mirror_
 
 int mirror_thalamic_route_empathy(mirror_thalamic_bridge_t* bridge, const void* emotion, float resonance) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_thalamic_bridge_heartbeat("mirror_thala_mirror_thalamic_rout", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     if (resonance >= bridge->config.empathy_threshold) {
         bridge->stats.empathic_responses++;
@@ -127,6 +151,10 @@ int mirror_thalamic_route_empathy(mirror_thalamic_bridge_t* bridge, const void* 
 
 int mirror_thalamic_set_attention(mirror_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_thalamic_bridge_heartbeat("mirror_thala_mirror_thalamic_set_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -136,12 +164,20 @@ int mirror_thalamic_set_attention(mirror_thalamic_bridge_t* bridge, float attent
 int mirror_thalamic_get_attention(const mirror_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) return -1;
     *attention = bridge->attention_weight;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_thalamic_bridge_heartbeat("mirror_thala_mirror_thalamic_get_", 0.0f);
+
+
     return 0;
 }
 
 int mirror_thalamic_bridge_get_stats(const mirror_thalamic_bridge_t* bridge, mirror_thalamic_stats_t* stats) {
     if (!bridge || !stats) return -1;
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_thalamic_bridge_heartbeat("mirror_thala_get_stats", 0.0f);
+
+
     return 0;
 }
 
@@ -151,9 +187,19 @@ int mirror_thalamic_bridge_get_stats(const mirror_thalamic_bridge_t* bridge, mir
 
 int mirror_thalamic_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_thalamic_bridge_heartbeat("mirror_thala_mirror_thalamic_quer", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Mirror_Thalamic_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                mirror_thalamic_bridge_heartbeat("mirror_thala_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Mirror thalamic bridge self-knowledge: %s", self->observations[i]);
         }
     }

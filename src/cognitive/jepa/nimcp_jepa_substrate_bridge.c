@@ -29,7 +29,7 @@ static nimcp_health_agent_t* g_jepa_substrate_bridge_health_agent = NULL;
  * @brief Set health agent for jepa_substrate_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void jepa_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void jepa_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_jepa_substrate_bridge_health_agent = agent;
 }
 
@@ -55,6 +55,10 @@ struct jepa_substrate_bridge {
 };
 
 jepa_substrate_config_t jepa_substrate_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_substrate_bridge_heartbeat("jepa_substra_jepa_substrate_defau", 0.0f);
+
+
     jepa_substrate_config_t cfg = { .enable_atp_modulation = true, .enable_fatigue_modulation = true,
         .enable_bio_async = false, .atp_sensitivity = 1.0f, .fatigue_sensitivity = 1.0f, .min_capacity = 0.2f };
     return cfg;
@@ -68,6 +72,10 @@ jepa_substrate_bridge_t* jepa_substrate_bridge_create(void* jepa, neural_substra
         return NULL;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    jepa_substrate_bridge_heartbeat("jepa_substra_create", 0.0f);
+
+
     jepa_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(jepa_substrate_bridge_t));
     if (!bridge) {
 
@@ -89,6 +97,10 @@ jepa_substrate_bridge_t* jepa_substrate_bridge_create(void* jepa, neural_substra
 
 void jepa_substrate_bridge_destroy(jepa_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    jepa_substrate_bridge_heartbeat("jepa_substra_destroy", 0.0f);
+
+
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
     }
@@ -96,6 +108,10 @@ void jepa_substrate_bridge_destroy(jepa_substrate_bridge_t* bridge) {
 }
 
 int jepa_substrate_bridge_update(jepa_substrate_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_substrate_bridge_heartbeat("jepa_substra_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->substrate, -1, "bridge or substrate is NULL");
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
@@ -117,12 +133,20 @@ int jepa_substrate_bridge_update(jepa_substrate_bridge_t* bridge) {
 }
 
 int jepa_substrate_bridge_get_effects(const jepa_substrate_bridge_t* bridge, jepa_substrate_effects_t* effects) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_substrate_bridge_heartbeat("jepa_substra_get_effects", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && effects, -1, "bridge or effects is NULL");
     *effects = bridge->effects;
     return 0;
 }
 
 int jepa_substrate_bridge_apply_effects(jepa_substrate_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_substrate_bridge_heartbeat("jepa_substra_apply_effects", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
     if (!bridge->bio_async_connected || !bridge->ctx) return 0;
 
@@ -167,6 +191,10 @@ int jepa_substrate_bridge_apply_effects(jepa_substrate_bridge_t* bridge) {
 }
 
 int jepa_substrate_bridge_register_bio_async(jepa_substrate_bridge_t* bridge, bio_router_t* router) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_substrate_bridge_heartbeat("jepa_substra_register_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
@@ -187,9 +215,19 @@ int jepa_substrate_bridge_register_bio_async(jepa_substrate_bridge_t* bridge, bi
 int jepa_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_substrate_bridge_heartbeat("jepa_substra_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "JEPA_Substrate_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                jepa_substrate_bridge_heartbeat("jepa_substra_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

@@ -27,6 +27,7 @@
 
 #ifdef HAVE_LIBCURL
 #include <curl/curl.h>
+#endif
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -45,7 +46,7 @@ static nimcp_health_agent_t* g_claude_healer_health_agent = NULL;
  * @brief Set health agent for claude_healer heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void claude_healer_set_health_agent(nimcp_health_agent_t* agent) {
+void claude_healer_set_health_agent(nimcp_health_agent_t* agent) {
     g_claude_healer_health_agent = agent;
 }
 
@@ -55,8 +56,6 @@ static inline void claude_healer_heartbeat(const char* operation, float progress
         nimcp_health_agent_heartbeat_ex(g_claude_healer_health_agent, operation, progress);
     }
 }
-
-#endif
 
 /* ============================================================================
  * Internal Constants
@@ -324,6 +323,12 @@ static bool validate_fix_code(const char* code, size_t code_len)
     bool escaped = false;
 
     for (size_t i = 0; i < code_len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && code_len > 256) {
+            claude_healer_heartbeat("claude_heale_loop",
+                             (float)(i + 1) / (float)code_len);
+        }
+
         char c = code[i];
 
         if (escaped) {
@@ -647,6 +652,10 @@ int claude_healer_default_config(claude_healer_config_t* config)
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    claude_healer_heartbeat("claude_heale_default_config", 0.0f);
+
+
     memset(config, 0, sizeof(*config));
 
     /* Try environment variable for API key */
@@ -672,6 +681,10 @@ int claude_healer_default_config(claude_healer_config_t* config)
 claude_healer_t* claude_healer_create(const claude_healer_config_t* config)
 {
     /* Allocate healer structure */
+    /* Phase 8: Heartbeat at operation start */
+    claude_healer_heartbeat("claude_heale_create", 0.0f);
+
+
     claude_healer_t* healer = nimcp_calloc(1, sizeof(claude_healer_t));
     if (healer == NULL) {
         LOG_MODULE_ERROR(LOG_TAG, "Failed to allocate healer");
@@ -742,6 +755,10 @@ void claude_healer_destroy(claude_healer_t* healer)
 {
     if (healer == NULL) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    claude_healer_heartbeat("claude_heale_destroy", 0.0f);
+
+
 #ifdef HAVE_LIBCURL
     if (healer->curl != NULL) {
         curl_easy_cleanup((CURL*)healer->curl);
@@ -771,6 +788,10 @@ int claude_healer_format_prompt(
             "claude_healer_format_prompt: invalid parameter");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    claude_healer_heartbeat("claude_heale_format_prompt", 0.0f);
+
 
     int written = snprintf(prompt_out, prompt_size,
         "You are an expert C programmer analyzing a crash in the NIMCP neural "
@@ -851,6 +872,10 @@ claude_heal_status_t claude_healer_request_fix(
     }
 
     /* Initialize response */
+    /* Phase 8: Heartbeat at operation start */
+    claude_healer_heartbeat("claude_heale_request_fix", 0.0f);
+
+
     memset(response, 0, sizeof(*response));
 
 #ifndef HAVE_LIBCURL
@@ -1082,6 +1107,10 @@ void claude_healer_free_response(claude_heal_response_t* response)
 {
     if (response == NULL) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    claude_healer_heartbeat("claude_heale_free_response", 0.0f);
+
+
     nimcp_free(response->fixed_code);
     nimcp_free(response->explanation);
     nimcp_free(response->error_message);
@@ -1108,6 +1137,9 @@ claude_heal_status_t claude_healer_send_request(
         response_size == 0 || response_len == NULL) {
         return CLAUDE_HEAL_ERROR_INVALID_INPUT;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    claude_healer_heartbeat("claude_healer_send_request", 0.0f);
 
     *response_len = 0;
 
@@ -1209,6 +1241,10 @@ claude_heal_status_t claude_healer_send_request(
  */
 bool claude_healer_validate_code(const char* code, size_t code_len)
 {
+    /* Phase 8: Heartbeat at operation start */
+    claude_healer_heartbeat("claude_heale_validate_code", 0.0f);
+
+
     return validate_fix_code(code, code_len);
 }
 
@@ -1223,12 +1259,22 @@ bool claude_healer_check_rate_limit(claude_healer_t* healer)
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    claude_healer_heartbeat("claude_heale_check_rate_limit", 0.0f);
+
+
     uint64_t now = get_time_ms();
     uint64_t window_start = now - 60000; /* 1 minute window */
 
     /* Count requests in current window */
     size_t count = 0;
     for (size_t i = 0; i < healer->timestamp_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && healer->timestamp_capacity > 256) {
+            claude_healer_heartbeat("claude_heale_loop",
+                             (float)(i + 1) / (float)healer->timestamp_capacity);
+        }
+
         if (healer->request_timestamps[i] >= window_start) {
             count++;
         }
@@ -1243,6 +1289,10 @@ bool claude_healer_check_rate_limit(claude_healer_t* healer)
 void claude_healer_record_request(claude_healer_t* healer)
 {
     if (healer == NULL) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    claude_healer_heartbeat("claude_heale_record_request", 0.0f);
+
 
     healer->request_timestamps[healer->timestamp_head] = get_time_ms();
     healer->timestamp_head = (healer->timestamp_head + 1) % healer->timestamp_capacity;
@@ -1259,12 +1309,22 @@ uint64_t claude_healer_get_rate_limit_reset_ms(claude_healer_t* healer)
 {
     if (healer == NULL) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    claude_healer_heartbeat("claude_heale_get_rate_limit_reset", 0.0f);
+
+
     uint64_t now = get_time_ms();
     uint64_t window_start = now - 60000;
 
     /* Find oldest request in window */
     uint64_t oldest = now;
     for (size_t i = 0; i < healer->timestamp_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && healer->timestamp_capacity > 256) {
+            claude_healer_heartbeat("claude_heale_loop",
+                             (float)(i + 1) / (float)healer->timestamp_capacity);
+        }
+
         if (healer->request_timestamps[i] >= window_start &&
             healer->request_timestamps[i] < oldest) {
             oldest = healer->request_timestamps[i];
@@ -1292,6 +1352,10 @@ int claude_healer_get_stats(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    claude_healer_heartbeat("claude_heale_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(healer->mutex);
     memcpy(stats, &healer->stats, sizeof(claude_healer_stats_t));
     nimcp_mutex_unlock(healer->mutex);
@@ -1310,6 +1374,10 @@ int claude_healer_reset_stats(claude_healer_t* healer)
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    claude_healer_heartbeat("claude_heale_reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(healer->mutex);
     memset(&healer->stats, 0, sizeof(claude_healer_stats_t));
     nimcp_mutex_unlock(healer->mutex);
@@ -1322,6 +1390,10 @@ int claude_healer_reset_stats(claude_healer_t* healer)
  */
 bool claude_healer_is_available(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    claude_healer_heartbeat("claude_heale_is_available", 0.0f);
+
+
 #ifdef HAVE_LIBCURL
     return true;
 #else
@@ -1408,9 +1480,19 @@ const char* claude_healer_signal_name(int sig)
  */
 int claude_healer_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    claude_healer_heartbeat("claude_heale_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Claude_Healer");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                claude_healer_heartbeat("claude_heale_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Claude healer self-knowledge: %s", self->observations[i]);
         }
     }

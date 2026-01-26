@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_immune_tolerance_health_agent = NULL;
  * @brief Set health agent for immune_tolerance heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void immune_tolerance_set_health_agent(nimcp_health_agent_t* agent) {
+void immune_tolerance_set_health_agent(nimcp_health_agent_t* agent) {
     g_immune_tolerance_health_agent = agent;
 }
 
@@ -146,6 +146,10 @@ int tolerance_default_config(tolerance_config_t* config) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_tolerance_heartbeat("immune_toler_tolerance_default_co", 0.0f);
+
+
     config->max_self_patterns = TOLERANCE_MAX_SELF_PATTERNS;
     config->self_match_threshold = TOLERANCE_DEFAULT_THRESHOLD;
     config->central_deletion_threshold = TOLERANCE_CENTRAL_THRESHOLD;
@@ -176,6 +180,10 @@ tolerance_system_t* tolerance_create(
         NIMCP_LOGGING_ERROR("NULL immune_system pointer");
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_tolerance_heartbeat("immune_toler_tolerance_create", 0.0f);
+
 
     tolerance_system_t* sys = nimcp_calloc(1, sizeof(tolerance_system_t));
     if (!sys) {
@@ -253,6 +261,10 @@ void tolerance_destroy(tolerance_system_t* system) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_tolerance_heartbeat("immune_toler_tolerance_destroy", 0.0f);
+
+
     if (system->config.thread_safe && system->mutex) {
         nimcp_mutex_free(system->mutex);
     }
@@ -289,6 +301,10 @@ int tolerance_register_self_pattern(
     if (!system || !pattern || len == 0) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_tolerance_heartbeat("immune_toler_tolerance_register_s", 0.0f);
+
 
     if (len > TOLERANCE_PATTERN_SIZE) {
         NIMCP_LOGGING_WARN("Pattern length %zu exceeds max %d",
@@ -363,6 +379,10 @@ bool tolerance_check_self(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_tolerance_heartbeat("immune_toler_tolerance_check_self", 0.0f);
+
+
     if (system->config.thread_safe) {
         nimcp_mutex_lock(system->mutex);
     }
@@ -375,6 +395,12 @@ bool tolerance_check_self(
 
     /* Check against all self patterns */
     for (size_t i = 0; i < system->self_pattern_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->self_pattern_count > 256) {
+            immune_tolerance_heartbeat("immune_toler_loop",
+                             (float)(i + 1) / (float)system->self_pattern_count);
+        }
+
         self_pattern_t* sp = &system->self_patterns[i];
 
         float aff = compute_pattern_affinity(
@@ -432,6 +458,10 @@ int tolerance_remove_self_pattern(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_tolerance_heartbeat("immune_toler_tolerance_remove_sel", 0.0f);
+
+
     if (system->config.thread_safe) {
         nimcp_mutex_lock(system->mutex);
     }
@@ -481,12 +511,22 @@ int tolerance_clear_self_patterns(tolerance_system_t* system) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_tolerance_heartbeat("immune_toler_tolerance_clear_self", 0.0f);
+
+
     if (system->config.thread_safe) {
         nimcp_mutex_lock(system->mutex);
     }
 
     size_t write_idx = 0;
     for (size_t read_idx = 0; read_idx < system->self_pattern_count; read_idx++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((read_idx & 0xFF) == 0 && system->self_pattern_count > 256) {
+            immune_tolerance_heartbeat("immune_toler_loop",
+                             (float)(read_idx + 1) / (float)system->self_pattern_count);
+        }
+
         if (system->self_patterns[read_idx].immutable) {
             if (write_idx != read_idx) {
                 memcpy(&system->self_patterns[write_idx],
@@ -510,6 +550,10 @@ int tolerance_clear_self_patterns(tolerance_system_t* system) {
  * @brief Get self pattern count
  */
 size_t tolerance_get_self_patterns_count(const tolerance_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    immune_tolerance_heartbeat("immune_toler_tolerance_get_self_p", 0.0f);
+
+
     return system ? system->self_pattern_count : 0;
 }
 
@@ -536,6 +580,10 @@ int tolerance_central_selection(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_tolerance_heartbeat("immune_toler_tolerance_central_se", 0.0f);
+
+
     if (system->config.thread_safe) {
         nimcp_mutex_lock(system->mutex);
     }
@@ -548,6 +596,12 @@ int tolerance_central_selection(
     uint32_t matched_pattern_id = 0;
 
     for (size_t i = 0; i < system->self_pattern_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->self_pattern_count > 256) {
+            immune_tolerance_heartbeat("immune_toler_loop",
+                             (float)(i + 1) / (float)system->self_pattern_count);
+        }
+
         self_pattern_t* sp = &system->self_patterns[i];
 
         float aff = compute_pattern_affinity(
@@ -615,6 +669,10 @@ int tolerance_delete_cell(
     }
 
     /* Find cell and mark apoptotic */
+    /* Phase 8: Heartbeat at operation start */
+    immune_tolerance_heartbeat("immune_toler_tolerance_delete_cel", 0.0f);
+
+
     if (is_b_cell) {
         brain_b_cell_t* b_cell = NULL;
         for (size_t i = 0; i < system->immune_system->b_cell_count; i++) {
@@ -662,6 +720,10 @@ int tolerance_induce_anergy(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_tolerance_heartbeat("immune_toler_tolerance_induce_ane", 0.0f);
+
+
     if (system->config.thread_safe) {
         nimcp_mutex_lock(system->mutex);
     }
@@ -697,6 +759,10 @@ bool tolerance_is_anergic(
     }
 
     /* Cast away const for mutex (doesn't modify state) */
+    /* Phase 8: Heartbeat at operation start */
+    immune_tolerance_heartbeat("immune_toler_tolerance_is_anergic", 0.0f);
+
+
     tolerance_system_t* sys = (tolerance_system_t*)system;
 
     if (sys->config.thread_safe) {
@@ -729,6 +795,10 @@ int tolerance_reverse_anergy(
 
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_tolerance_heartbeat("immune_toler_tolerance_reverse_an", 0.0f);
+
 
     if (system->config.thread_safe) {
         nimcp_mutex_lock(system->mutex);
@@ -785,6 +855,10 @@ int tolerance_set_phase(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_tolerance_heartbeat("immune_toler_tolerance_set_phase", 0.0f);
+
+
     if (system->config.thread_safe) {
         nimcp_mutex_lock(system->mutex);
     }
@@ -807,6 +881,10 @@ int tolerance_set_phase(
  * @brief Get current phase
  */
 tolerance_phase_t tolerance_get_phase(const tolerance_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    immune_tolerance_heartbeat("immune_toler_tolerance_get_phase", 0.0f);
+
+
     return system ? system->phase : TOLERANCE_PHASE_OPERATIONAL;
 }
 
@@ -824,6 +902,10 @@ int tolerance_set_self_threshold(
     if (!system || threshold < 0.0f || threshold > 1.0f) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_tolerance_heartbeat("immune_toler_tolerance_set_self_t", 0.0f);
+
 
     if (system->config.thread_safe) {
         nimcp_mutex_lock(system->mutex);
@@ -849,6 +931,10 @@ int tolerance_set_central_threshold(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_tolerance_heartbeat("immune_toler_tolerance_set_centra", 0.0f);
+
+
     if (system->config.thread_safe) {
         nimcp_mutex_lock(system->mutex);
     }
@@ -872,6 +958,10 @@ int tolerance_set_anergy_threshold(
     if (!system || threshold < 0.0f || threshold > 1.0f) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_tolerance_heartbeat("immune_toler_tolerance_set_anergy", 0.0f);
+
 
     if (system->config.thread_safe) {
         nimcp_mutex_lock(system->mutex);
@@ -902,6 +992,10 @@ int tolerance_get_stats(
     }
 
     /* Cast away const for mutex */
+    /* Phase 8: Heartbeat at operation start */
+    immune_tolerance_heartbeat("immune_toler_tolerance_get_stats", 0.0f);
+
+
     tolerance_system_t* sys = (tolerance_system_t*)system;
 
     if (sys->config.thread_safe) {
@@ -933,6 +1027,10 @@ const self_pattern_t* tolerance_get_pattern(
     }
 
     /* Cast away const for helper function */
+    /* Phase 8: Heartbeat at operation start */
+    immune_tolerance_heartbeat("immune_toler_tolerance_get_patter", 0.0f);
+
+
     return find_pattern_by_id((tolerance_system_t*)system, pattern_id);
 }
 
@@ -949,6 +1047,10 @@ float tolerance_compute_affinity(
     const uint8_t* pattern2,
     size_t len2
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    immune_tolerance_heartbeat("immune_toler_tolerance_compute_af", 0.0f);
+
+
     return compute_pattern_affinity(pattern1, len1, pattern2, len2);
 }
 
@@ -979,6 +1081,12 @@ static self_pattern_t* find_pattern_by_id(
     }
 
     for (size_t i = 0; i < sys->self_pattern_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sys->self_pattern_count > 256) {
+            immune_tolerance_heartbeat("immune_toler_loop",
+                             (float)(i + 1) / (float)sys->self_pattern_count);
+        }
+
         if (sys->self_patterns[i].id == id) {
             return &sys->self_patterns[i];
         }
@@ -1002,6 +1110,12 @@ static anergic_cell_record_t* find_anergic_cell(
     }
 
     for (size_t i = 0; i < sys->anergic_cell_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sys->anergic_cell_count > 256) {
+            immune_tolerance_heartbeat("immune_toler_loop",
+                             (float)(i + 1) / (float)sys->anergic_cell_count);
+        }
+
         anergic_cell_record_t* rec = &sys->anergic_cells[i];
         if (rec->cell_id == cell_id && rec->is_b_cell == is_b_cell) {
             return rec;
@@ -1081,6 +1195,12 @@ static float compute_pattern_affinity(
     /* Component 1: Exact byte matches (50% weight) */
     size_t exact_matches = 0;
     for (size_t i = 0; i < min_len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && min_len > 256) {
+            immune_tolerance_heartbeat("immune_toler_loop",
+                             (float)(i + 1) / (float)min_len);
+        }
+
         if (p1[i] == p2[i]) {
             exact_matches++;
         }
@@ -1091,9 +1211,21 @@ static float compute_pattern_affinity(
     size_t bit_matches = 0;
     size_t total_bits = max_len * 8;
     for (size_t i = 0; i < min_len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && min_len > 256) {
+            immune_tolerance_heartbeat("immune_toler_loop",
+                             (float)(i + 1) / (float)min_len);
+        }
+
         uint8_t xor_val = p1[i] ^ p2[i];
         /* Count matching bits (inverse of set bits in XOR) */
         for (int b = 0; b < 8; b++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((b & 0xFF) == 0 && 8 > 256) {
+                immune_tolerance_heartbeat("immune_toler_loop",
+                                 (float)(b + 1) / (float)8);
+            }
+
             if ((xor_val & (1 << b)) == 0) {
                 bit_matches++;
             }
@@ -1126,9 +1258,19 @@ static float compute_pattern_affinity(
  */
 int tolerance_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    immune_tolerance_heartbeat("immune_toler_tolerance_query_self", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Immune_Tolerance");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                immune_tolerance_heartbeat("immune_toler_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Immune tolerance self-knowledge: %s", self->observations[i]);
         }
     }

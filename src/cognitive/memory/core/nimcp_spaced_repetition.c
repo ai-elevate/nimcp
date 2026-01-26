@@ -41,7 +41,7 @@ static nimcp_health_agent_t* g_spaced_repetition_health_agent = NULL;
  * @brief Set health agent for spaced_repetition heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void spaced_repetition_set_health_agent(nimcp_health_agent_t* agent) {
+void spaced_repetition_set_health_agent(nimcp_health_agent_t* agent) {
     g_spaced_repetition_health_agent = agent;
 }
 
@@ -400,6 +400,12 @@ NIMCP_EXPORT void sr_system_destroy(sr_system_t system) {
 
     // Free all items via hash table
     for (size_t i = 0; i < system->table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->table_size > 256) {
+            spaced_repetition_heartbeat("spaced_repet_loop",
+                             (float)(i + 1) / (float)system->table_size);
+        }
+
         sr_hash_entry_t* entry = system->items_table[i];
         while (entry) {
             sr_hash_entry_t* next = entry->next;
@@ -411,6 +417,12 @@ NIMCP_EXPORT void sr_system_destroy(sr_system_t system) {
 
     // Free heap nodes (items already freed)
     for (size_t i = 0; i < system->heap_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->heap_size > 256) {
+            spaced_repetition_heartbeat("spaced_repet_loop",
+                             (float)(i + 1) / (float)system->heap_size);
+        }
+
         free(system->heap[i]);
     }
 
@@ -428,6 +440,12 @@ NIMCP_EXPORT sr_error_t sr_system_clear(sr_system_t system) {
 
     // Free all items
     for (size_t i = 0; i < system->table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->table_size > 256) {
+            spaced_repetition_heartbeat("spaced_repet_loop",
+                             (float)(i + 1) / (float)system->table_size);
+        }
+
         sr_hash_entry_t* entry = system->items_table[i];
         while (entry) {
             sr_hash_entry_t* next = entry->next;
@@ -440,6 +458,12 @@ NIMCP_EXPORT sr_error_t sr_system_clear(sr_system_t system) {
 
     // Clear heap
     for (size_t i = 0; i < system->heap_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->heap_size > 256) {
+            spaced_repetition_heartbeat("spaced_repet_loop",
+                             (float)(i + 1) / (float)system->heap_size);
+        }
+
         free(system->heap[i]);
         system->heap[i] = NULL;
     }
@@ -593,6 +617,12 @@ NIMCP_EXPORT sr_spaced_item_t* sr_system_get_item_by_memory(
 
     // Linear scan (could optimize with secondary index)
     for (size_t i = 0; i < system->table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->table_size > 256) {
+            spaced_repetition_heartbeat("spaced_repet_loop",
+                             (float)(i + 1) / (float)system->table_size);
+        }
+
         sr_hash_entry_t* entry = system->items_table[i];
         while (entry) {
             if (entry->item->memory == memory ||
@@ -710,6 +740,12 @@ NIMCP_EXPORT size_t sr_system_unbury_all(sr_system_t system) {
 
     size_t count = 0;
     for (size_t i = 0; i < system->table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->table_size > 256) {
+            spaced_repetition_heartbeat("spaced_repet_loop",
+                             (float)(i + 1) / (float)system->table_size);
+        }
+
         sr_hash_entry_t* entry = system->items_table[i];
         while (entry) {
             if (entry->item->state == SR_STATE_BURIED) {
@@ -1057,6 +1093,12 @@ NIMCP_EXPORT size_t sr_system_get_due_count(sr_system_t system) {
     float current_time = sr_current_time_days();
 
     for (size_t i = 0; i < system->heap_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->heap_size > 256) {
+            spaced_repetition_heartbeat("spaced_repet_loop",
+                             (float)(i + 1) / (float)system->heap_size);
+        }
+
         sr_spaced_item_t* item = system->heap[i]->entry.item;
         if (item->due_time <= current_time && !item->is_suspended) {
             count++;
@@ -1225,6 +1267,12 @@ NIMCP_EXPORT size_t sr_system_apply_forgetting(sr_system_t system) {
     float current_time = sr_current_time_days();
 
     for (size_t i = 0; i < system->table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->table_size > 256) {
+            spaced_repetition_heartbeat("spaced_repet_loop",
+                             (float)(i + 1) / (float)system->table_size);
+        }
+
         sr_hash_entry_t* entry = system->items_table[i];
         while (entry) {
             sr_spaced_item_t* item = entry->item;
@@ -1470,6 +1518,12 @@ NIMCP_EXPORT sr_error_t sr_estimate_workload(
 
     // Initialize forecast
     for (size_t d = 0; d < days_ahead; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && days_ahead > 256) {
+            spaced_repetition_heartbeat("spaced_repet_loop",
+                             (float)(d + 1) / (float)days_ahead);
+        }
+
         forecast[d].day_offset = (float)d;
         forecast[d].due_count = 0;
         forecast[d].cumulative_due = 0;
@@ -1478,6 +1532,12 @@ NIMCP_EXPORT sr_error_t sr_estimate_workload(
 
     // Count items due on each day
     for (size_t i = 0; i < system->table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->table_size > 256) {
+            spaced_repetition_heartbeat("spaced_repet_loop",
+                             (float)(i + 1) / (float)system->table_size);
+        }
+
         sr_hash_entry_t* entry = system->items_table[i];
         while (entry) {
             sr_spaced_item_t* item = entry->item;
@@ -1504,6 +1564,12 @@ NIMCP_EXPORT sr_error_t sr_estimate_workload(
     // Compute cumulative
     size_t cumulative = 0;
     for (size_t d = 0; d < days_ahead; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && days_ahead > 256) {
+            spaced_repetition_heartbeat("spaced_repet_loop",
+                             (float)(d + 1) / (float)days_ahead);
+        }
+
         cumulative += forecast[d].due_count;
         forecast[d].cumulative_due = cumulative;
     }
@@ -1556,6 +1622,12 @@ NIMCP_EXPORT sr_error_t sr_system_get_stats(sr_system_t system, sr_stats_t* stat
     if (system->history_days > 0) {
         size_t total = 0;
         for (size_t i = 0; i < system->history_days; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && system->history_days > 256) {
+                spaced_repetition_heartbeat("spaced_repet_loop",
+                                 (float)(i + 1) / (float)system->history_days);
+            }
+
             total += system->daily_review_counts[i];
         }
         stats->reviews_per_day_avg = (float)total / (float)system->history_days;
@@ -1565,6 +1637,12 @@ NIMCP_EXPORT sr_error_t sr_system_get_stats(sr_system_t system, sr_stats_t* stat
     float total_time = 0;
     float current_time = sr_current_time_days();
     for (size_t i = 0; i < system->heap_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->heap_size > 256) {
+            spaced_repetition_heartbeat("spaced_repet_loop",
+                             (float)(i + 1) / (float)system->heap_size);
+        }
+
         sr_spaced_item_t* item = system->heap[i]->entry.item;
         if (item->due_time <= current_time && !item->is_suspended) {
             total_time += (item->avg_response_time_ms > 0)
@@ -1591,6 +1669,12 @@ NIMCP_EXPORT sr_error_t sr_get_retention_history(
     *count = available;
 
     for (size_t i = 0; i < available; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && available > 256) {
+            spaced_repetition_heartbeat("spaced_repet_loop",
+                             (float)(i + 1) / (float)available);
+        }
+
         retention_values[i] = system->daily_retention_rates[i];
     }
 
@@ -1611,6 +1695,12 @@ NIMCP_EXPORT sr_error_t sr_get_review_history(
     *count = available;
 
     for (size_t i = 0; i < available; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && available > 256) {
+            spaced_repetition_heartbeat("spaced_repet_loop",
+                             (float)(i + 1) / (float)available);
+        }
+
         review_counts[i] = system->daily_review_counts[i];
     }
 
@@ -1625,6 +1715,12 @@ NIMCP_EXPORT sr_error_t sr_get_difficulty_distribution(sr_system_t system, size_
     memset(bins, 0, 10 * sizeof(size_t));
 
     for (size_t i = 0; i < system->table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->table_size > 256) {
+            spaced_repetition_heartbeat("spaced_repet_loop",
+                             (float)(i + 1) / (float)system->table_size);
+        }
+
         sr_hash_entry_t* entry = system->items_table[i];
         while (entry) {
             float diff = entry->item->strength.difficulty;
@@ -1651,12 +1747,24 @@ NIMCP_EXPORT sr_error_t sr_get_interval_distribution(
     memset(counts, 0, (num_brackets + 1) * sizeof(size_t));
 
     for (size_t i = 0; i < system->table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->table_size > 256) {
+            spaced_repetition_heartbeat("spaced_repet_loop",
+                             (float)(i + 1) / (float)system->table_size);
+        }
+
         sr_hash_entry_t* entry = system->items_table[i];
         while (entry) {
             float interval = entry->item->interval_days;
             size_t bucket = num_brackets;  // Default to last bucket
 
             for (size_t b = 0; b < num_brackets; b++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((b & 0xFF) == 0 && num_brackets > 256) {
+                    spaced_repetition_heartbeat("spaced_repet_loop",
+                                     (float)(b + 1) / (float)num_brackets);
+                }
+
                 if (interval < brackets[b]) {
                     bucket = b;
                     break;
@@ -1683,10 +1791,22 @@ NIMCP_EXPORT float sr_calculate_true_retention(sr_system_t system, size_t days_b
         : 0;
 
     for (size_t i = 0; i < system->table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->table_size > 256) {
+            spaced_repetition_heartbeat("spaced_repet_loop",
+                             (float)(i + 1) / (float)system->table_size);
+        }
+
         sr_hash_entry_t* entry = system->items_table[i];
         while (entry) {
             sr_spaced_item_t* item = entry->item;
             for (size_t h = 0; h < item->history_len; h++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((h & 0xFF) == 0 && item->history_len > 256) {
+                    spaced_repetition_heartbeat("spaced_repet_loop",
+                                     (float)(h + 1) / (float)item->history_len);
+                }
+
                 size_t idx = (item->history_start + h) % item->history_capacity;
                 sr_review_record_t* rec = &item->response_history[idx];
 
@@ -1753,6 +1873,12 @@ NIMCP_EXPORT size_t sr_sync_all_z_ladder(sr_system_t system) {
 
     size_t count = 0;
     for (size_t i = 0; i < system->table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->table_size > 256) {
+            spaced_repetition_heartbeat("spaced_repet_loop",
+                             (float)(i + 1) / (float)system->table_size);
+        }
+
         sr_hash_entry_t* entry = system->items_table[i];
         while (entry) {
             if (entry->item->memory) {
@@ -1843,6 +1969,12 @@ NIMCP_EXPORT sr_error_t sr_find_similar_items(
     size_t candidate_count = 0;
 
     for (size_t i = 0; i < system->table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->table_size > 256) {
+            spaced_repetition_heartbeat("spaced_repet_loop",
+                             (float)(i + 1) / (float)system->table_size);
+        }
+
         sr_hash_entry_t* entry = system->items_table[i];
         while (entry) {
             if (entry->item->item_id != item_id) {
@@ -1901,6 +2033,12 @@ NIMCP_EXPORT sr_error_t sr_system_serialize(
 
     // Each item
     for (size_t i = 0; i < system->table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->table_size > 256) {
+            spaced_repetition_heartbeat("spaced_repet_loop",
+                             (float)(i + 1) / (float)system->table_size);
+        }
+
         sr_hash_entry_t* entry = system->items_table[i];
         while (entry) {
             required += sizeof(uint64_t);  // item_id
@@ -1944,6 +2082,12 @@ NIMCP_EXPORT sr_error_t sr_system_serialize(
 
     // Items
     for (size_t i = 0; i < system->table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->table_size > 256) {
+            spaced_repetition_heartbeat("spaced_repet_loop",
+                             (float)(i + 1) / (float)system->table_size);
+        }
+
         sr_hash_entry_t* entry = system->items_table[i];
         while (entry) {
             sr_spaced_item_t* item = entry->item;
@@ -1982,6 +2126,12 @@ NIMCP_EXPORT sr_error_t sr_system_serialize(
             ptr += sizeof(size_t);
 
             for (size_t h = 0; h < item->history_len; h++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((h & 0xFF) == 0 && item->history_len > 256) {
+                    spaced_repetition_heartbeat("spaced_repet_loop",
+                                     (float)(h + 1) / (float)item->history_len);
+                }
+
                 size_t idx = (item->history_start + h) % item->history_capacity;
                 memcpy(ptr, &item->response_history[idx], sizeof(sr_review_record_t));
                 ptr += sizeof(sr_review_record_t);
@@ -2123,6 +2273,12 @@ NIMCP_EXPORT sr_error_t sr_export_item(
     ptr += sizeof(size_t);
 
     for (size_t h = 0; h < item->history_len; h++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((h & 0xFF) == 0 && item->history_len > 256) {
+            spaced_repetition_heartbeat("spaced_repet_loop",
+                             (float)(h + 1) / (float)item->history_len);
+        }
+
         size_t idx = (item->history_start + h) % item->history_capacity;
         memcpy(ptr, &item->response_history[idx], sizeof(sr_review_record_t));
         ptr += sizeof(sr_review_record_t);
@@ -2354,6 +2510,12 @@ static uint64_t hash_id(uint64_t id, size_t table_size) {
     // FNV-1a hash
     uint64_t hash = 14695981039346656037ULL;
     for (int i = 0; i < 8; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 8 > 256) {
+            spaced_repetition_heartbeat("spaced_repet_loop",
+                             (float)(i + 1) / (float)8);
+        }
+
         hash ^= (id >> (i * 8)) & 0xFF;
         hash *= 1099511628211ULL;
     }
@@ -2708,6 +2870,12 @@ static void heap_update(sr_system_t system, sr_spaced_item_t* item) {
     if (node->entry.item != item) {
         // Index mismatch, linear search
         for (size_t i = 0; i < system->heap_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && system->heap_size > 256) {
+                spaced_repetition_heartbeat("spaced_repet_loop",
+                                 (float)(i + 1) / (float)system->heap_size);
+            }
+
             if (system->heap[i]->entry.item == item) {
                 node = system->heap[i];
                 index = i;
@@ -2739,6 +2907,12 @@ static void heap_remove(sr_system_t system, sr_spaced_item_t* item) {
     if (node->entry.item != item) {
         // Linear search
         for (size_t i = 0; i < system->heap_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && system->heap_size > 256) {
+                spaced_repetition_heartbeat("spaced_repet_loop",
+                                 (float)(i + 1) / (float)system->heap_size);
+            }
+
             if (system->heap[i]->entry.item == item) {
                 node = system->heap[i];
                 index = i;

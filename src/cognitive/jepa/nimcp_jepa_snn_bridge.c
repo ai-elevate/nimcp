@@ -38,7 +38,7 @@ static nimcp_health_agent_t* g_jepa_snn_bridge_health_agent = NULL;
  * @brief Set health agent for jepa_snn_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void jepa_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void jepa_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_jepa_snn_bridge_health_agent = agent;
 }
 
@@ -112,12 +112,24 @@ static void softmax(float* values, uint32_t n) {
 
     float sum = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            jepa_snn_bridge_heartbeat("jepa_snn_bri_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         values[i] = expf(values[i] - max_val);
         sum += values[i];
     }
 
     if (sum > 0.0f) {
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                jepa_snn_bridge_heartbeat("jepa_snn_bri_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             values[i] /= sum;
         }
     }
@@ -128,6 +140,10 @@ static void softmax(float* values, uint32_t n) {
 //=============================================================================
 
 jepa_snn_config_t jepa_snn_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_config_defa", 0.0f);
+
+
     jepa_snn_config_t config = {
         .num_dimensions = JEPA_DIM_COUNT,
         .neurons_per_dim = JEPA_SNN_NEURONS_PER_DIM,
@@ -163,6 +179,10 @@ jepa_snn_config_t jepa_snn_config_default(void) {
 }
 
 jepa_snn_bridge_t* jepa_snn_create(const jepa_snn_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_create", 0.0f);
+
+
     jepa_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(jepa_snn_bridge_t));
     if (!bridge) {
 
@@ -222,6 +242,12 @@ jepa_snn_bridge_t* jepa_snn_create(const jepa_snn_config_t* config) {
 
     /* Initialize dimension states */
     for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            jepa_snn_bridge_heartbeat("jepa_snn_bri_loop",
+                             (float)(i + 1) / (float)bridge->config.num_dimensions);
+        }
+
         bridge->dim_states[i].activation = 0.0f;
         bridge->dim_states[i].accumulated_evidence = 0.0f;
         bridge->dim_states[i].spike_count = 0;
@@ -253,6 +279,10 @@ jepa_snn_bridge_t* jepa_snn_create(const jepa_snn_config_t* config) {
 void jepa_snn_destroy(jepa_snn_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_destroy", 0.0f);
+
+
     if (bridge->snn) {
         snn_network_destroy(bridge->snn);
     }
@@ -267,6 +297,10 @@ void jepa_snn_destroy(jepa_snn_bridge_t* bridge) {
 }
 
 int jepa_snn_reset(jepa_snn_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_reset", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -278,6 +312,12 @@ int jepa_snn_reset(jepa_snn_bridge_t* bridge) {
 
     /* Reset dimension states */
     for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            jepa_snn_bridge_heartbeat("jepa_snn_bri_loop",
+                             (float)(i + 1) / (float)bridge->config.num_dimensions);
+        }
+
         bridge->dim_states[i].activation = 0.0f;
         bridge->dim_states[i].accumulated_evidence = 0.0f;
         bridge->dim_states[i].spike_count = 0;
@@ -315,6 +355,10 @@ int jepa_snn_encode_state(
     const float* dimensions,
     uint32_t num_dims
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_encode_stat", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && dimensions, -1, "bridge or dimensions is NULL");
     NIMCP_CHECK_THROW(num_dims > 0 && num_dims <= bridge->config.num_dimensions, -1, "invalid num_dims");
 
@@ -326,6 +370,12 @@ int jepa_snn_encode_state(
 
     /* Population encoding for each dimension */
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            jepa_snn_bridge_heartbeat("jepa_snn_bri_loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         float value = clamp_f(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
@@ -336,6 +386,12 @@ int jepa_snn_encode_state(
 
         /* Population encode */
         for (uint32_t n = 0; n < neurons_per_dim; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && neurons_per_dim > 256) {
+                jepa_snn_bridge_heartbeat("jepa_snn_bri_loop",
+                                 (float)(n + 1) / (float)neurons_per_dim);
+            }
+
             float preferred = (float)n / (neurons_per_dim - 1);
             float diff = value - preferred;
             float tuning = expf(-diff * diff / 0.1f);
@@ -351,6 +407,12 @@ int jepa_snn_encode_state(
     /* Detect state change */
     float change_magnitude = 0.0f;
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            jepa_snn_bridge_heartbeat("jepa_snn_bri_loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         float diff = dimensions[d] - bridge->prev_state[d];
         change_magnitude += diff * diff;
         bridge->prev_state[d] = dimensions[d];
@@ -372,6 +434,10 @@ int jepa_snn_encode_latent(
     float context,
     float target
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_encode_late", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -393,6 +459,10 @@ int jepa_snn_encode_prediction_error(
     float error_magnitude,
     uint32_t error_dimension
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_encode_pred", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -413,6 +483,10 @@ int jepa_snn_encode_context(
     float context_strength,
     uint32_t context_type
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_encode_cont", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -444,6 +518,10 @@ int jepa_snn_encode_context(
 //=============================================================================
 
 int jepa_snn_simulate(jepa_snn_bridge_t* bridge, float duration_ms) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_simulate", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
     NIMCP_CHECK_THROW(duration_ms > 0.0f, -1, "duration_ms must be positive");
 
@@ -460,6 +538,12 @@ int jepa_snn_simulate(jepa_snn_bridge_t* bridge, float duration_ms) {
     }
 
     for (uint32_t s = 0; s < steps; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && steps > 256) {
+            jepa_snn_bridge_heartbeat("jepa_snn_bri_loop",
+                             (float)(s + 1) / (float)steps);
+        }
+
         if (bridge->snn) {
             snn_network_step(bridge->snn, dt);
         }
@@ -467,6 +551,12 @@ int jepa_snn_simulate(jepa_snn_bridge_t* bridge, float duration_ms) {
         /* Update evidence integration */
         float decay = expf(-dt / bridge->config.integration_tau_ms);
         for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+                jepa_snn_bridge_heartbeat("jepa_snn_bri_loop",
+                                 (float)(d + 1) / (float)bridge->config.num_dimensions);
+            }
+
             bridge->dim_states[d].accumulated_evidence *= decay;
             bridge->dim_states[d].accumulated_evidence +=
                 bridge->dim_states[d].activation * dt / bridge->config.integration_tau_ms;
@@ -515,6 +605,10 @@ int jepa_snn_simulate(jepa_snn_bridge_t* bridge, float duration_ms) {
 }
 
 int jepa_snn_step(jepa_snn_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_step", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
     return jepa_snn_simulate(bridge, bridge->config.dt_ms);
 }
@@ -524,6 +618,10 @@ int jepa_snn_forward(
     const float* inputs,
     uint32_t input_count
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_forward", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && inputs, -1, "bridge or inputs is NULL");
 
     int spike_count = jepa_snn_encode_state(bridge, inputs, input_count);
@@ -544,6 +642,10 @@ int jepa_snn_get_prediction(
     jepa_snn_bridge_t* bridge,
     jepa_prediction_output_t* output
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_get_predict", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && output, -1, "bridge or output is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -558,11 +660,21 @@ int jepa_snn_get_activations(
     float* activations,
     uint32_t num_dims
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_get_activat", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && activations, -1, "bridge or activations is NULL");
     NIMCP_CHECK_THROW(num_dims > 0 && num_dims <= bridge->config.num_dimensions, -1, "invalid num_dims");
 
     nimcp_mutex_lock(bridge->base.mutex);
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            jepa_snn_bridge_heartbeat("jepa_snn_bri_loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         activations[d] = bridge->dim_states[d].activation;
     }
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -575,6 +687,10 @@ bool jepa_snn_check_prediction_error(
     float* error_level
 ) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_check_predi", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_prediction.prediction_error;
@@ -593,6 +709,10 @@ bool jepa_snn_check_confidence(
 ) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_check_confi", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_prediction.confidence_magnitude;
     if (confidence_level) {
@@ -610,10 +730,20 @@ bool jepa_snn_check_state_change(
 ) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_check_state", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     /* Calculate magnitude from prev_state differences */
     float mag = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            jepa_snn_bridge_heartbeat("jepa_snn_bri_loop",
+                             (float)(d + 1) / (float)bridge->config.num_dimensions);
+        }
+
         float diff = bridge->dim_states[d].activation - bridge->prev_state[d];
         mag += diff * diff;
     }
@@ -637,6 +767,10 @@ int jepa_snn_get_dim_state(
     uint32_t dim,
     jepa_dim_state_t* state
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_get_dim_sta", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, -1, "bridge or state is NULL");
     NIMCP_CHECK_THROW(dim < bridge->config.num_dimensions, -1, "dim out of range");
 
@@ -651,6 +785,10 @@ int jepa_snn_get_state(
     jepa_snn_bridge_t* bridge,
     jepa_snn_bridge_state_t* state
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_get_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, -1, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -664,6 +802,12 @@ int jepa_snn_get_state(
     state->active_dimensions = 0;
     state->total_activity = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            jepa_snn_bridge_heartbeat("jepa_snn_bri_loop",
+                             (float)(d + 1) / (float)bridge->config.num_dimensions);
+        }
+
         if (bridge->dim_states[d].activation > 0.1f) {
             state->active_dimensions++;
         }
@@ -675,6 +819,10 @@ int jepa_snn_get_state(
 }
 
 int jepa_snn_get_stats(jepa_snn_bridge_t* bridge, jepa_snn_stats_t* stats) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, -1, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -685,6 +833,10 @@ int jepa_snn_get_stats(jepa_snn_bridge_t* bridge, jepa_snn_stats_t* stats) {
 }
 
 int jepa_snn_reset_stats(jepa_snn_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_reset_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -697,6 +849,10 @@ int jepa_snn_reset_stats(jepa_snn_bridge_t* bridge) {
 float jepa_snn_get_prediction_confidence(jepa_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_get_predict", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float confidence = bridge->last_prediction.prediction_confidence;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -707,9 +863,19 @@ float jepa_snn_get_prediction_confidence(jepa_snn_bridge_t* bridge) {
 float jepa_snn_get_total_activity(jepa_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_get_total_a", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float total = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            jepa_snn_bridge_heartbeat("jepa_snn_bri_loop",
+                             (float)(d + 1) / (float)bridge->config.num_dimensions);
+        }
+
         total += bridge->dim_states[d].activation;
     }
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -726,6 +892,10 @@ int jepa_snn_register_error_callback(
     jepa_snn_error_callback_t callback,
     void* user_data
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_register_er", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -741,6 +911,10 @@ int jepa_snn_register_prediction_callback(
     jepa_snn_prediction_callback_t callback,
     void* user_data
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_register_pr", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -756,6 +930,10 @@ int jepa_snn_register_confidence_callback(
     jepa_snn_confidence_callback_t callback,
     void* user_data
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_register_co", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -771,6 +949,10 @@ int jepa_snn_register_confidence_callback(
 //=============================================================================
 
 int jepa_snn_bio_async_connect(jepa_snn_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_bio_async_c", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
     NIMCP_CHECK_THROW(bridge->config.enable_bio_async, -1, "bio_async not enabled");
 
@@ -783,6 +965,10 @@ int jepa_snn_bio_async_connect(jepa_snn_bridge_t* bridge) {
 }
 
 int jepa_snn_bio_async_disconnect(jepa_snn_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_bio_async_d", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -794,6 +980,10 @@ int jepa_snn_bio_async_disconnect(jepa_snn_bridge_t* bridge) {
 
 bool jepa_snn_is_bio_async_connected(jepa_snn_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_is_bio_asyn", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;

@@ -42,7 +42,7 @@ static nimcp_health_agent_t* g_gt_spatial_health_agent = NULL;
  * @brief Set health agent for gt_spatial heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void gt_spatial_set_health_agent(nimcp_health_agent_t* agent) {
+void gt_spatial_set_health_agent(nimcp_health_agent_t* agent) {
     g_gt_spatial_health_agent = agent;
 }
 
@@ -181,12 +181,24 @@ static nimcp_error_t build_complete_graph(nimcp_spatial_game_t ctx) {
     uint32_t n = ctx->num_nodes;
 
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         ctx->node_degree[i] = n - 1;
         ctx->node_neighbors[i] = nimcp_calloc(n - 1, sizeof(uint32_t));
         if (!ctx->node_neighbors[i]) return NIMCP_GT_ERROR_NO_MEMORY;
 
         uint32_t idx = 0;
         for (uint32_t j = 0; j < n; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && n > 256) {
+                gt_spatial_heartbeat("gt_spatial_loop",
+                                 (float)(j + 1) / (float)n);
+            }
+
             if (j != i) {
                 ctx->node_neighbors[i][idx++] = j;
             }
@@ -205,6 +217,12 @@ static nimcp_error_t build_grid_2d(nimcp_spatial_game_t ctx) {
     bool periodic = (ctx->config.boundary == NIMCP_BOUNDARY_PERIODIC);
 
     for (uint32_t i = 0; i < ctx->num_nodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->num_nodes > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(i + 1) / (float)ctx->num_nodes);
+        }
+
         uint32_t x = i % w;
         uint32_t y = i / w;
 
@@ -252,6 +270,12 @@ static nimcp_error_t build_grid_2d_moore(nimcp_spatial_game_t ctx) {
     bool periodic = (ctx->config.boundary == NIMCP_BOUNDARY_PERIODIC);
 
     for (uint32_t i = 0; i < ctx->num_nodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->num_nodes > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(i + 1) / (float)ctx->num_nodes);
+        }
+
         uint32_t x = i % w;
         uint32_t y = i / w;
 
@@ -263,6 +287,12 @@ static nimcp_error_t build_grid_2d_moore(nimcp_spatial_game_t ctx) {
         int dy[] = {-1, -1, -1, 0, 0, 1, 1, 1};
 
         for (int d = 0; d < 8; d++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((d & 0xFF) == 0 && 8 > 256) {
+                gt_spatial_heartbeat("gt_spatial_loop",
+                                 (float)(d + 1) / (float)8);
+            }
+
             int nx = (int)x + dx[d];
             int ny = (int)y + dy[d];
 
@@ -295,6 +325,12 @@ static nimcp_error_t build_ring(nimcp_spatial_game_t ctx) {
     uint32_t n = ctx->num_nodes;
 
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         ctx->node_degree[i] = 2;
         ctx->node_neighbors[i] = nimcp_calloc(2, sizeof(uint32_t));
         if (!ctx->node_neighbors[i]) return NIMCP_GT_ERROR_NO_MEMORY;
@@ -315,6 +351,12 @@ static nimcp_error_t build_random_graph(nimcp_spatial_game_t ctx) {
 
     // First pass: count degrees
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         uint32_t count = 0;
         for (uint32_t j = i + 1; j < n; j++) {
             if (random_float(&ctx->rng_state) < p) {
@@ -341,6 +383,12 @@ static nimcp_error_t build_random_graph(nimcp_spatial_game_t ctx) {
     if (expected_degree < 4) expected_degree = 4;
 
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         temp_cap[i] = expected_degree * 2;
         temp_adj[i] = nimcp_calloc(temp_cap[i], sizeof(uint32_t));
         if (!temp_adj[i]) {
@@ -357,6 +405,12 @@ static nimcp_error_t build_random_graph(nimcp_spatial_game_t ctx) {
 
     // Generate edges
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                                 (float)(i + 1) / (float)n);
+        }
+
         for (uint32_t j = i + 1; j < n; j++) {
             if (random_float(&ctx->rng_state) < p) {
                 // Add edge i-j
@@ -382,6 +436,12 @@ static nimcp_error_t build_random_graph(nimcp_spatial_game_t ctx) {
 
     // Copy to final storage
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         ctx->node_degree[i] = temp_count[i];
         if (temp_count[i] > 0) {
             ctx->node_neighbors[i] = nimcp_calloc(temp_count[i], sizeof(uint32_t));
@@ -400,6 +460,12 @@ static nimcp_error_t build_random_graph(nimcp_spatial_game_t ctx) {
 
 cleanup_random:
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         nimcp_free(temp_adj[i]);
     }
     nimcp_free(temp_adj);
@@ -436,6 +502,12 @@ static nimcp_error_t build_scale_free(nimcp_spatial_game_t ctx) {
 
     // Initialize all nodes
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         temp_cap[i] = m * 4;
         temp_adj[i] = nimcp_calloc(temp_cap[i], sizeof(uint32_t));
         if (!temp_adj[i]) {
@@ -450,6 +522,12 @@ static nimcp_error_t build_scale_free(nimcp_spatial_game_t ctx) {
 
     // Start with complete graph of m0 nodes
     for (uint32_t i = 0; i < m0 && i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                                 (float)(i + 1) / (float)n);
+        }
+
         for (uint32_t j = i + 1; j < m0 && j < n; j++) {
             // Add edge i-j
             if (temp_count[i] >= temp_cap[i]) {
@@ -476,6 +554,12 @@ static nimcp_error_t build_scale_free(nimcp_spatial_game_t ctx) {
         // Compute cumulative degree sum
         uint32_t total_degree = 0;
         for (uint32_t i = 0; i < new_node; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && new_node > 256) {
+                gt_spatial_heartbeat("gt_spatial_loop",
+                                 (float)(i + 1) / (float)new_node);
+            }
+
             total_degree += temp_count[i];
             degree_sum_arr[i] = total_degree;
         }
@@ -558,6 +642,12 @@ static nimcp_error_t build_scale_free(nimcp_spatial_game_t ctx) {
 
     // Copy to final storage
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         ctx->node_degree[i] = temp_count[i];
         if (temp_count[i] > 0) {
             ctx->node_neighbors[i] = nimcp_calloc(temp_count[i], sizeof(uint32_t));
@@ -575,6 +665,12 @@ static nimcp_error_t build_scale_free(nimcp_spatial_game_t ctx) {
 
 cleanup_sf:
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         nimcp_free(temp_adj[i]);
     }
     nimcp_free(temp_adj);
@@ -605,6 +701,12 @@ static nimcp_error_t build_small_world(nimcp_spatial_game_t ctx) {
     }
 
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         temp_cap[i] = k * 2;
         temp_adj[i] = nimcp_calloc(temp_cap[i], sizeof(uint32_t));
         if (!temp_adj[i]) {
@@ -618,6 +720,12 @@ static nimcp_error_t build_small_world(nimcp_spatial_game_t ctx) {
 
     // Build initial ring lattice
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                                 (float)(i + 1) / (float)n);
+        }
+
         for (uint32_t j = 1; j <= k / 2; j++) {
             uint32_t neighbor = (i + j) % n;
 
@@ -628,6 +736,12 @@ static nimcp_error_t build_small_world(nimcp_spatial_game_t ctx) {
 
     // Rewire edges with probability p
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         for (uint32_t e = 0; e < temp_count[i]; e++) {
             uint32_t j = temp_adj[i][e];
             if (j <= i) continue;  // Only process each edge once
@@ -677,6 +791,12 @@ static nimcp_error_t build_small_world(nimcp_spatial_game_t ctx) {
 
     // Copy to final storage
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         ctx->node_degree[i] = temp_count[i];
         if (temp_count[i] > 0) {
             ctx->node_neighbors[i] = nimcp_calloc(temp_count[i], sizeof(uint32_t));
@@ -693,6 +813,12 @@ static nimcp_error_t build_small_world(nimcp_spatial_game_t ctx) {
 
 cleanup_sw:
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         nimcp_free(temp_adj[i]);
     }
     nimcp_free(temp_adj);
@@ -746,6 +872,12 @@ static float compute_node_fitness(nimcp_spatial_game_t ctx, uint32_t node) {
     if (degree == 0) return 0.0f;
 
     for (uint32_t i = 0; i < degree; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && degree > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(i + 1) / (float)degree);
+        }
+
         uint32_t neighbor = ctx->node_neighbors[node][i];
         uint32_t neighbor_strategy = ctx->node_strategy[neighbor];
 
@@ -763,6 +895,12 @@ static float compute_node_fitness(nimcp_spatial_game_t ctx, uint32_t node) {
  */
 static void update_all_fitness(nimcp_spatial_game_t ctx) {
     for (uint32_t i = 0; i < ctx->num_nodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->num_nodes > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(i + 1) / (float)ctx->num_nodes);
+        }
+
         ctx->node_fitness[i] = compute_node_fitness(ctx, i);
     }
 }
@@ -774,10 +912,22 @@ static void compute_frequencies(nimcp_spatial_game_t ctx) {
     memset(ctx->frequencies, 0, ctx->config.num_strategies * sizeof(float));
 
     for (uint32_t i = 0; i < ctx->num_nodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->num_nodes > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(i + 1) / (float)ctx->num_nodes);
+        }
+
         ctx->frequencies[ctx->node_strategy[i]] += 1.0f;
     }
 
     for (uint32_t s = 0; s < ctx->config.num_strategies; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && ctx->config.num_strategies > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(s + 1) / (float)ctx->config.num_strategies);
+        }
+
         ctx->frequencies[s] /= (float)ctx->num_nodes;
     }
 }
@@ -792,6 +942,12 @@ static void compute_fitness_per_strategy(nimcp_spatial_game_t ctx) {
     memset(ctx->fitness_per_strategy, 0, ctx->config.num_strategies * sizeof(float));
 
     for (uint32_t i = 0; i < ctx->num_nodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->num_nodes > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(i + 1) / (float)ctx->num_nodes);
+        }
+
         uint32_t s = ctx->node_strategy[i];
         ctx->fitness_per_strategy[s] += ctx->node_fitness[i];
         count[s]++;
@@ -799,6 +955,12 @@ static void compute_fitness_per_strategy(nimcp_spatial_game_t ctx) {
 
     ctx->avg_fitness = 0.0f;
     for (uint32_t s = 0; s < ctx->config.num_strategies; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && ctx->config.num_strategies > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(s + 1) / (float)ctx->config.num_strategies);
+        }
+
         if (count[s] > 0) {
             ctx->fitness_per_strategy[s] /= (float)count[s];
         }
@@ -838,6 +1000,12 @@ static uint32_t best_response_update(nimcp_spatial_game_t ctx, uint32_t node) {
     float best_payoff = -FLT_MAX;
 
     for (uint32_t s = 0; s < ctx->config.num_strategies; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && ctx->config.num_strategies > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(s + 1) / (float)ctx->config.num_strategies);
+        }
+
         float payoff = 0.0f;
 
         for (uint32_t i = 0; i < ctx->node_degree[node]; i++) {
@@ -963,6 +1131,10 @@ static uint32_t get_new_strategy(nimcp_spatial_game_t ctx, uint32_t node) {
 //=============================================================================
 
 nimcp_spatial_config_t nimcp_spatial_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_spatial_default_conf", 0.0f);
+
+
     nimcp_spatial_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -1005,6 +1177,10 @@ nimcp_spatial_game_t nimcp_spatial_create(
     const nimcp_spatial_config_t* config,
     const float* payoff_matrix
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_spatial_create", 0.0f);
+
+
     NIMCP_API_CHECK_NULL_RET_NULL(config, "NULL config in nimcp_spatial_create");
     NIMCP_API_CHECK_NULL_RET_NULL(payoff_matrix, "NULL payoff_matrix in nimcp_spatial_create");
 
@@ -1086,11 +1262,21 @@ nimcp_spatial_game_t nimcp_spatial_create(
 void nimcp_spatial_destroy(nimcp_spatial_game_t ctx) {
     if (!ctx) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_spatial_destroy", 0.0f);
+
+
     nimcp_platform_mutex_destroy(&ctx->mutex);
 
     // Free network
     if (ctx->node_neighbors) {
         for (uint32_t i = 0; i < ctx->num_nodes; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && ctx->num_nodes > 256) {
+                gt_spatial_heartbeat("gt_spatial_loop",
+                                 (float)(i + 1) / (float)ctx->num_nodes);
+            }
+
             nimcp_free(ctx->node_neighbors[i]);
         }
         nimcp_free(ctx->node_neighbors);
@@ -1099,6 +1285,12 @@ void nimcp_spatial_destroy(nimcp_spatial_game_t ctx) {
 
     if (ctx->edge_weights) {
         for (uint32_t i = 0; i < ctx->num_nodes; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && ctx->num_nodes > 256) {
+                gt_spatial_heartbeat("gt_spatial_loop",
+                                 (float)(i + 1) / (float)ctx->num_nodes);
+            }
+
             nimcp_free(ctx->edge_weights[i]);
         }
         nimcp_free(ctx->edge_weights);
@@ -1126,6 +1318,10 @@ nimcp_error_t nimcp_spatial_set_topology(
 ) {
     if (!ctx) return NIMCP_GT_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_spatial_set_topology", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
 
     if (ctx->state == NIMCP_SPATIAL_STATE_RUNNING) {
@@ -1136,6 +1332,12 @@ nimcp_error_t nimcp_spatial_set_topology(
     // Free existing network
     if (ctx->node_neighbors) {
         for (uint32_t i = 0; i < ctx->num_nodes; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && ctx->num_nodes > 256) {
+                gt_spatial_heartbeat("gt_spatial_loop",
+                                 (float)(i + 1) / (float)ctx->num_nodes);
+            }
+
             nimcp_free(ctx->node_neighbors[i]);
         }
         nimcp_free(ctx->node_neighbors);
@@ -1178,6 +1380,10 @@ nimcp_error_t nimcp_spatial_set_custom_network(
 ) {
     if (!ctx || !adjacency) return NIMCP_GT_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_spatial_set_custom_n", 0.0f);
+
+
     if (num_nodes > NIMCP_SPATIAL_MAX_NODES) {
         return NIMCP_SPATIAL_ERROR_NETWORK_TOO_LARGE;
     }
@@ -1192,6 +1398,12 @@ nimcp_error_t nimcp_spatial_set_custom_network(
     // Free existing network
     if (ctx->node_neighbors) {
         for (uint32_t i = 0; i < ctx->num_nodes; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && ctx->num_nodes > 256) {
+                gt_spatial_heartbeat("gt_spatial_loop",
+                                 (float)(i + 1) / (float)ctx->num_nodes);
+            }
+
             nimcp_free(ctx->node_neighbors[i]);
         }
         nimcp_free(ctx->node_neighbors);
@@ -1212,8 +1424,20 @@ nimcp_error_t nimcp_spatial_set_custom_network(
     }
 
     for (uint32_t i = 0; i < num_nodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_nodes > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(i + 1) / (float)num_nodes);
+        }
+
         uint32_t degree = 0;
         for (uint32_t j = 0; j < num_nodes; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && num_nodes > 256) {
+                gt_spatial_heartbeat("gt_spatial_loop",
+                                 (float)(j + 1) / (float)num_nodes);
+            }
+
             if (adjacency[i * num_nodes + j] != 0.0f) {
                 degree++;
             }
@@ -1229,6 +1453,12 @@ nimcp_error_t nimcp_spatial_set_custom_network(
 
             uint32_t idx = 0;
             for (uint32_t j = 0; j < num_nodes; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && num_nodes > 256) {
+                    gt_spatial_heartbeat("gt_spatial_loop",
+                                     (float)(j + 1) / (float)num_nodes);
+                }
+
                 if (adjacency[i * num_nodes + j] != 0.0f) {
                     ctx->node_neighbors[i][idx++] = j;
                 }
@@ -1264,6 +1494,10 @@ nimcp_error_t nimcp_spatial_get_network(
 ) {
     if (!ctx || !network) return NIMCP_GT_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_spatial_get_network", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
 
     memset(network, 0, sizeof(nimcp_spatial_network_t));
@@ -1281,6 +1515,12 @@ nimcp_error_t nimcp_spatial_get_network(
     }
 
     for (uint32_t i = 0; i < ctx->num_nodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->num_nodes > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(i + 1) / (float)ctx->num_nodes);
+        }
+
         network->degree[i] = ctx->node_degree[i];
         if (ctx->node_degree[i] > 0) {
             network->neighbors[i] = nimcp_calloc(ctx->node_degree[i], sizeof(uint32_t));
@@ -1301,14 +1541,30 @@ nimcp_error_t nimcp_spatial_get_network(
 void nimcp_spatial_network_destroy(nimcp_spatial_network_t* network) {
     if (!network) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_spatial_network_dest", 0.0f);
+
+
     if (network->neighbors) {
         for (uint32_t i = 0; i < network->num_nodes; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && network->num_nodes > 256) {
+                gt_spatial_heartbeat("gt_spatial_loop",
+                                 (float)(i + 1) / (float)network->num_nodes);
+            }
+
             nimcp_free(network->neighbors[i]);
         }
         nimcp_free(network->neighbors);
     }
     if (network->weights) {
         for (uint32_t i = 0; i < network->num_nodes; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && network->num_nodes > 256) {
+                gt_spatial_heartbeat("gt_spatial_loop",
+                                 (float)(i + 1) / (float)network->num_nodes);
+            }
+
             nimcp_free(network->weights[i]);
         }
         nimcp_free(network->weights);
@@ -1328,6 +1584,10 @@ nimcp_error_t nimcp_spatial_initialize_random(
 ) {
     if (!ctx) return NIMCP_GT_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_spatial_initialize_r", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
 
     // Validate or create uniform distribution
@@ -1343,6 +1603,12 @@ nimcp_error_t nimcp_spatial_initialize_random(
         // Uniform distribution
         float p = 1.0f / (float)ctx->config.num_strategies;
         for (uint32_t s = 0; s < ctx->config.num_strategies; s++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((s & 0xFF) == 0 && ctx->config.num_strategies > 256) {
+                gt_spatial_heartbeat("gt_spatial_loop",
+                                 (float)(s + 1) / (float)ctx->config.num_strategies);
+            }
+
             probs[s] = p;
         }
     }
@@ -1354,10 +1620,22 @@ nimcp_error_t nimcp_spatial_initialize_random(
 
     // Assign strategies
     for (uint32_t i = 0; i < ctx->num_nodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->num_nodes > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(i + 1) / (float)ctx->num_nodes);
+        }
+
         float r = random_float(&ctx->rng_state);
         uint32_t strategy = 0;
 
         for (uint32_t s = 0; s < ctx->config.num_strategies; s++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((s & 0xFF) == 0 && ctx->config.num_strategies > 256) {
+                gt_spatial_heartbeat("gt_spatial_loop",
+                                 (float)(s + 1) / (float)ctx->config.num_strategies);
+            }
+
             if (r < probs[s]) {
                 strategy = s;
                 break;
@@ -1390,6 +1668,10 @@ nimcp_error_t nimcp_spatial_initialize_cluster(
 ) {
     if (!ctx) return NIMCP_GT_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_spatial_initialize_c", 0.0f);
+
+
     if (strategy >= ctx->config.num_strategies) {
         return NIMCP_SPATIAL_ERROR_INVALID_STRATEGY;
     }
@@ -1408,6 +1690,12 @@ nimcp_error_t nimcp_spatial_initialize_cluster(
         uint32_t cy = center / ctx->config.grid_width;
 
         for (uint32_t i = 0; i < ctx->num_nodes; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && ctx->num_nodes > 256) {
+                gt_spatial_heartbeat("gt_spatial_loop",
+                                 (float)(i + 1) / (float)ctx->num_nodes);
+            }
+
             uint32_t x = i % ctx->config.grid_width;
             uint32_t y = i / ctx->config.grid_width;
 
@@ -1477,6 +1765,10 @@ nimcp_error_t nimcp_spatial_set_node_strategy(
 ) {
     if (!ctx) return NIMCP_GT_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_spatial_set_node_str", 0.0f);
+
+
     if (node_id >= ctx->num_nodes) {
         return NIMCP_SPATIAL_ERROR_NODE_OUT_OF_BOUNDS;
     }
@@ -1498,6 +1790,10 @@ nimcp_error_t nimcp_spatial_set_node_strategy(
 
 nimcp_error_t nimcp_spatial_step(nimcp_spatial_game_t ctx) {
     if (!ctx) return NIMCP_GT_ERROR_NULL_POINTER;
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_spatial_step", 0.0f);
+
 
     nimcp_platform_mutex_lock(&ctx->mutex);
 
@@ -1533,10 +1829,22 @@ nimcp_error_t nimcp_spatial_step(nimcp_spatial_game_t ctx) {
         }
 
         for (uint32_t i = 0; i < ctx->num_nodes; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && ctx->num_nodes > 256) {
+                gt_spatial_heartbeat("gt_spatial_loop",
+                                 (float)(i + 1) / (float)ctx->num_nodes);
+            }
+
             float r = random_float(&ctx->rng_state);
             uint32_t new_strategy = 0;
 
             for (uint32_t s = 0; s < ctx->config.num_strategies; s++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((s & 0xFF) == 0 && ctx->config.num_strategies > 256) {
+                    gt_spatial_heartbeat("gt_spatial_loop",
+                                     (float)(s + 1) / (float)ctx->config.num_strategies);
+                }
+
                 if (r < cumulative[s]) {
                     new_strategy = s;
                     break;
@@ -1553,10 +1861,22 @@ nimcp_error_t nimcp_spatial_step(nimcp_spatial_game_t ctx) {
         if (ctx->config.synchronous_update) {
             // Synchronous: compute all next states, then update
             for (uint32_t i = 0; i < ctx->num_nodes; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && ctx->num_nodes > 256) {
+                    gt_spatial_heartbeat("gt_spatial_loop",
+                                     (float)(i + 1) / (float)ctx->num_nodes);
+                }
+
                 ctx->node_strategy_next[i] = get_new_strategy(ctx, i);
             }
 
             for (uint32_t i = 0; i < ctx->num_nodes; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && ctx->num_nodes > 256) {
+                    gt_spatial_heartbeat("gt_spatial_loop",
+                                     (float)(i + 1) / (float)ctx->num_nodes);
+                }
+
                 if (ctx->node_strategy_next[i] != ctx->node_strategy[i]) {
                     ctx->strategy_switches++;
                 }
@@ -1604,6 +1924,10 @@ nimcp_error_t nimcp_spatial_run(
 ) {
     if (!ctx) return NIMCP_GT_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_spatial_run", 0.0f);
+
+
     uint32_t max_steps = num_steps > 0 ? num_steps : ctx->config.max_steps;
 
     // Store previous frequencies for convergence check
@@ -1617,6 +1941,12 @@ nimcp_error_t nimcp_spatial_run(
     uint32_t convergence_count = 0;
 
     for (uint32_t step = 0; step < max_steps; step++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((step & 0xFF) == 0 && max_steps > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(step + 1) / (float)max_steps);
+        }
+
         nimcp_error_t err = nimcp_spatial_step(ctx);
         if (err != NIMCP_SUCCESS) {
             nimcp_free(prev_freq);
@@ -1629,6 +1959,12 @@ nimcp_error_t nimcp_spatial_run(
 
             float max_change = 0.0f;
             for (uint32_t s = 0; s < ctx->config.num_strategies; s++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((s & 0xFF) == 0 && ctx->config.num_strategies > 256) {
+                    gt_spatial_heartbeat("gt_spatial_loop",
+                                     (float)(s + 1) / (float)ctx->config.num_strategies);
+                }
+
                 float change = fabsf(ctx->frequencies[s] - prev_freq[s]);
                 if (change > max_change) max_change = change;
                 prev_freq[s] = ctx->frequencies[s];
@@ -1668,6 +2004,12 @@ nimcp_error_t nimcp_spatial_run(
         result->dominance_ratio = 0.0f;
 
         for (uint32_t s = 0; s < ctx->config.num_strategies; s++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((s & 0xFF) == 0 && ctx->config.num_strategies > 256) {
+                gt_spatial_heartbeat("gt_spatial_loop",
+                                 (float)(s + 1) / (float)ctx->config.num_strategies);
+            }
+
             if (ctx->frequencies[s] > result->dominance_ratio) {
                 result->dominance_ratio = ctx->frequencies[s];
                 result->dominant_strategy = (int32_t)s;
@@ -1707,6 +2049,10 @@ nimcp_error_t nimcp_spatial_run(
 nimcp_error_t nimcp_spatial_stop(nimcp_spatial_game_t ctx) {
     if (!ctx) return NIMCP_GT_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_spatial_stop", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
     ctx->state = NIMCP_SPATIAL_STATE_STOPPED;
     nimcp_platform_mutex_unlock(&ctx->mutex);
@@ -1716,6 +2062,10 @@ nimcp_error_t nimcp_spatial_stop(nimcp_spatial_game_t ctx) {
 
 nimcp_error_t nimcp_spatial_reset(nimcp_spatial_game_t ctx) {
     if (!ctx) return NIMCP_GT_ERROR_NULL_POINTER;
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_spatial_reset", 0.0f);
+
 
     nimcp_platform_mutex_lock(&ctx->mutex);
 
@@ -1743,6 +2093,10 @@ nimcp_error_t nimcp_spatial_get_frequencies(
 ) {
     if (!ctx || !frequencies) return NIMCP_GT_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_spatial_get_frequenc", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
     memcpy(frequencies, ctx->frequencies, ctx->config.num_strategies * sizeof(float));
     nimcp_platform_mutex_unlock(&ctx->mutex);
@@ -1755,6 +2109,10 @@ int32_t nimcp_spatial_get_node_strategy(
     uint32_t node_id
 ) {
     if (!ctx || node_id >= ctx->num_nodes) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_spatial_get_node_str", 0.0f);
+
 
     nimcp_platform_mutex_lock(&ctx->mutex);
     int32_t strategy = (int32_t)ctx->node_strategy[node_id];
@@ -1769,6 +2127,10 @@ float nimcp_spatial_get_node_fitness(
 ) {
     if (!ctx || node_id >= ctx->num_nodes) return NAN;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_spatial_get_node_fit", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
     float fitness = ctx->node_fitness[node_id];
     nimcp_platform_mutex_unlock(&ctx->mutex);
@@ -1778,11 +2140,19 @@ float nimcp_spatial_get_node_fitness(
 
 nimcp_spatial_state_t nimcp_spatial_get_state(const nimcp_spatial_game_t ctx) {
     if (!ctx) return NIMCP_SPATIAL_STATE_UNINITIALIZED;
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_spatial_get_state", 0.0f);
+
+
     return ctx->state;
 }
 
 uint32_t nimcp_spatial_get_step(const nimcp_spatial_game_t ctx) {
     if (!ctx) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_spatial_get_step", 0.0f);
+
+
     return ctx->current_step;
 }
 
@@ -1791,6 +2161,10 @@ nimcp_error_t nimcp_spatial_get_population(
     nimcp_population_t* population
 ) {
     if (!ctx || !population) return NIMCP_GT_ERROR_NULL_POINTER;
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_spatial_get_populati", 0.0f);
+
 
     nimcp_platform_mutex_lock(&ctx->mutex);
 
@@ -1839,6 +2213,12 @@ static bool is_ess_unlocked(
     float Aii = A[strategy * n + strategy];
 
     for (uint32_t j = 0; j < n; j++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((j & 0xFF) == 0 && n > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(j + 1) / (float)n);
+        }
+
         if (j == strategy) continue;
 
         float Aji = A[j * n + strategy];
@@ -1863,6 +2243,10 @@ bool nimcp_spatial_is_ess(
 ) {
     if (!ctx || strategy >= ctx->config.num_strategies) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_spatial_is_ess", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
     bool result = is_ess_unlocked(ctx, strategy);
     nimcp_platform_mutex_unlock(&ctx->mutex);
@@ -1875,6 +2259,10 @@ float nimcp_spatial_invasion_fitness(
     uint32_t resident_strategy
 ) {
     if (!ctx) return NAN;
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_spatial_invasion_fit", 0.0f);
+
 
     if (mutant_strategy >= ctx->config.num_strategies ||
         resident_strategy >= ctx->config.num_strategies) {
@@ -1902,6 +2290,10 @@ nimcp_error_t nimcp_spatial_analyze_invasion(
     nimcp_invasion_result_t* result
 ) {
     if (!ctx || !result) return NIMCP_GT_ERROR_NULL_POINTER;
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_spatial_analyze_inva", 0.0f);
+
 
     if (mutant_strategy >= ctx->config.num_strategies ||
         resident_strategy >= ctx->config.num_strategies) {
@@ -1951,6 +2343,10 @@ nimcp_error_t nimcp_spatial_find_equilibrium(
     if (!ctx) return NIMCP_GT_ERROR_NULL_POINTER;
 
     // Initialize with uniform distribution
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_spatial_find_equilib", 0.0f);
+
+
     nimcp_error_t err = nimcp_spatial_initialize_random(ctx, NULL);
     if (err != NIMCP_SUCCESS) return err;
 
@@ -1980,6 +2376,10 @@ nimcp_error_t nimcp_replicator_dynamics(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_replicator_dynamics", 0.0f);
+
+
     if (num_strategies == 0 || num_strategies > NIMCP_SPATIAL_MAX_STRATEGIES) {
         return NIMCP_GT_ERROR_INVALID_PARAMETER;
     }
@@ -1989,8 +2389,20 @@ nimcp_error_t nimcp_replicator_dynamics(
     float avg_fitness = 0.0f;
 
     for (uint32_t i = 0; i < num_strategies; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_strategies > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(i + 1) / (float)num_strategies);
+        }
+
         fitness[i] = 0.0f;
         for (uint32_t j = 0; j < num_strategies; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && num_strategies > 256) {
+                gt_spatial_heartbeat("gt_spatial_loop",
+                                 (float)(j + 1) / (float)num_strategies);
+            }
+
             fitness[i] += frequencies[j] * payoff_matrix[i * num_strategies + j];
         }
         avg_fitness += frequencies[i] * fitness[i];
@@ -1999,6 +2411,12 @@ nimcp_error_t nimcp_replicator_dynamics(
     // Replicator equation: dx_i/dt = x_i * (f_i - avg_f)
     float total = 0.0f;
     for (uint32_t i = 0; i < num_strategies; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_strategies > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(i + 1) / (float)num_strategies);
+        }
+
         float growth = frequencies[i] * (fitness[i] - avg_fitness);
         new_frequencies[i] = frequencies[i] + dt * growth;
 
@@ -2013,6 +2431,12 @@ nimcp_error_t nimcp_replicator_dynamics(
     // Normalize to sum to 1
     if (total > 0.0f) {
         for (uint32_t i = 0; i < num_strategies; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_strategies > 256) {
+                gt_spatial_heartbeat("gt_spatial_loop",
+                                 (float)(i + 1) / (float)num_strategies);
+            }
+
             new_frequencies[i] /= total;
         }
     }
@@ -2030,9 +2454,25 @@ nimcp_error_t nimcp_compute_strategy_fitness(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_compute_strategy_fit", 0.0f);
+
+
     for (uint32_t i = 0; i < num_strategies; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_strategies > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(i + 1) / (float)num_strategies);
+        }
+
         fitness[i] = 0.0f;
         for (uint32_t j = 0; j < num_strategies; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && num_strategies > 256) {
+                gt_spatial_heartbeat("gt_spatial_loop",
+                                 (float)(j + 1) / (float)num_strategies);
+            }
+
             fitness[i] += frequencies[j] * payoff_matrix[i * num_strategies + j];
         }
     }
@@ -2057,8 +2497,18 @@ const char* nimcp_update_rule_name(nimcp_update_rule_t rule) {
 float nimcp_compute_entropy(const float* frequencies, uint32_t n) {
     if (!frequencies || n == 0) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_compute_entropy", 0.0f);
+
+
     float entropy = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            gt_spatial_heartbeat("gt_spatial_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         if (frequencies[i] > MIN_FREQUENCY) {
             entropy -= frequencies[i] * log2f(frequencies[i]);
         }
@@ -2069,6 +2519,10 @@ float nimcp_compute_entropy(const float* frequencies, uint32_t n) {
 
 void nimcp_evolutionary_result_cleanup(nimcp_evolutionary_result_t* result) {
     if (!result) return;
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_evolutionary_result_", 0.0f);
+
+
     nimcp_free(result->frequency_history);
     result->frequency_history = NULL;
     result->history_length = 0;
@@ -2076,6 +2530,10 @@ void nimcp_evolutionary_result_cleanup(nimcp_evolutionary_result_t* result) {
 
 void nimcp_population_cleanup(nimcp_population_t* population) {
     if (!population) return;
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_population_cleanup", 0.0f);
+
+
     nimcp_free(population->frequencies);
     nimcp_free(population->fitness);
     population->frequencies = NULL;
@@ -2089,9 +2547,19 @@ void nimcp_population_cleanup(nimcp_population_t* population) {
 int spatial_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_spatial_heartbeat("gt_spatial_spatial_query_self_k", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Spatial_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                gt_spatial_heartbeat("gt_spatial_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG(LOG_MODULE, "Spatial self-knowledge: %s", self->observations[i]);
         }
     }

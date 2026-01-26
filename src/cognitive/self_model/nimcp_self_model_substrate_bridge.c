@@ -30,7 +30,7 @@ static nimcp_health_agent_t* g_self_model_substrate_bridge_health_agent = NULL;
  * @brief Set health agent for self_model_substrate_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void self_model_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void self_model_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_self_model_substrate_bridge_health_agent = agent;
 }
 
@@ -56,6 +56,10 @@ struct self_model_substrate_bridge {
 };
 
 self_model_substrate_config_t self_model_substrate_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    self_model_substrate_bridge_heartbeat("self_model_s_self_model_substrate", 0.0f);
+
+
     self_model_substrate_config_t cfg = { .enable_atp_modulation = true, .enable_fatigue_modulation = true,
         .enable_bio_async = false, .atp_sensitivity = 1.0f, .fatigue_sensitivity = 1.0f, .min_capacity = 0.2f };
     return cfg;
@@ -69,6 +73,10 @@ self_model_substrate_bridge_t* self_model_substrate_bridge_create(void* self_mod
         return NULL;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_model_substrate_bridge_heartbeat("self_model_s_create", 0.0f);
+
+
     self_model_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(self_model_substrate_bridge_t));
     if (!bridge) {
 
@@ -90,6 +98,10 @@ self_model_substrate_bridge_t* self_model_substrate_bridge_create(void* self_mod
 
 void self_model_substrate_bridge_destroy(self_model_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    self_model_substrate_bridge_heartbeat("self_model_s_destroy", 0.0f);
+
+
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
     }
@@ -98,6 +110,10 @@ void self_model_substrate_bridge_destroy(self_model_substrate_bridge_t* bridge) 
 
 int self_model_substrate_bridge_update(self_model_substrate_bridge_t* bridge) {
     if (!bridge || !bridge->substrate) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    self_model_substrate_bridge_heartbeat("self_model_s_update", 0.0f);
+
+
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
@@ -118,12 +134,20 @@ int self_model_substrate_bridge_update(self_model_substrate_bridge_t* bridge) {
 int self_model_substrate_bridge_get_effects(const self_model_substrate_bridge_t* bridge, self_model_substrate_effects_t* effects) {
     if (!bridge || !effects) return -1;
     *effects = bridge->effects;
+    /* Phase 8: Heartbeat at operation start */
+    self_model_substrate_bridge_heartbeat("self_model_s_get_effects", 0.0f);
+
+
     return 0;
 }
 
 int self_model_substrate_bridge_apply_effects(self_model_substrate_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->bio_async_connected || !bridge->ctx) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    self_model_substrate_bridge_heartbeat("self_model_s_apply_effects", 0.0f);
+
 
     substrate_metabolic_state_t metabolic;
     float atp_level = 1.0f, fatigue_level = 0.0f;
@@ -167,6 +191,10 @@ int self_model_substrate_bridge_apply_effects(self_model_substrate_bridge_t* bri
 
 int self_model_substrate_bridge_register_bio_async(self_model_substrate_bridge_t* bridge, bio_router_t* router) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    self_model_substrate_bridge_heartbeat("self_model_s_register_bio_async", 0.0f);
+
+
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
         bridge->ctx = NULL;
@@ -195,10 +223,20 @@ int self_model_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
     /* Query our own entity from the knowledge graph */
+    /* Phase 8: Heartbeat at operation start */
+    self_model_substrate_bridge_heartbeat("self_model_s_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Self_Model_Substrate_Bridge");
     if (self) {
         /* Module now knows its own capabilities from KG */
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                self_model_substrate_bridge_heartbeat("self_model_s_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Self-model substrate bridge self-knowledge: %s", self->observations[i]);
         }
     }

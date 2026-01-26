@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_code_generation_health_agent = NULL;
  * @brief Set health agent for code_generation heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void code_generation_set_health_agent(nimcp_health_agent_t* agent) {
+void code_generation_set_health_agent(nimcp_health_agent_t* agent) {
     g_code_generation_health_agent = agent;
 }
 
@@ -161,6 +161,10 @@ static int register_code_gen_bio_handlers(code_gen_engine_t* engine);
 //=============================================================================
 
 code_gen_config_t code_gen_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    code_generation_heartbeat("code_generat_code_gen_default_con", 0.0f);
+
+
     code_gen_config_t config = {0};
     config.default_min_confidence = 0.7f;
     config.default_max_risk = 0.3f;
@@ -176,6 +180,10 @@ code_gen_config_t code_gen_default_config(void) {
 }
 
 code_gen_engine_t* code_gen_create(const code_gen_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    code_generation_heartbeat("code_generat_code_gen_create", 0.0f);
+
+
     code_gen_engine_t* engine = nimcp_calloc(1, sizeof(code_gen_engine_t));
     if (!engine) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
@@ -266,6 +274,10 @@ void code_gen_destroy(code_gen_engine_t* engine) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    code_generation_heartbeat("code_generat_code_gen_destroy", 0.0f);
+
+
     if (engine->magic != CODE_GEN_MAGIC) {
         return;
     }
@@ -301,6 +313,10 @@ bool code_gen_is_ready(const code_gen_engine_t* engine) {
     if (!engine || engine->magic != CODE_GEN_MAGIC) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    code_generation_heartbeat("code_generat_code_gen_is_ready", 0.0f);
+
+
     return engine->ready;
 }
 
@@ -319,6 +335,10 @@ int code_gen_generate_candidates(
     if (!code_gen_is_ready(engine)) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    code_generation_heartbeat("code_generat_code_gen_generate_ca", 0.0f);
+
 
     memset(result, 0, sizeof(*result));
     uint64_t start_time = get_timestamp_ms();
@@ -383,6 +403,12 @@ int code_gen_generate_candidates(
         if (code_gen_select_best_fix(engine, &result->candidates, &best) == 0) {
             result->candidates.selected_index = 0;
             for (uint32_t i = 0; i < result->candidates.count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && result->candidates.count > 256) {
+                    code_generation_heartbeat("code_generat_loop",
+                                     (float)(i + 1) / (float)result->candidates.count);
+                }
+
                 if (result->candidates.candidates[i].fix_id == best.fix_id) {
                     result->candidates.selected_index = i;
                     break;
@@ -412,10 +438,20 @@ int code_gen_select_best_fix(
     }
 
     /* Score each candidate: confidence * (1 - risk) * (1 + historical_success) */
+    /* Phase 8: Heartbeat at operation start */
+    code_generation_heartbeat("code_generat_code_gen_select_best", 0.0f);
+
+
     float best_score = -1.0f;
     uint32_t best_idx = 0;
 
     for (uint32_t i = 0; i < candidates->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && candidates->count > 256) {
+            code_generation_heartbeat("code_generat_loop",
+                             (float)(i + 1) / (float)candidates->count);
+        }
+
         const generated_fix_t* fix = &candidates->candidates[i];
         float score = fix->confidence * (1.0f - fix->risk_score);
 
@@ -452,6 +488,10 @@ int code_gen_generate_with_strategy(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    code_generation_heartbeat("code_generat_code_gen_generate_wi", 0.0f);
+
+
     code_gen_request_t request = {0};
     request.location = *location;
     request.source_code = source_code;
@@ -487,12 +527,22 @@ int code_gen_select_strategy(
     }
 
     *strategy = FIX_STRATEGY_NONE;
+    /* Phase 8: Heartbeat at operation start */
+    code_generation_heartbeat("code_generat_code_gen_select_stra", 0.0f);
+
+
     if (confidence) {
         *confidence = 0.0f;
     }
 
     /* Find in mapping */
     for (size_t i = 0; i < g_strategy_map_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && g_strategy_map_size > 256) {
+            code_generation_heartbeat("code_generat_loop",
+                             (float)(i + 1) / (float)g_strategy_map_size);
+        }
+
         if (g_strategy_map[i].error_type == error_type) {
             *strategy = g_strategy_map[i].strategies[0];
             if (confidence) {
@@ -525,6 +575,10 @@ int code_gen_get_compatible_strategies(
     if (!strategies || max_strategies == 0) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    code_generation_heartbeat("code_generat_code_gen_get_compati", 0.0f);
+
 
     uint32_t count = 0;
 
@@ -569,6 +623,10 @@ int code_gen_match_historical_pattern(
     }
 
     /* Compute epitope for current request */
+    /* Phase 8: Heartbeat at operation start */
+    code_generation_heartbeat("code_generat_code_gen_match_histo", 0.0f);
+
+
     char epitope[64];
     compute_epitope(request, epitope, sizeof(epitope));
 
@@ -579,6 +637,12 @@ int code_gen_match_historical_pattern(
     uint64_t best_id = 0;
 
     for (uint32_t i = 0; i < engine->learning_history_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && engine->learning_history_count > 256) {
+            code_generation_heartbeat("code_generat_loop",
+                             (float)(i + 1) / (float)engine->learning_history_count);
+        }
+
         const fix_history_entry_t* entry = &engine->learning_history[i];
         if (!entry->success) continue;  /* Only match successful fixes */
 
@@ -618,6 +682,10 @@ int code_gen_learn_from_outcome(
     if (!engine->config.enable_code_immune_learning) {
         return 0;  /* Learning disabled, silently succeed */
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    code_generation_heartbeat("code_generat_code_gen_learn_from_", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -662,10 +730,20 @@ float code_gen_calculate_confidence(
         return 0.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    code_generation_heartbeat("code_generat_code_gen_calculate_c", 0.0f);
+
+
     float confidence = 0.5f;  /* Base confidence */
 
     /* Strategy-based confidence */
     for (size_t i = 0; i < g_strategy_map_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && g_strategy_map_size > 256) {
+            code_generation_heartbeat("code_generat_loop",
+                             (float)(i + 1) / (float)g_strategy_map_size);
+        }
+
         for (uint32_t j = 0; j < g_strategy_map[i].strategy_count; j++) {
             if (g_strategy_map[i].strategies[j] == fix->strategy) {
                 confidence = g_strategy_map[i].base_confidences[j];
@@ -708,6 +786,10 @@ float code_gen_calculate_risk(
     if (!fix) {
         return 1.0f;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    code_generation_heartbeat("code_generat_code_gen_calculate_r", 0.0f);
+
 
     float risk = 0.2f;  /* Base risk */
 
@@ -779,6 +861,10 @@ int code_gen_load_templates(
     /* TODO: Implement file-based template loading */
     /* For now, built-in templates are sufficient */
 
+    /* Phase 8: Heartbeat at operation start */
+    code_generation_heartbeat("code_generat_code_gen_load_templa", 0.0f);
+
+
     return 0;
 }
 
@@ -791,6 +877,10 @@ int code_gen_register_template(
     if (!engine || !template_code) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    code_generation_heartbeat("code_generat_code_gen_register_te", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -831,9 +921,19 @@ int code_gen_update_status(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    code_generation_heartbeat("code_generat_code_gen_update_stat", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
 
     for (uint32_t i = 0; i < engine->fix_history_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && engine->fix_history_count > 256) {
+            code_generation_heartbeat("code_generat_loop",
+                             (float)(i + 1) / (float)engine->fix_history_count);
+        }
+
         if (engine->fix_history[i].fix_id == fix_id) {
             fix_status_t old_status = engine->fix_history[i].status;
             engine->fix_history[i].status = new_status;
@@ -870,9 +970,19 @@ const generated_fix_t* code_gen_get_fix(
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    code_generation_heartbeat("code_generat_code_gen_get_fix", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
 
     for (uint32_t i = 0; i < engine->fix_history_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && engine->fix_history_count > 256) {
+            code_generation_heartbeat("code_generat_loop",
+                             (float)(i + 1) / (float)engine->fix_history_count);
+        }
+
         if (engine->fix_history[i].fix_id == fix_id) {
             nimcp_mutex_unlock(engine->mutex);
             return &engine->fix_history[i];
@@ -895,6 +1005,10 @@ int code_gen_get_stats(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    code_generation_heartbeat("code_generat_code_gen_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(((code_gen_engine_t*)engine)->mutex);
     *stats = engine->stats;
 
@@ -902,6 +1016,12 @@ int code_gen_get_stats(
     if (engine->fix_history_count > 0) {
         float total_conf = 0.0f;
         for (uint32_t i = 0; i < engine->fix_history_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && engine->fix_history_count > 256) {
+                code_generation_heartbeat("code_generat_loop",
+                                 (float)(i + 1) / (float)engine->fix_history_count);
+            }
+
             total_conf += engine->fix_history[i].confidence;
         }
         stats->avg_confidence = total_conf / engine->fix_history_count;
@@ -915,6 +1035,10 @@ void code_gen_reset_stats(code_gen_engine_t* engine) {
     if (!engine) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    code_generation_heartbeat("code_generat_code_gen_reset_stats", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
     memset(&engine->stats, 0, sizeof(engine->stats));
@@ -1256,6 +1380,10 @@ int code_gen_broadcast_result(
     }
 
     /* Build and send result message */
+    /* Phase 8: Heartbeat at operation start */
+    code_generation_heartbeat("code_generat_code_gen_broadcast_r", 0.0f);
+
+
     struct {
         bio_message_header_t header;
         uint64_t fix_id;
@@ -1282,5 +1410,9 @@ uint32_t code_gen_process_messages(code_gen_engine_t* engine, uint32_t max_messa
     if (!engine || !engine->bio_ctx) {
         return 0;
     }
+    /* Phase 8: Heartbeat at operation start */
+    code_generation_heartbeat("code_generat_code_gen_process_mes", 0.0f);
+
+
     return bio_router_process_inbox(engine->bio_ctx, max_messages);
 }

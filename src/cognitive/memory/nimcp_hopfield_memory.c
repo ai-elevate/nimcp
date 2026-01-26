@@ -30,7 +30,7 @@ static nimcp_health_agent_t* g_hopfield_memory_health_agent = NULL;
  * @brief Set health agent for hopfield_memory heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void hopfield_memory_set_health_agent(nimcp_health_agent_t* agent) {
+void hopfield_memory_set_health_agent(nimcp_health_agent_t* agent) {
     g_hopfield_memory_health_agent = agent;
 }
 
@@ -57,6 +57,12 @@ static inline void hopfield_memory_heartbeat(const char* operation, float progre
 static float dot_product(const float* a, const float* b, uint32_t dim) {
     float sum = 0.0f;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            hopfield_memory_heartbeat("hopfield_mem_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         sum += a[i] * b[i];
     }
     return sum;
@@ -68,6 +74,12 @@ static float dot_product(const float* a, const float* b, uint32_t dim) {
 static float l2_norm(const float* v, uint32_t dim) {
     float sum = 0.0f;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            hopfield_memory_heartbeat("hopfield_mem_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         sum += v[i] * v[i];
     }
     return sqrtf(sum);
@@ -81,6 +93,12 @@ static void normalize_vector(float* v, uint32_t dim) {
     if (norm > 1e-8f) {
         float inv_norm = 1.0f / norm;
         for (uint32_t i = 0; i < dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && dim > 256) {
+                hopfield_memory_heartbeat("hopfield_mem_loop",
+                                 (float)(i + 1) / (float)dim);
+            }
+
             v[i] *= inv_norm;
         }
     }
@@ -93,6 +111,12 @@ static void compute_softmax(const float* similarities, float* attention,
                             uint32_t n, float beta) {
     float max_sim = -FLT_MAX;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            hopfield_memory_heartbeat("hopfield_mem_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         if (similarities[i] > max_sim) {
             max_sim = similarities[i];
         }
@@ -100,12 +124,24 @@ static void compute_softmax(const float* similarities, float* attention,
 
     float sum = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            hopfield_memory_heartbeat("hopfield_mem_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         attention[i] = expf(beta * (similarities[i] - max_sim));
         sum += attention[i];
     }
 
     float inv_sum = 1.0f / (sum + 1e-8f);
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            hopfield_memory_heartbeat("hopfield_mem_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         attention[i] *= inv_sum;
     }
 }
@@ -118,6 +154,12 @@ static int32_t find_pattern_index(const hopfield_memory_t* memory, uint32_t patt
         return -1;
     }
     for (uint32_t i = 0; i < memory->pattern_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && memory->pattern_count > 256) {
+            hopfield_memory_heartbeat("hopfield_mem_loop",
+                             (float)(i + 1) / (float)memory->pattern_count);
+        }
+
         if (memory->metadata[i].pattern_id == pattern_id) {
             return (int32_t)i;
         }
@@ -172,6 +214,10 @@ static inline bool should_use_gpu(const hopfield_memory_t* memory, uint32_t batc
  * ============================================================================ */
 
 int hopfield_default_config(hopfield_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_hopfield_default_con", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     memset(config, 0, sizeof(*config));
@@ -198,6 +244,10 @@ int hopfield_default_config(hopfield_config_t* config) {
 }
 
 int hopfield_validate_config(const hopfield_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_hopfield_validate_co", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
     NIMCP_CHECK_THROW(config->pattern_dim > 0 && config->pattern_dim <= 65536,
                       NIMCP_ERROR_INVALID_PARAM, "pattern_dim must be in range (0, 65536]");
@@ -213,6 +263,10 @@ int hopfield_validate_config(const hopfield_config_t* config) {
  * ============================================================================ */
 
 hopfield_memory_t* hopfield_memory_create(const hopfield_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_create", 0.0f);
+
+
     hopfield_config_t default_config;
     if (!config) {
         hopfield_default_config(&default_config);
@@ -300,6 +354,10 @@ void hopfield_memory_destroy(hopfield_memory_t* memory) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_destroy", 0.0f);
+
+
 #ifdef NIMCP_ENABLE_CUDA
     if (memory->patterns_device) {
         cudaFree(memory->patterns_device);
@@ -338,6 +396,10 @@ void hopfield_memory_destroy(hopfield_memory_t* memory) {
 }
 
 int hopfield_memory_clear(hopfield_memory_t* memory) {
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_clear", 0.0f);
+
+
     NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
 
     nimcp_mutex_lock(memory->mutex);
@@ -369,6 +431,10 @@ int hopfield_memory_clear(hopfield_memory_t* memory) {
 int hopfield_memory_store(hopfield_memory_t* memory,
                            const float* pattern,
                            uint32_t* pattern_id) {
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_store", 0.0f);
+
+
     return hopfield_memory_store_with_meta(memory, pattern, 1.0f, NULL, pattern_id);
 }
 
@@ -377,6 +443,10 @@ int hopfield_memory_store_with_meta(hopfield_memory_t* memory,
                                      float strength,
                                      void* user_data,
                                      uint32_t* pattern_id) {
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_store_with_meta", 0.0f);
+
+
     NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
     NIMCP_CHECK_THROW(pattern, NIMCP_ERROR_INVALID_PARAM, "pattern is NULL");
 
@@ -448,11 +518,21 @@ int hopfield_memory_store_batch(hopfield_memory_t* memory,
                                  const float* patterns,
                                  uint32_t num_patterns,
                                  uint32_t* pattern_ids) {
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_store_batch", 0.0f);
+
+
     NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
     NIMCP_CHECK_THROW(patterns, NIMCP_ERROR_INVALID_PARAM, "patterns is NULL");
     NIMCP_CHECK_THROW(num_patterns > 0, NIMCP_ERROR_INVALID_PARAM, "num_patterns must be > 0");
 
     for (uint32_t i = 0; i < num_patterns; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_patterns > 256) {
+            hopfield_memory_heartbeat("hopfield_mem_loop",
+                             (float)(i + 1) / (float)num_patterns);
+        }
+
         const float* pattern = patterns + (size_t)i * memory->config.pattern_dim;
         uint32_t id = 0;
         int ret = hopfield_memory_store(memory, pattern, &id);
@@ -470,6 +550,10 @@ int hopfield_memory_store_batch(hopfield_memory_t* memory,
 int hopfield_memory_update_pattern(hopfield_memory_t* memory,
                                     uint32_t pattern_id,
                                     const float* pattern) {
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_update_pattern", 0.0f);
+
+
     NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
     NIMCP_CHECK_THROW(pattern, NIMCP_ERROR_INVALID_PARAM, "pattern is NULL");
 
@@ -498,6 +582,10 @@ int hopfield_memory_update_pattern(hopfield_memory_t* memory,
 
 int hopfield_memory_remove_pattern(hopfield_memory_t* memory,
                                     uint32_t pattern_id) {
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_remove_pattern", 0.0f);
+
+
     NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
 
     nimcp_mutex_lock(memory->mutex);
@@ -539,6 +627,10 @@ int hopfield_memory_remove_pattern(hopfield_memory_t* memory,
 int hopfield_memory_retrieve(hopfield_memory_t* memory,
                               const float* query,
                               hopfield_retrieval_result_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_retrieve", 0.0f);
+
+
     return hopfield_memory_retrieve_iter(memory, query,
                                           memory->config.max_iterations, result);
 }
@@ -547,6 +639,10 @@ int hopfield_memory_retrieve_iter(hopfield_memory_t* memory,
                                    const float* query,
                                    uint32_t max_iterations,
                                    hopfield_retrieval_result_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_retrieve_iter", 0.0f);
+
+
     NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
     NIMCP_CHECK_THROW(query, NIMCP_ERROR_INVALID_PARAM, "query is NULL");
     NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result is NULL");
@@ -573,6 +669,12 @@ int hopfield_memory_retrieve_iter(hopfield_memory_t* memory,
 
     for (iter = 0; iter < max_iterations; iter++) {
         for (uint32_t i = 0; i < memory->pattern_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && memory->pattern_count > 256) {
+                hopfield_memory_heartbeat("hopfield_mem_loop",
+                                 (float)(i + 1) / (float)memory->pattern_count);
+            }
+
             const float* pattern = get_pattern_const(memory, i);
             memory->similarity_buffer[i] = dot_product(memory->query_buffer,
                                                         pattern, dim);
@@ -584,9 +686,21 @@ int hopfield_memory_retrieve_iter(hopfield_memory_t* memory,
         float* new_state = result->pattern;
         memset(new_state, 0, dim * sizeof(float));
         for (uint32_t i = 0; i < memory->pattern_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && memory->pattern_count > 256) {
+                hopfield_memory_heartbeat("hopfield_mem_loop",
+                                 (float)(i + 1) / (float)memory->pattern_count);
+            }
+
             float weight = memory->attention_buffer[i];
             const float* pattern = get_pattern_const(memory, i);
             for (uint32_t j = 0; j < dim; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && dim > 256) {
+                    hopfield_memory_heartbeat("hopfield_mem_loop",
+                                     (float)(j + 1) / (float)dim);
+                }
+
                 new_state[j] += weight * pattern[j];
             }
         }
@@ -610,6 +724,12 @@ int hopfield_memory_retrieve_iter(hopfield_memory_t* memory,
     float best_sim = -FLT_MAX;
     uint32_t best_idx = 0;
     for (uint32_t i = 0; i < memory->pattern_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && memory->pattern_count > 256) {
+            hopfield_memory_heartbeat("hopfield_mem_loop",
+                             (float)(i + 1) / (float)memory->pattern_count);
+        }
+
         if (memory->similarity_buffer[i] > best_sim) {
             best_sim = memory->similarity_buffer[i];
             best_idx = i;
@@ -653,6 +773,10 @@ int hopfield_memory_retrieve_batch(hopfield_memory_t* memory,
                                     const float* queries,
                                     uint32_t num_queries,
                                     hopfield_batch_result_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_retrieve_batch", 0.0f);
+
+
     NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
     NIMCP_CHECK_THROW(queries, NIMCP_ERROR_INVALID_PARAM, "queries is NULL");
     NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result is NULL");
@@ -663,6 +787,12 @@ int hopfield_memory_retrieve_batch(hopfield_memory_t* memory,
     float total_energy = 0.0f;
 
     for (uint32_t i = 0; i < num_queries; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_queries > 256) {
+            hopfield_memory_heartbeat("hopfield_mem_loop",
+                             (float)(i + 1) / (float)num_queries);
+        }
+
         const float* query = queries + (size_t)i * memory->config.pattern_dim;
         int ret = hopfield_memory_retrieve(memory, query, &result->results[i]);
         if (ret != NIMCP_SUCCESS) {
@@ -685,6 +815,10 @@ int hopfield_memory_top_k(hopfield_memory_t* memory,
                            uint32_t k,
                            uint32_t* pattern_ids,
                            float* similarities) {
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_top_k", 0.0f);
+
+
     NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
     NIMCP_CHECK_THROW(query, NIMCP_ERROR_INVALID_PARAM, "query is NULL");
     NIMCP_CHECK_THROW(pattern_ids, NIMCP_ERROR_INVALID_PARAM, "pattern_ids is NULL");
@@ -707,15 +841,33 @@ int hopfield_memory_top_k(hopfield_memory_t* memory,
     }
 
     for (uint32_t i = 0; i < memory->pattern_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && memory->pattern_count > 256) {
+            hopfield_memory_heartbeat("hopfield_mem_loop",
+                             (float)(i + 1) / (float)memory->pattern_count);
+        }
+
         const float* pattern = get_pattern_const(memory, i);
         memory->similarity_buffer[i] = dot_product(query_norm, pattern,
                                                     memory->config.pattern_dim);
     }
 
     for (uint32_t i = 0; i < actual_k; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && actual_k > 256) {
+            hopfield_memory_heartbeat("hopfield_mem_loop",
+                             (float)(i + 1) / (float)actual_k);
+        }
+
         float best_sim = -FLT_MAX;
         uint32_t best_idx = 0;
         for (uint32_t j = 0; j < memory->pattern_count; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && memory->pattern_count > 256) {
+                hopfield_memory_heartbeat("hopfield_mem_loop",
+                                 (float)(j + 1) / (float)memory->pattern_count);
+            }
+
             if (memory->similarity_buffer[j] > best_sim) {
                 best_sim = memory->similarity_buffer[j];
                 best_idx = j;
@@ -745,10 +897,20 @@ float hopfield_memory_compute_energy(hopfield_memory_t* memory,
         return NAN;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_compute_energy", 0.0f);
+
+
     float beta = memory->config.beta;
     float max_sim = -FLT_MAX;
 
     for (uint32_t i = 0; i < memory->pattern_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && memory->pattern_count > 256) {
+            hopfield_memory_heartbeat("hopfield_mem_loop",
+                             (float)(i + 1) / (float)memory->pattern_count);
+        }
+
         const float* pattern = get_pattern_const(memory, i);
         float sim = dot_product(state, pattern, memory->config.pattern_dim);
         if (sim > max_sim) {
@@ -758,6 +920,12 @@ float hopfield_memory_compute_energy(hopfield_memory_t* memory,
 
     float log_sum_exp = 0.0f;
     for (uint32_t i = 0; i < memory->pattern_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && memory->pattern_count > 256) {
+            hopfield_memory_heartbeat("hopfield_mem_loop",
+                             (float)(i + 1) / (float)memory->pattern_count);
+        }
+
         const float* pattern = get_pattern_const(memory, i);
         float sim = dot_product(state, pattern, memory->config.pattern_dim);
         log_sum_exp += expf(beta * (sim - max_sim));
@@ -766,6 +934,12 @@ float hopfield_memory_compute_energy(hopfield_memory_t* memory,
 
     float state_norm_sq = 0.0f;
     for (uint32_t i = 0; i < memory->config.pattern_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && memory->config.pattern_dim > 256) {
+            hopfield_memory_heartbeat("hopfield_mem_loop",
+                             (float)(i + 1) / (float)memory->config.pattern_dim);
+        }
+
         state_norm_sq += state[i] * state[i];
     }
 
@@ -776,6 +950,10 @@ float hopfield_memory_compute_energy(hopfield_memory_t* memory,
 int hopfield_memory_get_similarities(hopfield_memory_t* memory,
                                       const float* query,
                                       float* similarities) {
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_get_similarities", 0.0f);
+
+
     NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
     NIMCP_CHECK_THROW(query, NIMCP_ERROR_INVALID_PARAM, "query is NULL");
     NIMCP_CHECK_THROW(similarities, NIMCP_ERROR_INVALID_PARAM, "similarities output is NULL");
@@ -789,6 +967,12 @@ int hopfield_memory_get_similarities(hopfield_memory_t* memory,
     }
 
     for (uint32_t i = 0; i < memory->pattern_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && memory->pattern_count > 256) {
+            hopfield_memory_heartbeat("hopfield_mem_loop",
+                             (float)(i + 1) / (float)memory->pattern_count);
+        }
+
         const float* pattern = get_pattern_const(memory, i);
         similarities[i] = dot_product(query_norm, pattern,
                                        memory->config.pattern_dim);
@@ -805,6 +989,10 @@ int hopfield_memory_get_similarities(hopfield_memory_t* memory,
 #ifdef NIMCP_ENABLE_CUDA
 int hopfield_memory_init_gpu(hopfield_memory_t* memory,
                               struct nimcp_gpu_context_s* gpu_ctx) {
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_init_gpu", 0.0f);
+
+
     NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
 
     if (gpu_ctx) {
@@ -821,6 +1009,10 @@ int hopfield_memory_init_gpu(hopfield_memory_t* memory,
 }
 
 int hopfield_memory_sync_to_gpu(hopfield_memory_t* memory) {
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_sync_to_gpu", 0.0f);
+
+
     NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
     NIMCP_CHECK_THROW(memory->gpu_initialized, NIMCP_ERROR_INVALID_PARAM, "GPU not initialized");
     memory->patterns_synced = true;
@@ -828,6 +1020,10 @@ int hopfield_memory_sync_to_gpu(hopfield_memory_t* memory) {
 }
 
 bool hopfield_memory_has_gpu(const hopfield_memory_t* memory) {
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_has_gpu", 0.0f);
+
+
     return memory && memory->gpu_initialized;
 }
 #endif
@@ -838,6 +1034,10 @@ bool hopfield_memory_has_gpu(const hopfield_memory_t* memory) {
 
 int hopfield_memory_get_stats(const hopfield_memory_t* memory,
                                hopfield_stats_t* stats) {
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
     NIMCP_CHECK_THROW(stats, NIMCP_ERROR_INVALID_PARAM, "stats output is NULL");
     memcpy(stats, &memory->stats, sizeof(hopfield_stats_t));
@@ -845,6 +1045,10 @@ int hopfield_memory_get_stats(const hopfield_memory_t* memory,
 }
 
 int hopfield_memory_reset_stats(hopfield_memory_t* memory) {
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_reset_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
 
     nimcp_mutex_lock(memory->mutex);
@@ -859,10 +1063,18 @@ int hopfield_memory_reset_stats(hopfield_memory_t* memory) {
 }
 
 uint32_t hopfield_memory_pattern_count(const hopfield_memory_t* memory) {
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_pattern_count", 0.0f);
+
+
     return memory ? memory->pattern_count : 0;
 }
 
 uint32_t hopfield_memory_capacity(const hopfield_memory_t* memory) {
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_capacity", 0.0f);
+
+
     return memory ? memory->config.capacity : 0;
 }
 
@@ -871,12 +1083,20 @@ uint32_t hopfield_memory_capacity(const hopfield_memory_t* memory) {
  * ============================================================================ */
 
 int hopfield_memory_connect_bio_async(hopfield_memory_t* memory) {
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_connect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
     NIMCP_LOG_INFO("Bio-async connection (stub)");
     return NIMCP_SUCCESS;
 }
 
 int hopfield_memory_disconnect_bio_async(hopfield_memory_t* memory) {
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_disconnect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
     return NIMCP_SUCCESS;
 }
@@ -886,6 +1106,10 @@ int hopfield_memory_disconnect_bio_async(hopfield_memory_t* memory) {
  * ============================================================================ */
 
 hopfield_retrieval_result_t* hopfield_result_create(uint32_t dim) {
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_hopfield_result_crea", 0.0f);
+
+
     hopfield_retrieval_result_t* result = nimcp_calloc(1, sizeof(hopfield_retrieval_result_t));
     if (!result) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
@@ -906,6 +1130,10 @@ void hopfield_result_destroy(hopfield_retrieval_result_t* result) {
     if (!result) {
         return;
     }
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_hopfield_result_dest", 0.0f);
+
+
     if (result->pattern) {
         nimcp_free(result->pattern);
     }
@@ -914,6 +1142,10 @@ void hopfield_result_destroy(hopfield_retrieval_result_t* result) {
 
 hopfield_batch_result_t* hopfield_batch_result_create(uint32_t num_queries,
                                                        uint32_t dim) {
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_hopfield_batch_resul", 0.0f);
+
+
     hopfield_batch_result_t* result = nimcp_calloc(1, sizeof(hopfield_batch_result_t));
     if (!result) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
@@ -928,9 +1160,21 @@ hopfield_batch_result_t* hopfield_batch_result_create(uint32_t num_queries,
     }
 
     for (uint32_t i = 0; i < num_queries; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_queries > 256) {
+            hopfield_memory_heartbeat("hopfield_mem_loop",
+                             (float)(i + 1) / (float)num_queries);
+        }
+
         result->results[i].pattern = nimcp_calloc(dim, sizeof(float));
         if (!result->results[i].pattern) {
             for (uint32_t j = 0; j < i; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && i > 256) {
+                    hopfield_memory_heartbeat("hopfield_mem_loop",
+                                     (float)(j + 1) / (float)i);
+                }
+
                 nimcp_free(result->results[j].pattern);
             }
             nimcp_free(result->results);
@@ -947,8 +1191,18 @@ void hopfield_batch_result_destroy(hopfield_batch_result_t* result) {
     if (!result) {
         return;
     }
+    /* Phase 8: Heartbeat at operation start */
+    hopfield_memory_heartbeat("hopfield_mem_hopfield_batch_resul", 0.0f);
+
+
     if (result->results) {
         for (uint32_t i = 0; i < result->num_results; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && result->num_results > 256) {
+                hopfield_memory_heartbeat("hopfield_mem_loop",
+                                 (float)(i + 1) / (float)result->num_results);
+            }
+
             if (result->results[i].pattern) {
                 nimcp_free(result->results[i].pattern);
             }

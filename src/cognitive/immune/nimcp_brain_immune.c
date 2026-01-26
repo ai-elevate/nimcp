@@ -48,7 +48,7 @@ static nimcp_health_agent_t* g_brain_immune_health_agent = NULL;
  * @brief Set health agent for brain_immune heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void brain_immune_set_health_agent(nimcp_health_agent_t* agent) {
+void brain_immune_set_health_agent(nimcp_health_agent_t* agent) {
     g_brain_immune_health_agent = agent;
 }
 
@@ -186,6 +186,12 @@ static brain_antigen_t* find_antigen_by_id(brain_immune_system_t* system, uint32
 
     }
     for (size_t i = 0; i < system->antigen_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->antigen_count > 256) {
+            brain_immune_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)system->antigen_count);
+        }
+
         if (system->antigens[i].id == id) {
             return &system->antigens[i];
         }
@@ -205,6 +211,12 @@ static brain_b_cell_t* find_b_cell_by_id(brain_immune_system_t* system, uint32_t
 
     }
     for (size_t i = 0; i < system->b_cell_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->b_cell_count > 256) {
+            brain_immune_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)system->b_cell_count);
+        }
+
         if (system->b_cells[i].id == id) {
             return &system->b_cells[i];
         }
@@ -224,6 +236,12 @@ static brain_t_cell_t* find_t_cell_by_id(brain_immune_system_t* system, uint32_t
 
     }
     for (size_t i = 0; i < system->t_cell_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->t_cell_count > 256) {
+            brain_immune_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)system->t_cell_count);
+        }
+
         if (system->t_cells[i].id == id) {
             return &system->t_cells[i];
         }
@@ -243,6 +261,12 @@ static brain_antibody_t* find_antibody_by_id(brain_immune_system_t* system, uint
 
     }
     for (size_t i = 0; i < system->antibody_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->antibody_count > 256) {
+            brain_immune_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)system->antibody_count);
+        }
+
         if (system->antibodies[i].id == id) {
             return &system->antibodies[i];
         }
@@ -262,6 +286,12 @@ static brain_inflammation_site_t* find_inflammation_by_id(brain_immune_system_t*
 
     }
     for (size_t i = 0; i < system->inflammation_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->inflammation_count > 256) {
+            brain_immune_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)system->inflammation_count);
+        }
+
         if (system->inflammation_sites[i].id == id) {
             return &system->inflammation_sites[i];
         }
@@ -279,6 +309,12 @@ static void update_immune_phase(brain_immune_system_t* system) {
     size_t neutralized = 0;
 
     for (size_t i = 0; i < system->antigen_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->antigen_count > 256) {
+            brain_immune_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)system->antigen_count);
+        }
+
         if (!system->antigens[i].neutralized) {
             active_antigens++;
         } else {
@@ -312,6 +348,12 @@ static void process_pending_antigens(brain_immune_system_t* system) {
      * So we do NOT call public API functions here - we do the work directly */
 
     for (size_t i = 0; i < system->antigen_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->antigen_count > 256) {
+            brain_immune_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)system->antigen_count);
+        }
+
         brain_antigen_t* antigen = &system->antigens[i];
         if (antigen->neutralized || antigen->processed) continue;
 
@@ -371,6 +413,12 @@ static void decay_antibodies(brain_immune_system_t* system, uint64_t delta_ms) {
     float decay_factor = powf(0.5f, (float)delta_ms / half_life);
 
     for (size_t i = 0; i < system->antibody_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->antibody_count > 256) {
+            brain_immune_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)system->antibody_count);
+        }
+
         brain_antibody_t* ab = &system->antibodies[i];
         if (!ab->active) continue;
 
@@ -397,6 +445,12 @@ static void update_inflammation_sites(brain_immune_system_t* system, uint64_t de
     bool level_changed = false;
 
     for (size_t i = 0; i < system->inflammation_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->inflammation_count > 256) {
+            brain_immune_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)system->inflammation_count);
+        }
+
         brain_inflammation_site_t* site = &system->inflammation_sites[i];
 
         /* Progress resolution if active */
@@ -428,6 +482,10 @@ static void update_inflammation_sites(brain_immune_system_t* system, uint64_t de
  */
 int brain_immune_default_config(brain_immune_config_t* config) {
     if (!config) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_default_config", 0.0f);
+
 
     memset(config, 0, sizeof(*config));
 
@@ -466,6 +524,10 @@ int brain_immune_default_config(brain_immune_config_t* config) {
  * @brief Create brain immune system
  */
 brain_immune_system_t* brain_immune_create(const brain_immune_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_create", 0.0f);
+
+
     brain_immune_system_t* system = nimcp_calloc(1, sizeof(brain_immune_system_t));
     if (!system) {
 
@@ -543,6 +605,10 @@ cleanup:
 void brain_immune_destroy(brain_immune_system_t* system) {
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_destroy", 0.0f);
+
+
     brain_immune_stop(system);
 
     if (system->mutex) {
@@ -564,6 +630,10 @@ void brain_immune_destroy(brain_immune_system_t* system) {
 int brain_immune_start(brain_immune_system_t* system) {
     if (!system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_start", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     system->running = true;
     system->start_time = get_timestamp_ms();
@@ -582,6 +652,10 @@ int brain_immune_start(brain_immune_system_t* system) {
  */
 int brain_immune_stop(brain_immune_system_t* system) {
     if (!system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_stop", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
     system->running = false;
@@ -603,6 +677,10 @@ int brain_immune_stop(brain_immune_system_t* system) {
  */
 int brain_immune_connect_bbb(brain_immune_system_t* system, bbb_system_t bbb_system) {
     if (!system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_connect_bbb", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
     system->bbb_system = bbb_system;
@@ -678,6 +756,10 @@ static void bft_trust_recovery_cb(
 int brain_immune_connect_bft(brain_immune_system_t* system, bft_context_t* bft_context) {
     if (!system || !bft_context) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_connect_bft", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     system->bft_context = bft_context;
     nimcp_mutex_unlock(system->mutex);
@@ -715,6 +797,10 @@ int brain_immune_connect_bft(brain_immune_system_t* system, bft_context_t* bft_c
  */
 int brain_immune_connect_swarm(brain_immune_system_t* system, NimcpSwarmImmuneSystem* swarm_immune) {
     if (!system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_connect_swarm", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
     system->swarm_immune = swarm_immune;
@@ -769,6 +855,10 @@ int brain_immune_connect_hierarchical_recovery(brain_immune_system_t* system, vo
     if (!system || !hr_context) return -1;
 
     /* Register completion callback for IL-10 release */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_connect_hierarchical", 0.0f);
+
+
     hr_register_completion_callback((hr_context_t*)hr_context, hr_completion_cb, system);
 
     if (system->config.enable_logging) {
@@ -789,6 +879,10 @@ int brain_immune_connect_bio_async(brain_immune_system_t* system) {
         }
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_connect_bio_async", 0.0f);
+
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_INTROSPECTION + 0x50,  /* Offset for immune */
@@ -825,6 +919,10 @@ int brain_immune_auto_sync_swarm_threat(
 ) {
     if (!system || !threat || !system->swarm_immune) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_auto_sync_swarm_thre", 0.0f);
+
+
     uint32_t antigen_id = 0;
     int result = brain_immune_present_swarm_threat(system, threat, &antigen_id);
 
@@ -849,6 +947,10 @@ int brain_immune_sync_memory_to_swarm(
     uint32_t b_cell_id
 ) {
     if (!system || !system->swarm_immune) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_sync_memory_to_swarm", 0.0f);
+
 
     brain_b_cell_t* b_cell = find_b_cell_by_id(system, b_cell_id);
     if (!b_cell || b_cell->state != B_CELL_MEMORY) return -1;
@@ -918,6 +1020,10 @@ int brain_immune_trigger_swarm_response(
 ) {
     if (!system || !system->swarm_immune) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_trigger_swarm_respon", 0.0f);
+
+
     brain_antibody_t* antibody = find_antibody_by_id(system, antibody_id);
     if (!antibody || !antibody->active) return -1;
 
@@ -973,6 +1079,10 @@ int brain_immune_broadcast_inflammation_state(
     uint32_t site_id
 ) {
     if (!system || !system->swarm_immune) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_broadcast_inflammati", 0.0f);
+
 
     brain_inflammation_site_t* site = find_inflammation_by_id(system, site_id);
     if (!site) return -1;
@@ -1030,6 +1140,10 @@ int brain_immune_consensus_threat_severity(
     float* agreed_severity_out
 ) {
     if (!system || !system->swarm_immune || !agreed_severity_out) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_consensus_threat_sev", 0.0f);
+
 
     brain_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
     if (!antigen) return -1;
@@ -1094,6 +1208,10 @@ int brain_immune_propagate_secondary_response(
 ) {
     if (!system || !system->swarm_immune) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_propagate_secondary_", 0.0f);
+
+
     brain_b_cell_t* b_cell = find_b_cell_by_id(system, memory_b_cell_id);
     if (!b_cell || b_cell->state != B_CELL_MEMORY) return -1;
 
@@ -1150,6 +1268,10 @@ int brain_immune_present_antigen(
 ) {
     if (!system || !epitope || epitope_len == 0) return -1;
     if (system->antigen_count >= system->antigen_capacity) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_present_antigen", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -1227,6 +1349,10 @@ int brain_immune_present_bbb_threat(
     if (!system) return -1;
 
     /* Map BBB severity to 1-10 scale */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_present_bbb_threat", 0.0f);
+
+
     uint32_t immune_severity;
     switch (severity) {
         case SWARM_SEVERITY_LOW:      immune_severity = 3; break;
@@ -1268,6 +1394,10 @@ int brain_immune_present_byzantine(
     if (!system) return -1;
 
     /* Create epitope from node ID and behavior */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_present_byzantine", 0.0f);
+
+
     uint8_t epitope[BRAIN_IMMUNE_EPITOPE_SIZE];
     memset(epitope, 0, sizeof(epitope));
     memcpy(epitope, &node_id, sizeof(node_id));
@@ -1305,6 +1435,10 @@ int brain_immune_present_swarm_threat(
     if (!system || !threat) return -1;
 
     /* Map swarm severity */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_present_swarm_threat", 0.0f);
+
+
     uint32_t severity;
     switch (threat->severity) {
         case SWARM_SEVERITY_LOW:      severity = 3; break;
@@ -1341,6 +1475,10 @@ int brain_immune_activate_b_cell(
 ) {
     if (!system) return -1;
     if (system->b_cell_count >= system->b_cell_capacity) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_activate_b_cell", 0.0f);
+
 
     brain_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
     if (!antigen) return -1;
@@ -1383,6 +1521,10 @@ int brain_immune_activate_b_cell(
  */
 int brain_immune_b_cell_to_memory(brain_immune_system_t* system, uint32_t b_cell_id) {
     if (!system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_b_cell_to_memory", 0.0f);
+
 
     brain_b_cell_t* b_cell = find_b_cell_by_id(system, b_cell_id);
     if (!b_cell) return -1;
@@ -1435,6 +1577,10 @@ int brain_immune_activate_helper_t(
     if (!system) return -1;
     if (system->t_cell_count >= system->t_cell_capacity) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_activate_helper_t", 0.0f);
+
+
     brain_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
     if (!antigen) return -1;
 
@@ -1481,6 +1627,10 @@ int brain_immune_activate_killer_t(
     if (!system) return -1;
     if (system->t_cell_count >= system->t_cell_capacity) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_activate_killer_t", 0.0f);
+
+
     brain_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
     if (!antigen) return -1;
 
@@ -1520,6 +1670,10 @@ int brain_immune_t_cell_kill(
     uint32_t target_node
 ) {
     if (!system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_t_cell_kill", 0.0f);
+
 
     brain_t_cell_t* t_cell = find_t_cell_by_id(system, t_cell_id);
     if (!t_cell || t_cell->type != T_CELL_KILLER) return -1;
@@ -1565,6 +1719,10 @@ int brain_immune_t_help_b(
 ) {
     if (!system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_t_help_b", 0.0f);
+
+
     brain_t_cell_t* helper = find_t_cell_by_id(system, helper_id);
     if (!helper || helper->type != T_CELL_HELPER) return -1;
 
@@ -1608,6 +1766,10 @@ int brain_immune_produce_antibody(
     uint32_t* antibody_id
 ) {
     if (!system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_produce_antibody", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -1675,6 +1837,10 @@ int brain_immune_produce_antibody(
 int brain_immune_execute_antibody(brain_immune_system_t* system, uint32_t antibody_id) {
     if (!system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_execute_antibody", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     /* Find and validate antibody inside critical section */
@@ -1738,6 +1904,10 @@ int brain_immune_neutralize(
     uint32_t antibody_id
 ) {
     if (!system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_neutralize", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -1819,6 +1989,10 @@ int brain_immune_release_cytokine(
     if (!system->cytokines) return -1;
     if (system->cytokine_count >= system->cytokine_capacity) return -1;
     /* Validate concentration is in expected range [0.0, 1.0] */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_release_cytokine", 0.0f);
+
+
     if (concentration < 0.0f || !isfinite(concentration)) concentration = 0.0f;
     if (concentration > 1.0f) concentration = 1.0f;
 
@@ -1861,6 +2035,12 @@ int brain_immune_release_cytokine(
     /* Check for cytokine storm */
     float total_pro_inflammatory = 0;
     for (size_t i = 0; i < system->cytokine_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->cytokine_count > 256) {
+            brain_immune_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)system->cytokine_count);
+        }
+
         if (system->cytokines[i].pro_inflammatory) {
             total_pro_inflammatory += system->cytokines[i].concentration;
         }
@@ -1906,6 +2086,10 @@ int brain_immune_broadcast_alert(
     if (!system) return -1;
 
     /* Release appropriate cytokine for severity */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_broadcast_alert", 0.0f);
+
+
     brain_cytokine_type_t type;
     float concentration;
 
@@ -1949,6 +2133,10 @@ int brain_immune_initiate_inflammation(
 ) {
     if (!system) return -1;
     if (system->inflammation_count >= system->inflammation_capacity) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_initiate_inflammatio", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -1994,6 +2182,10 @@ int brain_immune_initiate_inflammation(
 int brain_immune_escalate_inflammation(brain_immune_system_t* system, uint32_t site_id) {
     if (!system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_escalate_inflammatio", 0.0f);
+
+
     brain_inflammation_site_t* site = find_inflammation_by_id(system, site_id);
     if (!site) return -1;
 
@@ -2024,6 +2216,10 @@ int brain_immune_escalate_inflammation(brain_immune_system_t* system, uint32_t s
  */
 int brain_immune_resolve_inflammation(brain_immune_system_t* system, uint32_t site_id) {
     if (!system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_resolve_inflammation", 0.0f);
+
 
     brain_inflammation_site_t* site = find_inflammation_by_id(system, site_id);
     if (!site) return -1;
@@ -2067,6 +2263,10 @@ int brain_immune_check_memory(
 ) {
     if (!system || !b_cell_id) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_check_memory", 0.0f);
+
+
     brain_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
     if (!antigen) return -1;
 
@@ -2075,6 +2275,12 @@ int brain_immune_check_memory(
 
     /* Search memory B cells for best match */
     for (size_t i = 0; i < system->b_cell_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->b_cell_count > 256) {
+            brain_immune_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)system->b_cell_count);
+        }
+
         brain_b_cell_t* b_cell = &system->b_cells[i];
         if (b_cell->state != B_CELL_MEMORY) continue;
 
@@ -2128,6 +2334,10 @@ int brain_immune_secondary_response(
 ) {
     if (!system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_secondary_response", 0.0f);
+
+
     brain_b_cell_t* memory = find_b_cell_by_id(system, memory_b_cell_id);
     if (!memory || memory->state != B_CELL_MEMORY) return -1;
 
@@ -2168,6 +2378,10 @@ int brain_immune_set_antigen_callback(
     if (!system) return -1;
 
     /* THREAD SAFETY: Acquire mutex to prevent race with callback invocation */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_set_antigen_callback", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     system->on_antigen = callback;
     system->callback_user_data = user_data;
@@ -2184,6 +2398,10 @@ int brain_immune_set_neutralize_callback(
     if (!system) return -1;
 
     /* THREAD SAFETY: Acquire mutex to prevent race with callback invocation */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_set_neutralize_callb", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     system->on_neutralize = callback;
     system->callback_user_data = user_data;
@@ -2200,6 +2418,10 @@ int brain_immune_set_cytokine_callback(
     if (!system) return -1;
 
     /* THREAD SAFETY: Acquire mutex to prevent race with callback invocation */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_set_cytokine_callbac", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     system->on_cytokine = callback;
     system->callback_user_data = user_data;
@@ -2216,6 +2438,10 @@ int brain_immune_set_inflammation_callback(
     if (!system) return -1;
 
     /* THREAD SAFETY: Acquire mutex to prevent race with callback invocation */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_set_inflammation_cal", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     system->on_inflammation = callback;
     system->callback_user_data = user_data;
@@ -2232,6 +2458,10 @@ int brain_immune_set_kill_callback(
     if (!system) return -1;
 
     /* THREAD SAFETY: Acquire mutex to prevent race with callback invocation */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_set_kill_callback", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     system->on_kill = callback;
     system->callback_user_data = user_data;
@@ -2249,6 +2479,10 @@ int brain_immune_set_kill_callback(
  */
 int brain_immune_update(brain_immune_system_t* system, uint64_t delta_ms) {
     if (!system || !system->running) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_update", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -2269,6 +2503,12 @@ int brain_immune_update(brain_immune_system_t* system, uint64_t delta_ms) {
     if (system->antigen_count > 0) {
         size_t neutralized = 0;
         for (size_t i = 0; i < system->antigen_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && system->antigen_count > 256) {
+                brain_immune_heartbeat("brain_immune_loop",
+                                 (float)(i + 1) / (float)system->antigen_count);
+            }
+
             if (system->antigens[i].neutralized) neutralized++;
         }
         health = (float)neutralized / system->antigen_count;
@@ -2286,6 +2526,10 @@ int brain_immune_update(brain_immune_system_t* system, uint64_t delta_ms) {
 int brain_immune_get_stats(brain_immune_system_t* system, brain_immune_stats_t* stats) {
     if (!system || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     *stats = system->stats;
 
@@ -2297,6 +2541,12 @@ int brain_immune_get_stats(brain_immune_system_t* system, brain_immune_stats_t* 
     stats->cytokine_ifn_gamma = 0.0f;
 
     for (size_t i = 0; i < system->cytokine_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->cytokine_count > 256) {
+            brain_immune_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)system->cytokine_count);
+        }
+
         const brain_cytokine_t* cyt = &system->cytokines[i];
         if (!cyt->delivered) continue;  /* Only count active cytokines */
 
@@ -2356,6 +2606,10 @@ int brain_immune_get_stats(brain_immune_system_t* system, brain_immune_stats_t* 
 int brain_immune_get_checkpoint_state(brain_immune_system_t* system, void* state) {
     if (!system || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_get_checkpoint_state", 0.0f);
+
+
     #include "utils/fault_tolerance/nimcp_byzantine_fault_tolerance.h"
     bft_immune_state_t* immune_state = (bft_immune_state_t*)state;
 
@@ -2364,18 +2618,36 @@ int brain_immune_get_checkpoint_state(brain_immune_system_t* system, void* state
     /* Count active antigens (unprocessed) */
     uint32_t active_antigens = 0;
     for (size_t i = 0; i < system->antigen_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->antigen_count > 256) {
+            brain_immune_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)system->antigen_count);
+        }
+
         if (!system->antigens[i].neutralized) active_antigens++;
     }
 
     /* Count memory cells */
     uint32_t memory_cells = 0;
     for (size_t i = 0; i < system->b_cell_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->b_cell_count > 256) {
+            brain_immune_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)system->b_cell_count);
+        }
+
         if (system->b_cells[i].state == B_CELL_MEMORY) memory_cells++;
     }
 
     /* Count active antibodies */
     uint32_t active_antibodies = 0;
     for (size_t i = 0; i < system->antibody_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->antibody_count > 256) {
+            brain_immune_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)system->antibody_count);
+        }
+
         if (system->antibodies[i].active) active_antibodies++;
     }
 
@@ -2397,6 +2669,10 @@ int brain_immune_get_checkpoint_state(brain_immune_system_t* system, void* state
  */
 brain_immune_phase_t brain_immune_get_phase(brain_immune_system_t* system) {
     if (!system) return IMMUNE_PHASE_SURVEILLANCE;
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_get_phase", 0.0f);
+
+
     return system->phase;
 }
 
@@ -2405,6 +2681,10 @@ brain_immune_phase_t brain_immune_get_phase(brain_immune_system_t* system) {
  */
 bool brain_immune_is_neutralized(brain_immune_system_t* system, uint32_t antigen_id) {
     if (!system) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_is_neutralized", 0.0f);
+
 
     brain_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
     return antigen && antigen->neutralized;
@@ -2421,6 +2701,10 @@ const brain_antigen_t* brain_immune_get_antigen(brain_immune_system_t* system, u
         return NULL;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_get_antigen", 0.0f);
+
+
     return find_antigen_by_id(system, antigen_id);
 }
 
@@ -2481,6 +2765,12 @@ int brain_immune_handle_bft_quarantine(
     nimcp_mutex_lock(system->mutex);
     uint32_t antigen_id = 0;
     for (size_t i = 0; i < system->antigen_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->antigen_count > 256) {
+            brain_immune_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)system->antigen_count);
+        }
+
         if (system->antigens[i].source_node_id == node_id &&
             system->antigens[i].source == ANTIGEN_SOURCE_BFT) {
             antigen_id = system->antigens[i].id;
@@ -2529,6 +2819,12 @@ int brain_immune_handle_bft_trust_recovery(
     /* Find B cells associated with this node */
     nimcp_mutex_lock(system->mutex);
     for (size_t i = 0; i < system->b_cell_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->b_cell_count > 256) {
+            brain_immune_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)system->b_cell_count);
+        }
+
         if (system->b_cells[i].state == B_CELL_PLASMA ||
             system->b_cells[i].state == B_CELL_ACTIVATED) {
             /* Check if B cell is bound to antigen from this node */
@@ -2590,12 +2886,22 @@ float brain_immune_compute_affinity(
 ) {
     if (!pattern1 || !pattern2 || len1 == 0 || len2 == 0) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_compute_affinity", 0.0f);
+
+
     size_t min_len = (len1 < len2) ? len1 : len2;
     size_t max_len = (len1 > len2) ? len1 : len2;
 
     /* Component 1: Exact byte matches */
     size_t exact_matches = 0;
     for (size_t i = 0; i < min_len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && min_len > 256) {
+            brain_immune_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)min_len);
+        }
+
         if (pattern1[i] == pattern2[i]) {
             exact_matches++;
         }
@@ -2606,9 +2912,21 @@ float brain_immune_compute_affinity(
     size_t total_bits = min_len * 8;
     size_t matching_bits = 0;
     for (size_t i = 0; i < min_len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && min_len > 256) {
+            brain_immune_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)min_len);
+        }
+
         uint8_t xor_result = pattern1[i] ^ pattern2[i];
         /* Count matching bits (bits that are NOT different) */
         for (int bit = 0; bit < 8; bit++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((bit & 0xFF) == 0 && 8 > 256) {
+                brain_immune_heartbeat("brain_immune_loop",
+                                 (float)(bit + 1) / (float)8);
+            }
+
             if (!(xor_result & (1 << bit))) {
                 matching_bits++;
             }
@@ -2641,6 +2959,10 @@ float brain_immune_get_cytokine_level(
     if (!system->mutex) return 0.0f;
 
     /* Lock for thread safety */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_get_cytokine_level", 0.0f);
+
+
     nimcp_platform_mutex_lock(system->mutex);
 
     float level = 0.0f;
@@ -2676,11 +2998,21 @@ brain_inflammation_level_t brain_immune_get_inflammation_level(
     if (!system->mutex) return INFLAMMATION_NONE;
 
     /* Lock for thread safety */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_get_inflammation_lev", 0.0f);
+
+
     nimcp_platform_mutex_lock(system->mutex);
 
     /* Find max inflammation level across all active sites */
     brain_inflammation_level_t max_level = INFLAMMATION_NONE;
     for (size_t i = 0; i < system->inflammation_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->inflammation_count > 256) {
+            brain_immune_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)system->inflammation_count);
+        }
+
         /* Skip sites that are resolving */
         if (system->inflammation_sites[i].resolution_progress > 0.0f) {
             continue;
@@ -2712,6 +3044,12 @@ static float compute_inflammation_float_unlocked(brain_immune_system_t* system) 
     brain_inflammation_level_t max_level = INFLAMMATION_NONE;
 
     for (size_t i = 0; i < system->inflammation_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->inflammation_count > 256) {
+            brain_immune_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)system->inflammation_count);
+        }
+
         if (system->inflammation_sites[i].resolution_progress > 0.0f) {
             continue;  /* Skip resolving sites */
         }
@@ -2801,6 +3139,10 @@ int brain_immune_send_imagination_modulation(brain_immune_system_t* system) {
     if (!system) return -1;
     if (!system->mutex) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_send_imagination_mod", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     send_imagination_modulation_unlocked(system);
     nimcp_mutex_unlock(system->mutex);
@@ -2865,6 +3207,12 @@ static int brain_immune_wiring_handler_callback(
 
     int registered = 0;
     for (uint32_t i = 0; i < message_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && message_count > 256) {
+            brain_immune_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)message_count);
+        }
+
         switch (message_types[i]) {
             case BIO_MSG_IMAGINATION_REQUEST:
                 bio_router_register_handler(ctx, message_types[i], imagination_message_handler);
@@ -2900,6 +3248,10 @@ int brain_immune_register_imagination_handler(brain_immune_system_t* system) {
     if (!system->bio_context) return -1;
 
     /* Module ID for brain immune */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_register_imagination", 0.0f);
+
+
     bio_module_id_t module_id = BIO_MODULE_INTROSPECTION + 0x50;
 
     /* Try KG-driven wiring callback registration first */
@@ -2958,9 +3310,19 @@ int brain_immune_register_imagination_handler(brain_immune_system_t* system) {
  */
 int brain_immune_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Brain_Immune_System");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                brain_immune_heartbeat("brain_immune_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Brain immune system self-knowledge: %s", self->observations[i]);
         }
     }
@@ -2992,6 +3354,10 @@ int brain_immune_present_exception(
     if (!system || !exception) return -1;
 
     /* Use direct field access now that we include nimcp_exception.h */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_present_exception", 0.0f);
+
+
     uint32_t severity = (uint32_t)exception->severity;
 
     /* Get epitope directly from exception struct */
@@ -3041,6 +3407,10 @@ int brain_immune_set_exception_callback(
     brain_immune_exception_cb_t callback,
     void* user_data
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_set_exception_callba", 0.0f);
+
+
     (void)system;  /* Callback stored globally for simplicity */
     g_exception_callback = callback;
     g_exception_callback_data = user_data;
@@ -3055,6 +3425,10 @@ int brain_immune_set_recovery_callback(
     brain_immune_recovery_cb_t callback,
     void* user_data
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_set_recovery_callbac", 0.0f);
+
+
     (void)system;  /* Callback stored globally for simplicity */
     g_recovery_callback = callback;
     g_recovery_callback_data = user_data;
@@ -3071,6 +3445,10 @@ int brain_immune_notify_recovery_result(
     bool success
 ) {
     if (!system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_notify_recovery_resu", 0.0f);
+
 
     LOG_MODULE_INFO(BRAIN_IMMUNE_MODULE_NAME,
         "Recovery result: antigen=%u, action=%d, success=%s",
@@ -3114,6 +3492,10 @@ int brain_immune_get_recovery_recommendation(
 ) {
     if (!system || !action_out) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_heartbeat("brain_immune_get_recovery_recomme", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     brain_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
@@ -3124,6 +3506,12 @@ int brain_immune_get_recovery_recommendation(
 
     /* Check if we have a memory cell that matches this antigen */
     for (size_t i = 0; i < system->b_cell_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->b_cell_count > 256) {
+            brain_immune_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)system->b_cell_count);
+        }
+
         brain_b_cell_t* b_cell = &system->b_cells[i];
         if (b_cell->state == B_CELL_MEMORY) {
             float affinity = brain_immune_compute_affinity(

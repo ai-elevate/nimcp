@@ -29,7 +29,7 @@ static nimcp_health_agent_t* g_conceptual_blending_health_agent = NULL;
  * @brief Set health agent for conceptual_blending heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void conceptual_blending_set_health_agent(nimcp_health_agent_t* agent) {
+void conceptual_blending_set_health_agent(nimcp_health_agent_t* agent) {
     g_conceptual_blending_health_agent = agent;
 }
 
@@ -65,6 +65,12 @@ static float apply_mod(const blending_engine_t* e, float v) {
 static float feature_sim(const float* a, const float* b, uint32_t dim) {
     float dot = 0, na = 0, nb = 0;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            conceptual_blending_heartbeat("conceptual_b_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         dot += a[i] * b[i];
         na += a[i] * a[i];
         nb += b[i] * b[i];
@@ -74,6 +80,10 @@ static float feature_sim(const float* a, const float* b, uint32_t dim) {
 }
 
 blend_config_t blending_engine_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    conceptual_blending_heartbeat("conceptual_b_blending_engine_defa", 0.0f);
+
+
     return (blend_config_t){
         .min_integration = 0.3f,
         .novelty_weight = 0.4f,
@@ -86,12 +96,20 @@ blend_config_t blending_engine_default_config(void) {
 }
 
 blending_engine_t* blending_engine_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    conceptual_blending_heartbeat("conceptual_b_blending_engine_crea", 0.0f);
+
+
     blend_config_t c = blending_engine_default_config();
     return blending_engine_create_custom(&c);
 }
 
 blending_engine_t* blending_engine_create_custom(const blend_config_t* config) {
     if (!config) { set_error("NULL config"); return NULL; }
+    /* Phase 8: Heartbeat at operation start */
+    conceptual_blending_heartbeat("conceptual_b_blending_engine_crea", 0.0f);
+
+
     blending_engine_t* e = nimcp_calloc(1, sizeof(blending_engine_t));
     if (!e) {
 
@@ -107,10 +125,18 @@ blending_engine_t* blending_engine_create_custom(const blend_config_t* config) {
 }
 
 void blending_engine_destroy(blending_engine_t* engine) {
+    /* Phase 8: Heartbeat at operation start */
+    conceptual_blending_heartbeat("conceptual_b_blending_engine_dest", 0.0f);
+
+
     if (engine) nimcp_free(engine);
 }
 
 blend_mental_space_t* blending_create_space(const char* name) {
+    /* Phase 8: Heartbeat at operation start */
+    conceptual_blending_heartbeat("conceptual_b_blending_create_spac", 0.0f);
+
+
     blend_mental_space_t* s = nimcp_calloc(1, sizeof(blend_mental_space_t));
     if (!s) {
 
@@ -128,6 +154,10 @@ blend_mental_space_t* blending_create_space(const char* name) {
 int blending_add_element(blend_mental_space_t* space, const char* name,
     const float* features, uint32_t num_features) {
     if (!space || space->num_elements >= BLEND_MAX_ELEMENTS) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    conceptual_blending_heartbeat("conceptual_b_blending_add_element", 0.0f);
+
 
     blend_element_t* e = &space->elements[space->num_elements];
     e->id = space->num_elements + 1;
@@ -147,8 +177,18 @@ int blending_add_element(blend_mental_space_t* space, const char* name,
 
 void blending_free_space(blend_mental_space_t* space) {
     if (!space) return;
+    /* Phase 8: Heartbeat at operation start */
+    conceptual_blending_heartbeat("conceptual_b_blending_free_space", 0.0f);
+
+
     if (space->elements) {
         for (uint32_t i = 0; i < space->num_elements; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && space->num_elements > 256) {
+                conceptual_blending_heartbeat("conceptual_b_loop",
+                                 (float)(i + 1) / (float)space->num_elements);
+            }
+
             if (space->elements[i].features) nimcp_free(space->elements[i].features);
         }
         nimcp_free(space->elements);
@@ -160,6 +200,10 @@ void blending_free_space(blend_mental_space_t* space) {
 conceptual_blend_t* blending_create_blend(blending_engine_t* engine,
     const blend_mental_space_t* concept1, const blend_mental_space_t* concept2) {
     if (!engine || !concept1 || !concept2) return NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    conceptual_blending_heartbeat("conceptual_b_blending_create_blen", 0.0f);
+
 
     conceptual_blend_t* b = nimcp_calloc(1, sizeof(conceptual_blend_t));
     if (!b) {
@@ -223,11 +267,21 @@ int blending_find_mappings(blending_engine_t* engine,
     if (!engine || !space1 || !space2 || !mappings || !num_found) return -1;
     *num_found = 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    conceptual_blending_heartbeat("conceptual_b_blending_find_mappin", 0.0f);
+
+
     for (uint32_t i = 0; i < space1->num_elements && *num_found < max_mappings; i++) {
         float best_sim = 0.3f;
         int best_j = -1;
 
         for (uint32_t j = 0; j < space2->num_elements; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && space2->num_elements > 256) {
+                conceptual_blending_heartbeat("conceptual_b_loop",
+                                 (float)(j + 1) / (float)space2->num_elements);
+            }
+
             if (space1->elements[i].num_features > 0 &&
                 space2->elements[j].num_features > 0) {
                 uint32_t min_f = (space1->elements[i].num_features < space2->elements[j].num_features) ?
@@ -261,11 +315,19 @@ blend_property_t** blending_find_emergent(blending_engine_t* engine,
 
 float blending_evaluate_novelty(blending_engine_t* engine, const conceptual_blend_t* blend) {
     if (!engine || !blend) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    conceptual_blending_heartbeat("conceptual_b_blending_evaluate_no", 0.0f);
+
+
     return apply_mod(engine, blend->novelty_score);
 }
 
 float blending_evaluate_integration(blending_engine_t* engine, const conceptual_blend_t* blend) {
     if (!engine || !blend) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    conceptual_blending_heartbeat("conceptual_b_blending_evaluate_in", 0.0f);
+
+
     return apply_mod(engine, blend->integration_score);
 }
 
@@ -273,7 +335,17 @@ int blending_optimize_blend(blending_engine_t* engine, conceptual_blend_t* blend
     if (!engine || !blend) return -1;
     if (!engine->config.enable_optimization) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    conceptual_blending_heartbeat("conceptual_b_blending_optimize_bl", 0.0f);
+
+
     for (uint32_t i = 0; i < engine->config.max_blend_iterations; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && engine->config.max_blend_iterations > 256) {
+            conceptual_blending_heartbeat("conceptual_b_loop",
+                             (float)(i + 1) / (float)engine->config.max_blend_iterations);
+        }
+
         blend->integration_score *= 1.05f;
         if (blend->integration_score > 0.95f) break;
     }
@@ -284,6 +356,10 @@ int blending_optimize_blend(blending_engine_t* engine, conceptual_blend_t* blend
 
 void blending_free_blend(conceptual_blend_t* blend) {
     if (!blend) return;
+    /* Phase 8: Heartbeat at operation start */
+    conceptual_blending_heartbeat("conceptual_b_blending_free_blend", 0.0f);
+
+
     if (blend->generic) blending_free_space(blend->generic);
     if (blend->blend) blending_free_space(blend->blend);
     if (blend->mappings) nimcp_free(blend->mappings);
@@ -293,12 +369,20 @@ void blending_free_blend(conceptual_blend_t* blend) {
 
 int blending_set_inflammation(blending_engine_t* engine, float level) {
     if (!engine) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    conceptual_blending_heartbeat("conceptual_b_blending_set_inflamm", 0.0f);
+
+
     engine->inflammation = fmaxf(0, fminf(1, level));
     return 0;
 }
 
 int blending_set_fatigue(blending_engine_t* engine, float level) {
     if (!engine) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    conceptual_blending_heartbeat("conceptual_b_blending_set_fatigue", 0.0f);
+
+
     engine->fatigue = fmaxf(0, fminf(1, level));
     return 0;
 }
@@ -306,10 +390,18 @@ int blending_set_fatigue(blending_engine_t* engine, float level) {
 int blending_get_stats(const blending_engine_t* engine, blend_stats_t* stats) {
     if (!engine || !stats) return -1;
     *stats = engine->stats;
+    /* Phase 8: Heartbeat at operation start */
+    conceptual_blending_heartbeat("conceptual_b_blending_get_stats", 0.0f);
+
+
     return 0;
 }
 
 void blending_reset_stats(blending_engine_t* engine) {
+    /* Phase 8: Heartbeat at operation start */
+    conceptual_blending_heartbeat("conceptual_b_blending_reset_stats", 0.0f);
+
+
     if (engine) memset(&engine->stats, 0, sizeof(engine->stats));
 }
 
@@ -321,9 +413,19 @@ const char* blending_get_last_error(void) { return g_last_error; }
 
 int conceptual_blending_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    conceptual_blending_heartbeat("conceptual_b_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Conceptual_Blending");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                conceptual_blending_heartbeat("conceptual_b_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Module self-knowledge logged */
         }
     }

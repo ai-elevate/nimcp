@@ -38,7 +38,7 @@ static nimcp_health_agent_t* g_source_memory_health_agent = NULL;
  * @brief Set health agent for source_memory heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void source_memory_set_health_agent(nimcp_health_agent_t* agent) {
+void source_memory_set_health_agent(nimcp_health_agent_t* agent) {
     g_source_memory_health_agent = agent;
 }
 
@@ -398,6 +398,12 @@ static void update_stats(source_memory_t sm) {
 
     // Iterate through all entries
     for (size_t i = 0; i < sm->entry_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sm->entry_capacity > 256) {
+            source_memory_heartbeat("source_memor_loop",
+                             (float)(i + 1) / (float)sm->entry_capacity);
+        }
+
         source_hash_entry_t* entry = &sm->entries[i];
         while (entry && entry->occupied) {
             source_memory_entry_t* e = &entry->entry;
@@ -439,6 +445,12 @@ static void update_stats(source_memory_t sm) {
     sm->stats.num_agents = sm->agent_count;
     float total_cred = 0.0f;
     for (size_t i = 0; i < sm->agent_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sm->agent_capacity > 256) {
+            source_memory_heartbeat("source_memor_loop",
+                             (float)(i + 1) / (float)sm->agent_capacity);
+        }
+
         agent_hash_entry_t* agent = &sm->agents[i];
         while (agent && agent->occupied) {
             total_cred += agent->record.credibility;
@@ -567,6 +579,12 @@ NIMCP_EXPORT void source_memory_destroy(source_memory_t sm) {
 
     // Free entry chain nodes
     for (size_t i = 0; i < sm->entry_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sm->entry_capacity > 256) {
+            source_memory_heartbeat("source_memor_loop",
+                             (float)(i + 1) / (float)sm->entry_capacity);
+        }
+
         source_hash_entry_t* entry = sm->entries[i].next;
         while (entry) {
             source_hash_entry_t* next = entry->next;
@@ -586,6 +604,12 @@ NIMCP_EXPORT void source_memory_destroy(source_memory_t sm) {
     // Free agent chain nodes
     if (sm->agents) {
         for (size_t i = 0; i < sm->agent_capacity; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && sm->agent_capacity > 256) {
+                source_memory_heartbeat("source_memor_loop",
+                                 (float)(i + 1) / (float)sm->agent_capacity);
+            }
+
             agent_hash_entry_t* agent = sm->agents[i].next;
             while (agent) {
                 agent_hash_entry_t* next = agent->next;
@@ -604,6 +628,12 @@ NIMCP_EXPORT source_error_t source_memory_clear(source_memory_t sm) {
 
     // Clear entries
     for (size_t i = 0; i < sm->entry_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sm->entry_capacity > 256) {
+            source_memory_heartbeat("source_memor_loop",
+                             (float)(i + 1) / (float)sm->entry_capacity);
+        }
+
         source_hash_entry_t* entry = sm->entries[i].next;
         while (entry) {
             source_hash_entry_t* next = entry->next;
@@ -623,6 +653,12 @@ NIMCP_EXPORT source_error_t source_memory_clear(source_memory_t sm) {
     // Clear agents
     if (sm->agents) {
         for (size_t i = 0; i < sm->agent_capacity; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && sm->agent_capacity > 256) {
+                source_memory_heartbeat("source_memor_loop",
+                                 (float)(i + 1) / (float)sm->agent_capacity);
+            }
+
             agent_hash_entry_t* agent = sm->agents[i].next;
             while (agent) {
                 agent_hash_entry_t* next = agent->next;
@@ -1038,6 +1074,12 @@ NIMCP_EXPORT source_error_t source_memory_compute_false_memory_risk(
 
     risk->primary_concern = concerns[0];
     for (int i = 0; i < 6; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 6 > 256) {
+            source_memory_heartbeat("source_memor_loop",
+                             (float)(i + 1) / (float)6);
+        }
+
         if (risks[i] > max_risk) {
             max_risk = risks[i];
             risk->primary_concern = concerns[i];
@@ -1417,6 +1459,12 @@ NIMCP_EXPORT source_error_t source_memory_query_by_source(
             if (query->source_types && query->num_source_types > 0) {
                 bool type_match = false;
                 for (size_t j = 0; j < query->num_source_types; j++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((j & 0xFF) == 0 && query->num_source_types > 256) {
+                        source_memory_heartbeat("source_memor_loop",
+                                         (float)(j + 1) / (float)query->num_source_types);
+                    }
+
                     if (e->source.type == query->source_types[j]) {
                         type_match = true;
                         break;
@@ -1453,6 +1501,12 @@ NIMCP_EXPORT source_error_t source_memory_query_by_source(
             if (match && query->reality_statuses && query->num_reality_statuses > 0) {
                 bool status_match = false;
                 for (size_t j = 0; j < query->num_reality_statuses; j++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((j & 0xFF) == 0 && query->num_reality_statuses > 256) {
+                        source_memory_heartbeat("source_memor_loop",
+                                         (float)(j + 1) / (float)query->num_reality_statuses);
+                    }
+
                     if (e->reality_status == query->reality_statuses[j]) {
                         status_match = true;
                         break;
@@ -1581,6 +1635,12 @@ NIMCP_EXPORT size_t source_memory_source_forgetting(
     float decay_factor = expf(-sm->config.source_decay_rate * elapsed_seconds);
 
     for (size_t i = 0; i < sm->entry_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sm->entry_capacity > 256) {
+            source_memory_heartbeat("source_memor_loop",
+                             (float)(i + 1) / (float)sm->entry_capacity);
+        }
+
         source_hash_entry_t* entry = &sm->entries[i];
         while (entry && entry->occupied) {
             // Apply decay to source confidence
@@ -1868,6 +1928,12 @@ NIMCP_EXPORT source_error_t source_memory_serialize(
 
     // Write entries
     for (size_t i = 0; i < sm->entry_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sm->entry_capacity > 256) {
+            source_memory_heartbeat("source_memor_loop",
+                             (float)(i + 1) / (float)sm->entry_capacity);
+        }
+
         source_hash_entry_t* entry = &sm->entries[i];
         while (entry && entry->occupied) {
             // Write entry (excluding pointer fields)
@@ -1882,6 +1948,12 @@ NIMCP_EXPORT source_error_t source_memory_serialize(
 
     // Write agents
     for (size_t i = 0; i < sm->agent_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sm->agent_capacity > 256) {
+            source_memory_heartbeat("source_memor_loop",
+                             (float)(i + 1) / (float)sm->agent_capacity);
+        }
+
         agent_hash_entry_t* agent = &sm->agents[i];
         while (agent && agent->occupied) {
             memcpy(ptr, &agent->record, sizeof(agent->record));

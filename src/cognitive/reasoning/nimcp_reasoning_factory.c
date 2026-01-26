@@ -46,7 +46,7 @@ static nimcp_health_agent_t* g_reasoning_factory_health_agent = NULL;
  * @brief Set health agent for reasoning_factory heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void reasoning_factory_set_health_agent(nimcp_health_agent_t* agent) {
+void reasoning_factory_set_health_agent(nimcp_health_agent_t* agent) {
     g_reasoning_factory_health_agent = agent;
 }
 
@@ -156,6 +156,10 @@ static logic_config_t get_config_for_size(reasoning_size_t size)
 symbolic_logic_t* create_default_symbolic_logic(reasoning_size_t size)
 {
     // Initialize bio-async on first use
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_factory_heartbeat("reasoning_fa_create_default_symbo", 0.0f);
+
+
     factory_init_bio_async();
 
     // Process pending bio-async messages
@@ -191,6 +195,10 @@ symbolic_logic_t* create_symbolic_logic_with_config(const logic_config_t* config
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_factory_heartbeat("reasoning_fa_create_symbolic_logi", 0.0f);
+
+
     symbolic_logic_t* engine = symbolic_logic_create(config);
 
     if (!engine) {
@@ -208,6 +216,10 @@ symbolic_logic_t* create_symbolic_logic_with_config(const logic_config_t* config
 
 symbolic_logic_t* create_forward_chaining_engine(reasoning_size_t size)
 {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_factory_heartbeat("reasoning_fa_create_forward_chain", 0.0f);
+
+
     logic_config_t config = get_config_for_size(size);
     config.enable_forward_chaining = true;
     config.enable_backward_chaining = false;
@@ -229,6 +241,10 @@ symbolic_logic_t* create_forward_chaining_engine(reasoning_size_t size)
 
 symbolic_logic_t* create_backward_chaining_engine(reasoning_size_t size)
 {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_factory_heartbeat("reasoning_fa_create_backward_chai", 0.0f);
+
+
     logic_config_t config = get_config_for_size(size);
     config.enable_forward_chaining = false;
     config.enable_backward_chaining = true;
@@ -254,9 +270,19 @@ symbolic_logic_t* create_backward_chaining_engine(reasoning_size_t size)
 
 int reasoning_factory_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_factory_heartbeat("reasoning_fa_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Reasoning_Factory");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                reasoning_factory_heartbeat("reasoning_fa_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Reasoning_Factory self-knowledge: %s", self->observations[i]);
         }
     }

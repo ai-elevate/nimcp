@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_wm_transfer_health_agent = NULL;
  * @brief Set health agent for wm_transfer heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void wm_transfer_set_health_agent(nimcp_health_agent_t* agent) {
+void wm_transfer_set_health_agent(nimcp_health_agent_t* agent) {
     g_wm_transfer_health_agent = agent;
 }
 
@@ -107,6 +107,12 @@ static int wm_transfer_wiring_handler_callback(
              message_count);
 
     for (uint32_t i = 0; i < message_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && message_count > 256) {
+            wm_transfer_heartbeat("wm_transfer_loop",
+                             (float)(i + 1) / (float)message_count);
+        }
+
         switch (message_types[i]) {
             case BIO_MSG_WORKING_MEMORY_STORE:
                 bio_router_register_handler(ctx, message_types[i], handle_wm_store_request);
@@ -149,6 +155,10 @@ static int wm_transfer_wiring_handler_callback(
  * HOW:  Allocate struct, set defaults, initialize tracking arrays
  */
 wm_transfer_system_t* wm_transfer_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    wm_transfer_heartbeat("wm_transfer_create", 0.0f);
+
+
     LOG_INFO("Creating WM transfer system");
 
     // Allocate system
@@ -276,6 +286,10 @@ void wm_transfer_destroy(wm_transfer_system_t* system) {
     if (!system) return;
 
     // Free attention tracking (unified memory or direct)
+    /* Phase 8: Heartbeat at operation start */
+    wm_transfer_heartbeat("wm_transfer_destroy", 0.0f);
+
+
     if (system->attention_handle) {
         unified_mem_free(system->attention_handle);
         system->attention_handle = NULL;
@@ -311,6 +325,10 @@ void wm_transfer_reset(wm_transfer_system_t* system) {
     if (!system) return;
 
     // Clear stats
+    /* Phase 8: Heartbeat at operation start */
+    wm_transfer_heartbeat("wm_transfer_reset", 0.0f);
+
+
     memset(&system->stats, 0, sizeof(wm_transfer_stats_t));
 
     // Reset attention weights
@@ -338,6 +356,10 @@ void wm_transfer_set_working_memory(
     void* working_memory)
 {
     if (!system) return;
+    /* Phase 8: Heartbeat at operation start */
+    wm_transfer_heartbeat("wm_transfer_set_working_memory", 0.0f);
+
+
     system->working_memory = working_memory;
 }
 
@@ -352,6 +374,10 @@ void wm_transfer_set_engram_system(
     engram_system_t* engram_system)
 {
     if (!system) return;
+    /* Phase 8: Heartbeat at operation start */
+    wm_transfer_heartbeat("wm_transfer_set_engram_system", 0.0f);
+
+
     system->engram_system = engram_system;
 }
 
@@ -366,6 +392,10 @@ void wm_transfer_set_emotional_system(
     void* emotional_system)
 {
     if (!system) return;
+    /* Phase 8: Heartbeat at operation start */
+    wm_transfer_heartbeat("wm_transfer_set_emotional_system", 0.0f);
+
+
     system->emotional_system = emotional_system;
 }
 
@@ -479,6 +509,10 @@ uint32_t wm_transfer_evaluate(
     if (!system->working_memory) return 0;
     if (!system->engram_system) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    wm_transfer_heartbeat("wm_transfer_evaluate", 0.0f);
+
+
     uint32_t transfers = 0;
     uint64_t current_time_ms = nimcp_platform_time_monotonic_ms();
 
@@ -515,6 +549,10 @@ bool wm_transfer_force_item(
     // and encode directly to engram system
 
     // Update stats
+    /* Phase 8: Heartbeat at operation start */
+    wm_transfer_heartbeat("wm_transfer_force_item", 0.0f);
+
+
     system->stats.total_transfers++;
 
     return true;
@@ -537,6 +575,10 @@ void wm_transfer_update_attention(
     if (count == 0) return;
 
     // Resize attention array if needed
+    /* Phase 8: Heartbeat at operation start */
+    wm_transfer_heartbeat("wm_transfer_update_attention", 0.0f);
+
+
     if (count != system->attention_weight_count) {
         float* new_weights = (float*)nimcp_realloc(system->last_attention_weights,
                                                count * sizeof(float));
@@ -568,6 +610,10 @@ void wm_transfer_set_criteria(
     const wm_transfer_criteria_t* criteria)
 {
     if (!system || !criteria) return;
+    /* Phase 8: Heartbeat at operation start */
+    wm_transfer_heartbeat("wm_transfer_set_criteria", 0.0f);
+
+
     system->criteria = *criteria;
 }
 
@@ -583,6 +629,10 @@ void wm_transfer_get_criteria(
 {
     if (!system || !criteria_out) return;
     *criteria_out = system->criteria;
+    /* Phase 8: Heartbeat at operation start */
+    wm_transfer_heartbeat("wm_transfer_get_criteria", 0.0f);
+
+
 }
 
 //=============================================================================
@@ -601,6 +651,10 @@ void wm_transfer_get_statistics(
 {
     if (!system || !stats_out) return;
     *stats_out = system->stats;
+    /* Phase 8: Heartbeat at operation start */
+    wm_transfer_heartbeat("wm_transfer_get_statistics", 0.0f);
+
+
 }
 
 //=============================================================================
@@ -619,6 +673,10 @@ void wm_transfer_get_statistics(
  * - McGaugh (2000): Emotional arousal enhances consolidation
  */
 wm_transfer_criteria_t wm_transfer_get_default_criteria(void) {
+    /* Phase 8: Heartbeat at operation start */
+    wm_transfer_heartbeat("wm_transfer_get_default_criteria", 0.0f);
+
+
     wm_transfer_criteria_t criteria = {
         .rehearsal_threshold = 3,       // 3+ rehearsals triggers transfer
         .attention_threshold = 0.5F,    // 50% attention required
@@ -642,9 +700,19 @@ wm_transfer_criteria_t wm_transfer_get_default_criteria(void) {
 int wm_transfer_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    wm_transfer_heartbeat("wm_transfer_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "WM_Transfer_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                wm_transfer_heartbeat("wm_transfer_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("WM transfer self-knowledge: %s", self->observations[i]);
         }
     }

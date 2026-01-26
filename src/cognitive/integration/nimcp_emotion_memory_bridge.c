@@ -44,7 +44,7 @@ static nimcp_health_agent_t* g_emotion_memory_bridge_health_agent = NULL;
  * @brief Set health agent for emotion_memory_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void emotion_memory_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void emotion_memory_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_emotion_memory_bridge_health_agent = agent;
 }
 
@@ -113,6 +113,12 @@ static emotional_tag_t* find_tag_unlocked(emotion_memory_bridge_t* bridge,
     }
 
     for (size_t i = 0; i < bridge->tag_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->tag_capacity > 256) {
+            emotion_memory_bridge_heartbeat("emotion_memo_loop",
+                             (float)(i + 1) / (float)bridge->tag_capacity);
+        }
+
         if (bridge->tags[i].valid && bridge->tags[i].memory_id == memory_id) {
             return &bridge->tags[i];
         }
@@ -136,6 +142,12 @@ static emotional_tag_t* find_empty_slot_unlocked(emotion_memory_bridge_t* bridge
     }
 
     for (size_t i = 0; i < bridge->tag_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->tag_capacity > 256) {
+            emotion_memory_bridge_heartbeat("emotion_memo_loop",
+                             (float)(i + 1) / (float)bridge->tag_capacity);
+        }
+
         if (!bridge->tags[i].valid) {
             return &bridge->tags[i];
         }
@@ -208,6 +220,10 @@ int emotion_memory_bridge_default_config(emotion_memory_config_t* config) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_memory_bridge_heartbeat("emotion_memo_default_config", 0.0f);
+
+
     config->emotional_weight_factor = 0.5f;
     config->consolidation_threshold = 0.3f;
     config->valence_sensitivity = 1.0f;
@@ -219,6 +235,10 @@ emotion_memory_bridge_t* emotion_memory_bridge_create(
     const emotion_memory_config_t* config
 ) {
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_memory_bridge_heartbeat("emotion_memo_create", 0.0f);
+
+
     emotion_memory_bridge_t* bridge = nimcp_calloc(1, sizeof(emotion_memory_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -264,6 +284,10 @@ void emotion_memory_bridge_destroy(emotion_memory_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_memory_bridge_heartbeat("emotion_memo_destroy", 0.0f);
+
+
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
         bridge->base.mutex = NULL;
@@ -296,6 +320,10 @@ int emotion_memory_tag_memory(
     }
 
     /* Clamp values to valid ranges */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_memory_bridge_heartbeat("emotion_memo_emotion_memory_tag_m", 0.0f);
+
+
     valence = clamp_float(valence, EMOTION_MEMORY_VALENCE_MIN, EMOTION_MEMORY_VALENCE_MAX);
     arousal = clamp_float(arousal, EMOTION_MEMORY_AROUSAL_MIN, EMOTION_MEMORY_AROUSAL_MAX);
 
@@ -373,6 +401,10 @@ int emotion_memory_modulate_consolidation(
     }
 
     /* Clamp intensity to valid range */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_memory_bridge_heartbeat("emotion_memo_emotion_memory_modul", 0.0f);
+
+
     emotional_intensity = clamp_float(emotional_intensity, 0.0f, 1.0f);
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -414,6 +446,10 @@ int emotion_memory_on_retrieval(
     }
 
     /* Initialize output */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_memory_bridge_heartbeat("emotion_memo_emotion_memory_on_re", 0.0f);
+
+
     memset(emotion_out, 0, sizeof(emotion_memory_emotion_out_t));
     emotion_out->has_emotion = false;
 
@@ -469,6 +505,10 @@ int emotion_memory_get_emotional_memories(
     }
 
     /* Clamp range values */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_memory_bridge_heartbeat("emotion_memo_emotion_memory_get_e", 0.0f);
+
+
     valence_min = clamp_float(valence_min, EMOTION_MEMORY_VALENCE_MIN, EMOTION_MEMORY_VALENCE_MAX);
     valence_max = clamp_float(valence_max, EMOTION_MEMORY_VALENCE_MIN, EMOTION_MEMORY_VALENCE_MAX);
 
@@ -512,6 +552,10 @@ int emotion_memory_bridge_get_stats(
     }
 
     /* Cast away const for mutex lock (safe - mutex protects data, not bridge ptr) */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_memory_bridge_heartbeat("emotion_memo_get_stats", 0.0f);
+
+
     emotion_memory_bridge_t* mutable_bridge = (emotion_memory_bridge_t*)bridge;
 
     nimcp_platform_mutex_lock(mutable_bridge->base.mutex);

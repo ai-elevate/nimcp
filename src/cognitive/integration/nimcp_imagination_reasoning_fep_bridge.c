@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_imagination_reasoning_fep_bridge_health_agent = N
  * @brief Set health agent for imagination_reasoning_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void imagination_reasoning_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void imagination_reasoning_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_imagination_reasoning_fep_bridge_health_agent = agent;
 }
 
@@ -294,6 +294,10 @@ static void store_previous_state(imag_reason_fep_bridge_t* bridge) {
  *===========================================================================*/
 
 imag_reason_fep_config_t imag_reason_fep_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_conf", 0.0f);
+
+
     imag_reason_fep_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -323,6 +327,10 @@ imag_reason_fep_config_t imag_reason_fep_config_default(void) {
 imag_reason_fep_bridge_t* imag_reason_fep_bridge_create(
     const imag_reason_fep_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
+
     imag_reason_fep_bridge_t* bridge = nimcp_calloc(1, sizeof(imag_reason_fep_bridge_t));
     if (!bridge) {
 
@@ -377,6 +385,10 @@ void imag_reason_fep_bridge_destroy(imag_reason_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Unregister if still registered */
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
+
     if (bridge->registered) {
         imag_reason_fep_bridge_unregister(bridge);
     }
@@ -389,6 +401,10 @@ void imag_reason_fep_bridge_destroy(imag_reason_fep_bridge_t* bridge) {
 
 int imag_reason_fep_bridge_reset(imag_reason_fep_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -430,6 +446,10 @@ int imag_reason_fep_bridge_register(
     uint32_t* bridge_id_out
 ) {
     if (!bridge || !orchestrator) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -480,6 +500,10 @@ int imag_reason_fep_bridge_register(
 int imag_reason_fep_bridge_unregister(imag_reason_fep_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->registered) {
@@ -505,6 +529,10 @@ int imag_reason_fep_bridge_unregister(imag_reason_fep_bridge_t* bridge) {
 bool imag_reason_fep_bridge_is_registered(const imag_reason_fep_bridge_t* bridge) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
+
     nimcp_mutex_lock(((imag_reason_fep_bridge_t*)bridge)->base.mutex);
     bool registered = bridge->registered;
     nimcp_mutex_unlock(((imag_reason_fep_bridge_t*)bridge)->base.mutex);
@@ -514,6 +542,10 @@ bool imag_reason_fep_bridge_is_registered(const imag_reason_fep_bridge_t* bridge
 
 uint32_t imag_reason_fep_bridge_get_id(const imag_reason_fep_bridge_t* bridge) {
     if (!bridge) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
 
     nimcp_mutex_lock(((imag_reason_fep_bridge_t*)bridge)->base.mutex);
     uint32_t id = bridge->registered ? bridge->bridge_id : 0;
@@ -527,6 +559,10 @@ uint32_t imag_reason_fep_bridge_get_id(const imag_reason_fep_bridge_t* bridge) {
  *===========================================================================*/
 
 int imag_reason_fep_update_callback(void* handle) {
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_upda", 0.0f);
+
+
     imag_reason_fep_bridge_t* bridge = (imag_reason_fep_bridge_t*)handle;
     if (!bridge) return -1;
 
@@ -613,6 +649,10 @@ int imag_reason_fep_update_callback(void* handle) {
 
 void imag_reason_fep_destroy_callback(void* handle) {
     /* No-op: Bridge is destroyed separately via imag_reason_fep_bridge_destroy() */
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_dest", 0.0f);
+
+
     (void)handle;
 }
 
@@ -622,6 +662,10 @@ void imag_reason_fep_destroy_callback(void* handle) {
 
 int imag_reason_fep_bridge_force_update(imag_reason_fep_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -653,6 +697,10 @@ int imag_reason_fep_bridge_update_scenario_quality(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.scenario_quality = clamp_f(quality, 0.0f, 1.0f);
     bridge->stats.scenario_evaluations++;
@@ -666,6 +714,10 @@ int imag_reason_fep_bridge_update_reasoning_coherence(
     float coherence
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.reasoning_coherence = clamp_f(coherence, 0.0f, 1.0f);
@@ -681,6 +733,10 @@ int imag_reason_fep_bridge_update_counterfactual_validity(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.counterfactual_validity = clamp_f(validity, 0.0f, 1.0f);
     bridge->stats.counterfactual_analyses++;
@@ -694,6 +750,10 @@ int imag_reason_fep_bridge_update_creative_novelty(
     float novelty
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.creative_novelty = clamp_f(novelty, 0.0f, 1.0f);
@@ -712,6 +772,10 @@ int imag_reason_fep_bridge_get_metrics(
 ) {
     if (!bridge || !metrics_out) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
+
     nimcp_mutex_lock(((imag_reason_fep_bridge_t*)bridge)->base.mutex);
     *metrics_out = bridge->metrics;
     nimcp_mutex_unlock(((imag_reason_fep_bridge_t*)bridge)->base.mutex);
@@ -725,6 +789,10 @@ int imag_reason_fep_bridge_get_stats(
 ) {
     if (!bridge || !stats_out) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
+
     nimcp_mutex_lock(((imag_reason_fep_bridge_t*)bridge)->base.mutex);
     *stats_out = bridge->stats;
     nimcp_mutex_unlock(((imag_reason_fep_bridge_t*)bridge)->base.mutex);
@@ -734,6 +802,10 @@ int imag_reason_fep_bridge_get_stats(
 
 int imag_reason_fep_bridge_reset_stats(imag_reason_fep_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(imag_reason_fep_stats_t));
@@ -747,6 +819,10 @@ int imag_reason_fep_bridge_reset_stats(imag_reason_fep_bridge_t* bridge) {
 float imag_reason_fep_bridge_get_free_energy(const imag_reason_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
+
     nimcp_mutex_lock(((imag_reason_fep_bridge_t*)bridge)->base.mutex);
     float fe = bridge->metrics.free_energy;
     nimcp_mutex_unlock(((imag_reason_fep_bridge_t*)bridge)->base.mutex);
@@ -758,6 +834,10 @@ float imag_reason_fep_bridge_get_scenario_quality(
     const imag_reason_fep_bridge_t* bridge
 ) {
     if (!bridge) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
 
     nimcp_mutex_lock(((imag_reason_fep_bridge_t*)bridge)->base.mutex);
     float sq = bridge->metrics.scenario_quality;
@@ -771,6 +851,10 @@ float imag_reason_fep_bridge_get_reasoning_coherence(
 ) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
+
     nimcp_mutex_lock(((imag_reason_fep_bridge_t*)bridge)->base.mutex);
     float rc = bridge->metrics.reasoning_coherence;
     nimcp_mutex_unlock(((imag_reason_fep_bridge_t*)bridge)->base.mutex);
@@ -782,6 +866,10 @@ float imag_reason_fep_bridge_get_prediction_error(
     const imag_reason_fep_bridge_t* bridge
 ) {
     if (!bridge) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
 
     nimcp_mutex_lock(((imag_reason_fep_bridge_t*)bridge)->base.mutex);
     float pe = bridge->metrics.prediction_error;
@@ -799,6 +887,10 @@ imag_reason_fep_state_t imag_reason_fep_bridge_get_state(
 ) {
     if (!bridge) return IMAG_REASON_FEP_STATE_ERROR;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
+
     nimcp_mutex_lock(((imag_reason_fep_bridge_t*)bridge)->base.mutex);
     imag_reason_fep_state_t state = bridge->state;
     nimcp_mutex_unlock(((imag_reason_fep_bridge_t*)bridge)->base.mutex);
@@ -809,6 +901,10 @@ imag_reason_fep_state_t imag_reason_fep_bridge_get_state(
 bool imag_reason_fep_bridge_is_degraded(const imag_reason_fep_bridge_t* bridge) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
+
     nimcp_mutex_lock(((imag_reason_fep_bridge_t*)bridge)->base.mutex);
     bool degraded = (bridge->state == IMAG_REASON_FEP_STATE_DEGRADED);
     nimcp_mutex_unlock(((imag_reason_fep_bridge_t*)bridge)->base.mutex);
@@ -818,6 +914,10 @@ bool imag_reason_fep_bridge_is_degraded(const imag_reason_fep_bridge_t* bridge) 
 
 bool imag_reason_fep_bridge_is_coherent(const imag_reason_fep_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
 
     nimcp_mutex_lock(((imag_reason_fep_bridge_t*)bridge)->base.mutex);
     bool coherent = bridge->metrics.is_coherent;
@@ -848,6 +948,10 @@ int imag_reason_fep_bridge_set_high_fe_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->high_fe_callback = callback;
     bridge->high_fe_user_data = user_data;
@@ -863,6 +967,10 @@ int imag_reason_fep_bridge_set_surprise_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->surprise_callback = callback;
     bridge->surprise_user_data = user_data;
@@ -877,6 +985,10 @@ int imag_reason_fep_bridge_set_metrics_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics_callback = callback;
@@ -896,6 +1008,10 @@ int imag_reason_fep_bridge_set_config(
 ) {
     if (!bridge || !config) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->config = *config;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -908,6 +1024,10 @@ int imag_reason_fep_bridge_get_config(
     imag_reason_fep_config_t* config_out
 ) {
     if (!bridge || !config_out) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
+
 
     nimcp_mutex_lock(((imag_reason_fep_bridge_t*)bridge)->base.mutex);
     *config_out = bridge->config;

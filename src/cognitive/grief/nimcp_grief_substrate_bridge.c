@@ -31,7 +31,7 @@ static nimcp_health_agent_t* g_grief_substrate_bridge_health_agent = NULL;
  * @brief Set health agent for grief_substrate_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void grief_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void grief_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_grief_substrate_bridge_health_agent = agent;
 }
 
@@ -57,6 +57,10 @@ struct grief_substrate_bridge {
 };
 
 grief_substrate_config_t grief_substrate_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    grief_substrate_bridge_heartbeat("grief_substr_grief_substrate_defa", 0.0f);
+
+
     grief_substrate_config_t cfg = { .enable_atp_modulation = true, .enable_fatigue_modulation = true,
         .enable_bio_async = false, .atp_sensitivity = 1.0f, .fatigue_sensitivity = 1.0f, .min_capacity = 0.2f };
     return cfg;
@@ -70,6 +74,10 @@ grief_substrate_bridge_t* grief_substrate_bridge_create(void* grief, neural_subs
         return NULL;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    grief_substrate_bridge_heartbeat("grief_substr_create", 0.0f);
+
+
     grief_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(grief_substrate_bridge_t));
     if (!bridge) {
 
@@ -104,6 +112,10 @@ grief_substrate_bridge_t* grief_substrate_bridge_create(void* grief, neural_subs
 
 void grief_substrate_bridge_destroy(grief_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    grief_substrate_bridge_heartbeat("grief_substr_destroy", 0.0f);
+
+
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
     }
@@ -112,6 +124,10 @@ void grief_substrate_bridge_destroy(grief_substrate_bridge_t* bridge) {
 
 int grief_substrate_bridge_update(grief_substrate_bridge_t* bridge) {
     if (!bridge || !bridge->substrate) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    grief_substrate_bridge_heartbeat("grief_substr_update", 0.0f);
+
 
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
@@ -140,6 +156,10 @@ int grief_substrate_bridge_update(grief_substrate_bridge_t* bridge) {
 int grief_substrate_bridge_get_effects(const grief_substrate_bridge_t* bridge, grief_substrate_effects_t* effects) {
     if (!bridge || !effects) return -1;
     *effects = bridge->effects;
+    /* Phase 8: Heartbeat at operation start */
+    grief_substrate_bridge_heartbeat("grief_substr_get_effects", 0.0f);
+
+
     return 0;
 }
 
@@ -152,6 +172,10 @@ int grief_substrate_bridge_apply_effects(grief_substrate_bridge_t* bridge) {
     }
 
     /* Get current metabolic state for the message */
+    /* Phase 8: Heartbeat at operation start */
+    grief_substrate_bridge_heartbeat("grief_substr_apply_effects", 0.0f);
+
+
     substrate_metabolic_state_t metabolic;
     float atp_level = 1.0f, fatigue_level = 0.0f;
     if (bridge->substrate && substrate_get_metabolic_state(bridge->substrate, &metabolic) == 0) {
@@ -218,6 +242,10 @@ int grief_substrate_bridge_register_bio_async(grief_substrate_bridge_t* bridge, 
     if (!bridge) return -1;
 
     /* If already connected, disconnect first */
+    /* Phase 8: Heartbeat at operation start */
+    grief_substrate_bridge_heartbeat("grief_substr_register_bio_async", 0.0f);
+
+
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
         bridge->ctx = NULL;
@@ -254,9 +282,19 @@ int grief_substrate_bridge_register_bio_async(grief_substrate_bridge_t* bridge, 
 int grief_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    grief_substrate_bridge_heartbeat("grief_substr_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Grief_Substrate_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                grief_substrate_bridge_heartbeat("grief_substr_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

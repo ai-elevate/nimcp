@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_predictive_immune_health_agent = NULL;
  * @brief Set health agent for predictive_immune heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void predictive_immune_set_health_agent(nimcp_health_agent_t* agent) {
+void predictive_immune_set_health_agent(nimcp_health_agent_t* agent) {
     g_predictive_immune_health_agent = agent;
 }
 
@@ -95,6 +95,10 @@ static float compute_cytokine_factor(const float* cytokine_levels, const predict
  * ============================================================================ */
 
 nimcp_result_t predictive_immune_default_config(predictive_immune_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_immune_heartbeat("predictive_i_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* Interoceptive prediction defaults */
@@ -141,6 +145,10 @@ predictive_immune_system_t* predictive_immune_create(
     }
 
     /* Allocate system */
+    /* Phase 8: Heartbeat at operation start */
+    predictive_immune_heartbeat("predictive_i_create", 0.0f);
+
+
     predictive_immune_system_t* sys = (predictive_immune_system_t*)
         nimcp_malloc(sizeof(predictive_immune_system_t));
     if (!sys) {
@@ -223,6 +231,10 @@ predictive_immune_system_t* predictive_immune_create(
 void predictive_immune_destroy(predictive_immune_system_t* system) {
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_immune_heartbeat("predictive_i_destroy", 0.0f);
+
+
     if (system->running) {
         predictive_immune_stop(system);
     }
@@ -245,6 +257,10 @@ void predictive_immune_destroy(predictive_immune_system_t* system) {
 }
 
 nimcp_result_t predictive_immune_start(predictive_immune_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_immune_heartbeat("predictive_i_start", 0.0f);
+
+
     NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
     if (system->running) return NIMCP_SUCCESS;
 
@@ -257,6 +273,10 @@ nimcp_result_t predictive_immune_start(predictive_immune_system_t* system) {
 }
 
 nimcp_result_t predictive_immune_stop(predictive_immune_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_immune_heartbeat("predictive_i_stop", 0.0f);
+
+
     NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
     if (!system->running) return NIMCP_SUCCESS;
 
@@ -275,6 +295,10 @@ nimcp_result_t predictive_immune_update_interoception(
     predictive_immune_system_t* system,
     float dt)
 {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_immune_heartbeat("predictive_i_update_interoception", 0.0f);
+
+
     NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
     NIMCP_CHECK_THROW(system->running, NIMCP_ERROR_INVALID_STATE, "system is not running");
     if (system->config.intero_mode == INTERO_PREDICT_NONE) return NIMCP_SUCCESS;
@@ -333,6 +357,10 @@ nimcp_result_t predictive_immune_get_interoceptive_state(
     predictive_immune_system_t* system,
     interoceptive_state_t* state)
 {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_immune_heartbeat("predictive_i_get_interoceptive_st", 0.0f);
+
+
     NIMCP_CHECK_THROW(system && state, NIMCP_ERROR_NULL_POINTER, "system or state is NULL");
 
     memcpy(state, &system->intero_state, sizeof(interoceptive_state_t));
@@ -344,6 +372,10 @@ nimcp_result_t predictive_immune_trigger_sickness_behavior(
     predictive_immune_system_t* system,
     float intero_error)
 {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_immune_heartbeat("predictive_i_trigger_sickness_beh", 0.0f);
+
+
     NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
 
     /* Reduce learning rate in predictive network based on error */
@@ -364,6 +396,10 @@ nimcp_result_t predictive_immune_apply_immune_modulation(
     predictive_immune_system_t* system,
     brain_region_t* region)
 {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_immune_heartbeat("predictive_i_apply_immune_modulat", 0.0f);
+
+
     NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
     NIMCP_CHECK_THROW(system->running, NIMCP_ERROR_INVALID_STATE, "system is not running");
 
@@ -385,6 +421,12 @@ nimcp_result_t predictive_immune_apply_immune_modulation(
             float* precisions = (float*)nimcp_malloc(num_neurons * sizeof(float));
             if (precisions) {
                 for (uint32_t i = 0; i < num_neurons; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && num_neurons > 256) {
+                        predictive_immune_heartbeat("predictive_i_loop",
+                                         (float)(i + 1) / (float)num_neurons);
+                    }
+
                     precisions[i] = modulated_precision;
                 }
                 brain_region_set_precision(region, precisions, num_neurons);
@@ -403,6 +445,10 @@ nimcp_result_t predictive_immune_compute_cytokine_precision_effect(
     const float* cytokine_levels,
     float* precision_out)
 {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_immune_heartbeat("predictive_i_compute_cytokine_pre", 0.0f);
+
+
     NIMCP_CHECK_THROW(system && cytokine_levels && precision_out, NIMCP_ERROR_NULL_POINTER, "system, cytokine_levels, or precision_out is NULL");
 
     float factor = compute_cytokine_factor(cytokine_levels, &system->config);
@@ -421,6 +467,10 @@ nimcp_result_t predictive_immune_get_precision_modulation(
     brain_region_t* region,
     immune_modulated_precision_t* precision_state)
 {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_immune_heartbeat("predictive_i_get_precision_modula", 0.0f);
+
+
     NIMCP_CHECK_THROW(system && precision_state, NIMCP_ERROR_NULL_POINTER, "system or precision_state is NULL");
 
     /* Find region precision state */
@@ -445,6 +495,10 @@ nimcp_result_t predictive_immune_monitor_prediction_errors(
     brain_region_t* region,
     float dt)
 {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_immune_heartbeat("predictive_i_monitor_prediction_e", 0.0f);
+
+
     NIMCP_CHECK_THROW(system && region, NIMCP_ERROR_NULL_POINTER, "system or region is NULL");
     NIMCP_CHECK_THROW(system->running, NIMCP_ERROR_INVALID_STATE, "system is not running");
     if (system->config.error_response_mode == PRED_ERROR_RESPONSE_NONE) return NIMCP_SUCCESS;
@@ -458,6 +512,12 @@ nimcp_result_t predictive_immune_monitor_prediction_errors(
     uint32_t num_neurons = 100; /* TODO: get from region */
 
     for (uint32_t i = 0; i < num_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_neurons > 256) {
+            predictive_immune_heartbeat("predictive_i_loop",
+                             (float)(i + 1) / (float)num_neurons);
+        }
+
         total_error += fabsf(pred_ext->prediction_error[i]);
     }
     float mean_error = total_error / num_neurons;
@@ -475,6 +535,10 @@ nimcp_result_t predictive_immune_trigger_error_response(
     float error_magnitude,
     uint32_t* antigen_id)
 {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_immune_heartbeat("predictive_i_trigger_error_respon", 0.0f);
+
+
     NIMCP_CHECK_THROW(system && region && antigen_id, NIMCP_ERROR_NULL_POINTER, "system, region, or antigen_id is NULL");
 
     /* Create epitope from error signature */
@@ -513,6 +577,10 @@ nimcp_result_t predictive_immune_get_error_trigger_state(
     brain_region_t* region,
     prediction_error_trigger_t* trigger_state)
 {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_immune_heartbeat("predictive_i_get_error_trigger_st", 0.0f);
+
+
     NIMCP_CHECK_THROW(system && trigger_state, NIMCP_ERROR_NULL_POINTER, "system or trigger_state is NULL");
 
     /* Return first trigger state as example */
@@ -535,6 +603,10 @@ nimcp_result_t predictive_immune_update(
     predictive_immune_system_t* system,
     float dt)
 {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_immune_heartbeat("predictive_i_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
     NIMCP_CHECK_THROW(system->running, NIMCP_ERROR_INVALID_STATE, "system is not running");
 
@@ -556,6 +628,10 @@ nimcp_result_t predictive_immune_get_stats(
     predictive_immune_system_t* system,
     predictive_immune_stats_t* stats)
 {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_immune_heartbeat("predictive_i_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(system && stats, NIMCP_ERROR_NULL_POINTER, "system or stats is NULL");
 
     memcpy(stats, &system->stats, sizeof(predictive_immune_stats_t));
@@ -570,6 +646,10 @@ nimcp_result_t predictive_immune_get_stats(
 }
 
 nimcp_result_t predictive_immune_reset(predictive_immune_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_immune_heartbeat("predictive_i_reset", 0.0f);
+
+
     NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
 
     /* Reset interoceptive state */
@@ -581,6 +661,12 @@ nimcp_result_t predictive_immune_reset(predictive_immune_system_t* system) {
 
     /* Reset modulation state */
     for (uint32_t i = 0; i < system->num_regions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_regions > 256) {
+            predictive_immune_heartbeat("predictive_i_loop",
+                             (float)(i + 1) / (float)system->num_regions);
+        }
+
         system->region_precisions[i].current_precision =
             system->region_precisions[i].baseline_precision;
         system->region_precisions[i].total_reduction = 0.0f;
@@ -603,6 +689,10 @@ nimcp_result_t predictive_immune_connect_region(
     predictive_immune_system_t* system,
     brain_region_t* region)
 {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_immune_heartbeat("predictive_i_connect_region", 0.0f);
+
+
     NIMCP_CHECK_THROW(system && region, NIMCP_ERROR_NULL_POINTER, "system or region is NULL");
 
     /* Expand capacity if needed */
@@ -637,6 +727,10 @@ nimcp_result_t predictive_immune_disconnect_region(
     predictive_immune_system_t* system,
     brain_region_t* region)
 {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_immune_heartbeat("predictive_i_disconnect_region", 0.0f);
+
+
     NIMCP_CHECK_THROW(system && region, NIMCP_ERROR_NULL_POINTER, "system or region is NULL");
 
     /* Restore baseline precision to region */
@@ -646,6 +740,12 @@ nimcp_result_t predictive_immune_disconnect_region(
         float* precisions = (float*)nimcp_malloc(num_neurons * sizeof(float));
         if (precisions) {
             for (uint32_t i = 0; i < num_neurons; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && num_neurons > 256) {
+                    predictive_immune_heartbeat("predictive_i_loop",
+                                     (float)(i + 1) / (float)num_neurons);
+                }
+
                 precisions[i] = PREDICTIVE_IMMUNE_BASELINE_PRECISION;
             }
             brain_region_set_precision(region, precisions, num_neurons);
@@ -688,6 +788,12 @@ static nimcp_result_t update_interoceptive_state(predictive_immune_system_t* sys
     /* TODO: Get actual cytokine concentrations from immune system */
     /* For now, estimate from inflammation */
     for (uint32_t i = 0; i < BRAIN_CYTOKINE_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && BRAIN_CYTOKINE_COUNT > 256) {
+            predictive_immune_heartbeat("predictive_i_loop",
+                             (float)(i + 1) / (float)BRAIN_CYTOKINE_COUNT);
+        }
+
         sys->intero_state.cytokine_concentrations[i] =
             sys->intero_state.inflammation_level * 0.5f;
     }
@@ -821,9 +927,19 @@ static float compute_cytokine_factor(
 int predictive_immune_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_immune_heartbeat("predictive_i_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Predictive_Immune");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                predictive_immune_heartbeat("predictive_i_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

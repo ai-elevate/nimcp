@@ -42,7 +42,7 @@ static nimcp_health_agent_t* g_immune_persistence_health_agent = NULL;
  * @brief Set health agent for immune_persistence heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void immune_persistence_set_health_agent(nimcp_health_agent_t* agent) {
+void immune_persistence_set_health_agent(nimcp_health_agent_t* agent) {
     g_immune_persistence_health_agent = agent;
 }
 
@@ -99,6 +99,10 @@ int immune_persistence_default_config(immune_persistence_config_t* config) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_persistence_heartbeat("immune_persi_default_config", 0.0f);
+
+
     memset(config, 0, sizeof(*config));
 
     /* Compression/Encryption - disabled by default for speed */
@@ -142,6 +146,10 @@ int immune_persistence_set_encryption_key(
     size_t key_len
 ) {
     if (!config || !key) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    immune_persistence_heartbeat("immune_persi_set_encryption_key", 0.0f);
+
+
     if (key_len != 32) {
         NIMCP_LOGGING_ERROR("Encryption key must be 32 bytes for AES-256");
         return -1;
@@ -179,6 +187,12 @@ static uint32_t compute_checksum(const uint8_t* data, size_t len) {
 
     uint32_t checksum = 0xFFFFFFFF;
     for (size_t i = 0; i < len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && len > 256) {
+            immune_persistence_heartbeat("immune_persi_loop",
+                             (float)(i + 1) / (float)len);
+        }
+
         checksum ^= data[i];
         checksum = (checksum << 1) | (checksum >> 31);
     }
@@ -212,6 +226,12 @@ static uint32_t compute_file_checksum(FILE* file, size_t header_size) {
 
     while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
         for (size_t i = 0; i < bytes_read; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bytes_read > 256) {
+                immune_persistence_heartbeat("immune_persi_loop",
+                                 (float)(i + 1) / (float)bytes_read);
+            }
+
             checksum ^= buffer[i];
             checksum = (checksum << 1) | (checksum >> 31);
         }
@@ -362,11 +382,23 @@ static void fill_counts_from_system(
     if (memory_only) {
         /* Count only memory cells */
         for (size_t i = 0; i < system->b_cell_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && system->b_cell_count > 256) {
+                immune_persistence_heartbeat("immune_persi_loop",
+                                 (float)(i + 1) / (float)system->b_cell_count);
+            }
+
             if (system->b_cells[i].state == B_CELL_MEMORY) {
                 counts->b_cell_count++;
             }
         }
         for (size_t i = 0; i < system->t_cell_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && system->t_cell_count > 256) {
+                immune_persistence_heartbeat("immune_persi_loop",
+                                 (float)(i + 1) / (float)system->t_cell_count);
+            }
+
             if (system->t_cells[i].type == T_CELL_MEMORY) {
                 counts->t_cell_count++;
             }
@@ -401,6 +433,10 @@ int immune_persistence_save(
     if (!system || !filepath) return -1;
 
     /* Use default config if not provided */
+    /* Phase 8: Heartbeat at operation start */
+    immune_persistence_heartbeat("immune_persi_save", 0.0f);
+
+
     immune_persistence_config_t default_cfg;
     if (!config) {
         immune_persistence_default_config(&default_cfg);
@@ -460,6 +496,12 @@ int immune_persistence_save(
         if (config->memory_cells_only) {
             /* Write only memory B cells */
             for (size_t i = 0; i < system->b_cell_count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && system->b_cell_count > 256) {
+                    immune_persistence_heartbeat("immune_persi_loop",
+                                     (float)(i + 1) / (float)system->b_cell_count);
+                }
+
                 if (system->b_cells[i].state == B_CELL_MEMORY) {
                     if (fwrite(&system->b_cells[i], sizeof(brain_b_cell_t),
                                1, file) != 1) {
@@ -482,6 +524,12 @@ int immune_persistence_save(
         if (config->memory_cells_only) {
             /* Write only memory T cells */
             for (size_t i = 0; i < system->t_cell_count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && system->t_cell_count > 256) {
+                    immune_persistence_heartbeat("immune_persi_loop",
+                                     (float)(i + 1) / (float)system->t_cell_count);
+                }
+
                 if (system->t_cells[i].type == T_CELL_MEMORY) {
                     if (fwrite(&system->t_cells[i], sizeof(brain_t_cell_t),
                                1, file) != 1) {
@@ -584,6 +632,10 @@ int immune_persistence_load(
     if (!system || !filepath) return -1;
 
     /* Use default config if not provided */
+    /* Phase 8: Heartbeat at operation start */
+    immune_persistence_heartbeat("immune_persi_load", 0.0f);
+
+
     immune_persistence_config_t default_cfg;
     if (!config) {
         immune_persistence_default_config(&default_cfg);
@@ -632,6 +684,12 @@ int immune_persistence_load(
 
         /* Update statistics */
         for (size_t i = 0; i < system->b_cell_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && system->b_cell_count > 256) {
+                immune_persistence_heartbeat("immune_persi_loop",
+                                 (float)(i + 1) / (float)system->b_cell_count);
+            }
+
             if (system->b_cells[i].state == B_CELL_MEMORY) {
                 system->stats.memory_cells++;
             }
@@ -707,6 +765,10 @@ int immune_persistence_save_incremental(
     if (!system || !filepath) return -1;
 
     /* Use memory-only config for incremental saves */
+    /* Phase 8: Heartbeat at operation start */
+    immune_persistence_heartbeat("immune_persi_save_incremental", 0.0f);
+
+
     immune_persistence_config_t inc_config;
     if (config) {
         inc_config = *config;
@@ -732,6 +794,10 @@ int immune_persistence_save_incremental(
  * @brief Get persistence format version
  */
 uint32_t immune_persistence_get_version(void) {
+    /* Phase 8: Heartbeat at operation start */
+    immune_persistence_heartbeat("immune_persi_get_version", 0.0f);
+
+
     return IMMUNE_PERSISTENCE_VERSION;
 }
 
@@ -740,6 +806,10 @@ uint32_t immune_persistence_get_version(void) {
  */
 bool immune_persistence_is_version_compatible(uint32_t file_version) {
     /* For now, require exact match */
+    /* Phase 8: Heartbeat at operation start */
+    immune_persistence_heartbeat("immune_persi_is_version_compatibl", 0.0f);
+
+
     return (file_version == IMMUNE_PERSISTENCE_VERSION);
 }
 
@@ -757,6 +827,10 @@ int immune_persistence_validate_file(
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_persistence_heartbeat("immune_persi_validate_file", 0.0f);
+
 
     FILE* file = fopen(filepath, "rb");
     if (!file) {
@@ -805,6 +879,10 @@ int immune_persistence_get_file_info(
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_persistence_heartbeat("immune_persi_get_file_info", 0.0f);
+
 
     FILE* file = fopen(filepath, "rb");
     if (!file) {
@@ -855,6 +933,10 @@ int immune_persistence_create_backup(
     }
 
     /* Check if source file exists */
+    /* Phase 8: Heartbeat at operation start */
+    immune_persistence_heartbeat("immune_persi_create_backup", 0.0f);
+
+
     FILE* src = fopen(filepath, "rb");
     if (!src) return 0; /* No file to back up, not an error */
 
@@ -904,6 +986,10 @@ int immune_persistence_clear_state(brain_immune_system_t* system) {
     }
 
     /* Clear counts */
+    /* Phase 8: Heartbeat at operation start */
+    immune_persistence_heartbeat("immune_persi_clear_state", 0.0f);
+
+
     system->antigen_count = 0;
     system->b_cell_count = 0;
     system->t_cell_count = 0;
@@ -968,6 +1054,10 @@ int immune_persistence_save_ex(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_persistence_heartbeat("immune_persi_save_ex", 0.0f);
+
+
     memset(result, 0, sizeof(*result));
     uint64_t start_time = get_timestamp_ms();
 
@@ -1000,6 +1090,10 @@ int immune_persistence_load_ex(
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_persistence_heartbeat("immune_persi_load_ex", 0.0f);
+
 
     memset(result, 0, sizeof(*result));
     uint64_t start_time = get_timestamp_ms();
@@ -1040,6 +1134,10 @@ int immune_persistence_merge_incremental(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_persistence_heartbeat("immune_persi_merge_incremental", 0.0f);
+
+
     NIMCP_LOGGING_WARN("Incremental merge not yet implemented");
     return -1;
 }
@@ -1060,9 +1158,19 @@ int immune_persistence_merge_incremental(
  */
 int immune_persistence_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    immune_persistence_heartbeat("immune_persi_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Immune_Persistence");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                immune_persistence_heartbeat("immune_persi_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Immune persistence self-knowledge: %s", self->observations[i]);
         }
     }

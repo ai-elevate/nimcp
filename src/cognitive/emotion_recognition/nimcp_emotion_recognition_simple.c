@@ -45,7 +45,7 @@ static nimcp_health_agent_t* g_emotion_recognition_simple_health_agent = NULL;
  * @brief Set health agent for emotion_recognition_simple heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void emotion_recognition_simple_set_health_agent(nimcp_health_agent_t* agent) {
+void emotion_recognition_simple_set_health_agent(nimcp_health_agent_t* agent) {
     g_emotion_recognition_simple_health_agent = agent;
 }
 
@@ -158,6 +158,10 @@ bool emotion_recognize_text_simple(
     }
 
     // Initialize outputs
+    /* Phase 8: Heartbeat at operation start */
+    emotion_recognition_simple_heartbeat("emotion_reco_emotion_recognize_te", 0.0f);
+
+
     emotion_name[0] = '\0';
     *confidence = 0.0F;
     *valence = 0.0F;
@@ -241,9 +245,19 @@ bool emotion_recognize_text_simple(
 int emotion_recognition_simple_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_recognition_simple_heartbeat("emotion_reco_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Emotion_Recognition_Simple");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                emotion_recognition_simple_heartbeat("emotion_reco_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

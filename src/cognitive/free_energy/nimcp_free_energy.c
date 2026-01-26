@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_free_energy_health_agent = NULL;
  * @brief Set health agent for free_energy heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void free_energy_set_health_agent(nimcp_health_agent_t* agent) {
+void free_energy_set_health_agent(nimcp_health_agent_t* agent) {
     g_free_energy_health_agent = agent;
 }
 
@@ -63,6 +63,12 @@ static float vector_norm(const float* vec, uint32_t dim) {
 
     float sum = 0.0f;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            free_energy_heartbeat("free_energy_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         sum += vec[i] * vec[i];
     }
     return sqrtf(sum);
@@ -76,6 +82,12 @@ static float vector_dot(const float* a, const float* b, uint32_t dim) {
 
     float sum = 0.0f;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            free_energy_heartbeat("free_energy_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         sum += a[i] * b[i];
     }
     return sum;
@@ -124,6 +136,12 @@ static void softmax(float* values, uint32_t n, float temperature) {
     /* Compute exp and sum with exponent clamping */
     float sum = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            free_energy_heartbeat("free_energy_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         float exponent = (values[i] - max_val) / temperature;
 
         /* NUMERICAL STABILITY: Clamp exponent to prevent overflow/underflow.
@@ -144,12 +162,24 @@ static void softmax(float* values, uint32_t n, float temperature) {
     if (sum > 0.0f && !isnan(sum) && !isinf(sum)) {
         float inv_sum = 1.0f / sum;
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                free_energy_heartbeat("free_energy_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             values[i] *= inv_sum;
         }
     } else {
         /* Fallback: uniform distribution if sum is invalid */
         float uniform = 1.0f / (float)n;
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                free_energy_heartbeat("free_energy_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             values[i] = uniform;
         }
     }
@@ -185,6 +215,12 @@ static int init_belief(fep_belief_t* belief, uint32_t dim, float initial_precisi
 
     /* Initialize with prior */
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            free_energy_heartbeat("free_energy_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         belief->mean[i] = 0.0f;
         belief->variance[i] = 1.0f / initial_precision;
         belief->precision[i] = initial_precision;
@@ -231,6 +267,12 @@ static int init_prediction_error(fep_prediction_error_t* error, uint32_t dim) {
     }
 
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            free_energy_heartbeat("free_energy_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         error->precision[i] = FEP_DEFAULT_PRECISION;
     }
 
@@ -314,6 +356,12 @@ static int init_level(
     }
 
     for (uint32_t i = 0; i < state_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && state_dim > 256) {
+            free_energy_heartbeat("free_energy_loop",
+                             (float)(i + 1) / (float)state_dim);
+        }
+
         level->prior_precision[i] = initial_precision;
     }
 
@@ -349,6 +397,10 @@ int fep_default_config(fep_config_t* config) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    free_energy_heartbeat("free_energy_fep_default_config", 0.0f);
+
+
     config->num_levels = 2;  /* Default 2-level hierarchy */
     config->level_dims = NULL;  /* Will use defaults */
 
@@ -377,6 +429,10 @@ fep_system_t* fep_create(
     uint32_t observation_dim,
     uint32_t action_dim
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    free_energy_heartbeat("free_energy_fep_create", 0.0f);
+
+
     if (observation_dim == 0) {
         NIMCP_LOGGING_ERROR("Observation dimension must be > 0");
         return NULL;
@@ -430,6 +486,12 @@ fep_system_t* fep_create(
 
     /* Initialize each level */
     for (uint32_t i = 0; i < fep->num_levels; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && fep->num_levels > 256) {
+            free_energy_heartbeat("free_energy_loop",
+                             (float)(i + 1) / (float)fep->num_levels);
+        }
+
         uint32_t state_dim;
         uint32_t pred_dim;
 
@@ -469,6 +531,12 @@ fep_system_t* fep_create(
         /* Initialize simple one-step policies */
         fep->num_policies = action_dim < FEP_MAX_POLICIES ? action_dim : FEP_MAX_POLICIES;
         for (uint32_t i = 0; i < fep->num_policies; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && fep->num_policies > 256) {
+                free_energy_heartbeat("free_energy_loop",
+                                 (float)(i + 1) / (float)fep->num_policies);
+            }
+
             fep->policies[i].policy_id = i;
             fep->policies[i].action_dim = action_dim;
             fep->policies[i].num_actions = 1;
@@ -498,8 +566,18 @@ void fep_destroy(fep_system_t* fep) {
     if (!fep) return;
 
     /* Free levels */
+    /* Phase 8: Heartbeat at operation start */
+    free_energy_heartbeat("free_energy_fep_destroy", 0.0f);
+
+
     if (fep->levels) {
         for (uint32_t i = 0; i < fep->num_levels; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && fep->num_levels > 256) {
+                free_energy_heartbeat("free_energy_loop",
+                                 (float)(i + 1) / (float)fep->num_levels);
+            }
+
             free_level(&fep->levels[i]);
         }
         nimcp_free(fep->levels);
@@ -514,6 +592,12 @@ void fep_destroy(fep_system_t* fep) {
     /* Free policies */
     if (fep->policies) {
         for (uint32_t i = 0; i < fep->num_policies; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && fep->num_policies > 256) {
+                free_energy_heartbeat("free_energy_loop",
+                                 (float)(i + 1) / (float)fep->num_policies);
+            }
+
             if (fep->policies[i].actions) {
                 nimcp_free(fep->policies[i].actions);
             }
@@ -539,10 +623,20 @@ int fep_reset(fep_system_t* fep) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    free_energy_heartbeat("free_energy_fep_reset", 0.0f);
+
+
     nimcp_platform_mutex_lock(fep->mutex);
 
     /* Reset beliefs to priors */
     for (uint32_t l = 0; l < fep->num_levels; l++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((l & 0xFF) == 0 && fep->num_levels > 256) {
+            free_energy_heartbeat("free_energy_loop",
+                             (float)(l + 1) / (float)fep->num_levels);
+        }
+
         fep_hierarchy_level_t* level = &fep->levels[l];
         /* Guard: Ensure precision is positive to prevent division by zero */
         float safe_precision = fep->config.initial_precision;
@@ -550,6 +644,12 @@ int fep_reset(fep_system_t* fep) {
             safe_precision = FEP_MIN_PRECISION;
         }
         for (uint32_t i = 0; i < level->beliefs.dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && level->beliefs.dim > 256) {
+                free_energy_heartbeat("free_energy_loop",
+                                 (float)(i + 1) / (float)level->beliefs.dim);
+            }
+
             level->beliefs.mean[i] = level->prior_mean[i];
             level->beliefs.precision[i] = safe_precision;
             level->beliefs.variance[i] = 1.0f / safe_precision;
@@ -557,6 +657,12 @@ int fep_reset(fep_system_t* fep) {
 
         /* Reset errors */
         for (uint32_t i = 0; i < level->errors.dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && level->errors.dim > 256) {
+                free_energy_heartbeat("free_energy_loop",
+                                 (float)(i + 1) / (float)level->errors.dim);
+            }
+
             level->errors.error[i] = 0.0f;
             level->errors.weighted_error[i] = 0.0f;
         }
@@ -587,6 +693,10 @@ int fep_process_observation(
     if (!fep || !observation) return -1;
     if (observation_dim != fep->observation_dim) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    free_energy_heartbeat("free_energy_fep_process_observat", 0.0f);
+
+
     nimcp_platform_mutex_lock(fep->mutex);
 
     /* Store observation */
@@ -597,6 +707,12 @@ int fep_process_observation(
 
     /* Update beliefs to minimize free energy */
     for (uint32_t iter = 0; iter < fep->config.max_iterations; iter++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((iter & 0xFF) == 0 && fep->config.max_iterations > 256) {
+            free_energy_heartbeat("free_energy_loop",
+                             (float)(iter + 1) / (float)fep->config.max_iterations);
+        }
+
         float prev_fe = fep->free_energy.total;
 
         fep_update_beliefs(fep);
@@ -628,6 +744,10 @@ uint32_t fep_compute_prediction(
     if (!fep || !prediction) return 0;
 
     /* Use level 0 predictions (lowest level) */
+    /* Phase 8: Heartbeat at operation start */
+    free_energy_heartbeat("free_energy_fep_compute_predicti", 0.0f);
+
+
     fep_hierarchy_level_t* level = &fep->levels[0];
     uint32_t dim = level->prediction_dim;
     if (dim > prediction_dim) dim = prediction_dim;
@@ -646,6 +766,10 @@ int fep_compute_prediction_error(
     if (!fep || !error) return -1;
 
     /* Get level 0 */
+    /* Phase 8: Heartbeat at operation start */
+    free_energy_heartbeat("free_energy_fep_compute_predicti", 0.0f);
+
+
     const fep_hierarchy_level_t* level = &fep->levels[0];
     uint32_t dim = level->errors.dim;
 
@@ -670,10 +794,20 @@ int fep_update_beliefs(fep_system_t* fep) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    free_energy_heartbeat("free_energy_fep_update_beliefs", 0.0f);
+
+
     float lr = fep->config.belief_learning_rate;
 
     /* Update each level bottom-up */
     for (uint32_t l = 0; l < fep->num_levels; l++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((l & 0xFF) == 0 && fep->num_levels > 256) {
+            free_energy_heartbeat("free_energy_loop",
+                             (float)(l + 1) / (float)fep->num_levels);
+        }
+
         fep_hierarchy_level_t* level = &fep->levels[l];
 
         /* Gradient descent: μ' = μ - lr * ∂F/∂μ */
@@ -704,13 +838,29 @@ int fep_update_precision(fep_system_t* fep) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    free_energy_heartbeat("free_energy_fep_update_precision", 0.0f);
+
+
     float lr = fep->config.precision_learning_rate;
 
     /* Update precision based on prediction error variance */
     for (uint32_t l = 0; l < fep->num_levels; l++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((l & 0xFF) == 0 && fep->num_levels > 256) {
+            free_energy_heartbeat("free_energy_loop",
+                             (float)(l + 1) / (float)fep->num_levels);
+        }
+
         fep_hierarchy_level_t* level = &fep->levels[l];
 
         for (uint32_t i = 0; i < level->errors.dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && level->errors.dim > 256) {
+                free_energy_heartbeat("free_energy_loop",
+                                 (float)(i + 1) / (float)level->errors.dim);
+            }
+
             /* Precision update: Π' = Π + lr * (ε² - 1/Π) */
             float error_sq = level->errors.error[i] * level->errors.error[i];
 
@@ -749,6 +899,10 @@ int fep_propagate_hierarchy(fep_system_t* fep) {
     }
 
     /* Bottom level: compare with observations */
+    /* Phase 8: Heartbeat at operation start */
+    free_energy_heartbeat("free_energy_fep_propagate_hierar", 0.0f);
+
+
     fep_hierarchy_level_t* level0 = &fep->levels[0];
     uint32_t obs_dim = fep->observation_dim;
     uint32_t pred_dim = level0->prediction_dim;
@@ -761,6 +915,12 @@ int fep_propagate_hierarchy(fep_system_t* fep) {
 
     /* Compute prediction error: ε = o - g(μ) */
     for (uint32_t i = 0; i < min_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && min_dim > 256) {
+            free_energy_heartbeat("free_energy_loop",
+                             (float)(i + 1) / (float)min_dim);
+        }
+
         level0->errors.error[i] = fep->observations[i] - level0->predictions[i];
         level0->errors.weighted_error[i] =
             level0->errors.precision[i] * level0->errors.error[i];
@@ -783,6 +943,12 @@ int fep_propagate_hierarchy(fep_system_t* fep) {
 
         /* Prediction error: lower level state - higher level prediction */
         for (uint32_t i = 0; i < dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && dim > 256) {
+                free_energy_heartbeat("free_energy_loop",
+                                 (float)(i + 1) / (float)dim);
+            }
+
             current->errors.error[i] = lower->beliefs.mean[i] - current->predictions[i];
             current->errors.weighted_error[i] =
                 current->errors.precision[i] * current->errors.error[i];
@@ -810,20 +976,42 @@ int fep_compute_free_energy(
 ) {
     if (!fep || !fe) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    free_energy_heartbeat("free_energy_fep_compute_free_ene", 0.0f);
+
+
     memset(fe, 0, sizeof(fep_free_energy_t));
 
     /* Sum over hierarchy levels */
     for (uint32_t l = 0; l < fep->num_levels; l++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((l & 0xFF) == 0 && fep->num_levels > 256) {
+            free_energy_heartbeat("free_energy_loop",
+                             (float)(l + 1) / (float)fep->num_levels);
+        }
+
         const fep_hierarchy_level_t* level = &fep->levels[l];
 
         /* Inaccuracy: -E[ln p(o|s)] ≈ 0.5 * Σ Π * ε² */
         for (uint32_t i = 0; i < level->errors.dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && level->errors.dim > 256) {
+                free_energy_heartbeat("free_energy_loop",
+                                 (float)(i + 1) / (float)level->errors.dim);
+            }
+
             float err_sq = level->errors.error[i] * level->errors.error[i];
             fe->inaccuracy += 0.5f * level->errors.precision[i] * err_sq;
         }
 
         /* Complexity: KL[q(s)||p(s)] ≈ 0.5 * Σ (μ-μ₀)²/σ₀² - ln(σ/σ₀) */
         for (uint32_t i = 0; i < level->beliefs.dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && level->beliefs.dim > 256) {
+                free_energy_heartbeat("free_energy_loop",
+                                 (float)(i + 1) / (float)level->beliefs.dim);
+            }
+
             float mean_diff = level->beliefs.mean[i] - level->prior_mean[i];
             fe->complexity += 0.5f * level->prior_precision[i] * mean_diff * mean_diff;
 
@@ -864,6 +1052,10 @@ float fep_compute_component(
 ) {
     if (!fep) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    free_energy_heartbeat("free_energy_fep_compute_componen", 0.0f);
+
+
     switch (component) {
         case FEP_COMPONENT_COMPLEXITY:
             return fep->free_energy.complexity;
@@ -880,6 +1072,10 @@ float fep_compute_component(
 
 float fep_compute_surprise(const fep_system_t* fep) {
     if (!fep) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    free_energy_heartbeat("free_energy_fep_compute_surprise", 0.0f);
+
+
     return fep->free_energy.surprise;
 }
 
@@ -895,6 +1091,12 @@ static int fep_evaluate_policies_unlocked(fep_system_t* fep) {
 
     /* Compute EFE for each policy */
     for (uint32_t i = 0; i < fep->num_policies; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && fep->num_policies > 256) {
+            free_energy_heartbeat("free_energy_loop",
+                             (float)(i + 1) / (float)fep->num_policies);
+        }
+
         fep_efe_t efe;
         fep_compute_efe(fep, &fep->policies[i], &efe);
         fep->policies[i].expected_free_energy = efe.total;
@@ -904,12 +1106,24 @@ static int fep_evaluate_policies_unlocked(fep_system_t* fep) {
     float* neg_efe = (float*)nimcp_malloc(fep->num_policies * sizeof(float));
     if (neg_efe) {
         for (uint32_t i = 0; i < fep->num_policies; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && fep->num_policies > 256) {
+                free_energy_heartbeat("free_energy_loop",
+                                 (float)(i + 1) / (float)fep->num_policies);
+            }
+
             neg_efe[i] = -fep->policies[i].expected_free_energy;
         }
 
         softmax(neg_efe, fep->num_policies, fep->config.action_temperature);
 
         for (uint32_t i = 0; i < fep->num_policies; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && fep->num_policies > 256) {
+                free_energy_heartbeat("free_energy_loop",
+                                 (float)(i + 1) / (float)fep->num_policies);
+            }
+
             fep->policies[i].probability = neg_efe[i];
         }
 
@@ -925,6 +1139,10 @@ int fep_compute_efe(
     fep_efe_t* efe
 ) {
     if (!fep || !policy || !efe) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    free_energy_heartbeat("free_energy_fep_compute_efe", 0.0f);
+
 
     memset(efe, 0, sizeof(fep_efe_t));
 
@@ -960,6 +1178,10 @@ int fep_compute_efe(
 int fep_evaluate_policies(fep_system_t* fep) {
     if (!fep || !fep->policies) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    free_energy_heartbeat("free_energy_fep_evaluate_policie", 0.0f);
+
+
     nimcp_platform_mutex_lock(fep->mutex);
     int ret = fep_evaluate_policies_unlocked(fep);
     nimcp_platform_mutex_unlock(fep->mutex);
@@ -974,6 +1196,10 @@ int fep_select_action(
 ) {
     if (!fep || !action) return -1;
     if (action_dim < fep->action_dim) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    free_energy_heartbeat("free_energy_fep_select_action", 0.0f);
+
 
     nimcp_platform_mutex_lock(fep->mutex);
 
@@ -1003,6 +1229,12 @@ int fep_select_action(
             float r = (float)rand() / (float)RAND_MAX;
             float cumsum = 0.0f;
             for (uint32_t i = 0; i < fep->num_policies; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && fep->num_policies > 256) {
+                    free_energy_heartbeat("free_energy_loop",
+                                     (float)(i + 1) / (float)fep->num_policies);
+                }
+
                 cumsum += fep->policies[i].probability;
                 if (r <= cumsum) {
                     selected = i;
@@ -1036,9 +1268,19 @@ int fep_set_preferences(
     if (!fep || !preferred) return -1;
 
     /* Store preferences as prior for level 0 */
+    /* Phase 8: Heartbeat at operation start */
+    free_energy_heartbeat("free_energy_fep_set_preferences", 0.0f);
+
+
     uint32_t store_dim = dim < fep->levels[0].beliefs.dim ? dim : fep->levels[0].beliefs.dim;
 
     for (uint32_t i = 0; i < store_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && store_dim > 256) {
+            free_energy_heartbeat("free_energy_loop",
+                             (float)(i + 1) / (float)store_dim);
+        }
+
         fep->levels[0].prior_mean[i] = preferred[i];
         fep->levels[0].prior_precision[i] = precision;
     }
@@ -1058,16 +1300,28 @@ int fep_get_beliefs(
     if (!fep || !beliefs || level >= fep->num_levels) return -1;
 
     *beliefs = fep->levels[level].beliefs;
+    /* Phase 8: Heartbeat at operation start */
+    free_energy_heartbeat("free_energy_fep_get_beliefs", 0.0f);
+
+
     return 0;
 }
 
 float fep_get_free_energy(const fep_system_t* fep) {
     if (!fep) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    free_energy_heartbeat("free_energy_fep_get_free_energy", 0.0f);
+
+
     return fep->free_energy.total;
 }
 
 float fep_get_prediction_error(const fep_system_t* fep, uint32_t level) {
     if (!fep || level >= fep->num_levels) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    free_energy_heartbeat("free_energy_fep_get_prediction_e", 0.0f);
+
+
     return fep->levels[level].errors.magnitude;
 }
 
@@ -1076,12 +1330,20 @@ int fep_get_selected_policy(const fep_system_t* fep, fep_policy_t* policy) {
     if (fep->selected_policy >= fep->num_policies) return -1;
 
     *policy = fep->policies[fep->selected_policy];
+    /* Phase 8: Heartbeat at operation start */
+    free_energy_heartbeat("free_energy_fep_get_selected_pol", 0.0f);
+
+
     return 0;
 }
 
 int fep_get_stats(const fep_system_t* fep, fep_stats_t* stats) {
     if (!fep || !stats) return -1;
     *stats = fep->stats;
+    /* Phase 8: Heartbeat at operation start */
+    free_energy_heartbeat("free_energy_fep_get_stats", 0.0f);
+
+
     return 0;
 }
 
@@ -1125,9 +1387,19 @@ const char* fep_component_to_string(fep_component_t component) {
 int fep_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    free_energy_heartbeat("free_energy_fep_query_self_knowl", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "FEP_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                free_energy_heartbeat("free_energy_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("FEP self-knowledge: %s", self->observations[i]);
         }
     }

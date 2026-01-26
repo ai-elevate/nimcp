@@ -38,7 +38,7 @@ static nimcp_health_agent_t* g_empathetic_response_fep_bridge_health_agent = NUL
  * @brief Set health agent for empathetic_response_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void empathetic_response_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void empathetic_response_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_empathetic_response_fep_bridge_health_agent = agent;
 }
 
@@ -55,6 +55,10 @@ static inline void empathetic_response_fep_bridge_heartbeat(const char* operatio
  * ============================================================================ */
 
 int empathetic_response_fep_default_config(empathetic_response_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_fep_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* FEP -> Empathetic Response */
@@ -83,6 +87,10 @@ int empathetic_response_fep_default_config(empathetic_response_fep_config_t* con
 empathetic_response_fep_bridge_t* empathetic_response_fep_create(
     const empathetic_response_fep_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_fep_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
+
+
     empathetic_response_fep_bridge_t* bridge = nimcp_malloc(sizeof(empathetic_response_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate empathetic response FEP bridge");
@@ -119,6 +127,10 @@ void empathetic_response_fep_destroy(empathetic_response_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_fep_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         empathetic_response_fep_disconnect_bio_async(bridge);
     }
@@ -140,6 +152,10 @@ int empathetic_response_fep_connect_fep(
     empathetic_response_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_fep_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -154,6 +170,10 @@ int empathetic_response_fep_connect_empathy(
     empathetic_response_fep_bridge_t* bridge,
     empathetic_response_engine_t empathy
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_fep_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -165,6 +185,10 @@ int empathetic_response_fep_connect_empathy(
 }
 
 int empathetic_response_fep_disconnect(empathetic_response_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_fep_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -184,6 +208,10 @@ int empathetic_response_fep_infer_user_state(
     empathetic_response_fep_bridge_t* bridge,
     float pe_magnitude
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_fep_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_pe_empathy_generation) return 0;
 
@@ -236,6 +264,10 @@ int empathetic_response_fep_infer_user_state(
 int empathetic_response_fep_modulate_social_precision(
     empathetic_response_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_fep_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_empathy_precision) return 0;
 
@@ -267,6 +299,10 @@ int empathetic_response_fep_update(
     empathetic_response_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_fep_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Apply social precision modulation */
@@ -294,6 +330,10 @@ int empathetic_response_fep_get_state(
     const empathetic_response_fep_bridge_t* bridge,
     empathetic_response_fep_state_t* state
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_fep_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -307,6 +347,10 @@ int empathetic_response_fep_get_stats(
     const empathetic_response_fep_bridge_t* bridge,
     empathetic_response_fep_stats_t* stats
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_fep_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -323,6 +367,10 @@ int empathetic_response_fep_get_stats(
 int empathetic_response_fep_connect_bio_async(
     empathetic_response_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_fep_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
@@ -347,6 +395,10 @@ int empathetic_response_fep_connect_bio_async(
 int empathetic_response_fep_disconnect_bio_async(
     empathetic_response_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_fep_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return 0;
 
@@ -364,6 +416,10 @@ int empathetic_response_fep_disconnect_bio_async(
 bool empathetic_response_fep_is_bio_async_connected(
     const empathetic_response_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_fep_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
+
+
     return bridge ? bridge->base.bio_async_enabled : false;
 }
 
@@ -374,9 +430,19 @@ bool empathetic_response_fep_is_bio_async_connected(
 int empathetic_response_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_fep_bridge_heartbeat("empathetic_r_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Empathetic_Response_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                empathetic_response_fep_bridge_heartbeat("empathetic_r_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

@@ -42,7 +42,7 @@ static nimcp_health_agent_t* g_ethics_evaluation_health_agent = NULL;
  * @brief Set health agent for ethics_evaluation heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void ethics_evaluation_set_health_agent(nimcp_health_agent_t* agent) {
+void ethics_evaluation_set_health_agent(nimcp_health_agent_t* agent) {
     g_ethics_evaluation_health_agent = agent;
 }
 
@@ -70,11 +70,21 @@ void ethics_copy_action_features(float* dest, const action_context_t* action, ui
 {
     // Guard clause: Validate inputs
     if (!dest || !action)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_evaluation_heartbeat("ethics_evalu_ethics_copy_action_f", 0.0f);
+
+
         return;
 
     uint32_t count = (action->num_features < max_features) ? action->num_features : max_features;
 
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            ethics_evaluation_heartbeat("ethics_evalu_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         dest[i] = action->features[i];
     }
 }
@@ -92,9 +102,19 @@ void ethics_copy_emotional_state(float* dest, const float* emotional_states, age
 {
     // Guard clause: Validate inputs
     if (!dest || !emotional_states)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_evaluation_heartbeat("ethics_evalu_ethics_copy_emotiona", 0.0f);
+
+
         return;
 
     for (uint32_t i = 0; i < num_emotions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_emotions > 256) {
+            ethics_evaluation_heartbeat("ethics_evalu_loop",
+                             (float)(i + 1) / (float)num_emotions);
+        }
+
         dest[offset + i] = emotional_states[agent * num_emotions + i];
     }
 }
@@ -113,6 +133,10 @@ float ethics_calculate_perspective_score(const empathy_state_extended_t* state)
 {
     // Guard clause: Validate input
     if (!state)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_evaluation_heartbeat("ethics_evalu_ethics_calculate_per", 0.0f);
+
+
         return 0.0F;
 
     float emotional = state->emotional_valence;
@@ -141,6 +165,10 @@ float ethics_simulate_agent_perspective(empathy_network_t network, agent_id_t ag
 {
     // Guard clause: Validate inputs
     if (!network || !action)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_evaluation_heartbeat("ethics_evalu_ethics_simulate_agen", 0.0f);
+
+
         return 0.0F;
 
     empathy_state_extended_t state = empathy_network_simulate_agent(network, agent, action);
@@ -172,6 +200,10 @@ float ethics_evaluate_golden_rule(ethics_engine_t engine, const action_context_t
 {
     // Guard clause: Validate inputs
     if (!engine || !action)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_evaluation_heartbeat("ethics_evalu_ethics_evaluate_gold", 0.0f);
+
+
         return 0.0F;
 
     // Guard clause: Check for affected agents
@@ -182,6 +214,12 @@ float ethics_evaluate_golden_rule(ethics_engine_t engine, const action_context_t
 
     // Single pass through affected agents - O(n)
     for (uint32_t i = 0; i < action->num_affected_agents; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && action->num_affected_agents > 256) {
+            ethics_evaluation_heartbeat("ethics_evalu_loop",
+                             (float)(i + 1) / (float)action->num_affected_agents);
+        }
+
         agent_id_t agent = action->affected_agents[i];
         float perspective_score = ethics_simulate_agent_perspective(
             ethics_engine_get_empathy_net(engine), agent, action);
@@ -216,6 +254,10 @@ empathy_network_t empathy_network_create(const empathy_config_t* config)
         return NULL;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_evaluation_heartbeat("ethics_evalu_empathy_network_crea", 0.0f);
+
 
     empathy_network_t network = nimcp_calloc(1, sizeof(struct empathy_network_struct));
     // Guard clause: Check allocation
@@ -276,6 +318,10 @@ void empathy_network_destroy(empathy_network_t network)
 {
     // Guard clause: Validate input
     if (!network)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_evaluation_heartbeat("ethics_evalu_empathy_network_dest", 0.0f);
+
+
         return;
 
     brain_destroy(network->perspective_network);
@@ -302,6 +348,10 @@ void empathy_network_destroy(empathy_network_t network)
 empathy_state_extended_t empathy_network_simulate_agent(empathy_network_t network, agent_id_t agent,
                                                         const action_context_t* action)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_evaluation_heartbeat("ethics_evalu_empathy_network_simu", 0.0f);
+
+
     empathy_state_extended_t state = {0};
 
     // Guard clause: Validate inputs
@@ -431,9 +481,19 @@ empathy_state_extended_t empathy_network_simulate_agent(empathy_network_t networ
  */
 int ethics_evaluation_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    ethics_evaluation_heartbeat("ethics_evalu_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Ethics_Evaluation_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                ethics_evaluation_heartbeat("ethics_evalu_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Ethics evaluation self-knowledge: %s", self->observations[i]);
         }
     }

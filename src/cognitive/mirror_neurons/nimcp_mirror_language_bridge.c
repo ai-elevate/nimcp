@@ -41,7 +41,7 @@ static nimcp_health_agent_t* g_mirror_language_bridge_health_agent = NULL;
  * @brief Set health agent for mirror_language_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_language_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_language_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_language_bridge_health_agent = agent;
 }
 
@@ -285,6 +285,12 @@ static float compute_feature_similarity(
     float norm_b = 0.0f;
 
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            mirror_language_bridge_heartbeat("mirror_langu_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         dot += a[i] * b[i];
         norm_a += a[i] * a[i];
         norm_b += b[i] * b[i];
@@ -313,6 +319,12 @@ static int find_best_phoneme_match(
                               num_features : ARTICULATORY_FEATURE_DIM;
 
     for (uint32_t i = 0; i < bridge->num_templates; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_templates > 256) {
+            mirror_language_bridge_heartbeat("mirror_langu_loop",
+                             (float)(i + 1) / (float)bridge->num_templates);
+        }
+
         if (!bridge->phoneme_templates[i].is_registered) {
             continue;
         }
@@ -395,6 +407,12 @@ static void record_pathway_activation(
 static int find_free_simulation_slot(const mirror_language_bridge_t* bridge)
 {
     for (uint32_t i = 0; i < MAX_ACTIVE_SIMULATIONS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MAX_ACTIVE_SIMULATIONS > 256) {
+            mirror_language_bridge_heartbeat("mirror_langu_loop",
+                             (float)(i + 1) / (float)MAX_ACTIVE_SIMULATIONS);
+        }
+
         if (!bridge->simulations[i].is_active) {
             return (int)i;
         }
@@ -445,6 +463,12 @@ static void update_simulations(mirror_language_bridge_t* bridge, uint64_t now_ms
     float decay = bridge->config.simulation_decay_rate;
 
     for (uint32_t i = 0; i < MAX_ACTIVE_SIMULATIONS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MAX_ACTIVE_SIMULATIONS > 256) {
+            mirror_language_bridge_heartbeat("mirror_langu_loop",
+                             (float)(i + 1) / (float)MAX_ACTIVE_SIMULATIONS);
+        }
+
         if (!bridge->simulations[i].is_active) {
             continue;
         }
@@ -528,6 +552,10 @@ static int query_wernicke_semantics(
 
 mirror_language_config_t mirror_language_default_config(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_defa", 0.0f);
+
+
     mirror_language_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -565,6 +593,10 @@ mirror_language_bridge_t* mirror_language_bridge_create(
 
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_create", 0.0f);
+
 
     mirror_language_bridge_t* bridge = nimcp_malloc(sizeof(mirror_language_bridge_t));
     if (!bridge) {
@@ -608,7 +640,17 @@ void mirror_language_bridge_destroy(mirror_language_bridge_t* bridge)
     }
 
     /* Free binding table entries */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_destroy", 0.0f);
+
+
     for (uint32_t i = 0; i < BINDING_HASH_SIZE; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && BINDING_HASH_SIZE > 256) {
+            mirror_language_bridge_heartbeat("mirror_langu_loop",
+                             (float)(i + 1) / (float)BINDING_HASH_SIZE);
+        }
+
         binding_entry_t* entry = bridge->binding_table[i];
         while (entry) {
             binding_entry_t* next = entry->next;
@@ -630,6 +672,10 @@ int mirror_language_bridge_reset(mirror_language_bridge_t* bridge)
     }
 
     /* Reset state */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_reset", 0.0f);
+
+
     bridge->state = ML_STATE_IDLE;
 
     /* Clear phoneme activations */
@@ -663,6 +709,10 @@ int mirror_language_connect_broca(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_conn", 0.0f);
+
+
     bridge->broca = broca;
 
     NIMCP_LOGGING_INFO("Connected to Broca's area adapter");
@@ -680,6 +730,10 @@ int mirror_language_connect_wernicke(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_conn", 0.0f);
+
+
     bridge->wernicke = wernicke;
 
     NIMCP_LOGGING_INFO("Connected to Wernicke's area adapter");
@@ -696,6 +750,10 @@ int mirror_language_connect_bio_async(
 
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_conn", 0.0f);
+
 
     bridge->router = router;
 
@@ -717,11 +775,21 @@ int mirror_language_bridge_update(
     }
 
     /* Update simulations */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_update", 0.0f);
+
+
     update_simulations(bridge, timestamp_ms);
 
     /* Decay phoneme activations */
     float decay = bridge->config.simulation_decay_rate;
     for (uint32_t i = 0; i < MAX_PHONEME_TEMPLATES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MAX_PHONEME_TEMPLATES > 256) {
+            mirror_language_bridge_heartbeat("mirror_langu_loop",
+                             (float)(i + 1) / (float)MAX_PHONEME_TEMPLATES);
+        }
+
         bridge->phoneme_activations[i].observation_activation *= (1.0f - decay);
         bridge->phoneme_activations[i].simulation_activation *= (1.0f - decay);
     }
@@ -752,6 +820,10 @@ int mirror_language_observe_speech(
     if (!bridge || !observation) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_obse", 0.0f);
+
 
     bridge->state = ML_STATE_OBSERVING_SPEECH;
     bridge->stats.speech_observations++;
@@ -821,6 +893,10 @@ int mirror_language_request_simulation(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_requ", 0.0f);
+
+
     if (activation < 0.0f || activation > 1.0f) {
         activation = fmaxf(0.0f, fminf(1.0f, activation));
     }
@@ -836,6 +912,10 @@ int mirror_language_get_phoneme_activation(
     if (!bridge || !activation) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_get_", 0.0f);
+
 
     if (phoneme_id >= MAX_PHONEME_TEMPLATES) {
         return -1;
@@ -861,6 +941,10 @@ int mirror_language_get_action_semantics(
     }
 
     *num_retrieved = 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_get_", 0.0f);
+
 
     bridge->state = ML_STATE_SEMANTIC_RETRIEVAL;
     bridge->stats.semantic_retrievals++;
@@ -901,6 +985,10 @@ int mirror_language_get_action_words(
     *num_bindings = 0;
 
     /* Search all binding table entries for this action */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_get_", 0.0f);
+
+
     for (uint32_t i = 0; i < BINDING_HASH_SIZE && *num_bindings < max_bindings; i++) {
         binding_entry_t* entry = bridge->binding_table[i];
         while (entry && *num_bindings < max_bindings) {
@@ -931,6 +1019,10 @@ int mirror_language_notify_production(
     }
 
     /* Update phoneme activation from production */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_noti", 0.0f);
+
+
     if (phoneme_id < MAX_PHONEME_TEMPLATES) {
         phoneme_mirror_activation_t* act = &bridge->phoneme_activations[phoneme_id];
         act->phoneme_id = phoneme_id;
@@ -970,8 +1062,18 @@ float mirror_language_process_efference(
     }
 
     /* Find phoneme template */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_proc", 0.0f);
+
+
     phoneme_template_t* tmpl = NULL;
     for (uint32_t i = 0; i < bridge->num_templates; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_templates > 256) {
+            mirror_language_bridge_heartbeat("mirror_langu_loop",
+                             (float)(i + 1) / (float)bridge->num_templates);
+        }
+
         if (bridge->phoneme_templates[i].phoneme_id == phoneme_id &&
             bridge->phoneme_templates[i].is_registered) {
             tmpl = &bridge->phoneme_templates[i];
@@ -1014,9 +1116,19 @@ int mirror_language_prime_from_word(
     }
 
     /* Search bindings for this word */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_prim", 0.0f);
+
+
     uint32_t num_primed = 0;
 
     for (uint32_t i = 0; i < BINDING_HASH_SIZE; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && BINDING_HASH_SIZE > 256) {
+            mirror_language_bridge_heartbeat("mirror_langu_loop",
+                             (float)(i + 1) / (float)BINDING_HASH_SIZE);
+        }
+
         binding_entry_t* entry = bridge->binding_table[i];
         while (entry) {
             if (entry->is_valid && entry->binding.word_id == word_id) {
@@ -1050,6 +1162,12 @@ int mirror_language_prime_from_word(
     /* Also try matching word string */
     if (word_string && word_string[0] != '\0') {
         for (uint32_t i = 0; i < BINDING_HASH_SIZE; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && BINDING_HASH_SIZE > 256) {
+                mirror_language_bridge_heartbeat("mirror_langu_loop",
+                                 (float)(i + 1) / (float)BINDING_HASH_SIZE);
+            }
+
             binding_entry_t* entry = bridge->binding_table[i];
             while (entry) {
                 if (entry->is_valid &&
@@ -1097,6 +1215,10 @@ int mirror_language_get_primed_actions(
     *num_actions = 0;
 
     /* Search bindings for this word */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_get_", 0.0f);
+
+
     for (uint32_t i = 0; i < BINDING_HASH_SIZE && *num_actions < max_actions; i++) {
         binding_entry_t* entry = bridge->binding_table[i];
         while (entry && *num_actions < max_actions) {
@@ -1129,6 +1251,10 @@ int mirror_language_create_binding(
 
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_crea", 0.0f);
+
 
     if (bridge->num_bindings >= bridge->config.binding_capacity) {
         return -1;  /* At capacity */
@@ -1177,6 +1303,10 @@ float mirror_language_strengthen_binding(
         return -1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_stre", 0.0f);
+
+
     binding_entry_t* entry = find_binding(bridge, action_id, word_id);
     if (!entry) {
         return -1.0f;
@@ -1213,6 +1343,10 @@ int mirror_language_get_binding(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_get_", 0.0f);
+
+
     binding_entry_t* entry = find_binding(bridge, action_id, word_id);
     if (!entry) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
@@ -1235,6 +1369,10 @@ int mirror_language_remove_binding(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_remo", 0.0f);
+
+
     if (remove_binding_entry(bridge, action_id, word_id)) {
         return 0;
     }
@@ -1256,6 +1394,10 @@ int mirror_language_register_phoneme(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_regi", 0.0f);
+
+
     if (bridge->num_templates >= MAX_PHONEME_TEMPLATES) {
         return -1;
     }
@@ -1263,6 +1405,12 @@ int mirror_language_register_phoneme(
     /* Find existing or use new slot */
     phoneme_template_t* tmpl = NULL;
     for (uint32_t i = 0; i < bridge->num_templates; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_templates > 256) {
+            mirror_language_bridge_heartbeat("mirror_langu_loop",
+                             (float)(i + 1) / (float)bridge->num_templates);
+        }
+
         if (bridge->phoneme_templates[i].phoneme_id == phoneme_id) {
             tmpl = &bridge->phoneme_templates[i];
             break;
@@ -1294,6 +1442,10 @@ int mirror_language_match_phoneme(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_matc", 0.0f);
+
+
     return find_best_phoneme_match(bridge, features, num_features,
                                    best_phoneme, confidence);
 }
@@ -1313,6 +1465,10 @@ int mirror_language_set_phoneme_callback(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_set_", 0.0f);
+
+
     bridge->phoneme_callback = callback;
     bridge->phoneme_callback_data = user_data;
     return 0;
@@ -1328,6 +1484,10 @@ int mirror_language_set_binding_callback(
 
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_set_", 0.0f);
+
 
     bridge->binding_callback = callback;
     bridge->binding_callback_data = user_data;
@@ -1345,6 +1505,10 @@ int mirror_language_set_simulation_callback(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_set_", 0.0f);
+
+
     bridge->simulation_callback = callback;
     bridge->simulation_callback_data = user_data;
     return 0;
@@ -1361,6 +1525,10 @@ int mirror_language_set_semantic_callback(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_set_", 0.0f);
+
+
     bridge->semantic_callback = callback;
     bridge->semantic_callback_data = user_data;
     return 0;
@@ -1375,6 +1543,10 @@ ml_bridge_state_t mirror_language_get_state(const mirror_language_bridge_t* brid
     if (!bridge) {
         return ML_STATE_ERROR;
     }
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_get_", 0.0f);
+
+
     return bridge->state;
 }
 
@@ -1387,6 +1559,10 @@ int mirror_language_get_stats(
     }
 
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_get_", 0.0f);
+
+
     return 0;
 }
 
@@ -1395,6 +1571,10 @@ void mirror_language_reset_stats(mirror_language_bridge_t* bridge)
     if (!bridge) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_rese", 0.0f);
+
 
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     bridge->stats.state = bridge->state;
@@ -1411,6 +1591,10 @@ int mirror_language_get_config(
     }
 
     *config = bridge->config;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_get_", 0.0f);
+
+
     return 0;
 }
 
@@ -1422,6 +1606,10 @@ int mirror_language_set_config(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_set_", 0.0f);
+
+
     bridge->config = *config;
     return 0;
 }
@@ -1431,6 +1619,10 @@ bool mirror_language_has_broca(const mirror_language_bridge_t* bridge)
     if (!bridge) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_has_", 0.0f);
+
+
     return bridge->broca != NULL;
 }
 
@@ -1439,5 +1631,9 @@ bool mirror_language_has_wernicke(const mirror_language_bridge_t* bridge)
     if (!bridge) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    mirror_language_bridge_heartbeat("mirror_langu_mirror_language_has_", 0.0f);
+
+
     return bridge->wernicke != NULL;
 }

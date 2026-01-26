@@ -44,7 +44,7 @@ static nimcp_health_agent_t* g_flashbulb_health_agent = NULL;
  * @brief Set health agent for flashbulb heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void flashbulb_set_health_agent(nimcp_health_agent_t* agent) {
+void flashbulb_set_health_agent(nimcp_health_agent_t* agent) {
     g_flashbulb_health_agent = agent;
 }
 
@@ -116,6 +116,10 @@ static void close_reconsolidation_window(flashbulb_memory_t* fb);
 //=============================================================================
 
 flashbulb_config_t flashbulb_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_config_default", 0.0f);
+
+
     flashbulb_config_t config = {
         .arousal_threshold = FLASHBULB_DEFAULT_AROUSAL_THRESHOLD,
         .arousal_boost = FLASHBULB_DEFAULT_AROUSAL_BOOST,
@@ -138,6 +142,10 @@ bool flashbulb_config_validate(const flashbulb_config_t* config) {
     }
 
     // Validate thresholds are in valid range
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_config_validate", 0.0f);
+
+
     if (config->arousal_threshold < 0.0f || config->arousal_threshold > 1.0f) {
         return false;
     }
@@ -184,6 +192,10 @@ flashbulb_system_t* flashbulb_create(
     }
 
     // Use default config if not provided
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_create", 0.0f);
+
+
     flashbulb_config_t cfg = config ? *config : flashbulb_config_default();
     if (!flashbulb_config_validate(&cfg)) {
         return NULL;
@@ -252,6 +264,10 @@ void flashbulb_destroy(flashbulb_system_t* system) {
     // Those are owned by the PR memory system
 
     // Free trauma tracking array
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_destroy", 0.0f);
+
+
     if (system->trauma_memories) {
         free(system->trauma_memories);
         system->trauma_memories = NULL;
@@ -274,6 +290,10 @@ flashbulb_error_t flashbulb_reset(flashbulb_system_t* system) {
     }
 
     // Clear all flashbulb memories (but keep array allocated)
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_reset", 0.0f);
+
+
     if (system->memories) {
         memset(system->memories, 0, system->capacity * sizeof(flashbulb_memory_t));
     }
@@ -318,6 +338,10 @@ bool flashbulb_detect(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_detect", 0.0f);
+
+
     const emotional_intensity_t* intensity = &event->intensity;
 
     // Primary criterion: arousal must exceed threshold
@@ -357,6 +381,10 @@ flashbulb_memory_t* flashbulb_encode(
     }
 
     // Ensure capacity
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_encode", 0.0f);
+
+
     if (ensure_capacity(system) != FLASHBULB_SUCCESS) {
         return NULL;
     }
@@ -454,6 +482,10 @@ flashbulb_error_t flashbulb_encode_context(
     }
 
     // Check if context slot is available
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_encode_context", 0.0f);
+
+
     if (request->type >= FLASHBULB_CONTEXT_COUNT) {
         return FLASHBULB_ERROR_INVALID_STATE;
     }
@@ -512,6 +544,10 @@ float flashbulb_update_arousal(
         return 0.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_update_arousal", 0.0f);
+
+
     float previous = system->current_arousal;
 
     if (apply_decay) {
@@ -543,6 +579,10 @@ float flashbulb_compute_encoding_strength(
     //          * (1 + surprise_boost * surprise)
     //          * max(significance, 0.1)
 
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_compute_encoding_str", 0.0f);
+
+
     float arousal_factor = 1.0f + system->config.arousal_boost * intensity->arousal;
     float surprise_factor = 1.0f + system->config.surprise_boost * intensity->surprise;
     float significance_factor = fmaxf(intensity->personal_significance, 0.1f);
@@ -564,6 +604,10 @@ float flashbulb_decay_arousal(
     }
 
     // Exponential decay toward baseline
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_decay_arousal", 0.0f);
+
+
     float decay_amount = system->arousal_decay_rate * (float)elapsed_ms;
     float diff = system->current_arousal - system->baseline_arousal;
 
@@ -586,6 +630,10 @@ flashbulb_memory_t* flashbulb_retrieve(
 
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_retrieve", 0.0f);
+
 
     flashbulb_memory_t* fb = find_flashbulb_by_id(system, flashbulb_id);
     if (!fb) {
@@ -636,11 +684,21 @@ flashbulb_memory_t* flashbulb_retrieve_by_content(
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_retrieve_by_content", 0.0f);
+
+
     flashbulb_memory_t* best_match = NULL;
     float best_score = 0.0f;
 
     // Search all flashbulb memories
     for (size_t i = 0; i < system->num_memories; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_memories > 256) {
+            flashbulb_heartbeat("flashbulb_loop",
+                             (float)(i + 1) / (float)system->num_memories);
+        }
+
         flashbulb_memory_t* fb = &system->memories[i];
 
         // Compute resonance using Jaccard similarity
@@ -692,6 +750,10 @@ flashbulb_error_t flashbulb_retrieve_by_type(
 
     *count = 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_retrieve_by_type", 0.0f);
+
+
     for (size_t i = 0; i < system->num_memories && *count < max_memories; i++) {
         if (system->memories[i].type == type) {
             memories[*count] = &system->memories[i];
@@ -714,6 +776,10 @@ flashbulb_error_t flashbulb_retrieve_most_vivid(
 
     *count = 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_retrieve_most_vivid", 0.0f);
+
+
     if (k == 0 || system->num_memories == 0) {
         return FLASHBULB_SUCCESS;
     }
@@ -729,10 +795,22 @@ flashbulb_error_t flashbulb_retrieve_most_vivid(
     }
 
     for (size_t i = 0; i < actual_k; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && actual_k > 256) {
+            flashbulb_heartbeat("flashbulb_loop",
+                             (float)(i + 1) / (float)actual_k);
+        }
+
         float best_vividness = -1.0f;
         size_t best_idx = 0;
 
         for (size_t j = 0; j < system->num_memories; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && system->num_memories > 256) {
+                flashbulb_heartbeat("flashbulb_loop",
+                                 (float)(j + 1) / (float)system->num_memories);
+            }
+
             if (!selected[j] && system->memories[j].vividness > best_vividness) {
                 best_vividness = system->memories[j].vividness;
                 best_idx = j;
@@ -763,6 +841,10 @@ float flashbulb_assess_vividness(
     }
 
     // Calculate time since encoding in days
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_assess_vividness", 0.0f);
+
+
     uint64_t age_ms = (current_time_ms > flashbulb->encoding_time_ms) ?
                       (current_time_ms - flashbulb->encoding_time_ms) : 0;
     float age_days = (float)age_ms / (float)MS_PER_DAY;
@@ -803,6 +885,10 @@ float flashbulb_verify_accuracy(
     }
 
     // Compute similarity between memory and ground truth
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_verify_accuracy", 0.0f);
+
+
     float accuracy = prime_sig_jaccard(&flashbulb->event_signature, ground_truth_sig);
 
     // Update flashbulb with verified accuracy
@@ -818,6 +904,10 @@ float flashbulb_confidence_accuracy_gap(const flashbulb_memory_t* flashbulb) {
     }
 
     // Positive = overconfident, negative = underconfident
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_confidence_accuracy_", 0.0f);
+
+
     return flashbulb->confidence - flashbulb->actual_accuracy;
 }
 
@@ -841,6 +931,10 @@ flashbulb_error_t flashbulb_reconsolidate(
         return FLASHBULB_ERROR_INVALID_STATE;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_reconsolidate", 0.0f);
+
+
     blend_factor = clamp_float(blend_factor, 0.0f, 1.0f);
 
     // If new information provided, update memory content
@@ -851,6 +945,12 @@ flashbulb_error_t flashbulb_reconsolidate(
             // Blend signatures
             // Simple approach: interpolate exponents
             for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+                    flashbulb_heartbeat("flashbulb_loop",
+                                     (float)(i + 1) / (float)PRIME_SIG_DIM);
+                }
+
                 uint8_t old_exp = flashbulb->event_signature.exponents[i];
                 uint8_t new_exp = new_sig->exponents[i];
                 float blended = (1.0f - blend_factor) * old_exp + blend_factor * new_exp;
@@ -888,6 +988,10 @@ bool flashbulb_is_reconsolidating(
     }
 
     // Check if still within reconsolidation window
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_is_reconsolidating", 0.0f);
+
+
     uint64_t elapsed = current_time_ms - flashbulb->reconsolidation_start_ms;
     return elapsed < system->config.reconsolidation_window_ms;
 }
@@ -904,6 +1008,10 @@ flashbulb_error_t flashbulb_trigger_reconsolidation(
     if (!system->config.enable_reconsolidation) {
         return FLASHBULB_ERROR_INVALID_STATE;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_trigger_reconsolidat", 0.0f);
+
 
     flashbulb->is_reconsolidating = true;
     flashbulb->reconsolidation_start_ms = current_time_ms;
@@ -969,6 +1077,10 @@ float flashbulb_process_intrusion(
         return 0.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_process_intrusion", 0.0f);
+
+
     (void)current_time_ms;  // Could be used for temporal tracking
 
     // Update intrusion frequency
@@ -1005,6 +1117,10 @@ flashbulb_error_t flashbulb_apply_therapy(
     }
 
     // Apply emotional dampening
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_apply_therapy", 0.0f);
+
+
     if (params->emotional_dampening > 0.0f) {
         float dampening = params->emotional_dampening * THERAPY_EFFECTIVENESS;
 
@@ -1054,6 +1170,10 @@ flashbulb_error_t flashbulb_get_high_intrusion_memories(
     }
 
     *count = 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_get_high_intrusion_m", 0.0f);
+
 
     for (size_t i = 0; i < system->num_trauma && *count < max_memories; i++) {
         flashbulb_memory_t* fb = system->trauma_memories[i];
@@ -1135,6 +1255,10 @@ flashbulb_error_t flashbulb_get_stats(
         return FLASHBULB_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_get_stats", 0.0f);
+
+
     memset(stats, 0, sizeof(flashbulb_stats_t));
 
     stats->total_flashbulbs = system->num_memories;
@@ -1146,6 +1270,12 @@ flashbulb_error_t flashbulb_get_stats(
     float intrusion_sum = 0.0f;
 
     for (size_t i = 0; i < system->num_memories; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_memories > 256) {
+            flashbulb_heartbeat("flashbulb_loop",
+                             (float)(i + 1) / (float)system->num_memories);
+        }
+
         const flashbulb_memory_t* fb = &system->memories[i];
 
         // Count by type
@@ -1196,6 +1326,12 @@ flashbulb_error_t flashbulb_get_stats(
 
     stats->total_therapy_sessions = 0;
     for (size_t i = 0; i < system->num_trauma; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_trauma > 256) {
+            flashbulb_heartbeat("flashbulb_loop",
+                             (float)(i + 1) / (float)system->num_trauma);
+        }
+
         if (system->trauma_memories[i]) {
             stats->total_therapy_sessions += system->trauma_memories[i]->therapy_sessions;
         }
@@ -1209,6 +1345,10 @@ void flashbulb_print(const flashbulb_memory_t* flashbulb) {
         printf("Flashbulb: (null)\n");
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_print", 0.0f);
+
 
     printf("Flashbulb Memory [ID: %lu]\n", (unsigned long)flashbulb->flashbulb_id);
     printf("  Type: %s\n", flashbulb_type_name(flashbulb->type));
@@ -1250,6 +1390,10 @@ void flashbulb_system_print_summary(const flashbulb_system_t* system) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_system_print_summary", 0.0f);
+
+
     printf("Flashbulb Memory System Summary\n");
     printf("================================\n");
     printf("  Total Memories: %zu / %zu\n", system->num_memories, system->capacity);
@@ -1268,6 +1412,10 @@ void flashbulb_system_print_summary(const flashbulb_system_t* system) {
 }
 
 uint64_t flashbulb_current_time_ms(void) {
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_current_time_ms", 0.0f);
+
+
     return get_current_time_ms();
 }
 
@@ -1275,6 +1423,10 @@ void flashbulb_intensity_init(emotional_intensity_t* intensity) {
     if (!intensity) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_intensity_init", 0.0f);
+
 
     intensity->arousal = 0.5f;
     intensity->valence = 0.0f;
@@ -1289,6 +1441,10 @@ emotional_intensity_t flashbulb_intensity_create(
     float surprise,
     float significance
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_intensity_create", 0.0f);
+
+
     emotional_intensity_t intensity = {
         .arousal = clamp_float(arousal, 0.0f, 1.0f),
         .valence = clamp_float(valence, -1.0f, 1.0f),
@@ -1308,6 +1464,10 @@ flashbulb_type_t flashbulb_classify_type(
     }
 
     // Check for trauma first (highest arousal + negative valence)
+    /* Phase 8: Heartbeat at operation start */
+    flashbulb_heartbeat("flashbulb_classify_type", 0.0f);
+
+
     if (intensity->arousal >= system->config.trauma_arousal_threshold &&
         intensity->valence < -0.5f) {
         return FLASHBULB_TRAUMATIC;
@@ -1353,6 +1513,12 @@ static flashbulb_memory_t* find_flashbulb_by_id(
     uint64_t flashbulb_id
 ) {
     for (size_t i = 0; i < system->num_memories; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_memories > 256) {
+            flashbulb_heartbeat("flashbulb_loop",
+                             (float)(i + 1) / (float)system->num_memories);
+        }
+
         if (system->memories[i].flashbulb_id == flashbulb_id) {
             return &system->memories[i];
         }

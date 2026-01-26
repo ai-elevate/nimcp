@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_quantum_mcts_health_agent = NULL;
  * @brief Set health agent for quantum_mcts heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void quantum_mcts_set_health_agent(nimcp_health_agent_t* agent) {
+void quantum_mcts_set_health_agent(nimcp_health_agent_t* agent) {
     g_quantum_mcts_health_agent = agent;
 }
 
@@ -218,6 +218,12 @@ NIMCP_API void quantum_mcts_destroy(quantum_mcts_t* qmcts)
 
     /* Free nodes and their contents */
     for (uint32_t i = 0; i < qmcts->num_nodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && qmcts->num_nodes > 256) {
+            quantum_mcts_heartbeat("quantum_mcts_loop",
+                             (float)(i + 1) / (float)qmcts->num_nodes);
+        }
+
         qmcts_node_t* node = &qmcts->nodes[i];
         if (node->children) {
             nimcp_free(node->children);
@@ -258,6 +264,12 @@ NIMCP_API nimcp_error_t quantum_mcts_reset(quantum_mcts_t* qmcts)
 
     /* Free node contents */
     for (uint32_t i = 0; i < qmcts->num_nodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && qmcts->num_nodes > 256) {
+            quantum_mcts_heartbeat("quantum_mcts_loop",
+                             (float)(i + 1) / (float)qmcts->num_nodes);
+        }
+
         qmcts_node_t* node = &qmcts->nodes[i];
         if (node->children) {
             nimcp_free(node->children);
@@ -567,6 +579,12 @@ NIMCP_API nimcp_error_t quantum_mcts_simulate(
 
     /* Run classical simulations */
     for (uint32_t i = 0; i < classical_sims; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && classical_sims > 256) {
+            quantum_mcts_heartbeat("quantum_mcts_loop",
+                             (float)(i + 1) / (float)classical_sims);
+        }
+
         /* Selection */
         uint32_t selected = select_node(qmcts, qmcts->root_id);
 
@@ -588,6 +606,12 @@ NIMCP_API nimcp_error_t quantum_mcts_simulate(
 
     /* Run quantum-enhanced simulations */
     for (uint32_t i = 0; i < quantum_sims; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && quantum_sims > 256) {
+            quantum_mcts_heartbeat("quantum_mcts_loop",
+                             (float)(i + 1) / (float)quantum_sims);
+        }
+
         /* Selection with quantum bonus */
         uint32_t selected = select_node(qmcts, qmcts->root_id);
 
@@ -782,12 +806,24 @@ NIMCP_API nimcp_error_t quantum_mcts_estimate_value(
     if (sum > 0.0f) {
         float norm = sqrtf(sum);
         for (uint32_t i = 0; i < num_states; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_states > 256) {
+                quantum_mcts_heartbeat("quantum_mcts_loop",
+                                 (float)(i + 1) / (float)num_states);
+            }
+
             amplitudes[i] /= norm;
         }
     } else {
         /* Uniform distribution */
         float uniform = 1.0f / sqrtf((float)num_states);
         for (uint32_t i = 0; i < num_states; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_states > 256) {
+                quantum_mcts_heartbeat("quantum_mcts_loop",
+                                 (float)(i + 1) / (float)num_states);
+            }
+
             amplitudes[i] = uniform;
         }
     }
@@ -804,6 +840,12 @@ NIMCP_API nimcp_error_t quantum_mcts_estimate_value(
     uint32_t target_state = 0;
     float max_amp = 0.0f;
     for (uint32_t i = 0; i < num_states; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_states > 256) {
+            quantum_mcts_heartbeat("quantum_mcts_loop",
+                             (float)(i + 1) / (float)num_states);
+        }
+
         if (amplitudes[i] > max_amp) {
             max_amp = amplitudes[i];
             target_state = i;
@@ -869,6 +911,12 @@ NIMCP_API uint32_t quantum_mcts_select_child(
     float best_score = -INFINITY;
 
     for (uint32_t i = 0; i < parent->num_children; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && parent->num_children > 256) {
+            quantum_mcts_heartbeat("quantum_mcts_loop",
+                             (float)(i + 1) / (float)parent->num_children);
+        }
+
         int child_idx = find_node_index(qmcts, parent->children[i]);
         if (child_idx < 0) continue;
 
@@ -941,6 +989,12 @@ NIMCP_API uint32_t quantum_mcts_get_best_child(
     float best_value = -INFINITY;
 
     for (uint32_t i = 0; i < parent->num_children; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && parent->num_children > 256) {
+            quantum_mcts_heartbeat("quantum_mcts_loop",
+                             (float)(i + 1) / (float)parent->num_children);
+        }
+
         int child_idx = find_node_index(qmcts, parent->children[i]);
         if (child_idx < 0) continue;
 
@@ -1301,6 +1355,12 @@ static nimcp_error_t expand_node(quantum_mcts_t* qmcts, uint32_t node_id)
 
     /* Create child nodes for each action */
     for (uint32_t i = 0; i < num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_actions > 256) {
+            quantum_mcts_heartbeat("quantum_mcts_loop",
+                             (float)(i + 1) / (float)num_actions);
+        }
+
         float next_state[256];
         float reward = 0.0f;
         bool terminal = false;
@@ -1415,6 +1475,12 @@ static uint32_t select_node(quantum_mcts_t* qmcts, uint32_t root_id)
 static int find_node_index(const quantum_mcts_t* qmcts, uint32_t node_id)
 {
     for (uint32_t i = 0; i < qmcts->num_nodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && qmcts->num_nodes > 256) {
+            quantum_mcts_heartbeat("quantum_mcts_loop",
+                             (float)(i + 1) / (float)qmcts->num_nodes);
+        }
+
         if (qmcts->nodes[i].node_id == node_id) {
             return (int)i;
         }
@@ -1437,6 +1503,12 @@ static uint64_t compute_state_hash(const float* state, uint32_t dim)
     uint32_t num_bytes = dim * sizeof(float);
 
     for (uint32_t i = 0; i < num_bytes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_bytes > 256) {
+            quantum_mcts_heartbeat("quantum_mcts_loop",
+                             (float)(i + 1) / (float)num_bytes);
+        }
+
         hash ^= bytes[i];
         hash *= 1099511628211ULL;
     }

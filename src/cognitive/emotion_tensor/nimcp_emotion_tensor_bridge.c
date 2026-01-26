@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_emotion_tensor_bridge_health_agent = NULL;
  * @brief Set health agent for emotion_tensor_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void emotion_tensor_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void emotion_tensor_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_emotion_tensor_bridge_health_agent = agent;
 }
 
@@ -173,6 +173,12 @@ static bool has_significant_change(
 
     /* Check each channel */
     for (int i = 0; i < EMOTION_TENSOR_PRIMARY_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && EMOTION_TENSOR_PRIMARY_COUNT > 256) {
+            emotion_tensor_bridge_heartbeat("emotion_tens_loop",
+                             (float)(i + 1) / (float)EMOTION_TENSOR_PRIMARY_COUNT);
+        }
+
         float diff = fabsf(tensor->channels[i] - bridge->cached_channels[i]);
         if (diff > threshold) return true;
     }
@@ -201,6 +207,10 @@ static void update_cached_state(
  *============================================================================*/
 
 emotion_tensor_bridge_config_t emotion_tensor_bridge_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_bridge_heartbeat("emotion_tens_default_config", 0.0f);
+
+
     return (emotion_tensor_bridge_config_t){
         .sync_threshold = DEFAULT_SYNC_THRESHOLD,
         .blend_factor = DEFAULT_BLEND_FACTOR,
@@ -225,6 +235,10 @@ emotion_tensor_bridge_t* emotion_tensor_bridge_create(
     }
 
     /* Allocate bridge */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_bridge_heartbeat("emotion_tens_create", 0.0f);
+
+
     emotion_tensor_bridge_t* bridge = calloc(1, sizeof(emotion_tensor_bridge_t));
     if (!bridge) {
         BRIDGE_LOG_ERROR("Failed to allocate bridge");
@@ -253,6 +267,10 @@ emotion_tensor_bridge_t* emotion_tensor_bridge_create(
 
 void emotion_tensor_bridge_destroy(emotion_tensor_bridge_t* bridge) {
     if (!bridge) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_bridge_heartbeat("emotion_tens_destroy", 0.0f);
+
 
     BRIDGE_LOG_INFO("Destroying emotion tensor bridge");
     free(bridge);
@@ -291,6 +309,12 @@ static int emotion_tensor_bridge_wiring_handler_callback(
                     message_count);
 
     for (uint32_t i = 0; i < message_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && message_count > 256) {
+            emotion_tensor_bridge_heartbeat("emotion_tens_loop",
+                             (float)(i + 1) / (float)message_count);
+        }
+
         switch (message_types[i]) {
             case BIO_MSG_EMOTION_TENSOR_QUERY:
                 bio_router_register_handler(ctx, message_types[i], bridge_message_handler);
@@ -501,6 +525,10 @@ nimcp_result_t emotion_tensor_bridge_register_bioasync(
     if (!router) return NIMCP_INVALID_PARAM;
 
     /* Register module */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_bridge_heartbeat("emotion_tens_register_bioasync", 0.0f);
+
+
     bio_module_info_t info = {
         .module_id = BIO_MODULE_EMOTION_TENSOR_BRIDGE,
         .module_name = "EmotionTensorBridge",
@@ -548,6 +576,10 @@ nimcp_result_t emotion_tensor_bridge_broadcast_state(
     if (!bridge->bioasync_registered) return NIMCP_NOT_INITIALIZED;
 
     /* Get current tensor state */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_bridge_heartbeat("emotion_tens_broadcast_state", 0.0f);
+
+
     emotion_tensor_t tensor;
     if (!emotion_tensor_get(bridge->tensor, &tensor)) {
         return NIMCP_ERROR_INVALID;
@@ -601,6 +633,10 @@ nimcp_result_t emotion_tensor_to_swarm(
     if (!tensor || !mapping) return NIMCP_INVALID_PARAM;
 
     /* Get dominant emotion from tensor */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_bridge_heartbeat("emotion_tens_emotion_tensor_to_sw", 0.0f);
+
+
     emotion_primary_t primary, secondary;
     float blend_ratio;
     if (!emotion_tensor_get_dominant(tensor, &primary, &secondary, &blend_ratio)) {
@@ -640,6 +676,10 @@ nimcp_result_t emotion_tensor_from_swarm(
     if (!tensor) return NIMCP_INVALID_PARAM;
     if (swarm_emotion >= EMOTION_TYPE_COUNT) return NIMCP_INVALID_PARAM;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_bridge_heartbeat("emotion_tens_emotion_tensor_from_", 0.0f);
+
+
     const swarm_tensor_mapping_entry_t* mapping = &s_swarm_to_tensor_map[swarm_emotion];
 
     /* Apply primary channel */
@@ -663,11 +703,19 @@ nimcp_result_t emotion_tensor_from_swarm(
 
 emotion_primary_t emotion_swarm_to_tensor_channel(emotion_type_t swarm_emotion) {
     if (swarm_emotion >= EMOTION_TYPE_COUNT) return TENSOR_JOY;
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_bridge_heartbeat("emotion_tens_emotion_swarm_to_ten", 0.0f);
+
+
     return s_swarm_to_tensor_map[swarm_emotion].primary;
 }
 
 emotion_type_t emotion_tensor_channel_to_swarm(emotion_primary_t tensor_emotion) {
     if (tensor_emotion >= EMOTION_TENSOR_PRIMARY_COUNT) return EMOTION_NEUTRAL;
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_bridge_heartbeat("emotion_tens_emotion_tensor_chann", 0.0f);
+
+
     return s_tensor_to_swarm_map[tensor_emotion];
 }
 
@@ -680,6 +728,10 @@ nimcp_result_t emotion_tensor_to_tag(
     emotional_tag_t* tag
 ) {
     if (!tensor || !tag) return NIMCP_INVALID_PARAM;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_bridge_heartbeat("emotion_tens_emotion_tensor_to_ta", 0.0f);
+
 
     float valence = emotion_tensor_get_valence(tensor);
     float arousal = emotion_tensor_get_arousal(tensor);
@@ -699,6 +751,10 @@ nimcp_result_t emotion_tensor_from_tag(
     uint64_t timestamp_ms
 ) {
     if (!tensor || !tag) return NIMCP_INVALID_PARAM;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_bridge_heartbeat("emotion_tens_emotion_tensor_from_", 0.0f);
+
 
     float valence = tag->valence;
     float arousal = tag->arousal;
@@ -747,6 +803,10 @@ nimcp_result_t emotion_tensor_bridge_sync_agent(
     if (!bridge->bioasync_registered) return NIMCP_NOT_INITIALIZED;
 
     /* Get current tensor state */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_bridge_heartbeat("emotion_tens_sync_agent", 0.0f);
+
+
     emotion_tensor_t tensor;
     if (!emotion_tensor_get(bridge->tensor, &tensor)) {
         return NIMCP_ERROR_INVALID;
@@ -787,6 +847,10 @@ nimcp_result_t emotion_tensor_bridge_propagate_to_swarm(
     }
 
     /* Get dominant emotion from tensor */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_bridge_heartbeat("emotion_tens_propagate_to_swarm", 0.0f);
+
+
     tensor_swarm_mapping_t mapping;
     nimcp_result_t result = emotion_tensor_to_swarm(bridge->tensor, &mapping);
     if (result != NIMCP_SUCCESS) return result;
@@ -812,6 +876,10 @@ nimcp_result_t emotion_tensor_bridge_update_from_collective(
     }
 
     /* Get collective state */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_bridge_heartbeat("emotion_tens_update_from_collecti", 0.0f);
+
+
     collective_emotion_state_t collective;
     nimcp_result_t result = emotional_contagion_get_collective_state(
         bridge->contagion, &collective);
@@ -840,6 +908,10 @@ nimcp_result_t emotion_tensor_bridge_notify_compound(
     if (!bridge->bioasync_registered) return NIMCP_NOT_INITIALIZED;
 
     /* Build compound notification */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_bridge_heartbeat("emotion_tens_notify_compound", 0.0f);
+
+
     bio_msg_emotion_tensor_compound_t msg;
     memset(&msg, 0, sizeof(msg));
 
@@ -896,6 +968,10 @@ nimcp_result_t emotion_tensor_bridge_notify_contradiction(
     if (!bridge->bioasync_registered) return NIMCP_NOT_INITIALIZED;
 
     /* Build contradiction notification */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_bridge_heartbeat("emotion_tens_notify_contradiction", 0.0f);
+
+
     bio_msg_emotion_tensor_contradiction_t msg;
     memset(&msg, 0, sizeof(msg));
 
@@ -926,6 +1002,10 @@ nimcp_result_t emotion_tensor_bridge_notify_contradiction(
 bool emotion_tensor_bridge_needs_sync(const emotion_tensor_bridge_t* bridge) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_bridge_heartbeat("emotion_tens_needs_sync", 0.0f);
+
+
     emotion_tensor_t current;
     if (!emotion_tensor_get(bridge->tensor, &current)) {
         return false;
@@ -940,6 +1020,10 @@ nimcp_result_t emotion_tensor_bridge_get_stats(
 ) {
     if (!bridge || !stats) return NIMCP_INVALID_PARAM;
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_bridge_heartbeat("emotion_tens_get_stats", 0.0f);
+
+
     return NIMCP_SUCCESS;
 }
 
@@ -950,9 +1034,19 @@ nimcp_result_t emotion_tensor_bridge_get_stats(
 int emotion_tensor_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_bridge_heartbeat("emotion_tens_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Emotion_Tensor_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                emotion_tensor_bridge_heartbeat("emotion_tens_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

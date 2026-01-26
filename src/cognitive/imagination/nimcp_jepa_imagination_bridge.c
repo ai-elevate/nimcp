@@ -36,7 +36,7 @@ static nimcp_health_agent_t* g_jepa_imagination_bridge_health_agent = NULL;
  * @brief Set health agent for jepa_imagination_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void jepa_imagination_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void jepa_imagination_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_jepa_imagination_bridge_health_agent = agent;
 }
 
@@ -66,6 +66,10 @@ int jepa_imagination_default_config(jepa_imagination_config_t* config) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_def", 0.0f);
+
+
     config->confidence_threshold = JEPA_IMAG_DEFAULT_CONFIDENCE_THRESHOLD;
     config->max_prediction_horizon = 10;
     config->prediction_decay = 0.9f;
@@ -91,6 +95,10 @@ int jepa_imagination_validate_config(const jepa_imagination_config_t* config) {
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_val", 0.0f);
+
 
     if (config->confidence_threshold < 0.0f || config->confidence_threshold > 1.0f) {
         return -1;
@@ -124,6 +132,10 @@ int jepa_imagination_validate_config(const jepa_imagination_config_t* config) {
 jepa_imagination_bridge_t* jepa_imagination_bridge_create(
     const jepa_imagination_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_create", 0.0f);
+
+
     jepa_imagination_bridge_t* bridge = nimcp_calloc(
         1, sizeof(jepa_imagination_bridge_t));
     if (!bridge) {
@@ -184,6 +196,10 @@ void jepa_imagination_bridge_destroy(jepa_imagination_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         jepa_imagination_disconnect_bio_async(bridge);
     }
@@ -229,6 +245,10 @@ int jepa_imagination_reset(jepa_imagination_bridge_t* bridge) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_res", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Clear effects */
@@ -265,6 +285,10 @@ int jepa_imagination_connect_jepa(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_con", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->jepa = jepa;
@@ -292,6 +316,10 @@ int jepa_imagination_connect_imagination(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_con", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->imagination = imagination;
@@ -308,15 +336,27 @@ int jepa_imagination_connect_imagination(
 }
 
 int jepa_imagination_disconnect_jepa(jepa_imagination_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_dis", 0.0f);
+
+
     return jepa_imagination_connect_jepa(bridge, NULL);
 }
 
 int jepa_imagination_disconnect_imagination(jepa_imagination_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_dis", 0.0f);
+
+
     return jepa_imagination_connect_imagination(bridge, NULL);
 }
 
 bool jepa_imagination_is_connected(const jepa_imagination_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_is_", 0.0f);
+
+
     return bridge->base.bridge_active;
 }
 
@@ -336,6 +376,10 @@ int jepa_imagination_update(
 
     }
     if (!bridge->base.bridge_active) return 0;  /* Nothing to do */
+
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_upd", 0.0f);
+
 
     (void)delta_time_ms;  /* Used for rate limiting below */
 
@@ -372,6 +416,10 @@ int jepa_imagination_compute_jepa_effects(jepa_imagination_bridge_t* bridge) {
     /* In full implementation, this would call JEPA predictor APIs */
 
     /* Default: low-level effects when no active prediction */
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_com", 0.0f);
+
+
     bridge->jepa_to_imag.prediction_confidence = 0.0f;
     bridge->jepa_to_imag.world_model_coherence = 0.0f;
     bridge->jepa_to_imag.counterfactual_plausibility = 0.0f;
@@ -397,6 +445,10 @@ int jepa_imagination_compute_imag_effects(jepa_imagination_bridge_t* bridge) {
     /* In full implementation, this would call imagination engine APIs */
 
     /* Default: no training signals */
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_com", 0.0f);
+
+
     bridge->imag_to_jepa.learning_strength = 0.0f;
     bridge->imag_to_jepa.prediction_error = 0.0f;
     bridge->imag_to_jepa.update_world_model = false;
@@ -419,6 +471,10 @@ int jepa_imagination_apply_effects(jepa_imagination_bridge_t* bridge) {
     }
 
     /* Apply JEPA effects to imagination */
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_app", 0.0f);
+
+
     if (bridge->imagination && bridge->jepa_to_imag.num_predictions > 0) {
         /* Would call imagination APIs to inject prediction constraints */
         bridge->stats.predictions_used += bridge->jepa_to_imag.num_predictions;
@@ -453,6 +509,10 @@ uint32_t jepa_imagination_request_predicted_imagination(
     if (!bridge || !context || !goal) return 0;
     if (!bridge->base.bridge_active) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_req", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Store the context for processing */
@@ -485,6 +545,10 @@ uint32_t jepa_imagination_request_counterfactual(
     if (!bridge || !context || !action) return 0;
     if (!bridge->base.bridge_active) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_req", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* In full implementation, would:
@@ -516,6 +580,10 @@ int jepa_imagination_query_world_model(
     if (!bridge || !context || !action || !outcome) return -1;
     if (!bridge->jepa) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_que", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* In full implementation, would call JEPA predictor to get outcome */
@@ -535,6 +603,10 @@ int jepa_imagination_provide_training_signal(
 {
     if (!bridge || !scenario) return -1;
     if (!bridge->jepa) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_pro", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -562,6 +634,10 @@ int jepa_imagination_get_jepa_effects(
     if (!bridge || !effects) return -1;
 
     *effects = bridge->jepa_to_imag;
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_get", 0.0f);
+
+
     return 0;
 }
 
@@ -572,6 +648,10 @@ int jepa_imagination_get_imagination_effects(
     if (!bridge || !effects) return -1;
 
     *effects = bridge->imag_to_jepa;
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_get", 0.0f);
+
+
     return 0;
 }
 
@@ -586,6 +666,10 @@ int jepa_imagination_get_stats(
     if (!bridge || !stats) return -1;
 
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_get", 0.0f);
+
+
     return 0;
 }
 
@@ -598,6 +682,10 @@ int jepa_imagination_reset_stats(jepa_imagination_bridge_t* bridge) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_res", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -609,6 +697,10 @@ uint32_t jepa_imagination_get_counterfactual_count(
     const jepa_imagination_bridge_t* bridge)
 {
     if (!bridge) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_get", 0.0f);
+
+
     return bridge->num_active_counterfactuals;
 }
 
@@ -627,6 +719,10 @@ int jepa_imagination_connect_bio_async(jepa_imagination_bridge_t* bridge) {
     if (bridge->base.bio_async_enabled) return 0;  /* Already connected */
 
     /* Use bridge base helper if available */
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_con", 0.0f);
+
+
     int result = bridge_base_connect_bio_async(&bridge->base);
     if (result == 0) {
         NIMCP_LOG_INFO("JEPA-imagination bridge connected to bio-async");
@@ -645,6 +741,10 @@ int jepa_imagination_disconnect_bio_async(jepa_imagination_bridge_t* bridge) {
     }
     if (!bridge->base.bio_async_enabled) return 0;  /* Already disconnected */
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_dis", 0.0f);
+
+
     int result = bridge_base_disconnect_bio_async(&bridge->base);
     if (result == 0) {
         NIMCP_LOG_INFO("JEPA-imagination bridge disconnected from bio-async");
@@ -657,6 +757,10 @@ bool jepa_imagination_is_bio_async_connected(
     const jepa_imagination_bridge_t* bridge)
 {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_is_", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -678,6 +782,10 @@ int jepa_imagination_process_messages(jepa_imagination_bridge_t* bridge) {
      * - BIO_MSG_COUNTERFACTUAL_REQUEST
      */
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_pro", 0.0f);
+
+
     return 0;
 }
 
@@ -692,9 +800,19 @@ int jepa_imagination_process_messages(jepa_imagination_bridge_t* bridge) {
  */
 int jepa_imagination_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    jepa_imagination_bridge_heartbeat("jepa_imagina_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "JEPA_Imagination_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                jepa_imagination_bridge_heartbeat("jepa_imagina_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOG_DEBUG("JEPA Imagination Bridge self-knowledge: %s", self->observations[i]);
         }
     }

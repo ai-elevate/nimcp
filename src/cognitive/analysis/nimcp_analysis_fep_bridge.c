@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_analysis_fep_bridge_health_agent = NULL;
  * @brief Set health agent for analysis_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void analysis_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void analysis_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_analysis_fep_bridge_health_agent = agent;
 }
 
@@ -55,6 +55,10 @@ int analysis_fep_bridge_default_config(analysis_fep_config_t* config) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_fep_bridge_default_config: config is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
+    /* Phase 8: Heartbeat at operation start */
+    analysis_fep_bridge_heartbeat("analysis_fep_default_config", 0.0f);
+
+
     config->pe_exploration_threshold = ANALYSIS_FEP_HIGH_PE_THRESHOLD;
     config->precision_hub_weight = ANALYSIS_FEP_HUB_PRECISION_BOOST;
     config->modularity_prior_strength = ANALYSIS_FEP_MODULARITY_PRIOR;
@@ -76,6 +80,10 @@ int analysis_fep_bridge_default_config(analysis_fep_config_t* config) {
  * HOW:  Allocate structure, create mutex, set default config
  */
 analysis_fep_bridge_t* analysis_fep_bridge_create(const analysis_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    analysis_fep_bridge_heartbeat("analysis_fep_create", 0.0f);
+
+
     analysis_fep_bridge_t* bridge = nimcp_malloc(sizeof(analysis_fep_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "analysis_fep_bridge_create: failed to allocate bridge");
@@ -107,6 +115,10 @@ analysis_fep_bridge_t* analysis_fep_bridge_create(const analysis_fep_config_t* c
 void analysis_fep_bridge_destroy(analysis_fep_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    analysis_fep_bridge_heartbeat("analysis_fep_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         analysis_fep_bridge_disconnect_bio_async(bridge);
     }
@@ -129,6 +141,10 @@ int analysis_fep_bridge_connect_fep(analysis_fep_bridge_t* bridge, fep_system_t*
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    analysis_fep_bridge_heartbeat("analysis_fep_connect_fep", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -147,6 +163,10 @@ int analysis_fep_bridge_connect_analysis(analysis_fep_bridge_t* bridge, network_
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    analysis_fep_bridge_heartbeat("analysis_fep_connect_analysis", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->analyzer = analyzer;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -164,6 +184,10 @@ int analysis_fep_bridge_disconnect(analysis_fep_bridge_t* bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_fep_bridge_disconnect: bridge is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    analysis_fep_bridge_heartbeat("analysis_fep_disconnect", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -184,6 +208,10 @@ int analysis_fep_trigger_exploration(analysis_fep_bridge_t* bridge, float pe_mag
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (!bridge->config.enable_pe_exploration) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    analysis_fep_bridge_heartbeat("analysis_fep_analysis_fep_trigger", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -212,6 +240,10 @@ int analysis_fep_weight_hubs_by_precision(analysis_fep_bridge_t* bridge) {
     }
     if (!bridge->config.enable_precision_weighting) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    analysis_fep_bridge_heartbeat("analysis_fep_analysis_fep_weight_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     // Simplified: set uniform hub weights (real implementation would query FEP precision)
@@ -237,6 +269,10 @@ int analysis_fep_trigger_reorganization(analysis_fep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    analysis_fep_bridge_heartbeat("analysis_fep_analysis_fep_trigger", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->fep_effects.topology_exploration_active = true;
@@ -257,6 +293,10 @@ int analysis_fep_apply_topology_priors(analysis_fep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (!bridge->config.enable_topology_priors) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    analysis_fep_bridge_heartbeat("analysis_fep_analysis_fep_apply_t", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -280,6 +320,10 @@ int analysis_fep_apply_community_beliefs(analysis_fep_bridge_t* bridge) {
     }
     if (!bridge->config.enable_community_beliefs) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    analysis_fep_bridge_heartbeat("analysis_fep_analysis_fep_apply_c", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     // Simplified: would extract actual community count from analyzer
@@ -302,6 +346,10 @@ int analysis_fep_update_model_structure(analysis_fep_bridge_t* bridge) {
     }
     if (!bridge->config.enable_topology_updates) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    analysis_fep_bridge_heartbeat("analysis_fep_analysis_fep_update_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->analysis_effects.model_structure_updated = true;
@@ -322,6 +370,10 @@ int analysis_fep_bridge_update(analysis_fep_bridge_t* bridge, uint64_t delta_ms)
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    analysis_fep_bridge_heartbeat("analysis_fep_update", 0.0f);
+
+
     analysis_fep_weight_hubs_by_precision(bridge);
     analysis_fep_apply_topology_priors(bridge);
     analysis_fep_apply_community_beliefs(bridge);
@@ -341,6 +393,10 @@ int analysis_fep_bridge_get_state(const analysis_fep_bridge_t* bridge, analysis_
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    analysis_fep_bridge_heartbeat("analysis_fep_get_state", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -358,6 +414,10 @@ int analysis_fep_bridge_get_stats(const analysis_fep_bridge_t* bridge, analysis_
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_fep_bridge_get_stats: bridge or stats is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    analysis_fep_bridge_heartbeat("analysis_fep_get_stats", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -377,6 +437,10 @@ int analysis_fep_bridge_connect_bio_async(analysis_fep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (bridge->base.bio_async_enabled) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    analysis_fep_bridge_heartbeat("analysis_fep_connect_bio_async", 0.0f);
+
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_ANALYSIS_BRIDGE,
@@ -402,6 +466,10 @@ int analysis_fep_bridge_connect_bio_async(analysis_fep_bridge_t* bridge) {
 int analysis_fep_bridge_disconnect_bio_async(analysis_fep_bridge_t* bridge) {
     if (!bridge || !bridge->base.bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    analysis_fep_bridge_heartbeat("analysis_fep_disconnect_bio_async", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
     }
@@ -418,6 +486,10 @@ int analysis_fep_bridge_disconnect_bio_async(analysis_fep_bridge_t* bridge) {
  * HOW:  Return enabled flag
  */
 bool analysis_fep_bridge_is_bio_async_connected(const analysis_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    analysis_fep_bridge_heartbeat("analysis_fep_is_bio_async_connect", 0.0f);
+
+
     return bridge ? bridge->base.bio_async_enabled : false;
 }
 
@@ -432,9 +504,19 @@ bool analysis_fep_bridge_is_bio_async_connected(const analysis_fep_bridge_t* bri
  */
 int analysis_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    analysis_fep_bridge_heartbeat("analysis_fep_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Analysis_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                analysis_fep_bridge_heartbeat("analysis_fep_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Analysis FEP Bridge self-knowledge: %s", self->observations[i]);
         }
     }

@@ -29,7 +29,7 @@ static nimcp_health_agent_t* g_introspection_thalamic_bridge_health_agent = NULL
  * @brief Set health agent for introspection_thalamic_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void introspection_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void introspection_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_introspection_thalamic_bridge_health_agent = agent;
 }
 
@@ -51,6 +51,10 @@ struct introspection_thalamic_bridge {
 };
 
 introspection_thalamic_config_t introspection_thalamic_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    introspection_thalamic_bridge_heartbeat("introspectio_introspection_thalam", 0.0f);
+
+
     return (introspection_thalamic_config_t){
         .enable_attention_gating = true,
         .enable_depth_routing = true,
@@ -64,6 +68,10 @@ introspection_thalamic_bridge_t* introspection_thalamic_bridge_create(
     thalamic_router_t* router,
     const introspection_thalamic_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    introspection_thalamic_bridge_heartbeat("introspectio_create", 0.0f);
+
+
     introspection_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(introspection_thalamic_bridge_t));
     if (!bridge) {
 
@@ -89,6 +97,10 @@ introspection_thalamic_bridge_t* introspection_thalamic_bridge_create(
 
 void introspection_thalamic_bridge_destroy(introspection_thalamic_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    introspection_thalamic_bridge_heartbeat("introspectio_destroy", 0.0f);
+
+
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
     }
@@ -97,6 +109,10 @@ void introspection_thalamic_bridge_destroy(introspection_thalamic_bridge_t* brid
 
 int introspection_thalamic_bridge_reset(introspection_thalamic_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    introspection_thalamic_bridge_heartbeat("introspectio_reset", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -109,6 +125,10 @@ int introspection_thalamic_route_signal(
     const introspection_thalamic_signal_t* signal
 ) {
     if (!bridge || !signal) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    introspection_thalamic_bridge_heartbeat("introspectio_introspection_thalam", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->config.enable_attention_gating) {
@@ -164,6 +184,10 @@ int introspection_thalamic_route_monitor(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_thalamic_bridge_heartbeat("introspectio_introspection_thalam", 0.0f);
+
+
     introspection_thalamic_signal_t signal = {
         .signal_type = INTROSPECTION_SIGNAL_MONITOR,
         .introspection_urgency = urgency < 0.0f ? 0.0f : (urgency > 1.0f ? 1.0f : urgency),
@@ -185,6 +209,10 @@ int introspection_thalamic_route_reflection(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_thalamic_bridge_heartbeat("introspectio_introspection_thalam", 0.0f);
+
+
     introspection_thalamic_signal_t signal = {
         .signal_type = INTROSPECTION_SIGNAL_REFLECT,
         .introspection_urgency = urgency < 0.0f ? 0.0f : (urgency > 1.0f ? 1.0f : urgency),
@@ -201,6 +229,10 @@ int introspection_thalamic_route_reflection(
 
 int introspection_thalamic_set_attention(introspection_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    introspection_thalamic_bridge_heartbeat("introspectio_introspection_thalam", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -209,6 +241,10 @@ int introspection_thalamic_set_attention(introspection_thalamic_bridge_t* bridge
 
 int introspection_thalamic_get_attention(const introspection_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    introspection_thalamic_bridge_heartbeat("introspectio_introspection_thalam", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -220,6 +256,10 @@ int introspection_thalamic_bridge_get_stats(
     introspection_thalamic_stats_t* stats
 ) {
     if (!bridge || !stats) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    introspection_thalamic_bridge_heartbeat("introspectio_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -242,10 +282,20 @@ int introspection_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
     /* Query our own entity from the knowledge graph */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_thalamic_bridge_heartbeat("introspectio_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Introspection_Thalamic_Bridge");
     if (self) {
         /* Module now knows its own capabilities from KG */
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                introspection_thalamic_bridge_heartbeat("introspectio_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Introspection thalamic bridge self-knowledge: %s", self->observations[i]);
         }
     }

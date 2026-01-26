@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_gt_mechanism_health_agent = NULL;
  * @brief Set health agent for gt_mechanism heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void gt_mechanism_set_health_agent(nimcp_health_agent_t* agent) {
+void gt_mechanism_set_health_agent(nimcp_health_agent_t* agent) {
     g_gt_mechanism_health_agent = agent;
 }
 
@@ -126,6 +126,12 @@ static uint32_t draw_from_distribution(const float* probs, uint32_t n) {
     float cumsum = 0.0f;
 
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            gt_mechanism_heartbeat("gt_mechanism_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         cumsum += probs[i];
         if (r <= cumsum) {
             return i;
@@ -175,6 +181,12 @@ static bool enumerate_type_profile(
 ) {
     uint32_t total_profiles = 1;
     for (uint32_t p = 0; p < ctx->num_players; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && ctx->num_players > 256) {
+            gt_mechanism_heartbeat("gt_mechanism_loop",
+                             (float)(p + 1) / (float)ctx->num_players);
+        }
+
         total_profiles *= ctx->type_spaces[p].num_types;
     }
 
@@ -186,6 +198,12 @@ static bool enumerate_type_profile(
     uint32_t idx = profile_idx;
 
     for (uint32_t p = 0; p < ctx->num_players; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && ctx->num_players > 256) {
+            gt_mechanism_heartbeat("gt_mechanism_loop",
+                             (float)(p + 1) / (float)ctx->num_players);
+        }
+
         uint32_t num_types = ctx->type_spaces[p].num_types;
         profile[p] = idx % num_types;
         idx /= num_types;
@@ -201,6 +219,12 @@ static bool enumerate_type_profile(
 static uint32_t count_type_profiles(nimcp_mechanism_t ctx) {
     uint32_t total = 1;
     for (uint32_t p = 0; p < ctx->num_players; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && ctx->num_players > 256) {
+            gt_mechanism_heartbeat("gt_mechanism_loop",
+                             (float)(p + 1) / (float)ctx->num_players);
+        }
+
         total *= ctx->type_spaces[p].num_types;
         if (total > 10000) {
             return 10000;  // Cap to prevent overflow
@@ -214,6 +238,10 @@ static uint32_t count_type_profiles(nimcp_mechanism_t ctx) {
 //=============================================================================
 
 nimcp_mechanism_config_t nimcp_mechanism_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_mechanism_default_co", 0.0f);
+
+
     nimcp_mechanism_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -239,6 +267,9 @@ nimcp_mechanism_t nimcp_mechanism_create(const nimcp_mechanism_config_t* config)
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_mechanism_create", 0.0f);
+
     nimcp_mechanism_t ctx = nimcp_calloc(1, sizeof(struct nimcp_mechanism_struct));
     if (!ctx) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
@@ -252,6 +283,12 @@ nimcp_mechanism_t nimcp_mechanism_create(const nimcp_mechanism_config_t* config)
 
     // Initialize type spaces
     for (uint32_t p = 0; p < ctx->num_players; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && ctx->num_players > 256) {
+            gt_mechanism_heartbeat("gt_mechanism_loop",
+                             (float)(p + 1) / (float)ctx->num_players);
+        }
+
         nimcp_type_space_init(&ctx->type_spaces[p], p);
     }
 
@@ -276,6 +313,10 @@ nimcp_mechanism_t nimcp_mechanism_create(const nimcp_mechanism_config_t* config)
 void nimcp_mechanism_destroy(nimcp_mechanism_t ctx) {
     if (!ctx) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_mechanism_destroy", 0.0f);
+
+
     nimcp_platform_mutex_destroy(&ctx->mutex);
     nimcp_free(ctx);
 }
@@ -295,6 +336,10 @@ nimcp_error_t nimcp_mechanism_set_type_space(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_mechanism_set_type_s", 0.0f);
+
+
     if (player >= ctx->num_players) {
         return NIMCP_GT_ERROR_INVALID_PARAMETER;
     }
@@ -306,6 +351,12 @@ nimcp_error_t nimcp_mechanism_set_type_space(
     // Verify probabilities sum to 1
     float sum = 0.0f;
     for (uint32_t i = 0; i < num_types; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_types > 256) {
+            gt_mechanism_heartbeat("gt_mechanism_loop",
+                             (float)(i + 1) / (float)num_types);
+        }
+
         if (probabilities[i] < 0.0f || probabilities[i] > 1.0f) {
             return NIMCP_GT_ERROR_INVALID_PARAMETER;
         }
@@ -323,6 +374,12 @@ nimcp_error_t nimcp_mechanism_set_type_space(
     space->type_realized = false;
 
     for (uint32_t i = 0; i < num_types; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_types > 256) {
+            gt_mechanism_heartbeat("gt_mechanism_loop",
+                             (float)(i + 1) / (float)num_types);
+        }
+
         space->types[i] = types[i];
         space->types[i].type_id = i;
         space->probabilities[i] = probabilities[i];
@@ -331,6 +388,12 @@ nimcp_error_t nimcp_mechanism_set_type_space(
     // Check if all players have type spaces
     bool all_configured = true;
     for (uint32_t p = 0; p < ctx->num_players; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && ctx->num_players > 256) {
+            gt_mechanism_heartbeat("gt_mechanism_loop",
+                             (float)(p + 1) / (float)ctx->num_players);
+        }
+
         if (ctx->type_spaces[p].num_types == 0) {
             all_configured = false;
             break;
@@ -354,6 +417,10 @@ nimcp_error_t nimcp_mechanism_get_type_space(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_mechanism_get_type_s", 0.0f);
+
+
     if (player >= ctx->num_players) {
         return NIMCP_GT_ERROR_INVALID_PARAMETER;
     }
@@ -373,6 +440,10 @@ nimcp_error_t nimcp_mechanism_realize_type(
     if (!ctx || !realized_type) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_mechanism_realize_ty", 0.0f);
+
 
     if (player >= ctx->num_players) {
         return NIMCP_GT_ERROR_INVALID_PARAMETER;
@@ -410,6 +481,10 @@ nimcp_error_t nimcp_mechanism_set_allocation_rule(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_mechanism_set_alloca", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
     ctx->allocation_rule = callback;
     ctx->allocation_user_data = user_data;
@@ -426,6 +501,10 @@ nimcp_error_t nimcp_mechanism_set_payment_rule(
     if (!ctx) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_mechanism_set_paymen", 0.0f);
+
 
     nimcp_platform_mutex_lock(&ctx->mutex);
     ctx->payment_rule = callback;
@@ -451,6 +530,10 @@ nimcp_error_t nimcp_mechanism_execute(
     if (!ctx->allocation_rule) {
         return NIMCP_GT_ERROR_INVALID_STATE;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_mechanism_execute", 0.0f);
+
 
     nimcp_platform_mutex_lock(&ctx->mutex);
 
@@ -489,6 +572,12 @@ nimcp_error_t nimcp_mechanism_execute(
     float revenue = 0.0f;
 
     for (uint32_t p = 0; p < ctx->num_players; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && ctx->num_players > 256) {
+            gt_mechanism_heartbeat("gt_mechanism_loop",
+                             (float)(p + 1) / (float)ctx->num_players);
+        }
+
         result->allocations[p] = allocations[p];
         result->payments[p] = payments[p];
 
@@ -538,6 +627,10 @@ nimcp_error_t nimcp_mechanism_is_incentive_compatible(
         return NIMCP_GT_ERROR_INVALID_STATE;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_mechanism_is_incenti", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
 
     memset(result, 0, sizeof(nimcp_ic_result_t));
@@ -550,13 +643,31 @@ nimcp_error_t nimcp_mechanism_is_incentive_compatible(
 
     // Check IC for each player, each type
     for (uint32_t p = 0; p < n; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && n > 256) {
+            gt_mechanism_heartbeat("gt_mechanism_loop",
+                             (float)(p + 1) / (float)n);
+        }
+
         nimcp_type_space_t* space = &ctx->type_spaces[p];
 
         for (uint32_t t = 0; t < space->num_types; t++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((t & 0xFF) == 0 && space->num_types > 256) {
+                gt_mechanism_heartbeat("gt_mechanism_loop",
+                                 (float)(t + 1) / (float)space->num_types);
+            }
+
             // Compute expected utility from truth-telling
             float eu_truth = 0.0f;
 
             for (uint32_t profile_idx = 0; profile_idx < total_profiles; profile_idx++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((profile_idx & 0xFF) == 0 && total_profiles > 256) {
+                    gt_mechanism_heartbeat("gt_mechanism_loop",
+                                     (float)(profile_idx + 1) / (float)total_profiles);
+                }
+
                 uint32_t profile[NIMCP_GT_MAX_PLAYERS];
                 float prob;
 
@@ -590,11 +701,23 @@ nimcp_error_t nimcp_mechanism_is_incentive_compatible(
 
             // Compare against all possible lies
             for (uint32_t lie = 0; lie < space->num_types; lie++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((lie & 0xFF) == 0 && space->num_types > 256) {
+                    gt_mechanism_heartbeat("gt_mechanism_loop",
+                                     (float)(lie + 1) / (float)space->num_types);
+                }
+
                 if (lie == t) continue;  // Skip truth
 
                 float eu_lie = 0.0f;
 
                 for (uint32_t profile_idx = 0; profile_idx < total_profiles; profile_idx++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((profile_idx & 0xFF) == 0 && total_profiles > 256) {
+                        gt_mechanism_heartbeat("gt_mechanism_loop",
+                                         (float)(profile_idx + 1) / (float)total_profiles);
+                    }
+
                     uint32_t profile[NIMCP_GT_MAX_PLAYERS];
                     float prob;
 
@@ -675,6 +798,10 @@ nimcp_error_t nimcp_mechanism_is_individually_rational(
         return NIMCP_GT_ERROR_INVALID_STATE;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_mechanism_is_individ", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
 
     memset(result, 0, sizeof(nimcp_ir_result_t));
@@ -686,12 +813,30 @@ nimcp_error_t nimcp_mechanism_is_individually_rational(
 
     // Check IR for each player, each type
     for (uint32_t p = 0; p < n; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && n > 256) {
+            gt_mechanism_heartbeat("gt_mechanism_loop",
+                             (float)(p + 1) / (float)n);
+        }
+
         nimcp_type_space_t* space = &ctx->type_spaces[p];
 
         for (uint32_t t = 0; t < space->num_types; t++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((t & 0xFF) == 0 && space->num_types > 256) {
+                gt_mechanism_heartbeat("gt_mechanism_loop",
+                                 (float)(t + 1) / (float)space->num_types);
+            }
+
             float expected_utility = 0.0f;
 
             for (uint32_t profile_idx = 0; profile_idx < total_profiles; profile_idx++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((profile_idx & 0xFF) == 0 && total_profiles > 256) {
+                    gt_mechanism_heartbeat("gt_mechanism_loop",
+                                     (float)(profile_idx + 1) / (float)total_profiles);
+                }
+
                 uint32_t profile[NIMCP_GT_MAX_PLAYERS];
                 float prob;
 
@@ -763,6 +908,10 @@ nimcp_error_t nimcp_mechanism_compute_bayesian_equilibrium(
         return NIMCP_GT_ERROR_INVALID_STATE;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_mechanism_compute_ba", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
 
     memset(result, 0, sizeof(nimcp_bayesian_equilibrium_t));
@@ -789,8 +938,20 @@ nimcp_error_t nimcp_mechanism_compute_bayesian_equilibrium(
         // Truth-telling strategies for each player-type
         uint32_t strat_idx = 0;
         for (uint32_t p = 0; p < n; p++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((p & 0xFF) == 0 && n > 256) {
+                gt_mechanism_heartbeat("gt_mechanism_loop",
+                                 (float)(p + 1) / (float)n);
+            }
+
             nimcp_type_space_t* space = &ctx->type_spaces[p];
             for (uint32_t t = 0; t < space->num_types; t++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((t & 0xFF) == 0 && space->num_types > 256) {
+                    gt_mechanism_heartbeat("gt_mechanism_loop",
+                                     (float)(t + 1) / (float)space->num_types);
+                }
+
                 nimcp_signaling_strategy_t* strat = &result->strategies[strat_idx++];
                 strat->type_id = t;
                 strat->is_pure = true;
@@ -808,6 +969,12 @@ nimcp_error_t nimcp_mechanism_compute_bayesian_equilibrium(
         uint32_t total_profiles = count_type_profiles(ctx);
 
         for (uint32_t profile_idx = 0; profile_idx < total_profiles; profile_idx++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((profile_idx & 0xFF) == 0 && total_profiles > 256) {
+                gt_mechanism_heartbeat("gt_mechanism_loop",
+                                 (float)(profile_idx + 1) / (float)total_profiles);
+            }
+
             uint32_t profile[NIMCP_GT_MAX_PLAYERS];
             float prob;
 
@@ -828,6 +995,12 @@ nimcp_error_t nimcp_mechanism_compute_bayesian_equilibrium(
             float welfare = 0.0f;
             float revenue = 0.0f;
             for (uint32_t p = 0; p < n; p++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((p & 0xFF) == 0 && n > 256) {
+                    gt_mechanism_heartbeat("gt_mechanism_loop",
+                                     (float)(p + 1) / (float)n);
+                }
+
                 float val = ctx->type_spaces[p].types[profile[p]].valuation;
                 welfare += val * allocations[p];
                 revenue += payments[p];
@@ -869,6 +1042,10 @@ nimcp_error_t nimcp_mechanism_verify_revelation_principle(
     if (!ctx || !result) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_mechanism_verify_rev", 0.0f);
+
 
     memset(result, 0, sizeof(nimcp_revelation_result_t));
 
@@ -932,6 +1109,10 @@ nimcp_error_t nimcp_signaling_set_sender_types(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_signaling_set_sender", 0.0f);
+
+
     if (ctx->config.type != NIMCP_MECHANISM_SIGNALING) {
         return NIMCP_GT_ERROR_INVALID_STATE;
     }
@@ -944,6 +1125,12 @@ nimcp_error_t nimcp_signaling_set_sender_types(
     float uniform_prob = 1.0f / (float)num_types;
     float probs[NIMCP_GT_MAX_TYPES];
     for (uint32_t i = 0; i < num_types; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_types > 256) {
+            gt_mechanism_heartbeat("gt_mechanism_loop",
+                             (float)(i + 1) / (float)num_types);
+        }
+
         probs[i] = uniform_prob;
     }
 
@@ -958,6 +1145,10 @@ nimcp_error_t nimcp_signaling_set_signals(
     if (!ctx || !signals) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_signaling_set_signal", 0.0f);
+
 
     if (ctx->config.type != NIMCP_MECHANISM_SIGNALING) {
         return NIMCP_GT_ERROR_INVALID_STATE;
@@ -983,6 +1174,10 @@ nimcp_error_t nimcp_signaling_compute_separating_equilibrium(
     if (!ctx || !result) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_signaling_compute_se", 0.0f);
+
 
     if (ctx->config.type != NIMCP_MECHANISM_SIGNALING) {
         return NIMCP_GT_ERROR_INVALID_STATE;
@@ -1043,6 +1238,12 @@ nimcp_error_t nimcp_signaling_compute_separating_equilibrium(
 
         // Set receiver beliefs (perfect inference in separating)
         for (uint32_t s = 0; s < num_signals; s++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((s & 0xFF) == 0 && num_signals > 256) {
+                gt_mechanism_heartbeat("gt_mechanism_loop",
+                                 (float)(s + 1) / (float)num_signals);
+            }
+
             nimcp_receiver_beliefs_t* beliefs = &result->receiver_beliefs[s];
             beliefs->signal_id = s;
             beliefs->num_types = num_types;
@@ -1085,6 +1286,10 @@ nimcp_error_t nimcp_signaling_compute_pooling_equilibrium(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_signaling_compute_po", 0.0f);
+
+
     if (ctx->config.type != NIMCP_MECHANISM_SIGNALING) {
         return NIMCP_GT_ERROR_INVALID_STATE;
     }
@@ -1121,6 +1326,12 @@ nimcp_error_t nimcp_signaling_compute_pooling_equilibrium(
 
     // All types send pooling signal
     for (uint32_t t = 0; t < num_types; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && num_types > 256) {
+            gt_mechanism_heartbeat("gt_mechanism_loop",
+                             (float)(t + 1) / (float)num_types);
+        }
+
         nimcp_signaling_strategy_t* strat = &result->sender_strategies[t];
         strat->type_id = t;
         strat->is_pure = true;
@@ -1132,6 +1343,12 @@ nimcp_error_t nimcp_signaling_compute_pooling_equilibrium(
 
     // Receiver beliefs
     for (uint32_t s = 0; s < num_signals; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && num_signals > 256) {
+            gt_mechanism_heartbeat("gt_mechanism_loop",
+                             (float)(s + 1) / (float)num_signals);
+        }
+
         nimcp_receiver_beliefs_t* beliefs = &result->receiver_beliefs[s];
         beliefs->signal_id = s;
         beliefs->num_types = num_types;
@@ -1142,6 +1359,12 @@ nimcp_error_t nimcp_signaling_compute_pooling_equilibrium(
         if (s == pooling_signal) {
             // On-path: use prior
             for (uint32_t t = 0; t < num_types; t++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((t & 0xFF) == 0 && num_types > 256) {
+                    gt_mechanism_heartbeat("gt_mechanism_loop",
+                                     (float)(t + 1) / (float)num_types);
+                }
+
                 beliefs->posteriors[t] = ctx->type_spaces[0].probabilities[t];
             }
         } else {
@@ -1171,6 +1394,10 @@ nimcp_error_t nimcp_signaling_compute_all_equilibria(
     }
 
     *num_found = 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_signaling_compute_al", 0.0f);
+
 
     if (max_results == 0) {
         return NIMCP_SUCCESS;
@@ -1207,6 +1434,10 @@ nimcp_mechanism_state_t nimcp_mechanism_get_state(const nimcp_mechanism_t ctx) {
     if (!ctx) {
         return NIMCP_MECHANISM_STATE_ERROR;
     }
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_mechanism_get_state", 0.0f);
+
+
     return ctx->state;
 }
 
@@ -1214,6 +1445,10 @@ nimcp_mechanism_type_t nimcp_mechanism_get_type(const nimcp_mechanism_t ctx) {
     if (!ctx) {
         return NIMCP_MECHANISM_DIRECT;
     }
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_mechanism_get_type", 0.0f);
+
+
     return ctx->config.type;
 }
 
@@ -1252,6 +1487,10 @@ float nimcp_mechanism_expected_utility(
         return 0.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_mechanism_expected_u", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
 
     uint32_t n = ctx->num_players;
@@ -1259,6 +1498,12 @@ float nimcp_mechanism_expected_utility(
     float expected_utility = 0.0f;
 
     for (uint32_t profile_idx = 0; profile_idx < total_profiles; profile_idx++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((profile_idx & 0xFF) == 0 && total_profiles > 256) {
+            gt_mechanism_heartbeat("gt_mechanism_loop",
+                             (float)(profile_idx + 1) / (float)total_profiles);
+        }
+
         uint32_t profile[NIMCP_GT_MAX_PLAYERS];
         float prob;
 
@@ -1298,6 +1543,10 @@ float nimcp_signaling_information_content(
     if (!result) {
         return 0.0f;
     }
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_signaling_informatio", 0.0f);
+
+
     return result->information_transmitted;
 }
 
@@ -1307,6 +1556,10 @@ float nimcp_signaling_information_content(
 
 void nimcp_type_init(nimcp_type_t* type, uint32_t type_id, float valuation) {
     if (!type) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_type_init", 0.0f);
+
 
     memset(type, 0, sizeof(nimcp_type_t));
     type->type_id = type_id;
@@ -1320,6 +1573,10 @@ void nimcp_type_init(nimcp_type_t* type, uint32_t type_id, float valuation) {
 void nimcp_type_space_init(nimcp_type_space_t* space, nimcp_player_id_t player_id) {
     if (!space) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_type_space_init", 0.0f);
+
+
     memset(space, 0, sizeof(nimcp_type_space_t));
     space->player_id = player_id;
     space->num_types = 0;
@@ -1329,6 +1586,10 @@ void nimcp_type_space_init(nimcp_type_space_t* space, nimcp_player_id_t player_i
 void nimcp_signal_init(nimcp_signal_t* signal, uint32_t signal_id,
                         const char* name, float cost) {
     if (!signal) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_signal_init", 0.0f);
+
 
     memset(signal, 0, sizeof(nimcp_signal_t));
     signal->signal_id = signal_id;
@@ -1345,6 +1606,10 @@ void nimcp_signal_init(nimcp_signal_t* signal, uint32_t signal_id,
 void nimcp_mechanism_result_init(nimcp_mechanism_result_t* result) {
     if (!result) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_mechanism_result_ini", 0.0f);
+
+
     memset(result, 0, sizeof(nimcp_mechanism_result_t));
     result->state = NIMCP_MECHANISM_STATE_UNINITIALIZED;
 }
@@ -1360,9 +1625,19 @@ void nimcp_mechanism_result_init(nimcp_mechanism_result_t* result) {
  */
 int gt_mechanism_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    gt_mechanism_heartbeat("gt_mechanism_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "GT_Mechanism");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                gt_mechanism_heartbeat("gt_mechanism_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* GT Mechanism self-knowledge logged */
         }
     }

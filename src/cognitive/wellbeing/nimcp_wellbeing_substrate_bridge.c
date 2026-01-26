@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_wellbeing_substrate_bridge_health_agent = NULL;
  * @brief Set health agent for wellbeing_substrate_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void wellbeing_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void wellbeing_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_wellbeing_substrate_bridge_health_agent = agent;
 }
 
@@ -53,6 +53,10 @@ static inline void wellbeing_substrate_bridge_heartbeat(const char* operation, f
 
 float compute_atp_distress(float atp_level, float sensitivity) {
     /* Guard: validate inputs */
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_substrate_bridge_heartbeat("wellbeing_su_compute_atp_distress", 0.0f);
+
+
     if (atp_level < 0.0f) atp_level = 0.0f;
     if (atp_level > 1.0f) atp_level = 1.0f;
     if (sensitivity < 0.5f) sensitivity = 0.5f;
@@ -84,6 +88,10 @@ float compute_atp_distress(float atp_level, float sensitivity) {
 
 float compute_temperature_distress(float temperature, float sensitivity) {
     /* Guard: validate sensitivity */
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_substrate_bridge_heartbeat("wellbeing_su_compute_temperature_", 0.0f);
+
+
     if (sensitivity < 0.5f) sensitivity = 0.5f;
     if (sensitivity > 2.0f) sensitivity = 2.0f;
 
@@ -111,6 +119,10 @@ float compute_temperature_distress(float temperature, float sensitivity) {
 
 float compute_hypoxia_distress(float o2_saturation, float sensitivity) {
     /* Guard: validate inputs */
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_substrate_bridge_heartbeat("wellbeing_su_compute_hypoxia_dist", 0.0f);
+
+
     if (o2_saturation < 0.0f) o2_saturation = 0.0f;
     if (o2_saturation > 1.0f) o2_saturation = 1.0f;
     if (sensitivity < 0.5f) sensitivity = 0.5f;
@@ -136,6 +148,10 @@ float compute_hypoxia_distress(float o2_saturation, float sensitivity) {
 
 float compute_membrane_distress(float membrane_integrity, float ion_balance) {
     /* Guard: validate inputs */
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_substrate_bridge_heartbeat("wellbeing_su_compute_membrane_dis", 0.0f);
+
+
     if (membrane_integrity < 0.0f) membrane_integrity = 0.0f;
     if (membrane_integrity > 1.0f) membrane_integrity = 1.0f;
     if (ion_balance < 0.0f) ion_balance = 0.0f;
@@ -173,6 +189,10 @@ int enhanced_wellbeing_update_substrate(enhanced_wellbeing_system_t* system) {
     }
 
     /* Query substrate metabolic state */
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_substrate_bridge_heartbeat("wellbeing_su_enhanced_wellbeing_u", 0.0f);
+
+
     substrate_metabolic_state_t metabolic;
     int ret = substrate_get_metabolic_state(system->substrate, &metabolic);
     if (ret != NIMCP_SUCCESS) {
@@ -329,6 +349,10 @@ int enhanced_wellbeing_get_substrate_effects(
     }
 
     /* Copy substrate effects structure */
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_substrate_bridge_heartbeat("wellbeing_su_enhanced_wellbeing_g", 0.0f);
+
+
     memcpy(effects, &system->substrate_effects, sizeof(substrate_wellbeing_effects_t));
 
     return NIMCP_SUCCESS;
@@ -345,9 +369,19 @@ int enhanced_wellbeing_get_substrate_effects(
  */
 int substrate_wellbeing_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_substrate_bridge_heartbeat("wellbeing_su_substrate_wellbeing_", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Substrate_Wellbeing_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                wellbeing_substrate_bridge_heartbeat("wellbeing_su_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Substrate Wellbeing Bridge self-knowledge: %s", self->observations[i]);
         }
     }

@@ -44,7 +44,7 @@ static nimcp_health_agent_t* g_ethics_executive_bridge_health_agent = NULL;
  * @brief Set health agent for ethics_executive_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void ethics_executive_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void ethics_executive_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_ethics_executive_bridge_health_agent = agent;
 }
 
@@ -121,6 +121,12 @@ static uint64_t get_timestamp_ms(void) {
 static action_evaluation_t* find_evaluation_unlocked(ethics_executive_bridge_t* bridge,
                                                       uint32_t action_id) {
     for (size_t i = 0; i < bridge->eval_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->eval_count > 256) {
+            ethics_executive_bridge_heartbeat("ethics_execu_loop",
+                             (float)(i + 1) / (float)bridge->eval_count);
+        }
+
         if (bridge->evaluations[i].action_id == action_id) {
             return &bridge->evaluations[i];
         }
@@ -187,6 +193,10 @@ int ethics_executive_bridge_default_config(ethics_executive_config_t* config) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_executive_bridge_heartbeat("ethics_execu_default_config", 0.0f);
+
+
     config->ethical_threshold = DEFAULT_ETHICAL_THRESHOLD;
     config->veto_enabled = DEFAULT_VETO_ENABLED;
     config->constraint_strictness = DEFAULT_CONSTRAINT_STRICTNESS;
@@ -198,6 +208,10 @@ ethics_executive_bridge_t* ethics_executive_bridge_create(
     const ethics_executive_config_t* config
 ) {
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    ethics_executive_bridge_heartbeat("ethics_execu_create", 0.0f);
+
+
     ethics_executive_bridge_t* bridge = nimcp_malloc(sizeof(ethics_executive_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -245,6 +259,10 @@ void ethics_executive_bridge_destroy(ethics_executive_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
+    /* Phase 8: Heartbeat at operation start */
+    ethics_executive_bridge_heartbeat("ethics_execu_destroy", 0.0f);
+
+
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
         bridge->base.mutex = NULL;
@@ -278,6 +296,10 @@ int ethics_executive_constrain_action(
     if (!bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_executive_bridge_heartbeat("ethics_execu_ethics_executive_con", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -355,6 +377,10 @@ int ethics_executive_evaluate_action(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_executive_bridge_heartbeat("ethics_execu_ethics_executive_eva", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get or create evaluation for this action */
@@ -404,6 +430,10 @@ int ethics_executive_veto_action(
     if (!bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_executive_bridge_heartbeat("ethics_execu_ethics_executive_vet", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -460,6 +490,10 @@ int ethics_executive_get_permitted_actions(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_executive_bridge_heartbeat("ethics_execu_ethics_executive_get", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     size_t permitted_count = 0;
@@ -500,6 +534,10 @@ int ethics_executive_bridge_get_stats(
     }
 
     /* Cast away const for mutex lock (stats read is still logically const) */
+    /* Phase 8: Heartbeat at operation start */
+    ethics_executive_bridge_heartbeat("ethics_execu_get_stats", 0.0f);
+
+
     ethics_executive_bridge_t* mutable_bridge = (ethics_executive_bridge_t*)bridge;
 
     nimcp_mutex_lock(mutable_bridge->base.mutex);

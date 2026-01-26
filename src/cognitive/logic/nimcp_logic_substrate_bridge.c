@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_logic_substrate_bridge_health_agent = NULL;
  * @brief Set health agent for logic_substrate_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void logic_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void logic_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_logic_substrate_bridge_health_agent = agent;
 }
 
@@ -58,6 +58,10 @@ struct logic_substrate_bridge {
 };
 
 logic_substrate_config_t logic_substrate_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    logic_substrate_bridge_heartbeat("logic_substr_logic_substrate_defa", 0.0f);
+
+
     logic_substrate_config_t cfg = {
         .enable_atp_modulation = true,
         .enable_fatigue_modulation = true,
@@ -74,6 +78,10 @@ logic_substrate_bridge_t* logic_substrate_bridge_create(void* logic, neural_subs
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "logic_substrate_bridge_create: substrate is NULL");
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    logic_substrate_bridge_heartbeat("logic_substr_create", 0.0f);
+
 
     logic_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(logic_substrate_bridge_t));
     if (!bridge) {
@@ -95,11 +103,19 @@ logic_substrate_bridge_t* logic_substrate_bridge_create(void* logic, neural_subs
 }
 
 void logic_substrate_bridge_destroy(logic_substrate_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    logic_substrate_bridge_heartbeat("logic_substr_destroy", 0.0f);
+
+
     if (bridge) nimcp_free(bridge);
 }
 
 int logic_substrate_bridge_update(logic_substrate_bridge_t* bridge) {
     if (!bridge || !bridge->substrate) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    logic_substrate_bridge_heartbeat("logic_substr_update", 0.0f);
+
 
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
@@ -130,16 +146,28 @@ int logic_substrate_bridge_update(logic_substrate_bridge_t* bridge) {
 int logic_substrate_bridge_get_effects(const logic_substrate_bridge_t* bridge, logic_substrate_effects_t* effects) {
     if (!bridge || !effects) return -1;
     *effects = bridge->effects;
+    /* Phase 8: Heartbeat at operation start */
+    logic_substrate_bridge_heartbeat("logic_substr_get_effects", 0.0f);
+
+
     return 0;
 }
 
 int logic_substrate_bridge_apply_effects(logic_substrate_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    logic_substrate_bridge_heartbeat("logic_substr_apply_effects", 0.0f);
+
+
     return 0;
 }
 
 int logic_substrate_bridge_register_bio_async(logic_substrate_bridge_t* bridge, bio_router_t* router) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    logic_substrate_bridge_heartbeat("logic_substr_register_bio_async", 0.0f);
+
+
     bridge->router = router;
     bridge->bio_async_connected = (router != NULL);
     return 0;
@@ -152,9 +180,19 @@ int logic_substrate_bridge_register_bio_async(logic_substrate_bridge_t* bridge, 
 int logic_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    logic_substrate_bridge_heartbeat("logic_substr_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Logic_Substrate_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                logic_substrate_bridge_heartbeat("logic_substr_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

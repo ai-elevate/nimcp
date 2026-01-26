@@ -44,7 +44,7 @@ static nimcp_health_agent_t* g_gt_working_memory_health_agent = NULL;
  * @brief Set health agent for gt_working_memory heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void gt_working_memory_set_health_agent(nimcp_health_agent_t* agent) {
+void gt_working_memory_set_health_agent(nimcp_health_agent_t* agent) {
     g_gt_working_memory_health_agent = agent;
 }
 
@@ -114,6 +114,12 @@ struct gt_wm_auction_ctx_struct {
 
 static int find_free_slot(const gt_wm_auction_ctx_t ctx) {
     for (uint32_t i = 0; i < ctx->num_slots; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->num_slots > 256) {
+            gt_working_memory_heartbeat("gt_working_m_loop",
+                             (float)(i + 1) / (float)ctx->num_slots);
+        }
+
         if (!ctx->slots[i].occupied) {
             return (int)i;
         }
@@ -126,6 +132,12 @@ static int find_lowest_bid_slot(const gt_wm_auction_ctx_t ctx) {
     float lowest_effective = FLT_MAX;
 
     for (uint32_t i = 0; i < ctx->num_slots; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->num_slots > 256) {
+            gt_working_memory_heartbeat("gt_working_m_loop",
+                             (float)(i + 1) / (float)ctx->num_slots);
+        }
+
         if (ctx->slots[i].occupied) {
             float effective = ctx->slots[i].current_bid - ctx->slots[i].congestion_cost;
             if (effective < lowest_effective) {
@@ -168,6 +180,10 @@ static void evict_slot(gt_wm_auction_ctx_t ctx, uint32_t slot_idx) {
 //=============================================================================
 
 gt_wm_config_t gt_wm_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_working_memory_heartbeat("gt_working_m_gt_wm_default_config", 0.0f);
+
+
     gt_wm_config_t config = {
         .policy = GT_WM_EVICTION_AUCTION,
         .slot_reserve_price = DEFAULT_RESERVE_PRICE,
@@ -190,6 +206,10 @@ gt_wm_auction_ctx_t gt_wm_create(
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_working_memory_heartbeat("gt_working_m_gt_wm_create", 0.0f);
+
+
     gt_wm_auction_ctx_t ctx = nimcp_calloc(1, sizeof(struct gt_wm_auction_ctx_struct));
     if (!ctx) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
@@ -204,6 +224,12 @@ gt_wm_auction_ctx_t gt_wm_create(
     ctx->num_slots = MAX_WM_SLOTS;
     ctx->occupied_slots = 0;
     for (uint32_t i = 0; i < MAX_WM_SLOTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MAX_WM_SLOTS > 256) {
+            gt_working_memory_heartbeat("gt_working_m_loop",
+                             (float)(i + 1) / (float)MAX_WM_SLOTS);
+        }
+
         ctx->slots[i].occupied = false;
         ctx->slots[i].content = NULL;
     }
@@ -228,7 +254,17 @@ void gt_wm_destroy(gt_wm_auction_ctx_t ctx) {
     }
 
     // Free all slot contents
+    /* Phase 8: Heartbeat at operation start */
+    gt_working_memory_heartbeat("gt_working_m_gt_wm_destroy", 0.0f);
+
+
     for (uint32_t i = 0; i < ctx->num_slots; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->num_slots > 256) {
+            gt_working_memory_heartbeat("gt_working_m_loop",
+                             (float)(i + 1) / (float)ctx->num_slots);
+        }
+
         if (ctx->slots[i].content) {
             nimcp_free(ctx->slots[i].content);
         }
@@ -248,6 +284,10 @@ nimcp_error_t gt_wm_add(
     float bid,
     int32_t* slot_index
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_working_memory_heartbeat("gt_working_m_gt_wm_add", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx && item && item_size > 0 && slot_index, NIMCP_ERROR_INVALID_PARAM, "ctx, item, slot_index is NULL or item_size is 0");
 
     *slot_index = -1;
@@ -336,6 +376,10 @@ nimcp_error_t gt_wm_refresh(
     uint32_t slot_index,
     float new_bid
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_working_memory_heartbeat("gt_working_m_gt_wm_refresh", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
     NIMCP_CHECK_THROW(slot_index < ctx->num_slots, NIMCP_ERROR_OUT_OF_RANGE, "slot_index out of range");
     NIMCP_CHECK_THROW(ctx->active, NIMCP_GT_ERROR_GAME_OVER, "ctx is not active");
@@ -362,6 +406,10 @@ nimcp_error_t gt_wm_run_eviction(
     gt_wm_auction_ctx_t ctx,
     gt_wm_eviction_result_t* result
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_working_memory_heartbeat("gt_working_m_gt_wm_run_eviction", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx && result, NIMCP_ERROR_INVALID_PARAM, "ctx or result is NULL");
     NIMCP_CHECK_THROW(ctx->active, NIMCP_GT_ERROR_GAME_OVER, "ctx is not active");
 
@@ -373,6 +421,12 @@ nimcp_error_t gt_wm_run_eviction(
     result->total_congestion_cost = current_congestion;
 
     for (uint32_t i = 0; i < ctx->num_slots; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->num_slots > 256) {
+            gt_working_memory_heartbeat("gt_working_m_loop",
+                             (float)(i + 1) / (float)ctx->num_slots);
+        }
+
         if (ctx->slots[i].occupied) {
             ctx->slots[i].congestion_cost = current_congestion;
         }
@@ -412,12 +466,22 @@ nimcp_error_t gt_wm_apply_decay(
     gt_wm_auction_ctx_t ctx,
     float decay_amount
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_working_memory_heartbeat("gt_working_m_gt_wm_apply_decay", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
     NIMCP_CHECK_THROW(ctx->active, NIMCP_GT_ERROR_GAME_OVER, "ctx is not active");
 
     float decay = (decay_amount > 0.0f) ? decay_amount : ctx->config.decay_rate;
 
     for (uint32_t i = 0; i < ctx->num_slots; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->num_slots > 256) {
+            gt_working_memory_heartbeat("gt_working_m_loop",
+                             (float)(i + 1) / (float)ctx->num_slots);
+        }
+
         gt_wm_slot_internal_t* slot = &ctx->slots[i];
         if (!slot->occupied) continue;
 
@@ -438,6 +502,10 @@ float gt_wm_get_congestion_cost(const gt_wm_auction_ctx_t ctx) {
     if (!ctx) {
         return 0.0f;
     }
+    /* Phase 8: Heartbeat at operation start */
+    gt_working_memory_heartbeat("gt_working_m_gt_wm_get_congestion", 0.0f);
+
+
     return compute_congestion_cost((gt_wm_auction_ctx_t)ctx);
 }
 
@@ -450,6 +518,10 @@ nimcp_error_t gt_wm_get_slot_state(
     uint32_t slot_index,
     gt_wm_slot_state_t* state
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_working_memory_heartbeat("gt_working_m_gt_wm_get_slot_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx && state, NIMCP_ERROR_INVALID_PARAM, "ctx or state is NULL");
     NIMCP_CHECK_THROW(slot_index < ctx->num_slots, NIMCP_ERROR_OUT_OF_RANGE, "slot_index out of range");
 
@@ -471,18 +543,34 @@ nimcp_error_t gt_wm_get_slot_state(
 }
 
 working_memory_t* gt_wm_get_wm(const gt_wm_auction_ctx_t ctx) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_working_memory_heartbeat("gt_working_m_gt_wm_get_wm", 0.0f);
+
+
     return ctx ? ctx->wm : NULL;
 }
 
 uint32_t gt_wm_get_occupancy(const gt_wm_auction_ctx_t ctx) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_working_memory_heartbeat("gt_working_m_gt_wm_get_occupancy", 0.0f);
+
+
     return ctx ? ctx->occupied_slots : 0;
 }
 
 uint32_t gt_wm_get_capacity(const gt_wm_auction_ctx_t ctx) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_working_memory_heartbeat("gt_working_m_gt_wm_get_capacity", 0.0f);
+
+
     return ctx ? ctx->num_slots : 0;
 }
 
 bool gt_wm_is_active(const gt_wm_auction_ctx_t ctx) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_working_memory_heartbeat("gt_working_m_gt_wm_is_active", 0.0f);
+
+
     return ctx ? ctx->active : false;
 }
 
@@ -491,8 +579,18 @@ float gt_wm_get_highest_bid(const gt_wm_auction_ctx_t ctx) {
         return 0.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_working_memory_heartbeat("gt_working_m_gt_wm_get_highest_bi", 0.0f);
+
+
     float highest = -FLT_MAX;
     for (uint32_t i = 0; i < ctx->num_slots; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->num_slots > 256) {
+            gt_working_memory_heartbeat("gt_working_m_loop",
+                             (float)(i + 1) / (float)ctx->num_slots);
+        }
+
         if (ctx->slots[i].occupied && ctx->slots[i].current_bid > highest) {
             highest = ctx->slots[i].current_bid;
         }
@@ -506,8 +604,18 @@ float gt_wm_get_lowest_bid(const gt_wm_auction_ctx_t ctx) {
         return 0.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_working_memory_heartbeat("gt_working_m_gt_wm_get_lowest_bid", 0.0f);
+
+
     float lowest = FLT_MAX;
     for (uint32_t i = 0; i < ctx->num_slots; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->num_slots > 256) {
+            gt_working_memory_heartbeat("gt_working_m_loop",
+                             (float)(i + 1) / (float)ctx->num_slots);
+        }
+
         if (ctx->slots[i].occupied && ctx->slots[i].current_bid < lowest) {
             lowest = ctx->slots[i].current_bid;
         }
@@ -520,6 +628,10 @@ nimcp_error_t gt_wm_get_stats(
     const gt_wm_auction_ctx_t ctx,
     nimcp_game_stats_t* stats
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_working_memory_heartbeat("gt_working_m_gt_wm_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx && stats, NIMCP_ERROR_INVALID_PARAM, "ctx or stats is NULL");
 
     memset(stats, 0, sizeof(nimcp_game_stats_t));
@@ -547,9 +659,19 @@ nimcp_error_t gt_wm_get_stats(
 int gt_working_memory_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_working_memory_heartbeat("gt_working_m_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "GT_WorkingMemory_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                gt_working_memory_heartbeat("gt_working_m_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG(LOG_MODULE, "GT WorkingMemory self-knowledge: %s", self->observations[i]);
         }
     }

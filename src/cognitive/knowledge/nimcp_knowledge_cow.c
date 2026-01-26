@@ -46,7 +46,7 @@ static nimcp_health_agent_t* g_knowledge_cow_health_agent = NULL;
  * @brief Set health agent for knowledge_cow heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void knowledge_cow_set_health_agent(nimcp_health_agent_t* agent) {
+void knowledge_cow_set_health_agent(nimcp_health_agent_t* agent) {
     g_knowledge_cow_health_agent = agent;
 }
 
@@ -411,9 +411,19 @@ NIMCP_EXPORT void knowledge_cow_snapshot_destroy(knowledge_cow_snapshot_t snapsh
 int knowledge_cow_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_cow_heartbeat("knowledge_co_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Knowledge_COW");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                knowledge_cow_heartbeat("knowledge_co_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

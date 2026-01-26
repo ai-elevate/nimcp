@@ -52,7 +52,7 @@ static nimcp_health_agent_t* g_personality_health_agent = NULL;
  * @brief Set health agent for personality heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void personality_set_health_agent(nimcp_health_agent_t* agent) {
+void personality_set_health_agent(nimcp_health_agent_t* agent) {
     g_personality_health_agent = agent;
 }
 
@@ -290,6 +290,10 @@ personality_generation_config_t personality_default_generation_config(void) {
      * HOW:  Preset values based on user request and psychology
      */
 
+    /* Phase 8: Heartbeat at operation start */
+    personality_heartbeat("personality_default_generation_c", 0.0f);
+
+
     personality_generation_config_t config = {
         .trait_mean = 0.5F,
         .trait_stddev = 0.15F,
@@ -313,6 +317,10 @@ personality_profile_t personality_generate_random(
      */
 
     // Initialize RNG
+    /* Phase 8: Heartbeat at operation start */
+    personality_heartbeat("personality_generate_random", 0.0f);
+
+
     uint32_t seed = config ? config->seed : 0;
     init_rng(seed);
 
@@ -370,6 +378,10 @@ personality_profile_t personality_create_custom(
         return personality_generate_random(NULL);
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    personality_heartbeat("personality_create_custom", 0.0f);
+
+
     personality_profile_t profile;
     memset(&profile, 0, sizeof(personality_profile_t));
 
@@ -399,6 +411,10 @@ personality_profile_t personality_create_custom(
 
 void personality_compute_modifiers(personality_profile_t* profile) {
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    personality_heartbeat("personality_compute_modifiers", 0.0f);
+
+
     if (personality_bio_ctx) {
         bio_router_process_inbox(personality_bio_ctx, 5);
     }
@@ -495,6 +511,10 @@ bool personality_get_pronouns(
             "personality_get_pronouns: invalid parameter");
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    personality_heartbeat("personality_get_pronouns", 0.0f);
+
+
     if (subject_len < 8 || object_len < 8 || possessive_len < 8) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
             "personality_get_pronouns: invalid parameter");
@@ -568,6 +588,10 @@ bool personality_generate_summary(
     }
 
     // Trait descriptors
+    /* Phase 8: Heartbeat at operation start */
+    personality_heartbeat("personality_generate_summary", 0.0f);
+
+
     const char* openness_desc = (profile->traits.openness > 0.7F) ? "Creative" :
                                 (profile->traits.openness < 0.3F) ? "Conventional" :
                                 "Moderate-Openness";
@@ -609,9 +633,19 @@ bool personality_generate_summary(
 int personality_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    personality_heartbeat("personality_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Personality");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                personality_heartbeat("personality_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

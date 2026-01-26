@@ -45,7 +45,7 @@ static nimcp_health_agent_t* g_rcog_engine_health_agent = NULL;
  * @brief Set health agent for rcog_engine heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void rcog_engine_set_health_agent(nimcp_health_agent_t* agent) {
+void rcog_engine_set_health_agent(nimcp_health_agent_t* agent) {
     g_rcog_engine_health_agent = agent;
 }
 
@@ -131,6 +131,12 @@ static uint64_t engine_now_ms(void) {
 
 static rcog_active_request_t* find_request_by_id(rcog_engine_t* engine, uint64_t request_id) {
     for (uint32_t i = 0; i < RCOG_ENGINE_MAX_CONCURRENT_GOALS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && RCOG_ENGINE_MAX_CONCURRENT_GOALS > 256) {
+            rcog_engine_heartbeat("rcog_engine_loop",
+                             (float)(i + 1) / (float)RCOG_ENGINE_MAX_CONCURRENT_GOALS);
+        }
+
         if (engine->requests[i].active &&
             engine->requests[i].handle &&
             engine->requests[i].handle->request_id == request_id) {
@@ -142,6 +148,12 @@ static rcog_active_request_t* find_request_by_id(rcog_engine_t* engine, uint64_t
 
 static rcog_active_request_t* allocate_request_slot(rcog_engine_t* engine) {
     for (uint32_t i = 0; i < RCOG_ENGINE_MAX_CONCURRENT_GOALS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && RCOG_ENGINE_MAX_CONCURRENT_GOALS > 256) {
+            rcog_engine_heartbeat("rcog_engine_loop",
+                             (float)(i + 1) / (float)RCOG_ENGINE_MAX_CONCURRENT_GOALS);
+        }
+
         if (!engine->requests[i].active) {
             memset(&engine->requests[i], 0, sizeof(rcog_active_request_t));
             engine->requests[i].active = true;
@@ -178,6 +190,10 @@ static void apply_modulation_to_config(rcog_engine_t* engine) {
  *===========================================================================*/
 
 rcog_engine_config_t rcog_engine_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_default_config", 0.0f);
+
+
     rcog_engine_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -216,6 +232,10 @@ rcog_engine_config_t rcog_engine_default_config(void) {
 }
 
 rcog_engine_t* rcog_engine_create(const rcog_engine_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_create", 0.0f);
+
+
     rcog_engine_t* engine = nimcp_calloc(1, sizeof(rcog_engine_t));
     if (!engine) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
@@ -262,6 +282,10 @@ rcog_engine_t* rcog_engine_create(const rcog_engine_config_t* config) {
 }
 
 rcog_engine_t* rcog_engine_create_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_create_default", 0.0f);
+
+
     return rcog_engine_create(NULL);
 }
 
@@ -269,6 +293,10 @@ int rcog_engine_init(rcog_engine_t* engine) {
     if (!engine) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_init", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -402,6 +430,10 @@ int rcog_engine_start(rcog_engine_t* engine) {
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_start", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
 
     if (engine->state != RCOG_ENGINE_READY && engine->state != RCOG_ENGINE_PAUSED) {
@@ -427,6 +459,10 @@ int rcog_engine_stop(rcog_engine_t* engine, uint32_t timeout_ms) {
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_stop", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
 
     if (engine->state == RCOG_ENGINE_STOPPED ||
@@ -439,6 +475,12 @@ int rcog_engine_stop(rcog_engine_t* engine, uint32_t timeout_ms) {
 
     /* Cancel all active requests */
     for (uint32_t i = 0; i < RCOG_ENGINE_MAX_CONCURRENT_GOALS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && RCOG_ENGINE_MAX_CONCURRENT_GOALS > 256) {
+            rcog_engine_heartbeat("rcog_engine_loop",
+                             (float)(i + 1) / (float)RCOG_ENGINE_MAX_CONCURRENT_GOALS);
+        }
+
         if (engine->requests[i].active && engine->requests[i].handle) {
             engine->requests[i].handle->cancelled = true;
             engine->stats.goals_cancelled++;
@@ -469,6 +511,10 @@ void rcog_engine_destroy(rcog_engine_t* engine) {
     }
 
     /* Stop if not already stopped */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_destroy", 0.0f);
+
+
     if (engine->state != RCOG_ENGINE_STOPPED &&
         engine->state != RCOG_ENGINE_UNINITIALIZED) {
         rcog_engine_stop(engine, 5000);
@@ -515,6 +561,12 @@ void rcog_engine_destroy(rcog_engine_t* engine) {
 
     /* Clean up active request handles */
     for (uint32_t i = 0; i < RCOG_ENGINE_MAX_CONCURRENT_GOALS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && RCOG_ENGINE_MAX_CONCURRENT_GOALS > 256) {
+            rcog_engine_heartbeat("rcog_engine_loop",
+                             (float)(i + 1) / (float)RCOG_ENGINE_MAX_CONCURRENT_GOALS);
+        }
+
         if (engine->requests[i].handle) {
             nimcp_free(engine->requests[i].handle);
             engine->requests[i].handle = NULL;
@@ -544,6 +596,10 @@ rcog_engine_state_t rcog_engine_get_state(const rcog_engine_t* engine) {
     if (!engine) {
         return RCOG_ENGINE_UNINITIALIZED;
     }
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_get_state", 0.0f);
+
+
     return engine->state;
 }
 
@@ -608,6 +664,10 @@ int rcog_engine_connect_bio_async(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_connect_bio_async", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
     engine->bio_async_bridge = bridge;
 
@@ -632,6 +692,10 @@ int rcog_engine_connect_immune(
     if (!engine) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_connect_immune", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
     engine->immune_bridge = bridge;
@@ -661,6 +725,10 @@ int rcog_engine_connect_imagination(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_connect_imagination", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
     engine->imagination_bridge = bridge;
 
@@ -680,6 +748,10 @@ int rcog_engine_connect_collective(
     if (!engine) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_connect_collective", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
     engine->collective_bridge = bridge;
@@ -701,6 +773,10 @@ int rcog_engine_connect_brain_kg(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_connect_brain_kg", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
     engine->brain_kg_bridge = bridge;
     nimcp_mutex_unlock(engine->mutex);
@@ -721,6 +797,10 @@ int rcog_engine_process(
     }
 
     /* Create sync request */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_process", 0.0f);
+
+
     rcog_process_request_t request = rcog_engine_default_request(goal);
     request.mode = RCOG_MODE_SYNC;
 
@@ -736,6 +816,10 @@ int rcog_engine_process_ex(
     if (!engine || !request) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_process_ex", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -886,6 +970,12 @@ int rcog_engine_process_ex(
                     /* Update subtask stats */
                     nimcp_mutex_lock(engine->mutex);
                     for (size_t i = 0; i < num_results; i++) {
+                        /* Phase 8: Loop progress heartbeat */
+                        if ((i & 0xFF) == 0 && num_results > 256) {
+                            rcog_engine_heartbeat("rcog_engine_loop",
+                                             (float)(i + 1) / (float)num_results);
+                        }
+
                         if (batch_results[i].success) {
                             engine->stats.subtasks_completed++;
                         } else {
@@ -1016,6 +1106,10 @@ int rcog_engine_process_async(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_process_async", 0.0f);
+
+
     rcog_process_request_t request = rcog_engine_default_request(goal);
     request.mode = RCOG_MODE_ASYNC;
     request.progress_callback = callback;
@@ -1033,6 +1127,10 @@ int rcog_engine_await(
     if (!engine || !handle) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_await", 0.0f);
+
 
     uint64_t start_ms = engine_now_ms();
     uint64_t deadline = timeout_ms > 0 ? start_ms + timeout_ms : 0;
@@ -1091,6 +1189,10 @@ int rcog_engine_cancel(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_cancel", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
 
     rcog_active_request_t* active_req = find_request_by_id(engine, handle->request_id);
@@ -1116,12 +1218,20 @@ int rcog_engine_cancel(
 }
 
 void rcog_engine_free_handle(rcog_request_handle_t* handle) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_free_handle", 0.0f);
+
+
     if (handle) {
         nimcp_free(handle);
     }
 }
 
 void rcog_engine_free_result(rcog_process_result_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_free_result", 0.0f);
+
+
     if (result) {
         if (result->answer.content) {
             nimcp_free(result->answer.content);
@@ -1153,6 +1263,10 @@ int rcog_engine_set_context(
         return RCOG_ERROR_NOT_INITIALIZED;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_set_context", 0.0f);
+
+
     return rcog_context_store_set(engine->context_store, name, data, size, dtype);
 }
 
@@ -1168,6 +1282,10 @@ int rcog_engine_get_context(
     if (!engine->context_store) {
         return RCOG_ERROR_NOT_INITIALIZED;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_get_context", 0.0f);
+
 
     return rcog_context_store_query(engine->context_store, name,
                                      RCOG_ACCESS_FULL, NULL, result);
@@ -1188,6 +1306,10 @@ int rcog_engine_query_context(
         return RCOG_ERROR_NOT_INITIALIZED;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_query_context", 0.0f);
+
+
     return rcog_context_store_query(engine->context_store, name, pattern, params, result);
 }
 
@@ -1203,6 +1325,10 @@ int rcog_engine_clear_context(
         return RCOG_ERROR_NOT_INITIALIZED;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_clear_context", 0.0f);
+
+
     return rcog_context_store_remove(engine->context_store, name);
 }
 
@@ -1214,6 +1340,10 @@ int rcog_engine_clear_all_context(rcog_engine_t* engine) {
     if (!engine->context_store) {
         return RCOG_ERROR_NOT_INITIALIZED;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_clear_all_context", 0.0f);
+
 
     return rcog_context_store_clear(engine->context_store);
 }
@@ -1237,6 +1367,10 @@ int rcog_engine_register_tool(
         return RCOG_ERROR_NOT_INITIALIZED;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_register_tool", 0.0f);
+
+
     rcog_tool_def_t def = rcog_tool_def_create(name, handler, tier);
     def.context = context;
 
@@ -1254,6 +1388,10 @@ int rcog_engine_unregister_tool(
     if (!engine->tool_router) {
         return RCOG_ERROR_NOT_INITIALIZED;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_unregister_tool", 0.0f);
+
 
     return rcog_tool_router_unregister(engine->tool_router, name);
 }
@@ -1273,6 +1411,10 @@ int rcog_engine_list_tools(
         return RCOG_ERROR_NOT_INITIALIZED;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_list_tools", 0.0f);
+
+
     return rcog_tool_router_get_accessible_tools(
         engine->tool_router, tier, tools, max_tools, num_tools);
 }
@@ -1288,6 +1430,10 @@ int rcog_engine_apply_immune_modulation(
     if (!engine || !modulation) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_apply_immune_modulat", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -1319,6 +1465,10 @@ int rcog_engine_get_immune_modulation(
     }
 
     *modulation = engine->current_modulation;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_get_immune_modulatio", 0.0f);
+
+
     return 0;
 }
 
@@ -1326,6 +1476,10 @@ int rcog_engine_enter_degraded_mode(rcog_engine_t* engine) {
     if (!engine) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_enter_degraded_mode", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -1351,6 +1505,10 @@ int rcog_engine_exit_degraded_mode(rcog_engine_t* engine) {
     if (!engine) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_exit_degraded_mode", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -1385,6 +1543,10 @@ int rcog_engine_get_stats(
     }
 
     *stats = engine->stats;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_get_stats", 0.0f);
+
+
     stats->active_goals = engine->active_count;
     stats->state = engine->state;
 
@@ -1402,6 +1564,10 @@ void rcog_engine_reset_stats(rcog_engine_t* engine) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
 
     memset(&engine->stats, 0, sizeof(engine->stats));
@@ -1418,6 +1584,10 @@ int rcog_engine_get_progress(
     if (!engine || !progress) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_get_progress", 0.0f);
+
 
     memset(progress, 0, sizeof(rcog_progress_t));
 
@@ -1466,6 +1636,10 @@ int rcog_engine_get_progress(
  *===========================================================================*/
 
 rcog_process_request_t rcog_engine_default_request(const rcog_goal_t* goal) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_default_request", 0.0f);
+
+
     rcog_process_request_t request;
     memset(&request, 0, sizeof(request));
 
@@ -1486,6 +1660,10 @@ rcog_goal_t rcog_engine_create_goal(
     const char* query,
     rcog_goal_type_t type
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_create_goal", 0.0f);
+
+
     rcog_goal_t goal;
     memset(&goal, 0, sizeof(goal));
 
@@ -1517,6 +1695,10 @@ bool rcog_engine_is_ready(const rcog_engine_t* engine) {
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_is_ready", 0.0f);
+
+
     return engine->state == RCOG_ENGINE_READY ||
            engine->state == RCOG_ENGINE_PROCESSING ||
            engine->state == RCOG_ENGINE_DEGRADED;
@@ -1532,6 +1714,10 @@ bool rcog_engine_has_capacity(const rcog_engine_t* engine) {
     }
 
     /* Apply modulation to max concurrent */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_has_capacity", 0.0f);
+
+
     uint32_t effective_max = (uint32_t)(
         engine->config.max_concurrent_goals *
         engine->current_modulation.capacity_multiplier
@@ -1550,9 +1736,19 @@ bool rcog_engine_has_capacity(const rcog_engine_t* engine) {
 
 int rcog_engine_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_engine_heartbeat("rcog_engine_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Recursive_Cognition_Engine_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                rcog_engine_heartbeat("rcog_engine_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Log self-knowledge observations */
         }
     }

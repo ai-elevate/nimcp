@@ -37,7 +37,7 @@ static nimcp_health_agent_t* g_knowledge_immune_bridge_health_agent = NULL;
  * @brief Set health agent for knowledge_immune_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void knowledge_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void knowledge_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_knowledge_immune_bridge_health_agent = agent;
 }
 
@@ -82,6 +82,12 @@ static float get_cytokine_level(
     /* Query immune system cytokines */
     float max_concentration = 0.0f;
     for (size_t i = 0; i < immune->cytokine_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && immune->cytokine_count > 256) {
+            knowledge_immune_bridge_heartbeat("knowledge_im_loop",
+                             (float)(i + 1) / (float)immune->cytokine_count);
+        }
+
         if (immune->cytokines[i].type == type) {
             if (immune->cytokines[i].concentration > max_concentration) {
                 max_concentration = immune->cytokines[i].concentration;
@@ -106,6 +112,12 @@ static brain_inflammation_level_t get_max_inflammation_level(
 
     brain_inflammation_level_t max_level = INFLAMMATION_NONE;
     for (size_t i = 0; i < immune->inflammation_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && immune->inflammation_count > 256) {
+            knowledge_immune_bridge_heartbeat("knowledge_im_loop",
+                             (float)(i + 1) / (float)immune->inflammation_count);
+        }
+
         if (immune->inflammation_sites[i].level > max_level) {
             max_level = immune->inflammation_sites[i].level;
         }
@@ -127,6 +139,12 @@ static float get_inflammation_duration_sec(const brain_immune_system_t* immune) 
     /* Find oldest inflammation site */
     uint64_t oldest_start = UINT64_MAX;
     for (size_t i = 0; i < immune->inflammation_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && immune->inflammation_count > 256) {
+            knowledge_immune_bridge_heartbeat("knowledge_im_loop",
+                             (float)(i + 1) / (float)immune->inflammation_count);
+        }
+
         if (immune->inflammation_sites[i].start_time < oldest_start) {
             oldest_start = immune->inflammation_sites[i].start_time;
         }
@@ -198,6 +216,10 @@ int knowledge_immune_default_config(knowledge_immune_config_t* config) {
     }
 
     /* All features enabled by default */
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_def", 0.0f);
+
+
     config->enable_cytokine_retrieval_modulation = true;
     config->enable_inflammation_encoding_impairment = true;
     config->enable_knowledge_immune_priming = true;
@@ -232,6 +254,10 @@ knowledge_immune_bridge_t* knowledge_immune_bridge_create(
     }
 
     /* Allocate bridge */
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_immune_bridge_heartbeat("knowledge_im_create", 0.0f);
+
+
     knowledge_immune_bridge_t* bridge = (knowledge_immune_bridge_t*)
         nimcp_malloc(sizeof(knowledge_immune_bridge_t));
     if (!bridge) {
@@ -285,6 +311,10 @@ void knowledge_immune_bridge_destroy(knowledge_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_immune_bridge_heartbeat("knowledge_im_destroy", 0.0f);
+
+
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
     }
@@ -309,6 +339,10 @@ int knowledge_immune_apply_cytokine_effects(knowledge_immune_bridge_t* bridge) {
     }
     if (!bridge->enable_cytokine_retrieval_modulation) return 0;
     if (!bridge->immune_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_app", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -372,6 +406,10 @@ int knowledge_immune_apply_inflammation_encoding(knowledge_immune_bridge_t* brid
     if (!bridge->enable_inflammation_encoding_impairment) return 0;
     if (!bridge->immune_system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_app", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Get inflammation state */
@@ -432,11 +470,19 @@ float knowledge_immune_get_retrieval_latency_multiplier(
     const knowledge_immune_bridge_t* bridge
 ) {
     if (!bridge) return 1.0f;
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_get", 0.0f);
+
+
     return bridge->cytokine_effects.total_latency_multiplier;
 }
 
 float knowledge_immune_get_encoding_penalty(const knowledge_immune_bridge_t* bridge) {
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_get", 0.0f);
+
+
     return bridge->inflammation_state.encoding_penalty;
 }
 
@@ -453,6 +499,10 @@ int knowledge_immune_apply_sickness_learning_impairment(
     }
     if (!bridge->enable_sickness_learning_impairment) return 0;
     if (!bridge->immune_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_app", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -488,6 +538,10 @@ int knowledge_immune_prime_from_health_knowledge(knowledge_immune_bridge_t* brid
     }
     if (!bridge->enable_knowledge_immune_priming) return 0;
     if (!bridge->knowledge_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_pri", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -527,6 +581,10 @@ int knowledge_immune_assess_threat(
     if (!bridge || !threat_description || !assessed_severity) return -1;
     if (!bridge->knowledge_system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_ass", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Try to retrieve knowledge about threat */
@@ -564,6 +622,10 @@ int knowledge_immune_trigger_from_threat_learning(
     if (!bridge || !learned_concept) return -1;
     if (!bridge->enable_knowledge_immune_priming) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_tri", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Check if learned concept is health/threat related */
@@ -596,6 +658,10 @@ int knowledge_immune_prioritize_health_knowledge(
 
     }
     if (!bridge->enable_illness_knowledge_priority) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_pri", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -635,7 +701,17 @@ float knowledge_immune_get_domain_retrieval_multiplier(
     if (!bridge) return 1.0f;
 
     /* Check if domain is prioritized */
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_get", 0.0f);
+
+
     for (uint32_t i = 0; i < bridge->illness_priority.num_prioritized_domains; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->illness_priority.num_prioritized_domains > 256) {
+            knowledge_immune_bridge_heartbeat("knowledge_im_loop",
+                             (float)(i + 1) / (float)bridge->illness_priority.num_prioritized_domains);
+        }
+
         if (bridge->illness_priority.prioritized_domains[i] == domain) {
             return bridge->illness_priority.domain_boost_multipliers[i];
         }
@@ -666,6 +742,10 @@ int knowledge_immune_bridge_update(
     }
 
     /* Apply immune → knowledge effects */
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_immune_bridge_heartbeat("knowledge_im_update", 0.0f);
+
+
     knowledge_immune_apply_cytokine_effects(bridge);
     knowledge_immune_apply_inflammation_encoding(bridge);
     knowledge_immune_apply_sickness_learning_impairment(bridge);
@@ -690,6 +770,10 @@ int knowledge_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_get", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     *effects = bridge->cytokine_effects;
     pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
@@ -702,6 +786,10 @@ int knowledge_immune_get_inflammation_state(
     inflammation_knowledge_state_t* state
 ) {
     if (!bridge || !state) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_get", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     *state = bridge->inflammation_state;
@@ -716,6 +804,10 @@ bool knowledge_immune_is_cognitively_impaired(
     if (!bridge) return false;
 
     /* Significant impairment if retrieval > 30% slower or encoding > 40% impaired */
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_is_", 0.0f);
+
+
     return (bridge->cytokine_effects.retrieval_impairment > 0.3f) ||
            (bridge->inflammation_state.encoding_penalty > 0.4f);
 }
@@ -724,6 +816,10 @@ float knowledge_immune_get_retrieval_latency_increase_pct(
     const knowledge_immune_bridge_t* bridge
 ) {
     if (!bridge) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_get", 0.0f);
+
 
     float increase = bridge->cytokine_effects.total_latency_multiplier - 1.0f;
     return increase * 100.0f;
@@ -735,6 +831,10 @@ float knowledge_immune_get_encoding_success_rate(
     if (!bridge) return 1.0f;
 
     /* Success rate = 1 - penalty */
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_get", 0.0f);
+
+
     return 1.0f - bridge->inflammation_state.encoding_penalty;
 }
 
@@ -756,6 +856,10 @@ int knowledge_immune_connect_bio_async(knowledge_immune_bridge_t* bridge) {
 
     }
     if (bridge->base.bio_async_enabled) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_con", 0.0f);
+
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_KNOWLEDGE,
@@ -788,6 +892,10 @@ int knowledge_immune_disconnect_bio_async(knowledge_immune_bridge_t* bridge) {
     }
     if (!bridge->base.bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_dis", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -803,6 +911,10 @@ int knowledge_immune_disconnect_bio_async(knowledge_immune_bridge_t* bridge) {
  */
 bool knowledge_immune_is_bio_async_connected(const knowledge_immune_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_is_", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -822,9 +934,19 @@ bool knowledge_immune_is_bio_async_connected(const knowledge_immune_bridge_t* br
  */
 int knowledge_immune_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_que", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Knowledge_Immune_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                knowledge_immune_bridge_heartbeat("knowledge_im_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Knowledge immune bridge self-knowledge: %s", self->observations[i]);
         }
     }

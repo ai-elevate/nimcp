@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_knowledge_fep_bridge_health_agent = NULL;
  * @brief Set health agent for knowledge_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void knowledge_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void knowledge_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_knowledge_fep_bridge_health_agent = agent;
 }
 
@@ -46,6 +46,10 @@ static inline void knowledge_fep_bridge_heartbeat(const char* operation, float p
 
 
 int knowledge_fep_bridge_default_config(knowledge_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_fep_bridge_heartbeat("knowledge_fe_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->knowledge_update_threshold = KNOWLEDGE_FEP_UPDATE_THRESHOLD;
     config->semantic_prior_weight = KNOWLEDGE_FEP_SEMANTIC_PRIOR_WEIGHT;
@@ -56,6 +60,10 @@ int knowledge_fep_bridge_default_config(knowledge_fep_config_t* config) {
 }
 
 knowledge_fep_bridge_t* knowledge_fep_bridge_create(const knowledge_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_fep_bridge_heartbeat("knowledge_fe_create", 0.0f);
+
+
     knowledge_fep_bridge_t* bridge = (knowledge_fep_bridge_t*)nimcp_malloc(sizeof(knowledge_fep_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_fep_bridge_create: failed to allocate bridge");
@@ -81,6 +89,10 @@ knowledge_fep_bridge_t* knowledge_fep_bridge_create(const knowledge_fep_config_t
 
 void knowledge_fep_bridge_destroy(knowledge_fep_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_fep_bridge_heartbeat("knowledge_fe_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) knowledge_fep_bridge_disconnect_bio_async(bridge);
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
@@ -89,6 +101,10 @@ void knowledge_fep_bridge_destroy(knowledge_fep_bridge_t* bridge) {
 }
 
 int knowledge_fep_bridge_connect_fep(knowledge_fep_bridge_t* bridge, fep_system_t* fep) {
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_fep_bridge_heartbeat("knowledge_fe_connect_fep", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -97,6 +113,10 @@ int knowledge_fep_bridge_connect_fep(knowledge_fep_bridge_t* bridge, fep_system_
 }
 
 int knowledge_fep_bridge_connect_knowledge(knowledge_fep_bridge_t* bridge, knowledge_system_t knowledge) {
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_fep_bridge_heartbeat("knowledge_fe_connect_knowledge", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && knowledge, NIMCP_ERROR_NULL_POINTER, "bridge or knowledge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->knowledge_system = knowledge;
@@ -105,6 +125,10 @@ int knowledge_fep_bridge_connect_knowledge(knowledge_fep_bridge_t* bridge, knowl
 }
 
 int knowledge_fep_update_knowledge(knowledge_fep_bridge_t* bridge, float prediction_error) {
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_fep_bridge_heartbeat("knowledge_fe_knowledge_fep_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_knowledge_updates) return NIMCP_SUCCESS;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -119,6 +143,10 @@ int knowledge_fep_update_knowledge(knowledge_fep_bridge_t* bridge, float predict
 }
 
 int knowledge_fep_apply_semantic_priors(knowledge_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_fep_bridge_heartbeat("knowledge_fe_knowledge_fep_apply_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     /* Apply knowledge as semantic priors to FEP */
@@ -128,6 +156,10 @@ int knowledge_fep_apply_semantic_priors(knowledge_fep_bridge_t* bridge) {
 }
 
 int knowledge_fep_bridge_update(knowledge_fep_bridge_t* bridge, uint64_t delta_ms) {
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_fep_bridge_heartbeat("knowledge_fe_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->effects.knowledge_confidence = 1.0f - (bridge->effects.semantic_pe / 10.0f);
@@ -137,6 +169,10 @@ int knowledge_fep_bridge_update(knowledge_fep_bridge_t* bridge, uint64_t delta_m
 }
 
 int knowledge_fep_bridge_get_state(const knowledge_fep_bridge_t* bridge, knowledge_fep_state_t* state) {
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_fep_bridge_heartbeat("knowledge_fe_get_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -145,6 +181,10 @@ int knowledge_fep_bridge_get_state(const knowledge_fep_bridge_t* bridge, knowled
 }
 
 int knowledge_fep_bridge_get_stats(const knowledge_fep_bridge_t* bridge, knowledge_fep_stats_t* stats) {
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_fep_bridge_heartbeat("knowledge_fe_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -153,6 +193,10 @@ int knowledge_fep_bridge_get_stats(const knowledge_fep_bridge_t* bridge, knowled
 }
 
 int knowledge_fep_bridge_connect_bio_async(knowledge_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_fep_bridge_heartbeat("knowledge_fe_connect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
     bio_module_info_t info = {
@@ -171,12 +215,20 @@ int knowledge_fep_bridge_connect_bio_async(knowledge_fep_bridge_t* bridge) {
 
 int knowledge_fep_bridge_disconnect_bio_async(knowledge_fep_bridge_t* bridge) {
     if (!bridge || !bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_fep_bridge_heartbeat("knowledge_fe_disconnect_bio_async", 0.0f);
+
+
     if (bridge->base.bio_ctx) bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_async_enabled = false;
     return NIMCP_SUCCESS;
 }
 
 bool knowledge_fep_bridge_is_bio_async_connected(const knowledge_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_fep_bridge_heartbeat("knowledge_fe_is_bio_async_connect", 0.0f);
+
+
     return bridge ? bridge->base.bio_async_enabled : false;
 }
 
@@ -197,9 +249,19 @@ bool knowledge_fep_bridge_is_bio_async_connected(const knowledge_fep_bridge_t* b
 int knowledge_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_fep_bridge_heartbeat("knowledge_fe_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Knowledge_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                knowledge_fep_bridge_heartbeat("knowledge_fe_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

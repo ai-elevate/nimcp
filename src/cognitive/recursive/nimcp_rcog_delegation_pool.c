@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_rcog_delegation_pool_health_agent = NULL;
  * @brief Set health agent for rcog_delegation_pool heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void rcog_delegation_pool_set_health_agent(nimcp_health_agent_t* agent) {
+void rcog_delegation_pool_set_health_agent(nimcp_health_agent_t* agent) {
     g_rcog_delegation_pool_health_agent = agent;
 }
 
@@ -374,11 +374,21 @@ static rcog_task_node_t* steal_task(rcog_worker_queue_t* queue) {
  *===========================================================================*/
 
 rcog_delegation_pool_config_t rcog_delegation_pool_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_default_config", 0.0f);
+
+
     rcog_delegation_pool_config_t config;
     memset(&config, 0, sizeof(config));
 
     /* Default tier configuration */
     for (int i = 0; i < RCOG_TIER_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && RCOG_TIER_COUNT > 256) {
+            rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                             (float)(i + 1) / (float)RCOG_TIER_COUNT);
+        }
+
         config.tiers[i].tier = (rcog_capability_tier_t)i;
         config.tiers[i].num_workers = RCOG_POOL_DEFAULT_WORKERS_PER_TIER;
         config.tiers[i].queue_capacity = RCOG_POOL_MAX_PENDING_PER_WORKER;
@@ -414,6 +424,10 @@ rcog_delegation_pool_config_t rcog_delegation_pool_default_config(void) {
 rcog_delegation_pool_t* rcog_delegation_pool_create(
     const rcog_delegation_pool_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_create", 0.0f);
+
+
     rcog_delegation_pool_t* pool = nimcp_calloc(1, sizeof(rcog_delegation_pool_t));
     if (!pool) {
 
@@ -433,6 +447,12 @@ rcog_delegation_pool_t* rcog_delegation_pool_create(
     /* Calculate total workers */
     pool->num_workers = 0;
     for (int i = 0; i < RCOG_TIER_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && RCOG_TIER_COUNT > 256) {
+            rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                             (float)(i + 1) / (float)RCOG_TIER_COUNT);
+        }
+
         pool->workers_per_tier[i] = pool->config.tiers[i].num_workers;
         pool->num_workers += pool->workers_per_tier[i];
     }
@@ -505,6 +525,10 @@ rcog_delegation_pool_t* rcog_delegation_pool_create(
 }
 
 rcog_delegation_pool_t* rcog_delegation_pool_create_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_create_default", 0.0f);
+
+
     return rcog_delegation_pool_create(NULL);
 }
 
@@ -512,6 +536,10 @@ void rcog_delegation_pool_destroy(rcog_delegation_pool_t* pool) {
     if (!pool) return;
 
     /* Stop pool if running */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_destroy", 0.0f);
+
+
     if (pool->running) {
         rcog_delegation_pool_stop(pool, pool->config.shutdown_timeout_ms);
     }
@@ -519,6 +547,12 @@ void rcog_delegation_pool_destroy(rcog_delegation_pool_t* pool) {
     /* Destroy workers */
     if (pool->workers) {
         for (uint32_t i = 0; i < pool->num_workers; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && pool->num_workers > 256) {
+                rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                                 (float)(i + 1) / (float)pool->num_workers);
+            }
+
             destroy_worker_queue(&pool->workers[i].queue);
         }
         nimcp_free(pool->workers);
@@ -538,6 +572,12 @@ void rcog_delegation_pool_destroy(rcog_delegation_pool_t* pool) {
     /* Free batch handles */
     if (pool->batches) {
         for (size_t i = 0; i < pool->num_batches; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && pool->num_batches > 256) {
+                rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                                 (float)(i + 1) / (float)pool->num_batches);
+            }
+
             if (pool->batches[i]) {
                 rcog_delegation_pool_free_batch_handle(pool->batches[i]);
             }
@@ -559,6 +599,10 @@ void rcog_delegation_pool_destroy(rcog_delegation_pool_t* pool) {
 int rcog_delegation_pool_start(rcog_delegation_pool_t* pool) {
     if (!pool) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_start", 0.0f);
+
+
     nimcp_mutex_lock(pool->mutex);
 
     if (pool->running) {
@@ -568,6 +612,12 @@ int rcog_delegation_pool_start(rcog_delegation_pool_t* pool) {
 
     /* Start worker threads */
     for (uint32_t i = 0; i < pool->num_workers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pool->num_workers > 256) {
+            rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                             (float)(i + 1) / (float)pool->num_workers);
+        }
+
         rcog_worker_t* worker = &pool->workers[i];
         worker->should_stop = false;
         worker->state = RCOG_WORKER_IDLE;
@@ -576,6 +626,12 @@ int rcog_delegation_pool_start(rcog_delegation_pool_t* pool) {
         if (nimcp_thread_create(&worker->thread, worker_thread_func, worker, NULL) != 0) {
             /* Stop already started threads */
             for (uint32_t j = 0; j < i; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && i > 256) {
+                    rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                                     (float)(j + 1) / (float)i);
+                }
+
                 pool->workers[j].should_stop = true;
             }
             worker->thread_started = false;
@@ -595,6 +651,10 @@ int rcog_delegation_pool_start(rcog_delegation_pool_t* pool) {
 int rcog_delegation_pool_stop(rcog_delegation_pool_t* pool, uint32_t timeout_ms) {
     if (!pool) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_stop", 0.0f);
+
+
     nimcp_mutex_lock(pool->mutex);
 
     if (!pool->running) {
@@ -604,6 +664,12 @@ int rcog_delegation_pool_stop(rcog_delegation_pool_t* pool, uint32_t timeout_ms)
 
     /* Signal workers to stop */
     for (uint32_t i = 0; i < pool->num_workers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pool->num_workers > 256) {
+            rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                             (float)(i + 1) / (float)pool->num_workers);
+        }
+
         pool->workers[i].should_stop = true;
     }
 
@@ -613,6 +679,12 @@ int rcog_delegation_pool_stop(rcog_delegation_pool_t* pool, uint32_t timeout_ms)
     /* Wait for workers */
     uint64_t start = nimcp_platform_time_monotonic_ms();
     for (uint32_t i = 0; i < pool->num_workers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pool->num_workers > 256) {
+            rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                             (float)(i + 1) / (float)pool->num_workers);
+        }
+
         if (pool->workers[i].thread_started) {
             uint64_t elapsed = nimcp_platform_time_monotonic_ms() - start;
             uint32_t remaining = (elapsed < timeout_ms) ? (timeout_ms - elapsed) : 0;
@@ -631,6 +703,10 @@ int rcog_delegation_pool_stop(rcog_delegation_pool_t* pool, uint32_t timeout_ms)
 int rcog_delegation_pool_pause(rcog_delegation_pool_t* pool) {
     if (!pool) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_pause", 0.0f);
+
+
     nimcp_mutex_lock(pool->mutex);
     pool->paused = true;
     nimcp_mutex_unlock(pool->mutex);
@@ -640,6 +716,10 @@ int rcog_delegation_pool_pause(rcog_delegation_pool_t* pool) {
 
 int rcog_delegation_pool_resume(rcog_delegation_pool_t* pool) {
     if (!pool) return RCOG_ERROR_NULL_POINTER;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_resume", 0.0f);
+
 
     nimcp_mutex_lock(pool->mutex);
     pool->paused = false;
@@ -658,6 +738,10 @@ int rcog_delegation_pool_connect_tool_router(
 ) {
     if (!pool) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_connect_tool_router", 0.0f);
+
+
     nimcp_mutex_lock(pool->mutex);
     pool->tool_router = router;
     nimcp_mutex_unlock(pool->mutex);
@@ -670,6 +754,10 @@ int rcog_delegation_pool_connect_context_store(
     struct rcog_context_store* store
 ) {
     if (!pool) return RCOG_ERROR_NULL_POINTER;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_connect_context_stor", 0.0f);
+
 
     nimcp_mutex_lock(pool->mutex);
     pool->context_store = store;
@@ -684,6 +772,10 @@ int rcog_delegation_pool_connect_bio_async(
 ) {
     if (!pool) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_connect_bio_async", 0.0f);
+
+
     nimcp_mutex_lock(pool->mutex);
     pool->bio_async = bio_async;
     nimcp_mutex_unlock(pool->mutex);
@@ -696,6 +788,10 @@ int rcog_delegation_pool_connect_immune(
     struct rcog_immune_bridge* immune
 ) {
     if (!pool) return RCOG_ERROR_NULL_POINTER;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_connect_immune", 0.0f);
+
 
     nimcp_mutex_lock(pool->mutex);
     pool->immune = immune;
@@ -710,6 +806,10 @@ int rcog_delegation_pool_connect_collective(
 ) {
     if (!pool) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_connect_collective", 0.0f);
+
+
     nimcp_mutex_lock(pool->mutex);
     pool->collective = collective;
     nimcp_mutex_unlock(pool->mutex);
@@ -722,6 +822,10 @@ int rcog_delegation_pool_connect_collective(
  *===========================================================================*/
 
 rcog_submit_options_t rcog_delegation_pool_default_submit_options(void) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_default_submit_optio", 0.0f);
+
+
     rcog_submit_options_t options;
     memset(&options, 0, sizeof(options));
 
@@ -743,6 +847,10 @@ int rcog_delegation_pool_submit(
 ) {
     if (!pool || !subtask) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_submit", 0.0f);
+
+
     nimcp_mutex_lock(pool->mutex);
 
     if (!pool->running) {
@@ -753,6 +861,12 @@ int rcog_delegation_pool_submit(
     /* Check capacity */
     size_t total_pending = pool->global_queue.count;
     for (uint32_t i = 0; i < pool->num_workers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pool->num_workers > 256) {
+            rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                             (float)(i + 1) / (float)pool->num_workers);
+        }
+
         total_pending += pool->workers[i].queue.count;
     }
 
@@ -817,6 +931,10 @@ int rcog_delegation_pool_submit_batch(
     if (num_subtasks == 0) return RCOG_ERROR_INVALID_CONFIG;
 
     /* Create batch handle */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_submit_batch", 0.0f);
+
+
     rcog_batch_handle_t* batch = nimcp_calloc(1, sizeof(rcog_batch_handle_t));
     if (!batch) return RCOG_ERROR_OUT_OF_MEMORY;
 
@@ -848,6 +966,12 @@ int rcog_delegation_pool_submit_batch(
     /* Submit tasks */
     size_t submitted = 0;
     for (size_t i = 0; i < num_subtasks; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_subtasks > 256) {
+            rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                             (float)(i + 1) / (float)num_subtasks);
+        }
+
         int err = rcog_delegation_pool_submit(pool, subtasks[i], options);
         if (err == RCOG_OK) {
             batch->task_ids[submitted] = subtasks[i]->task_id;
@@ -893,6 +1017,10 @@ int rcog_delegation_pool_await_batch(
 ) {
     if (!pool || !handle) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_await_batch", 0.0f);
+
+
     uint64_t start = nimcp_platform_time_monotonic_ms();
 
     while (true) {
@@ -930,6 +1058,10 @@ bool rcog_delegation_pool_poll_batch(
 ) {
     if (!pool || !handle) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_poll_batch", 0.0f);
+
+
     nimcp_mutex_lock(handle->mutex);
 
     if (completed) *completed = handle->completed_count;
@@ -952,6 +1084,10 @@ int rcog_delegation_pool_get_batch_results(
 
     *num_results = 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_get_batch_results", 0.0f);
+
+
     nimcp_mutex_lock(pool->completed_mutex);
 
     for (size_t i = 0; i < handle->num_tasks && *num_results < max_results; i++) {
@@ -959,6 +1095,12 @@ int rcog_delegation_pool_get_batch_results(
 
         /* Find result */
         for (size_t j = 0; j < pool->completed_count; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && pool->completed_count > 256) {
+                rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                                 (float)(j + 1) / (float)pool->completed_count);
+            }
+
             if (pool->completed[j].task_id == task_id && !pool->completed[j].retrieved) {
                 results[*num_results] = pool->completed[j].result;
                 pool->completed[j].retrieved = true;
@@ -979,9 +1121,19 @@ size_t rcog_delegation_pool_cancel_batch(
 ) {
     if (!pool || !handle) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_cancel_batch", 0.0f);
+
+
     size_t cancelled = 0;
 
     for (size_t i = 0; i < handle->num_tasks; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && handle->num_tasks > 256) {
+            rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                             (float)(i + 1) / (float)handle->num_tasks);
+        }
+
         if (rcog_delegation_pool_cancel_task(pool, handle->task_ids[i]) == RCOG_OK) {
             cancelled++;
         }
@@ -992,6 +1144,10 @@ size_t rcog_delegation_pool_cancel_batch(
 
 void rcog_delegation_pool_free_batch_handle(rcog_batch_handle_t* handle) {
     if (!handle) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_free_batch_handle", 0.0f);
+
 
     if (handle->task_ids) nimcp_free(handle->task_ids);
     if (handle->statuses) nimcp_free(handle->statuses);
@@ -1016,8 +1172,18 @@ int rcog_delegation_pool_get_task_status(
     if (!pool || !status) return RCOG_ERROR_NULL_POINTER;
 
     /* Check completed */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_get_task_status", 0.0f);
+
+
     nimcp_mutex_lock(pool->completed_mutex);
     for (size_t i = 0; i < pool->completed_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pool->completed_count > 256) {
+            rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                             (float)(i + 1) / (float)pool->completed_count);
+        }
+
         if (pool->completed[i].task_id == task_id) {
             *status = pool->completed[i].result.status;
             nimcp_mutex_unlock(pool->completed_mutex);
@@ -1028,6 +1194,12 @@ int rcog_delegation_pool_get_task_status(
 
     /* Check workers */
     for (uint32_t i = 0; i < pool->num_workers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pool->num_workers > 256) {
+            rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                             (float)(i + 1) / (float)pool->num_workers);
+        }
+
         rcog_worker_t* worker = &pool->workers[i];
 
         if (worker->current_task && worker->current_task->task_id == task_id) {
@@ -1072,9 +1244,19 @@ int rcog_delegation_pool_get_task_result(
 ) {
     if (!pool || !result) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_get_task_result", 0.0f);
+
+
     nimcp_mutex_lock(pool->completed_mutex);
 
     for (size_t i = 0; i < pool->completed_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pool->completed_count > 256) {
+            rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                             (float)(i + 1) / (float)pool->completed_count);
+        }
+
         if (pool->completed[i].task_id == task_id) {
             *result = pool->completed[i].result;
             nimcp_mutex_unlock(pool->completed_mutex);
@@ -1095,7 +1277,17 @@ int rcog_delegation_pool_cancel_task(
     /* Cannot cancel running task easily, only pending */
 
     /* Check worker queues */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_cancel_task", 0.0f);
+
+
     for (uint32_t i = 0; i < pool->num_workers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pool->num_workers > 256) {
+            rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                             (float)(i + 1) / (float)pool->num_workers);
+        }
+
         rcog_worker_t* worker = &pool->workers[i];
 
         nimcp_mutex_lock(worker->queue.mutex);
@@ -1188,10 +1380,20 @@ int rcog_delegation_pool_cancel_task(
 size_t rcog_delegation_pool_cancel_all(rcog_delegation_pool_t* pool) {
     if (!pool) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_cancel_all", 0.0f);
+
+
     size_t cancelled = 0;
 
     /* Cancel from worker queues */
     for (uint32_t i = 0; i < pool->num_workers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pool->num_workers > 256) {
+            rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                             (float)(i + 1) / (float)pool->num_workers);
+        }
+
         rcog_worker_t* worker = &pool->workers[i];
 
         nimcp_mutex_lock(worker->queue.mutex);
@@ -1253,6 +1455,10 @@ uint32_t rcog_delegation_pool_get_worker_count(
     rcog_capability_tier_t tier
 ) {
     if (!pool || tier >= RCOG_TIER_COUNT) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_get_worker_count", 0.0f);
+
+
     return pool->workers_per_tier[tier];
 }
 
@@ -1260,6 +1466,10 @@ uint32_t rcog_delegation_pool_get_total_workers(
     const rcog_delegation_pool_t* pool
 ) {
     if (!pool) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_get_total_workers", 0.0f);
+
+
     return pool->num_workers;
 }
 
@@ -1270,6 +1480,10 @@ int rcog_delegation_pool_get_worker_info(
 ) {
     if (!pool || !info) return RCOG_ERROR_NULL_POINTER;
     if (worker_id >= pool->num_workers) return RCOG_ERROR_INVALID_CONFIG;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_get_worker_info", 0.0f);
+
 
     const rcog_worker_t* worker = &pool->workers[worker_id];
 
@@ -1294,6 +1508,10 @@ int rcog_delegation_pool_get_all_workers(
 
     *num_infos = 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_get_all_workers", 0.0f);
+
+
     for (uint32_t i = 0; i < pool->num_workers && *num_infos < max_infos; i++) {
         rcog_delegation_pool_get_worker_info(pool, i, &infos[*num_infos]);
         (*num_infos)++;
@@ -1313,6 +1531,10 @@ int rcog_delegation_pool_scale_tier(
     /* Dynamic scaling not yet implemented */
     /* Would require stopping/starting workers dynamically */
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_scale_tier", 0.0f);
+
+
     return RCOG_ERROR_INVALID_CONFIG;
 }
 
@@ -1326,6 +1548,10 @@ int rcog_delegation_pool_apply_immune_modulation(
 ) {
     if (!pool || !modulation) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_apply_immune_modulat", 0.0f);
+
+
     nimcp_mutex_lock(pool->mutex);
 
     pool->current_modulation = *modulation;
@@ -1338,6 +1564,12 @@ int rcog_delegation_pool_apply_immune_modulation(
 
         uint32_t active_count = 0;
         for (uint32_t i = 0; i < pool->num_workers; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && pool->num_workers > 256) {
+                rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                                 (float)(i + 1) / (float)pool->num_workers);
+            }
+
             if (active_count >= target_active) {
                 pool->workers[i].state = RCOG_WORKER_PAUSED;
             } else if (pool->workers[i].state == RCOG_WORKER_PAUSED) {
@@ -1350,6 +1582,12 @@ int rcog_delegation_pool_apply_immune_modulation(
     } else {
         /* Resume all paused workers */
         for (uint32_t i = 0; i < pool->num_workers; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && pool->num_workers > 256) {
+                rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                                 (float)(i + 1) / (float)pool->num_workers);
+            }
+
             if (pool->workers[i].state == RCOG_WORKER_PAUSED) {
                 pool->workers[i].state = RCOG_WORKER_IDLE;
             }
@@ -1367,6 +1605,10 @@ float rcog_delegation_pool_get_effective_capacity(
     const rcog_delegation_pool_t* pool
 ) {
     if (!pool) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_get_effective_capaci", 0.0f);
+
+
     return pool->effective_capacity;
 }
 
@@ -1380,6 +1622,10 @@ int rcog_delegation_pool_set_work_stealing(
 ) {
     if (!pool) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_set_work_stealing", 0.0f);
+
+
     nimcp_mutex_lock(pool->mutex);
     pool->config.enable_work_stealing = enable;
     nimcp_mutex_unlock(pool->mutex);
@@ -1390,6 +1636,10 @@ int rcog_delegation_pool_set_work_stealing(
 size_t rcog_delegation_pool_rebalance(rcog_delegation_pool_t* pool) {
     if (!pool) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_rebalance", 0.0f);
+
+
     size_t moved = 0;
 
     /* Find worker with most tasks */
@@ -1397,6 +1647,12 @@ size_t rcog_delegation_pool_rebalance(rcog_delegation_pool_t* pool) {
     size_t max_count = 0;
 
     for (uint32_t i = 0; i < pool->num_workers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pool->num_workers > 256) {
+            rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                             (float)(i + 1) / (float)pool->num_workers);
+        }
+
         if (pool->workers[i].queue.count > max_count) {
             max_count = pool->workers[i].queue.count;
             max_worker = i;
@@ -1405,6 +1661,12 @@ size_t rcog_delegation_pool_rebalance(rcog_delegation_pool_t* pool) {
 
     /* Find idle workers and steal */
     for (uint32_t i = 0; i < pool->num_workers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pool->num_workers > 256) {
+            rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                             (float)(i + 1) / (float)pool->num_workers);
+        }
+
         if (i != max_worker && pool->workers[i].queue.count == 0) {
             /* Try to steal */
             rcog_task_node_t* stolen = steal_task(&pool->workers[max_worker].queue);
@@ -1430,6 +1692,10 @@ int rcog_delegation_pool_get_stats(
 ) {
     if (!pool || !stats) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(((rcog_delegation_pool_t*)pool)->mutex);
     *stats = pool->stats;
 
@@ -1438,6 +1704,12 @@ int rcog_delegation_pool_get_stats(
     float total_util = 0.0f;
 
     for (uint32_t i = 0; i < pool->num_workers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pool->num_workers > 256) {
+            rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                             (float)(i + 1) / (float)pool->num_workers);
+        }
+
         switch (pool->workers[i].state) {
             case RCOG_WORKER_BUSY:
             case RCOG_WORKER_STEALING:
@@ -1469,10 +1741,20 @@ int rcog_delegation_pool_get_stats(
 void rcog_delegation_pool_reset_stats(rcog_delegation_pool_t* pool) {
     if (!pool) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(pool->mutex);
     memset(&pool->stats, 0, sizeof(pool->stats));
 
     for (uint32_t i = 0; i < pool->num_workers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pool->num_workers > 256) {
+            rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                             (float)(i + 1) / (float)pool->num_workers);
+        }
+
         memset(&pool->workers[i].stats, 0, sizeof(rcog_worker_stats_t));
     }
 
@@ -1484,8 +1766,18 @@ size_t rcog_delegation_pool_get_queue_depth(
 ) {
     if (!pool) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_get_queue_depth", 0.0f);
+
+
     size_t total = pool->global_queue.count;
     for (uint32_t i = 0; i < pool->num_workers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pool->num_workers > 256) {
+            rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                             (float)(i + 1) / (float)pool->num_workers);
+        }
+
         total += pool->workers[i].queue.count;
     }
     return total;
@@ -1497,8 +1789,18 @@ size_t rcog_delegation_pool_get_tier_queue_depth(
 ) {
     if (!pool || tier >= RCOG_TIER_COUNT) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_get_tier_queue_depth", 0.0f);
+
+
     size_t total = 0;
     for (uint32_t i = 0; i < pool->num_workers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pool->num_workers > 256) {
+            rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                             (float)(i + 1) / (float)pool->num_workers);
+        }
+
         if (pool->workers[i].tier == tier) {
             total += pool->workers[i].queue.count;
         }
@@ -1519,6 +1821,10 @@ int rcog_delegation_pool_select_worker(
 
     *worker_id = find_best_worker(pool, subtask->tier);
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_select_worker", 0.0f);
+
+
     if (*worker_id >= pool->num_workers) {
         return RCOG_ERROR_WORKER_POOL_EXHAUSTED;
     }
@@ -1531,6 +1837,10 @@ uint32_t rcog_delegation_pool_estimate_wait_time(
     rcog_capability_tier_t tier
 ) {
     if (!pool || tier >= RCOG_TIER_COUNT) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_estimate_wait_time", 0.0f);
+
 
     size_t tier_pending = rcog_delegation_pool_get_tier_queue_depth(pool, tier);
     uint32_t tier_workers = pool->workers_per_tier[tier];
@@ -1547,6 +1857,10 @@ uint32_t rcog_delegation_pool_estimate_wait_time(
 bool rcog_delegation_pool_has_capacity(const rcog_delegation_pool_t* pool) {
     if (!pool) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_has_capacity", 0.0f);
+
+
     size_t total = rcog_delegation_pool_get_queue_depth(pool);
     return total < pool->config.max_pending_tasks;
 }
@@ -1557,6 +1871,10 @@ int rcog_delegation_pool_drain(
 ) {
     if (!pool) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_drain", 0.0f);
+
+
     uint64_t start = nimcp_platform_time_monotonic_ms();
 
     while (true) {
@@ -1565,6 +1883,12 @@ int rcog_delegation_pool_drain(
         /* Also check if any worker is busy */
         bool any_busy = false;
         for (uint32_t i = 0; i < pool->num_workers; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && pool->num_workers > 256) {
+                rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                                 (float)(i + 1) / (float)pool->num_workers);
+            }
+
             if (pool->workers[i].state == RCOG_WORKER_BUSY) {
                 any_busy = true;
                 break;
@@ -1596,6 +1920,12 @@ static uint32_t find_best_worker(rcog_delegation_pool_t* pool,
     /* First pass: find workers at matching tier */
     if (pool->config.tiers[tier].enable_affinity) {
         for (uint32_t i = 0; i < pool->num_workers; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && pool->num_workers > 256) {
+                rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                                 (float)(i + 1) / (float)pool->num_workers);
+            }
+
             if (pool->workers[i].tier == tier &&
                 pool->workers[i].state != RCOG_WORKER_PAUSED &&
                 pool->workers[i].state != RCOG_WORKER_STOPPING &&
@@ -1609,6 +1939,12 @@ static uint32_t find_best_worker(rcog_delegation_pool_t* pool,
     /* Second pass: any available worker */
     if (best_worker >= pool->num_workers) {
         for (uint32_t i = 0; i < pool->num_workers; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && pool->num_workers > 256) {
+                rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                                 (float)(i + 1) / (float)pool->num_workers);
+            }
+
             if (pool->workers[i].state != RCOG_WORKER_PAUSED &&
                 pool->workers[i].state != RCOG_WORKER_STOPPING &&
                 pool->workers[i].queue.count < min_queue) {
@@ -1660,12 +1996,24 @@ static void update_batch_status(rcog_delegation_pool_t* pool,
     nimcp_mutex_lock(pool->batches_mutex);
 
     for (size_t i = 0; i < pool->num_batches; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pool->num_batches > 256) {
+            rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                             (float)(i + 1) / (float)pool->num_batches);
+        }
+
         rcog_batch_handle_t* batch = pool->batches[i];
         if (!batch) continue;
 
         nimcp_mutex_lock(batch->mutex);
 
         for (size_t j = 0; j < batch->num_tasks; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && batch->num_tasks > 256) {
+                rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                                 (float)(j + 1) / (float)batch->num_tasks);
+            }
+
             if (batch->task_ids[j] == task_id) {
                 batch->statuses[j] = status;
 
@@ -1869,9 +2217,19 @@ static void* worker_thread_func(void* arg) {
 
 int rcog_delegation_pool_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_delegation_pool_heartbeat("rcog_delegat_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Recursive_Cognition_Delegation_Pool_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                rcog_delegation_pool_heartbeat("rcog_delegat_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Log self-knowledge observations */
         }
     }

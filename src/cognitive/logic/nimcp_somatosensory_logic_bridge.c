@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_somatosensory_logic_bridge_health_agent = NULL;
  * @brief Set health agent for somatosensory_logic_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void somatosensory_logic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void somatosensory_logic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_somatosensory_logic_bridge_health_agent = agent;
 }
 
@@ -123,6 +123,10 @@ const char* somato_logic_region_name(body_region_t region) {
 //=============================================================================
 
 somato_logic_config_t somato_logic_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    somatosensory_logic_bridge_heartbeat("somatosensor_somato_logic_default", 0.0f);
+
+
     return (somato_logic_config_t){
         .enable_touch_grounding = true,
         .enable_position_grounding = true,
@@ -144,6 +148,10 @@ somato_logic_bridge_t* somato_logic_bridge_create(
     void* logic,
     const somato_logic_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    somatosensory_logic_bridge_heartbeat("somatosensor_somato_logic_bridge_", 0.0f);
+
+
     somato_logic_bridge_t* bridge = nimcp_calloc(1, sizeof(somato_logic_bridge_t));
     if (!bridge) {
 
@@ -170,6 +178,10 @@ somato_logic_bridge_t* somato_logic_bridge_create(
 }
 
 void somato_logic_bridge_destroy(somato_logic_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    somatosensory_logic_bridge_heartbeat("somatosensor_somato_logic_bridge_", 0.0f);
+
+
     if (bridge) {
         nimcp_free(bridge);
     }
@@ -177,6 +189,10 @@ void somato_logic_bridge_destroy(somato_logic_bridge_t* bridge) {
 
 int somato_logic_bridge_reset(somato_logic_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    somatosensory_logic_bridge_heartbeat("somatosensor_somato_logic_bridge_", 0.0f);
+
 
     memset(bridge->regions, 0, sizeof(bridge->regions));
     bridge->pending_count = 0;
@@ -196,6 +212,10 @@ int somato_logic_ground_observation(
     if (obs->body_region >= BODY_REGION_COUNT) return -1;
 
     /* Filter by intensity and confidence */
+    /* Phase 8: Heartbeat at operation start */
+    somatosensory_logic_bridge_heartbeat("somatosensor_somato_logic_ground_", 0.0f);
+
+
     if (obs->intensity < bridge->config.min_intensity_threshold) {
         return 0;
     }
@@ -282,6 +302,10 @@ int somato_logic_report_body_state(
     if (!bridge || !predicate) return -1;
     if (predicate->region >= BODY_REGION_COUNT) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    somatosensory_logic_bridge_heartbeat("somatosensor_somato_logic_report_", 0.0f);
+
+
     region_state_t* region = &bridge->regions[predicate->region];
 
     if (predicate->active) {
@@ -305,8 +329,18 @@ int somato_logic_process_batch(
 ) {
     if (!bridge || !observations) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    somatosensory_logic_bridge_heartbeat("somatosensor_somato_logic_process", 0.0f);
+
+
     int processed = 0;
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            somatosensory_logic_bridge_heartbeat("somatosensor_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (somato_logic_ground_observation(bridge, &observations[i]) == 0) {
             processed++;
         }
@@ -326,6 +360,10 @@ int somato_logic_request_attention(
 ) {
     if (!bridge || region >= BODY_REGION_COUNT) return -1;
     if (!bridge->config.enable_top_down_attention) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    somatosensory_logic_bridge_heartbeat("somatosensor_somato_logic_request", 0.0f);
+
 
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
         return -1;
@@ -348,6 +386,10 @@ int somato_logic_expect_contact(
     const char* object_name
 ) {
     if (!bridge || region >= BODY_REGION_COUNT) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    somatosensory_logic_bridge_heartbeat("somatosensor_somato_logic_expect_", 0.0f);
+
 
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
         return -1;
@@ -380,6 +422,10 @@ int somato_logic_verify_position(
         *confidence = 0.0f;
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    somatosensory_logic_bridge_heartbeat("somatosensor_somato_logic_verify_", 0.0f);
+
 
     bridge->stats.verifications_requested++;
 
@@ -416,6 +462,10 @@ int somato_logic_send_command(
 ) {
     if (!bridge || !command) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    somatosensory_logic_bridge_heartbeat("somatosensor_somato_logic_send_co", 0.0f);
+
+
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
         return -1;
     }
@@ -449,6 +499,10 @@ int somato_logic_has_contact(
     if (!bridge || region >= BODY_REGION_COUNT || !has_contact) return -1;
 
     *has_contact = bridge->regions[region].has_contact;
+    /* Phase 8: Heartbeat at operation start */
+    somatosensory_logic_bridge_heartbeat("somatosensor_somato_logic_has_con", 0.0f);
+
+
     return 0;
 }
 
@@ -459,6 +513,10 @@ int somato_logic_get_position(
     float* confidence
 ) {
     if (!bridge || region >= BODY_REGION_COUNT || !position || !confidence) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    somatosensory_logic_bridge_heartbeat("somatosensor_somato_logic_get_pos", 0.0f);
+
 
     const region_state_t* rs = &bridge->regions[region];
     position[0] = rs->position[0];
@@ -479,10 +537,18 @@ int somato_logic_bridge_get_stats(
 ) {
     if (!bridge || !stats) return -1;
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    somatosensory_logic_bridge_heartbeat("somatosensor_somato_logic_bridge_", 0.0f);
+
+
     return 0;
 }
 
 void somato_logic_bridge_reset_stats(somato_logic_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    somatosensory_logic_bridge_heartbeat("somatosensor_somato_logic_bridge_", 0.0f);
+
+
     if (bridge) {
         memset(&bridge->stats, 0, sizeof(bridge->stats));
         bridge->touch_confidence_sum = 0.0f;
@@ -499,9 +565,19 @@ void somato_logic_bridge_reset_stats(somato_logic_bridge_t* bridge) {
 int somato_logic_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    somatosensory_logic_bridge_heartbeat("somatosensor_somato_logic_bridge_", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Somatosensory_Logic_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                somatosensory_logic_bridge_heartbeat("somatosensor_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

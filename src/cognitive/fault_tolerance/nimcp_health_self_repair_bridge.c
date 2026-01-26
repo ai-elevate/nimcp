@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_health_self_repair_bridge_health_agent = NULL;
  * @brief Set health agent for health_self_repair_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void health_self_repair_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void health_self_repair_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_health_self_repair_bridge_health_agent = agent;
 }
 
@@ -226,6 +226,12 @@ static health_repair_tracking_t* find_tracking_record(
     uint64_t request_id
 ) {
     for (uint32_t i = 0; i < bridge->tracking_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->tracking_count > 256) {
+            health_self_repair_bridge_heartbeat("health_self__loop",
+                             (float)(i + 1) / (float)bridge->tracking_count);
+        }
+
         if (bridge->tracking[i].request_id == request_id) {
             return &bridge->tracking[i];
         }
@@ -318,6 +324,10 @@ int health_self_repair_bridge_default_config(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    health_self_repair_bridge_heartbeat("health_self__default_config", 0.0f);
+
+
     memset(config, 0, sizeof(*config));
 
     config->trigger_policy = HEALTH_TRIGGER_CRITICAL;
@@ -362,6 +372,10 @@ health_self_repair_bridge_t* health_self_repair_bridge_create(
     if (!diagnostic_bridge || !self_repair) {
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    health_self_repair_bridge_heartbeat("health_self__create", 0.0f);
+
 
     health_self_repair_bridge_t* bridge = nimcp_calloc(1, sizeof(health_self_repair_bridge_t));
     if (!bridge) {
@@ -435,6 +449,10 @@ void health_self_repair_bridge_destroy(health_self_repair_bridge_t* bridge) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    health_self_repair_bridge_heartbeat("health_self__destroy", 0.0f);
+
+
     if (bridge->magic != HEALTH_SELF_REPAIR_BRIDGE_MAGIC) {
         return;
     }
@@ -451,6 +469,12 @@ void health_self_repair_bridge_destroy(health_self_repair_bridge_t* bridge) {
     /* Free aggregation batch diagnostics */
     if (bridge->aggregation_batch) {
         for (uint32_t i = 0; i < bridge->aggregation_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->aggregation_count > 256) {
+                health_self_repair_bridge_heartbeat("health_self__loop",
+                                 (float)(i + 1) / (float)bridge->aggregation_count);
+            }
+
             if (bridge->aggregation_batch[i].diagnostic) {
                 diagnostics_free_result(bridge->aggregation_batch[i].diagnostic);
             }
@@ -478,6 +502,10 @@ int health_self_repair_bridge_connect_health_agent(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    health_self_repair_bridge_heartbeat("health_self__connect_health_agent", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->health_agent = health_agent;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -503,6 +531,10 @@ int health_self_repair_bridge_process_anomaly(
     }
 
     /* Convert anomaly to diagnostic */
+    /* Phase 8: Heartbeat at operation start */
+    health_self_repair_bridge_heartbeat("health_self__process_anomaly", 0.0f);
+
+
     diagnostic_result_t* diagnostic = NULL;
     int ret = health_diag_bridge_convert_anomaly(bridge->diagnostic_bridge, anomaly, &diagnostic);
     if (ret != 0 || !diagnostic) {
@@ -534,6 +566,10 @@ int health_self_repair_bridge_process_agent_message(
     }
 
     /* Convert message to diagnostic */
+    /* Phase 8: Heartbeat at operation start */
+    health_self_repair_bridge_heartbeat("health_self__process_agent_messag", 0.0f);
+
+
     diagnostic_result_t* diagnostic = NULL;
     int ret = health_diag_bridge_convert_agent_message(
         bridge->diagnostic_bridge, message, &diagnostic);
@@ -564,6 +600,10 @@ int health_self_repair_bridge_trigger_from_diagnostic(
     if (!bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    health_self_repair_bridge_heartbeat("health_self__trigger_from_diagnos", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -673,6 +713,10 @@ int health_self_repair_bridge_force_trigger(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    health_self_repair_bridge_heartbeat("health_self__force_trigger", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Create tracking record (bypass all checks) */
@@ -716,6 +760,10 @@ bool health_self_repair_bridge_is_rate_limited(
     const health_self_repair_bridge_t* bridge,
     error_type_t error_type
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    health_self_repair_bridge_heartbeat("health_self__is_rate_limited", 0.0f);
+
+
     (void)error_type;
 
     if (!bridge || !bridge->initialized) {
@@ -751,6 +799,10 @@ void health_self_repair_bridge_reset_rate_limit(
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    health_self_repair_bridge_heartbeat("health_self__reset_rate_limit", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->window_start_ms = nimcp_time_get_ms();
     bridge->window_repair_count = 0;
@@ -772,6 +824,10 @@ const health_repair_tracking_t* health_self_repair_bridge_get_tracking(
     }
 
     /* Cast away const for mutex */
+    /* Phase 8: Heartbeat at operation start */
+    health_self_repair_bridge_heartbeat("health_self__get_tracking", 0.0f);
+
+
     health_self_repair_bridge_t* mutable_bridge = (health_self_repair_bridge_t*)bridge;
 
     nimcp_mutex_lock(mutable_bridge->base.mutex);
@@ -789,6 +845,10 @@ uint32_t health_self_repair_bridge_get_recent_tracking(
     if (!bridge || !records || !bridge->initialized) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    health_self_repair_bridge_heartbeat("health_self__get_recent_tracking", 0.0f);
+
 
     health_self_repair_bridge_t* mutable_bridge = (health_self_repair_bridge_t*)bridge;
 
@@ -817,12 +877,22 @@ uint32_t health_self_repair_bridge_get_pending_count(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    health_self_repair_bridge_heartbeat("health_self__get_pending_count", 0.0f);
+
+
     health_self_repair_bridge_t* mutable_bridge = (health_self_repair_bridge_t*)bridge;
 
     nimcp_mutex_lock(mutable_bridge->base.mutex);
 
     uint32_t pending = 0;
     for (uint32_t i = 0; i < bridge->tracking_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->tracking_count > 256) {
+            health_self_repair_bridge_heartbeat("health_self__loop",
+                             (float)(i + 1) / (float)bridge->tracking_count);
+        }
+
         if (bridge->tracking[i].outcome == HEALTH_REPAIR_OUTCOME_PENDING) {
             pending++;
         }
@@ -848,6 +918,10 @@ int health_self_repair_bridge_set_trigger_callback(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    health_self_repair_bridge_heartbeat("health_self__set_trigger_callback", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->trigger_callback = callback;
     bridge->callback_user_data = user_data;
@@ -866,6 +940,10 @@ int health_self_repair_bridge_set_outcome_callback(
 
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    health_self_repair_bridge_heartbeat("health_self__set_outcome_callback", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->outcome_callback = callback;
@@ -886,6 +964,10 @@ int health_self_repair_bridge_get_stats(
     if (!bridge || !stats) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    health_self_repair_bridge_heartbeat("health_self__get_stats", 0.0f);
+
 
     health_self_repair_bridge_t* mutable_bridge = (health_self_repair_bridge_t*)bridge;
 
@@ -912,6 +994,10 @@ void health_self_repair_bridge_reset_stats(
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    health_self_repair_bridge_heartbeat("health_self__reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     bridge->total_repair_time_ms = 0;
@@ -930,6 +1016,10 @@ uint32_t health_self_repair_bridge_process_outcomes(
     if (!bridge || !bridge->initialized) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    health_self_repair_bridge_heartbeat("health_self__process_outcomes", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -997,6 +1087,10 @@ uint32_t health_self_repair_bridge_process_aggregation(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    health_self_repair_bridge_heartbeat("health_self__process_aggregation", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->aggregation_count == 0) {
@@ -1020,6 +1114,12 @@ uint32_t health_self_repair_bridge_process_aggregation(
 
     /* Submit all items in aggregation batch */
     for (uint32_t i = 0; i < bridge->aggregation_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->aggregation_count > 256) {
+            health_self_repair_bridge_heartbeat("health_self__loop",
+                             (float)(i + 1) / (float)bridge->aggregation_count);
+        }
+
         diagnostic_result_t* diagnostic = bridge->aggregation_batch[i].diagnostic;
         if (!diagnostic) {
             continue;
@@ -1028,6 +1128,12 @@ uint32_t health_self_repair_bridge_process_aggregation(
         /* Find tracking record for this diagnostic */
         health_repair_tracking_t* tracking = NULL;
         for (uint32_t j = 0; j < bridge->tracking_count; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && bridge->tracking_count > 256) {
+                health_self_repair_bridge_heartbeat("health_self__loop",
+                                 (float)(j + 1) / (float)bridge->tracking_count);
+            }
+
             if (bridge->tracking[j].diagnostic_id == diagnostic->error_id &&
                 bridge->tracking[j].aggregated) {
                 tracking = &bridge->tracking[j];
@@ -1085,6 +1191,10 @@ int health_self_repair_bridge_broadcast_trigger(
     }
 
     /* Build trigger message */
+    /* Phase 8: Heartbeat at operation start */
+    health_self_repair_bridge_heartbeat("health_self__broadcast_trigger", 0.0f);
+
+
     bio_msg_health_repair_trigger_t msg = {0};
     bio_msg_init_header(&msg.header,
                         BIO_MSG_HEALTH_SELF_REPAIR_TRIGGER,
@@ -1129,9 +1239,19 @@ int health_self_repair_bridge_broadcast_outcome(
     }
 
     /* Find tracking record for duration */
+    /* Phase 8: Heartbeat at operation start */
+    health_self_repair_bridge_heartbeat("health_self__broadcast_outcome", 0.0f);
+
+
     const health_repair_tracking_t* tracking = NULL;
     nimcp_mutex_lock(bridge->base.mutex);
     for (uint32_t i = 0; i < bridge->tracking_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->tracking_count > 256) {
+            health_self_repair_bridge_heartbeat("health_self__loop",
+                             (float)(i + 1) / (float)bridge->tracking_count);
+        }
+
         if (bridge->tracking[i].request_id == request_id) {
             tracking = &bridge->tracking[i];
             break;
@@ -1202,5 +1322,9 @@ bool health_self_repair_bridge_is_ready(const health_self_repair_bridge_t* bridg
     if (!bridge) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    health_self_repair_bridge_heartbeat("health_self__is_ready", 0.0f);
+
+
     return bridge->initialized && bridge->magic == HEALTH_SELF_REPAIR_BRIDGE_MAGIC;
 }

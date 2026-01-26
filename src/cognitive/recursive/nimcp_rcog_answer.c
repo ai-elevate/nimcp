@@ -39,7 +39,7 @@ static nimcp_health_agent_t* g_rcog_answer_health_agent = NULL;
  * @brief Set health agent for rcog_answer heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void rcog_answer_set_health_agent(nimcp_health_agent_t* agent) {
+void rcog_answer_set_health_agent(nimcp_health_agent_t* agent) {
     g_rcog_answer_health_agent = agent;
 }
 
@@ -107,6 +107,12 @@ static float vector_norm(const float* v, size_t dim)
 {
     float sum = 0.0f;
     for (size_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            rcog_answer_heartbeat("rcog_answer_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         sum += v[i] * v[i];
     }
     return sqrtf(sum);
@@ -119,6 +125,12 @@ static float vector_dot(const float* a, const float* b, size_t dim)
 {
     float sum = 0.0f;
     for (size_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            rcog_answer_heartbeat("rcog_answer_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         sum += a[i] * b[i];
     }
     return sum;
@@ -132,6 +144,12 @@ static void vector_normalize(float* v, size_t dim)
     float norm = vector_norm(v, dim);
     if (norm > 1e-8f) {
         for (size_t i = 0; i < dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && dim > 256) {
+                rcog_answer_heartbeat("rcog_answer_loop",
+                                 (float)(i + 1) / (float)dim);
+            }
+
             v[i] /= norm;
         }
     }
@@ -250,6 +268,12 @@ static rcog_error_t compute_evidence_direction(
     float total_weight = 0.0f;
 
     for (size_t i = 0; i < num_evidence; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_evidence > 256) {
+            rcog_answer_heartbeat("rcog_answer_loop",
+                             (float)(i + 1) / (float)num_evidence);
+        }
+
         const rcog_subtask_result_t* e = &evidence[i];
 
         if (e->status != RCOG_SUBTASK_COMPLETED) continue;
@@ -270,6 +294,12 @@ static rcog_error_t compute_evidence_direction(
     /* Normalize by total weight */
     if (total_weight > 0.0f) {
         for (size_t i = 0; i < latent_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && latent_dim > 256) {
+                rcog_answer_heartbeat("rcog_answer_loop",
+                                 (float)(i + 1) / (float)latent_dim);
+            }
+
             direction[i] /= total_weight;
         }
     }
@@ -302,6 +332,10 @@ static float compute_confidence(const float* latent, size_t dim)
 
 rcog_answer_config_t rcog_answer_default_config(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_default_config", 0.0f);
+
+
     rcog_answer_config_t config = {0};
 
     config.latent_dim = RCOG_DEFAULT_LATENT_DIM;
@@ -321,6 +355,10 @@ rcog_answer_config_t rcog_answer_default_config(void)
 rcog_answer_refiner_t* rcog_answer_refiner_create(
     const rcog_answer_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_refiner_create", 0.0f);
+
+
     rcog_answer_refiner_t* refiner = nimcp_calloc(1, sizeof(rcog_answer_refiner_t));
     if (!refiner) {
 
@@ -375,12 +413,20 @@ rcog_answer_refiner_t* rcog_answer_refiner_create(
 
 rcog_answer_refiner_t* rcog_answer_refiner_create_default(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_refiner_create_defau", 0.0f);
+
+
     return rcog_answer_refiner_create(NULL);
 }
 
 void rcog_answer_refiner_destroy(rcog_answer_refiner_t* refiner)
 {
     if (!refiner) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_refiner_destroy", 0.0f);
+
 
     if (refiner->velocity) {
         nimcp_free(refiner->velocity);
@@ -399,6 +445,10 @@ rcog_error_t rcog_answer_init(
     rcog_answer_state_t* state)
 {
     if (!refiner || !state) return RCOG_ERROR_NULL_POINTER;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_init", 0.0f);
+
 
     nimcp_mutex_lock(refiner->mutex);
 
@@ -442,6 +492,10 @@ rcog_answer_state_t* rcog_answer_state_create(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_state_create", 0.0f);
+
+
     rcog_answer_state_t* state = nimcp_calloc(1, sizeof(rcog_answer_state_t));
     if (!state) {
 
@@ -464,6 +518,10 @@ void rcog_answer_state_destroy(rcog_answer_state_t* state)
 {
     if (!state) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_state_destroy", 0.0f);
+
+
     if (state->latent) {
         nimcp_free(state->latent);
     }
@@ -479,6 +537,10 @@ rcog_error_t rcog_answer_reset(
     rcog_answer_state_t* state)
 {
     if (!refiner || !state) return RCOG_ERROR_NULL_POINTER;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_reset", 0.0f);
+
 
     nimcp_mutex_lock(refiner->mutex);
 
@@ -515,6 +577,10 @@ rcog_error_t rcog_answer_step(
 {
     if (!refiner || !state) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_step", 0.0f);
+
+
     nimcp_mutex_lock(refiner->mutex);
 
     /* Check if already at max steps */
@@ -550,6 +616,12 @@ rcog_error_t rcog_answer_step(
     float momentum = refiner->config.momentum;
 
     for (size_t i = 0; i < state->latent_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && state->latent_dim > 256) {
+            rcog_answer_heartbeat("rcog_answer_loop",
+                             (float)(i + 1) / (float)state->latent_dim);
+        }
+
         /* velocity = momentum * velocity + lr * direction */
         refiner->velocity[i] = momentum * refiner->velocity[i] + lr * direction[i];
 
@@ -562,6 +634,12 @@ rcog_error_t rcog_answer_step(
     /* Compute delta (change from previous) */
     float delta_sum = 0.0f;
     for (size_t i = 0; i < state->latent_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && state->latent_dim > 256) {
+            rcog_answer_heartbeat("rcog_answer_loop",
+                             (float)(i + 1) / (float)state->latent_dim);
+        }
+
         float d = state->latent[i] - prev_latent[i];
         delta_sum += d * d;
     }
@@ -605,6 +683,10 @@ rcog_error_t rcog_answer_update(
     rcog_answer_state_t* state,
     const rcog_subtask_result_t* evidence)
 {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_update", 0.0f);
+
+
     return rcog_answer_step(refiner, state, evidence, 1);
 }
 
@@ -615,6 +697,10 @@ rcog_error_t rcog_answer_refine_until_ready(
     void* evidence_ctx)
 {
     if (!refiner || !state || !evidence_fn) return RCOG_ERROR_NULL_POINTER;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_refine_until_ready", 0.0f);
+
 
     while (!state->ready && state->refinement_step < refiner->config.max_steps) {
         rcog_subtask_result_t* evidence = NULL;
@@ -644,6 +730,10 @@ bool rcog_answer_is_ready(
     const rcog_answer_state_t* state)
 {
     if (!refiner || !state) return false;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_is_ready", 0.0f);
+
+
     return state->ready || (state->confidence >= refiner->config.ready_threshold);
 }
 
@@ -652,6 +742,10 @@ bool rcog_answer_has_converged(
     const rcog_answer_state_t* state)
 {
     if (!refiner || !state) return false;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_has_converged", 0.0f);
+
+
     return state->delta < refiner->config.convergence_epsilon;
 }
 
@@ -661,6 +755,10 @@ bool rcog_answer_is_stalled(
     uint32_t window)
 {
     if (!refiner || !state) return false;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_is_stalled", 0.0f);
+
+
     if (window == 0) window = 5;
 
     /* Check if confidence hasn't improved in last N steps */
@@ -670,16 +768,28 @@ bool rcog_answer_is_stalled(
 
 float rcog_answer_get_confidence(const rcog_answer_state_t* state)
 {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_get_confidence", 0.0f);
+
+
     return state ? state->confidence : 0.0f;
 }
 
 uint32_t rcog_answer_get_step(const rcog_answer_state_t* state)
 {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_get_step", 0.0f);
+
+
     return state ? state->refinement_step : 0;
 }
 
 float rcog_answer_get_delta(const rcog_answer_state_t* state)
 {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_get_delta", 0.0f);
+
+
     return state ? state->delta : 0.0f;
 }
 
@@ -692,6 +802,10 @@ rcog_error_t rcog_answer_extract(
     if (!refiner || !state || !output || !output_size) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_extract", 0.0f);
+
 
     nimcp_mutex_lock(refiner->mutex);
 
@@ -725,6 +839,10 @@ rcog_error_t rcog_answer_get_content(
     *content = state->content;
     *size = state->content_size;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_get_content", 0.0f);
+
+
     return RCOG_OK;
 }
 
@@ -736,6 +854,10 @@ rcog_error_t rcog_answer_set_content(
     if (!state) return RCOG_ERROR_NULL_POINTER;
 
     /* Free existing content */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_set_content", 0.0f);
+
+
     if (state->content) {
         nimcp_free(state->content);
         state->content = NULL;
@@ -764,6 +886,10 @@ rcog_error_t rcog_answer_get_latent(
     *latent = state->latent;
     *dim = state->latent_dim;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_get_latent", 0.0f);
+
+
     return RCOG_OK;
 }
 
@@ -773,6 +899,10 @@ rcog_error_t rcog_answer_set_latent(
     size_t dim)
 {
     if (!state || !latent) return RCOG_ERROR_NULL_POINTER;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_set_latent", 0.0f);
+
 
     if (dim != state->latent_dim) {
         /* Reallocate if dimension differs */
@@ -802,6 +932,10 @@ rcog_error_t rcog_answer_blend(
     if (!refiner || !a || !b || !result) return RCOG_ERROR_NULL_POINTER;
     if (a->latent_dim != b->latent_dim) return RCOG_ERROR_INVALID_CONFIG;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_blend", 0.0f);
+
+
     nimcp_mutex_lock(refiner->mutex);
 
     /* Initialize result if needed */
@@ -816,6 +950,12 @@ rcog_error_t rcog_answer_blend(
 
     /* Blend latent vectors: result = (1 - alpha) * a + alpha * b */
     for (size_t i = 0; i < a->latent_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && a->latent_dim > 256) {
+            rcog_answer_heartbeat("rcog_answer_loop",
+                             (float)(i + 1) / (float)a->latent_dim);
+        }
+
         result->latent[i] = (1.0f - alpha) * a->latent[i] + alpha * b->latent[i];
     }
 
@@ -842,6 +982,10 @@ rcog_error_t rcog_answer_get_history(
 
     /* Create a simple history from current state */
     /* In full implementation, this would return the tracked history */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_get_history", 0.0f);
+
+
     rcog_answer_history_t* h = create_history(1);
     if (!h) return RCOG_ERROR_OUT_OF_MEMORY;
 
@@ -856,6 +1000,10 @@ void rcog_answer_history_free(rcog_answer_history_t* history)
 {
     if (!history) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_history_free", 0.0f);
+
+
     if (history->entries) {
         nimcp_free(history->entries);
     }
@@ -867,6 +1015,10 @@ rcog_error_t rcog_answer_refiner_get_stats(
     rcog_answer_stats_t* stats)
 {
     if (!refiner || !stats) return RCOG_ERROR_NULL_POINTER;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_refiner_get_stats", 0.0f);
+
 
     nimcp_mutex_lock(((rcog_answer_refiner_t*)refiner)->mutex);
 
@@ -889,6 +1041,10 @@ void rcog_answer_refiner_reset_stats(rcog_answer_refiner_t* refiner)
 {
     if (!refiner) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_refiner_reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(refiner->mutex);
 
     refiner->total_refinements = 0;
@@ -909,6 +1065,10 @@ rcog_error_t rcog_answer_set_threshold(
     if (!refiner) return RCOG_ERROR_NULL_POINTER;
     if (threshold < 0.0f || threshold > 1.0f) return RCOG_ERROR_INVALID_CONFIG;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_set_threshold", 0.0f);
+
+
     nimcp_mutex_lock(refiner->mutex);
     refiner->config.ready_threshold = threshold;
     nimcp_mutex_unlock(refiner->mutex);
@@ -923,6 +1083,10 @@ rcog_error_t rcog_answer_set_learning_rate(
     if (!refiner) return RCOG_ERROR_NULL_POINTER;
     if (learning_rate <= 0.0f || learning_rate > 1.0f) return RCOG_ERROR_INVALID_CONFIG;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_set_learning_rate", 0.0f);
+
+
     nimcp_mutex_lock(refiner->mutex);
     refiner->config.learning_rate = learning_rate;
     nimcp_mutex_unlock(refiner->mutex);
@@ -935,6 +1099,10 @@ rcog_error_t rcog_answer_refiner_get_config(
     rcog_answer_config_t* config)
 {
     if (!refiner || !config) return RCOG_ERROR_NULL_POINTER;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_refiner_get_config", 0.0f);
+
 
     nimcp_mutex_lock(((rcog_answer_refiner_t*)refiner)->mutex);
     *config = refiner->config;
@@ -949,9 +1117,19 @@ rcog_error_t rcog_answer_refiner_get_config(
 
 int rcog_answer_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_answer_heartbeat("rcog_answer_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Recursive_Cognition_Answer_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                rcog_answer_heartbeat("rcog_answer_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Log self-knowledge observations */
         }
     }

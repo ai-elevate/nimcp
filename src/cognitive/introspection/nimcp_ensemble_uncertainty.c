@@ -57,7 +57,7 @@ static nimcp_health_agent_t* g_ensemble_uncertainty_health_agent = NULL;
  * @brief Set health agent for ensemble_uncertainty heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void ensemble_uncertainty_set_health_agent(nimcp_health_agent_t* agent) {
+void ensemble_uncertainty_set_health_agent(nimcp_health_agent_t* agent) {
     g_ensemble_uncertainty_health_agent = agent;
 }
 
@@ -107,6 +107,10 @@ static float safe_log2f(float x);
  */
 ensemble_config_t ensemble_default_config(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_heartbeat("ensemble_unc_ensemble_default_con", 0.0f);
+
+
     ensemble_config_t config = {
         .num_models = 5,                /* 5 models balances accuracy and speed */
         .weight_noise_sigma = 0.1F,     /* 10% weight perturbation */
@@ -140,6 +144,10 @@ ensemble_context_t ensemble_create(adaptive_network_t base_network,
     }
 
     /* WHAT: Allocate context */
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_heartbeat("ensemble_unc_ensemble_create", 0.0f);
+
+
     ensemble_context_t ensemble = (ensemble_context_t)
         nimcp_calloc(1, sizeof(struct ensemble_context_struct));
     if (ensemble == NULL) {
@@ -172,6 +180,12 @@ ensemble_context_t ensemble_create(adaptive_network_t base_network,
     /* WHAT: Create ensemble models by perturbing base network */
     /* WHY: Diversity in models is key to uncertainty estimation */
     for (uint32_t i = 0; i < ensemble->config.num_models; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ensemble->config.num_models > 256) {
+            ensemble_uncertainty_heartbeat("ensemble_unc_loop",
+                             (float)(i + 1) / (float)ensemble->config.num_models);
+        }
+
         /* WHAT: Create perturbed copy of base network */
         adaptive_network_t perturbed = perturb_network_weights(
             base_network,
@@ -225,10 +239,20 @@ void ensemble_destroy(ensemble_context_t ensemble)
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_heartbeat("ensemble_unc_ensemble_destroy", 0.0f);
+
+
     nimcp_mutex_lock(&ensemble->lock);
 
     /* WHAT: Destroy all models */
     for (uint32_t i = 0; i < ensemble->num_models; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ensemble->num_models > 256) {
+            ensemble_uncertainty_heartbeat("ensemble_unc_loop",
+                             (float)(i + 1) / (float)ensemble->num_models);
+        }
+
         if (ensemble->models[i].network != NULL) {
             adaptive_network_destroy(ensemble->models[i].network);
         }
@@ -259,6 +283,10 @@ bool ensemble_add_model(ensemble_context_t ensemble,
     if (ensemble == NULL || network == NULL) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_heartbeat("ensemble_unc_ensemble_add_model", 0.0f);
+
 
     nimcp_mutex_lock(&ensemble->lock);
 
@@ -301,6 +329,10 @@ uint32_t ensemble_get_size(ensemble_context_t ensemble)
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_heartbeat("ensemble_unc_ensemble_get_size", 0.0f);
+
+
     nimcp_mutex_lock(&ensemble->lock);
     uint32_t size = ensemble->num_models;
     nimcp_mutex_unlock(&ensemble->lock);
@@ -328,6 +360,10 @@ uint32_t ensemble_predict(ensemble_context_t ensemble,
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_heartbeat("ensemble_unc_ensemble_predict", 0.0f);
+
+
     nimcp_mutex_lock(&ensemble->lock);
 
     /* WHAT: Allocate predictions array */
@@ -342,6 +378,12 @@ uint32_t ensemble_predict(ensemble_context_t ensemble,
     uint32_t successful_predictions = 0;
 
     for (uint32_t i = 0; i < ensemble->num_models; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ensemble->num_models > 256) {
+            ensemble_uncertainty_heartbeat("ensemble_unc_loop",
+                             (float)(i + 1) / (float)ensemble->num_models);
+        }
+
         adaptive_network_t network = ensemble->models[i].network;
         if (network == NULL) {
             continue;
@@ -397,6 +439,10 @@ ensemble_uncertainty_result_t ensemble_compute_uncertainty(
     const float* features,
     uint32_t num_features)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_heartbeat("ensemble_unc_ensemble_compute_unc", 0.0f);
+
+
     ensemble_uncertainty_result_t result;
     memset(&result, 0, sizeof(ensemble_uncertainty_result_t));
 
@@ -434,11 +480,29 @@ ensemble_uncertainty_result_t ensemble_compute_uncertainty(
     /* HOW: μ = (1/N) Σ p_i */
     memset(result.mean_prediction, 0, output_dim * sizeof(float));
     for (uint32_t i = 0; i < num_predictions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_predictions > 256) {
+            ensemble_uncertainty_heartbeat("ensemble_unc_loop",
+                             (float)(i + 1) / (float)num_predictions);
+        }
+
         for (uint32_t j = 0; j < output_dim; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && output_dim > 256) {
+                ensemble_uncertainty_heartbeat("ensemble_unc_loop",
+                                 (float)(j + 1) / (float)output_dim);
+            }
+
             result.mean_prediction[j] += predictions[i].prediction[j];
         }
     }
     for (uint32_t j = 0; j < output_dim; j++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((j & 0xFF) == 0 && output_dim > 256) {
+            ensemble_uncertainty_heartbeat("ensemble_unc_loop",
+                             (float)(j + 1) / (float)output_dim);
+        }
+
         result.mean_prediction[j] /= (float) num_predictions;
     }
 
@@ -446,7 +510,19 @@ ensemble_uncertainty_result_t ensemble_compute_uncertainty(
     /* HOW: Var = (1/N) Σ (p_i - μ)² */
     memset(result.prediction_variance, 0, output_dim * sizeof(float));
     for (uint32_t i = 0; i < num_predictions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_predictions > 256) {
+            ensemble_uncertainty_heartbeat("ensemble_unc_loop",
+                             (float)(i + 1) / (float)num_predictions);
+        }
+
         for (uint32_t j = 0; j < output_dim; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && output_dim > 256) {
+                ensemble_uncertainty_heartbeat("ensemble_unc_loop",
+                                 (float)(j + 1) / (float)output_dim);
+            }
+
             float diff = predictions[i].prediction[j] - result.mean_prediction[j];
             result.prediction_variance[j] += diff * diff;
         }
@@ -456,6 +532,12 @@ ensemble_uncertainty_result_t ensemble_compute_uncertainty(
     /* WHY: Epistemic = model disagreement = variance across models */
     float total_variance = 0.0F;
     for (uint32_t j = 0; j < output_dim; j++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((j & 0xFF) == 0 && output_dim > 256) {
+            ensemble_uncertainty_heartbeat("ensemble_unc_loop",
+                             (float)(j + 1) / (float)output_dim);
+        }
+
         result.prediction_variance[j] /= (float) num_predictions;
         total_variance += result.prediction_variance[j];
     }
@@ -466,6 +548,12 @@ ensemble_uncertainty_result_t ensemble_compute_uncertainty(
     /* HOW: E[H(p_i)] = (1/N) Σ H(p_i) */
     float total_entropy = 0.0F;
     for (uint32_t i = 0; i < num_predictions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_predictions > 256) {
+            ensemble_uncertainty_heartbeat("ensemble_unc_loop",
+                             (float)(i + 1) / (float)num_predictions);
+        }
+
         total_entropy += predictions[i].entropy;
     }
     result.aleatoric = total_entropy / (float) num_predictions;
@@ -504,6 +592,10 @@ void ensemble_uncertainty_free(ensemble_uncertainty_result_t* result)
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_heartbeat("ensemble_unc_free", 0.0f);
+
+
     nimcp_free(result->mean_prediction);
     nimcp_free(result->prediction_variance);
 
@@ -527,7 +619,17 @@ void ensemble_predictions_free(ensemble_prediction_t* predictions,
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_heartbeat("ensemble_unc_ensemble_predictions", 0.0f);
+
+
     for (uint32_t i = 0; i < num_predictions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_predictions > 256) {
+            ensemble_uncertainty_heartbeat("ensemble_unc_loop",
+                             (float)(i + 1) / (float)num_predictions);
+        }
+
         nimcp_free(predictions[i].prediction);
     }
 
@@ -550,8 +652,18 @@ float ensemble_compute_entropy(const float* probabilities, uint32_t size)
     }
 
     /* WHAT: Normalize to probabilities (in case not normalized) */
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_heartbeat("ensemble_unc_ensemble_compute_ent", 0.0f);
+
+
     float sum = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && size > 256) {
+            ensemble_uncertainty_heartbeat("ensemble_unc_loop",
+                             (float)(i + 1) / (float)size);
+        }
+
         sum += fabsf(probabilities[i]);
     }
 
@@ -562,6 +674,12 @@ float ensemble_compute_entropy(const float* probabilities, uint32_t size)
     /* WHAT: Compute entropy */
     float entropy = 0.0F;
     for (uint32_t i = 0; i < size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && size > 256) {
+            ensemble_uncertainty_heartbeat("ensemble_unc_loop",
+                             (float)(i + 1) / (float)size);
+        }
+
         float p = fabsf(probabilities[i]) / sum;
         if (p > 1e-10F) {
             entropy -= p * safe_log2f(p);
@@ -586,6 +704,10 @@ float ensemble_compute_variance(const float** predictions,
     }
 
     /* WHAT: Compute mean first */
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_heartbeat("ensemble_unc_ensemble_compute_var", 0.0f);
+
+
     float* mean = (float*) nimcp_malloc(dimension * sizeof(float));
     if (mean == NULL) {
         return 0.0F;
@@ -600,7 +722,19 @@ float ensemble_compute_variance(const float** predictions,
 
     float total_var = 0.0F;
     for (uint32_t i = 0; i < num_predictions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_predictions > 256) {
+            ensemble_uncertainty_heartbeat("ensemble_unc_loop",
+                             (float)(i + 1) / (float)num_predictions);
+        }
+
         for (uint32_t j = 0; j < dimension; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && dimension > 256) {
+                ensemble_uncertainty_heartbeat("ensemble_unc_loop",
+                                 (float)(j + 1) / (float)dimension);
+            }
+
             float diff = predictions[i][j] - mean[j];
             float var = diff * diff;
             if (variance != NULL) {
@@ -613,6 +747,12 @@ float ensemble_compute_variance(const float** predictions,
     /* WHAT: Average variance */
     if (variance != NULL) {
         for (uint32_t j = 0; j < dimension; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && dimension > 256) {
+                ensemble_uncertainty_heartbeat("ensemble_unc_loop",
+                                 (float)(j + 1) / (float)dimension);
+            }
+
             variance[j] /= (float) num_predictions;
         }
     }
@@ -636,15 +776,37 @@ void ensemble_compute_mean(const float** predictions,
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_heartbeat("ensemble_unc_ensemble_compute_mea", 0.0f);
+
+
     memset(mean, 0, dimension * sizeof(float));
 
     for (uint32_t i = 0; i < num_predictions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_predictions > 256) {
+            ensemble_uncertainty_heartbeat("ensemble_unc_loop",
+                             (float)(i + 1) / (float)num_predictions);
+        }
+
         for (uint32_t j = 0; j < dimension; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && dimension > 256) {
+                ensemble_uncertainty_heartbeat("ensemble_unc_loop",
+                                 (float)(j + 1) / (float)dimension);
+            }
+
             mean[j] += predictions[i][j];
         }
     }
 
     for (uint32_t j = 0; j < dimension; j++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((j & 0xFF) == 0 && dimension > 256) {
+            ensemble_uncertainty_heartbeat("ensemble_unc_loop",
+                             (float)(j + 1) / (float)dimension);
+        }
+
         mean[j] /= (float) num_predictions;
     }
 }
@@ -659,6 +821,10 @@ bool ensemble_get_stats(ensemble_context_t ensemble, ensemble_stats_t* stats)
     if (ensemble == NULL || stats == NULL) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_heartbeat("ensemble_unc_ensemble_get_stats", 0.0f);
+
 
     nimcp_mutex_lock(&ensemble->lock);
     *stats = ensemble->stats;
@@ -764,6 +930,10 @@ ensemble_context_t ensemble_train_from_brain(
     }
 
     /* WHAT: Get base network from brain */
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_heartbeat("ensemble_unc_ensemble_train_from_", 0.0f);
+
+
     adaptive_network_t base_network = brain_get_network(brain);
     if (base_network == NULL) {
         LOG_ERROR("Failed to get network from brain");
@@ -804,10 +974,20 @@ int ensemble_uncertainty_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
     /* Query our own entity from the knowledge graph */
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_heartbeat("ensemble_unc_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Ensemble_Uncertainty_Module");
     if (self) {
         /* Module now knows its own capabilities from KG */
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                ensemble_uncertainty_heartbeat("ensemble_unc_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Ensemble uncertainty self-knowledge: %s", self->observations[i]);
         }
     }

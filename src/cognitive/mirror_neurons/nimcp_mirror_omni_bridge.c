@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_mirror_omni_bridge_health_agent = NULL;
  * @brief Set health agent for mirror_omni_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_omni_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_omni_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_omni_bridge_health_agent = agent;
 }
 
@@ -75,6 +75,10 @@ int mirror_omni_bridge_default_config(mirror_omni_config_t* config) {
     }
 
     /* Mirror -> World Model coupling */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__default_config", 0.0f);
+
+
     config->state_coupling_rate = MIRROR_OMNI_STATE_COUPLING_RATE;
     config->state_confidence_threshold = MIRROR_OMNI_STATE_CONFIDENCE_MIN;
     config->enable_hierarchical_states = true;
@@ -106,6 +110,10 @@ int mirror_omni_bridge_default_config(mirror_omni_config_t* config) {
 mirror_omni_bridge_t* mirror_omni_bridge_create(
     const mirror_omni_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__create", 0.0f);
+
+
     mirror_omni_bridge_t* bridge = (mirror_omni_bridge_t*)nimcp_calloc(
         1, sizeof(mirror_omni_bridge_t));
     if (!bridge) {
@@ -177,6 +185,10 @@ void mirror_omni_bridge_destroy(mirror_omni_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async first */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         mirror_omni_bridge_disconnect_bio_async(bridge);
     }
@@ -184,6 +196,12 @@ void mirror_omni_bridge_destroy(mirror_omni_bridge_t* bridge) {
     /* Free agent states */
     if (bridge->agent_states) {
         for (uint32_t i = 0; i < bridge->num_agent_states; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->num_agent_states > 256) {
+                mirror_omni_bridge_heartbeat("mirror_omni__loop",
+                                 (float)(i + 1) / (float)bridge->num_agent_states);
+            }
+
             if (bridge->agent_states[i].predicted_state) {
                 nimcp_free(bridge->agent_states[i].predicted_state);
             }
@@ -214,10 +232,20 @@ int mirror_omni_bridge_reset(mirror_omni_bridge_t* bridge) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__reset", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Clear agent states (keep capacity) */
     for (uint32_t i = 0; i < bridge->num_agent_states; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_agent_states > 256) {
+            mirror_omni_bridge_heartbeat("mirror_omni__loop",
+                             (float)(i + 1) / (float)bridge->num_agent_states);
+        }
+
         if (bridge->agent_states[i].predicted_state) {
             nimcp_free(bridge->agent_states[i].predicted_state);
             bridge->agent_states[i].predicted_state = NULL;
@@ -268,6 +296,10 @@ int mirror_omni_bridge_connect_mirror(
     }
     /* Allow NULL to disconnect */
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__connect_mirror", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->mirror_system = mirror;
     bridge->state.mirror_connected = (mirror != NULL);
@@ -293,6 +325,10 @@ int mirror_omni_bridge_connect_world_model(
 
     }
     /* Allow NULL to disconnect */
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__connect_world_model", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->world_model = world_model;
@@ -320,6 +356,10 @@ int mirror_omni_bridge_connect_active_inference(
     }
     /* Allow NULL to disconnect */
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__connect_active_infer", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->active_inference = active_inference;
     bridge->state.active_inference_connected = (active_inference != NULL);
@@ -337,6 +377,10 @@ bool mirror_omni_bridge_is_fully_connected(
     const mirror_omni_bridge_t* bridge
 ) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__is_fully_connected", 0.0f);
+
+
     return bridge->state.mirror_connected &&
            bridge->state.world_model_connected &&
            bridge->state.active_inference_connected;
@@ -351,6 +395,10 @@ int mirror_omni_feed_agent_state(
     uint32_t agent_id
 ) {
     if (!bridge || !bridge->mirror_system || !bridge->world_model) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_feed_age", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -370,6 +418,12 @@ int mirror_omni_feed_agent_state(
     /* Find or create agent state entry */
     mirror_omni_agent_state_t* agent_state = NULL;
     for (uint32_t i = 0; i < bridge->num_agent_states; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_agent_states > 256) {
+            mirror_omni_bridge_heartbeat("mirror_omni__loop",
+                             (float)(i + 1) / (float)bridge->num_agent_states);
+        }
+
         if (bridge->agent_states[i].agent_id == agent_id) {
             agent_state = &bridge->agent_states[i];
             break;
@@ -392,6 +446,12 @@ int mirror_omni_feed_agent_state(
         /* Compute confidence based on activation strength */
         float max_activation = 0.0f;
         for (uint32_t i = 0; i < num_activations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_activations > 256) {
+                mirror_omni_bridge_heartbeat("mirror_omni__loop",
+                                 (float)(i + 1) / (float)num_activations);
+            }
+
             if (activations[i] > max_activation) {
                 max_activation = activations[i];
             }
@@ -432,6 +492,10 @@ int mirror_omni_update_state_transitions(
 ) {
     if (!bridge || !bridge->mirror_system || !bridge->world_model) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_update_s", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get recent action observations from mirror neurons */
@@ -470,7 +534,17 @@ int mirror_omni_get_agent_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_get_agen", 0.0f);
+
+
     for (uint32_t i = 0; i < bridge->num_agent_states; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_agent_states > 256) {
+            mirror_omni_bridge_heartbeat("mirror_omni__loop",
+                             (float)(i + 1) / (float)bridge->num_agent_states);
+        }
+
         if (bridge->agent_states[i].agent_id == agent_id) {
             *state = bridge->agent_states[i];
             return 0;
@@ -489,6 +563,10 @@ int mirror_omni_provide_action_priors(
 ) {
     if (!bridge || !bridge->mirror_system || !bridge->active_inference) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_provide_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get mirror neuron statistics */
@@ -501,6 +579,12 @@ int mirror_omni_provide_action_priors(
     /* Decay existing priors */
     float decay = 1.0f - bridge->config.prior_decay_rate;
     for (uint32_t i = 0; i < bridge->num_action_priors; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_action_priors > 256) {
+            mirror_omni_bridge_heartbeat("mirror_omni__loop",
+                             (float)(i + 1) / (float)bridge->num_action_priors);
+        }
+
         bridge->action_priors[i].prior_probability *= decay;
         bridge->action_priors[i].recency_weight *= decay;
     }
@@ -508,6 +592,12 @@ int mirror_omni_provide_action_priors(
     /* Update priors based on observed actions */
     float total_prior = 0.0f;
     for (uint32_t i = 0; i < bridge->num_action_priors; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_action_priors > 256) {
+            mirror_omni_bridge_heartbeat("mirror_omni__loop",
+                             (float)(i + 1) / (float)bridge->num_action_priors);
+        }
+
         /* Get activation for this action from mirror neurons */
         float activation = mirror_neurons_get_activation(
             bridge->mirror_system, bridge->action_priors[i].action_id);
@@ -527,6 +617,12 @@ int mirror_omni_provide_action_priors(
     /* Normalize priors */
     if (total_prior > 0.0f) {
         for (uint32_t i = 0; i < bridge->num_action_priors; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->num_action_priors > 256) {
+                mirror_omni_bridge_heartbeat("mirror_omni__loop",
+                                 (float)(i + 1) / (float)bridge->num_action_priors);
+            }
+
             bridge->action_priors[i].prior_probability /= total_prior;
         }
     }
@@ -547,6 +643,10 @@ int mirror_omni_modulate_precision(
 ) {
     if (!bridge || !bridge->mirror_system || !bridge->active_inference) return -1;
     if (!bridge->config.enable_confidence_precision) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_modulate", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -580,7 +680,17 @@ int mirror_omni_get_action_prior(
 ) {
     if (!bridge || !prior) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_get_acti", 0.0f);
+
+
     for (uint32_t i = 0; i < bridge->num_action_priors; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_action_priors > 256) {
+            mirror_omni_bridge_heartbeat("mirror_omni__loop",
+                             (float)(i + 1) / (float)bridge->num_action_priors);
+        }
+
         if (bridge->action_priors[i].action_id == action_id) {
             *prior = bridge->action_priors[i];
             return 0;
@@ -605,6 +715,10 @@ int mirror_omni_evaluate_imitation_cost(
 ) {
     if (!bridge || !cost) return -1;
     if (!bridge->config.enable_imitation_queries) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_evaluate", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -678,6 +792,10 @@ int mirror_omni_query_goal_actions(
 ) {
     if (!bridge || !actions || !num_actions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_query_go", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     *num_actions = 0;
@@ -714,6 +832,10 @@ int mirror_omni_simulate_counterfactual(
 ) {
     if (!bridge || !result) return -1;
     if (!bridge->config.enable_counterfactual) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_simulate", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -799,6 +921,10 @@ int mirror_omni_update_action_expectations(
 ) {
     if (!bridge || !bridge->mirror_system || !bridge->world_model) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_update_a", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get world model state predictions */
@@ -827,6 +953,10 @@ int mirror_omni_validate_motor_sequence(
     float* expected_reward
 ) {
     if (!bridge || !action_ids || !feasible) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_validate", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -873,11 +1003,21 @@ int mirror_omni_omni_inference(
     if (!bridge->config.enable_omnidirectional) return 0;
 
     /* Run all inference directions */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_omni_inf", 0.0f);
+
+
     int result = 0;
 
     if (bridge->state.forward_inference_weight > 0.0f) {
         /* Forward inference for each tracked agent */
         for (uint32_t i = 0; i < bridge->num_agent_states; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->num_agent_states > 256) {
+                mirror_omni_bridge_heartbeat("mirror_omni__loop",
+                                 (float)(i + 1) / (float)bridge->num_agent_states);
+            }
+
             if (mirror_omni_forward_inference(bridge,
                     bridge->agent_states[i].agent_id) != 0) {
                 result = -1;
@@ -888,6 +1028,12 @@ int mirror_omni_omni_inference(
     if (bridge->state.backward_inference_weight > 0.0f) {
         /* Backward inference for each tracked agent */
         for (uint32_t i = 0; i < bridge->num_agent_states; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->num_agent_states > 256) {
+                mirror_omni_bridge_heartbeat("mirror_omni__loop",
+                                 (float)(i + 1) / (float)bridge->num_agent_states);
+            }
+
             if (mirror_omni_backward_inference(bridge,
                     bridge->agent_states[i].agent_id) != 0) {
                 result = -1;
@@ -916,6 +1062,10 @@ int mirror_omni_forward_inference(
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_forward_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -953,6 +1103,10 @@ int mirror_omni_backward_inference(
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_backward", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -992,11 +1146,21 @@ int mirror_omni_lateral_inference(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_lateral_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->world_model && bridge->num_agent_states > 1) {
         /* Cross-agent inference: how does one agent's state affect others */
         for (uint32_t i = 0; i < bridge->num_agent_states; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->num_agent_states > 256) {
+                mirror_omni_bridge_heartbeat("mirror_omni__loop",
+                                 (float)(i + 1) / (float)bridge->num_agent_states);
+            }
+
             for (uint32_t j = i + 1; j < bridge->num_agent_states; j++) {
                 /* Use lateral dynamics to predict cross-agent effects */
                 omni_wm_state_t source_state;
@@ -1035,6 +1199,10 @@ int mirror_omni_set_direction_weights(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_set_dire", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Normalize weights */
@@ -1066,8 +1234,18 @@ int mirror_omni_bridge_update(
     }
 
     /* Mirror -> World Model */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__update", 0.0f);
+
+
     if (bridge->state.mirror_connected && bridge->state.world_model_connected) {
         for (uint32_t i = 0; i < bridge->num_agent_states; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->num_agent_states > 256) {
+                mirror_omni_bridge_heartbeat("mirror_omni__loop",
+                                 (float)(i + 1) / (float)bridge->num_agent_states);
+            }
+
             mirror_omni_feed_agent_state(bridge, bridge->agent_states[i].agent_id);
         }
         mirror_omni_update_state_transitions(bridge);
@@ -1106,6 +1284,10 @@ int mirror_omni_bridge_get_state(
 ) {
     if (!bridge || !state) return -1;
     *state = bridge->state;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__get_state", 0.0f);
+
+
     return 0;
 }
 
@@ -1115,6 +1297,10 @@ int mirror_omni_bridge_get_effects(
 ) {
     if (!bridge || !effects) return -1;
     *effects = bridge->effects;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__get_effects", 0.0f);
+
+
     return 0;
 }
 
@@ -1124,6 +1310,10 @@ int mirror_omni_bridge_get_stats(
 ) {
     if (!bridge || !stats) return -1;
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__get_stats", 0.0f);
+
+
     return 0;
 }
 
@@ -1137,6 +1327,10 @@ int mirror_omni_bridge_reset_stats(
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__reset_stats", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(mirror_omni_stats_t));
@@ -1160,6 +1354,10 @@ int mirror_omni_bridge_connect_bio_async(
 
     }
     if (bridge->base.bio_async_enabled) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__connect_bio_async", 0.0f);
+
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_MIRROR_OMNI_BRIDGE,
@@ -1190,6 +1388,10 @@ int mirror_omni_bridge_disconnect_bio_async(
     }
     if (!bridge->base.bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__disconnect_bio_async", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -1202,6 +1404,10 @@ int mirror_omni_bridge_disconnect_bio_async(
 bool mirror_omni_bridge_is_bio_async_connected(
     const mirror_omni_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__is_bio_async_connect", 0.0f);
+
+
     return bridge && bridge->base.bio_async_enabled;
 }
 
@@ -1231,6 +1437,10 @@ const char* mirror_omni_imitation_result_to_string(mirror_omni_imitation_result_
 void mirror_omni_cf_result_free(mirror_omni_cf_result_t* result) {
     if (!result) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_cf_resul", 0.0f);
+
+
     if (result->predicted_trajectory) {
         nimcp_free(result->predicted_trajectory);
         result->predicted_trajectory = NULL;
@@ -1240,6 +1450,10 @@ void mirror_omni_cf_result_free(mirror_omni_cf_result_t* result) {
 
 void mirror_omni_agent_state_free(mirror_omni_agent_state_t* state) {
     if (!state) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_agent_st", 0.0f);
+
 
     if (state->predicted_state) {
         nimcp_free(state->predicted_state);

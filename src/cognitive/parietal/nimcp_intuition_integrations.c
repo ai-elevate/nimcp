@@ -29,7 +29,7 @@ static nimcp_health_agent_t* g_intuition_integrations_health_agent = NULL;
  * @brief Set health agent for intuition_integrations heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void intuition_integrations_set_health_agent(nimcp_health_agent_t* agent) {
+void intuition_integrations_set_health_agent(nimcp_health_agent_t* agent) {
     g_intuition_integrations_health_agent = agent;
 }
 
@@ -107,6 +107,12 @@ static void fit_linear_trend(const intuition_data_point_t** data, uint32_t count
     /* Compute means */
     float sum_x = 0, sum_y = 0;
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            intuition_integrations_heartbeat("intuition_in_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         sum_x += data[i]->timestamp;
         sum_y += (data[i]->values && data[i]->dim > 0) ? data[i]->values[0] : 0;
     }
@@ -116,6 +122,12 @@ static void fit_linear_trend(const intuition_data_point_t** data, uint32_t count
     /* Compute slope */
     float num = 0, denom = 0, ss_tot = 0;
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            intuition_integrations_heartbeat("intuition_in_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         float x = data[i]->timestamp;
         float y = (data[i]->values && data[i]->dim > 0) ? data[i]->values[0] : 0;
         num += (x - mean_x) * (y - mean_y);
@@ -129,6 +141,12 @@ static void fit_linear_trend(const intuition_data_point_t** data, uint32_t count
     /* Compute R-squared */
     float ss_res = 0;
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            intuition_integrations_heartbeat("intuition_in_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         float x = data[i]->timestamp;
         float y = (data[i]->values && data[i]->dim > 0) ? data[i]->values[0] : 0;
         float pred = (*slope) * x + (*intercept);
@@ -172,6 +190,10 @@ static float detect_periodicity(const intuition_data_point_t** data, uint32_t co
  * ============================================================================ */
 
 intuition_system_config_t intuition_system_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_system_def", 0.0f);
+
+
     return (intuition_system_config_t){
         .enable_intuitive_engine = true,
         .enable_analogical_engine = true,
@@ -201,6 +223,10 @@ intuition_system_config_t intuition_system_default_config(void) {
 }
 
 intuition_system_t* intuition_system_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_system_cre", 0.0f);
+
+
     intuition_system_config_t config = intuition_system_default_config();
     return intuition_system_create_custom(&config);
 }
@@ -210,6 +236,10 @@ intuition_system_t* intuition_system_create_custom(const intuition_system_config
         set_error("NULL config");
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_system_cre", 0.0f);
+
 
     intuition_system_t* s = nimcp_calloc(1, sizeof(intuition_system_t));
     if (!s) {
@@ -252,6 +282,10 @@ void intuition_system_destroy(intuition_system_t* system) {
     if (!system) return;
 
     /* Destroy sub-engines */
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_system_des", 0.0f);
+
+
     if (system->intuitive) intuitive_engine_destroy(system->intuitive);
     if (system->analogical) analogical_engine_destroy(system->analogical);
     if (system->insight) insight_engine_destroy(system->insight);
@@ -271,6 +305,10 @@ void intuition_system_destroy(intuition_system_t* system) {
 
 int intuition_attach_training(intuition_system_t* system, training_engine_t* training) {
     if (!system) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_attach_tra", 0.0f);
+
+
     system->training = training;
     return 0;
 }
@@ -278,6 +316,10 @@ int intuition_attach_training(intuition_system_t* system, training_engine_t* tra
 int intuition_feedback_success(intuition_system_t* system, const hunch_t* hunch,
                                float actual_outcome) {
     if (!system || !hunch) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_feedback_s", 0.0f);
+
 
     system->stats.intuitions_trained++;
 
@@ -310,6 +352,10 @@ int intuition_update_priors(intuition_system_t* system,
     if (!system || !confirmed_theory) return -1;
 
     /* Update hypothesis engine with confirmed theory */
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_update_pri", 0.0f);
+
+
     if (system->hypothesis) {
         /* Learning would occur here - update internal priors */
         /* For now, track statistics */
@@ -324,7 +370,17 @@ int intuition_train_from_experience(intuition_system_t* system,
                                     uint32_t count) {
     if (!system || !experiences) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_train_from", 0.0f);
+
+
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            intuition_integrations_heartbeat("intuition_in_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (experiences[i] && experiences[i]->hunch) {
             intuition_feedback_success(system, experiences[i]->hunch,
                                        experiences[i]->actual_outcome);
@@ -340,18 +396,30 @@ int intuition_train_from_experience(intuition_system_t* system,
 
 int intuition_attach_working_memory(intuition_system_t* system, working_memory_t* wm) {
     if (!system) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_attach_wor", 0.0f);
+
+
     system->working_memory = wm;
     return 0;
 }
 
 int intuition_attach_episodic_memory(intuition_system_t* system, episodic_memory_t* episodic) {
     if (!system) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_attach_epi", 0.0f);
+
+
     system->episodic_memory = episodic;
     return 0;
 }
 
 int intuition_attach_semantic_memory(intuition_system_t* system, semantic_memory_t* semantic) {
     if (!system) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_attach_sem", 0.0f);
+
+
     system->semantic_memory = semantic;
     return 0;
 }
@@ -362,24 +430,40 @@ int intuition_attach_semantic_memory(intuition_system_t* system, semantic_memory
 
 int intuition_attach_attention(intuition_system_t* system, attention_system_t* attention) {
     if (!system) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_attach_att", 0.0f);
+
+
     system->attention = attention;
     return 0;
 }
 
 int intuition_attach_executive(intuition_system_t* system, executive_function_t* executive) {
     if (!system) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_attach_exe", 0.0f);
+
+
     system->executive = executive;
     return 0;
 }
 
 int intuition_attach_emotion(intuition_system_t* system, emotion_system_t* emotion) {
     if (!system) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_attach_emo", 0.0f);
+
+
     system->emotion = emotion;
     return 0;
 }
 
 int intuition_attach_logic_gates(intuition_system_t* system, logic_gate_network_t* logic) {
     if (!system) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_attach_log", 0.0f);
+
+
     system->logic_gates = logic;
     return 0;
 }
@@ -390,6 +474,10 @@ int intuition_attach_logic_gates(intuition_system_t* system, logic_gate_network_
 
 bool intuition_validate_with_logic(intuition_system_t* system, const hunch_t* hunch) {
     if (!system || !hunch) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_validate_w", 0.0f);
+
 
     system->stats.logic_validations++;
 
@@ -416,6 +504,10 @@ hypogen_theory_t* intuition_logic_refine(intuition_system_t* system, const hunch
     if (!system->hypothesis) return NULL;
 
     /* Convert hunch to observation for hypothesis generation */
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_logic_refi", 0.0f);
+
+
     hypogen_observation_t obs = {
         .id = 1,
         .confidence = hunch->score.confidence
@@ -437,6 +529,10 @@ extrapolation_t* intuition_extrapolate(intuition_system_t* system,
                                        uint32_t count,
                                        const intuition_range_t* target_range) {
     if (!system || !known || count == 0 || !target_range) return NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_extrapolat", 0.0f);
+
 
     extrapolation_t* ext = nimcp_calloc(1, sizeof(extrapolation_t));
     if (!ext) {
@@ -508,6 +604,12 @@ extrapolation_t* intuition_extrapolate(intuition_system_t* system,
         float last_known_t = known[count - 1]->timestamp;
 
         for (uint32_t i = 0; i < num_samples; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_samples > 256) {
+                intuition_integrations_heartbeat("intuition_in_loop",
+                                 (float)(i + 1) / (float)num_samples);
+            }
+
             float t = target_range->start + step * i;
 
             /* Predict using trend */
@@ -555,6 +657,10 @@ extrapolation_t* intuition_extrapolate_incremental(intuition_system_t* system,
     if (!system || !previous || !new_data) return NULL;
 
     /* Combine old and new data */
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_extrapolat", 0.0f);
+
+
     uint32_t total_count = previous->num_known + new_count;
     intuition_data_point_t** combined = nimcp_calloc(total_count,
                                                      sizeof(intuition_data_point_t*));
@@ -593,10 +699,20 @@ bool intuition_detect_extrapolation_failure(intuition_system_t* system,
     if (!system || !extrapolation || !actual) return false;
 
     /* Find predicted value at actual's timestamp */
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_detect_ext", 0.0f);
+
+
     float predicted = 0;
     bool found = false;
 
     for (uint32_t i = 0; i < extrapolation->num_extrapolated; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && extrapolation->num_extrapolated > 256) {
+            intuition_integrations_heartbeat("intuition_in_loop",
+                             (float)(i + 1) / (float)extrapolation->num_extrapolated);
+        }
+
         if (fabsf(extrapolation->extrapolated[i]->timestamp - actual->timestamp) < 0.01f) {
             predicted = extrapolation->extrapolated[i]->values[0];
             found = true;
@@ -635,8 +751,18 @@ void extrapolation_free(extrapolation_t* ext) {
     if (!ext) return;
 
     /* Free extrapolated points */
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_extrapolation_free", 0.0f);
+
+
     if (ext->extrapolated) {
         for (uint32_t i = 0; i < ext->num_extrapolated; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && ext->num_extrapolated > 256) {
+                intuition_integrations_heartbeat("intuition_in_loop",
+                                 (float)(i + 1) / (float)ext->num_extrapolated);
+            }
+
             intuition_data_point_free(ext->extrapolated[i]);
         }
         nimcp_free(ext->extrapolated);
@@ -716,6 +842,10 @@ novel_prediction_t** intuition_predict_novel(intuition_system_t* system,
 
 void novel_prediction_free(novel_prediction_t* pred) {
     if (!pred) return;
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_novel_prediction_fre", 0.0f);
+
+
     if (pred->prediction) nimcp_free(pred->prediction);
     nimcp_free(pred);
 }
@@ -728,6 +858,10 @@ synthesis_t* intuition_synthesize_knowledge(intuition_system_t* system,
                                             const knowledge_fragment_t** fragments,
                                             uint32_t count) {
     if (!system || !fragments || count == 0) return NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_synthesize", 0.0f);
+
 
     synthesis_t* synth = nimcp_calloc(1, sizeof(synthesis_t));
     if (!synth) {
@@ -753,6 +887,12 @@ synthesis_t* intuition_synthesize_knowledge(intuition_system_t* system,
         /* Compute average dimensionality */
         uint32_t total_dim = 0;
         for (uint32_t i = 0; i < count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && count > 256) {
+                intuition_integrations_heartbeat("intuition_in_loop",
+                                 (float)(i + 1) / (float)count);
+            }
+
             if (fragments[i]) total_dim += fragments[i]->content_dim;
         }
         uint32_t avg_dim = (count > 0) ? total_dim / count : 32;
@@ -764,10 +904,22 @@ synthesis_t* intuition_synthesize_knowledge(intuition_system_t* system,
         /* Simple averaging of content vectors */
         if (synth->synthesized->unified_representation) {
             for (uint32_t i = 0; i < count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && count > 256) {
+                    intuition_integrations_heartbeat("intuition_in_loop",
+                                     (float)(i + 1) / (float)count);
+                }
+
                 if (fragments[i] && fragments[i]->content) {
                     uint32_t d = (fragments[i]->content_dim < avg_dim) ?
                                   fragments[i]->content_dim : avg_dim;
                     for (uint32_t j = 0; j < d; j++) {
+                        /* Phase 8: Loop progress heartbeat */
+                        if ((j & 0xFF) == 0 && d > 256) {
+                            intuition_integrations_heartbeat("intuition_in_loop",
+                                             (float)(j + 1) / (float)d);
+                        }
+
                         synth->synthesized->unified_representation[j] +=
                             fragments[i]->content[j] * fragments[i]->confidence / count;
                     }
@@ -778,12 +930,24 @@ synthesis_t* intuition_synthesize_knowledge(intuition_system_t* system,
         /* Compute coherence (variance of confidence scores) */
         float mean_conf = 0;
         for (uint32_t i = 0; i < count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && count > 256) {
+                intuition_integrations_heartbeat("intuition_in_loop",
+                                 (float)(i + 1) / (float)count);
+            }
+
             if (fragments[i]) mean_conf += fragments[i]->confidence;
         }
         mean_conf /= count;
 
         float var_conf = 0;
         for (uint32_t i = 0; i < count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && count > 256) {
+                intuition_integrations_heartbeat("intuition_in_loop",
+                                 (float)(i + 1) / (float)count);
+            }
+
             if (fragments[i]) {
                 float diff = fragments[i]->confidence - mean_conf;
                 var_conf += diff * diff;
@@ -919,6 +1083,12 @@ intuition_question_t** intuition_generate_questions(intuition_system_t* system,
     }
 
     for (uint32_t i = 0; i < max_q; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && max_q > 256) {
+            intuition_integrations_heartbeat("intuition_in_loop",
+                             (float)(i + 1) / (float)max_q);
+        }
+
         if (!gaps[i]) continue;
 
         intuition_question_t* q = nimcp_calloc(1, sizeof(intuition_question_t));
@@ -943,6 +1113,10 @@ intuition_question_t** intuition_generate_questions(intuition_system_t* system,
 void synthesis_free(synthesis_t* synth) {
     if (!synth) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_synthesis_free", 0.0f);
+
+
     if (synth->sources) nimcp_free(synth->sources);  /* References only */
 
     if (synth->synthesized) {
@@ -954,6 +1128,12 @@ void synthesis_free(synthesis_t* synth) {
 
     if (synth->identified_gaps) {
         for (uint32_t i = 0; i < synth->num_gaps; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && synth->num_gaps > 256) {
+                intuition_integrations_heartbeat("intuition_in_loop",
+                                 (float)(i + 1) / (float)synth->num_gaps);
+            }
+
             intuition_gap_free(synth->identified_gaps[i]);
         }
         nimcp_free(synth->identified_gaps);
@@ -961,6 +1141,12 @@ void synthesis_free(synthesis_t* synth) {
 
     if (synth->conflicts) {
         for (uint32_t i = 0; i < synth->num_conflicts; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && synth->num_conflicts > 256) {
+                intuition_integrations_heartbeat("intuition_in_loop",
+                                 (float)(i + 1) / (float)synth->num_conflicts);
+            }
+
             if (synth->conflicts[i]) nimcp_free(synth->conflicts[i]);
         }
         nimcp_free(synth->conflicts);
@@ -971,11 +1157,19 @@ void synthesis_free(synthesis_t* synth) {
 
 void intuition_gap_free(intuition_gap_t* gap) {
     if (!gap) return;
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_gap_free", 0.0f);
+
+
     if (gap->related_fragments) nimcp_free(gap->related_fragments);
     nimcp_free(gap);
 }
 
 void intuition_question_free(intuition_question_t* question) {
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_question_f", 0.0f);
+
+
     if (question) nimcp_free(question);
 }
 
@@ -985,6 +1179,10 @@ void intuition_question_free(intuition_question_t* question) {
 
 intuition_data_point_t* intuition_data_point_create(const float* values, uint32_t dim,
                                                     float timestamp, float confidence) {
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_data_point", 0.0f);
+
+
     intuition_data_point_t* point = nimcp_calloc(1, sizeof(intuition_data_point_t));
     if (!point) {
 
@@ -1010,6 +1208,10 @@ intuition_data_point_t* intuition_data_point_create(const float* values, uint32_
 
 void intuition_data_point_free(intuition_data_point_t* point) {
     if (!point) return;
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_data_point", 0.0f);
+
+
     if (point->values) nimcp_free(point->values);
     nimcp_free(point);
 }
@@ -1017,6 +1219,10 @@ void intuition_data_point_free(intuition_data_point_t* point) {
 knowledge_fragment_t* knowledge_fragment_create(const char* description,
                                                 const float* content, uint32_t dim,
                                                 float confidence) {
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_knowledge_fragment_c", 0.0f);
+
+
     knowledge_fragment_t* frag = nimcp_calloc(1, sizeof(knowledge_fragment_t));
     if (!frag) {
 
@@ -1045,6 +1251,10 @@ knowledge_fragment_t* knowledge_fragment_create(const char* description,
 
 void knowledge_fragment_free(knowledge_fragment_t* fragment) {
     if (!fragment) return;
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_knowledge_fragment_f", 0.0f);
+
+
     if (fragment->content) nimcp_free(fragment->content);
     nimcp_free(fragment);
 }
@@ -1054,30 +1264,58 @@ void knowledge_fragment_free(knowledge_fragment_t* fragment) {
  * ============================================================================ */
 
 intuitive_engine_t* intuition_get_intuitive_engine(intuition_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_get_intuit", 0.0f);
+
+
     return system ? system->intuitive : NULL;
 }
 
 analogical_engine_t* intuition_get_analogical_engine(intuition_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_get_analog", 0.0f);
+
+
     return system ? system->analogical : NULL;
 }
 
 insight_engine_t* intuition_get_insight_engine(intuition_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_get_insigh", 0.0f);
+
+
     return system ? system->insight : NULL;
 }
 
 hypothesis_engine_t* intuition_get_hypothesis_engine(intuition_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_get_hypoth", 0.0f);
+
+
     return system ? system->hypothesis : NULL;
 }
 
 blending_engine_t* intuition_get_blending_engine(intuition_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_get_blendi", 0.0f);
+
+
     return system ? system->blending : NULL;
 }
 
 counterfactual_engine_t* intuition_get_counterfactual_engine(intuition_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_get_counte", 0.0f);
+
+
     return system ? system->counterfactual : NULL;
 }
 
 meta_engine_t* intuition_get_meta_engine(intuition_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_get_meta_e", 0.0f);
+
+
     return system ? system->meta : NULL;
 }
 
@@ -1087,6 +1325,10 @@ meta_engine_t* intuition_get_meta_engine(intuition_system_t* system) {
 
 int intuition_system_set_inflammation(intuition_system_t* system, float level) {
     if (!system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_system_set", 0.0f);
+
 
     system->inflammation = fmaxf(0, fminf(1, level));
 
@@ -1104,6 +1346,10 @@ int intuition_system_set_inflammation(intuition_system_t* system, float level) {
 
 int intuition_system_set_fatigue(intuition_system_t* system, float level) {
     if (!system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_system_set", 0.0f);
+
 
     system->fatigue = fmaxf(0, fminf(1, level));
 
@@ -1127,10 +1373,18 @@ int intuition_system_get_stats(const intuition_system_t* system,
                                intuition_system_stats_t* stats) {
     if (!system || !stats) return -1;
     *stats = system->stats;
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_system_get", 0.0f);
+
+
     return 0;
 }
 
 void intuition_system_reset_stats(intuition_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_intuition_system_res", 0.0f);
+
+
     if (system) memset(&system->stats, 0, sizeof(system->stats));
 }
 
@@ -1144,9 +1398,19 @@ const char* intuition_system_get_last_error(void) {
 
 int intuition_integrations_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    intuition_integrations_heartbeat("intuition_in_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Intuition_Integrations");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                intuition_integrations_heartbeat("intuition_in_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Module self-knowledge logged */
         }
     }

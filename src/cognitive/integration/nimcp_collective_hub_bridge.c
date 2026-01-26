@@ -48,7 +48,7 @@ static nimcp_health_agent_t* g_collective_hub_bridge_health_agent = NULL;
  * @brief Set health agent for collective_hub_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void collective_hub_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void collective_hub_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_collective_hub_bridge_health_agent = agent;
 }
 
@@ -331,6 +331,10 @@ int collective_hub_bridge_default_config(collective_hub_bridge_config_t* config)
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_hub_bridge_heartbeat("collective_h_default_config", 0.0f);
+
+
     config->module_id = COLLECTIVE_HUB_MODULE_ID;
     config->phi_change_threshold = DEFAULT_PHI_THRESHOLD;
     config->coherence_change_threshold = DEFAULT_COHERENCE_THRESHOLD;
@@ -352,6 +356,10 @@ collective_hub_bridge_t* collective_hub_bridge_create(
     const collective_hub_bridge_config_t* config
 ) {
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    collective_hub_bridge_heartbeat("collective_h_create", 0.0f);
+
+
     collective_hub_bridge_t* bridge = nimcp_calloc(1, sizeof(collective_hub_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -396,6 +404,10 @@ void collective_hub_bridge_destroy(collective_hub_bridge_t* bridge) {
     }
 
     /* Disconnect if still connected */
+    /* Phase 8: Heartbeat at operation start */
+    collective_hub_bridge_heartbeat("collective_h_destroy", 0.0f);
+
+
     if (bridge->connected) {
         collective_hub_bridge_disconnect(bridge);
     }
@@ -428,6 +440,10 @@ int collective_hub_bridge_connect(
     if (!bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_hub_bridge_heartbeat("collective_h_connect", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -563,6 +579,10 @@ int collective_hub_bridge_disconnect(collective_hub_bridge_t* bridge) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_hub_bridge_heartbeat("collective_h_disconnect", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
@@ -602,6 +622,10 @@ bool collective_hub_bridge_is_connected(const collective_hub_bridge_t* bridge) {
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_hub_bridge_heartbeat("collective_h_is_connected", 0.0f);
+
+
     nimcp_mutex_lock(((collective_hub_bridge_t*)bridge)->base.mutex);
     bool connected = bridge->connected;
     nimcp_mutex_unlock(((collective_hub_bridge_t*)bridge)->base.mutex);
@@ -617,6 +641,10 @@ int collective_hub_on_event(
     const void* event_ptr,
     void* user_data
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    collective_hub_bridge_heartbeat("collective_h_collective_hub_on_ev", 0.0f);
+
+
     const cognitive_event_data_t* event = (const cognitive_event_data_t*)event_ptr;
     collective_hub_bridge_t* bridge = (collective_hub_bridge_t*)user_data;
 
@@ -672,6 +700,10 @@ int collective_hub_publish_consensus(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_hub_bridge_heartbeat("collective_h_collective_hub_publi", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
@@ -713,6 +745,10 @@ int collective_hub_publish_state_change(
     if (!bridge || !state_change) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_hub_bridge_heartbeat("collective_h_collective_hub_publi", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -770,6 +806,10 @@ int collective_hub_publish_event(
 
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_hub_bridge_heartbeat("collective_h_collective_hub_publi", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -856,6 +896,10 @@ int collective_hub_bridge_update(collective_hub_bridge_t* bridge) {
 
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_hub_bridge_heartbeat("collective_h_update", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -978,6 +1022,10 @@ int collective_hub_bridge_get_stats(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_hub_bridge_heartbeat("collective_h_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(((collective_hub_bridge_t*)bridge)->base.mutex);
 
     *stats = bridge->stats;
@@ -997,6 +1045,10 @@ int collective_hub_bridge_reset_stats(collective_hub_bridge_t* bridge) {
     if (!bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_hub_bridge_heartbeat("collective_h_reset_stats", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 

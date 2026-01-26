@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_spatial_reasoning_health_agent = NULL;
  * @brief Set health agent for spatial_reasoning heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void spatial_reasoning_set_health_agent(nimcp_health_agent_t* agent) {
+void spatial_reasoning_set_health_agent(nimcp_health_agent_t* agent) {
     g_spatial_reasoning_health_agent = agent;
 }
 
@@ -270,6 +270,10 @@ static void kd_find_in_range(kd_node_t* root, uint8_t depth, kd_range_state_t* s
  * ============================================================================ */
 
 spatial_config_t spatial_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_spatial_default_conf", 0.0f);
+
+
     spatial_config_t config = {
         .rotation_rate_deg_ms = SPATIAL_ROTATION_RATE_DEG_MS,
         .matching_threshold = 0.9f,
@@ -284,6 +288,10 @@ spatial_config_t spatial_default_config(void) {
 
 bool spatial_validate_config(const spatial_config_t* config) {
     if (!config) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_spatial_validate_con", 0.0f);
+
 
     if (config->rotation_rate_deg_ms <= 0.0f) {
         set_spatial_error("Rotation rate must be positive");
@@ -304,10 +312,18 @@ bool spatial_validate_config(const spatial_config_t* config) {
 }
 
 spatial_reasoning_t* spatial_reasoning_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_create", 0.0f);
+
+
     return spatial_reasoning_create_custom(NULL);
 }
 
 spatial_reasoning_t* spatial_reasoning_create_custom(const spatial_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_create_custom", 0.0f);
+
+
     spatial_config_t cfg;
 
     if (config) {
@@ -352,10 +368,20 @@ void spatial_reasoning_destroy(spatial_reasoning_t* sr) {
     if (!sr) return;
 
     /* Destroy K-D tree */
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_destroy", 0.0f);
+
+
     kd_destroy(sr->kd_root);
 
     /* Free objects */
     for (uint32_t i = 0; i < sr->num_objects; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sr->num_objects > 256) {
+            spatial_reasoning_heartbeat("spatial_reas_loop",
+                             (float)(i + 1) / (float)sr->num_objects);
+        }
+
         if (sr->objects[i]) {
             if (sr->objects[i]->vertices) {
                 free(sr->objects[i]->vertices);
@@ -377,11 +403,19 @@ void spatial_reasoning_destroy(spatial_reasoning_t* sr) {
  * ============================================================================ */
 
 quaternion_t quaternion_identity(void) {
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_quaternion_identity", 0.0f);
+
+
     quaternion_t q = {1.0f, 0.0f, 0.0f, 0.0f};
     return q;
 }
 
 quaternion_t quaternion_from_axis_angle(vec3_t axis, float angle_radians) {
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_quaternion_from_axis", 0.0f);
+
+
     axis = vec3_normalize(axis);
     float half_angle = angle_radians * 0.5f;
     float s = sinf(half_angle);
@@ -396,6 +430,10 @@ quaternion_t quaternion_from_axis_angle(vec3_t axis, float angle_radians) {
 }
 
 quaternion_t quaternion_multiply(quaternion_t a, quaternion_t b) {
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_quaternion_multiply", 0.0f);
+
+
     quaternion_t q;
     q.w = a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z;
     q.x = a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y;
@@ -405,6 +443,10 @@ quaternion_t quaternion_multiply(quaternion_t a, quaternion_t b) {
 }
 
 quaternion_t quaternion_normalize(quaternion_t q) {
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_quaternion_normalize", 0.0f);
+
+
     float len = sqrtf(q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z);
     if (len < 1e-10f) return quaternion_identity();
     return (quaternion_t){q.w / len, q.x / len, q.y / len, q.z / len};
@@ -423,6 +465,10 @@ vec3_t quaternion_rotate_vector(quaternion_t q, vec3_t v) {
 
 float quaternion_angle_between(quaternion_t a, quaternion_t b) {
     /* Compute dot product */
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_quaternion_angle_bet", 0.0f);
+
+
     float dot = a.w * b.w + a.x * b.x + a.y * b.y + a.z * b.z;
     dot = clamp01(fabsf(dot));  /* Handle numerical issues */
 
@@ -438,6 +484,10 @@ rotation_result_t spatial_rotate_and_compare(
     const spatial_object_t* object_a,
     const spatial_object_t* object_b
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_spatial_rotate_and_c", 0.0f);
+
+
     rotation_result_t result = {0};
 
     if (!sr) {
@@ -516,6 +566,10 @@ uint64_t spatial_mental_rotate(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_spatial_mental_rotat", 0.0f);
+
+
     nimcp_mutex_lock(sr->lock);
 
     /* Compute rotation quaternion */
@@ -528,6 +582,12 @@ uint64_t spatial_mental_rotate(
     /* Rotate all vertices if present */
     if (object->vertices && object->num_vertices > 0) {
         for (uint32_t i = 0; i < object->num_vertices; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && object->num_vertices > 256) {
+                spatial_reasoning_heartbeat("spatial_reas_loop",
+                                 (float)(i + 1) / (float)object->num_vertices);
+            }
+
             object->vertices[i] = quaternion_rotate_vector(rot, object->vertices[i]);
         }
     }
@@ -552,6 +612,10 @@ float spatial_shape_similarity(
     if (!sr || !object_a || !object_b) return 0.0f;
 
     /* Simple similarity based on bounding radius and vertex count */
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_spatial_shape_simila", 0.0f);
+
+
     float radius_sim = 1.0f - fabsf(object_a->bounding_radius - object_b->bounding_radius) /
                        fmaxf(object_a->bounding_radius, object_b->bounding_radius + 0.001f);
 
@@ -571,6 +635,10 @@ float spatial_shape_similarity(
  * ============================================================================ */
 
 spatial_transform_t spatial_pose_to_transform(const observer_pose_t* pose) {
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_spatial_pose_to_tran", 0.0f);
+
+
     spatial_transform_t t;
     memset(&t, 0, sizeof(t));
 
@@ -624,6 +692,10 @@ vec3_t spatial_transform_point(const spatial_transform_t* transform, vec3_t poin
 }
 
 spatial_transform_t spatial_transform_inverse(const spatial_transform_t* transform) {
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_spatial_transform_in", 0.0f);
+
+
     spatial_transform_t inv;
     memset(&inv, 0, sizeof(inv));
 
@@ -706,6 +778,10 @@ uint32_t spatial_add_object(spatial_reasoning_t* sr, const spatial_object_t* obj
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_spatial_add_object", 0.0f);
+
+
     nimcp_mutex_lock(sr->lock);
 
     if (sr->num_objects >= sr->config.max_objects) {
@@ -748,11 +824,21 @@ uint32_t spatial_add_object(spatial_reasoning_t* sr, const spatial_object_t* obj
 int spatial_remove_object(spatial_reasoning_t* sr, uint32_t object_id) {
     if (!sr || object_id == 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_spatial_remove_objec", 0.0f);
+
+
     nimcp_mutex_lock(sr->lock);
 
     /* Find and remove from array */
     int found = -1;
     for (uint32_t i = 0; i < sr->num_objects; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sr->num_objects > 256) {
+            spatial_reasoning_heartbeat("spatial_reas_loop",
+                             (float)(i + 1) / (float)sr->num_objects);
+        }
+
         if (sr->objects[i] && sr->objects[i]->id == object_id) {
             if (sr->objects[i]->vertices) {
                 free(sr->objects[i]->vertices);
@@ -775,6 +861,12 @@ int spatial_remove_object(spatial_reasoning_t* sr, uint32_t object_id) {
         kd_destroy(sr->kd_root);
         sr->kd_root = NULL;
         for (uint32_t i = 0; i < sr->num_objects; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && sr->num_objects > 256) {
+                spatial_reasoning_heartbeat("spatial_reas_loop",
+                                 (float)(i + 1) / (float)sr->num_objects);
+            }
+
             sr->kd_root = kd_insert(sr->kd_root, sr->objects[i], 0);
         }
     }
@@ -787,11 +879,21 @@ int spatial_remove_object(spatial_reasoning_t* sr, uint32_t object_id) {
 int spatial_update_position(spatial_reasoning_t* sr, uint32_t object_id, vec3_t new_position) {
     if (!sr || object_id == 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_spatial_update_posit", 0.0f);
+
+
     nimcp_mutex_lock(sr->lock);
 
     /* Find object */
     spatial_object_t* obj = NULL;
     for (uint32_t i = 0; i < sr->num_objects; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sr->num_objects > 256) {
+            spatial_reasoning_heartbeat("spatial_reas_loop",
+                             (float)(i + 1) / (float)sr->num_objects);
+        }
+
         if (sr->objects[i] && sr->objects[i]->id == object_id) {
             obj = sr->objects[i];
             break;
@@ -809,6 +911,12 @@ int spatial_update_position(spatial_reasoning_t* sr, uint32_t object_id, vec3_t 
     kd_destroy(sr->kd_root);
     sr->kd_root = NULL;
     for (uint32_t i = 0; i < sr->num_objects; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sr->num_objects > 256) {
+            spatial_reasoning_heartbeat("spatial_reas_loop",
+                             (float)(i + 1) / (float)sr->num_objects);
+        }
+
         sr->kd_root = kd_insert(sr->kd_root, sr->objects[i], 0);
     }
 
@@ -823,6 +931,10 @@ spatial_object_t* spatial_find_nearest(spatial_reasoning_t* sr, vec3_t query_pos
         return NULL;
     }
     if (!sr->kd_root) return NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_spatial_find_nearest", 0.0f);
+
 
     nimcp_mutex_lock(sr->lock);
 
@@ -844,6 +956,10 @@ uint32_t spatial_find_k_nearest(
 ) {
     if (!sr || !result || k == 0) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_spatial_find_k_neare", 0.0f);
+
+
     nimcp_mutex_lock(sr->lock);
 
     /* Simple O(n) approach - find all then sort */
@@ -861,6 +977,12 @@ uint32_t spatial_find_k_nearest(
     }
 
     for (uint32_t i = 0; i < sr->num_objects; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sr->num_objects > 256) {
+            spatial_reasoning_heartbeat("spatial_reas_loop",
+                             (float)(i + 1) / (float)sr->num_objects);
+        }
+
         all_dists[i] = vec3_distance(query_pos, sr->objects[i]->position);
         indices[i] = i;
     }
@@ -870,6 +992,12 @@ uint32_t spatial_find_k_nearest(
     count = (count < result->capacity) ? count : result->capacity;
 
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            spatial_reasoning_heartbeat("spatial_reas_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         uint32_t min_idx = i;
         for (uint32_t j = i + 1; j < sr->num_objects; j++) {
             if (all_dists[j] < all_dists[min_idx]) {
@@ -909,6 +1037,10 @@ uint32_t spatial_find_in_radius(
 ) {
     if (!sr || !result || radius <= 0.0f) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_spatial_find_in_radi", 0.0f);
+
+
     nimcp_mutex_lock(sr->lock);
 
     kd_range_state_t state = {
@@ -931,6 +1063,10 @@ uint32_t spatial_find_in_radius(
 }
 
 spatial_query_result_t* spatial_query_result_create(uint32_t capacity) {
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_spatial_query_result", 0.0f);
+
+
     spatial_query_result_t* result = calloc(1, sizeof(spatial_query_result_t));
     NIMCP_API_CHECK_ALLOC(result, "Failed to allocate spatial query result");
 
@@ -953,6 +1089,10 @@ spatial_query_result_t* spatial_query_result_create(uint32_t capacity) {
 
 void spatial_query_result_destroy(spatial_query_result_t* result) {
     if (!result) return;
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_spatial_query_result", 0.0f);
+
+
     free(result->objects);
     free(result->distances);
     free(result);
@@ -967,6 +1107,10 @@ spatial_attention_t* spatial_attention_create(
     uint32_t grid_width,
     uint32_t grid_height
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_spatial_attention_cr", 0.0f);
+
+
     (void)sr;
 
     if (grid_width == 0 || grid_height == 0) {
@@ -996,12 +1140,20 @@ spatial_attention_t* spatial_attention_create(
 
 void spatial_attention_destroy(spatial_attention_t* attention) {
     if (!attention) return;
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_spatial_attention_de", 0.0f);
+
+
     free(attention->weights);
     free(attention);
 }
 
 int spatial_attention_set_focus(spatial_attention_t* attention, vec3_t focus, float spread) {
     if (!attention || spread <= 0.0f) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_spatial_attention_se", 0.0f);
+
 
     attention->focus_point = focus;
     attention->spread = spread;
@@ -1010,7 +1162,19 @@ int spatial_attention_set_focus(spatial_attention_t* attention, vec3_t focus, fl
     float sigma_sq = spread * spread;
 
     for (uint32_t y = 0; y < attention->grid_height; y++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((y & 0xFF) == 0 && attention->grid_height > 256) {
+            spatial_reasoning_heartbeat("spatial_reas_loop",
+                             (float)(y + 1) / (float)attention->grid_height);
+        }
+
         for (uint32_t x = 0; x < attention->grid_width; x++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((x & 0xFF) == 0 && attention->grid_width > 256) {
+                spatial_reasoning_heartbeat("spatial_reas_loop",
+                                 (float)(x + 1) / (float)attention->grid_width);
+            }
+
             /* Map grid to normalized coordinates */
             float nx = ((float)x / (float)(attention->grid_width - 1)) * 2.0f - 1.0f;
             float ny = ((float)y / (float)(attention->grid_height - 1)) * 2.0f - 1.0f;
@@ -1031,6 +1195,10 @@ float spatial_attention_at(const spatial_attention_t* attention, vec3_t pos) {
     if (!attention) return 0.0f;
 
     /* Map position to grid coordinates */
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_spatial_attention_at", 0.0f);
+
+
     float nx = (pos.x + 1.0f) * 0.5f;
     float ny = (pos.y + 1.0f) * 0.5f;
 
@@ -1048,6 +1216,10 @@ float spatial_attention_at(const spatial_attention_t* attention, vec3_t pos) {
 int spatial_attention_update(spatial_attention_t* attention, float decay_rate) {
     if (!attention) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_spatial_attention_up", 0.0f);
+
+
     decay_rate = clamp01(decay_rate);
 
     for (uint32_t i = 0; i < attention->grid_width * attention->grid_height; i++) {
@@ -1064,6 +1236,10 @@ int spatial_attention_update(spatial_attention_t* attention, float decay_rate) {
 int spatial_set_inflammation(spatial_reasoning_t* sr, float level) {
     if (!sr) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_spatial_set_inflamma", 0.0f);
+
+
     nimcp_mutex_lock(sr->lock);
     sr->inflammation_level = clamp01(level);
     update_effective_rotation_rate(sr);
@@ -1074,6 +1250,10 @@ int spatial_set_inflammation(spatial_reasoning_t* sr, float level) {
 
 int spatial_set_fatigue(spatial_reasoning_t* sr, float level) {
     if (!sr) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_spatial_set_fatigue", 0.0f);
+
 
     nimcp_mutex_lock(sr->lock);
     sr->fatigue_level = clamp01(level);
@@ -1096,6 +1276,10 @@ int spatial_get_stats(const spatial_reasoning_t* sr, spatial_stats_t* stats) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_get_stats: stats is NULL");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_spatial_get_stats", 0.0f);
+
 
     nimcp_mutex_lock(((spatial_reasoning_t*)sr)->lock);
 
@@ -1122,6 +1306,10 @@ int spatial_get_stats(const spatial_reasoning_t* sr, spatial_stats_t* stats) {
 void spatial_reset_stats(spatial_reasoning_t* sr) {
     if (!sr) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_spatial_reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(sr->lock);
 
     sr->rotations_performed = 0;
@@ -1144,9 +1332,19 @@ const char* spatial_get_last_error(void) {
 int spatial_reasoning_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    spatial_reasoning_heartbeat("spatial_reas_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Spatial_Reasoning_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                spatial_reasoning_heartbeat("spatial_reas_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Spatial reasoning self-knowledge: %s", self->observations[i]);
         }
     }

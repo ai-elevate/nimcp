@@ -37,7 +37,7 @@ static nimcp_health_agent_t* g_bargaining_health_agent = NULL;
  * @brief Set health agent for bargaining heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void bargaining_set_health_agent(nimcp_health_agent_t* agent) {
+void bargaining_set_health_agent(nimcp_health_agent_t* agent) {
     g_bargaining_health_agent = agent;
 }
 
@@ -92,6 +92,10 @@ static const char* s_bargaining_type_names[] = {
 //=============================================================================
 
 nimcp_bargaining_config_t nimcp_bargaining_default_config(uint32_t num_players) {
+    /* Phase 8: Heartbeat at operation start */
+    bargaining_heartbeat("bargaining_bargaining_default_c", 0.0f);
+
+
     nimcp_bargaining_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -105,6 +109,12 @@ nimcp_bargaining_config_t nimcp_bargaining_default_config(uint32_t num_players) 
     // Default: equal bargaining power
     float equal_power = 1.0f / (float)config.num_players;
     for (uint32_t i = 0; i < config.num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && config.num_players > 256) {
+            bargaining_heartbeat("bargaining_loop",
+                             (float)(i + 1) / (float)config.num_players);
+        }
+
         config.disagreement_payoffs[i] = 0.0f;
         config.bargaining_powers[i] = equal_power;
     }
@@ -117,6 +127,10 @@ nimcp_bargaining_config_t nimcp_bargaining_default_config(uint32_t num_players) 
 //=============================================================================
 
 nimcp_bargaining_t nimcp_bargaining_create(const nimcp_bargaining_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    bargaining_heartbeat("bargaining_bargaining_create", 0.0f);
+
+
     NIMCP_API_CHECK_NULL_RET_NULL(config, "NULL config in nimcp_bargaining_create");
     if (config->num_players == 0 || config->num_players > NIMCP_GT_MAX_PLAYERS) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Invalid player count: %u", config->num_players);
@@ -163,6 +177,10 @@ nimcp_bargaining_t nimcp_bargaining_create(const nimcp_bargaining_config_t* conf
 void nimcp_bargaining_destroy(nimcp_bargaining_t bargaining) {
     if (!bargaining) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    bargaining_heartbeat("bargaining_bargaining_destroy", 0.0f);
+
+
     nimcp_platform_mutex_destroy(&bargaining->mutex);
     nimcp_free(bargaining->offer_history);
     nimcp_free(bargaining->feasible_set);
@@ -181,6 +199,10 @@ nimcp_error_t nimcp_bargaining_set_feasible_set(
     if (!bargaining || !points) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    bargaining_heartbeat("bargaining_bargaining_set_feasi", 0.0f);
+
 
     nimcp_platform_mutex_lock(&bargaining->mutex);
 
@@ -215,9 +237,19 @@ float nimcp_compute_nash_product(
     const float* powers,
     uint32_t n
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    bargaining_heartbeat("bargaining_compute_nash_product", 0.0f);
+
+
     float product = 1.0f;
 
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            bargaining_heartbeat("bargaining_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         float gain = allocation[i] - disagreement[i];
         if (gain <= 0.0f) {
             return 0.0f;  // Not individually rational
@@ -236,6 +268,10 @@ nimcp_error_t nimcp_bargaining_compute_nash_solution(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    bargaining_heartbeat("bargaining_bargaining_compute_n", 0.0f);
+
+
     nimcp_platform_mutex_lock(&bargaining->mutex);
 
     if (bargaining->num_feasible == 0) {
@@ -249,11 +285,23 @@ nimcp_error_t nimcp_bargaining_compute_nash_solution(
 
     // Find feasible point maximizing Nash product
     for (uint32_t f = 0; f < bargaining->num_feasible; f++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((f & 0xFF) == 0 && bargaining->num_feasible > 256) {
+            bargaining_heartbeat("bargaining_loop",
+                             (float)(f + 1) / (float)bargaining->num_feasible);
+        }
+
         const float* u = bargaining->feasible_set[f].utilities;
 
         // Check individual rationality
         bool ir = true;
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                bargaining_heartbeat("bargaining_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             if (u[i] < bargaining->config.disagreement_payoffs[i]) {
                 ir = false;
                 break;
@@ -280,6 +328,12 @@ nimcp_error_t nimcp_bargaining_compute_nash_solution(
     if (best_idx < 0) {
         outcome->state = NIMCP_BARGAINING_STATE_DISAGREEMENT;
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                bargaining_heartbeat("bargaining_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             outcome->allocations[i] = bargaining->config.disagreement_payoffs[i];
             outcome->utilities[i] = bargaining->config.disagreement_payoffs[i];
         }
@@ -291,6 +345,12 @@ nimcp_error_t nimcp_bargaining_compute_nash_solution(
     // Set outcome
     outcome->state = NIMCP_BARGAINING_STATE_AGREED;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            bargaining_heartbeat("bargaining_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         outcome->allocations[i] = bargaining->feasible_set[best_idx].utilities[i];
         outcome->utilities[i] = bargaining->feasible_set[best_idx].utilities[i];
     }
@@ -318,6 +378,10 @@ nimcp_error_t nimcp_bargaining_compute_kalai_smorodinsky(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    bargaining_heartbeat("bargaining_bargaining_compute_k", 0.0f);
+
+
     nimcp_platform_mutex_lock(&bargaining->mutex);
 
     if (bargaining->num_feasible == 0) {
@@ -331,11 +395,29 @@ nimcp_error_t nimcp_bargaining_compute_kalai_smorodinsky(
     // Find utopia point (max achievable for each player)
     float utopia[NIMCP_GT_MAX_PLAYERS];
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            bargaining_heartbeat("bargaining_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         utopia[i] = -FLT_MAX;
     }
 
     for (uint32_t f = 0; f < bargaining->num_feasible; f++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((f & 0xFF) == 0 && bargaining->num_feasible > 256) {
+            bargaining_heartbeat("bargaining_loop",
+                             (float)(f + 1) / (float)bargaining->num_feasible);
+        }
+
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                bargaining_heartbeat("bargaining_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             if (bargaining->feasible_set[f].utilities[i] > utopia[i]) {
                 utopia[i] = bargaining->feasible_set[f].utilities[i];
             }
@@ -348,11 +430,23 @@ nimcp_error_t nimcp_bargaining_compute_kalai_smorodinsky(
     int best_idx = -1;
 
     for (uint32_t f = 0; f < bargaining->num_feasible; f++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((f & 0xFF) == 0 && bargaining->num_feasible > 256) {
+            bargaining_heartbeat("bargaining_loop",
+                             (float)(f + 1) / (float)bargaining->num_feasible);
+        }
+
         const float* u = bargaining->feasible_set[f].utilities;
 
         // Check individual rationality
         bool ir = true;
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                bargaining_heartbeat("bargaining_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             if (u[i] < d[i]) {
                 ir = false;
                 break;
@@ -366,6 +460,12 @@ nimcp_error_t nimcp_bargaining_compute_kalai_smorodinsky(
         bool valid = true;
 
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                bargaining_heartbeat("bargaining_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             float range = utopia[i] - d[i];
             if (range < 1e-10f) continue;
 
@@ -392,6 +492,12 @@ nimcp_error_t nimcp_bargaining_compute_kalai_smorodinsky(
 
     outcome->state = NIMCP_BARGAINING_STATE_AGREED;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            bargaining_heartbeat("bargaining_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         outcome->allocations[i] = bargaining->feasible_set[best_idx].utilities[i];
         outcome->utilities[i] = bargaining->feasible_set[best_idx].utilities[i];
     }
@@ -420,6 +526,10 @@ nimcp_error_t nimcp_bargaining_compute_egalitarian(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    bargaining_heartbeat("bargaining_bargaining_compute_e", 0.0f);
+
+
     nimcp_platform_mutex_lock(&bargaining->mutex);
 
     if (bargaining->num_feasible == 0) {
@@ -435,12 +545,24 @@ nimcp_error_t nimcp_bargaining_compute_egalitarian(
     int best_idx = -1;
 
     for (uint32_t f = 0; f < bargaining->num_feasible; f++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((f & 0xFF) == 0 && bargaining->num_feasible > 256) {
+            bargaining_heartbeat("bargaining_loop",
+                             (float)(f + 1) / (float)bargaining->num_feasible);
+        }
+
         const float* u = bargaining->feasible_set[f].utilities;
 
         float min_gain = FLT_MAX;
         bool ir = true;
 
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                bargaining_heartbeat("bargaining_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             float gain = u[i] - d[i];
             if (gain < 0.0f) {
                 ir = false;
@@ -470,6 +592,12 @@ nimcp_error_t nimcp_bargaining_compute_egalitarian(
 
     outcome->state = NIMCP_BARGAINING_STATE_AGREED;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            bargaining_heartbeat("bargaining_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         outcome->allocations[i] = bargaining->feasible_set[best_idx].utilities[i];
         outcome->utilities[i] = bargaining->feasible_set[best_idx].utilities[i];
     }
@@ -499,6 +627,10 @@ nimcp_error_t nimcp_bargaining_make_offer(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    bargaining_heartbeat("bargaining_bargaining_make_offe", 0.0f);
+
+
     nimcp_platform_mutex_lock(&bargaining->mutex);
 
     if (bargaining->state == NIMCP_BARGAINING_STATE_AGREED ||
@@ -524,6 +656,12 @@ nimcp_error_t nimcp_bargaining_make_offer(
     offer->is_final = (bargaining->current_round == bargaining->config.max_rounds - 1);
 
     for (uint32_t i = 0; i < bargaining->config.num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bargaining->config.num_players > 256) {
+            bargaining_heartbeat("bargaining_loop",
+                             (float)(i + 1) / (float)bargaining->config.num_players);
+        }
+
         offer->proposed_allocation[i] = proposed_allocation[i];
     }
 
@@ -545,6 +683,10 @@ nimcp_error_t nimcp_bargaining_respond(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    bargaining_heartbeat("bargaining_bargaining_respond", 0.0f);
+
+
     nimcp_platform_mutex_lock(&bargaining->mutex);
 
     if (bargaining->state != NIMCP_BARGAINING_STATE_NEGOTIATING) {
@@ -563,6 +705,12 @@ nimcp_error_t nimcp_bargaining_respond(
         outcome->rounds_taken = bargaining->current_round + 1;
 
         for (uint32_t i = 0; i < bargaining->config.num_players; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bargaining->config.num_players > 256) {
+                bargaining_heartbeat("bargaining_loop",
+                                 (float)(i + 1) / (float)bargaining->config.num_players);
+            }
+
             outcome->allocations[i] = bargaining->current_offer.proposed_allocation[i];
             outcome->utilities[i] = bargaining->current_offer.proposed_allocation[i];
         }
@@ -570,6 +718,12 @@ nimcp_error_t nimcp_bargaining_respond(
         // Check individual rationality
         outcome->is_individually_rational = true;
         for (uint32_t i = 0; i < bargaining->config.num_players; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bargaining->config.num_players > 256) {
+                bargaining_heartbeat("bargaining_loop",
+                                 (float)(i + 1) / (float)bargaining->config.num_players);
+            }
+
             if (outcome->utilities[i] < bargaining->config.disagreement_payoffs[i]) {
                 outcome->is_individually_rational = false;
                 break;
@@ -601,6 +755,10 @@ nimcp_error_t nimcp_bargaining_advance_round(nimcp_bargaining_t bargaining) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    bargaining_heartbeat("bargaining_bargaining_advance_r", 0.0f);
+
+
     nimcp_platform_mutex_lock(&bargaining->mutex);
 
     bargaining->current_round++;
@@ -627,6 +785,10 @@ nimcp_error_t nimcp_bargaining_advance_round(nimcp_bargaining_t bargaining) {
 
 bool nimcp_bargaining_has_agreement(const nimcp_bargaining_t bargaining) {
     if (!bargaining) return false;
+    /* Phase 8: Heartbeat at operation start */
+    bargaining_heartbeat("bargaining_bargaining_has_agree", 0.0f);
+
+
     return bargaining->state == NIMCP_BARGAINING_STATE_AGREED;
 }
 
@@ -638,6 +800,10 @@ nimcp_error_t nimcp_bargaining_get_outcome(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    bargaining_heartbeat("bargaining_bargaining_get_outco", 0.0f);
+
+
     nimcp_platform_mutex_lock(&bargaining->mutex);
     *outcome = bargaining->outcome;
     nimcp_platform_mutex_unlock(&bargaining->mutex);
@@ -647,11 +813,19 @@ nimcp_error_t nimcp_bargaining_get_outcome(
 
 nimcp_bargaining_state_t nimcp_bargaining_get_state(const nimcp_bargaining_t bargaining) {
     if (!bargaining) return NIMCP_BARGAINING_STATE_INITIALIZED;
+    /* Phase 8: Heartbeat at operation start */
+    bargaining_heartbeat("bargaining_bargaining_get_state", 0.0f);
+
+
     return bargaining->state;
 }
 
 uint32_t nimcp_bargaining_get_round(const nimcp_bargaining_t bargaining) {
     if (!bargaining) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    bargaining_heartbeat("bargaining_bargaining_get_round", 0.0f);
+
+
     return bargaining->current_round;
 }
 
@@ -662,6 +836,10 @@ nimcp_error_t nimcp_bargaining_get_current_offer(
     if (!bargaining || !offer) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    bargaining_heartbeat("bargaining_bargaining_get_curre", 0.0f);
+
 
     nimcp_platform_mutex_lock(&bargaining->mutex);
     *offer = bargaining->current_offer;
@@ -686,6 +864,10 @@ nimcp_error_t nimcp_bargaining_set_powers(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    bargaining_heartbeat("bargaining_bargaining_set_power", 0.0f);
+
+
     if (num_players > NIMCP_GT_MAX_PLAYERS || num_players != bargaining->config.num_players) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -693,6 +875,12 @@ nimcp_error_t nimcp_bargaining_set_powers(
     // Verify powers sum to approximately 1.0
     float sum = 0.0f;
     for (uint32_t i = 0; i < num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_players > 256) {
+            bargaining_heartbeat("bargaining_loop",
+                             (float)(i + 1) / (float)num_players);
+        }
+
         if (powers[i] < 0.0f || powers[i] > 1.0f) {
             return NIMCP_ERROR_INVALID_PARAM;
         }
@@ -704,6 +892,12 @@ nimcp_error_t nimcp_bargaining_set_powers(
 
     nimcp_platform_mutex_lock(&bargaining->mutex);
     for (uint32_t i = 0; i < num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_players > 256) {
+            bargaining_heartbeat("bargaining_loop",
+                             (float)(i + 1) / (float)num_players);
+        }
+
         bargaining->config.bargaining_powers[i] = powers[i];
     }
     nimcp_platform_mutex_unlock(&bargaining->mutex);
@@ -720,12 +914,22 @@ nimcp_error_t nimcp_bargaining_set_disagreement(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    bargaining_heartbeat("bargaining_bargaining_set_disag", 0.0f);
+
+
     if (num_players > NIMCP_GT_MAX_PLAYERS || num_players != bargaining->config.num_players) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     nimcp_platform_mutex_lock(&bargaining->mutex);
     for (uint32_t i = 0; i < num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_players > 256) {
+            bargaining_heartbeat("bargaining_loop",
+                             (float)(i + 1) / (float)num_players);
+        }
+
         bargaining->config.disagreement_payoffs[i] = disagreement[i];
     }
     nimcp_platform_mutex_unlock(&bargaining->mutex);
@@ -740,9 +944,19 @@ nimcp_error_t nimcp_bargaining_set_disagreement(
 int bargaining_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    bargaining_heartbeat("bargaining_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Bargaining_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                bargaining_heartbeat("bargaining_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG(LOG_MODULE, "Bargaining self-knowledge: %s", self->observations[i]);
         }
     }

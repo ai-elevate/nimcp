@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_rcog_fep_bridge_health_agent = NULL;
  * @brief Set health agent for rcog_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void rcog_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void rcog_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_rcog_fep_bridge_health_agent = agent;
 }
 
@@ -306,6 +306,10 @@ static void update_stats(rcog_fep_bridge_t* bridge, uint64_t update_time_us) {
  *===========================================================================*/
 
 rcog_fep_config_t rcog_fep_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_rcog_fep_config_defa", 0.0f);
+
+
     rcog_fep_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -334,6 +338,10 @@ rcog_fep_config_t rcog_fep_config_default(void) {
 }
 
 rcog_fep_bridge_t* rcog_fep_bridge_create(const rcog_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_create", 0.0f);
+
+
     rcog_fep_bridge_t* bridge = nimcp_calloc(1, sizeof(rcog_fep_bridge_t));
     if (!bridge) {
 
@@ -385,6 +393,10 @@ void rcog_fep_bridge_destroy(rcog_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Unregister if still registered */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_destroy", 0.0f);
+
+
     if (bridge->registered) {
         rcog_fep_bridge_unregister(bridge);
     }
@@ -396,6 +408,10 @@ void rcog_fep_bridge_destroy(rcog_fep_bridge_t* bridge) {
 
 int rcog_fep_bridge_reset(rcog_fep_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_reset", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -437,6 +453,10 @@ int rcog_fep_bridge_register(
     if (!orchestrator || !engine) return -1;
 
     /* Create bridge with default config */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_register", 0.0f);
+
+
     rcog_fep_bridge_t* bridge = rcog_fep_bridge_create(NULL);
     if (!bridge) return -1;
 
@@ -456,6 +476,10 @@ int rcog_fep_bridge_register_ex(
     uint32_t* bridge_id_out
 ) {
     if (!bridge || !orchestrator || !engine) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_register_ex", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -506,6 +530,10 @@ int rcog_fep_bridge_register_ex(
 int rcog_fep_bridge_unregister(rcog_fep_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_unregister", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->registered) {
@@ -531,6 +559,10 @@ int rcog_fep_bridge_unregister(rcog_fep_bridge_t* bridge) {
 bool rcog_fep_bridge_is_registered(const rcog_fep_bridge_t* bridge) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_is_registered", 0.0f);
+
+
     nimcp_mutex_lock(((rcog_fep_bridge_t*)bridge)->base.mutex);
     bool registered = bridge->registered;
     nimcp_mutex_unlock(((rcog_fep_bridge_t*)bridge)->base.mutex);
@@ -540,6 +572,10 @@ bool rcog_fep_bridge_is_registered(const rcog_fep_bridge_t* bridge) {
 
 uint32_t rcog_fep_bridge_get_id(const rcog_fep_bridge_t* bridge) {
     if (!bridge) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_get_id", 0.0f);
+
 
     nimcp_mutex_lock(((rcog_fep_bridge_t*)bridge)->base.mutex);
     uint32_t id = bridge->registered ? bridge->bridge_id : 0;
@@ -553,6 +589,10 @@ uint32_t rcog_fep_bridge_get_id(const rcog_fep_bridge_t* bridge) {
  *===========================================================================*/
 
 int rcog_fep_update_callback(void* handle) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_rcog_fep_update_call", 0.0f);
+
+
     rcog_fep_bridge_t* bridge = (rcog_fep_bridge_t*)handle;
     if (!bridge) return -1;
 
@@ -604,6 +644,10 @@ int rcog_fep_update_callback(void* handle) {
 
 void rcog_fep_destroy_callback(void* handle) {
     /* No-op: Bridge is destroyed separately via rcog_fep_bridge_destroy() */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_rcog_fep_destroy_cal", 0.0f);
+
+
     (void)handle;
 }
 
@@ -616,6 +660,10 @@ int rcog_fep_bridge_get_metrics(
     rcog_fep_metrics_t* metrics_out
 ) {
     if (!bridge || !metrics_out) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_get_metrics", 0.0f);
+
 
     nimcp_mutex_lock(((rcog_fep_bridge_t*)bridge)->base.mutex);
     *metrics_out = bridge->metrics;
@@ -630,6 +678,10 @@ int rcog_fep_bridge_get_stats(
 ) {
     if (!bridge || !stats_out) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(((rcog_fep_bridge_t*)bridge)->base.mutex);
     *stats_out = bridge->stats;
     nimcp_mutex_unlock(((rcog_fep_bridge_t*)bridge)->base.mutex);
@@ -639,6 +691,10 @@ int rcog_fep_bridge_get_stats(
 
 int rcog_fep_bridge_reset_stats(rcog_fep_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_reset_stats", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(rcog_fep_stats_t));
@@ -653,6 +709,10 @@ int rcog_fep_bridge_reset_stats(rcog_fep_bridge_t* bridge) {
 float rcog_fep_bridge_get_free_energy(const rcog_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_get_free_energy", 0.0f);
+
+
     nimcp_mutex_lock(((rcog_fep_bridge_t*)bridge)->base.mutex);
     float fe = bridge->metrics.free_energy;
     nimcp_mutex_unlock(((rcog_fep_bridge_t*)bridge)->base.mutex);
@@ -663,6 +723,10 @@ float rcog_fep_bridge_get_free_energy(const rcog_fep_bridge_t* bridge) {
 float rcog_fep_bridge_get_prediction_error(const rcog_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_get_prediction_error", 0.0f);
+
+
     nimcp_mutex_lock(((rcog_fep_bridge_t*)bridge)->base.mutex);
     float pe = bridge->metrics.prediction_error;
     nimcp_mutex_unlock(((rcog_fep_bridge_t*)bridge)->base.mutex);
@@ -672,6 +736,10 @@ float rcog_fep_bridge_get_prediction_error(const rcog_fep_bridge_t* bridge) {
 
 rcog_fep_state_t rcog_fep_bridge_get_state(const rcog_fep_bridge_t* bridge) {
     if (!bridge) return RCOG_FEP_STATE_ERROR;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_get_state", 0.0f);
+
 
     nimcp_mutex_lock(((rcog_fep_bridge_t*)bridge)->base.mutex);
     rcog_fep_state_t state = bridge->state;
@@ -687,6 +755,10 @@ rcog_fep_state_t rcog_fep_bridge_get_state(const rcog_fep_bridge_t* bridge) {
 bool rcog_fep_bridge_is_degraded(const rcog_fep_bridge_t* bridge) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_is_degraded", 0.0f);
+
+
     nimcp_mutex_lock(((rcog_fep_bridge_t*)bridge)->base.mutex);
     bool degraded = (bridge->state == RCOG_FEP_STATE_DEGRADED);
     nimcp_mutex_unlock(((rcog_fep_bridge_t*)bridge)->base.mutex);
@@ -696,6 +768,10 @@ bool rcog_fep_bridge_is_degraded(const rcog_fep_bridge_t* bridge) {
 
 bool rcog_fep_bridge_is_converging(const rcog_fep_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_is_converging", 0.0f);
+
 
     nimcp_mutex_lock(((rcog_fep_bridge_t*)bridge)->base.mutex);
     bool converging = bridge->metrics.answer_converging;
@@ -707,6 +783,10 @@ bool rcog_fep_bridge_is_converging(const rcog_fep_bridge_t* bridge) {
 float rcog_fep_bridge_get_normalized_depth(const rcog_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_get_normalized_depth", 0.0f);
+
+
     nimcp_mutex_lock(((rcog_fep_bridge_t*)bridge)->base.mutex);
     float depth = bridge->metrics.normalized_depth;
     nimcp_mutex_unlock(((rcog_fep_bridge_t*)bridge)->base.mutex);
@@ -716,6 +796,10 @@ float rcog_fep_bridge_get_normalized_depth(const rcog_fep_bridge_t* bridge) {
 
 float rcog_fep_bridge_get_decomp_success_rate(const rcog_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_get_decomp_success_r", 0.0f);
+
 
     nimcp_mutex_lock(((rcog_fep_bridge_t*)bridge)->base.mutex);
     float rate = bridge->metrics.decomp_success_rate;
@@ -735,6 +819,10 @@ int rcog_fep_bridge_set_high_fe_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_set_high_fe_callback", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->high_fe_callback = callback;
     bridge->high_fe_user_data = user_data;
@@ -750,6 +838,10 @@ int rcog_fep_bridge_set_surprise_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_set_surprise_callbac", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->surprise_callback = callback;
     bridge->surprise_user_data = user_data;
@@ -764,6 +856,10 @@ int rcog_fep_bridge_set_metrics_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_set_metrics_callback", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics_callback = callback;
@@ -783,6 +879,10 @@ int rcog_fep_bridge_set_config(
 ) {
     if (!bridge || !config) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_set_config", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->config = *config;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -795,6 +895,10 @@ int rcog_fep_bridge_get_config(
     rcog_fep_config_t* config_out
 ) {
     if (!bridge || !config_out) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_get_config", 0.0f);
+
 
     nimcp_mutex_lock(((rcog_fep_bridge_t*)bridge)->base.mutex);
     *config_out = bridge->config;
@@ -822,6 +926,10 @@ int rcog_fep_bridge_force_update(rcog_fep_bridge_t* bridge) {
     if (!bridge) return -1;
 
     /* If registered with orchestrator and has engine, do full update */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_fep_bridge_heartbeat("rcog_fep_bri_force_update", 0.0f);
+
+
     if (bridge->registered && bridge->engine) {
         return rcog_fep_update_callback(bridge);
     }

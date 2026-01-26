@@ -44,7 +44,7 @@ static nimcp_health_agent_t* g_pr_predictive_bridge_health_agent = NULL;
  * @brief Set health agent for pr_predictive_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void pr_predictive_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void pr_predictive_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_pr_predictive_bridge_health_agent = agent;
 }
 
@@ -124,6 +124,10 @@ static pr_pred_error_t process_reconsolidation_windows(
 //=============================================================================
 
 pr_predictive_bridge_config_t pr_predictive_bridge_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_config_default", 0.0f);
+
+
     pr_predictive_bridge_config_t config = {
         /* PE thresholds */
         .pe_threshold_update = PR_PRED_DEFAULT_PE_THRESHOLD_UPDATE,
@@ -165,6 +169,10 @@ bool pr_predictive_bridge_config_validate(const pr_predictive_bridge_config_t* c
     }
 
     /* Check thresholds */
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_config_validate", 0.0f);
+
+
     if (config->pe_threshold_update <= 0.0f) {
         set_error("pe_threshold_update must be > 0");
         return false;
@@ -213,6 +221,10 @@ pr_predictive_bridge_t* pr_predictive_bridge_create(
     const pr_predictive_bridge_config_t* config
 ) {
     /* Use default config if none provided */
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_create", 0.0f);
+
+
     pr_predictive_bridge_config_t cfg;
     if (config) {
         cfg = *config;
@@ -278,6 +290,10 @@ void pr_predictive_bridge_destroy(pr_predictive_bridge_t* bridge) {
     }
 
     /* Free reconsolidation windows */
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_destroy", 0.0f);
+
+
     if (bridge->reconsolidation_windows) {
         nimcp_free(bridge->reconsolidation_windows);
     }
@@ -295,6 +311,10 @@ pr_pred_error_t pr_predictive_bridge_reset(pr_predictive_bridge_t* bridge) {
     if (!bridge) {
         return PR_PRED_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_reset", 0.0f);
+
 
     BRIDGE_LOCK(bridge);
 
@@ -359,6 +379,10 @@ pr_pred_error_t pr_predictive_bridge_connect_visual_fep(
         return PR_PRED_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_connect_visual_fep", 0.0f);
+
+
     BRIDGE_LOCK(bridge);
     bridge->visual_fep = visual_fep;
     BRIDGE_UNLOCK(bridge);
@@ -375,6 +399,10 @@ pr_pred_error_t pr_predictive_bridge_connect_audio_fep(
         return PR_PRED_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_connect_audio_fep", 0.0f);
+
+
     BRIDGE_LOCK(bridge);
     bridge->audio_fep = audio_fep;
     BRIDGE_UNLOCK(bridge);
@@ -390,6 +418,10 @@ pr_pred_error_t pr_predictive_bridge_connect_speech_fep(
     if (!bridge) {
         return PR_PRED_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_connect_speech_fep", 0.0f);
+
 
     BRIDGE_LOCK(bridge);
     bridge->speech_fep = speech_fep;
@@ -411,6 +443,10 @@ pr_pred_error_t pr_predictive_bridge_connect_pr_visual(
         return PR_PRED_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_connect_pr_visual", 0.0f);
+
+
     BRIDGE_LOCK(bridge);
     bridge->pr_visual = pr_visual;
     BRIDGE_UNLOCK(bridge);
@@ -425,6 +461,10 @@ pr_pred_error_t pr_predictive_bridge_connect_pr_audio(
     if (!bridge) {
         return PR_PRED_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_connect_pr_audio", 0.0f);
+
 
     BRIDGE_LOCK(bridge);
     bridge->pr_audio = pr_audio;
@@ -441,6 +481,10 @@ pr_pred_error_t pr_predictive_bridge_connect_pr_speech(
         return PR_PRED_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_connect_pr_speech", 0.0f);
+
+
     BRIDGE_LOCK(bridge);
     bridge->pr_speech = pr_speech;
     BRIDGE_UNLOCK(bridge);
@@ -456,6 +500,10 @@ pr_pred_error_t pr_predictive_bridge_connect_pr_omni(
         return PR_PRED_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_connect_pr_omni", 0.0f);
+
+
     BRIDGE_LOCK(bridge);
     bridge->pr_omni = pr_omni;
     BRIDGE_UNLOCK(bridge);
@@ -470,6 +518,10 @@ pr_pred_error_t pr_predictive_bridge_connect_node_manager(
     if (!bridge) {
         return PR_PRED_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_connect_node_manager", 0.0f);
+
 
     BRIDGE_LOCK(bridge);
     bridge->node_manager = node_manager;
@@ -490,6 +542,10 @@ pr_pred_error_t pr_predictive_bridge_update(
     if (!bridge) {
         return PR_PRED_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_update", 0.0f);
+
 
     BRIDGE_LOCK(bridge);
 
@@ -565,6 +621,10 @@ pr_pred_error_t pr_predictive_bridge_collect_pe(pr_predictive_bridge_t* bridge) 
         return PR_PRED_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_collect_pe", 0.0f);
+
+
     uint64_t current_time_ms = pr_pred_current_time_ms();
     bool collected_any = false;
 
@@ -617,6 +677,10 @@ pr_pred_error_t pr_predictive_bridge_compute_combined_pe(
     }
 
     /* Precision-weighted sum */
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_compute_combined_pe", 0.0f);
+
+
     float weighted_sum = 0.0f;
     float precision_sum = 0.0f;
 
@@ -653,6 +717,10 @@ pr_pred_error_t pr_predictive_bridge_update_precision(pr_predictive_bridge_t* br
     if (!bridge) {
         return PR_PRED_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_update_precision", 0.0f);
+
 
     float rate = bridge->config.precision_adaptation_rate;
 
@@ -700,6 +768,10 @@ pr_pred_error_t pr_predictive_bridge_set_precision(
         return PR_PRED_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_set_precision", 0.0f);
+
+
     BRIDGE_LOCK(bridge);
 
     if (!isnan(visual_precision)) {
@@ -729,6 +801,10 @@ pr_pred_error_t pr_predictive_bridge_generate_predictions(
     }
 
     /* Clear existing prediction sources */
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_generate_predictions", 0.0f);
+
+
     bridge->num_prediction_sources = 0;
 
     /* If no node manager, we can't generate memory-based predictions */
@@ -757,6 +833,10 @@ pr_pred_error_t pr_predictive_bridge_add_prediction_source(
         return PR_PRED_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_add_prediction_sourc", 0.0f);
+
+
     if (bridge->num_prediction_sources >= PR_PRED_MAX_PREDICTION_SOURCES) {
         return PR_PRED_ERROR_BUFFER_FULL;
     }
@@ -784,6 +864,10 @@ pr_pred_error_t pr_predictive_bridge_clear_prediction_sources(
         return PR_PRED_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_clear_prediction_sou", 0.0f);
+
+
     BRIDGE_LOCK(bridge);
     bridge->num_prediction_sources = 0;
     BRIDGE_UNLOCK(bridge);
@@ -799,6 +883,10 @@ float pr_predictive_bridge_resonance_to_confidence(
         return 0.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_resonance_to_confide", 0.0f);
+
+
     return bridge->config.resonance_prediction_weight * resonance;
 }
 
@@ -813,11 +901,21 @@ pr_pred_error_t pr_predictive_bridge_update_memories_from_pe(
         return PR_PRED_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_update_memories_from", 0.0f);
+
+
     float pe = bridge->pe_state.combined_pe;
 
     /* Find max resonance among prediction sources */
     float max_resonance = 0.0f;
     for (size_t i = 0; i < bridge->num_prediction_sources; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_prediction_sources > 256) {
+            pr_predictive_bridge_heartbeat("pr_predictiv_loop",
+                             (float)(i + 1) / (float)bridge->num_prediction_sources);
+        }
+
         if (bridge->prediction_sources[i].resonance_score > max_resonance) {
             max_resonance = bridge->prediction_sources[i].resonance_score;
         }
@@ -832,6 +930,12 @@ pr_pred_error_t pr_predictive_bridge_update_memories_from_pe(
         case PR_MEM_UPDATE_CONSOLIDATE:
             /* Low PE + high resonance: strengthen existing memories */
             for (size_t i = 0; i < bridge->num_prediction_sources; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && bridge->num_prediction_sources > 256) {
+                    pr_predictive_bridge_heartbeat("pr_predictiv_loop",
+                                     (float)(i + 1) / (float)bridge->num_prediction_sources);
+                }
+
                 if (bridge->prediction_sources[i].resonance_score > 0.5f) {
                     /* Strengthen via quaternion.w boost */
                     /* In a full implementation, we'd fetch the actual node and modify it */
@@ -845,6 +949,12 @@ pr_pred_error_t pr_predictive_bridge_update_memories_from_pe(
             /* High PE + high resonance: update existing memories */
             if (bridge->config.enable_reconsolidation) {
                 for (size_t i = 0; i < bridge->num_prediction_sources; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && bridge->num_prediction_sources > 256) {
+                        pr_predictive_bridge_heartbeat("pr_predictiv_loop",
+                                         (float)(i + 1) / (float)bridge->num_prediction_sources);
+                    }
+
                     if (bridge->prediction_sources[i].resonance_score > 0.5f) {
                         pr_predictive_bridge_trigger_reconsolidation(
                             bridge,
@@ -882,7 +992,17 @@ pr_pred_error_t pr_predictive_bridge_trigger_reconsolidation(
     }
 
     /* Check if already in reconsolidation */
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_trigger_reconsolidat", 0.0f);
+
+
     for (size_t i = 0; i < bridge->num_reconsolidation_windows; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_reconsolidation_windows > 256) {
+            pr_predictive_bridge_heartbeat("pr_predictiv_loop",
+                             (float)(i + 1) / (float)bridge->num_reconsolidation_windows);
+        }
+
         if (bridge->reconsolidation_windows[i].active &&
             bridge->reconsolidation_windows[i].node_id == node_id) {
             /* Already open, just accumulate PE */
@@ -895,6 +1015,12 @@ pr_pred_error_t pr_predictive_bridge_trigger_reconsolidation(
     /* Find free slot */
     pr_reconsolidation_window_t* window = NULL;
     for (size_t i = 0; i < bridge->max_reconsolidation_windows; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_reconsolidation_windows > 256) {
+            pr_predictive_bridge_heartbeat("pr_predictiv_loop",
+                             (float)(i + 1) / (float)bridge->max_reconsolidation_windows);
+        }
+
         if (!bridge->reconsolidation_windows[i].active) {
             window = &bridge->reconsolidation_windows[i];
             break;
@@ -927,7 +1053,17 @@ pr_pred_error_t pr_predictive_bridge_close_reconsolidation(
         return PR_PRED_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_close_reconsolidatio", 0.0f);
+
+
     for (size_t i = 0; i < bridge->max_reconsolidation_windows; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_reconsolidation_windows > 256) {
+            pr_predictive_bridge_heartbeat("pr_predictiv_loop",
+                             (float)(i + 1) / (float)bridge->max_reconsolidation_windows);
+        }
+
         if (bridge->reconsolidation_windows[i].active &&
             bridge->reconsolidation_windows[i].node_id == node_id) {
 
@@ -962,6 +1098,10 @@ pr_pred_error_t pr_predictive_bridge_strengthen_memory(
     }
 
     /* Get current state */
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_strengthen_memory", 0.0f);
+
+
     nimcp_quaternion_t state = pr_memory_node_get_state(node);
 
     /* Boost consolidation (w component) */
@@ -996,6 +1136,10 @@ pr_pred_error_t pr_predictive_bridge_encode_new_memory(
     }
 
     /* Configure new node */
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_encode_new_memory", 0.0f);
+
+
     pr_node_config_t config = pr_memory_node_default_config();
     config.initial_tier = PR_MEMORY_TIER_Z0;  /* Start in working memory */
     config.initial_strength = initial_state.w;
@@ -1045,6 +1189,10 @@ pr_pred_error_t pr_predictive_bridge_compute_free_energy(
      * - KL term ≈ complexity of model
      */
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_compute_free_energy", 0.0f);
+
+
     float pe = bridge->pe_state.combined_pe;
 
     /* Complexity term: based on number of active prediction sources */
@@ -1084,6 +1232,10 @@ pr_pred_error_t pr_predictive_bridge_get_free_energy_history(
     }
 
     *count = bridge->history_count;
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_get_free_energy_hist", 0.0f);
+
+
     memcpy(history, bridge->free_energy_history,
            bridge->history_count * sizeof(float));
 
@@ -1102,6 +1254,10 @@ pr_pred_error_t pr_predictive_bridge_select_action(
         return PR_PRED_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_select_action", 0.0f);
+
+
     if (bridge->num_pending_actions == 0) {
         memset(selected_action, 0, sizeof(pr_active_inference_action_t));
         return PR_PRED_SUCCESS;
@@ -1110,6 +1266,12 @@ pr_pred_error_t pr_predictive_bridge_select_action(
     /* Collect expected PE reductions */
     float pe_reductions[PR_PRED_MAX_PENDING_ACTIONS];
     for (size_t i = 0; i < bridge->num_pending_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_pending_actions > 256) {
+            pr_predictive_bridge_heartbeat("pr_predictiv_loop",
+                             (float)(i + 1) / (float)bridge->num_pending_actions);
+        }
+
         pe_reductions[i] = bridge->pending_actions[i].expected_pe_reduction;
     }
 
@@ -1132,6 +1294,10 @@ int pr_predictive_bridge_generate_actions(pr_predictive_bridge_t* bridge) {
     }
 
     /* Clear old actions */
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_generate_actions", 0.0f);
+
+
     bridge->num_pending_actions = 0;
 
     float visual_pe = bridge->pe_state.visual_pe;
@@ -1233,6 +1399,10 @@ pr_pred_error_t pr_predictive_bridge_execute_action(
         return PR_PRED_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_execute_action", 0.0f);
+
+
     if (action_idx >= bridge->num_pending_actions) {
         return PR_PRED_ERROR_INVALID_ACTION;
     }
@@ -1254,6 +1424,10 @@ int pr_predictive_bridge_get_pending_actions(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_get_pending_actions", 0.0f);
+
+
     size_t count = bridge->num_pending_actions;
     if (count > max_actions) {
         count = max_actions;
@@ -1267,6 +1441,10 @@ pr_pred_error_t pr_predictive_bridge_clear_actions(pr_predictive_bridge_t* bridg
     if (!bridge) {
         return PR_PRED_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_clear_actions", 0.0f);
+
 
     BRIDGE_LOCK(bridge);
     bridge->num_pending_actions = 0;
@@ -1289,6 +1467,10 @@ pr_pred_error_t pr_predictive_bridge_get_pe_state(
     }
 
     *pe_state = bridge->pe_state;
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_get_pe_state", 0.0f);
+
+
     return PR_PRED_SUCCESS;
 }
 
@@ -1301,6 +1483,10 @@ pr_pred_error_t pr_predictive_bridge_get_mem_update_state(
     }
 
     *mem_state = bridge->mem_update_state;
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_get_mem_update_state", 0.0f);
+
+
     return PR_PRED_SUCCESS;
 }
 
@@ -1313,6 +1499,10 @@ pr_pred_error_t pr_predictive_bridge_get_stats(
     }
 
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_get_stats", 0.0f);
+
+
     return PR_PRED_SUCCESS;
 }
 
@@ -1320,6 +1510,10 @@ pr_pred_error_t pr_predictive_bridge_reset_stats(pr_predictive_bridge_t* bridge)
     if (!bridge) {
         return PR_PRED_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_reset_stats", 0.0f);
+
 
     BRIDGE_LOCK(bridge);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -1409,6 +1603,10 @@ void pr_predictive_bridge_print_state(const pr_predictive_bridge_t* bridge) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_print_state", 0.0f);
+
+
     printf("=== PR Predictive Bridge State ===\n");
     printf("PE State:\n");
     printf("  Visual PE: %.4f (precision: %.4f)\n",
@@ -1451,6 +1649,10 @@ bool pr_predictive_bridge_is_ready(const pr_predictive_bridge_t* bridge) {
     }
 
     /* Need at least one FEP bridge connected */
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_is_ready", 0.0f);
+
+
     bool has_fep =
         (bridge->config.enable_visual && bridge->visual_fep != NULL) ||
         (bridge->config.enable_audio && bridge->audio_fep != NULL) ||
@@ -1461,6 +1663,10 @@ bool pr_predictive_bridge_is_ready(const pr_predictive_bridge_t* bridge) {
 
 uint64_t pr_pred_current_time_ms(void) {
     /* Use PR node time function if available */
+    /* Phase 8: Heartbeat at operation start */
+    pr_predictive_bridge_heartbeat("pr_predictiv_pr_pred_current_time", 0.0f);
+
+
     return pr_node_current_time_ms();
 }
 
@@ -1483,6 +1689,12 @@ static float compute_variance(const pe_history_t* history) {
     /* Compute mean */
     float sum = 0.0f;
     for (size_t i = 0; i < history->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && history->count > 256) {
+            pr_predictive_bridge_heartbeat("pr_predictiv_loop",
+                             (float)(i + 1) / (float)history->count);
+        }
+
         sum += history->values[i];
     }
     float mean = sum / (float)history->count;
@@ -1490,6 +1702,12 @@ static float compute_variance(const pe_history_t* history) {
     /* Compute variance */
     float var_sum = 0.0f;
     for (size_t i = 0; i < history->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && history->count > 256) {
+            pr_predictive_bridge_heartbeat("pr_predictiv_loop",
+                             (float)(i + 1) / (float)history->count);
+        }
+
         float diff = history->values[i] - mean;
         var_sum += diff * diff;
     }
@@ -1608,6 +1826,12 @@ static pr_pred_error_t process_reconsolidation_windows(
     }
 
     for (size_t i = 0; i < bridge->max_reconsolidation_windows; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_reconsolidation_windows > 256) {
+            pr_predictive_bridge_heartbeat("pr_predictiv_loop",
+                             (float)(i + 1) / (float)bridge->max_reconsolidation_windows);
+        }
+
         pr_reconsolidation_window_t* window = &bridge->reconsolidation_windows[i];
 
         if (!window->active) {

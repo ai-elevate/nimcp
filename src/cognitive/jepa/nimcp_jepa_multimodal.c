@@ -41,7 +41,7 @@ static nimcp_health_agent_t* g_jepa_multimodal_health_agent = NULL;
  * @brief Set health agent for jepa_multimodal heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void jepa_multimodal_set_health_agent(nimcp_health_agent_t* agent) {
+void jepa_multimodal_set_health_agent(nimcp_health_agent_t* agent) {
     g_jepa_multimodal_health_agent = agent;
 }
 
@@ -87,6 +87,10 @@ static float cosine_similarity(const float* a, const float* b, uint32_t dim);
 
 int jepa_multimodal_default_config(jepa_multimodal_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     memset(config, 0, sizeof(*config));
@@ -142,6 +146,10 @@ int jepa_multimodal_default_config(jepa_multimodal_config_t* config)
 
 jepa_multimodal_t* jepa_multimodal_create(const jepa_multimodal_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_create", 0.0f);
+
+
     jepa_multimodal_t* mm = NULL;
     jepa_multimodal_config_t default_config;
     int rc;
@@ -233,6 +241,10 @@ void jepa_multimodal_destroy(jepa_multimodal_t* mm)
     }
 
     /* Disconnect from bio-async */
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_destroy", 0.0f);
+
+
     jepa_multimodal_disconnect_bio_async(mm);
 
     /* Free projections */
@@ -258,6 +270,10 @@ void jepa_multimodal_destroy(jepa_multimodal_t* mm)
 
 int jepa_multimodal_reset(jepa_multimodal_t* mm)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_reset", 0.0f);
+
+
     NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
 
     /* Reset stats */
@@ -277,6 +293,10 @@ int jepa_multimodal_connect_visual(
     jepa_multimodal_t* mm,
     visual_jepa_bridge_t* visual)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_connect_visual", 0.0f);
+
+
     NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
     NIMCP_CHECK_THROW(visual, NIMCP_ERROR_INVALID_PARAM, "visual is NULL");
 
@@ -291,6 +311,10 @@ int jepa_multimodal_connect_speech(
     jepa_multimodal_t* mm,
     speech_jepa_bridge_t* speech)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_connect_speech", 0.0f);
+
+
     NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
     NIMCP_CHECK_THROW(speech, NIMCP_ERROR_INVALID_PARAM, "speech is NULL");
 
@@ -303,6 +327,10 @@ int jepa_multimodal_connect_speech(
 
 int jepa_multimodal_disconnect_all(jepa_multimodal_t* mm)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_disconnect_all", 0.0f);
+
+
     NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
 
     mm->visual_encoder = NULL;
@@ -314,6 +342,10 @@ int jepa_multimodal_disconnect_all(jepa_multimodal_t* mm)
 
 bool jepa_multimodal_is_connected(const jepa_multimodal_t* mm)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_is_connected", 0.0f);
+
+
     return mm && mm->visual_encoder && mm->speech_encoder;
 }
 
@@ -326,6 +358,10 @@ int jepa_multimodal_encode_visual(
     const jepa_latent_t* visual_latent,
     jepa_latent_t* joint_latent)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_encode_visual", 0.0f);
+
+
     NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
     NIMCP_CHECK_THROW(visual_latent, NIMCP_ERROR_INVALID_PARAM, "visual_latent is NULL");
     NIMCP_CHECK_THROW(joint_latent, NIMCP_ERROR_INVALID_PARAM, "joint_latent is NULL");
@@ -356,10 +392,22 @@ int jepa_multimodal_encode_visual(
     /* L2 normalize for contrastive */
     float norm = 0.0f;
     for (uint32_t i = 0; i < mm->config.joint_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mm->config.joint_dim > 256) {
+            jepa_multimodal_heartbeat("jepa_multimo_loop",
+                             (float)(i + 1) / (float)mm->config.joint_dim);
+        }
+
         norm += joint_latent->embedding[i] * joint_latent->embedding[i];
     }
     norm = sqrtf(norm + 1e-8f);
     for (uint32_t i = 0; i < mm->config.joint_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mm->config.joint_dim > 256) {
+            jepa_multimodal_heartbeat("jepa_multimo_loop",
+                             (float)(i + 1) / (float)mm->config.joint_dim);
+        }
+
         joint_latent->embedding[i] /= norm;
     }
 
@@ -377,6 +425,10 @@ int jepa_multimodal_encode_speech(
     const jepa_latent_t* speech_latent,
     jepa_latent_t* joint_latent)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_encode_speech", 0.0f);
+
+
     NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
     NIMCP_CHECK_THROW(speech_latent, NIMCP_ERROR_INVALID_PARAM, "speech_latent is NULL");
     NIMCP_CHECK_THROW(joint_latent, NIMCP_ERROR_INVALID_PARAM, "joint_latent is NULL");
@@ -407,10 +459,22 @@ int jepa_multimodal_encode_speech(
     /* L2 normalize for contrastive */
     float norm = 0.0f;
     for (uint32_t i = 0; i < mm->config.joint_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mm->config.joint_dim > 256) {
+            jepa_multimodal_heartbeat("jepa_multimo_loop",
+                             (float)(i + 1) / (float)mm->config.joint_dim);
+        }
+
         norm += joint_latent->embedding[i] * joint_latent->embedding[i];
     }
     norm = sqrtf(norm + 1e-8f);
     for (uint32_t i = 0; i < mm->config.joint_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mm->config.joint_dim > 256) {
+            jepa_multimodal_heartbeat("jepa_multimo_loop",
+                             (float)(i + 1) / (float)mm->config.joint_dim);
+        }
+
         joint_latent->embedding[i] /= norm;
     }
 
@@ -429,6 +493,10 @@ int jepa_multimodal_fuse(
     const jepa_latent_t* speech_latent,
     jepa_latent_t* fused_latent)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_fuse", 0.0f);
+
+
     NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
     NIMCP_CHECK_THROW(visual_latent, NIMCP_ERROR_INVALID_PARAM, "visual_latent is NULL");
     NIMCP_CHECK_THROW(speech_latent, NIMCP_ERROR_INVALID_PARAM, "speech_latent is NULL");
@@ -478,6 +546,12 @@ int jepa_multimodal_fuse(
 
         case JEPA_MM_FUSION_AVERAGE:
             for (uint32_t i = 0; i < joint_dim; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && joint_dim > 256) {
+                    jepa_multimodal_heartbeat("jepa_multimo_loop",
+                                     (float)(i + 1) / (float)joint_dim);
+                }
+
                 fused_latent->embedding[i] = 0.5f * (
                     visual_joint.embedding[i] + speech_joint.embedding[i]
                 );
@@ -492,6 +566,12 @@ int jepa_multimodal_fuse(
                 float visual_weight = 0.5f + 0.5f * sim;  /* Range [0, 1] */
                 float speech_weight = 1.0f - visual_weight;
                 for (uint32_t i = 0; i < joint_dim; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && joint_dim > 256) {
+                        jepa_multimodal_heartbeat("jepa_multimo_loop",
+                                         (float)(i + 1) / (float)joint_dim);
+                    }
+
                     fused_latent->embedding[i] =
                         visual_weight * visual_joint.embedding[i] +
                         speech_weight * speech_joint.embedding[i];
@@ -502,6 +582,12 @@ int jepa_multimodal_fuse(
         case JEPA_MM_FUSION_GATE:
             /* Gated fusion: element-wise sigmoid gate */
             for (uint32_t i = 0; i < joint_dim; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && joint_dim > 256) {
+                    jepa_multimodal_heartbeat("jepa_multimo_loop",
+                                     (float)(i + 1) / (float)joint_dim);
+                }
+
                 float gate = 1.0f / (1.0f + expf(-(visual_joint.embedding[i])));
                 fused_latent->embedding[i] =
                     gate * visual_joint.embedding[i] +
@@ -512,6 +598,12 @@ int jepa_multimodal_fuse(
         default:
             /* Default to average */
             for (uint32_t i = 0; i < joint_dim; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && joint_dim > 256) {
+                    jepa_multimodal_heartbeat("jepa_multimo_loop",
+                                     (float)(i + 1) / (float)joint_dim);
+                }
+
                 fused_latent->embedding[i] = 0.5f * (
                     visual_joint.embedding[i] + speech_joint.embedding[i]
                 );
@@ -542,6 +634,10 @@ int jepa_multimodal_predict_speech_from_visual(
     const jepa_latent_t* visual_latent,
     jepa_latent_t* predicted_speech)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_predict_speech_from_", 0.0f);
+
+
     NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
     NIMCP_CHECK_THROW(visual_latent, NIMCP_ERROR_INVALID_PARAM, "visual_latent is NULL");
     NIMCP_CHECK_THROW(predicted_speech, NIMCP_ERROR_INVALID_PARAM, "predicted_speech is NULL");
@@ -584,6 +680,10 @@ int jepa_multimodal_predict_visual_from_speech(
     const jepa_latent_t* speech_latent,
     jepa_latent_t* predicted_visual)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_predict_visual_from_", 0.0f);
+
+
     NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
     NIMCP_CHECK_THROW(speech_latent, NIMCP_ERROR_INVALID_PARAM, "speech_latent is NULL");
     NIMCP_CHECK_THROW(predicted_visual, NIMCP_ERROR_INVALID_PARAM, "predicted_visual is NULL");
@@ -631,6 +731,10 @@ int jepa_multimodal_similarity(
     const jepa_latent_t* speech_latent,
     float* similarity)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_similarity", 0.0f);
+
+
     NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
     NIMCP_CHECK_THROW(visual_latent, NIMCP_ERROR_INVALID_PARAM, "visual_latent is NULL");
     NIMCP_CHECK_THROW(speech_latent, NIMCP_ERROR_INVALID_PARAM, "speech_latent is NULL");
@@ -690,6 +794,10 @@ int jepa_multimodal_batch_similarity(
     uint32_t num_samples,
     float* similarity_matrix)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_batch_similarity", 0.0f);
+
+
     NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
     NIMCP_CHECK_THROW(visual_latents, NIMCP_ERROR_INVALID_PARAM, "visual_latents is NULL");
     NIMCP_CHECK_THROW(speech_latents, NIMCP_ERROR_INVALID_PARAM, "speech_latents is NULL");
@@ -713,10 +821,22 @@ int jepa_multimodal_batch_similarity(
 
     /* Project visual */
     for (uint32_t i = 0; i < num_samples; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_samples > 256) {
+            jepa_multimodal_heartbeat("jepa_multimo_loop",
+                             (float)(i + 1) / (float)num_samples);
+        }
+
         int rc = jepa_multimodal_encode_visual(mm, visual_latents[i], &visual_joints[i]);
         if (rc != NIMCP_SUCCESS) {
             /* Cleanup on error */
             for (uint32_t j = 0; j < num_samples; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && num_samples > 256) {
+                    jepa_multimodal_heartbeat("jepa_multimo_loop",
+                                     (float)(j + 1) / (float)num_samples);
+                }
+
                 nimcp_free(visual_joints[j].embedding);
                 nimcp_free(speech_joints[j].embedding);
             }
@@ -728,9 +848,21 @@ int jepa_multimodal_batch_similarity(
 
     /* Project speech */
     for (uint32_t i = 0; i < num_samples; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_samples > 256) {
+            jepa_multimodal_heartbeat("jepa_multimo_loop",
+                             (float)(i + 1) / (float)num_samples);
+        }
+
         int rc = jepa_multimodal_encode_speech(mm, speech_latents[i], &speech_joints[i]);
         if (rc != NIMCP_SUCCESS) {
             for (uint32_t j = 0; j < num_samples; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && num_samples > 256) {
+                    jepa_multimodal_heartbeat("jepa_multimo_loop",
+                                     (float)(j + 1) / (float)num_samples);
+                }
+
                 nimcp_free(visual_joints[j].embedding);
                 nimcp_free(speech_joints[j].embedding);
             }
@@ -742,7 +874,19 @@ int jepa_multimodal_batch_similarity(
 
     /* Compute all pairwise similarities */
     for (uint32_t i = 0; i < num_samples; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_samples > 256) {
+            jepa_multimodal_heartbeat("jepa_multimo_loop",
+                             (float)(i + 1) / (float)num_samples);
+        }
+
         for (uint32_t j = 0; j < num_samples; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && num_samples > 256) {
+                jepa_multimodal_heartbeat("jepa_multimo_loop",
+                                 (float)(j + 1) / (float)num_samples);
+            }
+
             float sim = cosine_similarity(
                 visual_joints[i].embedding,
                 speech_joints[j].embedding,
@@ -755,6 +899,12 @@ int jepa_multimodal_batch_similarity(
 
     /* Cleanup */
     for (uint32_t i = 0; i < num_samples; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_samples > 256) {
+            jepa_multimodal_heartbeat("jepa_multimo_loop",
+                             (float)(i + 1) / (float)num_samples);
+        }
+
         nimcp_free(visual_joints[i].embedding);
         nimcp_free(speech_joints[i].embedding);
     }
@@ -770,6 +920,10 @@ int jepa_multimodal_batch_similarity(
 
 int jepa_multimodal_set_training(jepa_multimodal_t* mm, bool training)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_set_training", 0.0f);
+
+
     NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
 
     mm->training_mode = training;
@@ -789,6 +943,10 @@ int jepa_multimodal_align_step(
     const jepa_mm_batch_t* batch,
     float* loss)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_align_step", 0.0f);
+
+
     NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
     NIMCP_CHECK_THROW(batch, NIMCP_ERROR_INVALID_PARAM, "batch is NULL");
     NIMCP_CHECK_THROW(loss, NIMCP_ERROR_INVALID_PARAM, "loss is NULL");
@@ -806,6 +964,12 @@ int jepa_multimodal_align_step(
             float temperature = mm->config.temperature;
 
             for (uint32_t i = 0; i < batch->num_pairs; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && batch->num_pairs > 256) {
+                    jepa_multimodal_heartbeat("jepa_multimo_loop",
+                                     (float)(i + 1) / (float)batch->num_pairs);
+                }
+
                 if (!batch->pairs[i].is_matched) continue;
 
                 /* Project pair to joint space */
@@ -823,6 +987,12 @@ int jepa_multimodal_align_step(
                 /* Compute negative similarities and denominator */
                 float exp_sum = expf(pos_sim);
                 for (uint32_t j = 0; j < batch->num_pairs; j++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((j & 0xFF) == 0 && batch->num_pairs > 256) {
+                        jepa_multimodal_heartbeat("jepa_multimo_loop",
+                                         (float)(j + 1) / (float)batch->num_pairs);
+                    }
+
                     if (j == i) continue;
 
                     jepa_latent_t neg_s = {0};
@@ -852,6 +1022,12 @@ int jepa_multimodal_align_step(
         case JEPA_MM_ALIGN_MSE: {
             /* Mean squared error between matched pairs */
             for (uint32_t i = 0; i < batch->num_pairs; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && batch->num_pairs > 256) {
+                    jepa_multimodal_heartbeat("jepa_multimo_loop",
+                                     (float)(i + 1) / (float)batch->num_pairs);
+                }
+
                 if (!batch->pairs[i].is_matched) continue;
 
                 jepa_latent_t v_joint = {0};
@@ -861,6 +1037,12 @@ int jepa_multimodal_align_step(
                 jepa_multimodal_encode_speech(mm, batch->pairs[i].speech, &s_joint);
 
                 for (uint32_t j = 0; j < mm->config.joint_dim; j++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((j & 0xFF) == 0 && mm->config.joint_dim > 256) {
+                        jepa_multimodal_heartbeat("jepa_multimo_loop",
+                                         (float)(j + 1) / (float)mm->config.joint_dim);
+                    }
+
                     float diff = v_joint.embedding[j] - s_joint.embedding[j];
                     total_loss += diff * diff;
                 }
@@ -878,6 +1060,12 @@ int jepa_multimodal_align_step(
         case JEPA_MM_ALIGN_COSINE: {
             /* Cosine similarity loss (1 - sim) */
             for (uint32_t i = 0; i < batch->num_pairs; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && batch->num_pairs > 256) {
+                    jepa_multimodal_heartbeat("jepa_multimo_loop",
+                                     (float)(i + 1) / (float)batch->num_pairs);
+                }
+
                 if (!batch->pairs[i].is_matched) continue;
 
                 jepa_latent_t v_joint = {0};
@@ -923,6 +1111,10 @@ int jepa_multimodal_cross_pred_step(
     const jepa_latent_t* speech_latent,
     float* loss)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_cross_pred_step", 0.0f);
+
+
     NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
     NIMCP_CHECK_THROW(visual_latent, NIMCP_ERROR_INVALID_PARAM, "visual_latent is NULL");
     NIMCP_CHECK_THROW(speech_latent, NIMCP_ERROR_INVALID_PARAM, "speech_latent is NULL");
@@ -942,6 +1134,12 @@ int jepa_multimodal_cross_pred_step(
         /* MSE loss */
         float v2s_loss = 0.0f;
         for (uint32_t i = 0; i < mm->config.joint_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && mm->config.joint_dim > 256) {
+                jepa_multimodal_heartbeat("jepa_multimo_loop",
+                                 (float)(i + 1) / (float)mm->config.joint_dim);
+            }
+
             float diff = pred_speech.embedding[i] - speech_joint.embedding[i];
             v2s_loss += diff * diff;
         }
@@ -964,6 +1162,12 @@ int jepa_multimodal_cross_pred_step(
         /* MSE loss */
         float s2v_loss = 0.0f;
         for (uint32_t i = 0; i < mm->config.joint_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && mm->config.joint_dim > 256) {
+                jepa_multimodal_heartbeat("jepa_multimo_loop",
+                                 (float)(i + 1) / (float)mm->config.joint_dim);
+            }
+
             float diff = pred_visual.embedding[i] - visual_joint.embedding[i];
             s2v_loss += diff * diff;
         }
@@ -992,6 +1196,10 @@ int jepa_multimodal_cross_pred_step(
 
 jepa_mm_batch_t* jepa_mm_batch_create(uint32_t max_pairs)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_jepa_mm_batch_create", 0.0f);
+
+
     if (max_pairs == 0) {
         return NULL;
     }
@@ -1019,6 +1227,10 @@ void jepa_mm_batch_destroy(jepa_mm_batch_t* batch)
     }
 
     /* Note: pairs don't own their latents */
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_jepa_mm_batch_destro", 0.0f);
+
+
     nimcp_free(batch->pairs);
     nimcp_free(batch);
 }
@@ -1029,6 +1241,10 @@ int jepa_mm_batch_add_pair(
     const jepa_latent_t* speech,
     bool is_matched)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_jepa_mm_batch_add_pa", 0.0f);
+
+
     NIMCP_CHECK_THROW(batch, NIMCP_ERROR_INVALID_PARAM, "batch is NULL");
     NIMCP_CHECK_THROW(visual, NIMCP_ERROR_INVALID_PARAM, "visual is NULL");
     NIMCP_CHECK_THROW(speech, NIMCP_ERROR_INVALID_PARAM, "speech is NULL");
@@ -1049,6 +1265,10 @@ int jepa_mm_batch_add_pair(
 
 int jepa_mm_batch_clear(jepa_mm_batch_t* batch)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_jepa_mm_batch_clear", 0.0f);
+
+
     NIMCP_CHECK_THROW(batch, NIMCP_ERROR_INVALID_PARAM, "batch is NULL");
 
     batch->num_pairs = 0;
@@ -1065,6 +1285,10 @@ int jepa_multimodal_get_stats(
     const jepa_multimodal_t* mm,
     jepa_multimodal_stats_t* stats)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
     NIMCP_CHECK_THROW(stats, NIMCP_ERROR_INVALID_PARAM, "stats is NULL");
 
@@ -1074,6 +1298,10 @@ int jepa_multimodal_get_stats(
 
 int jepa_multimodal_reset_stats(jepa_multimodal_t* mm)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_reset_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
 
     memset(&mm->stats, 0, sizeof(mm->stats));
@@ -1086,6 +1314,10 @@ int jepa_multimodal_reset_stats(jepa_multimodal_t* mm)
 
 int jepa_multimodal_connect_bio_async(jepa_multimodal_t* mm)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_connect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
 
     mm->base.bio_async_enabled = true;
@@ -1097,6 +1329,10 @@ int jepa_multimodal_connect_bio_async(jepa_multimodal_t* mm)
 
 int jepa_multimodal_disconnect_bio_async(jepa_multimodal_t* mm)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_disconnect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
 
     mm->base.bio_async_enabled = false;
@@ -1106,6 +1342,10 @@ int jepa_multimodal_disconnect_bio_async(jepa_multimodal_t* mm)
 
 bool jepa_multimodal_is_bio_async_connected(const jepa_multimodal_t* mm)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_is_bio_async_connect", 0.0f);
+
+
     return mm && mm->base.bio_async_enabled;
 }
 
@@ -1212,8 +1452,20 @@ static int projection_forward(
 
         /* Layer 1: hidden = GELU(input @ W_hidden + b_hidden) */
         for (uint32_t j = 0; j < proj->hidden_dim; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && proj->hidden_dim > 256) {
+                jepa_multimodal_heartbeat("jepa_multimo_loop",
+                                 (float)(j + 1) / (float)proj->hidden_dim);
+            }
+
             float sum = proj->hidden_bias ? proj->hidden_bias[j] : 0.0f;
             for (uint32_t i = 0; i < proj->input_dim; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && proj->input_dim > 256) {
+                    jepa_multimodal_heartbeat("jepa_multimo_loop",
+                                     (float)(i + 1) / (float)proj->input_dim);
+                }
+
                 sum += input[i] * proj->hidden_weights[i * proj->hidden_dim + j];
             }
             hidden[j] = gelu_activation(sum);
@@ -1225,8 +1477,20 @@ static int projection_forward(
 
         /* Layer 2: output = hidden @ W_out + b_out */
         for (uint32_t j = 0; j < proj->output_dim; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && proj->output_dim > 256) {
+                jepa_multimodal_heartbeat("jepa_multimo_loop",
+                                 (float)(j + 1) / (float)proj->output_dim);
+            }
+
             float sum = proj->bias ? proj->bias[j] : 0.0f;
             for (uint32_t i = 0; i < proj->hidden_dim; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && proj->hidden_dim > 256) {
+                    jepa_multimodal_heartbeat("jepa_multimo_loop",
+                                     (float)(i + 1) / (float)proj->hidden_dim);
+                }
+
                 sum += hidden[i] * proj->weights[i * proj->output_dim + j];
             }
             output[j] = sum;
@@ -1236,8 +1500,20 @@ static int projection_forward(
     } else {
         /* Linear projection */
         for (uint32_t j = 0; j < proj->output_dim; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && proj->output_dim > 256) {
+                jepa_multimodal_heartbeat("jepa_multimo_loop",
+                                 (float)(j + 1) / (float)proj->output_dim);
+            }
+
             float sum = proj->bias ? proj->bias[j] : 0.0f;
             for (uint32_t i = 0; i < proj->input_dim; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && proj->input_dim > 256) {
+                    jepa_multimodal_heartbeat("jepa_multimo_loop",
+                                     (float)(i + 1) / (float)proj->input_dim);
+                }
+
                 sum += input[i] * proj->weights[i * proj->output_dim + j];
             }
             output[j] = sum;
@@ -1268,12 +1544,24 @@ static void layer_normalize(float* data, uint32_t dim)
 
     float mean = 0.0f;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            jepa_multimodal_heartbeat("jepa_multimo_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         mean += data[i];
     }
     mean /= (float)dim;
 
     float variance = 0.0f;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            jepa_multimodal_heartbeat("jepa_multimo_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         float diff = data[i] - mean;
         variance += diff * diff;
     }
@@ -1281,6 +1569,12 @@ static void layer_normalize(float* data, uint32_t dim)
 
     float std_inv = 1.0f / sqrtf(variance + 1e-5f);
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            jepa_multimodal_heartbeat("jepa_multimo_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         data[i] = (data[i] - mean) * std_inv;
     }
 }
@@ -1294,6 +1588,12 @@ static float cosine_similarity(const float* a, const float* b, uint32_t dim)
     float norm_b = 0.0f;
 
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            jepa_multimodal_heartbeat("jepa_multimo_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         dot += a[i] * b[i];
         norm_a += a[i] * a[i];
         norm_b += b[i] * b[i];
@@ -1310,11 +1610,21 @@ static float cosine_similarity(const float* a, const float* b, uint32_t dim)
 int jepa_multimodal_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_multimodal_heartbeat("jepa_multimo_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "JEPA_Multimodal");
     if (self) {
         NIMCP_LOGGING_INFO("[%s] Self-knowledge entity: %s (type: %s)",
                           MULTIMODAL_LOG_TAG, self->name, self->entity_type);
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                jepa_multimodal_heartbeat("jepa_multimo_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("[%s] Observation[%u]: %s",
                                MULTIMODAL_LOG_TAG, i, self->observations[i]);
         }

@@ -37,7 +37,7 @@ static nimcp_health_agent_t* g_executive_immune_bridge_health_agent = NULL;
  * @brief Set health agent for executive_immune_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void executive_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void executive_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_executive_immune_bridge_health_agent = agent;
 }
 
@@ -85,6 +85,12 @@ static float compute_cognitive_fog(const brain_immune_system_t* immune) {
     if (immune->cytokines && immune->cytokine_count > 0) {
         uint32_t il1_count = 0, il6_count = 0, tnf_count = 0;
         for (size_t i = 0; i < immune->cytokine_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && immune->cytokine_count > 256) {
+                executive_immune_bridge_heartbeat("executive_im_loop",
+                                 (float)(i + 1) / (float)immune->cytokine_count);
+            }
+
             if (!immune->cytokines[i].delivered) continue;
 
             switch (immune->cytokines[i].type) {
@@ -130,6 +136,12 @@ static float get_inflammation_duration_sec(const brain_immune_system_t* immune) 
     /* Find oldest inflammation site */
     uint64_t oldest_start = UINT64_MAX;
     for (size_t i = 0; i < immune->inflammation_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && immune->inflammation_count > 256) {
+            executive_immune_bridge_heartbeat("executive_im_loop",
+                             (float)(i + 1) / (float)immune->inflammation_count);
+        }
+
         if (immune->inflammation_sites[i].start_time < oldest_start) {
             oldest_start = immune->inflammation_sites[i].start_time;
         }
@@ -158,6 +170,12 @@ static brain_inflammation_level_t get_max_inflammation_level(
 
     brain_inflammation_level_t max_level = INFLAMMATION_NONE;
     for (size_t i = 0; i < immune->inflammation_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && immune->inflammation_count > 256) {
+            executive_immune_bridge_heartbeat("executive_im_loop",
+                             (float)(i + 1) / (float)immune->inflammation_count);
+        }
+
         if (immune->inflammation_sites[i].level > max_level) {
             max_level = immune->inflammation_sites[i].level;
         }
@@ -191,6 +209,10 @@ int executive_immune_default_config(executive_immune_config_t* config) {
     }
 
     /* All features enabled by default */
+    /* Phase 8: Heartbeat at operation start */
+    executive_immune_bridge_heartbeat("executive_im_executive_immune_def", 0.0f);
+
+
     config->enable_cytokine_executive_modulation = true;
     config->enable_inflammation_impairment = true;
     config->enable_executive_immune_trigger = true;
@@ -223,6 +245,10 @@ executive_immune_bridge_t* executive_immune_bridge_create(
     }
 
     /* Allocate bridge */
+    /* Phase 8: Heartbeat at operation start */
+    executive_immune_bridge_heartbeat("executive_im_create", 0.0f);
+
+
     executive_immune_bridge_t* bridge = (executive_immune_bridge_t*)
         nimcp_malloc(sizeof(executive_immune_bridge_t));
     if (!bridge) {
@@ -271,6 +297,10 @@ void executive_immune_bridge_destroy(executive_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
+    /* Phase 8: Heartbeat at operation start */
+    executive_immune_bridge_heartbeat("executive_im_destroy", 0.0f);
+
+
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
     }
@@ -295,6 +325,10 @@ int executive_immune_apply_cytokine_effects(executive_immune_bridge_t* bridge) {
     }
     if (!bridge->enable_cytokine_executive_modulation) return 0;
     if (!bridge->immune_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    executive_immune_bridge_heartbeat("executive_im_executive_immune_app", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -387,6 +421,10 @@ int executive_immune_apply_inflammation_effects(executive_immune_bridge_t* bridg
     if (!bridge->enable_inflammation_impairment) return 0;
     if (!bridge->immune_system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    executive_immune_bridge_heartbeat("executive_im_executive_immune_app", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     inflammation_executive_state_t* state = &bridge->inflammation_state;
@@ -425,6 +463,10 @@ float executive_immune_compute_capacity_reduction(const executive_immune_bridge_
     if (!bridge) return 0.0f;
 
     /* Combine cytokine-induced and inflammation-induced reduction */
+    /* Phase 8: Heartbeat at operation start */
+    executive_immune_bridge_heartbeat("executive_im_executive_immune_com", 0.0f);
+
+
     float cytokine_reduction = -bridge->cytokine_effects.total_capacity_impact;
     cytokine_reduction = clamp_f(cytokine_reduction, 0.0f, 1.0f);
 
@@ -443,6 +485,10 @@ float executive_immune_compute_switch_cost_increase(const executive_immune_bridg
     if (!bridge) return 1.0f; /* No increase */
 
     /* Use inflammation state switch cost multiplier */
+    /* Phase 8: Heartbeat at operation start */
+    executive_immune_bridge_heartbeat("executive_im_executive_immune_com", 0.0f);
+
+
     return bridge->inflammation_state.switch_cost_increase;
 }
 
@@ -450,6 +496,10 @@ float executive_immune_compute_inhibition_impairment(const executive_immune_brid
     if (!bridge) return 0.0f;
 
     /* Use inflammation state inhibition impairment */
+    /* Phase 8: Heartbeat at operation start */
+    executive_immune_bridge_heartbeat("executive_im_executive_immune_com", 0.0f);
+
+
     return bridge->inflammation_state.inhibition_impairment;
 }
 
@@ -457,6 +507,10 @@ float executive_immune_compute_planning_reduction(const executive_immune_bridge_
     if (!bridge) return 0.0f;
 
     /* Use inflammation state planning depth reduction */
+    /* Phase 8: Heartbeat at operation start */
+    executive_immune_bridge_heartbeat("executive_im_executive_immune_com", 0.0f);
+
+
     return bridge->inflammation_state.planning_depth_reduction;
 }
 
@@ -475,6 +529,10 @@ int executive_immune_trigger_from_overload(executive_immune_bridge_t* bridge) {
     }
     if (!bridge->enable_executive_immune_trigger) return 0;
     if (!bridge->immune_system || !bridge->executive_controller) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    executive_immune_bridge_heartbeat("executive_im_executive_immune_tri", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -519,6 +577,10 @@ int executive_immune_amplify_from_frustration(executive_immune_bridge_t* bridge)
     if (!bridge->enable_executive_immune_trigger) return 0;
     if (!bridge->immune_system || !bridge->executive_controller) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    executive_immune_bridge_heartbeat("executive_im_executive_immune_amp", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     executive_immune_trigger_t* trigger = &bridge->executive_trigger;
@@ -560,6 +622,10 @@ int executive_immune_detect_burnout(executive_immune_bridge_t* bridge) {
     }
     if (!bridge->enable_overload_monitoring) return 0;
     if (!bridge->immune_system || !bridge->executive_controller) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    executive_immune_bridge_heartbeat("executive_im_executive_immune_det", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -616,6 +682,10 @@ int executive_immune_boost_from_success(executive_immune_bridge_t* bridge) {
     }
     if (!bridge->enable_success_immune_boost) return 0;
     if (!bridge->immune_system || !bridge->executive_controller) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    executive_immune_bridge_heartbeat("executive_im_executive_immune_boo", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -682,6 +752,10 @@ int executive_immune_bridge_update(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    executive_immune_bridge_heartbeat("executive_im_update", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Update overload duration tracking */
@@ -720,6 +794,10 @@ int executive_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    executive_immune_bridge_heartbeat("executive_im_executive_immune_get", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     *effects = bridge->cytokine_effects;
     pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
@@ -733,6 +811,10 @@ int executive_immune_get_inflammation_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    executive_immune_bridge_heartbeat("executive_im_executive_immune_get", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     *state = bridge->inflammation_state;
     pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
@@ -742,21 +824,37 @@ int executive_immune_get_inflammation_state(
 
 bool executive_immune_is_cognitive_fog(const executive_immune_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    executive_immune_bridge_heartbeat("executive_im_executive_immune_is_", 0.0f);
+
+
     return bridge->cytokine_effects.cognitive_fog_level > 0.5f;
 }
 
 float executive_immune_get_cognitive_fog_severity(const executive_immune_bridge_t* bridge) {
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    executive_immune_bridge_heartbeat("executive_im_executive_immune_get", 0.0f);
+
+
     return bridge->cytokine_effects.cognitive_fog_level;
 }
 
 bool executive_immune_is_burnout(const executive_immune_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    executive_immune_bridge_heartbeat("executive_im_executive_immune_is_", 0.0f);
+
+
     return bridge->executive_trigger.burnout_level > 0.5f;
 }
 
 float executive_immune_get_burnout_severity(const executive_immune_bridge_t* bridge) {
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    executive_immune_bridge_heartbeat("executive_im_executive_immune_get", 0.0f);
+
+
     return bridge->executive_trigger.burnout_level;
 }
 
@@ -778,6 +876,10 @@ int executive_immune_connect_bio_async(executive_immune_bridge_t* bridge) {
 
     }
     if (bridge->base.bio_async_enabled) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    executive_immune_bridge_heartbeat("executive_im_executive_immune_con", 0.0f);
+
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_EXECUTIVE,
@@ -810,6 +912,10 @@ int executive_immune_disconnect_bio_async(executive_immune_bridge_t* bridge) {
     }
     if (!bridge->base.bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    executive_immune_bridge_heartbeat("executive_im_executive_immune_dis", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -825,6 +931,10 @@ int executive_immune_disconnect_bio_async(executive_immune_bridge_t* bridge) {
  */
 bool executive_immune_is_bio_async_connected(const executive_immune_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    executive_immune_bridge_heartbeat("executive_im_executive_immune_is_", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -844,9 +954,19 @@ bool executive_immune_is_bio_async_connected(const executive_immune_bridge_t* br
  */
 int executive_immune_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    executive_immune_bridge_heartbeat("executive_im_executive_immune_que", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Executive_Immune_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                executive_immune_bridge_heartbeat("executive_im_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Executive immune bridge self-knowledge: %s", self->observations[i]);
         }
     }

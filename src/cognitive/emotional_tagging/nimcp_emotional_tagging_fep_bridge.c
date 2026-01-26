@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_emotional_tagging_fep_bridge_health_agent = NULL;
  * @brief Set health agent for emotional_tagging_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void emotional_tagging_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void emotional_tagging_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_emotional_tagging_fep_bridge_health_agent = agent;
 }
 
@@ -51,6 +51,10 @@ static inline void emotional_tagging_fep_bridge_heartbeat(const char* operation,
  * ============================================================================ */
 
 int emotional_tagging_fep_default_config(emotional_tagging_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* FEP → Emotional Tagging */
@@ -83,6 +87,10 @@ int emotional_tagging_fep_default_config(emotional_tagging_fep_config_t* config)
 emotional_tagging_fep_bridge_t* emotional_tagging_fep_create(
     const emotional_tagging_fep_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
+
+
     emotional_tagging_fep_bridge_t* bridge = nimcp_malloc(sizeof(emotional_tagging_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate emotional tagging FEP bridge");
@@ -116,6 +124,10 @@ void emotional_tagging_fep_destroy(emotional_tagging_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         emotional_tagging_fep_disconnect_bio_async(bridge);
     }
@@ -137,6 +149,10 @@ int emotional_tagging_fep_connect_fep(
     emotional_tagging_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -151,6 +167,10 @@ int emotional_tagging_fep_connect_tag(
     emotional_tagging_fep_bridge_t* bridge,
     emotional_tag_t* tag
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && tag, NIMCP_ERROR_NULL_POINTER, "bridge or tag is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -162,6 +182,10 @@ int emotional_tagging_fep_connect_tag(
 }
 
 int emotional_tagging_fep_disconnect(emotional_tagging_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -181,6 +205,10 @@ int emotional_tagging_fep_generate_pe_valence(
     emotional_tagging_fep_bridge_t* bridge,
     float pe_magnitude
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_pe_valence_generation) return 0;
 
@@ -209,6 +237,10 @@ int emotional_tagging_fep_generate_precision_arousal(
     emotional_tagging_fep_bridge_t* bridge,
     float precision
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_precision_arousal) return 0;
 
@@ -237,6 +269,10 @@ int emotional_tagging_fep_generate_surprise_intensity(
     emotional_tagging_fep_bridge_t* bridge,
     float surprise
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_surprise_intensity) return 0;
 
@@ -262,6 +298,10 @@ int emotional_tagging_fep_generate_tag(
     emotional_tagging_fep_bridge_t* bridge,
     uint64_t timestamp_ms
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -309,6 +349,10 @@ int emotional_tagging_fep_generate_tag(
 int emotional_tagging_fep_modulate_precision(
     emotional_tagging_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_arousal_precision) return 0;
 
@@ -332,6 +376,10 @@ int emotional_tagging_fep_modulate_precision(
 int emotional_tagging_fep_modulate_value(
     emotional_tagging_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_valence_value) return 0;
 
@@ -355,6 +403,10 @@ int emotional_tagging_fep_modulate_value(
 int emotional_tagging_fep_boost_encoding(
     emotional_tagging_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_intensity_encoding) return 0;
 
@@ -384,6 +436,10 @@ int emotional_tagging_fep_update(
     emotional_tagging_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* FEP → Emotional Tagging (if FEP connected) */
@@ -420,6 +476,10 @@ int emotional_tagging_fep_get_state(
     const emotional_tagging_fep_bridge_t* bridge,
     emotional_tagging_fep_state_t* state
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -433,6 +493,10 @@ int emotional_tagging_fep_get_stats(
     const emotional_tagging_fep_bridge_t* bridge,
     emotional_tagging_fep_stats_t* stats
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -449,6 +513,10 @@ int emotional_tagging_fep_get_stats(
 int emotional_tagging_fep_connect_bio_async(
     emotional_tagging_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
@@ -473,6 +541,10 @@ int emotional_tagging_fep_connect_bio_async(
 int emotional_tagging_fep_disconnect_bio_async(
     emotional_tagging_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return 0;
 
@@ -490,6 +562,10 @@ int emotional_tagging_fep_disconnect_bio_async(
 bool emotional_tagging_fep_is_bio_async_connected(
     const emotional_tagging_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_fep_bridge_heartbeat("emotional_ta_emotional_tagging_fe", 0.0f);
+
+
     return bridge ? bridge->base.bio_async_enabled : false;
 }
 
@@ -500,9 +576,19 @@ bool emotional_tagging_fep_is_bio_async_connected(
 int emotional_tagging_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_fep_bridge_heartbeat("emotional_ta_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Emotional_Tagging_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                emotional_tagging_fep_bridge_heartbeat("emotional_ta_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

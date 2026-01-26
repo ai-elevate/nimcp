@@ -51,7 +51,7 @@ static nimcp_health_agent_t* g_core_directives_health_agent = NULL;
  * @brief Set health agent for core_directives heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void core_directives_set_health_agent(nimcp_health_agent_t* agent) {
+void core_directives_set_health_agent(nimcp_health_agent_t* agent) {
     g_core_directives_health_agent = agent;
 }
 
@@ -138,6 +138,10 @@ void core_directives_default_config(core_directives_config_t* config)
 {
     if (!config) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    core_directives_heartbeat("core_directi_default_config", 0.0f);
+
+
     memset(config, 0, sizeof(core_directives_config_t));
 
     // Asimov's Laws
@@ -186,6 +190,10 @@ core_directives_system_t* core_directives_create(const core_directives_config_t*
 
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    core_directives_heartbeat("core_directi_create", 0.0f);
+
 
     core_directives_system_t* directives = nimcp_calloc(1, sizeof(core_directives_system_t));
     if (!directives) {
@@ -248,6 +256,10 @@ void core_directives_destroy(core_directives_system_t* directives)
     if (!directives) return;
 
     // Disconnect integrations
+    /* Phase 8: Heartbeat at operation start */
+    core_directives_heartbeat("core_directi_destroy", 0.0f);
+
+
     if (directives->bio_async_enabled) {
         core_directives_disconnect_bio_async(directives);
     }
@@ -263,6 +275,12 @@ void core_directives_destroy(core_directives_system_t* directives)
     // Free action history
     if (directives->action_history) {
         for (uint32_t i = 0; i < directives->config.action_history_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && directives->config.action_history_size > 256) {
+                core_directives_heartbeat("core_directi_loop",
+                                 (float)(i + 1) / (float)directives->config.action_history_size);
+            }
+
             if (directives->action_history[i].action_vector) {
                 nimcp_free(directives->action_history[i].action_vector);
             }
@@ -410,6 +428,12 @@ static bool evaluate_combinatorial_harm(core_directives_system_t* directives,
     uint32_t harmful_count = 0;
 
     for (uint32_t i = 0; i < directives->history_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && directives->history_count > 256) {
+            core_directives_heartbeat("core_directi_loop",
+                             (float)(i + 1) / (float)directives->history_count);
+        }
+
         action_history_entry_t* entry = &directives->action_history[i];
         if (!entry->valid) continue;
 
@@ -420,6 +444,12 @@ static bool evaluate_combinatorial_harm(core_directives_system_t* directives,
         if (entry->action_dim == action_dim) {
             float similarity = 0.0f, norm_a = 0.0f, norm_b = 0.0f;
             for (uint32_t j = 0; j < action_dim; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && action_dim > 256) {
+                    core_directives_heartbeat("core_directi_loop",
+                                     (float)(j + 1) / (float)action_dim);
+                }
+
                 similarity += action_vector[j] * entry->action_vector[j];
                 norm_a += action_vector[j] * action_vector[j];
                 norm_b += entry->action_vector[j] * entry->action_vector[j];
@@ -461,6 +491,10 @@ int core_directives_evaluate(
     if (!directives || !action_vector || !result) {
         return NIMCP_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    core_directives_heartbeat("core_directi_evaluate", 0.0f);
+
 
     if (action_dim == 0) {
         return NIMCP_ERROR_INVALID_PARAM;
@@ -573,6 +607,10 @@ int core_directives_record_action(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    core_directives_heartbeat("core_directi_record_action", 0.0f);
+
+
     if (action_dim == 0 || !directives->action_history) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -625,10 +663,20 @@ int core_directives_clear_history(core_directives_system_t* directives)
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    core_directives_heartbeat("core_directi_clear_history", 0.0f);
+
+
     nimcp_platform_mutex_lock(&directives->mutex);
 
     if (directives->action_history) {
         for (uint32_t i = 0; i < directives->config.action_history_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && directives->config.action_history_size > 256) {
+                core_directives_heartbeat("core_directi_loop",
+                                 (float)(i + 1) / (float)directives->config.action_history_size);
+            }
+
             if (directives->action_history[i].action_vector) {
                 nimcp_free(directives->action_history[i].action_vector);
                 directives->action_history[i].action_vector = NULL;
@@ -655,6 +703,10 @@ int core_directives_connect_bio_async(core_directives_system_t* directives)
     if (!directives) {
         return NIMCP_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    core_directives_heartbeat("core_directi_connect_bio_async", 0.0f);
+
 
     if (directives->bio_async_enabled) {
         return 0; // Already connected
@@ -688,6 +740,10 @@ int core_directives_disconnect_bio_async(core_directives_system_t* directives)
         return 0; // Not connected
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    core_directives_heartbeat("core_directi_disconnect_bio_async", 0.0f);
+
+
     if (directives->bio_ctx) {
         bio_router_unregister_module(directives->bio_ctx);
         directives->bio_ctx = NULL;
@@ -701,6 +757,10 @@ int core_directives_disconnect_bio_async(core_directives_system_t* directives)
 
 bool core_directives_is_bio_async_connected(const core_directives_system_t* directives)
 {
+    /* Phase 8: Heartbeat at operation start */
+    core_directives_heartbeat("core_directi_is_bio_async_connect", 0.0f);
+
+
     return directives ? directives->bio_async_enabled : false;
 }
 
@@ -715,6 +775,10 @@ int core_directives_connect_immune(
     if (!directives || !immune) {
         return NIMCP_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    core_directives_heartbeat("core_directi_connect_immune", 0.0f);
+
 
     if (directives->immune_bridge) {
         NIMCP_LOGGING_WARN("Core directives already connected to immune system");
@@ -750,6 +814,10 @@ int core_directives_connect_fep(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    core_directives_heartbeat("core_directi_connect_fep", 0.0f);
+
+
     if (directives->fep_bridge) {
         NIMCP_LOGGING_WARN("Core directives already connected to FEP orchestrator");
         return 0;
@@ -784,6 +852,10 @@ int core_directives_get_stats(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    core_directives_heartbeat("core_directi_get_stats", 0.0f);
+
+
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&directives->mutex);
     memcpy(stats, &directives->stats, sizeof(core_directives_stats_t));
     nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&directives->mutex);
@@ -796,6 +868,10 @@ int core_directives_reset_stats(core_directives_system_t* directives)
     if (!directives) {
         return NIMCP_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    core_directives_heartbeat("core_directi_reset_stats", 0.0f);
+
 
     nimcp_platform_mutex_lock(&directives->mutex);
     memset(&directives->stats, 0, sizeof(core_directives_stats_t));
@@ -816,9 +892,19 @@ int core_directives_reset_stats(core_directives_system_t* directives)
  */
 int core_directives_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    core_directives_heartbeat("core_directi_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Core_Directives_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                core_directives_heartbeat("core_directi_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Core directives self-knowledge: %s", self->observations[i]);
         }
     }

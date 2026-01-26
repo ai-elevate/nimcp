@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_hypergraph_health_agent = NULL;
  * @brief Set health agent for hypergraph heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void hypergraph_set_health_agent(nimcp_health_agent_t* agent) {
+void hypergraph_set_health_agent(nimcp_health_agent_t* agent) {
     g_hypergraph_health_agent = agent;
 }
 
@@ -228,6 +228,12 @@ NIMCP_API void nimcp_hypergraph_destroy(nimcp_hypergraph_t* hg)
     /* Free incidence table */
     if (hg->incidence_table) {
         for (uint32_t i = 0; i < hg->incidence_hash_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && hg->incidence_hash_size > 256) {
+                hypergraph_heartbeat("hypergraph_loop",
+                                 (float)(i + 1) / (float)hg->incidence_hash_size);
+            }
+
             incidence_entry_t* entry = hg->incidence_table[i];
             while (entry) {
                 incidence_entry_t* next = entry->next;
@@ -240,6 +246,12 @@ NIMCP_API void nimcp_hypergraph_destroy(nimcp_hypergraph_t* hg)
 
     /* Free vertex incident edges arrays and data */
     for (uint32_t i = 0; i < hg->vertex_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hg->vertex_count > 256) {
+            hypergraph_heartbeat("hypergraph_loop",
+                             (float)(i + 1) / (float)hg->vertex_count);
+        }
+
         if (hg->vertices[i].incident_edges) {
             nimcp_free(hg->vertices[i].incident_edges);
         }
@@ -250,6 +262,12 @@ NIMCP_API void nimcp_hypergraph_destroy(nimcp_hypergraph_t* hg)
 
     /* Free edge vertex arrays */
     for (uint32_t i = 0; i < hg->edge_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hg->edge_count > 256) {
+            hypergraph_heartbeat("hypergraph_loop",
+                             (float)(i + 1) / (float)hg->edge_count);
+        }
+
         if (hg->edges[i].vertices) {
             nimcp_free(hg->edges[i].vertices);
         }
@@ -287,6 +305,12 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_clear(nimcp_hypergraph_t* hg)
     /* Clear incidence table */
     if (hg->incidence_table) {
         for (uint32_t i = 0; i < hg->incidence_hash_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && hg->incidence_hash_size > 256) {
+                hypergraph_heartbeat("hypergraph_loop",
+                                 (float)(i + 1) / (float)hg->incidence_hash_size);
+            }
+
             incidence_entry_t* entry = hg->incidence_table[i];
             while (entry) {
                 incidence_entry_t* next = entry->next;
@@ -299,6 +323,12 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_clear(nimcp_hypergraph_t* hg)
 
     /* Clear vertex data */
     for (uint32_t i = 0; i < hg->vertex_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hg->vertex_count > 256) {
+            hypergraph_heartbeat("hypergraph_loop",
+                             (float)(i + 1) / (float)hg->vertex_count);
+        }
+
         if (hg->vertices[i].incident_edges) {
             nimcp_free(hg->vertices[i].incident_edges);
         }
@@ -310,6 +340,12 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_clear(nimcp_hypergraph_t* hg)
 
     /* Clear edge data */
     for (uint32_t i = 0; i < hg->edge_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hg->edge_count > 256) {
+            hypergraph_heartbeat("hypergraph_loop",
+                             (float)(i + 1) / (float)hg->edge_count);
+        }
+
         if (hg->edges[i].vertices) {
             nimcp_free(hg->edges[i].vertices);
         }
@@ -483,6 +519,12 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_remove_vertex(
 
     /* Remove from all incident edges */
     for (uint32_t i = 0; i < vertex->incident_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && vertex->incident_count > 256) {
+            hypergraph_heartbeat("hypergraph_loop",
+                             (float)(i + 1) / (float)vertex->incident_count);
+        }
+
         uint32_t edge_id = vertex->incident_edges[i];
         /* Remove this vertex from the edge */
         nimcp_hypergraph_shrink_edge(hg, edge_id, vertex_id);
@@ -541,6 +583,12 @@ NIMCP_API uint32_t nimcp_hypergraph_find_vertex(
     }
 
     for (uint32_t i = 0; i < hg->vertex_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hg->vertex_count > 256) {
+            hypergraph_heartbeat("hypergraph_loop",
+                             (float)(i + 1) / (float)hg->vertex_count);
+        }
+
         if (strcmp(hg->vertices[i].label, label) == 0) {
             return hg->vertices[i].id;
         }
@@ -646,6 +694,12 @@ NIMCP_API uint32_t nimcp_hypergraph_add_edge_full(
 
     /* Verify all vertices exist */
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            hypergraph_heartbeat("hypergraph_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (find_vertex_index(hg, vertices[i]) < 0) {
             if (hg->thread_safe) {
                 nimcp_mutex_unlock(hg->mutex);
@@ -694,6 +748,12 @@ NIMCP_API uint32_t nimcp_hypergraph_add_edge_full(
 
     /* Add to incidence structures */
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            hypergraph_heartbeat("hypergraph_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         /* Add to incidence index */
         if (hg->incidence_enabled) {
             add_incidence(hg, vertices[i], edge_id, i);
@@ -737,6 +797,12 @@ NIMCP_API uint32_t nimcp_hypergraph_add_edge_full(
     /* Recompute average arity */
     float total_arity = 0;
     for (uint32_t i = 0; i < hg->edge_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hg->edge_count > 256) {
+            hypergraph_heartbeat("hypergraph_loop",
+                             (float)(i + 1) / (float)hg->edge_count);
+        }
+
         total_arity += hg->edges[i].vertex_count;
     }
     hg->stats.avg_edge_arity = total_arity / hg->edge_count;
@@ -776,6 +842,12 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_remove_edge(
 
     /* Remove from incidence structures */
     for (uint32_t i = 0; i < edge->vertex_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && edge->vertex_count > 256) {
+            hypergraph_heartbeat("hypergraph_loop",
+                             (float)(i + 1) / (float)edge->vertex_count);
+        }
+
         uint32_t vid = edge->vertices[i];
 
         /* Remove from incidence index */
@@ -788,6 +860,12 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_remove_edge(
         if (vidx >= 0) {
             nimcp_hypervertex_t* v = &hg->vertices[vidx];
             for (uint32_t j = 0; j < v->incident_count; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && v->incident_count > 256) {
+                    hypergraph_heartbeat("hypergraph_loop",
+                                     (float)(j + 1) / (float)v->incident_count);
+                }
+
                 if (v->incident_edges[j] == edge_id) {
                     /* Shift remaining edges */
                     memmove(&v->incident_edges[j],
@@ -974,6 +1052,12 @@ NIMCP_API uint32_t nimcp_hypergraph_contract_edge(
 
         /* For each edge incident to this vertex */
         for (uint32_t j = 0; j < v->incident_count; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && v->incident_count > 256) {
+                hypergraph_heartbeat("hypergraph_loop",
+                                 (float)(j + 1) / (float)v->incident_count);
+            }
+
             uint32_t incident_edge_id = v->incident_edges[j];
             if (incident_edge_id == edge_id) continue;
 
@@ -984,6 +1068,12 @@ NIMCP_API uint32_t nimcp_hypergraph_contract_edge(
 
             /* Replace vid with merged_id in this edge */
             for (uint32_t k = 0; k < ie->vertex_count; k++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((k & 0xFF) == 0 && ie->vertex_count > 256) {
+                    hypergraph_heartbeat("hypergraph_loop",
+                                     (float)(k + 1) / (float)ie->vertex_count);
+                }
+
                 if (ie->vertices[k] == vid) {
                     ie->vertices[k] = merged_id;
                 }
@@ -1036,6 +1126,12 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_extend_edge(
 
     /* Check if already in edge */
     for (uint32_t i = 0; i < edge->vertex_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && edge->vertex_count > 256) {
+            hypergraph_heartbeat("hypergraph_loop",
+                             (float)(i + 1) / (float)edge->vertex_count);
+        }
+
         if (edge->vertices[i] == vertex_id) {
             if (hg->thread_safe) {
                 nimcp_mutex_unlock(hg->mutex);
@@ -1137,6 +1233,12 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_shrink_edge(
     /* Find vertex in edge */
     int vpos = -1;
     for (uint32_t i = 0; i < edge->vertex_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && edge->vertex_count > 256) {
+            hypergraph_heartbeat("hypergraph_loop",
+                             (float)(i + 1) / (float)edge->vertex_count);
+        }
+
         if (edge->vertices[i] == vertex_id) {
             vpos = (int)i;
             break;
@@ -1162,6 +1264,12 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_shrink_edge(
     if (vidx >= 0) {
         nimcp_hypervertex_t* v = &hg->vertices[vidx];
         for (uint32_t i = 0; i < v->incident_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && v->incident_count > 256) {
+                hypergraph_heartbeat("hypergraph_loop",
+                                 (float)(i + 1) / (float)v->incident_count);
+            }
+
             if (v->incident_edges[i] == edge_id) {
                 memmove(&v->incident_edges[i],
                         &v->incident_edges[i + 1],
@@ -1225,6 +1333,12 @@ NIMCP_API nimcp_hypergraph_dual_t* nimcp_hypergraph_compute_dual(
 
     /* In the dual: original edges become vertices */
     for (uint32_t i = 0; i < hg->edge_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hg->edge_count > 256) {
+            hypergraph_heartbeat("hypergraph_loop",
+                             (float)(i + 1) / (float)hg->edge_count);
+        }
+
         const nimcp_hyperedge_t* edge = &hg->edges[i];
         uint32_t dual_vid = nimcp_hypergraph_add_vertex(
             dual_result->dual,
@@ -1241,6 +1355,12 @@ NIMCP_API nimcp_hypergraph_dual_t* nimcp_hypergraph_compute_dual(
      * Two dual vertices (original edges) are connected by a dual edge
      * if they share a common original vertex */
     for (uint32_t i = 0; i < hg->vertex_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hg->vertex_count > 256) {
+            hypergraph_heartbeat("hypergraph_loop",
+                             (float)(i + 1) / (float)hg->vertex_count);
+        }
+
         const nimcp_hypervertex_t* v = &hg->vertices[i];
 
         if (v->incident_count > 1) {
@@ -1252,6 +1372,12 @@ NIMCP_API nimcp_hypergraph_dual_t* nimcp_hypergraph_compute_dual(
 
             uint32_t count = 0;
             for (uint32_t j = 0; j < v->incident_count; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && v->incident_count > 256) {
+                    hypergraph_heartbeat("hypergraph_loop",
+                                     (float)(j + 1) / (float)v->incident_count);
+                }
+
                 int eidx = find_edge_index(hg, v->incident_edges[j]);
                 if (eidx >= 0) {
                     dual_vertices[count++] = dual_result->edge_to_vertex_map[eidx];
@@ -1334,12 +1460,24 @@ NIMCP_API uint32_t nimcp_hypergraph_transversal(
         uint32_t best_cover_count = 0;
 
         for (uint32_t i = 0; i < hg->vertex_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && hg->vertex_count > 256) {
+                hypergraph_heartbeat("hypergraph_loop",
+                                 (float)(i + 1) / (float)hg->vertex_count);
+            }
+
             if (used_vertices[i]) continue;
 
             const nimcp_hypervertex_t* v = &hg->vertices[i];
             uint32_t cover_count = 0;
 
             for (uint32_t j = 0; j < v->incident_count; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && v->incident_count > 256) {
+                    hypergraph_heartbeat("hypergraph_loop",
+                                     (float)(j + 1) / (float)v->incident_count);
+                }
+
                 int eidx = find_edge_index(hg, v->incident_edges[j]);
                 if (eidx >= 0 && !covered_edges[eidx]) {
                     cover_count++;
@@ -1363,6 +1501,12 @@ NIMCP_API uint32_t nimcp_hypergraph_transversal(
         /* Mark edges as covered */
         const nimcp_hypervertex_t* v = &hg->vertices[best_vertex];
         for (uint32_t j = 0; j < v->incident_count; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && v->incident_count > 256) {
+                hypergraph_heartbeat("hypergraph_loop",
+                                 (float)(j + 1) / (float)v->incident_count);
+            }
+
             int eidx = find_edge_index(hg, v->incident_edges[j]);
             if (eidx >= 0 && !covered_edges[eidx]) {
                 covered_edges[eidx] = true;
@@ -1420,8 +1564,20 @@ NIMCP_API uint32_t nimcp_hypergraph_find_edges_containing(
         bool contains_all = true;
 
         for (uint32_t j = 0; j < vertex_count; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && vertex_count > 256) {
+                hypergraph_heartbeat("hypergraph_loop",
+                                 (float)(j + 1) / (float)vertex_count);
+            }
+
             bool found = false;
             for (uint32_t k = 0; k < edge->vertex_count; k++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((k & 0xFF) == 0 && edge->vertex_count > 256) {
+                    hypergraph_heartbeat("hypergraph_loop",
+                                     (float)(k + 1) / (float)edge->vertex_count);
+                }
+
                 if (edge->vertices[k] == vertices[j]) {
                     found = true;
                     break;
@@ -1467,12 +1623,24 @@ NIMCP_API uint32_t nimcp_hypergraph_get_neighbors(
     uint32_t count = 0;
 
     for (uint32_t i = 0; i < v->incident_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && v->incident_count > 256) {
+            hypergraph_heartbeat("hypergraph_loop",
+                             (float)(i + 1) / (float)v->incident_count);
+        }
+
         int eidx = find_edge_index(hg, v->incident_edges[i]);
         if (eidx < 0) continue;
 
         const nimcp_hyperedge_t* edge = &hg->edges[eidx];
 
         for (uint32_t j = 0; j < edge->vertex_count; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && edge->vertex_count > 256) {
+                hypergraph_heartbeat("hypergraph_loop",
+                                 (float)(j + 1) / (float)edge->vertex_count);
+            }
+
             uint32_t neighbor_id = edge->vertices[j];
             if (neighbor_id == vertex_id) continue;
             if (neighbor_id < hg->next_vertex_id && !seen[neighbor_id]) {
@@ -1506,12 +1674,24 @@ NIMCP_API bool nimcp_hypergraph_are_connected(
     const nimcp_hypervertex_t* v = &hg->vertices[vidx_a];
 
     for (uint32_t i = 0; i < v->incident_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && v->incident_count > 256) {
+            hypergraph_heartbeat("hypergraph_loop",
+                             (float)(i + 1) / (float)v->incident_count);
+        }
+
         int eidx = find_edge_index(hg, v->incident_edges[i]);
         if (eidx < 0) continue;
 
         const nimcp_hyperedge_t* edge = &hg->edges[eidx];
 
         for (uint32_t j = 0; j < edge->vertex_count; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && edge->vertex_count > 256) {
+                hypergraph_heartbeat("hypergraph_loop",
+                                 (float)(j + 1) / (float)edge->vertex_count);
+            }
+
             if (edge->vertices[j] == vertex_b) {
                 return true;
             }
@@ -1565,12 +1745,24 @@ NIMCP_API nimcp_hypergraph_t* nimcp_hypergraph_from_ternary(
 
     /* Add vertices */
     for (uint32_t i = 0; i < ternary->vertex_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ternary->vertex_count > 256) {
+            hypergraph_heartbeat("hypergraph_loop",
+                             (float)(i + 1) / (float)ternary->vertex_count);
+        }
+
         nimcp_hypergraph_add_vertex(hg, HYPERVERTEX_CONSTANT,
             NULL, 1.0f);
     }
 
     /* Add edges (convert binary edges to 2-vertex hyperedges) */
     for (uint32_t i = 0; i < ternary->vertex_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ternary->vertex_count > 256) {
+            hypergraph_heartbeat("hypergraph_loop",
+                             (float)(i + 1) / (float)ternary->vertex_count);
+        }
+
         const NimcpTernaryVertex* v = &ternary->vertices[i];
         NimcpTernaryEdge* edge = v->edges;
 
@@ -1601,14 +1793,32 @@ NIMCP_API NimcpTernaryGraph* nimcp_hypergraph_to_ternary(
 
     /* Add vertices */
     for (uint32_t i = 0; i < hg->vertex_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hg->vertex_count > 256) {
+            hypergraph_heartbeat("hypergraph_loop",
+                             (float)(i + 1) / (float)hg->vertex_count);
+        }
+
         nimcp_ternary_graph_add_vertex(ternary, i, 0.0f, 0.0f, 0.0f, 0);
     }
 
     /* Create 2-section: connect vertices that share a hyperedge */
     for (uint32_t i = 0; i < hg->edge_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hg->edge_count > 256) {
+            hypergraph_heartbeat("hypergraph_loop",
+                             (float)(i + 1) / (float)hg->edge_count);
+        }
+
         const nimcp_hyperedge_t* edge = &hg->edges[i];
 
         for (uint32_t j = 0; j < edge->vertex_count; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && edge->vertex_count > 256) {
+                hypergraph_heartbeat("hypergraph_loop",
+                                 (float)(j + 1) / (float)edge->vertex_count);
+            }
+
             for (uint32_t k = j + 1; k < edge->vertex_count; k++) {
                 int idx_j = find_vertex_index(hg, edge->vertices[j]);
                 int idx_k = find_vertex_index(hg, edge->vertices[k]);
@@ -1647,9 +1857,21 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_to_tensor(
     }
 
     for (uint32_t i = 0; i < hg->edge_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hg->edge_count > 256) {
+            hypergraph_heartbeat("hypergraph_loop",
+                             (float)(i + 1) / (float)hg->edge_count);
+        }
+
         const nimcp_hyperedge_t* edge = &hg->edges[i];
 
         for (uint32_t j = 0; j < edge->vertex_count; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && edge->vertex_count > 256) {
+                hypergraph_heartbeat("hypergraph_loop",
+                                 (float)(j + 1) / (float)edge->vertex_count);
+            }
+
             for (uint32_t k = j + 1; k < edge->vertex_count; k++) {
                 int idx_j = find_vertex_index(hg, edge->vertices[j]);
                 int idx_k = find_vertex_index(hg, edge->vertices[k]);
@@ -1687,6 +1909,12 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_connected_components(
 
     /* Initialize component IDs */
     for (uint32_t i = 0; i < hg->vertex_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hg->vertex_count > 256) {
+            hypergraph_heartbeat("hypergraph_loop",
+                             (float)(i + 1) / (float)hg->vertex_count);
+        }
+
         vertex_components[i] = UINT32_MAX;
     }
 
@@ -1699,6 +1927,12 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_connected_components(
     }
 
     for (uint32_t start = 0; start < hg->vertex_count; start++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((start & 0xFF) == 0 && hg->vertex_count > 256) {
+            hypergraph_heartbeat("hypergraph_loop",
+                             (float)(start + 1) / (float)hg->vertex_count);
+        }
+
         if (vertex_components[start] != UINT32_MAX) {
             continue;  /* Already assigned */
         }
@@ -1714,12 +1948,24 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_connected_components(
 
             /* Visit all neighbors through incident edges */
             for (uint32_t i = 0; i < v->incident_count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && v->incident_count > 256) {
+                    hypergraph_heartbeat("hypergraph_loop",
+                                     (float)(i + 1) / (float)v->incident_count);
+                }
+
                 int eidx = find_edge_index(hg, v->incident_edges[i]);
                 if (eidx < 0) continue;
 
                 const nimcp_hyperedge_t* edge = &hg->edges[eidx];
 
                 for (uint32_t j = 0; j < edge->vertex_count; j++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((j & 0xFF) == 0 && edge->vertex_count > 256) {
+                        hypergraph_heartbeat("hypergraph_loop",
+                                         (float)(j + 1) / (float)edge->vertex_count);
+                    }
+
                     int nidx = find_vertex_index(hg, edge->vertices[j]);
                     if (nidx >= 0 && vertex_components[nidx] == UINT32_MAX) {
                         vertex_components[nidx] = current_component;
@@ -2040,6 +2286,12 @@ static nimcp_error_t grow_edges(nimcp_hypergraph_t* hg)
 static int find_vertex_index(const nimcp_hypergraph_t* hg, uint32_t vertex_id)
 {
     for (uint32_t i = 0; i < hg->vertex_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hg->vertex_count > 256) {
+            hypergraph_heartbeat("hypergraph_loop",
+                             (float)(i + 1) / (float)hg->vertex_count);
+        }
+
         if (hg->vertices[i].id == vertex_id) {
             return (int)i;
         }
@@ -2050,6 +2302,12 @@ static int find_vertex_index(const nimcp_hypergraph_t* hg, uint32_t vertex_id)
 static int find_edge_index(const nimcp_hypergraph_t* hg, uint32_t edge_id)
 {
     for (uint32_t i = 0; i < hg->edge_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hg->edge_count > 256) {
+            hypergraph_heartbeat("hypergraph_loop",
+                             (float)(i + 1) / (float)hg->edge_count);
+        }
+
         if (hg->edges[i].id == edge_id) {
             return (int)i;
         }

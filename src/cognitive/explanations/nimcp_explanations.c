@@ -56,7 +56,7 @@ static nimcp_health_agent_t* g_explanations_health_agent = NULL;
  * @brief Set health agent for explanations heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void explanations_set_health_agent(nimcp_health_agent_t* agent) {
+void explanations_set_health_agent(nimcp_health_agent_t* agent) {
     g_explanations_health_agent = agent;
 }
 
@@ -165,6 +165,10 @@ explanation_generator_t explanation_generator_create(const explanation_config_t*
     // ALLOCATION: Main structure
     // =========================================================================
 
+    /* Phase 8: Heartbeat at operation start */
+    explanations_heartbeat("explanations_explanation_generato", 0.0f);
+
+
     explanation_generator_t gen = nimcp_calloc(1, sizeof(struct explanation_generator_s));
     if (!gen) {
         set_error("Failed to allocate explanation_generator_s (%zu bytes)",
@@ -229,6 +233,10 @@ return gen;
  */
 void explanation_generator_destroy(explanation_generator_t gen)
 {
+    /* Phase 8: Heartbeat at operation start */
+    explanations_heartbeat("explanations_explanation_generato", 0.0f);
+
+
     LOG_DEBUG("Destroying module");
     // =========================================================================
     // GUARD: NULL check
@@ -273,6 +281,10 @@ bool explanation_generate_from_decision(
     natural_explanation_t* explanation)
 {
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    explanations_heartbeat("explanations_explanation_generate", 0.0f);
+
+
     if (gen && gen->bio_ctx) {
         bio_router_process_inbox(gen->bio_ctx, 5);
     }
@@ -419,6 +431,10 @@ bool explanation_generate_from_multimodal(
     // INITIALIZATION: Clear explanation
     // =========================================================================
 
+    /* Phase 8: Heartbeat at operation start */
+    explanations_heartbeat("explanations_explanation_generate", 0.0f);
+
+
     memset(explanation, 0, sizeof(natural_explanation_t));
 
     // =========================================================================
@@ -530,6 +546,10 @@ bool explain_with_symbolic_logic(
     // TODO: Check if brain has symbolic_logic module
     // For now, generate placeholder proof
 
+    /* Phase 8: Heartbeat at operation start */
+    explanations_heartbeat("explanations_explain_with_symboli", 0.0f);
+
+
     snprintf(proof_buffer, buffer_size,
             "Logical proof: IF (premise_A AND premise_B) THEN conclusion");
 
@@ -570,6 +590,9 @@ bool generate_causal_chain(
         set_error("Invalid parameters for causal chain generation");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    explanations_heartbeat("explanations_generate_causal_chain", 0.0f);
 
     // =========================================================================
     // GENERATION: Build causal chain
@@ -618,6 +641,9 @@ bool generate_counterfactual(
         set_error("Invalid parameters for counterfactual generation");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    explanations_heartbeat("explanations_generate_counterfactual", 0.0f);
 
     // =========================================================================
     // GENERATION: Build counterfactual
@@ -831,6 +857,10 @@ static const char* confidence_level_to_string(float confidence)
  */
 explanation_config_t explanation_default_config(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    explanations_heartbeat("explanations_explanation_default_", 0.0f);
+
+
     explanation_config_t config = {
         .generate_what = true,
         .generate_why = true,
@@ -862,6 +892,10 @@ void explanation_print(const natural_explanation_t* explanation)
         printf("NULL explanation\n");
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    explanations_heartbeat("explanations_explanation_print", 0.0f);
+
 
     printf("\n=== EXPLANATION ===\n");
 
@@ -914,6 +948,10 @@ bool explanation_to_json(
     }
 
     // Simple JSON formatting (no escaping for simplicity)
+    /* Phase 8: Heartbeat at operation start */
+    explanations_heartbeat("explanations_explanation_to_json", 0.0f);
+
+
     snprintf(json_buffer, buffer_size,
             "{\n"
             "  \"what\": \"%s\",\n"
@@ -946,9 +984,19 @@ bool explanation_to_json(
 int explanations_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    explanations_heartbeat("explanations_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Explanations_System");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                explanations_heartbeat("explanations_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

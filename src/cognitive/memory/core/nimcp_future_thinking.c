@@ -41,7 +41,7 @@ static nimcp_health_agent_t* g_future_thinking_health_agent = NULL;
  * @brief Set health agent for future_thinking heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void future_thinking_set_health_agent(nimcp_health_agent_t* agent) {
+void future_thinking_set_health_agent(nimcp_health_agent_t* agent) {
     g_future_thinking_health_agent = agent;
 }
 
@@ -348,12 +348,24 @@ NIMCP_EXPORT void future_thinking_destroy(future_thinking_t ft) {
 
     // Clean up events
     for (size_t i = 0; i < ft->num_events; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ft->num_events > 256) {
+            future_thinking_heartbeat("future_think_loop",
+                             (float)(i + 1) / (float)ft->num_events);
+        }
+
         future_event_cleanup(&ft->events[i]);
     }
     free(ft->events);
 
     // Clean up goals
     for (size_t i = 0; i < ft->num_goals; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ft->num_goals > 256) {
+            future_thinking_heartbeat("future_think_loop",
+                             (float)(i + 1) / (float)ft->num_goals);
+        }
+
         future_goal_cleanup(&ft->goals[i]);
     }
     free(ft->goals);
@@ -373,6 +385,12 @@ NIMCP_EXPORT future_error_t future_thinking_reset(future_thinking_t ft) {
 
     // Clean up existing events
     for (size_t i = 0; i < ft->num_events; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ft->num_events > 256) {
+            future_thinking_heartbeat("future_think_loop",
+                             (float)(i + 1) / (float)ft->num_events);
+        }
+
         future_event_cleanup(&ft->events[i]);
     }
     ft->num_events = 0;
@@ -380,6 +398,12 @@ NIMCP_EXPORT future_error_t future_thinking_reset(future_thinking_t ft) {
 
     // Clean up existing goals
     for (size_t i = 0; i < ft->num_goals; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ft->num_goals > 256) {
+            future_thinking_heartbeat("future_think_loop",
+                             (float)(i + 1) / (float)ft->num_goals);
+        }
+
         future_goal_cleanup(&ft->goals[i]);
     }
     ft->num_goals = 0;
@@ -508,6 +532,12 @@ NIMCP_EXPORT future_error_t future_thinking_combine_fragments(
     size_t valid_fragments = 0;
 
     for (size_t i = 0; i < num_fragments; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_fragments > 256) {
+            future_thinking_heartbeat("future_think_loop",
+                             (float)(i + 1) / (float)num_fragments);
+        }
+
         // Get fragment's signature and state
         // In a full implementation, we'd retrieve the actual memory node
         // For now, create placeholder signatures
@@ -517,6 +547,12 @@ NIMCP_EXPORT future_error_t future_thinking_combine_fragments(
         // Compose signatures by combining exponents
         // Using max(existing, new) weighted by fragment weight
         for (size_t j = 0; j < PRIME_SIG_DIM; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+                future_thinking_heartbeat("future_think_loop",
+                                 (float)(j + 1) / (float)PRIME_SIG_DIM);
+            }
+
             uint8_t fragment_exp = (uint8_t)((fragment_ids[i] * (j + 1)) % 8);  // Placeholder
             float weighted_exp = fragment_exp * w;
             if (weighted_exp > combined_signature->exponents[j]) {
@@ -539,6 +575,12 @@ NIMCP_EXPORT future_error_t future_thinking_combine_fragments(
     // Normalize blend weights
     if (total_weight > FUTURE_EPSILON) {
         for (size_t i = 0; i < valid_fragments; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && valid_fragments > 256) {
+                future_thinking_heartbeat("future_think_loop",
+                                 (float)(i + 1) / (float)valid_fragments);
+            }
+
             blend_weights[i] /= total_weight;
         }
     }
@@ -605,6 +647,12 @@ NIMCP_EXPORT future_error_t future_thinking_construct_scene(
     // Compute vividness based on element detail
     float total_detail = 0.0f;
     for (size_t i = 0; i < scene_out->num_elements; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && scene_out->num_elements > 256) {
+            future_thinking_heartbeat("future_think_loop",
+                             (float)(i + 1) / (float)scene_out->num_elements);
+        }
+
         total_detail += elements[i].extraction_confidence;
     }
     scene_out->visual_detail = total_detail / (float)scene_out->num_elements;
@@ -618,6 +666,12 @@ NIMCP_EXPORT future_error_t future_thinking_construct_scene(
 
         if (element_states && element_weights) {
             for (size_t i = 0; i < scene_out->num_elements; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && scene_out->num_elements > 256) {
+                    future_thinking_heartbeat("future_think_loop",
+                                     (float)(i + 1) / (float)scene_out->num_elements);
+                }
+
                 element_states[i] = elements[i].state;
                 element_weights[i] = 1.0f;
             }
@@ -715,6 +769,12 @@ NIMCP_EXPORT float future_thinking_evaluate_coherence(
     float center[3] = {0.0f, 0.0f, 0.0f};
 
     for (size_t i = 0; i < scene->num_elements; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && scene->num_elements > 256) {
+            future_thinking_heartbeat("future_think_loop",
+                             (float)(i + 1) / (float)scene->num_elements);
+        }
+
         if (scene->elements[i].type == SCENE_ELEMENT_PLACE) {
             center[0] += scene->elements[i].position[0];
             center[1] += scene->elements[i].position[1];
@@ -729,6 +789,12 @@ NIMCP_EXPORT float future_thinking_evaluate_coherence(
         center[2] /= place_count;
 
         for (size_t i = 0; i < scene->num_elements; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && scene->num_elements > 256) {
+                future_thinking_heartbeat("future_think_loop",
+                                 (float)(i + 1) / (float)scene->num_elements);
+            }
+
             if (scene->elements[i].type == SCENE_ELEMENT_PLACE) {
                 float dx = scene->elements[i].position[0] - center[0];
                 float dy = scene->elements[i].position[1] - center[1];
@@ -751,6 +817,12 @@ NIMCP_EXPORT float future_thinking_evaluate_coherence(
     size_t action_count = 0;
 
     for (size_t i = 0; i < scene->num_elements; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && scene->num_elements > 256) {
+            future_thinking_heartbeat("future_think_loop",
+                             (float)(i + 1) / (float)scene->num_elements);
+        }
+
         if (scene->elements[i].type == SCENE_ELEMENT_ACTION ||
             scene->elements[i].type == SCENE_ELEMENT_TIME) {
             float offset = scene->elements[i].temporal_offset;
@@ -777,6 +849,12 @@ NIMCP_EXPORT float future_thinking_evaluate_coherence(
     size_t relation_count = 0;
 
     for (size_t i = 0; i < scene->num_elements; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && scene->num_elements > 256) {
+            future_thinking_heartbeat("future_think_loop",
+                             (float)(i + 1) / (float)scene->num_elements);
+        }
+
         if (scene->elements[i].num_relations > 0) {
             // Each relation gets a base score
             for (size_t r = 0; r < scene->elements[i].num_relations; r++) {
@@ -784,6 +862,12 @@ NIMCP_EXPORT float future_thinking_evaluate_coherence(
                 uint64_t related_id = scene->elements[i].related_to[r];
                 bool found = false;
                 for (size_t j = 0; j < scene->num_elements; j++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((j & 0xFF) == 0 && scene->num_elements > 256) {
+                        future_thinking_heartbeat("future_think_loop",
+                                         (float)(j + 1) / (float)scene->num_elements);
+                    }
+
                     if (scene->elements[j].element_id == related_id) {
                         found = true;
                         relation_score += 1.0f;  // Valid relation
@@ -1080,6 +1164,12 @@ NIMCP_EXPORT future_error_t future_thinking_simulate(
     }
 
     for (size_t i = 0; i < num_fragments; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_fragments > 256) {
+            future_thinking_heartbeat("future_think_loop",
+                             (float)(i + 1) / (float)num_fragments);
+        }
+
         scene_element_init(&elements[i], (scene_element_type_t)(i % SCENE_ELEMENT_TYPE_COUNT));
         elements[i].element_id = fragments[i];
         elements[i].source_memory_id = fragments[i];
@@ -1212,6 +1302,12 @@ NIMCP_EXPORT future_error_t future_thinking_resimulate(
     // Find existing event
     future_event_t* existing = NULL;
     for (size_t i = 0; i < ft->num_events; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ft->num_events > 256) {
+            future_thinking_heartbeat("future_think_loop",
+                             (float)(i + 1) / (float)ft->num_events);
+        }
+
         if (ft->events[i].event_id == event_id) {
             existing = &ft->events[i];
             break;
@@ -1261,6 +1357,12 @@ NIMCP_EXPORT future_error_t future_thinking_connect_to_goal(
     // Find event
     future_event_t* event = NULL;
     for (size_t i = 0; i < ft->num_events; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ft->num_events > 256) {
+            future_thinking_heartbeat("future_think_loop",
+                             (float)(i + 1) / (float)ft->num_events);
+        }
+
         if (ft->events[i].event_id == event_id) {
             event = &ft->events[i];
             break;
@@ -1275,6 +1377,12 @@ NIMCP_EXPORT future_error_t future_thinking_connect_to_goal(
     // Find goal
     future_goal_t* goal = NULL;
     for (size_t i = 0; i < ft->num_goals; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ft->num_goals > 256) {
+            future_thinking_heartbeat("future_think_loop",
+                             (float)(i + 1) / (float)ft->num_goals);
+        }
+
         if (ft->goals[i].goal_id == goal_id) {
             goal = &ft->goals[i];
             break;
@@ -1368,6 +1476,12 @@ NIMCP_EXPORT future_error_t future_thinking_generate_subgoals(
     // Find goal
     future_goal_t* parent = NULL;
     for (size_t i = 0; i < ft->num_goals; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ft->num_goals > 256) {
+            future_thinking_heartbeat("future_think_loop",
+                             (float)(i + 1) / (float)ft->num_goals);
+        }
+
         if (ft->goals[i].goal_id == goal_id) {
             parent = &ft->goals[i];
             break;
@@ -1429,6 +1543,12 @@ NIMCP_EXPORT future_error_t future_thinking_update_goal_progress(
 
     // Find goal
     for (size_t i = 0; i < ft->num_goals; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ft->num_goals > 256) {
+            future_thinking_heartbeat("future_think_loop",
+                             (float)(i + 1) / (float)ft->num_goals);
+        }
+
         if (ft->goals[i].goal_id == goal_id) {
             ft->goals[i].current_progress = clamp_float(new_progress, 0.0f, 1.0f);
             ft->goals[i].last_updated_ms = get_current_time_ms();
@@ -1457,6 +1577,12 @@ NIMCP_EXPORT future_error_t future_thinking_get_goal(
     }
 
     for (size_t i = 0; i < ft->num_goals; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ft->num_goals > 256) {
+            future_thinking_heartbeat("future_think_loop",
+                             (float)(i + 1) / (float)ft->num_goals);
+        }
+
         if (ft->goals[i].goal_id == goal_id) {
             *goal_out = ft->goals[i];
             return FUTURE_SUCCESS;
@@ -1487,6 +1613,12 @@ NIMCP_EXPORT future_error_t future_thinking_compare_scenarios(
     future_event_t* event_b = NULL;
 
     for (size_t i = 0; i < ft->num_events; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ft->num_events > 256) {
+            future_thinking_heartbeat("future_think_loop",
+                             (float)(i + 1) / (float)ft->num_events);
+        }
+
         if (ft->events[i].event_id == event_id_a) {
             event_a = &ft->events[i];
         }
@@ -1571,6 +1703,12 @@ NIMCP_EXPORT future_error_t future_thinking_optimize_path(
     // Find goal
     future_goal_t* goal = NULL;
     for (size_t i = 0; i < ft->num_goals; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ft->num_goals > 256) {
+            future_thinking_heartbeat("future_think_loop",
+                             (float)(i + 1) / (float)ft->num_goals);
+        }
+
         if (ft->goals[i].goal_id == goal_id) {
             goal = &ft->goals[i];
             break;
@@ -1597,6 +1735,12 @@ NIMCP_EXPORT future_error_t future_thinking_optimize_path(
     }
 
     for (size_t i = 0; i < ft->num_events; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ft->num_events > 256) {
+            future_thinking_heartbeat("future_think_loop",
+                             (float)(i + 1) / (float)ft->num_events);
+        }
+
         if (ft->events[i].goal_relevance > 0.3f) {
             for (size_t g = 0; g < ft->events[i].num_linked_goals; g++) {
                 if (ft->events[i].linked_goal_ids[g] == goal_id) {
@@ -1631,7 +1775,19 @@ NIMCP_EXPORT future_error_t future_thinking_optimize_path(
     result_out->path_probability = 1.0f;
 
     for (size_t i = 0; i < path_length; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && path_length > 256) {
+            future_thinking_heartbeat("future_think_loop",
+                             (float)(i + 1) / (float)path_length);
+        }
+
         for (size_t j = 0; j < ft->num_events; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && ft->num_events > 256) {
+                future_thinking_heartbeat("future_think_loop",
+                                 (float)(j + 1) / (float)ft->num_events);
+            }
+
             if (ft->events[j].event_id == result_out->step_event_ids[i]) {
                 result_out->total_expected_value += ft->events[j].desirability;
                 result_out->estimated_time += ft->events[j].expected_time;
@@ -1697,6 +1853,12 @@ NIMCP_EXPORT future_error_t future_thinking_get_event(
     }
 
     for (size_t i = 0; i < ft->num_events; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ft->num_events > 256) {
+            future_thinking_heartbeat("future_think_loop",
+                             (float)(i + 1) / (float)ft->num_events);
+        }
+
         if (ft->events[i].event_id == event_id) {
             *event_out = ft->events[i];
             return FUTURE_SUCCESS;
@@ -1717,6 +1879,12 @@ NIMCP_EXPORT future_error_t future_thinking_delete_event(
     }
 
     for (size_t i = 0; i < ft->num_events; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ft->num_events > 256) {
+            future_thinking_heartbeat("future_think_loop",
+                             (float)(i + 1) / (float)ft->num_events);
+        }
+
         if (ft->events[i].event_id == event_id) {
             future_event_cleanup(&ft->events[i]);
 

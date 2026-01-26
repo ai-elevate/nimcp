@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_pr_omni_bridge_health_agent = NULL;
  * @brief Set health agent for pr_omni_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void pr_omni_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void pr_omni_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_pr_omni_bridge_health_agent = agent;
 }
 
@@ -94,16 +94,34 @@ static uint64_t get_time_us(void) {
 static void normalize_weights(float* weights, size_t count) {
     float sum = 0.0f;
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_omni_bridge_heartbeat("pr_omni_brid_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         sum += weights[i];
     }
     if (sum > PR_OMNI_EPSILON) {
         for (size_t i = 0; i < count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && count > 256) {
+                pr_omni_bridge_heartbeat("pr_omni_brid_loop",
+                                 (float)(i + 1) / (float)count);
+            }
+
             weights[i] /= sum;
         }
     } else {
         /* Equal weights if sum is zero */
         float equal = 1.0f / (float)count;
         for (size_t i = 0; i < count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && count > 256) {
+                pr_omni_bridge_heartbeat("pr_omni_brid_loop",
+                                 (float)(i + 1) / (float)count);
+            }
+
             weights[i] = equal;
         }
     }
@@ -119,6 +137,12 @@ static float geometric_mean(const float* values, size_t count) {
     size_t valid_count = 0;
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_omni_bridge_heartbeat("pr_omni_brid_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (values[i] > PR_OMNI_EPSILON) {
             product *= values[i];
             valid_count++;
@@ -151,6 +175,12 @@ static float weighted_average(const float* values, const float* weights, size_t 
     float weight_sum = 0.0f;
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_omni_bridge_heartbeat("pr_omni_brid_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         sum += values[i] * weights[i];
         weight_sum += weights[i];
     }
@@ -238,6 +268,10 @@ static float get_pair_binding(const pr_omni_binding_state_t* state, int m1, int 
 //=============================================================================
 
 pr_omni_bridge_config_t pr_omni_bridge_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_config_default", 0.0f);
+
+
     pr_omni_bridge_config_t config = {
         /* Binding thresholds */
         .binding_threshold = PR_OMNI_BINDING_THRESHOLD,
@@ -274,6 +308,10 @@ bool pr_omni_bridge_config_validate(const pr_omni_bridge_config_t* config) {
     if (!config) return false;
 
     /* Validate binding thresholds */
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_config_validate", 0.0f);
+
+
     if (config->binding_threshold < 0.0f || config->binding_threshold > 1.0f) {
         set_error("binding_threshold must be in [0, 1]");
         return false;
@@ -307,6 +345,10 @@ bool pr_omni_bridge_config_validate(const pr_omni_bridge_config_t* config) {
 }
 
 pr_omni_modal_weights_t pr_omni_modal_weights_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_pr_omni_modal_weight", 0.0f);
+
+
     pr_omni_modal_weights_t weights = {
         .visual_weight = 1.0f / 3.0f,
         .audio_weight = 1.0f / 3.0f,
@@ -326,6 +368,10 @@ pr_omni_modal_weights_t pr_omni_modal_weights_default(void) {
 
 pr_omni_bridge_t* pr_omni_bridge_create(const pr_omni_bridge_config_t* config) {
     /* Use default config if not provided */
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_create", 0.0f);
+
+
     pr_omni_bridge_config_t default_config;
     if (!config) {
         default_config = pr_omni_bridge_config_default();
@@ -410,6 +456,10 @@ void pr_omni_bridge_destroy(pr_omni_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Destroy Kuramoto system */
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_destroy", 0.0f);
+
+
     if (bridge->modal_oscillators) {
         kuramoto_destroy(bridge->modal_oscillators);
         bridge->modal_oscillators = NULL;
@@ -435,6 +485,10 @@ pr_omni_error_t pr_omni_bridge_reset(pr_omni_bridge_t* bridge) {
     }
 
     /* Reset Kuramoto phases */
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_reset", 0.0f);
+
+
     if (bridge->modal_oscillators) {
         kuramoto_reset(bridge->modal_oscillators);
     }
@@ -487,6 +541,10 @@ pr_omni_error_t pr_omni_bridge_connect_bridges(
     }
 
     /* Store bridge pointers */
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_connect_bridges", 0.0f);
+
+
     bridge->omni_bridge = omni;
     bridge->visual_bridge = visual;
     bridge->audio_bridge = audio;
@@ -518,6 +576,10 @@ pr_omni_error_t pr_omni_bridge_connect_theta_gamma(
         return PR_OMNI_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_connect_theta_gamma", 0.0f);
+
+
     bridge->theta_gamma = theta_gamma;
     return PR_OMNI_SUCCESS;
 }
@@ -530,6 +592,10 @@ pr_omni_error_t pr_omni_bridge_connect_entanglement(
         set_error("NULL bridge pointer");
         return PR_OMNI_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_connect_entanglement", 0.0f);
+
 
     bridge->multimodal_entanglement = entanglement;
     return PR_OMNI_SUCCESS;
@@ -549,6 +615,10 @@ pr_omni_error_t pr_omni_bridge_update(pr_omni_bridge_t* bridge) {
         set_error("Omni-sensory bridge not connected");
         return PR_OMNI_ERROR_NOT_CONNECTED;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_update", 0.0f);
+
 
     uint64_t start_time = get_time_us();
 
@@ -671,6 +741,10 @@ pr_omni_error_t pr_omni_bridge_compute_unified_prime_sig(
      * For now, we demonstrate the fusion logic conceptually.
      */
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_compute_unified_prim", 0.0f);
+
+
     if (bridge->config.track_statistics) {
         bridge->stats.signature_fusions++;
     }
@@ -727,6 +801,10 @@ pr_omni_error_t pr_omni_bridge_fuse_signatures(
         return PR_OMNI_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_fuse_signatures", 0.0f);
+
+
     if (binding < 0.0f || binding > 1.0f) {
         set_error("Binding must be in [0, 1]");
         return PR_OMNI_ERROR_INVALID_CONFIG;
@@ -758,6 +836,10 @@ pr_omni_error_t pr_omni_bridge_compute_unified_quaternion(
         set_error("NULL pointer argument");
         return PR_OMNI_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_compute_unified_quat", 0.0f);
+
 
     if (bridge->config.track_statistics) {
         bridge->stats.quaternion_blends++;
@@ -797,6 +879,12 @@ pr_omni_error_t pr_omni_bridge_compute_unified_quaternion(
     /* Count available modalities */
     int num_available = 0;
     for (int i = 0; i < PR_OMNI_NUM_MODALITIES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_OMNI_NUM_MODALITIES > 256) {
+            pr_omni_bridge_heartbeat("pr_omni_brid_loop",
+                             (float)(i + 1) / (float)PR_OMNI_NUM_MODALITIES);
+        }
+
         if (has_modal[i]) num_available++;
     }
 
@@ -822,6 +910,12 @@ pr_omni_error_t pr_omni_bridge_compute_unified_quaternion(
     /* Only include available modalities */
     float total_weight = 0.0f;
     for (int i = 0; i < PR_OMNI_NUM_MODALITIES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_OMNI_NUM_MODALITIES > 256) {
+            pr_omni_bridge_heartbeat("pr_omni_brid_loop",
+                             (float)(i + 1) / (float)PR_OMNI_NUM_MODALITIES);
+        }
+
         if (!has_modal[i]) {
             weights[i] = 0.0f;
         } else {
@@ -832,6 +926,12 @@ pr_omni_error_t pr_omni_bridge_compute_unified_quaternion(
     /* Normalize weights */
     if (total_weight > PR_OMNI_EPSILON) {
         for (int i = 0; i < PR_OMNI_NUM_MODALITIES; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && PR_OMNI_NUM_MODALITIES > 256) {
+                pr_omni_bridge_heartbeat("pr_omni_brid_loop",
+                                 (float)(i + 1) / (float)PR_OMNI_NUM_MODALITIES);
+            }
+
             weights[i] /= total_weight;
         }
     }
@@ -839,6 +939,12 @@ pr_omni_error_t pr_omni_bridge_compute_unified_quaternion(
     /* w-component: max consolidation across modalities */
     float w_values[PR_OMNI_NUM_MODALITIES];
     for (int i = 0; i < PR_OMNI_NUM_MODALITIES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_OMNI_NUM_MODALITIES > 256) {
+            pr_omni_bridge_heartbeat("pr_omni_brid_loop",
+                             (float)(i + 1) / (float)PR_OMNI_NUM_MODALITIES);
+        }
+
         w_values[i] = has_modal[i] ? quats[i].w : 0.0f;
     }
     unified_quat->w = array_max(w_values, PR_OMNI_NUM_MODALITIES);
@@ -846,6 +952,12 @@ pr_omni_error_t pr_omni_bridge_compute_unified_quaternion(
     /* x-component: weighted average emotion */
     float x_values[PR_OMNI_NUM_MODALITIES];
     for (int i = 0; i < PR_OMNI_NUM_MODALITIES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_OMNI_NUM_MODALITIES > 256) {
+            pr_omni_bridge_heartbeat("pr_omni_brid_loop",
+                             (float)(i + 1) / (float)PR_OMNI_NUM_MODALITIES);
+        }
+
         x_values[i] = has_modal[i] ? quats[i].x : 0.0f;
     }
     unified_quat->x = weighted_average(x_values, weights, PR_OMNI_NUM_MODALITIES);
@@ -853,6 +965,12 @@ pr_omni_error_t pr_omni_bridge_compute_unified_quaternion(
     /* y-component: max salience across bound modalities */
     float y_values[PR_OMNI_NUM_MODALITIES];
     for (int i = 0; i < PR_OMNI_NUM_MODALITIES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_OMNI_NUM_MODALITIES > 256) {
+            pr_omni_bridge_heartbeat("pr_omni_brid_loop",
+                             (float)(i + 1) / (float)PR_OMNI_NUM_MODALITIES);
+        }
+
         y_values[i] = has_modal[i] ? quats[i].y : 0.0f;
     }
     /* Weight by binding - only highly bound modalities contribute max */
@@ -871,6 +989,12 @@ pr_omni_error_t pr_omni_bridge_compute_unified_quaternion(
     float z_values[PR_OMNI_NUM_MODALITIES];
     int z_count = 0;
     for (int i = 0; i < PR_OMNI_NUM_MODALITIES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_OMNI_NUM_MODALITIES > 256) {
+            pr_omni_bridge_heartbeat("pr_omni_brid_loop",
+                             (float)(i + 1) / (float)PR_OMNI_NUM_MODALITIES);
+        }
+
         if (has_modal[i] && quats[i].z > PR_OMNI_EPSILON) {
             z_values[z_count++] = quats[i].z;
         }
@@ -900,6 +1024,10 @@ pr_omni_error_t pr_omni_bridge_slerp_blend(
         set_error("Invalid arguments to SLERP blend");
         return PR_OMNI_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_slerp_blend", 0.0f);
+
 
     if (count == 1) {
         *result = quaternions[0];
@@ -936,6 +1064,10 @@ pr_omni_error_t pr_omni_bridge_fuse_memories(
     }
 
     /* Check binding threshold */
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_fuse_memories", 0.0f);
+
+
     if (bridge->binding_state.overall_coherence < bridge->config.binding_threshold) {
         set_error("Binding too weak for memory fusion");
         return PR_OMNI_ERROR_FUSION_FAILED;
@@ -996,6 +1128,10 @@ pr_omni_error_t pr_omni_bridge_retrieve_multimodal(
     }
 
     /* Check theta phase if gating enabled */
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_retrieve_multimodal", 0.0f);
+
+
     if (bridge->config.enable_phase_gating && bridge->theta_gamma) {
         float retrieve_strength = theta_gamma_get_retrieve_strength(bridge->theta_gamma);
         if (retrieve_strength < bridge->config.retrieval_gate_threshold) {
@@ -1041,6 +1177,10 @@ pr_omni_error_t pr_omni_bridge_compute_binding_strength(
     }
 
     /* Get binding from omni-sensory bridge */
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_compute_binding_stre", 0.0f);
+
+
     if (bridge->omni_bridge) {
         /* Get binding strengths from omni-sensory bridge */
         state->binding_visual_audio =
@@ -1122,6 +1262,10 @@ pr_omni_error_t pr_omni_bridge_update_modal_weights(pr_omni_bridge_t* bridge) {
      * 3. Prediction error (lower PE = more reliable = more weight)
      */
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_update_modal_weights", 0.0f);
+
+
     float weights[PR_OMNI_NUM_MODALITIES];
 
     /* Base weight from binding strength */
@@ -1140,6 +1284,12 @@ pr_omni_error_t pr_omni_bridge_update_modal_weights(pr_omni_bridge_t* bridge) {
     /* Add base weight to prevent any modality from being completely ignored */
     float base_weight = 0.1f;
     for (int i = 0; i < PR_OMNI_NUM_MODALITIES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_OMNI_NUM_MODALITIES > 256) {
+            pr_omni_bridge_heartbeat("pr_omni_brid_loop",
+                             (float)(i + 1) / (float)PR_OMNI_NUM_MODALITIES);
+        }
+
         weights[i] += base_weight;
     }
 
@@ -1153,6 +1303,12 @@ pr_omni_error_t pr_omni_bridge_update_modal_weights(pr_omni_bridge_t* bridge) {
 
     /* Also update per-component weights (simplified: use same as overall) */
     for (int i = 0; i < PR_OMNI_NUM_MODALITIES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_OMNI_NUM_MODALITIES > 256) {
+            pr_omni_bridge_heartbeat("pr_omni_brid_loop",
+                             (float)(i + 1) / (float)PR_OMNI_NUM_MODALITIES);
+        }
+
         bridge->modal_weights.consolidation_weights[i] = weights[i];
         bridge->modal_weights.emotion_weights[i] = weights[i];
         bridge->modal_weights.salience_weights[i] = weights[i];
@@ -1177,6 +1333,10 @@ float pr_omni_bridge_get_binding(
     int modality2)
 {
     if (!bridge) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_get_binding", 0.0f);
+
 
     if (modality1 < 0 || modality1 >= PR_OMNI_NUM_MODALITIES ||
         modality2 < 0 || modality2 >= PR_OMNI_NUM_MODALITIES) {
@@ -1207,6 +1367,10 @@ pr_omni_error_t pr_omni_bridge_sync_oscillators(
     }
 
     /* Update coupling strengths based on binding (if adaptive) */
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_sync_oscillators", 0.0f);
+
+
     if (bridge->config.enable_adaptive_coupling) {
         float base_k = bridge->config.kuramoto_coupling;
 
@@ -1249,6 +1413,10 @@ float pr_omni_bridge_get_kuramoto_coherence(
 {
     if (!bridge || !bridge->modal_oscillators) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_get_kuramoto_coheren", 0.0f);
+
+
     if (modality1 < 0 || modality1 >= PR_OMNI_NUM_MODALITIES ||
         modality2 < 0 || modality2 >= PR_OMNI_NUM_MODALITIES) {
         return 0.0f;
@@ -1288,6 +1456,10 @@ pr_omni_error_t pr_omni_bridge_set_kuramoto_coupling(
         set_error("Kuramoto system not initialized");
         return PR_OMNI_ERROR_KURAMOTO_FAILED;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_set_kuramoto_couplin", 0.0f);
+
 
     if (modality1 < 0 || modality1 >= PR_OMNI_NUM_MODALITIES ||
         modality2 < 0 || modality2 >= PR_OMNI_NUM_MODALITIES) {
@@ -1331,6 +1503,10 @@ pr_omni_dominant_modality_t pr_omni_bridge_get_dominant_modality(
      * 3. Binding strength participation
      */
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_get_dominant_modalit", 0.0f);
+
+
     float scores[PR_OMNI_NUM_MODALITIES];
 
     /* Weight contribution */
@@ -1359,6 +1535,12 @@ pr_omni_dominant_modality_t pr_omni_bridge_get_dominant_modality(
     /* Check if any modality is clearly dominant */
     float second_max = 0.0f;
     for (int i = 0; i < PR_OMNI_NUM_MODALITIES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_OMNI_NUM_MODALITIES > 256) {
+            pr_omni_bridge_heartbeat("pr_omni_brid_loop",
+                             (float)(i + 1) / (float)PR_OMNI_NUM_MODALITIES);
+        }
+
         if (i != max_idx && scores[i] > second_max) {
             second_max = scores[i];
         }
@@ -1387,6 +1569,10 @@ pr_omni_error_t pr_omni_bridge_get_unified_signature(
     }
 
     *sig = bridge->unified_signature;
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_get_unified_signatur", 0.0f);
+
+
     return PR_OMNI_SUCCESS;
 }
 
@@ -1397,6 +1583,10 @@ nimcp_quaternion_t pr_omni_bridge_get_unified_quaternion(
         nimcp_quaternion_t zero = {0.0f, 0.0f, 0.0f, 0.0f};
         return zero;
     }
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_get_unified_quaterni", 0.0f);
+
+
     return bridge->unified_quaternion;
 }
 
@@ -1410,6 +1600,10 @@ pr_omni_error_t pr_omni_bridge_get_binding_state(
     }
 
     *state = bridge->binding_state;
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_get_binding_state", 0.0f);
+
+
     return PR_OMNI_SUCCESS;
 }
 
@@ -1423,6 +1617,10 @@ pr_omni_error_t pr_omni_bridge_get_modal_weights(
     }
 
     *weights = bridge->modal_weights;
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_get_modal_weights", 0.0f);
+
+
     return PR_OMNI_SUCCESS;
 }
 
@@ -1440,6 +1638,10 @@ pr_omni_error_t pr_omni_bridge_get_stats(
     }
 
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_get_stats", 0.0f);
+
+
     return PR_OMNI_SUCCESS;
 }
 
@@ -1448,6 +1650,10 @@ pr_omni_error_t pr_omni_bridge_reset_stats(pr_omni_bridge_t* bridge) {
         set_error("NULL bridge pointer");
         return PR_OMNI_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_reset_stats", 0.0f);
+
 
     uint64_t now = get_time_ns();
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -1508,6 +1714,10 @@ void pr_omni_bridge_print_state(const pr_omni_bridge_t* bridge) {
         printf("PR Omni Bridge: NULL\n");
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_print_state", 0.0f);
+
 
     printf("=== PR Omni-Sensory Bridge State ===\n");
     printf("Initialized: %s\n", bridge->initialized ? "yes" : "no");
@@ -1577,9 +1787,17 @@ void pr_omni_bridge_print_state(const pr_omni_bridge_t* bridge) {
 
 bool pr_omni_bridge_is_connected(const pr_omni_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_is_connected", 0.0f);
+
+
     return bridge->bridges_connected;
 }
 
 uint64_t pr_omni_bridge_current_time_ns(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_omni_bridge_heartbeat("pr_omni_brid_current_time_ns", 0.0f);
+
+
     return get_time_ns();
 }

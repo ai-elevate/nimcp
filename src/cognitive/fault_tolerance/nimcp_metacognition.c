@@ -55,7 +55,7 @@ static nimcp_health_agent_t* g_metacognition_health_agent = NULL;
  * @brief Set health agent for metacognition heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void metacognition_set_health_agent(nimcp_health_agent_t* agent) {
+void metacognition_set_health_agent(nimcp_health_agent_t* agent) {
     g_metacognition_health_agent = agent;
 }
 
@@ -156,6 +156,10 @@ static void populate_diagnosis_degraded(diagnosis_t* diagnosis, const metacognit
 //=============================================================================
 
 metacognition_config_t metacognition_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    metacognition_heartbeat("metacognitio_default_config", 0.0f);
+
+
     metacognition_config_t config = {0};
     config.baseline_window_size = METACOGNITION_DEFAULT_BASELINE_WINDOW;
     config.degradation_threshold = METACOGNITION_DEFAULT_DEGRADATION_THRESHOLD;
@@ -167,6 +171,10 @@ metacognition_config_t metacognition_default_config(void) {
 }
 
 metacognition_t* metacognition_create(const metacognition_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    metacognition_heartbeat("metacognitio_create", 0.0f);
+
+
     LOG_DEBUG("Creating module");
     // GUARD: Allocate main structure
     metacognition_t* meta = (metacognition_t*)nimcp_malloc(sizeof(metacognition_t));
@@ -236,6 +244,10 @@ return meta;
 }
 
 void metacognition_destroy(metacognition_t* meta) {
+    /* Phase 8: Heartbeat at operation start */
+    metacognition_heartbeat("metacognitio_destroy", 0.0f);
+
+
     LOG_DEBUG("Destroying module");
     // GUARD: NULL check
     if (!meta) {
@@ -272,6 +284,10 @@ bool metacognition_monitor_self(
     const cognitive_state_t* state
 ) {
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    metacognition_heartbeat("metacognitio_monitor_self", 0.0f);
+
+
     if (meta && meta->bio_ctx) {
         bio_router_process_inbox(meta->bio_ctx, 5);
     }
@@ -365,6 +381,10 @@ bool metacognition_is_degraded(
     }
 
     // GUARD: Invalid threshold
+    /* Phase 8: Heartbeat at operation start */
+    metacognition_heartbeat("metacognitio_is_degraded", 0.0f);
+
+
     if (threshold < 0.0F || threshold > 1.0F) {
         LOG_WARNING("Invalid degradation threshold %.2f, expected [0,1]", threshold);
         return false;
@@ -394,6 +414,10 @@ diagnosis_t* metacognition_self_diagnose(metacognition_t* meta) {
 
     // WHAT: Allocate diagnosis structure
     // WHY: Return detailed diagnosis to caller
+    /* Phase 8: Heartbeat at operation start */
+    metacognition_heartbeat("metacognitio_self_diagnose", 0.0f);
+
+
     diagnosis_t* diagnosis = create_diagnosis(meta);
     if (!diagnosis) {
         LOG_ERROR("Failed to allocate diagnosis");
@@ -428,6 +452,10 @@ float metacognition_calibrate_confidence(
     }
 
     // GUARD: Clamp initial confidence
+    /* Phase 8: Heartbeat at operation start */
+    metacognition_heartbeat("metacognitio_calibrate_confidence", 0.0f);
+
+
     initial_confidence = fmaxf(0.0F, fminf(1.0F, initial_confidence));
 
     float learning_rate = meta->config.confidence_learning_rate;
@@ -463,6 +491,10 @@ float metacognition_get_self_confidence(const metacognition_t* meta) {
     if (!meta) {
         return 0.0F;
     }
+    /* Phase 8: Heartbeat at operation start */
+    metacognition_heartbeat("metacognitio_get_self_confidence", 0.0f);
+
+
     return meta->self_confidence;
 }
 
@@ -470,6 +502,10 @@ float metacognition_get_uncertainty(const metacognition_t* meta) {
     if (!meta) {
         return 0.0F;
     }
+    /* Phase 8: Heartbeat at operation start */
+    metacognition_heartbeat("metacognitio_get_uncertainty", 0.0f);
+
+
     return meta->uncertainty;
 }
 
@@ -482,6 +518,10 @@ bool metacognition_has_high_uncertainty(
     }
 
     // Clamp threshold
+    /* Phase 8: Heartbeat at operation start */
+    metacognition_heartbeat("metacognitio_has_high_uncertainty", 0.0f);
+
+
     threshold = fmaxf(0.0F, fminf(1.0F, threshold));
 
     return meta->uncertainty > threshold;
@@ -500,6 +540,10 @@ bool metacognition_get_baseline(
     // WHY: External visibility
     *baseline = meta->baseline;
 
+    /* Phase 8: Heartbeat at operation start */
+    metacognition_heartbeat("metacognitio_get_baseline", 0.0f);
+
+
     return meta->baseline.established;
 }
 
@@ -516,6 +560,10 @@ bool metacognition_get_current_health(
     // WHY: External monitoring
     *health = meta->current_health;
 
+    /* Phase 8: Heartbeat at operation start */
+    metacognition_heartbeat("metacognitio_get_current_health", 0.0f);
+
+
     return true;
 }
 
@@ -523,6 +571,10 @@ bool metacognition_is_initialized(const metacognition_t* meta) {
     if (!meta) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    metacognition_heartbeat("metacognitio_is_initialized", 0.0f);
+
+
     return meta->initialized;
 }
 
@@ -531,6 +583,10 @@ bool metacognition_is_initialized(const metacognition_t* meta) {
 //=============================================================================
 
 void diagnosis_destroy(diagnosis_t* diagnosis) {
+    /* Phase 8: Heartbeat at operation start */
+    metacognition_heartbeat("metacognitio_diagnosis_destroy", 0.0f);
+
+
     LOG_DEBUG("Destroying module");
     if (diagnosis) {
         nimcp_free(diagnosis);
@@ -569,6 +625,10 @@ void metacognition_reset_for_testing(metacognition_t* meta) {
     }
 
     // Reset baseline
+    /* Phase 8: Heartbeat at operation start */
+    metacognition_heartbeat("metacognitio_reset_for_testing", 0.0f);
+
+
     memset(&meta->baseline, 0, sizeof(performance_baseline_t));
 
     // Reset health
@@ -599,6 +659,10 @@ void metacognition_print_state(const metacognition_t* meta, FILE* fp) {
     if (!meta || !fp) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    metacognition_heartbeat("metacognitio_print_state", 0.0f);
+
 
     fprintf(fp, "=== Metacognition State ===\n");
     fprintf(fp, "Initialized: %s\n", meta->initialized ? "Yes" : "No");
@@ -697,6 +761,12 @@ static bool baseline_window_compute_baseline(
     float sum_attention = 0.0F;
 
     for (uint32_t i = 0; i < window->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && window->count > 256) {
+            metacognition_heartbeat("metacognitio_loop",
+                             (float)(i + 1) / (float)window->count);
+        }
+
         sum_reasoning += window->samples[i].reasoning_speed;
         sum_memory += window->samples[i].memory_recall_accuracy;
         sum_decision += window->samples[i].decision_quality;
@@ -811,6 +881,12 @@ static float compute_uncertainty_from_variance(const baseline_window_t* window) 
     // Compute means
     float mean_reasoning = 0.0F;
     for (uint32_t i = 0; i < window->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && window->count > 256) {
+            metacognition_heartbeat("metacognitio_loop",
+                             (float)(i + 1) / (float)window->count);
+        }
+
         mean_reasoning += window->samples[i].reasoning_speed;
     }
     mean_reasoning /= window->count;
@@ -818,6 +894,12 @@ static float compute_uncertainty_from_variance(const baseline_window_t* window) 
     // Compute variance
     float variance = 0.0F;
     for (uint32_t i = 0; i < window->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && window->count > 256) {
+            metacognition_heartbeat("metacognitio_loop",
+                             (float)(i + 1) / (float)window->count);
+        }
+
         float diff = window->samples[i].reasoning_speed - mean_reasoning;
         variance += diff * diff;
     }
@@ -965,10 +1047,20 @@ int metacognition_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
     /* Query our own entity from the knowledge graph */
+    /* Phase 8: Heartbeat at operation start */
+    metacognition_heartbeat("metacognitio_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Metacognition_Module");
     if (self) {
         /* Module now knows its own capabilities from KG */
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                metacognition_heartbeat("metacognitio_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Metacognition self-knowledge: %s", self->observations[i]);
         }
     }

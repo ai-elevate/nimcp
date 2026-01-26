@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_game_theory_executive_fep_bridge_health_agent = N
  * @brief Set health agent for game_theory_executive_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void game_theory_executive_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void game_theory_executive_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_game_theory_executive_fep_bridge_health_agent = agent;
 }
 
@@ -294,6 +294,10 @@ static void store_previous_state(gt_exec_fep_bridge_t* bridge) {
  *===========================================================================*/
 
 gt_exec_fep_config_t gt_exec_fep_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_config_d", 0.0f);
+
+
     gt_exec_fep_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -321,6 +325,10 @@ gt_exec_fep_config_t gt_exec_fep_config_default(void) {
 }
 
 gt_exec_fep_bridge_t* gt_exec_fep_bridge_create(const gt_exec_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_c", 0.0f);
+
+
     gt_exec_fep_bridge_t* bridge = nimcp_calloc(1, sizeof(gt_exec_fep_bridge_t));
     if (!bridge) {
 
@@ -374,6 +382,10 @@ void gt_exec_fep_bridge_destroy(gt_exec_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Unregister if still registered */
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_d", 0.0f);
+
+
     if (bridge->registered) {
         gt_exec_fep_bridge_unregister(bridge);
     }
@@ -386,6 +398,10 @@ void gt_exec_fep_bridge_destroy(gt_exec_fep_bridge_t* bridge) {
 
 int gt_exec_fep_bridge_reset(gt_exec_fep_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_r", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -428,6 +444,10 @@ int gt_exec_fep_bridge_register(
     uint32_t* bridge_id_out
 ) {
     if (!bridge || !orchestrator) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_r", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -478,6 +498,10 @@ int gt_exec_fep_bridge_register(
 int gt_exec_fep_bridge_unregister(gt_exec_fep_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_u", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->registered) {
@@ -503,6 +527,10 @@ int gt_exec_fep_bridge_unregister(gt_exec_fep_bridge_t* bridge) {
 bool gt_exec_fep_bridge_is_registered(const gt_exec_fep_bridge_t* bridge) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_i", 0.0f);
+
+
     nimcp_mutex_lock(((gt_exec_fep_bridge_t*)bridge)->base.mutex);
     bool registered = bridge->registered;
     nimcp_mutex_unlock(((gt_exec_fep_bridge_t*)bridge)->base.mutex);
@@ -512,6 +540,10 @@ bool gt_exec_fep_bridge_is_registered(const gt_exec_fep_bridge_t* bridge) {
 
 uint32_t gt_exec_fep_bridge_get_id(const gt_exec_fep_bridge_t* bridge) {
     if (!bridge) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_g", 0.0f);
+
 
     nimcp_mutex_lock(((gt_exec_fep_bridge_t*)bridge)->base.mutex);
     uint32_t id = bridge->registered ? bridge->bridge_id : 0;
@@ -525,6 +557,10 @@ uint32_t gt_exec_fep_bridge_get_id(const gt_exec_fep_bridge_t* bridge) {
  *===========================================================================*/
 
 int gt_exec_fep_update_callback(void* handle) {
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_update_c", 0.0f);
+
+
     gt_exec_fep_bridge_t* bridge = (gt_exec_fep_bridge_t*)handle;
     if (!bridge) return -1;
 
@@ -611,6 +647,10 @@ int gt_exec_fep_update_callback(void* handle) {
 
 void gt_exec_fep_destroy_callback(void* handle) {
     /* No-op: Bridge is destroyed separately via gt_exec_fep_bridge_destroy() */
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_destroy_", 0.0f);
+
+
     (void)handle;
 }
 
@@ -620,6 +660,10 @@ void gt_exec_fep_destroy_callback(void* handle) {
 
 int gt_exec_fep_bridge_force_update(gt_exec_fep_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_f", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -651,6 +695,10 @@ int gt_exec_fep_bridge_update_decision_quality(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_u", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.decision_quality = clamp_f(quality, 0.0f, 1.0f);
     bridge->stats.decision_computations++;
@@ -664,6 +712,10 @@ int gt_exec_fep_bridge_update_executive_alignment(
     float alignment
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_u", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.executive_alignment = clamp_f(alignment, 0.0f, 1.0f);
@@ -679,6 +731,10 @@ int gt_exec_fep_bridge_update_action_coherence(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_u", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.action_coherence = clamp_f(coherence, 0.0f, 1.0f);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -692,6 +748,10 @@ int gt_exec_fep_bridge_notify_recommendation_result(
     float outcome_utility
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_n", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -730,6 +790,10 @@ int gt_exec_fep_bridge_get_metrics(
 ) {
     if (!bridge || !metrics_out) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_g", 0.0f);
+
+
     nimcp_mutex_lock(((gt_exec_fep_bridge_t*)bridge)->base.mutex);
     *metrics_out = bridge->metrics;
     nimcp_mutex_unlock(((gt_exec_fep_bridge_t*)bridge)->base.mutex);
@@ -743,6 +807,10 @@ int gt_exec_fep_bridge_get_stats(
 ) {
     if (!bridge || !stats_out) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_g", 0.0f);
+
+
     nimcp_mutex_lock(((gt_exec_fep_bridge_t*)bridge)->base.mutex);
     *stats_out = bridge->stats;
     nimcp_mutex_unlock(((gt_exec_fep_bridge_t*)bridge)->base.mutex);
@@ -752,6 +820,10 @@ int gt_exec_fep_bridge_get_stats(
 
 int gt_exec_fep_bridge_reset_stats(gt_exec_fep_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_r", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(gt_exec_fep_stats_t));
@@ -765,6 +837,10 @@ int gt_exec_fep_bridge_reset_stats(gt_exec_fep_bridge_t* bridge) {
 float gt_exec_fep_bridge_get_free_energy(const gt_exec_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_g", 0.0f);
+
+
     nimcp_mutex_lock(((gt_exec_fep_bridge_t*)bridge)->base.mutex);
     float fe = bridge->metrics.free_energy;
     nimcp_mutex_unlock(((gt_exec_fep_bridge_t*)bridge)->base.mutex);
@@ -774,6 +850,10 @@ float gt_exec_fep_bridge_get_free_energy(const gt_exec_fep_bridge_t* bridge) {
 
 float gt_exec_fep_bridge_get_decision_quality(const gt_exec_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_g", 0.0f);
+
 
     nimcp_mutex_lock(((gt_exec_fep_bridge_t*)bridge)->base.mutex);
     float dq = bridge->metrics.decision_quality;
@@ -785,6 +865,10 @@ float gt_exec_fep_bridge_get_decision_quality(const gt_exec_fep_bridge_t* bridge
 float gt_exec_fep_bridge_get_prediction_error(const gt_exec_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_g", 0.0f);
+
+
     nimcp_mutex_lock(((gt_exec_fep_bridge_t*)bridge)->base.mutex);
     float pe = bridge->metrics.prediction_error;
     nimcp_mutex_unlock(((gt_exec_fep_bridge_t*)bridge)->base.mutex);
@@ -794,6 +878,10 @@ float gt_exec_fep_bridge_get_prediction_error(const gt_exec_fep_bridge_t* bridge
 
 float gt_exec_fep_bridge_get_executive_alignment(const gt_exec_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_g", 0.0f);
+
 
     nimcp_mutex_lock(((gt_exec_fep_bridge_t*)bridge)->base.mutex);
     float ea = bridge->metrics.executive_alignment;
@@ -809,6 +897,10 @@ float gt_exec_fep_bridge_get_executive_alignment(const gt_exec_fep_bridge_t* bri
 gt_exec_fep_state_t gt_exec_fep_bridge_get_state(const gt_exec_fep_bridge_t* bridge) {
     if (!bridge) return GT_EXEC_FEP_STATE_ERROR;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_g", 0.0f);
+
+
     nimcp_mutex_lock(((gt_exec_fep_bridge_t*)bridge)->base.mutex);
     gt_exec_fep_state_t state = bridge->state;
     nimcp_mutex_unlock(((gt_exec_fep_bridge_t*)bridge)->base.mutex);
@@ -819,6 +911,10 @@ gt_exec_fep_state_t gt_exec_fep_bridge_get_state(const gt_exec_fep_bridge_t* bri
 bool gt_exec_fep_bridge_is_degraded(const gt_exec_fep_bridge_t* bridge) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_i", 0.0f);
+
+
     nimcp_mutex_lock(((gt_exec_fep_bridge_t*)bridge)->base.mutex);
     bool degraded = (bridge->state == GT_EXEC_FEP_STATE_DEGRADED);
     nimcp_mutex_unlock(((gt_exec_fep_bridge_t*)bridge)->base.mutex);
@@ -828,6 +924,10 @@ bool gt_exec_fep_bridge_is_degraded(const gt_exec_fep_bridge_t* bridge) {
 
 bool gt_exec_fep_bridge_is_exec_aligned(const gt_exec_fep_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_i", 0.0f);
+
 
     nimcp_mutex_lock(((gt_exec_fep_bridge_t*)bridge)->base.mutex);
     bool aligned = bridge->metrics.exec_aligned;
@@ -858,6 +958,10 @@ int gt_exec_fep_bridge_set_high_fe_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_s", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->high_fe_callback = callback;
     bridge->high_fe_user_data = user_data;
@@ -873,6 +977,10 @@ int gt_exec_fep_bridge_set_surprise_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_s", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->surprise_callback = callback;
     bridge->surprise_user_data = user_data;
@@ -887,6 +995,10 @@ int gt_exec_fep_bridge_set_metrics_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_s", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics_callback = callback;
@@ -906,6 +1018,10 @@ int gt_exec_fep_bridge_set_config(
 ) {
     if (!bridge || !config) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_s", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->config = *config;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -918,6 +1034,10 @@ int gt_exec_fep_bridge_get_config(
     gt_exec_fep_config_t* config_out
 ) {
     if (!bridge || !config_out) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_fep_bridge_heartbeat("game_theory__gt_exec_fep_bridge_g", 0.0f);
+
 
     nimcp_mutex_lock(((gt_exec_fep_bridge_t*)bridge)->base.mutex);
     *config_out = bridge->config;

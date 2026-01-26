@@ -41,7 +41,7 @@ static nimcp_health_agent_t* g_recovery_parietal_bridge_health_agent = NULL;
  * @brief Set health agent for recovery_parietal_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void recovery_parietal_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void recovery_parietal_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_recovery_parietal_bridge_health_agent = agent;
 }
 
@@ -173,6 +173,10 @@ static float complexity_to_factor(complexity_class_t complexity) {
 //=============================================================================
 
 recovery_parietal_config_t recovery_parietal_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    recovery_parietal_bridge_heartbeat("recovery_par_recovery_parietal_de", 0.0f);
+
+
     recovery_parietal_config_t config = {
         .enable_code_analysis = true,
         .enable_pattern_matching = true,
@@ -194,6 +198,10 @@ recovery_parietal_bridge_t* recovery_parietal_bridge_create(
         fprintf(stderr, "[RECOVERY-PARIETAL] ERROR: NULL parietal handle\n");
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    recovery_parietal_bridge_heartbeat("recovery_par_create", 0.0f);
+
 
     recovery_parietal_bridge_t* bridge = calloc(1, sizeof(recovery_parietal_bridge_t));
     if (!bridge) {
@@ -238,6 +246,10 @@ void recovery_parietal_bridge_destroy(recovery_parietal_bridge_t* bridge) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    recovery_parietal_bridge_heartbeat("recovery_par_destroy", 0.0f);
+
+
     bridge->initialized = false;
     bridge->parietal = NULL;
     bridge->executive = NULL;
@@ -247,6 +259,10 @@ void recovery_parietal_bridge_destroy(recovery_parietal_bridge_t* bridge) {
 }
 
 bool recovery_parietal_bridge_is_ready(const recovery_parietal_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    recovery_parietal_bridge_heartbeat("recovery_par_is_ready", 0.0f);
+
+
     return bridge && bridge->initialized && bridge->parietal;
 }
 
@@ -262,6 +278,10 @@ int recovery_parietal_bridge_attach_executive(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    recovery_parietal_bridge_heartbeat("recovery_par_attach_executive", 0.0f);
+
+
     bridge->executive = exec;
     fprintf(stderr, "[RECOVERY-PARIETAL] Attached to recovery executive\n");
     return 0;
@@ -276,6 +296,10 @@ int recovery_executive_attach_parietal(
     }
 
     /* Create bridge with default config */
+    /* Phase 8: Heartbeat at operation start */
+    recovery_parietal_bridge_heartbeat("recovery_par_recovery_executive_a", 0.0f);
+
+
     recovery_parietal_bridge_t* bridge = recovery_parietal_bridge_create(parietal, NULL);
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -297,6 +321,10 @@ int recovery_executive_attach_parietal(
 parietal_lobe_t* recovery_executive_get_parietal(const recovery_executive_t* exec) {
     /* This would require internal access to executive structure */
     /* For now, return NULL - needs executive structure update */
+    /* Phase 8: Heartbeat at operation start */
+    recovery_parietal_bridge_heartbeat("recovery_par_recovery_executive_g", 0.0f);
+
+
     (void)exec;
     return NULL;
 }
@@ -317,6 +345,10 @@ int recovery_parietal_analyze_code(
     if (!recovery_parietal_bridge_is_ready(bridge)) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    recovery_parietal_bridge_heartbeat("recovery_par_recovery_parietal_an", 0.0f);
+
 
     memset(result, 0, sizeof(code_analysis_result_t));
 
@@ -454,6 +486,10 @@ int recovery_parietal_analyze_impact(
 
     /* For now, return a simulated impact analysis */
     /* In full implementation, this would use parietal's spatial reasoning */
+    /* Phase 8: Heartbeat at operation start */
+    recovery_parietal_bridge_heartbeat("recovery_par_recovery_parietal_an", 0.0f);
+
+
     uint32_t count = 0;
 
     /* Add the failed module itself */
@@ -487,6 +523,10 @@ int recovery_parietal_detect_smells(
     }
 
     /* Use software engineering module */
+    /* Phase 8: Heartbeat at operation start */
+    recovery_parietal_bridge_heartbeat("recovery_par_recovery_parietal_de", 0.0f);
+
+
     software_eng_t* se = software_eng_create();
     if (!se) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "se is NULL");
@@ -524,6 +564,10 @@ int recovery_parietal_find_similar_failures(
     if (!bridge || !diagnosis || !result) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    recovery_parietal_bridge_heartbeat("recovery_par_recovery_parietal_fi", 0.0f);
+
 
     code_analysis_request_t request = {
         .diagnosis = (diagnostic_result_t*)diagnosis,
@@ -563,8 +607,18 @@ int recovery_parietal_learn_pattern(
     }
 
     /* Check if we already have a similar pattern */
+    /* Phase 8: Heartbeat at operation start */
+    recovery_parietal_bridge_heartbeat("recovery_par_recovery_parietal_le", 0.0f);
+
+
     int existing_idx = -1;
     for (uint32_t i = 0; i < bridge->pattern_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->pattern_count > 256) {
+            recovery_parietal_bridge_heartbeat("recovery_par_loop",
+                             (float)(i + 1) / (float)bridge->pattern_count);
+        }
+
         float sim = calculate_pattern_similarity(diagnosis, &bridge->patterns[i]);
         if (sim >= 0.9f) {
             existing_idx = (int)i;
@@ -621,6 +675,10 @@ int recovery_parietal_enhance_plan(
     if (!bridge || !exec || !diagnosis || !enhancement) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    recovery_parietal_bridge_heartbeat("recovery_par_recovery_parietal_en", 0.0f);
+
 
     memset(enhancement, 0, sizeof(recovery_enhancement_t));
 
@@ -735,6 +793,10 @@ recovery_plan_t* recovery_parietal_create_enhanced_plan(
     }
 
     /* Get enhancement recommendations */
+    /* Phase 8: Heartbeat at operation start */
+    recovery_parietal_bridge_heartbeat("recovery_par_recovery_parietal_cr", 0.0f);
+
+
     recovery_enhancement_t enhancement;
     int ret = recovery_parietal_enhance_plan(bridge, exec, diagnosis, location, &enhancement);
     if (ret != 0) {
@@ -783,6 +845,10 @@ float recovery_parietal_estimate_success(
     }
 
     /* Base estimate from plan confidence */
+    /* Phase 8: Heartbeat at operation start */
+    recovery_parietal_bridge_heartbeat("recovery_par_recovery_parietal_es", 0.0f);
+
+
     float estimate = plan->confidence;
 
     /* Adjust for severity */
@@ -797,6 +863,12 @@ float recovery_parietal_estimate_success(
 
     /* Check for historical patterns */
     for (uint32_t i = 0; i < bridge->pattern_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->pattern_count > 256) {
+            recovery_parietal_bridge_heartbeat("recovery_par_loop",
+                             (float)(i + 1) / (float)bridge->pattern_count);
+        }
+
         float sim = calculate_pattern_similarity(diagnosis, &bridge->patterns[i]);
         if (sim >= bridge->config.min_pattern_similarity) {
             /* Use historical success rate */
@@ -828,6 +900,10 @@ int recovery_parietal_create_hypothesis(
     }
 
     /* Create hypothesis based on diagnostic information */
+    /* Phase 8: Heartbeat at operation start */
+    recovery_parietal_bridge_heartbeat("recovery_par_recovery_parietal_cr", 0.0f);
+
+
     snprintf(hypothesis, max_len,
             "Hypothesis: The %s failure (severity %d) is likely caused by "
             "systemic issues in the affected subsystem. "
@@ -850,6 +926,12 @@ int recovery_parietal_create_hypothesis(
 
     /* Historical patterns boost confidence */
     for (uint32_t i = 0; i < bridge->pattern_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->pattern_count > 256) {
+            recovery_parietal_bridge_heartbeat("recovery_par_loop",
+                             (float)(i + 1) / (float)bridge->pattern_count);
+        }
+
         float sim = calculate_pattern_similarity(diagnosis, &bridge->patterns[i]);
         if (sim >= bridge->config.min_pattern_similarity) {
             *confidence += 0.2f;
@@ -876,6 +958,10 @@ int recovery_parietal_test_hypothesis(
     *updated_confidence = 0.5f;
 
     /* Update based on evidence */
+    /* Phase 8: Heartbeat at operation start */
+    recovery_parietal_bridge_heartbeat("recovery_par_recovery_parietal_te", 0.0f);
+
+
     if (evidence->success) {
         *updated_confidence = 0.9f;
         bridge->stats.successful_predictions++;
@@ -908,6 +994,10 @@ int recovery_parietal_get_stats(
     }
 
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    recovery_parietal_bridge_heartbeat("recovery_par_recovery_parietal_ge", 0.0f);
+
+
     return 0;
 }
 
@@ -915,6 +1005,10 @@ void recovery_parietal_reset_stats(recovery_parietal_bridge_t* bridge) {
     if (!bridge) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    recovery_parietal_bridge_heartbeat("recovery_par_recovery_parietal_re", 0.0f);
+
 
     memset(&bridge->stats, 0, sizeof(bridge->stats));
 }
@@ -929,6 +1023,10 @@ void recovery_parietal_free_analysis_result(code_analysis_result_t* result) {
     }
 
     /* Free dependency graph if allocated */
+    /* Phase 8: Heartbeat at operation start */
+    recovery_parietal_bridge_heartbeat("recovery_par_recovery_parietal_fr", 0.0f);
+
+
     if (result->dependency_graph) {
         free(result->dependency_graph);
         result->dependency_graph = NULL;
@@ -962,6 +1060,10 @@ int recovery_parietal_generate_fix(
     }
 
     /* Default outputs */
+    /* Phase 8: Heartbeat at operation start */
+    recovery_parietal_bridge_heartbeat("recovery_par_recovery_parietal_ge", 0.0f);
+
+
     fix_code[0] = '\0';
     if (fix_confidence) *fix_confidence = 0.0f;
     if (fix_explanation && explanation_size > 0) fix_explanation[0] = '\0';
@@ -1062,6 +1164,10 @@ int recovery_parietal_generate_fix_candidates(
     *generated_count = 0;
 
     /* For now, generate single candidate using main function */
+    /* Phase 8: Heartbeat at operation start */
+    recovery_parietal_bridge_heartbeat("recovery_par_recovery_parietal_ge", 0.0f);
+
+
     char fix_code[4096];
     float confidence;
     char explanation[512];
@@ -1092,8 +1198,18 @@ int recovery_parietal_learn_fix_outcome(
     }
 
     /* Find existing pattern or create new one */
+    /* Phase 8: Heartbeat at operation start */
+    recovery_parietal_bridge_heartbeat("recovery_par_recovery_parietal_le", 0.0f);
+
+
     failure_pattern_t* pattern = NULL;
     for (uint32_t i = 0; i < bridge->pattern_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->pattern_count > 256) {
+            recovery_parietal_bridge_heartbeat("recovery_par_loop",
+                             (float)(i + 1) / (float)bridge->pattern_count);
+        }
+
         if (bridge->patterns[i].severity == diagnosis->severity) {
             pattern = &bridge->patterns[i];
             break;
@@ -1139,9 +1255,19 @@ const char* recovery_parietal_bridge_version(void) {
 int recovery_parietal_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    recovery_parietal_bridge_heartbeat("recovery_par_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Recovery_Parietal_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                recovery_parietal_bridge_heartbeat("recovery_par_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Log self-knowledge observations */
         }
     }

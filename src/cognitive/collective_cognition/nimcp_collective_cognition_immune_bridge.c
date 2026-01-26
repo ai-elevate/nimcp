@@ -47,7 +47,7 @@ static nimcp_health_agent_t* g_collective_cognition_immune_bridge_health_agent =
  * @brief Set health agent for collective_cognition_immune_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void collective_cognition_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void collective_cognition_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_collective_cognition_immune_bridge_health_agent = agent;
 }
 
@@ -192,6 +192,10 @@ static float calculate_state_severity(const collective_cognition_state_t* state)
 
 collective_immune_bridge_config_t collective_immune_bridge_default_config(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_immune_bridge_heartbeat("collective_c_collective_immune_br", 0.0f);
+
+
     collective_immune_bridge_config_t config = {
         .enable_threat_sharing = true,
         .enable_inflammation_sync = true,
@@ -210,6 +214,10 @@ collective_immune_bridge_t* collective_immune_bridge_create(
     /* WHAT: Create collective immune bridge
      * WHY:  Enable immune coordination across collective
      * HOW:  Allocate state, initialize with config */
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_immune_bridge_heartbeat("collective_c_collective_immune_br", 0.0f);
+
 
     collective_immune_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
@@ -251,6 +259,10 @@ void collective_immune_bridge_destroy(collective_immune_bridge_t* bridge)
 {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_immune_bridge_heartbeat("collective_c_collective_immune_br", 0.0f);
+
+
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
@@ -260,6 +272,10 @@ void collective_immune_bridge_destroy(collective_immune_bridge_t* bridge)
 int collective_immune_bridge_reset(collective_immune_bridge_t* bridge)
 {
     if (!bridge || !bridge->initialized) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_immune_bridge_heartbeat("collective_c_collective_immune_br", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -287,6 +303,10 @@ int collective_immune_bridge_connect_collective_cognition(
 {
     if (!bridge || !bridge->initialized) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_immune_bridge_heartbeat("collective_c_collective_immune_br", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->collective_cognition = cc;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -301,6 +321,10 @@ int collective_immune_bridge_connect_immune(
 )
 {
     if (!bridge || !bridge->initialized) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_immune_bridge_heartbeat("collective_c_collective_immune_br", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->immune_system = immune;
@@ -324,6 +348,10 @@ int collective_immune_bridge_report_threat(
      * HOW:  Validate and store threat */
 
     if (!bridge || !bridge->initialized || !threat) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_immune_bridge_heartbeat("collective_c_collective_immune_br", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -366,6 +394,10 @@ uint32_t collective_immune_bridge_check_threats(
     if (!bridge || !bridge->initialized || !bridge->collective_cognition) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_immune_bridge_heartbeat("collective_c_collective_immune_br", 0.0f);
+
 
     collective_cognition_state_t state;
     if (collective_cognition_get_state(bridge->collective_cognition, &state) != 0) {
@@ -465,6 +497,10 @@ uint32_t collective_immune_bridge_get_threats(
     if (!bridge || !bridge->initialized || !threats) return 0;
 
     /* Note: Cast away const for mutex lock (bridge is logically const) */
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_immune_bridge_heartbeat("collective_c_collective_immune_br", 0.0f);
+
+
     collective_immune_bridge_t* mutable_bridge =
         (collective_immune_bridge_t*)bridge;
 
@@ -501,6 +537,10 @@ int collective_immune_bridge_present_antigen(
         LOG_WARNING("No immune system connected to collective immune bridge");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_immune_bridge_heartbeat("collective_c_collective_immune_br", 0.0f);
+
 
     uint8_t epitope[BRAIN_IMMUNE_EPITOPE_SIZE];
     size_t epitope_len;
@@ -546,6 +586,10 @@ int collective_immune_bridge_sync_inflammation(
     if (!bridge->config.enable_inflammation_sync) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_immune_bridge_heartbeat("collective_c_collective_immune_br", 0.0f);
+
 
     uint64_t now_us = nimcp_time_monotonic_us();
 
@@ -595,6 +639,10 @@ int collective_immune_bridge_propagate_memory(
     }
 
     /* Sync memory cell to swarm */
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_immune_bridge_heartbeat("collective_c_collective_immune_br", 0.0f);
+
+
     int result = brain_immune_sync_memory_to_swarm(bridge->immune_system, b_cell_id);
 
     if (result == 0) {
@@ -628,6 +676,10 @@ int collective_immune_bridge_we_mode_response(
     }
 
     /* Check if we-mode is active */
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_immune_bridge_heartbeat("collective_c_collective_immune_br", 0.0f);
+
+
     collective_cognition_state_t state;
     if (collective_cognition_get_state(bridge->collective_cognition, &state) != 0) {
         return -1;
@@ -694,12 +746,22 @@ int collective_immune_bridge_update(collective_immune_bridge_t* bridge)
     if (!bridge || !bridge->initialized) return -1;
 
     /* Check for new threats */
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_immune_bridge_heartbeat("collective_c_collective_immune_br", 0.0f);
+
+
     uint32_t new_threats = collective_immune_bridge_check_threats(bridge);
 
     /* Process pending threats */
     nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->pending_threat_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->pending_threat_count > 256) {
+            collective_cognition_immune_bridge_heartbeat("collective_c_loop",
+                             (float)(i + 1) / (float)bridge->pending_threat_count);
+        }
+
         collective_threat_t* threat = &bridge->pending_threats[i];
 
         /* Share threat if enabled */
@@ -730,6 +792,10 @@ int collective_immune_bridge_get_stats(
     if (!bridge || !bridge->initialized || !stats) return -1;
 
     /* Cast away const for mutex lock */
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_immune_bridge_heartbeat("collective_c_collective_immune_br", 0.0f);
+
+
     collective_immune_bridge_t* mutable_bridge =
         (collective_immune_bridge_t*)bridge;
 
@@ -757,6 +823,10 @@ int collective_immune_bridge_get_stats(
 void collective_immune_bridge_reset_stats(collective_immune_bridge_t* bridge)
 {
     if (!bridge || !bridge->initialized) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_immune_bridge_heartbeat("collective_c_collective_immune_br", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -799,6 +869,10 @@ void collective_immune_bridge_dump(const collective_immune_bridge_t* bridge)
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_immune_bridge_heartbeat("collective_c_collective_immune_br", 0.0f);
+
+
     collective_immune_bridge_stats_t stats;
     if (collective_immune_bridge_get_stats(bridge, &stats) != 0) {
         LOG_INFO("Collective Immune Bridge: Failed to get stats");
@@ -840,9 +914,19 @@ void collective_immune_bridge_dump(const collective_immune_bridge_t* bridge)
  */
 int collective_cognition_immune_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    collective_cognition_immune_bridge_heartbeat("collective_c_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Collective_Cognition_Immune_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                collective_cognition_immune_bridge_heartbeat("collective_c_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Collective Cognition Immune Bridge self-knowledge: %s", self->observations[i]);
         }
     }

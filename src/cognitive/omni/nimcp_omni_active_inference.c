@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_omni_active_inference_health_agent = NULL;
  * @brief Set health agent for omni_active_inference heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void omni_active_inference_set_health_agent(nimcp_health_agent_t* agent) {
+void omni_active_inference_set_health_agent(nimcp_health_agent_t* agent) {
     g_omni_active_inference_health_agent = agent;
 }
 
@@ -93,6 +93,12 @@ static float compute_risk(const omni_ai_goal_t* goal,
     uint32_t dim = (obs_dim < goal->obs_dim) ? obs_dim : goal->obs_dim;
 
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            omni_active_inference_heartbeat("omni_active__loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         float diff = predicted_obs[i] - goal->preferred_obs[i];
         risk += diff * diff;
     }
@@ -107,6 +113,12 @@ static float compute_ambiguity(const float* belief_variance,
     /* Ambiguity = expected entropy (sum of log variances) */
     float ambiguity = 0.0f;
     for (uint32_t i = 0; i < belief_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && belief_dim > 256) {
+            omni_active_inference_heartbeat("omni_active__loop",
+                             (float)(i + 1) / (float)belief_dim);
+        }
+
         float var = belief_variance[i] + AI_EPSILON;
         ambiguity += logf(var);
     }
@@ -122,6 +134,12 @@ static float compute_intrinsic_value(const float* current_belief,
     /* Intrinsic value = expected information gain (KL divergence) */
     float info_gain = 0.0f;
     for (uint32_t i = 0; i < belief_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && belief_dim > 256) {
+            omni_active_inference_heartbeat("omni_active__loop",
+                             (float)(i + 1) / (float)belief_dim);
+        }
+
         float p = current_belief[i] + AI_EPSILON;
         float q = predicted_belief[i] + AI_EPSILON;
         info_gain += p * logf(p / q);
@@ -142,6 +160,12 @@ static void compute_policy_efe(omni_active_inference_t* ai,
     /* Compute forward EFE (standard) */
     float risk_total = 0.0f;
     for (uint32_t g = 0; g < ai->num_goals; g++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((g & 0xFF) == 0 && ai->num_goals > 256) {
+            omni_active_inference_heartbeat("omni_active__loop",
+                             (float)(g + 1) / (float)ai->num_goals);
+        }
+
         if (ai->goals[g].active) {
             /* Simplified: use current observation as prediction */
             risk_total += compute_risk(&ai->goals[g], ai->current_obs, ai->obs_dim);
@@ -185,6 +209,10 @@ static void compute_policy_efe(omni_active_inference_t* ai,
  * ============================================================================ */
 
 int omni_ai_default_config(omni_ai_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_default_conf", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     memset(config, 0, sizeof(omni_ai_config_t));
@@ -224,6 +252,10 @@ omni_active_inference_t* omni_ai_create(
     uint32_t action_dim,
     uint32_t obs_dim)
 {
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_create", 0.0f);
+
+
     omni_active_inference_t* ai = nimcp_calloc(1, sizeof(omni_active_inference_t));
     if (!ai) {
 
@@ -289,12 +321,22 @@ omni_active_inference_t* omni_ai_create(
 void omni_ai_destroy(omni_active_inference_t* ai) {
     if (!ai) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_destroy", 0.0f);
+
+
     if (ai->bio_async_connected) {
         omni_ai_disconnect_bio_async(ai);
     }
 
     /* Free policies */
     for (uint32_t i = 0; i < ai->num_policies; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ai->num_policies > 256) {
+            omni_active_inference_heartbeat("omni_active__loop",
+                             (float)(i + 1) / (float)ai->num_policies);
+        }
+
         if (ai->policies[i].actions) {
             nimcp_free(ai->policies[i].actions);
         }
@@ -303,6 +345,12 @@ void omni_ai_destroy(omni_active_inference_t* ai) {
 
     /* Free goals */
     for (uint32_t i = 0; i < ai->num_goals; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ai->num_goals > 256) {
+            omni_active_inference_heartbeat("omni_active__loop",
+                             (float)(i + 1) / (float)ai->num_goals);
+        }
+
         if (ai->goals[i].preferred_obs) {
             nimcp_free(ai->goals[i].preferred_obs);
         }
@@ -319,12 +367,22 @@ void omni_ai_destroy(omni_active_inference_t* ai) {
 }
 
 int omni_ai_reset(omni_active_inference_t* ai) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_reset", 0.0f);
+
+
     NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
 
     nimcp_mutex_lock(ai->mutex);
 
     /* Clear policies */
     for (uint32_t i = 0; i < ai->num_policies; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ai->num_policies > 256) {
+            omni_active_inference_heartbeat("omni_active__loop",
+                             (float)(i + 1) / (float)ai->num_policies);
+        }
+
         if (ai->policies[i].actions) {
             nimcp_free(ai->policies[i].actions);
             ai->policies[i].actions = NULL;
@@ -334,6 +392,12 @@ int omni_ai_reset(omni_active_inference_t* ai) {
 
     /* Clear goals */
     for (uint32_t i = 0; i < ai->num_goals; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ai->num_goals > 256) {
+            omni_active_inference_heartbeat("omni_active__loop",
+                             (float)(i + 1) / (float)ai->num_goals);
+        }
+
         ai->goals[i].active = false;
     }
 
@@ -360,6 +424,10 @@ int omni_ai_add_policy(omni_active_inference_t* ai,
                         uint32_t action_dim) {
     if (!ai || !actions) return -1;
     if (horizon == 0 || action_dim == 0) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_add_policy", 0.0f);
+
 
     nimcp_mutex_lock(ai->mutex);
 
@@ -405,6 +473,10 @@ int omni_ai_generate_random_policies(omni_active_inference_t* ai,
     if (!ai) return 0;
     if (horizon == 0 || horizon > OMNI_AI_MAX_HORIZON) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_generate_ran", 0.0f);
+
+
     nimcp_mutex_lock(ai->mutex);
 
     uint32_t action_dim = ai->obs_dim > 0 ? ai->obs_dim : 8; /* Default */
@@ -433,11 +505,21 @@ int omni_ai_generate_random_policies(omni_active_inference_t* ai,
 }
 
 int omni_ai_clear_policies(omni_active_inference_t* ai) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_clear_polici", 0.0f);
+
+
     NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
 
     nimcp_mutex_lock(ai->mutex);
 
     for (uint32_t i = 0; i < ai->num_policies; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ai->num_policies > 256) {
+            omni_active_inference_heartbeat("omni_active__loop",
+                             (float)(i + 1) / (float)ai->num_policies);
+        }
+
         if (ai->policies[i].actions) {
             nimcp_free(ai->policies[i].actions);
             ai->policies[i].actions = NULL;
@@ -452,6 +534,10 @@ int omni_ai_clear_policies(omni_active_inference_t* ai) {
 int omni_ai_get_policy(const omni_active_inference_t* ai,
                         uint32_t index,
                         omni_ai_policy_t* policy) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_get_policy", 0.0f);
+
+
     NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
     NIMCP_CHECK_THROW(policy, NIMCP_ERROR_INVALID_PARAM, "policy is NULL");
     NIMCP_CHECK_THROW(index < ai->num_policies, NIMCP_ERROR_OUT_OF_RANGE, "policy index out of range");
@@ -475,6 +561,10 @@ int omni_ai_set_goal(omni_active_inference_t* ai,
     if (!ai) return -1;
 
     /* Clear existing goals first */
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_set_goal", 0.0f);
+
+
     omni_ai_clear_goals(ai);
 
     return omni_ai_add_goal(ai, preferred, obs_dim, precision);
@@ -485,6 +575,10 @@ int omni_ai_add_goal(omni_active_inference_t* ai,
                       uint32_t obs_dim,
                       float precision) {
     if (!ai || !preferred || obs_dim == 0) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_add_goal", 0.0f);
+
 
     nimcp_mutex_lock(ai->mutex);
 
@@ -523,11 +617,21 @@ int omni_ai_add_goal(omni_active_inference_t* ai,
 }
 
 int omni_ai_clear_goals(omni_active_inference_t* ai) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_clear_goals", 0.0f);
+
+
     NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
 
     nimcp_mutex_lock(ai->mutex);
 
     for (uint32_t i = 0; i < ai->num_goals; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ai->num_goals > 256) {
+            omni_active_inference_heartbeat("omni_active__loop",
+                             (float)(i + 1) / (float)ai->num_goals);
+        }
+
         if (ai->goals[i].preferred_obs) {
             nimcp_free(ai->goals[i].preferred_obs);
             ai->goals[i].preferred_obs = NULL;
@@ -543,6 +647,10 @@ int omni_ai_clear_goals(omni_active_inference_t* ai) {
 int omni_ai_set_goal_active(omni_active_inference_t* ai,
                              uint32_t goal_index,
                              bool active) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_set_goal_act", 0.0f);
+
+
     NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
     NIMCP_CHECK_THROW(goal_index < ai->num_goals, NIMCP_ERROR_OUT_OF_RANGE, "goal_index out of range");
 
@@ -560,6 +668,10 @@ int omni_ai_set_goal_active(omni_active_inference_t* ai,
 int omni_ai_update_observation(omni_active_inference_t* ai,
                                 const float* obs,
                                 uint32_t obs_dim) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_update_obser", 0.0f);
+
+
     NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
     NIMCP_CHECK_THROW(obs, NIMCP_ERROR_INVALID_PARAM, "obs is NULL");
 
@@ -585,6 +697,10 @@ int omni_ai_update_observation(omni_active_inference_t* ai,
 int omni_ai_update_belief(omni_active_inference_t* ai,
                            const float* belief,
                            uint32_t belief_dim) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_update_belie", 0.0f);
+
+
     NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
     NIMCP_CHECK_THROW(belief, NIMCP_ERROR_INVALID_PARAM, "belief is NULL");
 
@@ -611,11 +727,21 @@ int omni_ai_update_belief(omni_active_inference_t* ai,
  * ============================================================================ */
 
 int omni_ai_evaluate_policies(omni_active_inference_t* ai) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_evaluate_pol", 0.0f);
+
+
     NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
 
     nimcp_mutex_lock(ai->mutex);
 
     for (uint32_t p = 0; p < ai->num_policies; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && ai->num_policies > 256) {
+            omni_active_inference_heartbeat("omni_active__loop",
+                             (float)(p + 1) / (float)ai->num_policies);
+        }
+
         compute_policy_efe(ai, &ai->policies[p]);
     }
 
@@ -625,6 +751,10 @@ int omni_ai_evaluate_policies(omni_active_inference_t* ai) {
 
 int omni_ai_select_action_forward(omni_active_inference_t* ai,
                                    omni_ai_action_result_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_select_actio", 0.0f);
+
+
     NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
     NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result is NULL");
     NIMCP_CHECK_THROW(ai->num_policies > 0, NIMCP_ERROR_INVALID_STATE, "no policies defined");
@@ -633,6 +763,12 @@ int omni_ai_select_action_forward(omni_active_inference_t* ai,
 
     /* Evaluate policies if not done */
     for (uint32_t p = 0; p < ai->num_policies; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && ai->num_policies > 256) {
+            omni_active_inference_heartbeat("omni_active__loop",
+                             (float)(p + 1) / (float)ai->num_policies);
+        }
+
         compute_policy_efe(ai, &ai->policies[p]);
     }
 
@@ -647,6 +783,12 @@ int omni_ai_select_action_forward(omni_active_inference_t* ai,
     }
 
     for (uint32_t p = 0; p < ai->num_policies; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && ai->num_policies > 256) {
+            omni_active_inference_heartbeat("omni_active__loop",
+                             (float)(p + 1) / (float)ai->num_policies);
+        }
+
         efe_vals[p] = ai->policies[p].efe_forward;
     }
 
@@ -725,6 +867,10 @@ int omni_ai_infer_action_backward(omni_active_inference_t* ai,
                                    const float* outcome,
                                    uint32_t outcome_dim,
                                    omni_ai_action_result_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_infer_action", 0.0f);
+
+
     NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
     NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result is NULL");
     NIMCP_CHECK_THROW(ai->num_policies > 0, NIMCP_ERROR_INVALID_STATE, "no policies defined");
@@ -736,6 +882,12 @@ int omni_ai_infer_action_backward(omni_active_inference_t* ai,
     float best_efe = FLT_MAX;
 
     for (uint32_t p = 0; p < ai->num_policies; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && ai->num_policies > 256) {
+            omni_active_inference_heartbeat("omni_active__loop",
+                             (float)(p + 1) / (float)ai->num_policies);
+        }
+
         compute_policy_efe(ai, &ai->policies[p]);
 
         if (ai->policies[p].efe_backward < best_efe) {
@@ -772,6 +924,10 @@ int omni_ai_infer_action_backward(omni_active_inference_t* ai,
 
 int omni_ai_select_action_omni(omni_active_inference_t* ai,
                                 omni_ai_action_result_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_select_actio", 0.0f);
+
+
     NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
     NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result is NULL");
     NIMCP_CHECK_THROW(ai->num_policies > 0, NIMCP_ERROR_INVALID_STATE, "no policies defined");
@@ -780,6 +936,12 @@ int omni_ai_select_action_omni(omni_active_inference_t* ai,
 
     /* Evaluate with combined directional EFE */
     for (uint32_t p = 0; p < ai->num_policies; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && ai->num_policies > 256) {
+            omni_active_inference_heartbeat("omni_active__loop",
+                             (float)(p + 1) / (float)ai->num_policies);
+        }
+
         compute_policy_efe(ai, &ai->policies[p]);
     }
 
@@ -788,6 +950,12 @@ int omni_ai_select_action_omni(omni_active_inference_t* ai,
     float best_efe = FLT_MAX;
 
     for (uint32_t p = 0; p < ai->num_policies; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && ai->num_policies > 256) {
+            omni_active_inference_heartbeat("omni_active__loop",
+                             (float)(p + 1) / (float)ai->num_policies);
+        }
+
         if (ai->policies[p].efe_total < best_efe) {
             best_efe = ai->policies[p].efe_total;
             best_idx = (int)p;
@@ -824,6 +992,10 @@ float omni_ai_get_policy_efe(const omni_active_inference_t* ai,
                               omni_ai_direction_t direction) {
     if (!ai || policy_index >= ai->num_policies) return FLT_MAX;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_get_policy_e", 0.0f);
+
+
     const omni_ai_policy_t* p = &ai->policies[policy_index];
     switch (direction) {
         case OMNI_AI_DIR_FORWARD: return p->efe_forward;
@@ -840,6 +1012,10 @@ float omni_ai_get_policy_efe(const omni_active_inference_t* ai,
 
 int omni_ai_connect_precision(omni_active_inference_t* ai,
                                omni_precision_ctx_t* precision_ctx) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_connect_prec", 0.0f);
+
+
     NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
 
     nimcp_mutex_lock(ai->mutex);
@@ -862,6 +1038,10 @@ int omni_ai_connect_precision(omni_active_inference_t* ai,
 }
 
 int omni_ai_connect_fep(omni_active_inference_t* ai, void* fep_system) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_connect_fep", 0.0f);
+
+
     NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
 
     nimcp_mutex_lock(ai->mutex);
@@ -873,6 +1053,10 @@ int omni_ai_connect_fep(omni_active_inference_t* ai, void* fep_system) {
 
 int omni_ai_connect_kg_sync(omni_active_inference_t* ai,
                              omni_kg_sync_t* kg_sync) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_connect_kg_s", 0.0f);
+
+
     NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
 
     nimcp_mutex_lock(ai->mutex);
@@ -930,6 +1114,10 @@ static nimcp_error_t handle_action_select_request(
  * ============================================================================ */
 
 int omni_ai_connect_bio_async(omni_active_inference_t* ai) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_connect_bio_", 0.0f);
+
+
     NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
     if (ai->bio_async_connected) return NIMCP_SUCCESS;
 
@@ -957,6 +1145,10 @@ int omni_ai_connect_bio_async(omni_active_inference_t* ai) {
 }
 
 int omni_ai_disconnect_bio_async(omni_active_inference_t* ai) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_disconnect_b", 0.0f);
+
+
     NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
     if (!ai->bio_async_connected) return NIMCP_SUCCESS;
 
@@ -971,6 +1163,10 @@ int omni_ai_disconnect_bio_async(omni_active_inference_t* ai) {
 
 bool omni_ai_is_bio_async_connected(const omni_active_inference_t* ai) {
     if (!ai) return false;
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_is_bio_async", 0.0f);
+
+
     return ai->bio_async_connected;
 }
 
@@ -980,6 +1176,10 @@ bool omni_ai_is_bio_async_connected(const omni_active_inference_t* ai) {
 
 int omni_ai_get_stats(const omni_active_inference_t* ai,
                        omni_ai_stats_t* stats) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
     NIMCP_CHECK_THROW(stats, NIMCP_ERROR_INVALID_PARAM, "stats is NULL");
 
@@ -991,6 +1191,10 @@ int omni_ai_get_stats(const omni_active_inference_t* ai,
 }
 
 int omni_ai_reset_stats(omni_active_inference_t* ai) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_reset_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
 
     nimcp_mutex_lock(ai->mutex);
@@ -1004,10 +1208,20 @@ int omni_ai_reset_stats(omni_active_inference_t* ai) {
 int omni_ai_get_best_policy(const omni_active_inference_t* ai) {
     if (!ai || ai->num_policies == 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_get_best_pol", 0.0f);
+
+
     int best_idx = 0;
     float best_efe = FLT_MAX;
 
     for (uint32_t p = 0; p < ai->num_policies; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && ai->num_policies > 256) {
+            omni_active_inference_heartbeat("omni_active__loop",
+                             (float)(p + 1) / (float)ai->num_policies);
+        }
+
         if (ai->policies[p].efe_total < best_efe) {
             best_efe = ai->policies[p].efe_total;
             best_idx = (int)p;
@@ -1020,6 +1234,10 @@ int omni_ai_get_best_policy(const omni_active_inference_t* ai) {
 int omni_ai_get_policy_probs(const omni_active_inference_t* ai,
                               float* probs,
                               uint32_t max_policies) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_get_policy_p", 0.0f);
+
+
     NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
     NIMCP_CHECK_THROW(probs, NIMCP_ERROR_INVALID_PARAM, "probs is NULL");
 
@@ -1027,6 +1245,12 @@ int omni_ai_get_policy_probs(const omni_active_inference_t* ai,
 
     uint32_t n = (ai->num_policies < max_policies) ? ai->num_policies : max_policies;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            omni_active_inference_heartbeat("omni_active__loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         probs[i] = ai->policies[i].probability;
     }
 
@@ -1042,6 +1266,10 @@ int omni_ai_softmax_efe(const float* efe,
                          float* probs,
                          uint32_t n,
                          float precision) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_softmax_efe", 0.0f);
+
+
     NIMCP_CHECK_THROW(efe, NIMCP_ERROR_INVALID_PARAM, "efe array is NULL");
     NIMCP_CHECK_THROW(probs, NIMCP_ERROR_INVALID_PARAM, "probs array is NULL");
     NIMCP_CHECK_THROW(n > 0, NIMCP_ERROR_INVALID_PARAM, "n must be greater than 0");
@@ -1049,6 +1277,12 @@ int omni_ai_softmax_efe(const float* efe,
     /* Find max for numerical stability */
     float max_val = -FLT_MAX;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            omni_active_inference_heartbeat("omni_active__loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         float neg_efe = -precision * efe[i];
         if (neg_efe > max_val) max_val = neg_efe;
     }
@@ -1056,6 +1290,12 @@ int omni_ai_softmax_efe(const float* efe,
     /* Compute exp and sum */
     float sum = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            omni_active_inference_heartbeat("omni_active__loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         probs[i] = expf(-precision * efe[i] - max_val);
         sum += probs[i];
     }
@@ -1063,12 +1303,24 @@ int omni_ai_softmax_efe(const float* efe,
     /* Normalize */
     if (sum > AI_EPSILON) {
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                omni_active_inference_heartbeat("omni_active__loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             probs[i] /= sum;
         }
     } else {
         /* Uniform if all zero */
         float uniform = 1.0f / n;
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                omni_active_inference_heartbeat("omni_active__loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             probs[i] = uniform;
         }
     }
@@ -1079,10 +1331,20 @@ int omni_ai_softmax_efe(const float* efe,
 int omni_ai_sample_policy(const float* probs, uint32_t n) {
     if (!probs || n == 0) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_sample_polic", 0.0f);
+
+
     float r = random_uniform();
     float cumsum = 0.0f;
 
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            omni_active_inference_heartbeat("omni_active__loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         cumsum += probs[i];
         if (r <= cumsum) {
             return (int)i;
@@ -1093,6 +1355,10 @@ int omni_ai_sample_policy(const float* probs, uint32_t n) {
 }
 
 omni_ai_action_result_t* omni_ai_action_result_create(uint32_t action_dim) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_action_resul", 0.0f);
+
+
     omni_ai_action_result_t* result = nimcp_calloc(1, sizeof(omni_ai_action_result_t));
     if (!result) {
 
@@ -1116,6 +1382,10 @@ omni_ai_action_result_t* omni_ai_action_result_create(uint32_t action_dim) {
 
 void omni_ai_action_result_destroy(omni_ai_action_result_t* result) {
     if (!result) return;
+    /* Phase 8: Heartbeat at operation start */
+    omni_active_inference_heartbeat("omni_active__omni_ai_action_resul", 0.0f);
+
+
     if (result->action) nimcp_free(result->action);
     nimcp_free(result);
 }

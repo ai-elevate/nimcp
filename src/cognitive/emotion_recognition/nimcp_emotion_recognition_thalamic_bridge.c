@@ -27,7 +27,7 @@ static nimcp_health_agent_t* g_emotion_recognition_thalamic_bridge_health_agent 
  * @brief Set health agent for emotion_recognition_thalamic_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void emotion_recognition_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void emotion_recognition_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_emotion_recognition_thalamic_bridge_health_agent = agent;
 }
 
@@ -49,6 +49,10 @@ struct emotion_recognition_thalamic_bridge {
 };
 
 emotion_recognition_thalamic_config_t emotion_recognition_thalamic_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_recognition_thalamic_bridge_heartbeat("emotion_reco_emotion_recognition_", 0.0f);
+
+
     emotion_recognition_thalamic_config_t cfg = {
         .enable_attention_gating = true,
         .enable_threat_priority = true,
@@ -59,6 +63,10 @@ emotion_recognition_thalamic_config_t emotion_recognition_thalamic_default_confi
 }
 
 emotion_recognition_thalamic_bridge_t* emotion_recognition_thalamic_bridge_create(void* emotion_rec, thalamic_router_t* router, const emotion_recognition_thalamic_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_recognition_thalamic_bridge_heartbeat("emotion_reco_create", 0.0f);
+
+
     emotion_recognition_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(emotion_recognition_thalamic_bridge_t));
     if (!bridge) {
 
@@ -76,11 +84,19 @@ emotion_recognition_thalamic_bridge_t* emotion_recognition_thalamic_bridge_creat
 }
 
 void emotion_recognition_thalamic_bridge_destroy(emotion_recognition_thalamic_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_recognition_thalamic_bridge_heartbeat("emotion_reco_destroy", 0.0f);
+
+
     if (bridge) nimcp_free(bridge);
 }
 
 int emotion_recognition_thalamic_bridge_reset(emotion_recognition_thalamic_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    emotion_recognition_thalamic_bridge_heartbeat("emotion_reco_reset", 0.0f);
+
+
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return 0;
@@ -88,6 +104,10 @@ int emotion_recognition_thalamic_bridge_reset(emotion_recognition_thalamic_bridg
 
 int emotion_recognition_thalamic_route_recognition(emotion_recognition_thalamic_bridge_t* bridge, const emotion_recognition_thalamic_signal_t* signal) {
     if (!bridge || !signal) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    emotion_recognition_thalamic_bridge_heartbeat("emotion_reco_emotion_recognition_", 0.0f);
+
+
     if (bridge->config.enable_attention_gating && signal->recognition_confidence < bridge->config.min_recognition_confidence) {
         return 0;
     }
@@ -103,12 +123,20 @@ int emotion_recognition_thalamic_route_recognition(emotion_recognition_thalamic_
 
 int emotion_recognition_thalamic_route_context(emotion_recognition_thalamic_bridge_t* bridge, const void* context, float relevance) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    emotion_recognition_thalamic_bridge_heartbeat("emotion_reco_emotion_recognition_", 0.0f);
+
+
     bridge->stats.context_integrations++;
     return 0;
 }
 
 int emotion_recognition_thalamic_set_attention(emotion_recognition_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    emotion_recognition_thalamic_bridge_heartbeat("emotion_reco_emotion_recognition_", 0.0f);
+
+
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
     return 0;
 }
@@ -116,12 +144,20 @@ int emotion_recognition_thalamic_set_attention(emotion_recognition_thalamic_brid
 int emotion_recognition_thalamic_get_attention(const emotion_recognition_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) return -1;
     *attention = bridge->attention_weight;
+    /* Phase 8: Heartbeat at operation start */
+    emotion_recognition_thalamic_bridge_heartbeat("emotion_reco_emotion_recognition_", 0.0f);
+
+
     return 0;
 }
 
 int emotion_recognition_thalamic_bridge_get_stats(const emotion_recognition_thalamic_bridge_t* bridge, emotion_recognition_thalamic_stats_t* stats) {
     if (!bridge || !stats) return -1;
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    emotion_recognition_thalamic_bridge_heartbeat("emotion_reco_get_stats", 0.0f);
+
+
     return 0;
 }
 
@@ -132,9 +168,19 @@ int emotion_recognition_thalamic_bridge_get_stats(const emotion_recognition_thal
 int emotion_recognition_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_recognition_thalamic_bridge_heartbeat("emotion_reco_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Emotion_Recognition_Thalamic_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                emotion_recognition_thalamic_bridge_heartbeat("emotion_reco_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

@@ -27,7 +27,7 @@ static nimcp_health_agent_t* g_remorse_thalamic_bridge_health_agent = NULL;
  * @brief Set health agent for remorse_thalamic_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void remorse_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void remorse_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_remorse_thalamic_bridge_health_agent = agent;
 }
 
@@ -49,6 +49,10 @@ struct remorse_thalamic_bridge {
 };
 
 remorse_thalamic_config_t remorse_thalamic_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    remorse_thalamic_bridge_heartbeat("remorse_thal_remorse_thalamic_def", 0.0f);
+
+
     remorse_thalamic_config_t cfg = {
         .enable_attention_gating = true,
         .enable_repair_routing = true,
@@ -59,6 +63,10 @@ remorse_thalamic_config_t remorse_thalamic_default_config(void) {
 }
 
 remorse_thalamic_bridge_t* remorse_thalamic_bridge_create(void* remorse, thalamic_router_t* router, const remorse_thalamic_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    remorse_thalamic_bridge_heartbeat("remorse_thal_create", 0.0f);
+
+
     remorse_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(remorse_thalamic_bridge_t));
     if (!bridge) {
 
@@ -82,6 +90,10 @@ remorse_thalamic_bridge_t* remorse_thalamic_bridge_create(void* remorse, thalami
 
 void remorse_thalamic_bridge_destroy(remorse_thalamic_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    remorse_thalamic_bridge_heartbeat("remorse_thal_destroy", 0.0f);
+
+
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
     }
@@ -90,6 +102,10 @@ void remorse_thalamic_bridge_destroy(remorse_thalamic_bridge_t* bridge) {
 
 int remorse_thalamic_bridge_reset(remorse_thalamic_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    remorse_thalamic_bridge_heartbeat("remorse_thal_reset", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -99,6 +115,10 @@ int remorse_thalamic_bridge_reset(remorse_thalamic_bridge_t* bridge) {
 
 int remorse_thalamic_route_guilt(remorse_thalamic_bridge_t* bridge, const remorse_thalamic_signal_t* signal) {
     if (!bridge || !signal) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    remorse_thalamic_bridge_heartbeat("remorse_thal_remorse_thalamic_rou", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_attention_gating && signal->guilt_intensity < bridge->config.min_guilt_threshold) {
         nimcp_mutex_unlock(bridge->base.mutex);
@@ -116,6 +136,10 @@ int remorse_thalamic_route_guilt(remorse_thalamic_bridge_t* bridge, const remors
 
 int remorse_thalamic_route_repair(remorse_thalamic_bridge_t* bridge, const void* action, float motivation) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    remorse_thalamic_bridge_heartbeat("remorse_thal_remorse_thalamic_rou", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_repair_routing && motivation >= bridge->config.repair_threshold) {
         bridge->stats.repair_actions++;
@@ -126,6 +150,10 @@ int remorse_thalamic_route_repair(remorse_thalamic_bridge_t* bridge, const void*
 
 int remorse_thalamic_set_attention(remorse_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    remorse_thalamic_bridge_heartbeat("remorse_thal_remorse_thalamic_set", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -135,12 +163,20 @@ int remorse_thalamic_set_attention(remorse_thalamic_bridge_t* bridge, float atte
 int remorse_thalamic_get_attention(const remorse_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) return -1;
     *attention = bridge->attention_weight;
+    /* Phase 8: Heartbeat at operation start */
+    remorse_thalamic_bridge_heartbeat("remorse_thal_remorse_thalamic_get", 0.0f);
+
+
     return 0;
 }
 
 int remorse_thalamic_bridge_get_stats(const remorse_thalamic_bridge_t* bridge, remorse_thalamic_stats_t* stats) {
     if (!bridge || !stats) return -1;
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    remorse_thalamic_bridge_heartbeat("remorse_thal_get_stats", 0.0f);
+
+
     return 0;
 }
 
@@ -151,9 +187,19 @@ int remorse_thalamic_bridge_get_stats(const remorse_thalamic_bridge_t* bridge, r
 int remorse_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    remorse_thalamic_bridge_heartbeat("remorse_thal_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Remorse_Thalamic_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                remorse_thalamic_bridge_heartbeat("remorse_thal_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

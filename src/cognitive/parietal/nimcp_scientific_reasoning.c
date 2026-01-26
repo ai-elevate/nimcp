@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_scientific_reasoning_health_agent = NULL;
  * @brief Set health agent for scientific_reasoning heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void scientific_reasoning_set_health_agent(nimcp_health_agent_t* agent) {
+void scientific_reasoning_set_health_agent(nimcp_health_agent_t* agent) {
     g_scientific_reasoning_health_agent = agent;
 }
 
@@ -106,6 +106,12 @@ static float compute_correlation(const float* x, const float* y, uint32_t n) {
     float sum_x = 0, sum_y = 0, sum_xy = 0, sum_x2 = 0, sum_y2 = 0;
 
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            scientific_reasoning_heartbeat("scientific_r_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         sum_x += x[i];
         sum_y += y[i];
         sum_xy += x[i] * y[i];
@@ -127,6 +133,10 @@ static float compute_correlation(const float* x, const float* y, uint32_t n) {
  * ============================================================================ */
 
 scientific_config_t scientific_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_default_c", 0.0f);
+
+
     scientific_config_t config = {
         .hypothesis_prior_default = 0.5f,
         .evidence_threshold = 0.1f,
@@ -142,6 +152,10 @@ scientific_config_t scientific_default_config(void) {
 
 bool scientific_validate_config(const scientific_config_t* config) {
     if (!config) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_validate_", 0.0f);
+
 
     if (config->hypothesis_prior_default < 0.0f ||
         config->hypothesis_prior_default > 1.0f) {
@@ -168,12 +182,20 @@ bool scientific_validate_config(const scientific_config_t* config) {
 }
 
 scientific_reasoning_t* scientific_reasoning_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_create", 0.0f);
+
+
     return scientific_reasoning_create_custom(NULL);
 }
 
 scientific_reasoning_t* scientific_reasoning_create_custom(
     const scientific_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_create_custom", 0.0f);
+
+
     scientific_config_t cfg;
 
     if (config) {
@@ -221,7 +243,17 @@ void scientific_reasoning_destroy(scientific_reasoning_t* sr) {
     if (!sr) return;
 
     /* Free hypothesis parameters */
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_destroy", 0.0f);
+
+
     for (uint32_t i = 0; i < sr->num_hypotheses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sr->num_hypotheses > 256) {
+            scientific_reasoning_heartbeat("scientific_r_loop",
+                             (float)(i + 1) / (float)sr->num_hypotheses);
+        }
+
         if (sr->hypotheses[i].parameters) {
             free(sr->hypotheses[i].parameters);
         }
@@ -241,6 +273,10 @@ void scientific_reasoning_destroy(scientific_reasoning_t* sr) {
  * ============================================================================ */
 
 physical_dimension_t scientific_dimensionless(void) {
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_dimension", 0.0f);
+
+
     physical_dimension_t d = {0, 0, 0, 0, 0, 0, 0};
     return d;
 }
@@ -250,6 +286,10 @@ physical_quantity_t scientific_create_quantity(
     physical_dimension_t dimension,
     const char* symbol
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_create_qu", 0.0f);
+
+
     physical_quantity_t q;
     q.value = value;
     q.dimension = dimension;
@@ -268,6 +308,10 @@ physical_dimension_t scientific_multiply_dimensions(
     physical_dimension_t a,
     physical_dimension_t b
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_multiply_", 0.0f);
+
+
     physical_dimension_t result;
     result.length = a.length + b.length;
     result.mass = a.mass + b.mass;
@@ -283,6 +327,10 @@ physical_dimension_t scientific_divide_dimensions(
     physical_dimension_t a,
     physical_dimension_t b
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_divide_di", 0.0f);
+
+
     physical_dimension_t result;
     result.length = a.length - b.length;
     result.mass = a.mass - b.mass;
@@ -298,6 +346,10 @@ physical_dimension_t scientific_power_dimension(
     physical_dimension_t d,
     int8_t power
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_power_dim", 0.0f);
+
+
     physical_dimension_t result;
     result.length = d.length * power;
     result.mass = d.mass * power;
@@ -313,6 +365,10 @@ bool scientific_dimensions_equal(
     physical_dimension_t a,
     physical_dimension_t b
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_dimension", 0.0f);
+
+
     return a.length == b.length &&
            a.mass == b.mass &&
            a.time == b.time &&
@@ -323,6 +379,10 @@ bool scientific_dimensions_equal(
 }
 
 bool scientific_is_dimensionless(physical_dimension_t d) {
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_is_dimens", 0.0f);
+
+
     return d.length == 0 && d.mass == 0 && d.time == 0 &&
            d.current == 0 && d.temperature == 0 &&
            d.amount == 0 && d.luminosity == 0;
@@ -349,6 +409,12 @@ const char* scientific_dimension_to_string(
 
     bool first = true;
     for (int i = 0; i < 7; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 7 > 256) {
+            scientific_reasoning_heartbeat("scientific_r_loop",
+                             (float)(i + 1) / (float)7);
+        }
+
         if (exps[i] != 0) {
             if (!first) {
                 strcat(p, "*");
@@ -383,6 +449,10 @@ uint32_t scientific_buckingham_pi(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_buckingha", 0.0f);
+
+
     nimcp_mutex_lock(sr->lock);
 
     /* Build dimension matrix [7 x num_quantities] */
@@ -394,6 +464,12 @@ uint32_t scientific_buckingham_pi(
     }
 
     for (uint32_t j = 0; j < num_quantities; j++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((j & 0xFF) == 0 && num_quantities > 256) {
+            scientific_reasoning_heartbeat("scientific_r_loop",
+                             (float)(j + 1) / (float)num_quantities);
+        }
+
         dim_matrix[0][j] = quantities[j].dimension.length;
         dim_matrix[1][j] = quantities[j].dimension.mass;
         dim_matrix[2][j] = quantities[j].dimension.time;
@@ -406,8 +482,20 @@ uint32_t scientific_buckingham_pi(
     /* Count non-zero dimensions (rank of dimension matrix) */
     uint32_t rank = 0;
     for (int i = 0; i < 7; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 7 > 256) {
+            scientific_reasoning_heartbeat("scientific_r_loop",
+                             (float)(i + 1) / (float)7);
+        }
+
         bool non_zero = false;
         for (uint32_t j = 0; j < num_quantities; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && num_quantities > 256) {
+                scientific_reasoning_heartbeat("scientific_r_loop",
+                                 (float)(j + 1) / (float)num_quantities);
+            }
+
             if (dim_matrix[i][j] != 0) {
                 non_zero = true;
                 break;
@@ -425,10 +513,22 @@ uint32_t scientific_buckingham_pi(
 
     /* Allocate output */
     for (uint32_t g = 0; g < num_groups; g++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((g & 0xFF) == 0 && num_groups > 256) {
+            scientific_reasoning_heartbeat("scientific_r_loop",
+                             (float)(g + 1) / (float)num_groups);
+        }
+
         pi_groups[g] = calloc(num_quantities, sizeof(float));
         if (!pi_groups[g]) {
             /* Clean up on failure */
             for (uint32_t k = 0; k < g; k++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((k & 0xFF) == 0 && g > 256) {
+                    scientific_reasoning_heartbeat("scientific_r_loop",
+                                     (float)(k + 1) / (float)g);
+                }
+
                 free(pi_groups[k]);
             }
             nimcp_mutex_unlock(sr->lock);
@@ -456,6 +556,10 @@ hypothesis_t scientific_create_hypothesis(
     const char* description,
     float prior
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_create_hy", 0.0f);
+
+
     hypothesis_t h = {0};
 
     if (!sr) {
@@ -510,6 +614,10 @@ float scientific_update_hypothesis(
         return 0.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_update_hy", 0.0f);
+
+
     nimcp_mutex_lock(sr->lock);
 
     /* Apply cognitive impairment from inflammation/sleep */
@@ -523,18 +631,36 @@ float scientific_update_hypothesis(
     uint32_t total_values = 0;
 
     for (uint32_t i = 0; i < num_samples; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_samples > 256) {
+            scientific_reasoning_heartbeat("scientific_r_loop",
+                             (float)(i + 1) / (float)num_samples);
+        }
+
         const data_sample_t* s = &samples[i];
 
         /* Compute sample variance */
         if (s->num_values > 1) {
             float mean = 0.0f;
             for (uint32_t j = 0; j < s->num_values; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && s->num_values > 256) {
+                    scientific_reasoning_heartbeat("scientific_r_loop",
+                                     (float)(j + 1) / (float)s->num_values);
+                }
+
                 mean += s->values[j];
             }
             mean /= (float)s->num_values;
 
             float var = 0.0f;
             for (uint32_t j = 0; j < s->num_values; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && s->num_values > 256) {
+                    scientific_reasoning_heartbeat("scientific_r_loop",
+                                     (float)(j + 1) / (float)s->num_values);
+                }
+
                 float diff = s->values[j] - mean;
                 var += diff * diff;
             }
@@ -584,6 +710,10 @@ float scientific_compare_hypotheses(
     if (!sr || !h1 || !h2) return 1.0f;
 
     /* Bayes factor: ratio of posteriors divided by ratio of priors */
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_compare_h", 0.0f);
+
+
     float post_ratio = (h1->posterior + EPSILON) / (h2->posterior + EPSILON);
     float prior_ratio = (h1->prior + EPSILON) / (h2->prior + EPSILON);
 
@@ -596,6 +726,10 @@ uint32_t scientific_best_hypothesis(
     uint32_t num_hypotheses
 ) {
     if (!sr || !hypotheses || num_hypotheses == 0) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_best_hypo", 0.0f);
+
 
     uint32_t best_idx = 0;
     float best_posterior = hypotheses[0].posterior;
@@ -615,6 +749,10 @@ bool scientific_reject_hypothesis(
     hypothesis_t* hypothesis
 ) {
     if (!sr || !hypothesis) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_reject_hy", 0.0f);
+
 
     nimcp_mutex_lock(sr->lock);
 
@@ -646,6 +784,9 @@ causal_graph_t* scientific_create_causal_graph(
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_create_ca", 0.0f);
+
     causal_graph_t* graph = calloc(1, sizeof(causal_graph_t));
     if (!graph) {
         set_scientific_error("Failed to allocate causal graph");
@@ -658,6 +799,12 @@ causal_graph_t* scientific_create_causal_graph(
 
     /* Copy variable names */
     for (uint32_t i = 0; i < num_variables; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_variables > 256) {
+            scientific_reasoning_heartbeat("scientific_r_loop",
+                             (float)(i + 1) / (float)num_variables);
+        }
+
         if (variable_names[i]) {
             graph->variable_names[i] = strdup(variable_names[i]);
         }
@@ -671,6 +818,12 @@ causal_graph_t* scientific_create_causal_graph(
     }
 
     for (uint32_t i = 0; i < num_variables; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_variables > 256) {
+            scientific_reasoning_heartbeat("scientific_r_loop",
+                             (float)(i + 1) / (float)num_variables);
+        }
+
         graph->adjacency[i] = calloc(num_variables, sizeof(float));
         if (!graph->adjacency[i]) {
             scientific_destroy_causal_graph(graph);
@@ -687,7 +840,17 @@ causal_graph_t* scientific_create_causal_graph(
 void scientific_destroy_causal_graph(causal_graph_t* graph) {
     if (!graph) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_destroy_c", 0.0f);
+
+
     for (uint32_t i = 0; i < graph->num_variables; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && graph->num_variables > 256) {
+            scientific_reasoning_heartbeat("scientific_r_loop",
+                             (float)(i + 1) / (float)graph->num_variables);
+        }
+
         free(graph->variable_names[i]);
         if (graph->adjacency) {
             free(graph->adjacency[i]);
@@ -709,6 +872,10 @@ int scientific_learn_causal_structure(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_learn_cau", 0.0f);
+
+
     nimcp_mutex_lock(sr->lock);
 
     uint32_t n = graph->num_variables;
@@ -716,19 +883,43 @@ int scientific_learn_causal_structure(
     /* Phase 1: Compute correlation matrix and create skeleton */
     float** corr = malloc(n * sizeof(float*));
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            scientific_reasoning_heartbeat("scientific_r_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         corr[i] = calloc(n, sizeof(float));
     }
 
     /* Extract column data for correlation computation */
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            scientific_reasoning_heartbeat("scientific_r_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         float* col_i = malloc(num_samples * sizeof(float));
         for (uint32_t s = 0; s < num_samples; s++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((s & 0xFF) == 0 && num_samples > 256) {
+                scientific_reasoning_heartbeat("scientific_r_loop",
+                                 (float)(s + 1) / (float)num_samples);
+            }
+
             col_i[s] = data[s][i];
         }
 
         for (uint32_t j = i + 1; j < n; j++) {
             float* col_j = malloc(num_samples * sizeof(float));
             for (uint32_t s = 0; s < num_samples; s++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((s & 0xFF) == 0 && num_samples > 256) {
+                    scientific_reasoning_heartbeat("scientific_r_loop",
+                                     (float)(s + 1) / (float)num_samples);
+                }
+
                 col_j[s] = data[s][j];
             }
 
@@ -750,6 +941,12 @@ int scientific_learn_causal_structure(
     /* Phase 2: Orient edges (simplified - use temporal ordering or domain knowledge) */
     /* For now, orient based on correlation strength asymmetry */
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            scientific_reasoning_heartbeat("scientific_r_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         for (uint32_t j = i + 1; j < n; j++) {
             if (graph->adjacency[i][j] != 0.0f) {
                 /* Simple heuristic: lower index is cause */
@@ -760,6 +957,12 @@ int scientific_learn_causal_structure(
 
     /* Cleanup */
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            scientific_reasoning_heartbeat("scientific_r_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         free(corr[i]);
     }
     free(corr);
@@ -781,6 +984,9 @@ int scientific_add_causal_relation(
         effect_id >= graph->num_variables) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_add_causa", 0.0f);
 
     /* Add to relations array */
     graph->relations[graph->num_relations].cause_id = cause_id;
@@ -804,6 +1010,9 @@ float scientific_estimate_causal_effect(
         outcome_id >= graph->num_variables) {
         return 0.0f;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_estimate_", 0.0f);
 
     nimcp_mutex_lock(sr->lock);
 
@@ -833,6 +1042,9 @@ bool scientific_is_path_blocked(
         return true;  /* Invalid = blocked */
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_is_path_b", 0.0f);
+
     /* Simplified d-separation check */
     /* A path is blocked if any non-collider is in conditioning set */
 
@@ -840,6 +1052,12 @@ bool scientific_is_path_blocked(
     if (graph->adjacency[from_id][to_id] != 0.0f) {
         /* Check if to_id is in conditioning set */
         for (uint32_t i = 0; i < num_conditioning; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_conditioning > 256) {
+                scientific_reasoning_heartbeat("scientific_r_loop",
+                                 (float)(i + 1) / (float)num_conditioning);
+            }
+
             if (conditioning_set[i] == to_id) {
                 return true;  /* Blocked by conditioning on intermediate */
             }
@@ -864,6 +1082,10 @@ int scientific_suggest_experiment(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_suggest_e", 0.0f);
+
+
     memset(design, 0, sizeof(experimental_design_t));
     strcpy(design->name, "Suggested Experiment");
 
@@ -876,6 +1098,12 @@ int scientific_suggest_experiment(
     design->num_outcomes = 1;
 
     for (uint32_t i = 0; i < graph->num_relations; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && graph->num_relations > 256) {
+            scientific_reasoning_heartbeat("scientific_r_loop",
+                             (float)(i + 1) / (float)graph->num_relations);
+        }
+
         if (graph->relations[i].effect_id == target_effect_id) {
             design->treatment_vars[design->num_treatments++] = graph->relations[i].cause_id;
         }
@@ -900,6 +1128,10 @@ uint32_t scientific_required_sample_size(
     /* n = 2 * ((z_alpha + z_beta) / d)^2 */
 
     /* Z-scores for common values */
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_required_", 0.0f);
+
+
     float z_alpha = 1.96f;  /* alpha = 0.05 */
     if (alpha > 0.1f) z_alpha = 1.28f;
     else if (alpha < 0.01f) z_alpha = 2.58f;
@@ -933,6 +1165,10 @@ int scientific_set_inflammation(scientific_reasoning_t* sr, float level) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_set_infla", 0.0f);
+
+
     nimcp_mutex_lock(sr->lock);
     sr->inflammation_level = clamp01(level);
     nimcp_mutex_unlock(sr->lock);
@@ -948,6 +1184,10 @@ int scientific_set_sleep_deprivation(scientific_reasoning_t* sr, float level) {
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_set_sleep", 0.0f);
+
 
     nimcp_mutex_lock(sr->lock);
     sr->sleep_deprivation_level = clamp01(level);
@@ -970,6 +1210,10 @@ int scientific_get_stats(const scientific_reasoning_t* sr, scientific_stats_t* s
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(((scientific_reasoning_t*)sr)->lock);
 
     stats->hypotheses_generated = sr->hypotheses_generated;
@@ -980,6 +1224,12 @@ int scientific_get_stats(const scientific_reasoning_t* sr, scientific_stats_t* s
     /* Count active hypotheses */
     stats->active_hypotheses = 0;
     for (uint32_t i = 0; i < sr->num_hypotheses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sr->num_hypotheses > 256) {
+            scientific_reasoning_heartbeat("scientific_r_loop",
+                             (float)(i + 1) / (float)sr->num_hypotheses);
+        }
+
         if (sr->hypotheses[i].active) {
             stats->active_hypotheses++;
         }
@@ -999,6 +1249,10 @@ int scientific_get_stats(const scientific_reasoning_t* sr, scientific_stats_t* s
 
 void scientific_reset_stats(scientific_reasoning_t* sr) {
     if (!sr) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_scientific_reset_sta", 0.0f);
+
 
     nimcp_mutex_lock(sr->lock);
 
@@ -1021,9 +1275,19 @@ const char* scientific_get_last_error(void) {
 
 int scientific_reasoning_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    scientific_reasoning_heartbeat("scientific_r_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Scientific_Reasoning");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                scientific_reasoning_heartbeat("scientific_r_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Module self-knowledge logged */
         }
     }

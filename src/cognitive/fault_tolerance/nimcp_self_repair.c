@@ -39,7 +39,7 @@ static nimcp_health_agent_t* g_self_repair_health_agent = NULL;
  * @brief Set health agent for self_repair heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void self_repair_set_health_agent(nimcp_health_agent_t* agent) {
+void self_repair_set_health_agent(nimcp_health_agent_t* agent) {
     g_self_repair_health_agent = agent;
 }
 
@@ -124,6 +124,10 @@ static int register_bio_handlers(self_repair_coordinator_t* coord);
 //=============================================================================
 
 self_repair_config_t self_repair_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_default_config", 0.0f);
+
+
     self_repair_config_t config = {0};
 
     config.mode = REPAIR_MODE_DUAL;
@@ -148,6 +152,10 @@ self_repair_config_t self_repair_default_config(void) {
 }
 
 self_repair_coordinator_t* self_repair_create(const self_repair_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_create", 0.0f);
+
+
     return self_repair_create_with_deps(config, NULL, NULL, NULL, NULL);
 }
 
@@ -158,6 +166,10 @@ self_repair_coordinator_t* self_repair_create_with_deps(
     hot_injector_t hot_inject,
     code_immune_system_t* code_immune
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_create_with_deps", 0.0f);
+
+
     self_repair_coordinator_t* coord = nimcp_calloc(1, sizeof(self_repair_coordinator_t));
     if (!coord) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "coord is NULL");
@@ -242,6 +254,10 @@ void self_repair_destroy(self_repair_coordinator_t* coordinator) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_destroy", 0.0f);
+
+
     if (coordinator->magic != SELF_REPAIR_MAGIC) {
         return;
     }
@@ -277,6 +293,10 @@ bool self_repair_is_ready(const self_repair_coordinator_t* coordinator) {
     if (!coordinator || coordinator->magic != SELF_REPAIR_MAGIC) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_is_ready", 0.0f);
+
+
     return coordinator->ready;
 }
 
@@ -296,6 +316,10 @@ int self_repair_initiate(
     if (!self_repair_is_ready(coordinator)) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_initiate", 0.0f);
+
 
     memset(result, 0, sizeof(*result));
 
@@ -533,6 +557,10 @@ int self_repair_initiate_async(
 ) {
     /* For now, implement synchronously */
     /* TODO: Add proper async queue and worker thread */
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_initiate_async", 0.0f);
+
+
     self_repair_result_t result;
     int ret = self_repair_initiate(coordinator, request, &result);
     if (repair_id) {
@@ -550,9 +578,19 @@ repair_stage_t self_repair_get_status(
         return REPAIR_STAGE_FAILED;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_get_status", 0.0f);
+
+
     nimcp_mutex_lock(coordinator->mutex);
 
     for (uint32_t i = 0; i < coordinator->record_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && coordinator->record_count > 256) {
+            self_repair_heartbeat("self_repair_loop",
+                             (float)(i + 1) / (float)coordinator->record_count);
+        }
+
         if (coordinator->records[i].repair_id == repair_id) {
             if (result) {
                 result->success = (coordinator->records[i].status == REPAIR_STATUS_SUCCESS);
@@ -577,10 +615,20 @@ int self_repair_cancel(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_cancel", 0.0f);
+
+
     nimcp_mutex_lock(coordinator->mutex);
 
     /* Find the repair record */
     for (uint32_t i = 0; i < coordinator->record_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && coordinator->record_count > 256) {
+            self_repair_heartbeat("self_repair_loop",
+                             (float)(i + 1) / (float)coordinator->record_count);
+        }
+
         if (coordinator->records[i].repair_id == repair_id) {
             /* Can only cancel repairs that are in progress */
             repair_stage_t stage = coordinator->records[i].stage;
@@ -620,6 +668,10 @@ int self_repair_analyze_code(
     }
 
     /* Validate that source file exists if provided in stack trace */
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_analyze_code", 0.0f);
+
+
     if (diagnosis->stack_depth > 0 && diagnosis->stack_trace[0].file_name[0]) {
         struct stat st;
         if (stat(diagnosis->stack_trace[0].file_name, &st) != 0) {
@@ -664,6 +716,10 @@ int self_repair_generate_fix(
     }
 
     /* Build code generation request */
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_generate_fix", 0.0f);
+
+
     code_gen_request_t request = {0};
     request.diagnosis = (diagnostic_result_t*)diagnosis;  /* Cast away const for struct */
     request.code_analysis = (code_analysis_result_t*)analysis;
@@ -702,6 +758,10 @@ int self_repair_validate_fix(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_validate_fix", 0.0f);
+
+
     (void)validation_result;
 
     /* TODO: Call recompiler for actual validation */
@@ -731,6 +791,10 @@ int self_repair_deploy_hot_patch(
     /* TODO: Actually call hot_inject_patch */
     /* This requires building a .so from the fix, which is complex */
     /* For now, return success if hot_inject is available */
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_deploy_hot_patch", 0.0f);
+
+
     if (patch_id) {
         *patch_id = fix->fix_id;
     }
@@ -754,6 +818,10 @@ int self_repair_deploy_source(
     }
 
     /* Apply and commit */
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_deploy_source", 0.0f);
+
+
     vcs_commit_record_t vcs_record;
     int ret = vcs_apply_and_commit(coordinator->vcs, fix, &vcs_record);
 
@@ -778,10 +846,20 @@ int self_repair_rollback(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_rollback", 0.0f);
+
+
     nimcp_mutex_lock(coordinator->mutex);
 
     self_repair_record_t* record = NULL;
     for (uint32_t i = 0; i < coordinator->record_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && coordinator->record_count > 256) {
+            self_repair_heartbeat("self_repair_loop",
+                             (float)(i + 1) / (float)coordinator->record_count);
+        }
+
         if (coordinator->records[i].repair_id == repair_id) {
             record = &coordinator->records[i];
             break;
@@ -837,6 +915,10 @@ int self_repair_report_regression(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_report_regression", 0.0f);
+
+
     if (auto_rollback || coordinator->config.auto_rollback_on_regression) {
         return self_repair_rollback(coordinator, repair_id);
     }
@@ -859,6 +941,10 @@ int self_repair_set_stage_callback(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_set_stage_callback", 0.0f);
+
+
     nimcp_mutex_lock(coordinator->mutex);
     coordinator->stage_cb = callback;
     coordinator->stage_cb_data = user_data;
@@ -878,6 +964,10 @@ int self_repair_set_complete_callback(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_set_complete_callbac", 0.0f);
+
+
     nimcp_mutex_lock(coordinator->mutex);
     coordinator->complete_cb = callback;
     coordinator->complete_cb_data = user_data;
@@ -896,6 +986,10 @@ int self_repair_set_approval_callback(
 
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_set_approval_callbac", 0.0f);
+
 
     nimcp_mutex_lock(coordinator->mutex);
     coordinator->approval_cb = callback;
@@ -919,9 +1013,19 @@ const self_repair_record_t* self_repair_get_record(
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_get_record", 0.0f);
+
+
     nimcp_mutex_lock(coordinator->mutex);
 
     for (uint32_t i = 0; i < coordinator->record_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && coordinator->record_count > 256) {
+            self_repair_heartbeat("self_repair_loop",
+                             (float)(i + 1) / (float)coordinator->record_count);
+        }
+
         if (coordinator->records[i].repair_id == repair_id) {
             nimcp_mutex_unlock(coordinator->mutex);
             return &coordinator->records[i];
@@ -941,6 +1045,10 @@ uint32_t self_repair_get_recent_records(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_get_recent_records", 0.0f);
+
+
     nimcp_mutex_lock(coordinator->mutex);
 
     uint32_t count = coordinator->record_count < max_records ?
@@ -951,6 +1059,12 @@ uint32_t self_repair_get_recent_records(
                      coordinator->record_count - count : 0;
 
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            self_repair_heartbeat("self_repair_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         records[i] = coordinator->records[start + i];
     }
 
@@ -966,6 +1080,10 @@ int self_repair_get_stats(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(((self_repair_coordinator_t*)coordinator)->mutex);
     *stats = coordinator->stats;
     nimcp_mutex_unlock(((self_repair_coordinator_t*)coordinator)->mutex);
@@ -977,6 +1095,10 @@ void self_repair_reset_stats(self_repair_coordinator_t* coordinator) {
     if (!coordinator) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_reset_stats", 0.0f);
+
 
     nimcp_mutex_lock(coordinator->mutex);
     memset(&coordinator->stats, 0, sizeof(coordinator->stats));
@@ -1176,6 +1298,10 @@ int self_repair_broadcast_stage_change(
     }
 
     /* Build and send stage change message */
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_broadcast_stage_chan", 0.0f);
+
+
     struct {
         bio_message_header_t header;
         uint64_t repair_id;
@@ -1209,6 +1335,10 @@ int self_repair_broadcast_result(
     }
 
     /* Build and send result message */
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_broadcast_result", 0.0f);
+
+
     struct {
         bio_message_header_t header;
         uint64_t repair_id;
@@ -1235,6 +1365,10 @@ uint32_t self_repair_process_messages(self_repair_coordinator_t* coordinator, ui
     if (!coordinator || !coordinator->bio_ctx) {
         return 0;
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_process_messages", 0.0f);
+
+
     return bio_router_process_inbox(coordinator->bio_ctx, max_messages);
 }
 
@@ -1254,6 +1388,10 @@ int self_repair_connect_health_agent(
             "self_repair_connect_health_agent: coordinator is NULL");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_connect_health_agent", 0.0f);
+
 
     nimcp_mutex_lock(coordinator->mutex);
     coordinator->health_agent = agent;
@@ -1275,6 +1413,10 @@ int self_repair_set_failure_callback(
             "self_repair_set_failure_callback: coordinator is NULL");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_set_failure_callback", 0.0f);
+
 
     nimcp_mutex_lock(coordinator->mutex);
     coordinator->failure_cb = callback;
@@ -1298,6 +1440,10 @@ int self_repair_notify_health_agent_failure(
             "self_repair_notify_health_agent_failure: coordinator is NULL");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_notify_health_agent_", 0.0f);
+
 
     nimcp_mutex_lock(coordinator->mutex);
 
@@ -1341,5 +1487,9 @@ bool self_repair_has_health_agent(const self_repair_coordinator_t* coordinator) 
     if (!coordinator) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_heartbeat("self_repair_has_health_agent", 0.0f);
+
+
     return coordinator->health_agent != NULL;
 }

@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_jepa_masking_health_agent = NULL;
  * @brief Set health agent for jepa_masking heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void jepa_masking_set_health_agent(nimcp_health_agent_t* agent) {
+void jepa_masking_set_health_agent(nimcp_health_agent_t* agent) {
     g_jepa_masking_health_agent = agent;
 }
 
@@ -170,6 +170,10 @@ int jepa_mask_default_config(jepa_mask_config_t* config, jepa_mask_strategy_t st
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_masking_heartbeat("jepa_masking_jepa_mask_default_co", 0.0f);
+
+
     memset(config, 0, sizeof(jepa_mask_config_t));
 
     config->strategy = strategy;
@@ -224,6 +228,10 @@ int jepa_mask_default_config(jepa_mask_config_t* config, jepa_mask_strategy_t st
  * ============================================================================ */
 
 jepa_mask_generator_t* jepa_mask_generator_create(const jepa_mask_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_masking_heartbeat("jepa_masking_jepa_mask_generator_", 0.0f);
+
+
     jepa_mask_config_t default_config;
 
     if (!config) {
@@ -281,12 +289,20 @@ jepa_mask_generator_t* jepa_mask_generator_create(const jepa_mask_config_t* conf
 void jepa_mask_generator_destroy(jepa_mask_generator_t* generator) {
     if (!generator) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_masking_heartbeat("jepa_masking_jepa_mask_generator_", 0.0f);
+
+
     nimcp_free(generator->temp_buffer);
     bridge_base_cleanup(&generator->base);
     nimcp_free(generator);
 }
 
 int jepa_mask_generator_reset(jepa_mask_generator_t* generator, uint32_t new_seed) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_masking_heartbeat("jepa_masking_jepa_mask_generator_", 0.0f);
+
+
     NIMCP_CHECK_THROW(generator, NIMCP_ERROR_NULL_POINTER, "generator is NULL");
 
     if (new_seed != 0) {
@@ -308,6 +324,10 @@ int jepa_mask_generator_reset(jepa_mask_generator_t* generator, uint32_t new_see
  * ============================================================================ */
 
 jepa_mask_t* jepa_mask_create(uint32_t width, uint32_t height, uint32_t temporal) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_masking_heartbeat("jepa_masking_jepa_mask_create", 0.0f);
+
+
     if (width == 0 || height == 0 || temporal == 0) {
         return NULL;
     }
@@ -348,6 +368,10 @@ jepa_mask_t* jepa_mask_create(uint32_t width, uint32_t height, uint32_t temporal
 
 void jepa_mask_destroy(jepa_mask_t* mask) {
     if (!mask) return;
+    /* Phase 8: Heartbeat at operation start */
+    jepa_masking_heartbeat("jepa_masking_jepa_mask_destroy", 0.0f);
+
+
     nimcp_free(mask->data);
     nimcp_free(mask);
 }
@@ -360,6 +384,10 @@ jepa_mask_t* jepa_mask_clone(const jepa_mask_t* src) {
         return NULL;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    jepa_masking_heartbeat("jepa_masking_jepa_mask_clone", 0.0f);
+
 
     jepa_mask_t* dst = jepa_mask_create(src->width, src->height, src->temporal);
     if (!dst) {
@@ -386,6 +414,12 @@ static int generate_random_mask(jepa_mask_generator_t* gen,
                                  jepa_mask_t* mask,
                                  float target_ratio) {
     for (uint32_t i = 0; i < mask->total_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mask->total_size > 256) {
+            jepa_masking_heartbeat("jepa_masking_loop",
+                             (float)(i + 1) / (float)mask->total_size);
+        }
+
         mask->data[i] = (random_float(&gen->random_state) < target_ratio) ? 1.0f : 0.0f;
     }
 
@@ -410,6 +444,12 @@ static int generate_block_mask(jepa_mask_generator_t* gen,
 
     /* Generate and apply blocks */
     for (uint32_t b = 0; b < num_blocks; b++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((b & 0xFF) == 0 && num_blocks > 256) {
+            jepa_masking_heartbeat("jepa_masking_loop",
+                             (float)(b + 1) / (float)num_blocks);
+        }
+
         mask_block_t block;
         generate_random_block(&gen->random_state, mask->width, mask->height,
                              params, &block);
@@ -441,6 +481,12 @@ static int generate_attention_mask(jepa_mask_generator_t* gen,
     float temp = fmaxf(0.01f, params->temperature);
 
     for (uint32_t i = 0; i < mask->total_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mask->total_size > 256) {
+            jepa_masking_heartbeat("jepa_masking_loop",
+                             (float)(i + 1) / (float)mask->total_size);
+        }
+
         float a = attention[i];
         if (!params->mask_high_attention) {
             a = 1.0f - a;  /* Invert to mask low attention */
@@ -451,6 +497,12 @@ static int generate_attention_mask(jepa_mask_generator_t* gen,
 
     /* Normalize to probabilities */
     for (uint32_t i = 0; i < mask->total_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mask->total_size > 256) {
+            jepa_masking_heartbeat("jepa_masking_loop",
+                             (float)(i + 1) / (float)mask->total_size);
+        }
+
         probs[i] /= (float)sum;
     }
 
@@ -459,12 +511,24 @@ static int generate_attention_mask(jepa_mask_generator_t* gen,
     memset(mask->data, 0, mask->total_size * sizeof(float));
 
     for (uint32_t m = 0; m < target_masked; m++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((m & 0xFF) == 0 && target_masked > 256) {
+            jepa_masking_heartbeat("jepa_masking_loop",
+                             (float)(m + 1) / (float)target_masked);
+        }
+
         /* Weighted random selection */
         float r = random_float(&gen->random_state);
         float cumsum = 0.0f;
         uint32_t selected = mask->total_size - 1;
 
         for (uint32_t i = 0; i < mask->total_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && mask->total_size > 256) {
+                jepa_masking_heartbeat("jepa_masking_loop",
+                                 (float)(i + 1) / (float)mask->total_size);
+            }
+
             cumsum += probs[i];
             if (r <= cumsum && mask->data[i] < 0.5f) {
                 selected = i;
@@ -478,10 +542,22 @@ static int generate_attention_mask(jepa_mask_generator_t* gen,
         /* Re-normalize */
         sum = 0.0;
         for (uint32_t i = 0; i < mask->total_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && mask->total_size > 256) {
+                jepa_masking_heartbeat("jepa_masking_loop",
+                                 (float)(i + 1) / (float)mask->total_size);
+            }
+
             sum += probs[i];
         }
         if (sum > 0.0) {
             for (uint32_t i = 0; i < mask->total_size; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && mask->total_size > 256) {
+                    jepa_masking_heartbeat("jepa_masking_loop",
+                                     (float)(i + 1) / (float)mask->total_size);
+                }
+
                 probs[i] /= (float)sum;
             }
         }
@@ -512,10 +588,22 @@ static int generate_tube_mask(jepa_mask_generator_t* gen,
     uint32_t patches_per_tube = (uint32_t)(params->tube_ratio * spatial_size / params->num_tubes);
 
     for (uint32_t t = 0; t < params->num_tubes; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && params->num_tubes > 256) {
+            jepa_masking_heartbeat("jepa_masking_loop",
+                             (float)(t + 1) / (float)params->num_tubes);
+        }
+
         /* Generate spatial positions for this tube */
         uint32_t spatial_idx = 0;  /* Initialize for first patch, reused if consistent_spatial */
 
         for (uint32_t p = 0; p < patches_per_tube; p++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((p & 0xFF) == 0 && patches_per_tube > 256) {
+                jepa_masking_heartbeat("jepa_masking_loop",
+                                 (float)(p + 1) / (float)patches_per_tube);
+            }
+
             if (params->consistent_spatial || p == 0) {
                 /* Same position across all time steps (or first patch) */
                 spatial_idx = random_int(&gen->random_state, spatial_size);
@@ -526,6 +614,12 @@ static int generate_tube_mask(jepa_mask_generator_t* gen,
 
             /* Apply across all time steps */
             for (uint32_t f = 0; f < mask->temporal; f++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((f & 0xFF) == 0 && mask->temporal > 256) {
+                    jepa_masking_heartbeat("jepa_masking_loop",
+                                     (float)(f + 1) / (float)mask->temporal);
+                }
+
                 uint32_t idx = f * spatial_size + spatial_idx;
                 mask->data[idx] = 1.0f;
             }
@@ -547,6 +641,12 @@ static int generate_causal_mask(jepa_mask_generator_t* gen,
     if (visible_length == 0) visible_length = 1;
 
     for (uint32_t i = 0; i < mask->total_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mask->total_size > 256) {
+            jepa_masking_heartbeat("jepa_masking_loop",
+                             (float)(i + 1) / (float)mask->total_size);
+        }
+
         mask->data[i] = (i >= visible_length) ? 1.0f : 0.0f;
     }
 
@@ -565,6 +665,10 @@ int jepa_mask_generate_2d(jepa_mask_generator_t* generator,
     if (!generator || !mask) {
         return NIMCP_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    jepa_masking_heartbeat("jepa_masking_jepa_mask_generate_2", 0.0f);
+
 
     if (mask->width != width || mask->height != height || mask->temporal != 1) {
         return NIMCP_ERROR_INVALID_PARAM;
@@ -621,6 +725,10 @@ int jepa_mask_generate_3d(jepa_mask_generator_t* generator,
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_masking_heartbeat("jepa_masking_jepa_mask_generate_3", 0.0f);
+
+
     if (mask->width != width || mask->height != height || mask->temporal != temporal) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -650,6 +758,10 @@ int jepa_mask_generate_1d(jepa_mask_generator_t* generator,
                            uint32_t length,
                            jepa_mask_t* mask) {
     /* 1D is just 2D with height=1 */
+    /* Phase 8: Heartbeat at operation start */
+    jepa_masking_heartbeat("jepa_masking_jepa_mask_generate_1", 0.0f);
+
+
     return jepa_mask_generate_2d(generator, length, 1, mask);
 }
 
@@ -661,6 +773,10 @@ int jepa_mask_generate_attention(jepa_mask_generator_t* generator,
     if (!generator || !attention || !mask) {
         return NIMCP_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    jepa_masking_heartbeat("jepa_masking_jepa_mask_generate_a", 0.0f);
+
 
     if (mask->width != width || mask->height != height) {
         return NIMCP_ERROR_INVALID_PARAM;
@@ -682,9 +798,25 @@ int jepa_mask_apply(const jepa_mask_t* mask,
     }
 
     /* Apply mask: out[i,j] = input[i,j] * (1 - mask[i]) */
+    /* Phase 8: Heartbeat at operation start */
+    jepa_masking_heartbeat("jepa_masking_jepa_mask_apply", 0.0f);
+
+
     for (uint32_t i = 0; i < mask->total_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mask->total_size > 256) {
+            jepa_masking_heartbeat("jepa_masking_loop",
+                             (float)(i + 1) / (float)mask->total_size);
+        }
+
         float m = 1.0f - mask->data[i];
         for (uint32_t j = 0; j < dim; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && dim > 256) {
+                jepa_masking_heartbeat("jepa_masking_loop",
+                                 (float)(j + 1) / (float)dim);
+            }
+
             output[i * dim + j] = input[i * dim + j] * m;
         }
     }
@@ -699,8 +831,18 @@ int jepa_mask_get_visible_indices(const jepa_mask_t* mask,
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_masking_heartbeat("jepa_masking_jepa_mask_get_visibl", 0.0f);
+
+
     uint32_t count = 0;
     for (uint32_t i = 0; i < mask->total_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mask->total_size > 256) {
+            jepa_masking_heartbeat("jepa_masking_loop",
+                             (float)(i + 1) / (float)mask->total_size);
+        }
+
         if (mask->data[i] < 0.5f) {
             indices[count++] = i;
         }
@@ -717,8 +859,18 @@ int jepa_mask_get_masked_indices(const jepa_mask_t* mask,
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_masking_heartbeat("jepa_masking_jepa_mask_get_masked", 0.0f);
+
+
     uint32_t count = 0;
     for (uint32_t i = 0; i < mask->total_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mask->total_size > 256) {
+            jepa_masking_heartbeat("jepa_masking_loop",
+                             (float)(i + 1) / (float)mask->total_size);
+        }
+
         if (mask->data[i] >= 0.5f) {
             indices[count++] = i;
         }
@@ -733,7 +885,17 @@ int jepa_mask_invert(jepa_mask_t* mask) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_masking_heartbeat("jepa_masking_jepa_mask_invert", 0.0f);
+
+
     for (uint32_t i = 0; i < mask->total_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mask->total_size > 256) {
+            jepa_masking_heartbeat("jepa_masking_loop",
+                             (float)(i + 1) / (float)mask->total_size);
+        }
+
         mask->data[i] = 1.0f - mask->data[i];
     }
 
@@ -751,8 +913,18 @@ int jepa_mask_compute_stats(jepa_mask_t* mask) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_masking_heartbeat("jepa_masking_jepa_mask_compute_st", 0.0f);
+
+
     uint32_t masked = 0;
     for (uint32_t i = 0; i < mask->total_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mask->total_size > 256) {
+            jepa_masking_heartbeat("jepa_masking_loop",
+                             (float)(i + 1) / (float)mask->total_size);
+        }
+
         if (mask->data[i] >= 0.5f) {
             masked++;
         }
@@ -773,6 +945,10 @@ int jepa_mask_curriculum_step(jepa_mask_generator_t* generator) {
     if (!generator) {
         return NIMCP_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    jepa_masking_heartbeat("jepa_masking_jepa_mask_curriculum", 0.0f);
+
 
     if (generator->config.strategy != JEPA_MASK_CURRICULUM) {
         return NIMCP_ERROR_INVALID_PARAM;
@@ -804,6 +980,10 @@ int jepa_mask_curriculum_set_step(jepa_mask_generator_t* generator, uint32_t ste
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_masking_heartbeat("jepa_masking_jepa_mask_curriculum", 0.0f);
+
+
     generator->curriculum_step = step;
 
     /* Recalculate ratio */
@@ -827,6 +1007,10 @@ int jepa_mask_curriculum_set_step(jepa_mask_generator_t* generator, uint32_t ste
 
 float jepa_mask_curriculum_get_ratio(const jepa_mask_generator_t* generator) {
     if (!generator) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    jepa_masking_heartbeat("jepa_masking_jepa_mask_curriculum", 0.0f);
+
+
     return generator->current_ratio;
 }
 
@@ -879,9 +1063,19 @@ const char* jepa_mask_mode_to_string(jepa_mask_mode_t mode) {
 int jepa_masking_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_masking_heartbeat("jepa_masking_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "JEPA_Masking_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                jepa_masking_heartbeat("jepa_masking_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

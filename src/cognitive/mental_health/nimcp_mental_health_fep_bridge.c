@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_mental_health_fep_bridge_health_agent = NULL;
  * @brief Set health agent for mental_health_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mental_health_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void mental_health_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_mental_health_fep_bridge_health_agent = agent;
 }
 
@@ -45,6 +45,10 @@ static inline void mental_health_fep_bridge_heartbeat(const char* operation, flo
 
 
 int mental_health_fep_bridge_default_config(mental_health_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_fep_bridge_heartbeat("mental_healt_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->aberrant_precision_threshold = MENTAL_HEALTH_FEP_ABERRANT_PRECISION_THRESHOLD;
     config->pathological_lr_threshold = MENTAL_HEALTH_FEP_PATHOLOGICAL_LR_THRESHOLD;
@@ -62,6 +66,10 @@ int mental_health_fep_bridge_default_config(mental_health_fep_config_t* config) 
 }
 
 mental_health_fep_bridge_t* mental_health_fep_bridge_create(const mental_health_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_fep_bridge_heartbeat("mental_healt_create", 0.0f);
+
+
     mental_health_fep_bridge_t* bridge = nimcp_malloc(sizeof(mental_health_fep_bridge_t));
     if (!bridge) {
 
@@ -80,6 +88,10 @@ mental_health_fep_bridge_t* mental_health_fep_bridge_create(const mental_health_
 
 void mental_health_fep_bridge_destroy(mental_health_fep_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_fep_bridge_heartbeat("mental_healt_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) mental_health_fep_bridge_disconnect_bio_async(bridge);
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
@@ -88,6 +100,10 @@ void mental_health_fep_bridge_destroy(mental_health_fep_bridge_t* bridge) {
 }
 
 int mental_health_fep_bridge_connect_fep(mental_health_fep_bridge_t* bridge, fep_system_t* fep) {
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_fep_bridge_heartbeat("mental_healt_connect_fep", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -96,6 +112,10 @@ int mental_health_fep_bridge_connect_fep(mental_health_fep_bridge_t* bridge, fep
 }
 
 int mental_health_fep_bridge_connect_mental_health(mental_health_fep_bridge_t* bridge, mental_health_monitor_t* mh) {
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_fep_bridge_heartbeat("mental_healt_connect_mental_healt", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && mh, NIMCP_ERROR_NULL_POINTER, "bridge or mental_health is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->mental_health_system = mh;
@@ -104,6 +124,10 @@ int mental_health_fep_bridge_connect_mental_health(mental_health_fep_bridge_t* b
 }
 
 int mental_health_fep_bridge_disconnect(mental_health_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_fep_bridge_heartbeat("mental_healt_disconnect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -113,6 +137,10 @@ int mental_health_fep_bridge_disconnect(mental_health_fep_bridge_t* bridge) {
 }
 
 int mental_health_fep_detect_aberrant_precision(mental_health_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_fep_bridge_heartbeat("mental_healt_mental_health_fep_de", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_aberrant_precision_detection) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -126,6 +154,10 @@ int mental_health_fep_detect_aberrant_precision(mental_health_fep_bridge_t* brid
 }
 
 int mental_health_fep_detect_pathological_learning(mental_health_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_fep_bridge_heartbeat("mental_healt_mental_health_fep_de", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_pathological_learning_detection) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -139,6 +171,10 @@ int mental_health_fep_detect_pathological_learning(mental_health_fep_bridge_t* b
 }
 
 int mental_health_fep_detect_negative_priors(mental_health_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_fep_bridge_heartbeat("mental_healt_mental_health_fep_de", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_negative_prior_detection) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -149,6 +185,10 @@ int mental_health_fep_detect_negative_priors(mental_health_fep_bridge_t* bridge)
 }
 
 int mental_health_fep_apply_precision_intervention(mental_health_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_fep_bridge_heartbeat("mental_healt_mental_health_fep_ap", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_precision_intervention) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -162,6 +202,10 @@ int mental_health_fep_apply_precision_intervention(mental_health_fep_bridge_t* b
 }
 
 int mental_health_fep_apply_lr_intervention(mental_health_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_fep_bridge_heartbeat("mental_healt_mental_health_fep_ap", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_lr_intervention) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -175,6 +219,10 @@ int mental_health_fep_apply_lr_intervention(mental_health_fep_bridge_t* bridge) 
 }
 
 int mental_health_fep_bridge_update(mental_health_fep_bridge_t* bridge, uint64_t delta_ms) {
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_fep_bridge_heartbeat("mental_healt_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     mental_health_fep_detect_aberrant_precision(bridge);
     mental_health_fep_detect_pathological_learning(bridge);
@@ -185,6 +233,10 @@ int mental_health_fep_bridge_update(mental_health_fep_bridge_t* bridge, uint64_t
 }
 
 int mental_health_fep_bridge_get_state(const mental_health_fep_bridge_t* bridge, mental_health_fep_state_t* state) {
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_fep_bridge_heartbeat("mental_healt_get_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -193,6 +245,10 @@ int mental_health_fep_bridge_get_state(const mental_health_fep_bridge_t* bridge,
 }
 
 int mental_health_fep_bridge_get_stats(const mental_health_fep_bridge_t* bridge, mental_health_fep_stats_t* stats) {
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_fep_bridge_heartbeat("mental_healt_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -201,6 +257,10 @@ int mental_health_fep_bridge_get_stats(const mental_health_fep_bridge_t* bridge,
 }
 
 int mental_health_fep_bridge_connect_bio_async(mental_health_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_fep_bridge_heartbeat("mental_healt_connect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
@@ -216,6 +276,10 @@ int mental_health_fep_bridge_connect_bio_async(mental_health_fep_bridge_t* bridg
 
 int mental_health_fep_bridge_disconnect_bio_async(mental_health_fep_bridge_t* bridge) {
     if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_fep_bridge_heartbeat("mental_healt_disconnect_bio_async", 0.0f);
+
+
     if (bridge->base.bio_ctx) bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_ctx = NULL;
     bridge->base.bio_async_enabled = false;
@@ -223,6 +287,10 @@ int mental_health_fep_bridge_disconnect_bio_async(mental_health_fep_bridge_t* br
 }
 
 bool mental_health_fep_bridge_is_bio_async_connected(const mental_health_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_fep_bridge_heartbeat("mental_healt_is_bio_async_connect", 0.0f);
+
+
     return bridge ? bridge->base.bio_async_enabled : false;
 }
 
@@ -233,9 +301,19 @@ bool mental_health_fep_bridge_is_bio_async_connected(const mental_health_fep_bri
 int mental_health_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_fep_bridge_heartbeat("mental_healt_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Mental_Health_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                mental_health_fep_bridge_heartbeat("mental_healt_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

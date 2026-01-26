@@ -62,7 +62,7 @@ static nimcp_health_agent_t* g_mirror_neurons_health_agent = NULL;
  * @brief Set health agent for mirror_neurons heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_neurons_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_neurons_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_neurons_health_agent = agent;
 }
 
@@ -244,6 +244,10 @@ static void update_action_statistics(mirror_neurons_t mirror, uint32_t action_id
  */
 mirror_neuron_config_t mirror_neurons_get_default_config(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_get_default_config", 0.0f);
+
+
     mirror_neuron_config_t config = {
         .num_mirror_neurons = 1000,
         .max_actions = 100,
@@ -286,6 +290,10 @@ action_t mirror_neurons_create_action(
     uint32_t num_features,
     uint32_t agent_id)
 {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_create_action", 0.0f);
+
+
     action_t action = {0};
     action.action_id = action_id;
     action.agent_id = agent_id;
@@ -324,6 +332,12 @@ static float compute_feature_similarity(const float* f1, const float* f2, uint32
     float norm2 = 0.0F;
 
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         dot_product += f1[i] * f2[i];
         norm1 += f1[i] * f1[i];
         norm2 += f2[i] * f2[i];
@@ -362,6 +376,12 @@ static uint32_t find_or_create_action(mirror_neurons_t mirror, const action_t* a
 
     // Search for existing action
     for (uint32_t i = 0; i < mirror->num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_actions > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_actions);
+        }
+
         if (mirror->actions[i].action_id == action->action_id) {
             return i;
         }
@@ -413,6 +433,12 @@ static uint32_t find_or_create_agent(mirror_neurons_t mirror, uint32_t agent_id)
 
     // Search for existing agent
     for (uint32_t i = 0; i < mirror->num_agents; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_agents > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_agents);
+        }
+
         if (mirror->agents[i].agent_id == agent_id) {
             return i;
         }
@@ -519,6 +545,12 @@ static void activate_neurons_for_action(
 
     // Activate neurons
     for (uint32_t i = 0; i < mapping->num_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mapping->num_neurons > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mapping->num_neurons);
+        }
+
         uint32_t neuron_idx = mapping->neuron_indices[i];
         mirror_neuron_unit_t* neuron = &mirror->neurons[neuron_idx];
 
@@ -570,6 +602,12 @@ static void update_action_statistics(mirror_neurons_t mirror, uint32_t action_id
     uint32_t count = 0;
 
     for (uint32_t i = 0; i < mapping->num_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mapping->num_neurons > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mapping->num_neurons);
+        }
+
         uint32_t neuron_idx = mapping->neuron_indices[i];
         mirror_neuron_unit_t* neuron = &mirror->neurons[neuron_idx];
 
@@ -669,6 +707,12 @@ static int mirror_neurons_wiring_handler_callback(
 
     int registered = 0;
     for (uint32_t i = 0; i < message_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && message_count > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)message_count);
+        }
+
         switch (message_types[i]) {
             case BIO_MSG_MIRROR_NEURON_ACTIVATION:
                 bio_router_register_handler(ctx, message_types[i], handle_mirror_activation);
@@ -694,6 +738,10 @@ static int mirror_neurons_wiring_handler_callback(
 mirror_neurons_t mirror_neurons_create(const mirror_neuron_config_t* config)
 {
     // Allocate system structure
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_create", 0.0f);
+
+
     mirror_neurons_t mirror = (mirror_neurons_t)nimcp_malloc(sizeof(struct mirror_neurons_system));
     if (!mirror) {
         MIRROR_LOG_ERROR("Mirror neurons: failed to allocate system structure");
@@ -856,6 +904,10 @@ void mirror_neurons_set_brain(mirror_neurons_t mirror, brain_t brain)
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_set_brain", 0.0f);
+
+
     mirror->brain = brain;
 }
 
@@ -869,6 +921,10 @@ void mirror_neurons_destroy(mirror_neurons_t mirror)
     }
 
     // Destroy SNN and Plasticity bridges first (before other cleanup)
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_destroy", 0.0f);
+
+
     if (mirror->snn_bridge) {
         mirror_snn_destroy(mirror->snn_bridge);
         mirror->snn_bridge = NULL;
@@ -892,6 +948,12 @@ void mirror_neurons_destroy(mirror_neurons_t mirror)
 
     // Free action neuron indices
     for (uint32_t i = 0; i < mirror->num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_actions > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_actions);
+        }
+
         if (mirror->actions[i].neuron_indices) {
             nimcp_free(mirror->actions[i].neuron_indices);
         }
@@ -926,6 +988,10 @@ bool mirror_neurons_observe_action(mirror_neurons_t mirror, const action_t* acti
     }
 
     // Find or create action mapping
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_observe_action", 0.0f);
+
+
     uint32_t action_idx = find_or_create_action(mirror, action);
     if (action_idx == UINT32_MAX) {
         return false;
@@ -978,6 +1044,10 @@ bool mirror_neurons_execute_action(mirror_neurons_t mirror, const action_t* acti
     }
 
     // Find or create action mapping
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_execute_action", 0.0f);
+
+
     uint32_t action_idx = find_or_create_action(mirror, action);
     if (action_idx == UINT32_MAX) {
         return false;
@@ -1009,8 +1079,18 @@ float mirror_neurons_get_activation(mirror_neurons_t mirror, uint32_t action_id)
     }
 
     // Find action
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_get_activation", 0.0f);
+
+
     uint32_t action_idx = UINT32_MAX;
     for (uint32_t i = 0; i < mirror->num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_actions > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_actions);
+        }
+
         if (mirror->actions[i].action_id == action_id) {
             action_idx = i;
             break;
@@ -1026,6 +1106,12 @@ float mirror_neurons_get_activation(mirror_neurons_t mirror, uint32_t action_id)
     action_mapping_t* mapping = &mirror->actions[action_idx];
 
     for (uint32_t i = 0; i < mapping->num_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mapping->num_neurons > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mapping->num_neurons);
+        }
+
         uint32_t neuron_idx = mapping->neuron_indices[i];
         mirror_neuron_unit_t* neuron = &mirror->neurons[neuron_idx];
 
@@ -1058,6 +1144,10 @@ bool mirror_neurons_match_actions(
     }
 
     // Compute feature similarity
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_match_actions", 0.0f);
+
+
     uint32_t num_features = (observed_action->num_features < executed_action->num_features) ?
                            observed_action->num_features : executed_action->num_features;
 
@@ -1093,6 +1183,10 @@ bool mirror_neurons_learn_demonstration(
     uint32_t num_actions,
     uint32_t demonstrator_id)
 {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_learn_demonstration", 0.0f);
+
+
     (void)demonstrator_id;  // TODO: Use for agent-specific learning
 
     if (!mirror || !actions || num_actions == 0) {
@@ -1101,6 +1195,12 @@ bool mirror_neurons_learn_demonstration(
 
     // Process each action in sequence
     for (uint32_t i = 0; i < num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_actions > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)num_actions);
+        }
+
         if (!mirror_neurons_observe_action(mirror, &actions[i])) {
             MIRROR_LOG_WARN("Mirror neurons: failed to observe action %u in demonstration", i);
         }
@@ -1127,7 +1227,17 @@ bool mirror_neurons_update_associations(mirror_neurons_t mirror)
     }
 
     // Apply Hebbian-like learning: neurons that fire together, wire together
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_update_associations", 0.0f);
+
+
     for (uint32_t i = 0; i < mirror->num_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_neurons > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_neurons);
+        }
+
         mirror_neuron_unit_t* neuron = &mirror->neurons[i];
 
         if (neuron->action_id == 0) {
@@ -1155,6 +1265,12 @@ bool mirror_neurons_update_associations(mirror_neurons_t mirror)
 
     // Update action-level statistics
     for (uint32_t i = 0; i < mirror->num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_actions > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_actions);
+        }
+
         update_action_statistics(mirror, i);
     }
 
@@ -1171,10 +1287,20 @@ bool mirror_neurons_decay_activations(mirror_neurons_t mirror, uint32_t delta_ti
     }
 
     // Calculate decay factor based on time
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_decay_activations", 0.0f);
+
+
     float decay_factor = expf(-mirror->config.decay_rate * (delta_time_ms / 1000.0F));
 
     // Apply decay to all neurons
     for (uint32_t i = 0; i < mirror->num_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_neurons > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_neurons);
+        }
+
         mirror_neuron_unit_t* neuron = &mirror->neurons[i];
 
         neuron->observation_activation *= decay_factor;
@@ -1206,11 +1332,21 @@ bool mirror_neurons_get_stats(mirror_neurons_t mirror, mirror_neuron_stats_t* st
     }
 
     // Copy current statistics
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_get_stats", 0.0f);
+
+
     memcpy(stats, &mirror->stats, sizeof(mirror_neuron_stats_t));
 
     // Update dynamic metrics
     stats->num_active_neurons = 0;
     for (uint32_t i = 0; i < mirror->num_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_neurons > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_neurons);
+        }
+
         if (mirror->neurons[i].observation_activation > 0.01F ||
             mirror->neurons[i].execution_activation > 0.01F) {
             stats->num_active_neurons++;
@@ -1224,6 +1360,12 @@ bool mirror_neurons_get_stats(mirror_neurons_t mirror, mirror_neuron_stats_t* st
     float total_quality = 0.0F;
     uint32_t count = 0;
     for (uint32_t i = 0; i < mirror->num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_actions > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_actions);
+        }
+
         if (mirror->actions[i].avg_similarity > 0.0F) {
             total_quality += mirror->actions[i].avg_similarity;
             count++;
@@ -1249,8 +1391,18 @@ bool mirror_neurons_get_activation_record(
     }
 
     // Find action
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_get_activation_recor", 0.0f);
+
+
     uint32_t action_idx = UINT32_MAX;
     for (uint32_t i = 0; i < mirror->num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_actions > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_actions);
+        }
+
         if (mirror->actions[i].action_id == action_id) {
             action_idx = i;
             break;
@@ -1278,6 +1430,12 @@ bool mirror_neurons_get_activation_record(
 
     // Average across neurons
     for (uint32_t i = 0; i < mapping->num_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mapping->num_neurons > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mapping->num_neurons);
+        }
+
         uint32_t neuron_idx = mapping->neuron_indices[i];
         mirror_neuron_unit_t* neuron = &mirror->neurons[neuron_idx];
 
@@ -1319,6 +1477,10 @@ bool mirror_neurons_predict_next_action(
     // In future, this could use more sophisticated sequence learning
 
     // Get last action in sequence
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_predict_next_action", 0.0f);
+
+
     const action_t* last_action = &previous_actions[num_previous - 1];
 
     // Find action with highest activation that's different from last
@@ -1326,6 +1488,12 @@ bool mirror_neurons_predict_next_action(
     uint32_t best_action_id = 0;
 
     for (uint32_t i = 0; i < mirror->num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_actions > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_actions);
+        }
+
         if (mirror->actions[i].action_id == last_action->action_id) {
             continue;  // Skip same action
         }
@@ -1344,6 +1512,12 @@ bool mirror_neurons_predict_next_action(
 
     // Create predicted action (simplified - use stored features)
     for (uint32_t i = 0; i < mirror->num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_actions > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_actions);
+        }
+
         if (mirror->actions[i].action_id == best_action_id) {
             predicted_action->action_id = best_action_id;
             strncpy(predicted_action->action_name, mirror->actions[i].action_name,
@@ -1379,6 +1553,10 @@ bool mirror_neurons_integrate_working_memory(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_integrate_working_me", 0.0f);
+
+
     mirror->working_memory = working_memory;
 
     if (working_memory) {
@@ -1399,6 +1577,10 @@ bool mirror_neurons_integrate_theory_of_mind(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_integrate_theory_of_", 0.0f);
+
+
     mirror->theory_of_mind = theory_of_mind;
 
     if (theory_of_mind) {
@@ -1418,6 +1600,10 @@ bool mirror_neurons_integrate_predictive(
     if (!mirror) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_integrate_predictive", 0.0f);
+
 
     mirror->predictive_network = predictive_network;
 
@@ -1457,6 +1643,10 @@ bool mirror_neurons_integrate_glial(
     if (!mirror) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_integrate_glial", 0.0f);
+
 
     mirror->glial_integration = glial_integration;
 
@@ -1506,10 +1696,20 @@ float mirror_neurons_get_social_salience(mirror_neurons_t mirror)
     // WHAT: Compute average activation across all mirror neurons
     // WHY:  High activation suggests social context is salient
     // HOW:  Average observation activation across neurons
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_get_social_salience", 0.0f);
+
+
     float total_activation = 0.0F;
     uint32_t active_count = 0;
 
     for (uint32_t i = 0; i < mirror->num_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_neurons > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_neurons);
+        }
+
         mirror_neuron_unit_t* neuron = &mirror->neurons[i];
         if (neuron->observation_activation > 0.01F) {
             total_activation += neuron->observation_activation;
@@ -1555,7 +1755,17 @@ void mirror_neurons_activate_observation_mode(mirror_neurons_t mirror)
     // WHAT: Boost baseline activation for all neurons
     // WHY:  Prepare for incoming social observation
     // HOW:  Small activation boost to make system more sensitive
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_activate_observation", 0.0f);
+
+
     for (uint32_t i = 0; i < mirror->num_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_neurons > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_neurons);
+        }
+
         mirror_neuron_unit_t* neuron = &mirror->neurons[i];
         if (neuron->action_id != 0) {  // Skip unassigned neurons
             neuron->observation_activation = fminf(
@@ -1586,6 +1796,10 @@ bool mirror_neurons_has_recent_observations(mirror_neurons_t mirror)
     }
 
     // Check if never updated
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_has_recent_observati", 0.0f);
+
+
     if (mirror->last_update_time == 0) {
         return false;
     }
@@ -1634,6 +1848,10 @@ bool mirror_neurons_get_all_activations(
     // WHY:  ToM needs overall action strength, not separate obs/exec
     // HOW:  Average observation and execution activations per action
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_get_all_activations", 0.0f);
+
+
     uint32_t count = 0;
     for (uint32_t i = 0; i < mirror->num_actions && count < max_size; i++) {
         action_mapping_t* action = &mirror->actions[i];
@@ -1644,6 +1862,12 @@ bool mirror_neurons_get_all_activations(
         uint32_t neuron_count = 0;
 
         for (uint32_t j = 0; j < action->num_neurons; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && action->num_neurons > 256) {
+                mirror_neurons_heartbeat("mirror_neuro_loop",
+                                 (float)(j + 1) / (float)action->num_neurons);
+            }
+
             uint32_t neuron_idx = action->neuron_indices[j];
             if (neuron_idx < mirror->num_neurons) {
                 mirror_neuron_unit_t* neuron = &mirror->neurons[neuron_idx];
@@ -1715,6 +1939,10 @@ bool mirror_neurons_save(mirror_neurons_t mirror, FILE* file)
     // WHAT: Write version marker for backward compatibility
     // WHY:  Enable future format changes while supporting old saves
     // HOW:  Write uint32_t version = 1
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_save", 0.0f);
+
+
     uint32_t version = 1;
     if (fwrite(&version, sizeof(uint32_t), 1, file) != 1) {
         return false;
@@ -1735,6 +1963,12 @@ bool mirror_neurons_save(mirror_neurons_t mirror, FILE* file)
     }
 
     for (uint32_t i = 0; i < mirror->num_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_neurons > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_neurons);
+        }
+
         if (fwrite(&mirror->neurons[i], sizeof(mirror_neuron_unit_t), 1, file) != 1) {
             return false;
         }
@@ -1748,6 +1982,12 @@ bool mirror_neurons_save(mirror_neurons_t mirror, FILE* file)
     }
 
     for (uint32_t i = 0; i < mirror->num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_actions > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_actions);
+        }
+
         action_mapping_t* action = &mirror->actions[i];
 
         // Write action metadata (excluding neuron_indices pointer)
@@ -1775,6 +2015,12 @@ bool mirror_neurons_save(mirror_neurons_t mirror, FILE* file)
     }
 
     for (uint32_t i = 0; i < mirror->num_agents; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_agents > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_agents);
+        }
+
         if (fwrite(&mirror->agents[i], sizeof(agent_info_t), 1, file) != 1) {
             return false;
         }
@@ -1829,6 +2075,10 @@ mirror_neurons_t mirror_neurons_load(FILE* file)
     // WHAT: Read and validate version
     // WHY:  Ensure format compatibility
     // HOW:  Read version, check against current version
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_load", 0.0f);
+
+
     uint32_t version = 0;
     if (fread(&version, sizeof(uint32_t), 1, file) != 1) {
         return NULL;
@@ -1868,6 +2118,12 @@ mirror_neurons_t mirror_neurons_load(FILE* file)
     }
 
     for (uint32_t i = 0; i < mirror->num_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_neurons > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_neurons);
+        }
+
         if (fread(&mirror->neurons[i], sizeof(mirror_neuron_unit_t), 1, file) != 1) {
             goto cleanup;
         }
@@ -1887,6 +2143,12 @@ mirror_neurons_t mirror_neurons_load(FILE* file)
     }
 
     for (uint32_t i = 0; i < mirror->num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_actions > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_actions);
+        }
+
         action_mapping_t* action = &mirror->actions[i];
 
         // Read action metadata
@@ -1927,6 +2189,12 @@ mirror_neurons_t mirror_neurons_load(FILE* file)
     }
 
     for (uint32_t i = 0; i < mirror->num_agents; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_agents > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_agents);
+        }
+
         if (fread(&mirror->agents[i], sizeof(agent_info_t), 1, file) != 1) {
             goto cleanup;
         }
@@ -1973,6 +2241,12 @@ cleanup:
         }
         if (mirror->actions) {
             for (uint32_t i = 0; i < mirror->num_actions; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && mirror->num_actions > 256) {
+                    mirror_neurons_heartbeat("mirror_neuro_loop",
+                                     (float)(i + 1) / (float)mirror->num_actions);
+                }
+
                 if (mirror->actions[i].neuron_indices) {
                     nimcp_free(mirror->actions[i].neuron_indices);
                 }
@@ -2003,6 +2277,10 @@ bool mirror_neurons_enable_substrate(mirror_neurons_t mirror)
     if (!mirror) return false;
 
     /* Already enabled? */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_enable_substrate", 0.0f);
+
+
     if (mirror->substrate_enabled) {
         MIRROR_LOG_INFO("Mirror neurons: substrate already enabled");
         return true;
@@ -2031,6 +2309,12 @@ bool mirror_neurons_enable_substrate(mirror_neurons_t mirror)
 
     /* Create substrate backings for all neurons */
     for (uint32_t i = 0; i < mirror->num_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_neurons > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_neurons);
+        }
+
         mirror_neuron_unit_t* unit = &mirror->neurons[i];
 
         unit->substrate = mirror_substrate_backing_create(
@@ -2060,6 +2344,10 @@ bool mirror_neurons_connect_axon_network(
 {
     if (!mirror) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_connect_axon_network", 0.0f);
+
+
     mirror->axon_network = axon_network;
 
     if (axon_network) {
@@ -2080,6 +2368,10 @@ bool mirror_neurons_connect_dendrite_network(
 {
     if (!mirror) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_connect_dendrite_net", 0.0f);
+
+
     mirror->dendrite_network = dendrite_network;
 
     if (dendrite_network) {
@@ -2099,6 +2391,10 @@ bool mirror_neurons_connect_myelin_network(
     void* myelin_network)
 {
     if (!mirror) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_connect_myelin_netwo", 0.0f);
+
 
     mirror->myelin_network = myelin_network;
 
@@ -2123,7 +2419,17 @@ float mirror_neurons_get_recognition_delay(mirror_neurons_t mirror, uint32_t act
     if (!mirror) return NIMCP_MIRROR_BASE_DELAY_MS;
 
     /* Find action mapping */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_get_recognition_dela", 0.0f);
+
+
     for (uint32_t i = 0; i < mirror->num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_actions > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_actions);
+        }
+
         if (mirror->actions[i].action_id == action_id) {
             /* Get average delay across neurons for this action */
             float total_delay = 0.0F;
@@ -2162,7 +2468,17 @@ float mirror_neurons_get_spine_association(mirror_neurons_t mirror, uint32_t act
     if (!mirror || !mirror->substrate_enabled) return 0.0F;
 
     /* Find action mapping */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_get_spine_associatio", 0.0f);
+
+
     for (uint32_t i = 0; i < mirror->num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_actions > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_actions);
+        }
+
         if (mirror->actions[i].action_id == action_id) {
             float total_weight = 0.0F;
 
@@ -2195,11 +2511,21 @@ bool mirror_neurons_step_substrate(mirror_neurons_t mirror, float dt_ms)
 {
     if (!mirror || !mirror->substrate_enabled) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_step_substrate", 0.0f);
+
+
     uint64_t current_time = nimcp_time_get_us();
     float dt_seconds = dt_ms / 1000.0F;
 
     /* Step each neuron's substrate */
     for (uint32_t i = 0; i < mirror->num_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_neurons > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_neurons);
+        }
+
         mirror_neuron_unit_t* unit = &mirror->neurons[i];
 
         if (unit->has_substrate && unit->substrate) {
@@ -2216,6 +2542,10 @@ bool mirror_neurons_step_substrate(mirror_neurons_t mirror, float dt_ms)
 bool mirror_neurons_has_substrate(mirror_neurons_t mirror)
 {
     if (!mirror) return false;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_has_substrate", 0.0f);
+
+
     return mirror->substrate_enabled;
 }
 
@@ -2231,6 +2561,10 @@ bool mirror_neurons_enable_stdp(mirror_neurons_t mirror, uint32_t max_synapses)
     if (!mirror) return false;
 
     // Already enabled?
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_enable_stdp", 0.0f);
+
+
     if (mirror->stdp_enabled && mirror->stdp_system) {
         return true;
     }
@@ -2249,6 +2583,12 @@ bool mirror_neurons_enable_stdp(mirror_neurons_t mirror, uint32_t max_synapses)
 
     // Create synapses for existing actions
     for (uint32_t i = 0; i < mirror->num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_actions > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_actions);
+        }
+
         uint32_t action_id = mirror->actions[i].action_id;
         mirror_stdp_create_synapse(stdp, action_id, 0.5F);  // Initial weight 0.5
     }
@@ -2266,6 +2606,10 @@ bool mirror_neurons_enable_stdp(mirror_neurons_t mirror, uint32_t max_synapses)
 mirror_stdp_t mirror_neurons_get_stdp(mirror_neurons_t mirror)
 {
     if (!mirror || !mirror->stdp_enabled) return NULL;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_get_stdp", 0.0f);
+
+
     return (mirror_stdp_t)mirror->stdp_system;
 }
 
@@ -2275,6 +2619,10 @@ mirror_stdp_t mirror_neurons_get_stdp(mirror_neurons_t mirror)
 void mirror_neurons_set_stdp_dopamine(mirror_neurons_t mirror, float level)
 {
     if (!mirror || !mirror->stdp_enabled || !mirror->stdp_system) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_set_stdp_dopamine", 0.0f);
+
 
     mirror_stdp_set_dopamine((mirror_stdp_t)mirror->stdp_system, level);
 }
@@ -2287,6 +2635,10 @@ bool mirror_neurons_enable_resonance(mirror_neurons_t mirror, uint32_t max_chann
     if (!mirror) return false;
 
     // Already enabled?
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_enable_resonance", 0.0f);
+
+
     if (mirror->resonance_enabled && mirror->resonance_system) {
         return true;
     }
@@ -2305,6 +2657,12 @@ bool mirror_neurons_enable_resonance(mirror_neurons_t mirror, uint32_t max_chann
 
     // Create channels for existing actions
     for (uint32_t i = 0; i < mirror->num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_actions > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_actions);
+        }
+
         uint32_t action_id = mirror->actions[i].action_id;
         motor_resonance_create_channel(resonance, action_id);
     }
@@ -2322,6 +2680,10 @@ bool mirror_neurons_enable_resonance(mirror_neurons_t mirror, uint32_t max_chann
 motor_resonance_t mirror_neurons_get_resonance(mirror_neurons_t mirror)
 {
     if (!mirror || !mirror->resonance_enabled) return NULL;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_get_resonance", 0.0f);
+
+
     return (motor_resonance_t)mirror->resonance_system;
 }
 
@@ -2331,6 +2693,10 @@ motor_resonance_t mirror_neurons_get_resonance(mirror_neurons_t mirror)
 void mirror_neurons_set_learning_context(mirror_neurons_t mirror, float learning_strength)
 {
     if (!mirror || !mirror->resonance_enabled || !mirror->resonance_system) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_set_learning_context", 0.0f);
+
 
     motor_resonance_release_for_learning((motor_resonance_t)mirror->resonance_system,
                                           -1, learning_strength);
@@ -2343,6 +2709,10 @@ void mirror_neurons_set_social_context(mirror_neurons_t mirror, float social_str
 {
     if (!mirror || !mirror->resonance_enabled || !mirror->resonance_system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_set_social_context", 0.0f);
+
+
     motor_resonance_release_for_social((motor_resonance_t)mirror->resonance_system,
                                         -1, social_strength);
 }
@@ -2353,6 +2723,10 @@ void mirror_neurons_set_social_context(mirror_neurons_t mirror, float social_str
 bool mirror_neurons_should_imitate(mirror_neurons_t mirror, uint32_t action_id)
 {
     if (!mirror || !mirror->resonance_enabled || !mirror->resonance_system) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_should_imitate", 0.0f);
+
 
     motor_resonance_t resonance = (motor_resonance_t)mirror->resonance_system;
     uint32_t channel_id = motor_resonance_find_channel(resonance, action_id);
@@ -2370,6 +2744,10 @@ bool mirror_neurons_enable_hierarchy(mirror_neurons_t mirror)
     if (!mirror) return false;
 
     // Already enabled?
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_enable_hierarchy", 0.0f);
+
+
     if (mirror->hierarchy_enabled && mirror->hierarchy_system) {
         return true;
     }
@@ -2383,6 +2761,12 @@ bool mirror_neurons_enable_hierarchy(mirror_neurons_t mirror)
 
     // Create motor representations for existing actions
     for (uint32_t i = 0; i < mirror->num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_actions > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_actions);
+        }
+
         mirror_hierarchy_create_motor(hierarchy, mirror->actions[i].action_name,
                                        MOTOR_TYPE_UNKNOWN);
     }
@@ -2400,6 +2784,10 @@ bool mirror_neurons_enable_hierarchy(mirror_neurons_t mirror)
 mirror_hierarchy_t mirror_neurons_get_hierarchy(mirror_neurons_t mirror)
 {
     if (!mirror || !mirror->hierarchy_enabled) return NULL;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_get_hierarchy", 0.0f);
+
+
     return (mirror_hierarchy_t)mirror->hierarchy_system;
 }
 
@@ -2412,11 +2800,21 @@ bool mirror_neurons_infer_goal(mirror_neurons_t mirror, uint32_t action_id,
     if (!mirror || !mirror->hierarchy_enabled || !mirror->hierarchy_system) return false;
     if (!out_goal || !out_confidence) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_infer_goal", 0.0f);
+
+
     mirror_hierarchy_t hierarchy = (mirror_hierarchy_t)mirror->hierarchy_system;
 
     // Find motor representation for this action
     uint32_t motor_id = UINT32_MAX;
     for (uint32_t i = 0; i < mirror->num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mirror->num_actions > 256) {
+            mirror_neurons_heartbeat("mirror_neuro_loop",
+                             (float)(i + 1) / (float)mirror->num_actions);
+        }
+
         if (mirror->actions[i].action_id == action_id) {
             motor_id = i;  // Motor ID corresponds to action index
             break;
@@ -2446,6 +2844,10 @@ void mirror_neurons_select_goal(mirror_neurons_t mirror, int32_t goal_id)
 {
     if (!mirror || !mirror->hierarchy_enabled || !mirror->hierarchy_system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_select_goal", 0.0f);
+
+
     mirror_hierarchy_select_goal((mirror_hierarchy_t)mirror->hierarchy_system, goal_id);
 }
 
@@ -2457,6 +2859,10 @@ bool mirror_neurons_step_enhancements(mirror_neurons_t mirror, float dt_ms)
     if (!mirror) return false;
 
     // Step STDP system
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_step_enhancements", 0.0f);
+
+
     if (mirror->stdp_enabled && mirror->stdp_system) {
         mirror_stdp_step((mirror_stdp_t)mirror->stdp_system, dt_ms);
     }
@@ -2480,9 +2886,19 @@ bool mirror_neurons_step_enhancements(mirror_neurons_t mirror, float dt_ms)
 
 int mirror_neurons_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_heartbeat("mirror_neuro_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Mirror_Neurons");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                mirror_neurons_heartbeat("mirror_neuro_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             MIRROR_LOG_INFO("Mirror neurons self-knowledge: %s", self->observations[i]);
         }
     }

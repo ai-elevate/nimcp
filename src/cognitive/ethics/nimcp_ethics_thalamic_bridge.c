@@ -27,7 +27,7 @@ static nimcp_health_agent_t* g_ethics_thalamic_bridge_health_agent = NULL;
  * @brief Set health agent for ethics_thalamic_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void ethics_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void ethics_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_ethics_thalamic_bridge_health_agent = agent;
 }
 
@@ -49,6 +49,10 @@ struct ethics_thalamic_bridge {
 };
 
 ethics_thalamic_config_t ethics_thalamic_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_thalamic_bridge_heartbeat("ethics_thala_ethics_thalamic_defa", 0.0f);
+
+
     ethics_thalamic_config_t cfg = {
         .enable_attention_gating = true,
         .enable_emotional_boost = true,
@@ -59,6 +63,10 @@ ethics_thalamic_config_t ethics_thalamic_default_config(void) {
 }
 
 ethics_thalamic_bridge_t* ethics_thalamic_bridge_create(void* ethics, thalamic_router_t* router, const ethics_thalamic_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_thalamic_bridge_heartbeat("ethics_thala_create", 0.0f);
+
+
     ethics_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(ethics_thalamic_bridge_t));
     if (!bridge) {
 
@@ -76,11 +84,19 @@ ethics_thalamic_bridge_t* ethics_thalamic_bridge_create(void* ethics, thalamic_r
 }
 
 void ethics_thalamic_bridge_destroy(ethics_thalamic_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_thalamic_bridge_heartbeat("ethics_thala_destroy", 0.0f);
+
+
     if (bridge) nimcp_free(bridge);
 }
 
 int ethics_thalamic_bridge_reset(ethics_thalamic_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    ethics_thalamic_bridge_heartbeat("ethics_thala_reset", 0.0f);
+
+
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return 0;
@@ -88,6 +104,10 @@ int ethics_thalamic_bridge_reset(ethics_thalamic_bridge_t* bridge) {
 
 int ethics_thalamic_route_judgment(ethics_thalamic_bridge_t* bridge, const ethics_thalamic_signal_t* signal) {
     if (!bridge || !signal) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    ethics_thalamic_bridge_heartbeat("ethics_thala_ethics_thalamic_rout", 0.0f);
+
+
     if (bridge->config.enable_attention_gating && signal->moral_salience < bridge->config.min_moral_salience) {
         return 0;
     }
@@ -99,12 +119,20 @@ int ethics_thalamic_route_judgment(ethics_thalamic_bridge_t* bridge, const ethic
 
 int ethics_thalamic_route_violation(ethics_thalamic_bridge_t* bridge, const void* violation, float severity) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    ethics_thalamic_bridge_heartbeat("ethics_thala_ethics_thalamic_rout", 0.0f);
+
+
     bridge->stats.violations_flagged++;
     return 0;
 }
 
 int ethics_thalamic_set_attention(ethics_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    ethics_thalamic_bridge_heartbeat("ethics_thala_ethics_thalamic_set_", 0.0f);
+
+
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
     return 0;
 }
@@ -112,12 +140,20 @@ int ethics_thalamic_set_attention(ethics_thalamic_bridge_t* bridge, float attent
 int ethics_thalamic_get_attention(const ethics_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) return -1;
     *attention = bridge->attention_weight;
+    /* Phase 8: Heartbeat at operation start */
+    ethics_thalamic_bridge_heartbeat("ethics_thala_ethics_thalamic_get_", 0.0f);
+
+
     return 0;
 }
 
 int ethics_thalamic_bridge_get_stats(const ethics_thalamic_bridge_t* bridge, ethics_thalamic_stats_t* stats) {
     if (!bridge || !stats) return -1;
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    ethics_thalamic_bridge_heartbeat("ethics_thala_get_stats", 0.0f);
+
+
     return 0;
 }
 
@@ -132,9 +168,19 @@ int ethics_thalamic_bridge_get_stats(const ethics_thalamic_bridge_t* bridge, eth
  */
 int ethics_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    ethics_thalamic_bridge_heartbeat("ethics_thala_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Ethics_Thalamic_Bridge_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                ethics_thalamic_bridge_heartbeat("ethics_thala_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             // No LOG_MODULE defined in this file, use direct printf or skip
         }
     }

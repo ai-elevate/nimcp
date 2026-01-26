@@ -54,7 +54,7 @@ static nimcp_health_agent_t* g_fault_working_memory_health_agent = NULL;
  * @brief Set health agent for fault_working_memory heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void fault_working_memory_set_health_agent(nimcp_health_agent_t* agent) {
+void fault_working_memory_set_health_agent(nimcp_health_agent_t* agent) {
     g_fault_working_memory_health_agent = agent;
 }
 
@@ -192,6 +192,10 @@ static void update_priority_fault(fault_working_memory_t* wm) {
 //=============================================================================
 
 fault_working_memory_config_t fault_working_memory_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    fault_working_memory_heartbeat("fault_workin_default_config", 0.0f);
+
+
     fault_working_memory_config_t config = {
         .max_capacity = FAULT_WORKING_MEMORY_DEFAULT_CAPACITY,
         .cascade_threshold = FAULT_WORKING_MEMORY_CASCADE_THRESHOLD,
@@ -201,6 +205,10 @@ fault_working_memory_config_t fault_working_memory_default_config(void) {
 }
 
 fault_working_memory_t* fault_working_memory_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    fault_working_memory_heartbeat("fault_workin_create", 0.0f);
+
+
     LOG_DEBUG("Creating module");
     fault_working_memory_config_t config = fault_working_memory_default_config();
     return fault_working_memory_create_custom(&config);
@@ -220,6 +228,10 @@ fault_working_memory_t* fault_working_memory_create_custom(
     }
 
     // Validate capacity
+    /* Phase 8: Heartbeat at operation start */
+    fault_working_memory_heartbeat("fault_workin_create_custom", 0.0f);
+
+
     uint32_t capacity = config->max_capacity;
     if (capacity == 0) {
         LOG_WARNING("Zero capacity specified, using default: %u",
@@ -297,6 +309,10 @@ return wm;
 }
 
 void fault_working_memory_destroy(fault_working_memory_t* wm) {
+    /* Phase 8: Heartbeat at operation start */
+    fault_working_memory_heartbeat("fault_workin_destroy", 0.0f);
+
+
     LOG_DEBUG("Destroying module");
     if (!wm) {
         return;  // Safe to call with NULL
@@ -342,6 +358,10 @@ bool fault_working_memory_add_fault(
     // =========================================================================
     // EVICTION: Make room if at capacity
     // =========================================================================
+
+    /* Phase 8: Heartbeat at operation start */
+    fault_working_memory_heartbeat("fault_workin_add_fault", 0.0f);
+
 
     if (wm->count >= wm->capacity) {
         // WHAT: Find and remove lowest-priority fault
@@ -403,8 +423,18 @@ void fault_working_memory_remove_fault(
     // WHAT: Find fault by ID
     // WHY: Remove resolved fault
     // HOW: Linear search for ID
+    /* Phase 8: Heartbeat at operation start */
+    fault_working_memory_heartbeat("fault_workin_remove_fault", 0.0f);
+
+
     uint32_t found_idx = wm->count;  // Invalid index
     for (uint32_t i = 0; i < wm->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && wm->count > 256) {
+            fault_working_memory_heartbeat("fault_workin_loop",
+                             (float)(i + 1) / (float)wm->count);
+        }
+
         if (wm->faults[i].fault.fault_id == fault_id) {
             found_idx = i;
             break;
@@ -437,6 +467,10 @@ void fault_working_memory_clear(fault_working_memory_t* wm) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    fault_working_memory_heartbeat("fault_workin_clear", 0.0f);
+
+
     wm->count = 0;
     wm->faults_in_window = 0;
     wm->cascade_detected = false;
@@ -461,6 +495,10 @@ const active_fault_t* fault_working_memory_get_fault_at(
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    fault_working_memory_heartbeat("fault_workin_get_fault_at", 0.0f);
+
+
     if (index >= wm->count) {
         return NULL;
     }
@@ -472,6 +510,10 @@ uint32_t fault_working_memory_get_count(const fault_working_memory_t* wm) {
     if (!wm) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    fault_working_memory_heartbeat("fault_workin_get_count", 0.0f);
+
 
     return wm->count;
 }
@@ -489,6 +531,10 @@ active_fault_t* fault_working_memory_get_priority_fault(
 
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    fault_working_memory_heartbeat("fault_workin_get_priority_fault", 0.0f);
+
 
     if (wm->count == 0) {
         return NULL;
@@ -512,6 +558,10 @@ bool fault_working_memory_set_recovery_strategy(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    fault_working_memory_heartbeat("fault_workin_set_recovery_strateg", 0.0f);
+
+
     wm->active_strategy = strategy;
     wm->total_steps = total_steps;
     wm->recovery_step = 0;
@@ -531,6 +581,10 @@ void fault_working_memory_update_progress(
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    fault_working_memory_heartbeat("fault_workin_update_progress", 0.0f);
+
+
     wm->recovery_step = step_completed;
 
     LOG_DEBUG("Recovery progress: step %u/%u",
@@ -545,6 +599,10 @@ uint32_t fault_working_memory_get_recovery_step(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    fault_working_memory_heartbeat("fault_workin_get_recovery_step", 0.0f);
+
+
     return wm->recovery_step;
 }
 
@@ -555,6 +613,10 @@ uint32_t fault_working_memory_get_total_steps(
     if (!wm) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    fault_working_memory_heartbeat("fault_workin_get_total_steps", 0.0f);
+
 
     return wm->total_steps;
 }
@@ -568,6 +630,10 @@ bool fault_working_memory_is_cascading(const fault_working_memory_t* wm) {
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    fault_working_memory_heartbeat("fault_workin_is_cascading", 0.0f);
+
+
     return wm->cascade_detected;
 }
 
@@ -575,6 +641,10 @@ void fault_working_memory_update_cascade_detection(fault_working_memory_t* wm) {
     if (!wm) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    fault_working_memory_heartbeat("fault_workin_update_cascade_detec", 0.0f);
+
 
     uint64_t current_time = fault_working_memory_get_timestamp_us();
     uint64_t window_elapsed = current_time - wm->window_start_us;
@@ -609,6 +679,10 @@ void fault_working_memory_update_cascade_detection(fault_working_memory_t* wm) {
 //=============================================================================
 
 uint64_t fault_working_memory_get_timestamp_us(void) {
+    /* Phase 8: Heartbeat at operation start */
+    fault_working_memory_heartbeat("fault_workin_get_timestamp_us", 0.0f);
+
+
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
@@ -648,9 +722,19 @@ const char* recovery_strategy_to_string(recovery_strategy_t strategy) {
 int fault_working_memory_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    fault_working_memory_heartbeat("fault_workin_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Fault_Working_Memory");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                fault_working_memory_heartbeat("fault_workin_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             nimcp_log(LOG_LEVEL_DEBUG, "[KG-Self] %s", self->observations[i]);
         }
     }
@@ -658,6 +742,12 @@ int fault_working_memory_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Fault_Working_Memory");
     if (connections) {
         for (uint32_t i = 0; i < connections->count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && connections->count > 256) {
+                fault_working_memory_heartbeat("fault_workin_loop",
+                                 (float)(i + 1) / (float)connections->count);
+            }
+
             nimcp_log(LOG_LEVEL_DEBUG, "[KG-Rel] -> %s (%s)",
                       connections->relations[i]->to,
                       connections->relations[i]->relation_type);
@@ -668,6 +758,12 @@ int fault_working_memory_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Fault_Working_Memory");
     if (incoming) {
         for (uint32_t i = 0; i < incoming->count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && incoming->count > 256) {
+                fault_working_memory_heartbeat("fault_workin_loop",
+                                 (float)(i + 1) / (float)incoming->count);
+            }
+
             nimcp_log(LOG_LEVEL_DEBUG, "[KG-Rel] <- %s (%s)",
                       incoming->relations[i]->from,
                       incoming->relations[i]->relation_type);

@@ -47,7 +47,7 @@ static nimcp_health_agent_t* g_z_ladder_health_agent = NULL;
  * @brief Set health agent for z_ladder heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void z_ladder_set_health_agent(nimcp_health_agent_t* agent) {
+void z_ladder_set_health_agent(nimcp_health_agent_t* agent) {
     g_z_ladder_health_agent = agent;
 }
 
@@ -309,6 +309,12 @@ static bool hash_update(z_ladder_t ladder, uint64_t node_id,
  */
 static void hash_clear(z_ladder_t ladder) {
     for (size_t i = 0; i < HASH_BUCKETS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && HASH_BUCKETS > 256) {
+            z_ladder_heartbeat("z_ladder_loop",
+                             (float)(i + 1) / (float)HASH_BUCKETS);
+        }
+
         z_hash_entry_t* entry = ladder->hash_buckets[i];
         while (entry) {
             z_hash_entry_t* next = entry->next;
@@ -426,6 +432,12 @@ static bool tier_storage_remove(z_tier_storage_t* tier, size_t index) {
  */
 static size_t tier_storage_find(z_tier_storage_t* tier, pr_memory_node_t* node) {
     for (size_t i = 0; i < tier->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && tier->count > 256) {
+            z_ladder_heartbeat("z_ladder_loop",
+                             (float)(i + 1) / (float)tier->count);
+        }
+
         if (tier->nodes[i] == node) {
             return i;
         }
@@ -538,6 +550,12 @@ static size_t tier_storage_find_evict_target(z_tier_storage_t* tier) {
             uint64_t now = get_current_time_ms();
 
             for (size_t i = 0; i < tier->count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && tier->count > 256) {
+                    z_ladder_heartbeat("z_ladder_loop",
+                                     (float)(i + 1) / (float)tier->count);
+                }
+
                 pr_memory_node_t* node = tier->nodes[i];
 
                 // Score: strength + recency + frequency (all normalized 0-1)
@@ -908,6 +926,10 @@ static bool check_demotion_unlocked(z_ladder_t ladder, const pr_memory_node_t* n
 //=============================================================================
 
 z_tier_config_t z_ladder_default_tier_config(pr_memory_tier_t tier) {
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_default_tier_config", 0.0f);
+
+
     z_tier_config_t config = {0};
 
     switch (tier) {
@@ -972,10 +994,20 @@ z_tier_config_t z_ladder_default_tier_config(pr_memory_tier_t tier) {
 }
 
 z_ladder_config_t z_ladder_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_default_config", 0.0f);
+
+
     z_ladder_config_t config = {0};
 
     // Initialize tier configs
     for (int i = 0; i < Z_LADDER_NUM_TIERS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && Z_LADDER_NUM_TIERS > 256) {
+            z_ladder_heartbeat("z_ladder_loop",
+                             (float)(i + 1) / (float)Z_LADDER_NUM_TIERS);
+        }
+
         config.tier_configs[i] = z_ladder_default_tier_config((pr_memory_tier_t)i);
     }
 
@@ -994,7 +1026,17 @@ bool z_ladder_config_validate(const z_ladder_config_t* config) {
     }
 
     // Validate tier configs
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_config_validate", 0.0f);
+
+
     for (int i = 0; i < Z_LADDER_NUM_TIERS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && Z_LADDER_NUM_TIERS > 256) {
+            z_ladder_heartbeat("z_ladder_loop",
+                             (float)(i + 1) / (float)Z_LADDER_NUM_TIERS);
+        }
+
         const z_tier_config_t* tc = &config->tier_configs[i];
 
         // Decay rate must be non-negative
@@ -1019,6 +1061,10 @@ bool z_ladder_config_validate(const z_ladder_config_t* config) {
 //=============================================================================
 
 z_ladder_t z_ladder_create(const z_ladder_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_create", 0.0f);
+
+
     z_ladder_config_t cfg;
     if (config) {
         cfg = *config;
@@ -1048,9 +1094,21 @@ z_ladder_t z_ladder_create(const z_ladder_config_t* config) {
 
     // Initialize tier storage
     for (int i = 0; i < Z_LADDER_NUM_TIERS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && Z_LADDER_NUM_TIERS > 256) {
+            z_ladder_heartbeat("z_ladder_loop",
+                             (float)(i + 1) / (float)Z_LADDER_NUM_TIERS);
+        }
+
         if (!tier_storage_init(&ladder->tiers[i], &cfg.tier_configs[i])) {
             // Cleanup on failure
             for (int j = 0; j < i; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && i > 256) {
+                    z_ladder_heartbeat("z_ladder_loop",
+                                     (float)(j + 1) / (float)i);
+                }
+
                 tier_storage_destroy(&ladder->tiers[j]);
             }
             pthread_mutex_destroy(&ladder->mutex);
@@ -1091,14 +1149,30 @@ void z_ladder_destroy(z_ladder_t ladder) {
     }
 
     // Lock to ensure no concurrent access
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_destroy", 0.0f);
+
+
     if (ladder->mutex_initialized) {
         pthread_mutex_lock(&ladder->mutex);
     }
 
     // Destroy all nodes in all tiers
     for (int i = 0; i < Z_LADDER_NUM_TIERS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && Z_LADDER_NUM_TIERS > 256) {
+            z_ladder_heartbeat("z_ladder_loop",
+                             (float)(i + 1) / (float)Z_LADDER_NUM_TIERS);
+        }
+
         z_tier_storage_t* tier = &ladder->tiers[i];
         for (size_t j = 0; j < tier->count; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && tier->count > 256) {
+                z_ladder_heartbeat("z_ladder_loop",
+                                 (float)(j + 1) / (float)tier->count);
+            }
+
             if (tier->nodes[j]) {
                 pr_memory_node_destroy(tier->nodes[j]);
                 tier->nodes[j] = NULL;
@@ -1129,12 +1203,28 @@ z_ladder_error_t z_ladder_clear(z_ladder_t ladder) {
         return Z_LADDER_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_clear", 0.0f);
+
+
     pthread_mutex_lock(&ladder->mutex);
 
     // Destroy all nodes
     for (int i = 0; i < Z_LADDER_NUM_TIERS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && Z_LADDER_NUM_TIERS > 256) {
+            z_ladder_heartbeat("z_ladder_loop",
+                             (float)(i + 1) / (float)Z_LADDER_NUM_TIERS);
+        }
+
         z_tier_storage_t* tier = &ladder->tiers[i];
         for (size_t j = 0; j < tier->count; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && tier->count > 256) {
+                z_ladder_heartbeat("z_ladder_loop",
+                                 (float)(j + 1) / (float)tier->count);
+            }
+
             if (tier->nodes[j]) {
                 pr_memory_node_destroy(tier->nodes[j]);
                 tier->nodes[j] = NULL;
@@ -1178,6 +1268,10 @@ z_ladder_error_t z_ladder_insert(z_ladder_t ladder, pr_memory_node_t* node,
         return Z_LADDER_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_insert", 0.0f);
+
+
     if (tier >= Z_LADDER_NUM_TIERS) {
         return Z_LADDER_ERROR_INVALID_TIER;
     }
@@ -1196,6 +1290,10 @@ z_ladder_error_t z_ladder_remove(z_ladder_t ladder, uint64_t node_id) {
         return Z_LADDER_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_remove", 0.0f);
+
+
     pthread_mutex_lock(&ladder->mutex);
 
     z_ladder_error_t err = remove_node_unlocked(ladder, node_id, true);
@@ -1211,6 +1309,10 @@ pr_memory_node_t* z_ladder_find(z_ladder_t ladder, uint64_t node_id) {
 
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_find", 0.0f);
+
 
     pthread_mutex_lock(&ladder->mutex);
 
@@ -1234,6 +1336,10 @@ z_ladder_error_t z_ladder_get_tier(z_ladder_t ladder, uint64_t node_id,
         return Z_LADDER_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_get_tier", 0.0f);
+
+
     pthread_mutex_lock(&ladder->mutex);
 
     z_hash_entry_t* entry = hash_find(ladder, node_id);
@@ -1256,6 +1362,10 @@ z_ladder_error_t z_ladder_move(z_ladder_t ladder, uint64_t node_id,
     if (!ladder) {
         return Z_LADDER_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_move", 0.0f);
+
 
     if (new_tier >= Z_LADDER_NUM_TIERS) {
         return Z_LADDER_ERROR_INVALID_TIER;
@@ -1308,6 +1418,10 @@ bool z_ladder_check_promotion(z_ladder_t ladder, const pr_memory_node_t* node) {
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_check_promotion", 0.0f);
+
+
     pthread_mutex_lock(&ladder->mutex);
 
     bool eligible = check_promotion_unlocked(ladder, node);
@@ -1321,6 +1435,10 @@ bool z_ladder_check_demotion(z_ladder_t ladder, const pr_memory_node_t* node) {
     if (!ladder || !node) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_check_demotion", 0.0f);
+
 
     pthread_mutex_lock(&ladder->mutex);
 
@@ -1336,6 +1454,10 @@ z_ladder_error_t z_ladder_promote(z_ladder_t ladder, uint64_t node_id) {
         return Z_LADDER_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_promote", 0.0f);
+
+
     pthread_mutex_lock(&ladder->mutex);
 
     z_ladder_error_t err = promote_unlocked(ladder, node_id);
@@ -1349,6 +1471,10 @@ z_ladder_error_t z_ladder_demote(z_ladder_t ladder, uint64_t node_id) {
     if (!ladder) {
         return Z_LADDER_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_demote", 0.0f);
+
 
     pthread_mutex_lock(&ladder->mutex);
 
@@ -1378,12 +1504,22 @@ size_t z_ladder_process_promotions(z_ladder_t ladder) {
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_process_promotions", 0.0f);
+
+
     pthread_mutex_lock(&ladder->mutex);
 
     size_t promoted_count = 0;
 
     // Process tiers Z0 through Z2 (Z3 cannot be promoted)
     for (int tier_idx = 0; tier_idx < 3; tier_idx++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((tier_idx & 0xFF) == 0 && 3 > 256) {
+            z_ladder_heartbeat("z_ladder_loop",
+                             (float)(tier_idx + 1) / (float)3);
+        }
+
         z_tier_storage_t* tier = &ladder->tiers[tier_idx];
 
         // Collect eligible nodes first (to avoid modifying while iterating)
@@ -1394,6 +1530,12 @@ size_t z_ladder_process_promotions(z_ladder_t ladder) {
         }
 
         for (size_t i = 0; i < tier->count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && tier->count > 256) {
+                z_ladder_heartbeat("z_ladder_loop",
+                                 (float)(i + 1) / (float)tier->count);
+            }
+
             if (check_promotion_unlocked(ladder, tier->nodes[i])) {
                 eligible_ids[eligible_count++] = tier->nodes[i]->node_id;
             }
@@ -1401,6 +1543,12 @@ size_t z_ladder_process_promotions(z_ladder_t ladder) {
 
         // Now promote each eligible node
         for (size_t i = 0; i < eligible_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && eligible_count > 256) {
+                z_ladder_heartbeat("z_ladder_loop",
+                                 (float)(i + 1) / (float)eligible_count);
+            }
+
             if (promote_unlocked(ladder, eligible_ids[i]) == Z_LADDER_SUCCESS) {
                 promoted_count++;
             }
@@ -1419,6 +1567,10 @@ size_t z_ladder_process_demotions(z_ladder_t ladder) {
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_process_demotions", 0.0f);
+
+
     pthread_mutex_lock(&ladder->mutex);
 
     size_t demoted_count = 0;
@@ -1435,6 +1587,12 @@ size_t z_ladder_process_demotions(z_ladder_t ladder) {
         }
 
         for (size_t i = 0; i < tier->count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && tier->count > 256) {
+                z_ladder_heartbeat("z_ladder_loop",
+                                 (float)(i + 1) / (float)tier->count);
+            }
+
             if (check_demotion_unlocked(ladder, tier->nodes[i])) {
                 demote_ids[demote_count++] = tier->nodes[i]->node_id;
             }
@@ -1442,6 +1600,12 @@ size_t z_ladder_process_demotions(z_ladder_t ladder) {
 
         // Demote each node
         for (size_t i = 0; i < demote_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && demote_count > 256) {
+                z_ladder_heartbeat("z_ladder_loop",
+                                 (float)(i + 1) / (float)demote_count);
+            }
+
             if (demote_unlocked(ladder, demote_ids[i]) == Z_LADDER_SUCCESS) {
                 demoted_count++;
             }
@@ -1459,6 +1623,12 @@ size_t z_ladder_process_demotions(z_ladder_t ladder) {
     size_t* evict_indices = (size_t*)malloc(z0->count * sizeof(size_t));
     if (evict_indices) {
         for (size_t i = 0; i < z0->count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && z0->count > 256) {
+                z_ladder_heartbeat("z_ladder_loop",
+                                 (float)(i + 1) / (float)z0->count);
+            }
+
             if (z0->nodes[i]->current_strength < demotion_threshold) {
                 evict_indices[evict_count++] = i;
             }
@@ -1489,6 +1659,10 @@ z_ladder_error_t z_ladder_apply_decay(z_ladder_t ladder, float dt_seconds) {
         return Z_LADDER_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_apply_decay", 0.0f);
+
+
     if (dt_seconds <= 0.0f) {
         return Z_LADDER_SUCCESS;  // No decay to apply
     }
@@ -1497,6 +1671,12 @@ z_ladder_error_t z_ladder_apply_decay(z_ladder_t ladder, float dt_seconds) {
 
     // Apply decay to each tier (except Z3 which has zero decay)
     for (int tier_idx = 0; tier_idx < Z_LADDER_NUM_TIERS; tier_idx++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((tier_idx & 0xFF) == 0 && Z_LADDER_NUM_TIERS > 256) {
+            z_ladder_heartbeat("z_ladder_loop",
+                             (float)(tier_idx + 1) / (float)Z_LADDER_NUM_TIERS);
+        }
+
         z_tier_storage_t* tier = &ladder->tiers[tier_idx];
 
         if (tier->config.decay_rate <= 0.0f) {
@@ -1506,6 +1686,12 @@ z_ladder_error_t z_ladder_apply_decay(z_ladder_t ladder, float dt_seconds) {
         float decay_factor = expf(-tier->config.decay_rate * dt_seconds);
 
         for (size_t i = 0; i < tier->count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && tier->count > 256) {
+                z_ladder_heartbeat("z_ladder_loop",
+                                 (float)(i + 1) / (float)tier->count);
+            }
+
             pr_memory_node_t* node = tier->nodes[i];
             node->current_strength *= decay_factor;
             node->current_strength = clampf(node->current_strength, 0.0f, 1.0f);
@@ -1528,6 +1714,10 @@ z_ladder_error_t z_ladder_decay_tier(z_ladder_t ladder, pr_memory_tier_t tier,
         return Z_LADDER_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_decay_tier", 0.0f);
+
+
     if (tier >= Z_LADDER_NUM_TIERS) {
         return Z_LADDER_ERROR_INVALID_TIER;
     }
@@ -1544,6 +1734,12 @@ z_ladder_error_t z_ladder_decay_tier(z_ladder_t ladder, pr_memory_tier_t tier,
         float decay_factor = expf(-storage->config.decay_rate * dt_seconds);
 
         for (size_t i = 0; i < storage->count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && storage->count > 256) {
+                z_ladder_heartbeat("z_ladder_loop",
+                                 (float)(i + 1) / (float)storage->count);
+            }
+
             pr_memory_node_t* node = storage->nodes[i];
             node->current_strength *= decay_factor;
             node->current_strength = clampf(node->current_strength, 0.0f, 1.0f);
@@ -1562,6 +1758,10 @@ float z_ladder_get_decay_rate(z_ladder_t ladder, pr_memory_tier_t tier) {
     }
 
     // No lock needed - tier config is read-only after creation
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_get_decay_rate", 0.0f);
+
+
     return ladder->tiers[tier].config.decay_rate;
 }
 
@@ -1570,6 +1770,10 @@ z_ladder_error_t z_ladder_set_decay_rate(z_ladder_t ladder, pr_memory_tier_t tie
     if (!ladder) {
         return Z_LADDER_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_set_decay_rate", 0.0f);
+
 
     if (tier >= Z_LADDER_NUM_TIERS) {
         return Z_LADDER_ERROR_INVALID_TIER;
@@ -1586,6 +1790,12 @@ z_ladder_error_t z_ladder_set_decay_rate(z_ladder_t ladder, pr_memory_tier_t tie
     // Update decay rate on all nodes in this tier
     z_tier_storage_t* storage = &ladder->tiers[tier];
     for (size_t i = 0; i < storage->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && storage->count > 256) {
+            z_ladder_heartbeat("z_ladder_loop",
+                             (float)(i + 1) / (float)storage->count);
+        }
+
         storage->nodes[i]->decay_rate = rate;
     }
 
@@ -1602,6 +1812,10 @@ z_ladder_error_t z_ladder_evict_weakest(z_ladder_t ladder, pr_memory_tier_t tier
     if (!ladder) {
         return Z_LADDER_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_evict_weakest", 0.0f);
+
 
     if (tier >= Z_LADDER_NUM_TIERS) {
         return Z_LADDER_ERROR_INVALID_TIER;
@@ -1629,6 +1843,10 @@ size_t z_ladder_evict_if_full(z_ladder_t ladder, pr_memory_tier_t tier) {
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_evict_if_full", 0.0f);
+
+
     pthread_mutex_lock(&ladder->mutex);
 
     z_tier_storage_t* storage = &ladder->tiers[tier];
@@ -1655,6 +1873,10 @@ z_ladder_error_t z_ladder_set_eviction_policy(z_ladder_t ladder, pr_memory_tier_
         return Z_LADDER_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_set_eviction_policy", 0.0f);
+
+
     if (tier >= Z_LADDER_NUM_TIERS) {
         return Z_LADDER_ERROR_INVALID_TIER;
     }
@@ -1679,6 +1901,10 @@ z_ladder_error_t z_ladder_get_nodes(z_ladder_t ladder, pr_memory_tier_t tier,
         return Z_LADDER_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_get_nodes", 0.0f);
+
+
     if (tier >= Z_LADDER_NUM_TIERS) {
         return Z_LADDER_ERROR_INVALID_TIER;
     }
@@ -1689,6 +1915,12 @@ z_ladder_error_t z_ladder_get_nodes(z_ladder_t ladder, pr_memory_tier_t tier,
     size_t to_copy = (storage->count < max_nodes) ? storage->count : max_nodes;
 
     for (size_t i = 0; i < to_copy; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && to_copy > 256) {
+            z_ladder_heartbeat("z_ladder_loop",
+                             (float)(i + 1) / (float)to_copy);
+        }
+
         nodes[i] = storage->nodes[i];
     }
 
@@ -1704,6 +1936,10 @@ size_t z_ladder_get_count(z_ladder_t ladder, pr_memory_tier_t tier) {
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_get_count", 0.0f);
+
+
     pthread_mutex_lock(&ladder->mutex);
 
     size_t count = ladder->tiers[tier].count;
@@ -1717,6 +1953,10 @@ size_t z_ladder_get_total_count(z_ladder_t ladder) {
     if (!ladder) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_get_total_count", 0.0f);
+
 
     pthread_mutex_lock(&ladder->mutex);
 
@@ -1753,6 +1993,10 @@ z_ladder_error_t z_ladder_get_strongest(z_ladder_t ladder, pr_memory_tier_t tier
         return Z_LADDER_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_get_strongest", 0.0f);
+
+
     if (tier >= Z_LADDER_NUM_TIERS) {
         return Z_LADDER_ERROR_INVALID_TIER;
     }
@@ -1777,6 +2021,12 @@ z_ladder_error_t z_ladder_get_strongest(z_ladder_t ladder, pr_memory_tier_t tier
     // Copy top k
     size_t result_count = (k < n) ? k : n;
     for (size_t i = 0; i < result_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && result_count > 256) {
+            z_ladder_heartbeat("z_ladder_loop",
+                             (float)(i + 1) / (float)result_count);
+        }
+
         nodes[i] = temp[i];
     }
 
@@ -1795,6 +2045,10 @@ z_ladder_error_t z_ladder_get_weakest(z_ladder_t ladder, pr_memory_tier_t tier,
     if (!ladder || !nodes || !count) {
         return Z_LADDER_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_get_weakest", 0.0f);
+
 
     if (tier >= Z_LADDER_NUM_TIERS) {
         return Z_LADDER_ERROR_INVALID_TIER;
@@ -1819,6 +2073,12 @@ z_ladder_error_t z_ladder_get_weakest(z_ladder_t ladder, pr_memory_tier_t tier,
     // Copy bottom k
     size_t result_count = (k < n) ? k : n;
     for (size_t i = 0; i < result_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && result_count > 256) {
+            z_ladder_heartbeat("z_ladder_loop",
+                             (float)(i + 1) / (float)result_count);
+        }
+
         nodes[i] = temp[i];
     }
 
@@ -1840,6 +2100,10 @@ z_ladder_error_t z_ladder_consolidate(z_ladder_t ladder) {
         return Z_LADDER_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_consolidate", 0.0f);
+
+
     pthread_mutex_lock(&ladder->mutex);
 
     uint64_t now = get_current_time_ms();
@@ -1847,12 +2111,24 @@ z_ladder_error_t z_ladder_consolidate(z_ladder_t ladder) {
 
     // Phase 1: Apply decay
     for (int tier_idx = 0; tier_idx < Z_LADDER_NUM_TIERS; tier_idx++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((tier_idx & 0xFF) == 0 && Z_LADDER_NUM_TIERS > 256) {
+            z_ladder_heartbeat("z_ladder_loop",
+                             (float)(tier_idx + 1) / (float)Z_LADDER_NUM_TIERS);
+        }
+
         z_tier_storage_t* tier = &ladder->tiers[tier_idx];
 
         if (tier->config.decay_rate > 0.0f && dt_seconds > 0.0f) {
             float decay_factor = expf(-tier->config.decay_rate * dt_seconds);
 
             for (size_t i = 0; i < tier->count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && tier->count > 256) {
+                    z_ladder_heartbeat("z_ladder_loop",
+                                     (float)(i + 1) / (float)tier->count);
+                }
+
                 pr_memory_node_t* node = tier->nodes[i];
                 node->current_strength *= decay_factor;
                 node->current_strength = clampf(node->current_strength, 0.0f, 1.0f);
@@ -1871,12 +2147,24 @@ z_ladder_error_t z_ladder_consolidate(z_ladder_t ladder) {
         uint64_t* demote_ids = (uint64_t*)malloc(tier->count * sizeof(uint64_t));
         if (demote_ids) {
             for (size_t i = 0; i < tier->count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && tier->count > 256) {
+                    z_ladder_heartbeat("z_ladder_loop",
+                                     (float)(i + 1) / (float)tier->count);
+                }
+
                 if (check_demotion_unlocked(ladder, tier->nodes[i])) {
                     demote_ids[demote_count++] = tier->nodes[i]->node_id;
                 }
             }
 
             for (size_t i = 0; i < demote_count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && demote_count > 256) {
+                    z_ladder_heartbeat("z_ladder_loop",
+                                     (float)(i + 1) / (float)demote_count);
+                }
+
                 demote_unlocked(ladder, demote_ids[i]);
             }
 
@@ -1894,18 +2182,36 @@ z_ladder_error_t z_ladder_consolidate(z_ladder_t ladder) {
 
     // Phase 3: Process promotions (Z0 to Z2)
     for (int tier_idx = 0; tier_idx < 3; tier_idx++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((tier_idx & 0xFF) == 0 && 3 > 256) {
+            z_ladder_heartbeat("z_ladder_loop",
+                             (float)(tier_idx + 1) / (float)3);
+        }
+
         z_tier_storage_t* tier = &ladder->tiers[tier_idx];
 
         size_t promote_count = 0;
         uint64_t* promote_ids = (uint64_t*)malloc(tier->count * sizeof(uint64_t));
         if (promote_ids) {
             for (size_t i = 0; i < tier->count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && tier->count > 256) {
+                    z_ladder_heartbeat("z_ladder_loop",
+                                     (float)(i + 1) / (float)tier->count);
+                }
+
                 if (check_promotion_unlocked(ladder, tier->nodes[i])) {
                     promote_ids[promote_count++] = tier->nodes[i]->node_id;
                 }
             }
 
             for (size_t i = 0; i < promote_count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && promote_count > 256) {
+                    z_ladder_heartbeat("z_ladder_loop",
+                                     (float)(i + 1) / (float)promote_count);
+                }
+
                 promote_unlocked(ladder, promote_ids[i]);
             }
 
@@ -1915,6 +2221,12 @@ z_ladder_error_t z_ladder_consolidate(z_ladder_t ladder) {
 
     // Phase 4: Evict over-capacity tiers
     for (int tier_idx = 0; tier_idx < Z_LADDER_NUM_TIERS; tier_idx++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((tier_idx & 0xFF) == 0 && Z_LADDER_NUM_TIERS > 256) {
+            z_ladder_heartbeat("z_ladder_loop",
+                             (float)(tier_idx + 1) / (float)Z_LADDER_NUM_TIERS);
+        }
+
         z_tier_storage_t* tier = &ladder->tiers[tier_idx];
 
         while (tier->config.capacity > 0 && tier->count > tier->config.capacity) {
@@ -1939,6 +2251,10 @@ z_ladder_error_t z_ladder_consolidate_tier(z_ladder_t ladder, pr_memory_tier_t t
         return Z_LADDER_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_consolidate_tier", 0.0f);
+
+
     if (tier >= Z_LADDER_NUM_TIERS) {
         return Z_LADDER_ERROR_INVALID_TIER;
     }
@@ -1955,6 +2271,12 @@ z_ladder_error_t z_ladder_consolidate_tier(z_ladder_t ladder, pr_memory_tier_t t
         float decay_factor = expf(-storage->config.decay_rate * dt_seconds);
 
         for (size_t i = 0; i < storage->count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && storage->count > 256) {
+                z_ladder_heartbeat("z_ladder_loop",
+                                 (float)(i + 1) / (float)storage->count);
+            }
+
             pr_memory_node_t* node = storage->nodes[i];
             node->current_strength *= decay_factor;
             node->current_strength = clampf(node->current_strength, 0.0f, 1.0f);
@@ -1968,12 +2290,24 @@ z_ladder_error_t z_ladder_consolidate_tier(z_ladder_t ladder, pr_memory_tier_t t
         uint64_t* demote_ids = (uint64_t*)malloc(storage->count * sizeof(uint64_t));
         if (demote_ids) {
             for (size_t i = 0; i < storage->count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && storage->count > 256) {
+                    z_ladder_heartbeat("z_ladder_loop",
+                                     (float)(i + 1) / (float)storage->count);
+                }
+
                 if (check_demotion_unlocked(ladder, storage->nodes[i])) {
                     demote_ids[demote_count++] = storage->nodes[i]->node_id;
                 }
             }
 
             for (size_t i = 0; i < demote_count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && demote_count > 256) {
+                    z_ladder_heartbeat("z_ladder_loop",
+                                     (float)(i + 1) / (float)demote_count);
+                }
+
                 demote_unlocked(ladder, demote_ids[i]);
             }
 
@@ -1987,12 +2321,24 @@ z_ladder_error_t z_ladder_consolidate_tier(z_ladder_t ladder, pr_memory_tier_t t
         uint64_t* promote_ids = (uint64_t*)malloc(storage->count * sizeof(uint64_t));
         if (promote_ids) {
             for (size_t i = 0; i < storage->count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && storage->count > 256) {
+                    z_ladder_heartbeat("z_ladder_loop",
+                                     (float)(i + 1) / (float)storage->count);
+                }
+
                 if (check_promotion_unlocked(ladder, storage->nodes[i])) {
                     promote_ids[promote_count++] = storage->nodes[i]->node_id;
                 }
             }
 
             for (size_t i = 0; i < promote_count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && promote_count > 256) {
+                    z_ladder_heartbeat("z_ladder_loop",
+                                     (float)(i + 1) / (float)promote_count);
+                }
+
                 promote_unlocked(ladder, promote_ids[i]);
             }
 
@@ -2018,10 +2364,20 @@ z_ladder_error_t z_ladder_sleep_consolidate(z_ladder_t ladder) {
         return Z_LADDER_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_sleep_consolidate", 0.0f);
+
+
     pthread_mutex_lock(&ladder->mutex);
 
     // Sleep consolidation: multiple passes with relaxed thresholds
     for (int pass = 0; pass < SLEEP_CONSOLIDATION_PASSES; pass++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((pass & 0xFF) == 0 && SLEEP_CONSOLIDATION_PASSES > 256) {
+            z_ladder_heartbeat("z_ladder_loop",
+                             (float)(pass + 1) / (float)SLEEP_CONSOLIDATION_PASSES);
+        }
+
 
         // Focus on Z1->Z2 consolidation (hippocampal -> neocortical transfer)
         z_tier_storage_t* z1 = &ladder->tiers[PR_MEMORY_TIER_Z1];
@@ -2041,6 +2397,12 @@ z_ladder_error_t z_ladder_sleep_consolidate(z_ladder_t ladder) {
 
             // Sort by absolute emotional valence (descending)
             for (size_t i = 0; i < n; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && n > 256) {
+                    z_ladder_heartbeat("z_ladder_loop",
+                                     (float)(i + 1) / (float)n);
+                }
+
                 for (size_t j = i + 1; j < n; j++) {
                     float ai = absf(sorted[i]->state.x);
                     float aj = absf(sorted[j]->state.x);
@@ -2054,6 +2416,12 @@ z_ladder_error_t z_ladder_sleep_consolidate(z_ladder_t ladder) {
 
             // Promote eligible (emotional memories get priority)
             for (size_t i = 0; i < n; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && n > 256) {
+                    z_ladder_heartbeat("z_ladder_loop",
+                                     (float)(i + 1) / (float)n);
+                }
+
                 if (check_promotion_unlocked(ladder, sorted[i])) {
                     promote_unlocked(ladder, sorted[i]->node_id);
                 }
@@ -2068,6 +2436,12 @@ z_ladder_error_t z_ladder_sleep_consolidate(z_ladder_t ladder) {
         // Also process Z0->Z1 with some boost
         z_tier_storage_t* z0 = &ladder->tiers[PR_MEMORY_TIER_Z0];
         for (size_t i = 0; i < z0->count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && z0->count > 256) {
+                z_ladder_heartbeat("z_ladder_loop",
+                                 (float)(i + 1) / (float)z0->count);
+            }
+
             pr_memory_node_t* node = z0->nodes[i];
             // Give rehearsal boost during "sleep"
             node->current_strength += 0.1f;
@@ -2080,12 +2454,24 @@ z_ladder_error_t z_ladder_sleep_consolidate(z_ladder_t ladder) {
         uint64_t* promote_ids = (uint64_t*)malloc(z0->count * sizeof(uint64_t));
         if (promote_ids) {
             for (size_t i = 0; i < z0->count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && z0->count > 256) {
+                    z_ladder_heartbeat("z_ladder_loop",
+                                     (float)(i + 1) / (float)z0->count);
+                }
+
                 if (check_promotion_unlocked(ladder, z0->nodes[i])) {
                     promote_ids[promote_count++] = z0->nodes[i]->node_id;
                 }
             }
 
             for (size_t i = 0; i < promote_count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && promote_count > 256) {
+                    z_ladder_heartbeat("z_ladder_loop",
+                                     (float)(i + 1) / (float)promote_count);
+                }
+
                 promote_unlocked(ladder, promote_ids[i]);
             }
 
@@ -2109,6 +2495,10 @@ z_ladder_error_t z_ladder_get_consolidation_events(z_ladder_t ladder,
         return Z_LADDER_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_get_consolidation_ev", 0.0f);
+
+
     pthread_mutex_lock(&ladder->mutex);
 
     if (!ladder->events || ladder->event_count == 0) {
@@ -2125,6 +2515,12 @@ z_ladder_error_t z_ladder_get_consolidation_events(z_ladder_t ladder,
                    (ladder->event_capacity - ladder->event_count + ladder->event_head);
 
     for (size_t i = 0; i < to_copy; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && to_copy > 256) {
+            z_ladder_heartbeat("z_ladder_loop",
+                             (float)(i + 1) / (float)to_copy);
+        }
+
         size_t idx = (start + i) % ladder->event_capacity;
         events[i] = ladder->events[idx];
     }
@@ -2140,6 +2536,10 @@ z_ladder_error_t z_ladder_clear_events(z_ladder_t ladder) {
     if (!ladder) {
         return Z_LADDER_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_clear_events", 0.0f);
+
 
     pthread_mutex_lock(&ladder->mutex);
 
@@ -2163,6 +2563,10 @@ float z_ladder_reinforce(z_ladder_t ladder, uint64_t node_id, float amount) {
     if (!ladder) {
         return -1.0f;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_reinforce", 0.0f);
+
 
     pthread_mutex_lock(&ladder->mutex);
 
@@ -2193,6 +2597,10 @@ z_ladder_error_t z_ladder_access(z_ladder_t ladder, uint64_t node_id) {
         return Z_LADDER_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_access", 0.0f);
+
+
     pthread_mutex_lock(&ladder->mutex);
 
     z_hash_entry_t* entry = hash_find(ladder, node_id);
@@ -2221,6 +2629,10 @@ float z_ladder_emotional_boost(z_ladder_t ladder, uint64_t node_id, float valenc
     if (!ladder) {
         return -1.0f;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_emotional_boost", 0.0f);
+
 
     pthread_mutex_lock(&ladder->mutex);
 
@@ -2262,12 +2674,22 @@ z_ladder_error_t z_ladder_get_stats(z_ladder_t ladder, z_ladder_stats_t* stats) 
         return Z_LADDER_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_get_stats", 0.0f);
+
+
     pthread_mutex_lock(&ladder->mutex);
 
     memset(stats, 0, sizeof(z_ladder_stats_t));
 
     // Per-tier statistics
     for (int i = 0; i < Z_LADDER_NUM_TIERS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && Z_LADDER_NUM_TIERS > 256) {
+            z_ladder_heartbeat("z_ladder_loop",
+                             (float)(i + 1) / (float)Z_LADDER_NUM_TIERS);
+        }
+
         z_tier_storage_t* tier = &ladder->tiers[i];
 
         stats->tier_counts[i] = tier->count;
@@ -2279,6 +2701,12 @@ z_ladder_error_t z_ladder_get_stats(z_ladder_t ladder, z_ladder_stats_t* stats) 
             float max_s = tier->nodes[0]->current_strength;
 
             for (size_t j = 0; j < tier->count; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && tier->count > 256) {
+                    z_ladder_heartbeat("z_ladder_loop",
+                                     (float)(j + 1) / (float)tier->count);
+                }
+
                 float s = tier->nodes[j]->current_strength;
                 sum += s;
                 if (s < min_s) min_s = s;
@@ -2307,6 +2735,12 @@ z_ladder_error_t z_ladder_get_stats(z_ladder_t ladder, z_ladder_stats_t* stats) 
     // Memory usage estimate
     size_t mem = sizeof(struct z_ladder_struct);
     for (int i = 0; i < Z_LADDER_NUM_TIERS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && Z_LADDER_NUM_TIERS > 256) {
+            z_ladder_heartbeat("z_ladder_loop",
+                             (float)(i + 1) / (float)Z_LADDER_NUM_TIERS);
+        }
+
         mem += ladder->tiers[i].capacity * sizeof(pr_memory_node_t*);
     }
     if (ladder->events) {
@@ -2325,6 +2759,10 @@ void z_ladder_print_summary(z_ladder_t ladder) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_print_summary", 0.0f);
+
+
     z_ladder_stats_t stats;
     z_ladder_get_stats(ladder, &stats);
 
@@ -2342,6 +2780,12 @@ void z_ladder_print_summary(z_ladder_t ladder) {
 
     const char* tier_names[] = {"Z0", "Z1", "Z2", "Z3"};
     for (int i = 0; i < Z_LADDER_NUM_TIERS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && Z_LADDER_NUM_TIERS > 256) {
+            z_ladder_heartbeat("z_ladder_loop",
+                             (float)(i + 1) / (float)Z_LADDER_NUM_TIERS);
+        }
+
         const char* cap_str = (stats.tier_capacities[i] == 0) ? "   inf" : "";
         if (stats.tier_capacities[i] > 0) {
             printf("  | %s   | %6zu | %8zu | %8.3f | %.2f-%.2f |\n",
@@ -2388,6 +2832,10 @@ void z_ladder_reset_stats(z_ladder_t ladder) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_reset_stats", 0.0f);
+
+
     pthread_mutex_lock(&ladder->mutex);
 
     memset(ladder->promotions, 0, sizeof(ladder->promotions));
@@ -2409,6 +2857,10 @@ z_ladder_error_t z_ladder_set_promotion_callback(z_ladder_t ladder,
         return Z_LADDER_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_set_promotion_callba", 0.0f);
+
+
     pthread_mutex_lock(&ladder->mutex);
 
     ladder->promotion_callback = callback;
@@ -2425,6 +2877,10 @@ z_ladder_error_t z_ladder_set_eviction_callback(z_ladder_t ladder,
     if (!ladder) {
         return Z_LADDER_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_set_eviction_callbac", 0.0f);
+
 
     pthread_mutex_lock(&ladder->mutex);
 
@@ -2502,6 +2958,10 @@ const char* z_ladder_eviction_policy_name(z_eviction_policy_t policy) {
 }
 
 uint64_t z_ladder_current_time_ms(void) {
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_current_time_ms", 0.0f);
+
+
     return get_current_time_ms();
 }
 
@@ -2510,6 +2970,10 @@ bool z_ladder_validate(z_ladder_t ladder) {
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    z_ladder_heartbeat("z_ladder_validate", 0.0f);
+
+
     pthread_mutex_lock(&ladder->mutex);
 
     bool valid = true;
@@ -2517,6 +2981,12 @@ bool z_ladder_validate(z_ladder_t ladder) {
 
     // Validate tier storage
     for (int i = 0; i < Z_LADDER_NUM_TIERS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && Z_LADDER_NUM_TIERS > 256) {
+            z_ladder_heartbeat("z_ladder_loop",
+                             (float)(i + 1) / (float)Z_LADDER_NUM_TIERS);
+        }
+
         z_tier_storage_t* tier = &ladder->tiers[i];
 
         // Check count vs capacity
@@ -2529,6 +2999,12 @@ bool z_ladder_validate(z_ladder_t ladder) {
 
         // Verify all nodes in tier
         for (size_t j = 0; j < tier->count; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && tier->count > 256) {
+                z_ladder_heartbeat("z_ladder_loop",
+                                 (float)(j + 1) / (float)tier->count);
+            }
+
             pr_memory_node_t* node = tier->nodes[j];
 
             if (!node) {

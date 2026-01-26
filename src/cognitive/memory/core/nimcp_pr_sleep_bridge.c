@@ -25,6 +25,7 @@
 // Platform layer for thread safety
 #ifdef NIMCP_HAS_THREADS
 #include "platform/thread/nimcp_mutex.h"
+#endif
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -43,7 +44,7 @@ static nimcp_health_agent_t* g_pr_sleep_bridge_health_agent = NULL;
  * @brief Set health agent for pr_sleep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void pr_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void pr_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_pr_sleep_bridge_health_agent = agent;
 }
 
@@ -53,8 +54,6 @@ static inline void pr_sleep_bridge_heartbeat(const char* operation, float progre
         nimcp_health_agent_heartbeat_ex(g_pr_sleep_bridge_health_agent, operation, progress);
     }
 }
-
-#endif
 
 //=============================================================================
 // Internal Constants
@@ -290,6 +289,12 @@ NIMCP_EXPORT pr_sleep_bridge_t pr_sleep_bridge_create(const pr_sleep_config_t* c
 
     // Initialize stage states
     for (int i = 0; i < PR_SLEEP_STAGE_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_SLEEP_STAGE_COUNT > 256) {
+            pr_sleep_bridge_heartbeat("pr_sleep_bri_loop",
+                             (float)(i + 1) / (float)PR_SLEEP_STAGE_COUNT);
+        }
+
         bridge->stage_states[i].stage = (pr_sleep_stage_t)i;
         bridge->stage_states[i].total_time_ms = 0;
     }
@@ -394,6 +399,12 @@ NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_reset(pr_sleep_bridge_t bridge) {
 
     // Clear stage states
     for (int i = 0; i < PR_SLEEP_STAGE_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_SLEEP_STAGE_COUNT > 256) {
+            pr_sleep_bridge_heartbeat("pr_sleep_bri_loop",
+                             (float)(i + 1) / (float)PR_SLEEP_STAGE_COUNT);
+        }
+
         memset(&bridge->stage_states[i], 0, sizeof(pr_sleep_stage_state_t));
         bridge->stage_states[i].stage = (pr_sleep_stage_t)i;
     }
@@ -659,6 +670,12 @@ NIMCP_EXPORT int pr_sleep_bridge_consolidate_cycles(
 
     int total_processed = 0;
     for (uint32_t i = 0; i < num_cycles; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_cycles > 256) {
+            pr_sleep_bridge_heartbeat("pr_sleep_bri_loop",
+                             (float)(i + 1) / (float)num_cycles);
+        }
+
         int processed = pr_sleep_bridge_consolidate(bridge);
         if (processed < 0) {
             return total_processed > 0 ? total_processed : -1;
@@ -680,6 +697,12 @@ NIMCP_EXPORT int pr_sleep_bridge_run_sleep_cycles(
     int total_processed = 0;
 
     for (uint32_t cycle = 0; cycle < num_cycles; cycle++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((cycle & 0xFF) == 0 && num_cycles > 256) {
+            pr_sleep_bridge_heartbeat("pr_sleep_bri_loop",
+                             (float)(cycle + 1) / (float)num_cycles);
+        }
+
         // N1
         pr_sleep_bridge_set_stage(bridge, PR_SLEEP_STAGE_N1);
         total_processed += pr_sleep_bridge_consolidate_cycles(bridge, 0);
@@ -941,6 +964,12 @@ NIMCP_EXPORT int pr_sleep_bridge_replay_sequence(
     // Determine iteration order based on direction
     if (direction == PR_REPLAY_FORWARD) {
         for (size_t i = 0; i < count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && count > 256) {
+                pr_sleep_bridge_heartbeat("pr_sleep_bri_loop",
+                                 (float)(i + 1) / (float)count);
+            }
+
             pr_replay_event_t event;
             event.sequence_position = (uint32_t)i;
             if (pr_sleep_bridge_replay(bridge, node_ids[i], direction, &event) == PR_SLEEP_SUCCESS) {
@@ -973,6 +1002,12 @@ NIMCP_EXPORT int pr_sleep_bridge_replay_sequence(
         }
 
         for (size_t i = 0; i < count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && count > 256) {
+                pr_sleep_bridge_heartbeat("pr_sleep_bri_loop",
+                                 (float)(i + 1) / (float)count);
+            }
+
             pr_replay_event_t event;
             event.sequence_position = (uint32_t)i;
             if (pr_sleep_bridge_replay(bridge, shuffled[i], direction, &event) == PR_SLEEP_SUCCESS) {
@@ -1029,6 +1064,12 @@ NIMCP_EXPORT int pr_sleep_bridge_promote_z_ladder(pr_sleep_bridge_t bridge) {
         }
 
         for (size_t i = 0; i < node_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && node_count > 256) {
+                pr_sleep_bridge_heartbeat("pr_sleep_bri_loop",
+                                 (float)(i + 1) / (float)node_count);
+            }
+
             pr_memory_node_t* node = nodes[i];
             if (!node) continue;
 
@@ -1155,6 +1196,12 @@ NIMCP_EXPORT int pr_sleep_bridge_emotional_process(pr_sleep_bridge_t bridge) {
         }
 
         for (size_t i = 0; i < node_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && node_count > 256) {
+                pr_sleep_bridge_heartbeat("pr_sleep_bri_loop",
+                                 (float)(i + 1) / (float)node_count);
+            }
+
             pr_memory_node_t* node = nodes[i];
             if (!node) continue;
 
@@ -1472,6 +1519,12 @@ NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_get_replay_history(
 
     // Copy from circular buffer (most recent first)
     for (size_t i = 0; i < to_copy; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && to_copy > 256) {
+            pr_sleep_bridge_heartbeat("pr_sleep_bri_loop",
+                             (float)(i + 1) / (float)to_copy);
+        }
+
         size_t idx = (bridge->replay_history_head + bridge->replay_history_capacity - 1 - i) %
                      bridge->replay_history_capacity;
         events[i] = bridge->replay_history[idx];
@@ -1598,6 +1651,12 @@ NIMCP_EXPORT void pr_sleep_bridge_print_summary(const pr_sleep_bridge_t bridge) 
 
     printf("\nTime per Stage (ms):\n");
     for (int i = 0; i < PR_SLEEP_STAGE_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_SLEEP_STAGE_COUNT > 256) {
+            pr_sleep_bridge_heartbeat("pr_sleep_bri_loop",
+                             (float)(i + 1) / (float)PR_SLEEP_STAGE_COUNT);
+        }
+
         printf("  %s: %lu\n", pr_sleep_stage_name((pr_sleep_stage_t)i),
                (unsigned long)bridge->stats.time_per_stage_ms[i]);
     }
@@ -1792,6 +1851,12 @@ static int consolidate_n1(pr_sleep_bridge_t bridge) {
     int replayed = 0;
 
     for (size_t i = 0; i < to_replay; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && to_replay > 256) {
+            pr_sleep_bridge_heartbeat("pr_sleep_bri_loop",
+                             (float)(i + 1) / (float)to_replay);
+        }
+
         if (pr_sleep_bridge_replay(bridge, candidates[i].node_id,
                                    PR_REPLAY_FORWARD, NULL) == PR_SLEEP_SUCCESS) {
             replayed++;
@@ -1820,6 +1885,12 @@ static int consolidate_n2(pr_sleep_bridge_t bridge) {
     int replayed = 0;
 
     for (size_t i = 0; i < to_replay; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && to_replay > 256) {
+            pr_sleep_bridge_heartbeat("pr_sleep_bri_loop",
+                             (float)(i + 1) / (float)to_replay);
+        }
+
         if (pr_sleep_bridge_replay(bridge, candidates[i].node_id,
                                    PR_REPLAY_FORWARD, NULL) == PR_SLEEP_SUCCESS) {
             replayed++;
@@ -1857,6 +1928,12 @@ static int consolidate_n3_sws(pr_sleep_bridge_t bridge) {
     }
 
     for (size_t i = 0; i < to_replay; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && to_replay > 256) {
+            pr_sleep_bridge_heartbeat("pr_sleep_bri_loop",
+                             (float)(i + 1) / (float)to_replay);
+        }
+
         replay_ids[i] = candidates[i].node_id;
     }
 
@@ -1902,6 +1979,12 @@ static int consolidate_rem(pr_sleep_bridge_t bridge) {
         uint64_t* replay_ids = (uint64_t*)malloc(to_replay * sizeof(uint64_t));
         if (replay_ids) {
             for (size_t i = 0; i < to_replay; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && to_replay > 256) {
+                    pr_sleep_bridge_heartbeat("pr_sleep_bri_loop",
+                                     (float)(i + 1) / (float)to_replay);
+                }
+
                 replay_ids[i] = candidates[i].node_id;
             }
 

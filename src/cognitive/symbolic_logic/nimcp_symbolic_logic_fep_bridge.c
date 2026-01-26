@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_symbolic_logic_fep_bridge_health_agent = NULL;
  * @brief Set health agent for symbolic_logic_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void symbolic_logic_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void symbolic_logic_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_symbolic_logic_fep_bridge_health_agent = agent;
 }
 
@@ -45,6 +45,10 @@ static inline void symbolic_logic_fep_bridge_heartbeat(const char* operation, fl
 
 
 int symbolic_logic_fep_bridge_default_config(symbolic_logic_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_fep_bridge_heartbeat("symbolic_log_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->pe_exploration_threshold = LOGIC_FEP_HIGH_PE_THRESHOLD;
     config->proof_precision_factor = LOGIC_FEP_PROOF_PRECISION_FACTOR;
@@ -58,6 +62,10 @@ int symbolic_logic_fep_bridge_default_config(symbolic_logic_fep_config_t* config
 }
 
 symbolic_logic_fep_bridge_t* symbolic_logic_fep_bridge_create(const symbolic_logic_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_fep_bridge_heartbeat("symbolic_log_create", 0.0f);
+
+
     symbolic_logic_fep_bridge_t* bridge = nimcp_malloc(sizeof(symbolic_logic_fep_bridge_t));
     if (!bridge) {
 
@@ -76,6 +84,10 @@ symbolic_logic_fep_bridge_t* symbolic_logic_fep_bridge_create(const symbolic_log
 
 void symbolic_logic_fep_bridge_destroy(symbolic_logic_fep_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_fep_bridge_heartbeat("symbolic_log_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) symbolic_logic_fep_bridge_disconnect_bio_async(bridge);
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
@@ -84,6 +96,10 @@ void symbolic_logic_fep_bridge_destroy(symbolic_logic_fep_bridge_t* bridge) {
 }
 
 int symbolic_logic_fep_bridge_connect_fep(symbolic_logic_fep_bridge_t* bridge, fep_system_t* fep) {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_fep_bridge_heartbeat("symbolic_log_connect_fep", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -92,6 +108,10 @@ int symbolic_logic_fep_bridge_connect_fep(symbolic_logic_fep_bridge_t* bridge, f
 }
 
 int symbolic_logic_fep_bridge_connect_logic(symbolic_logic_fep_bridge_t* bridge, symbolic_logic_t* logic) {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_fep_bridge_heartbeat("symbolic_log_connect_logic", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && logic, NIMCP_ERROR_NULL_POINTER, "bridge or logic is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->logic_system = logic;
@@ -100,6 +120,10 @@ int symbolic_logic_fep_bridge_connect_logic(symbolic_logic_fep_bridge_t* bridge,
 }
 
 int symbolic_logic_fep_bridge_disconnect(symbolic_logic_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_fep_bridge_heartbeat("symbolic_log_disconnect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -109,6 +133,10 @@ int symbolic_logic_fep_bridge_disconnect(symbolic_logic_fep_bridge_t* bridge) {
 }
 
 int symbolic_logic_fep_trigger_exploration(symbolic_logic_fep_bridge_t* bridge, float pe_magnitude) {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_fep_bridge_heartbeat("symbolic_log_symbolic_logic_fep_t", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_pe_exploration) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -124,6 +152,10 @@ int symbolic_logic_fep_trigger_exploration(symbolic_logic_fep_bridge_t* bridge, 
 }
 
 int symbolic_logic_fep_weight_facts_by_confidence(symbolic_logic_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_fep_bridge_heartbeat("symbolic_log_symbolic_logic_fep_w", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_salience_precision) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -133,6 +165,10 @@ int symbolic_logic_fep_weight_facts_by_confidence(symbolic_logic_fep_bridge_t* b
 }
 
 int symbolic_logic_fep_validate_beliefs_by_proof(symbolic_logic_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_fep_bridge_heartbeat("symbolic_log_symbolic_logic_fep_v", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_proof_validation) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -143,6 +179,10 @@ int symbolic_logic_fep_validate_beliefs_by_proof(symbolic_logic_fep_bridge_t* br
 }
 
 int symbolic_logic_fep_trigger_revision_from_contradiction(symbolic_logic_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_fep_bridge_heartbeat("symbolic_log_symbolic_logic_fep_t", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->logic_effects.belief_revision_triggered = true;
@@ -152,6 +192,10 @@ int symbolic_logic_fep_trigger_revision_from_contradiction(symbolic_logic_fep_br
 }
 
 int symbolic_logic_fep_bridge_update(symbolic_logic_fep_bridge_t* bridge, uint64_t delta_ms) {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_fep_bridge_heartbeat("symbolic_log_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     symbolic_logic_fep_weight_facts_by_confidence(bridge);
     symbolic_logic_fep_validate_beliefs_by_proof(bridge);
@@ -159,6 +203,10 @@ int symbolic_logic_fep_bridge_update(symbolic_logic_fep_bridge_t* bridge, uint64
 }
 
 int symbolic_logic_fep_bridge_get_state(const symbolic_logic_fep_bridge_t* bridge, symbolic_logic_fep_state_t* state) {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_fep_bridge_heartbeat("symbolic_log_get_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -167,6 +215,10 @@ int symbolic_logic_fep_bridge_get_state(const symbolic_logic_fep_bridge_t* bridg
 }
 
 int symbolic_logic_fep_bridge_get_stats(const symbolic_logic_fep_bridge_t* bridge, symbolic_logic_fep_stats_t* stats) {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_fep_bridge_heartbeat("symbolic_log_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -175,6 +227,10 @@ int symbolic_logic_fep_bridge_get_stats(const symbolic_logic_fep_bridge_t* bridg
 }
 
 int symbolic_logic_fep_bridge_connect_bio_async(symbolic_logic_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_fep_bridge_heartbeat("symbolic_log_connect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
@@ -193,6 +249,10 @@ int symbolic_logic_fep_bridge_connect_bio_async(symbolic_logic_fep_bridge_t* bri
 
 int symbolic_logic_fep_bridge_disconnect_bio_async(symbolic_logic_fep_bridge_t* bridge) {
     if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_fep_bridge_heartbeat("symbolic_log_disconnect_bio_async", 0.0f);
+
+
     if (bridge->base.bio_ctx) bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_ctx = NULL;
     bridge->base.bio_async_enabled = false;
@@ -200,6 +260,10 @@ int symbolic_logic_fep_bridge_disconnect_bio_async(symbolic_logic_fep_bridge_t* 
 }
 
 bool symbolic_logic_fep_bridge_is_bio_async_connected(const symbolic_logic_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_fep_bridge_heartbeat("symbolic_log_is_bio_async_connect", 0.0f);
+
+
     return bridge ? bridge->base.bio_async_enabled : false;
 }
 
@@ -210,9 +274,19 @@ bool symbolic_logic_fep_bridge_is_bio_async_connected(const symbolic_logic_fep_b
 int symbolic_logic_fep_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_fep_bridge_heartbeat("symbolic_log_symbolic_logic_fep_q", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Symbolic_Logic_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                symbolic_logic_fep_bridge_heartbeat("symbolic_log_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }
@@ -238,6 +312,10 @@ int symbolic_logic_fep_query_self_knowledge(kg_reader_t* kg) {
 
 int symbolic_logic_fep_bridge_update_wrapper(void* bridge_handle) {
     if (!bridge_handle) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_fep_bridge_heartbeat("symbolic_log_update_wrapper", 0.0f);
+
+
     symbolic_logic_fep_bridge_t* bridge = (symbolic_logic_fep_bridge_t*)bridge_handle;
     return symbolic_logic_fep_bridge_update(bridge, 0);
 }
@@ -247,6 +325,10 @@ int symbolic_logic_fep_bridge_register_with_orchestrator(
     fep_orchestrator_t* orchestrator,
     uint32_t* bridge_id_out)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_fep_bridge_heartbeat("symbolic_log_register_with_orches", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && orchestrator, NIMCP_ERROR_NULL_POINTER, "bridge or orchestrator is NULL");
 
     int result = fep_orchestrator_register_bridge(
@@ -272,6 +354,10 @@ int symbolic_logic_fep_bridge_unregister_from_orchestrator(
     symbolic_logic_fep_bridge_t* bridge,
     fep_orchestrator_t* orchestrator)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_fep_bridge_heartbeat("symbolic_log_unregister_from_orch", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && orchestrator, NIMCP_ERROR_NULL_POINTER, "bridge or orchestrator is NULL");
 
     /* Note: Need to track bridge_id to unregister properly */

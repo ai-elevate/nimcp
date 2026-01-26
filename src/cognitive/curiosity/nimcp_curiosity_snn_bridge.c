@@ -38,7 +38,7 @@ static nimcp_health_agent_t* g_curiosity_snn_bridge_health_agent = NULL;
  * @brief Set health agent for curiosity_snn_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void curiosity_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void curiosity_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_curiosity_snn_bridge_health_agent = agent;
 }
 
@@ -112,12 +112,24 @@ static void softmax(float* values, uint32_t n) {
 
     float sum = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            curiosity_snn_bridge_heartbeat("curiosity_sn_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         values[i] = expf(values[i] - max_val);
         sum += values[i];
     }
 
     if (sum > 0.0f) {
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                curiosity_snn_bridge_heartbeat("curiosity_sn_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             values[i] /= sum;
         }
     }
@@ -128,6 +140,10 @@ static void softmax(float* values, uint32_t n) {
 //=============================================================================
 
 curiosity_snn_config_t curiosity_snn_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_config", 0.0f);
+
+
     curiosity_snn_config_t config = {
         .num_dimensions = CURIOSITY_DIM_COUNT,
         .neurons_per_dim = CURIOSITY_SNN_NEURONS_PER_DIM,
@@ -163,6 +179,10 @@ curiosity_snn_config_t curiosity_snn_config_default(void) {
 }
 
 curiosity_snn_bridge_t* curiosity_snn_create(const curiosity_snn_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_create", 0.0f);
+
+
     curiosity_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(curiosity_snn_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_snn_create: failed to allocate bridge");
@@ -223,6 +243,12 @@ curiosity_snn_bridge_t* curiosity_snn_create(const curiosity_snn_config_t* confi
 
     /* Initialize dimension states */
     for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            curiosity_snn_bridge_heartbeat("curiosity_sn_loop",
+                             (float)(i + 1) / (float)bridge->config.num_dimensions);
+        }
+
         bridge->dim_states[i].activation = 0.0f;
         bridge->dim_states[i].accumulated_evidence = 0.0f;
         bridge->dim_states[i].spike_count = 0;
@@ -254,6 +280,10 @@ curiosity_snn_bridge_t* curiosity_snn_create(const curiosity_snn_config_t* confi
 void curiosity_snn_destroy(curiosity_snn_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_destro", 0.0f);
+
+
     if (bridge->snn) {
         snn_network_destroy(bridge->snn);
     }
@@ -272,6 +302,10 @@ void curiosity_snn_destroy(curiosity_snn_bridge_t* bridge) {
 int curiosity_snn_reset(curiosity_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_reset", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset SNN network */
@@ -281,6 +315,12 @@ int curiosity_snn_reset(curiosity_snn_bridge_t* bridge) {
 
     /* Reset dimension states */
     for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            curiosity_snn_bridge_heartbeat("curiosity_sn_loop",
+                             (float)(i + 1) / (float)bridge->config.num_dimensions);
+        }
+
         bridge->dim_states[i].activation = 0.0f;
         bridge->dim_states[i].accumulated_evidence = 0.0f;
         bridge->dim_states[i].spike_count = 0;
@@ -321,6 +361,10 @@ int curiosity_snn_encode_state(
     if (!bridge || !dimensions) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_encode", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = CURIOSITY_SNN_STATE_ENCODING;
 
@@ -329,6 +373,12 @@ int curiosity_snn_encode_state(
 
     /* Population encoding for each dimension */
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            curiosity_snn_bridge_heartbeat("curiosity_sn_loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         float value = clamp_f(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
@@ -339,6 +389,12 @@ int curiosity_snn_encode_state(
 
         /* Population encode */
         for (uint32_t n = 0; n < neurons_per_dim; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && neurons_per_dim > 256) {
+                curiosity_snn_bridge_heartbeat("curiosity_sn_loop",
+                                 (float)(n + 1) / (float)neurons_per_dim);
+            }
+
             float preferred = (float)n / (neurons_per_dim - 1);
             float diff = value - preferred;
             float tuning = expf(-diff * diff / 0.1f);
@@ -354,6 +410,12 @@ int curiosity_snn_encode_state(
     /* Detect state change */
     float change_magnitude = 0.0f;
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            curiosity_snn_bridge_heartbeat("curiosity_sn_loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         float diff = dimensions[d] - bridge->prev_state[d];
         change_magnitude += diff * diff;
         bridge->prev_state[d] = dimensions[d];
@@ -377,6 +439,10 @@ int curiosity_snn_encode_novelty(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_encode", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[CURIOSITY_DIM_COUNT] = {0};
@@ -398,6 +464,10 @@ int curiosity_snn_encode_knowledge_gap(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_encode", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[CURIOSITY_DIM_COUNT] = {0};
@@ -415,6 +485,10 @@ int curiosity_snn_encode_info_gain(
     uint32_t info_type
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_encode", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -448,6 +522,10 @@ int curiosity_snn_simulate(curiosity_snn_bridge_t* bridge, float duration_ms) {
     if (!bridge) return -1;
     if (duration_ms <= 0.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_simula", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = CURIOSITY_SNN_STATE_SIMULATING;
 
@@ -461,6 +539,12 @@ int curiosity_snn_simulate(curiosity_snn_bridge_t* bridge, float duration_ms) {
     }
 
     for (uint32_t s = 0; s < steps; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && steps > 256) {
+            curiosity_snn_bridge_heartbeat("curiosity_sn_loop",
+                             (float)(s + 1) / (float)steps);
+        }
+
         if (bridge->snn) {
             snn_network_step(bridge->snn, dt);
         }
@@ -468,6 +552,12 @@ int curiosity_snn_simulate(curiosity_snn_bridge_t* bridge, float duration_ms) {
         /* Update evidence integration */
         float decay = expf(-dt / bridge->config.integration_tau_ms);
         for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+                curiosity_snn_bridge_heartbeat("curiosity_sn_loop",
+                                 (float)(d + 1) / (float)bridge->config.num_dimensions);
+            }
+
             bridge->dim_states[d].accumulated_evidence *= decay;
             bridge->dim_states[d].accumulated_evidence +=
                 bridge->dim_states[d].activation * dt / bridge->config.integration_tau_ms;
@@ -517,6 +607,10 @@ int curiosity_snn_simulate(curiosity_snn_bridge_t* bridge, float duration_ms) {
 
 int curiosity_snn_step(curiosity_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_step", 0.0f);
+
+
     return curiosity_snn_simulate(bridge, bridge->config.dt_ms);
 }
 
@@ -526,6 +620,10 @@ int curiosity_snn_forward(
     uint32_t input_count
 ) {
     if (!bridge || !inputs) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_forwar", 0.0f);
+
 
     int spike_count = curiosity_snn_encode_state(bridge, inputs, input_count);
     if (spike_count < 0) return -1;
@@ -547,6 +645,10 @@ int curiosity_snn_get_drive(
 ) {
     if (!bridge || !drive) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_get_dr", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *drive = bridge->last_drive;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -562,8 +664,18 @@ int curiosity_snn_get_activations(
     if (!bridge || !activations) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_get_ac", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            curiosity_snn_bridge_heartbeat("curiosity_sn_loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         activations[d] = bridge->dim_states[d].activation;
     }
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -576,6 +688,10 @@ bool curiosity_snn_check_novelty(
     float* novelty_level
 ) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_check_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_drive.novelty_level;
@@ -594,6 +710,10 @@ bool curiosity_snn_check_interest(
 ) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_check_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_drive.interest_magnitude;
     if (interest_level) {
@@ -611,10 +731,20 @@ bool curiosity_snn_check_state_change(
 ) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_check_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     /* Calculate magnitude from prev_state differences */
     float mag = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            curiosity_snn_bridge_heartbeat("curiosity_sn_loop",
+                             (float)(d + 1) / (float)bridge->config.num_dimensions);
+        }
+
         float diff = bridge->dim_states[d].activation - bridge->prev_state[d];
         mag += diff * diff;
     }
@@ -641,6 +771,10 @@ int curiosity_snn_get_dim_state(
     if (!bridge || !state) return -1;
     if (dim >= bridge->config.num_dimensions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_get_di", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->dim_states[dim];
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -654,6 +788,10 @@ int curiosity_snn_get_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_get_st", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
@@ -665,6 +803,12 @@ int curiosity_snn_get_state(
     state->active_dimensions = 0;
     state->total_activity = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            curiosity_snn_bridge_heartbeat("curiosity_sn_loop",
+                             (float)(d + 1) / (float)bridge->config.num_dimensions);
+        }
+
         if (bridge->dim_states[d].activation > 0.1f) {
             state->active_dimensions++;
         }
@@ -678,6 +822,10 @@ int curiosity_snn_get_state(
 int curiosity_snn_get_stats(curiosity_snn_bridge_t* bridge, curiosity_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_get_st", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -687,6 +835,10 @@ int curiosity_snn_get_stats(curiosity_snn_bridge_t* bridge, curiosity_snn_stats_
 
 int curiosity_snn_reset_stats(curiosity_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_reset_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(curiosity_snn_stats_t));
@@ -698,6 +850,10 @@ int curiosity_snn_reset_stats(curiosity_snn_bridge_t* bridge) {
 float curiosity_snn_get_exploration(curiosity_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_get_ex", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float exploration = bridge->last_drive.exploration_drive;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -708,9 +864,19 @@ float curiosity_snn_get_exploration(curiosity_snn_bridge_t* bridge) {
 float curiosity_snn_get_total_activity(curiosity_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_get_to", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float total = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            curiosity_snn_bridge_heartbeat("curiosity_sn_loop",
+                             (float)(d + 1) / (float)bridge->config.num_dimensions);
+        }
+
         total += bridge->dim_states[d].activation;
     }
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -729,6 +895,10 @@ int curiosity_snn_register_novelty_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_regist", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->novelty_callback = callback;
     bridge->novelty_callback_data = user_data;
@@ -744,6 +914,10 @@ int curiosity_snn_register_drive_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_regist", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->drive_callback = callback;
     bridge->drive_callback_data = user_data;
@@ -758,6 +932,10 @@ int curiosity_snn_register_interest_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_regist", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->interest_callback = callback;
@@ -775,6 +953,10 @@ int curiosity_snn_bio_async_connect(curiosity_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_bio_as", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
@@ -786,6 +968,10 @@ int curiosity_snn_bio_async_connect(curiosity_snn_bridge_t* bridge) {
 int curiosity_snn_bio_async_disconnect(curiosity_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_bio_as", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -795,6 +981,10 @@ int curiosity_snn_bio_async_disconnect(curiosity_snn_bridge_t* bridge) {
 
 bool curiosity_snn_is_bio_async_connected(curiosity_snn_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_is_bio", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;

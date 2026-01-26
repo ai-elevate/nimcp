@@ -42,7 +42,7 @@ static nimcp_health_agent_t* g_emotion_consolidation_health_agent = NULL;
  * @brief Set health agent for emotion_consolidation heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void emotion_consolidation_set_health_agent(nimcp_health_agent_t* agent) {
+void emotion_consolidation_set_health_agent(nimcp_health_agent_t* agent) {
     g_emotion_consolidation_health_agent = agent;
 }
 
@@ -198,6 +198,10 @@ static void on_emotion_tensor_update(void* context, const void* msg_data, size_t
 //=============================================================================
 
 emotion_consolidation_config_t emotion_consolidation_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_consolidation_heartbeat("emotion_cons_default_config", 0.0f);
+
+
     emotion_consolidation_config_t config = {
         .arousal_consolidation_boost = 2.0f,  /* Up to 2x boost from arousal */
         .valence_asymmetry = 1.1f,            /* 10% negativity bias */
@@ -224,6 +228,10 @@ emotion_consolidation_system_t* emotion_consolidation_create(
     }
 
     /* WHAT: Allocate system */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_consolidation_heartbeat("emotion_cons_create", 0.0f);
+
+
     emotion_consolidation_system_t* system = calloc(1, sizeof(emotion_consolidation_system_t));
     if (!system) {
         EC_LOG_ERROR("Failed to allocate emotion-consolidation system");
@@ -274,6 +282,10 @@ void emotion_consolidation_destroy(emotion_consolidation_system_t* system) {
     }
 
     /* WHAT: Unregister from bio-async */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_consolidation_heartbeat("emotion_cons_destroy", 0.0f);
+
+
     if (system->bio_async_registered) {
         emotion_consolidation_unregister_bio_async(system);
     }
@@ -295,6 +307,10 @@ bool emotion_consolidation_tag_memory(
     if (!system || !tag) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_consolidation_heartbeat("emotion_cons_tag_memory", 0.0f);
+
 
     pthread_rwlock_rdlock(&system->lock);
 
@@ -336,6 +352,10 @@ float emotion_consolidation_compute_strength(
     }
 
     /* Guard: Clamp input */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_consolidation_heartbeat("emotion_cons_compute_strength", 0.0f);
+
+
     if (base_strength < 0.0f) base_strength = 0.0f;
     if (base_strength > 1.0f) base_strength = 1.0f;
 
@@ -385,6 +405,10 @@ bool emotion_consolidation_should_prioritize(
     }
 
     /* WHAT: Prioritize if emotionally tagged and above threshold */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_consolidation_heartbeat("emotion_cons_should_prioritize", 0.0f);
+
+
     return emotion_tag->is_emotionally_tagged &&
            emotion_tag->emotion_intensity >= system->config.min_emotion_threshold;
 }
@@ -397,6 +421,10 @@ float emotion_consolidation_get_boost(const emotion_consolidation_system_t* syst
     if (!system) {
         return 1.0f;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_consolidation_heartbeat("emotion_cons_get_boost", 0.0f);
+
 
     pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
     float boost = system->current_boost;
@@ -415,6 +443,10 @@ float emotion_consolidation_modulate_decay(
     }
 
     /* Guard: Clamp input */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_consolidation_heartbeat("emotion_cons_modulate_decay", 0.0f);
+
+
     if (base_decay < 0.0f) base_decay = 0.0f;
     if (base_decay > 1.0f) base_decay = 1.0f;
 
@@ -454,6 +486,10 @@ bool emotion_consolidation_get_stats(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_consolidation_heartbeat("emotion_cons_get_stats", 0.0f);
+
+
     pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
     *stats = system->stats;
     pthread_rwlock_unlock((pthread_rwlock_t*)&system->lock);
@@ -465,6 +501,10 @@ void emotion_consolidation_reset_stats(emotion_consolidation_system_t* system) {
     if (!system) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_consolidation_heartbeat("emotion_cons_reset_stats", 0.0f);
+
 
     pthread_rwlock_wrlock(&system->lock);
     memset(&system->stats, 0, sizeof(emotion_consolidation_stats_t));
@@ -485,6 +525,10 @@ bool emotion_consolidation_register_bio_async(emotion_consolidation_system_t* sy
     }
 
     /* Guard: Already registered */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_consolidation_heartbeat("emotion_cons_register_bio_async", 0.0f);
+
+
     if (system->bio_async_registered) {
         EC_LOG_WARN("Already registered with bio-async");
         return true;
@@ -517,6 +561,10 @@ void emotion_consolidation_unregister_bio_async(emotion_consolidation_system_t* 
     }
 
     /* WHAT: Unregister from bio-async router */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_consolidation_heartbeat("emotion_cons_unregister_bio_async", 0.0f);
+
+
     if (system->bio_ctx) {
         bio_router_unregister_module(system->bio_ctx);
         system->bio_ctx = NULL;
@@ -534,9 +582,19 @@ void emotion_consolidation_unregister_bio_async(emotion_consolidation_system_t* 
 int emotion_consolidation_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_consolidation_heartbeat("emotion_cons_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Emotion_Consolidation_System");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                emotion_consolidation_heartbeat("emotion_cons_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

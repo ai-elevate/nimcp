@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_wellbeing_eudaimonic_health_agent = NULL;
  * @brief Set health agent for wellbeing_eudaimonic heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void wellbeing_eudaimonic_set_health_agent(nimcp_health_agent_t* agent) {
+void wellbeing_eudaimonic_set_health_agent(nimcp_health_agent_t* agent) {
     g_wellbeing_eudaimonic_health_agent = agent;
 }
 
@@ -64,6 +64,10 @@ float compute_purpose_score(introspection_context_t ctx)
     }
 
     // Get introspection stats for goal metrics
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_eudaimonic_heartbeat("wellbeing_eu_compute_purpose_scor", 0.0f);
+
+
     introspection_stats_t stats;
     if (!introspection_get_stats(ctx, &stats)) {
         return 0.5f; // Default moderate purpose if unavailable
@@ -103,6 +107,10 @@ float compute_purpose_score(introspection_context_t ctx)
 float compute_autonomy_score(consent_tier_t tier, float agency_level)
 {
     // Guard: Valid agency level
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_eudaimonic_heartbeat("wellbeing_eu_compute_autonomy_sco", 0.0f);
+
+
     agency_level = fminf(fmaxf(agency_level, 0.0f), 1.0f);
 
     // Map consent tier to base autonomy
@@ -130,6 +138,10 @@ float compute_autonomy_score(consent_tier_t tier, float agency_level)
 float compute_mastery_score(float learning_rate, float error_rate)
 {
     // Guard: Valid ranges
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_eudaimonic_heartbeat("wellbeing_eu_compute_mastery_scor", 0.0f);
+
+
     learning_rate = fminf(fmaxf(learning_rate, 0.0f), 1.0f);
     error_rate = fminf(fmaxf(error_rate, 0.0f), 1.0f);
 
@@ -153,6 +165,10 @@ float compute_mastery_score(float learning_rate, float error_rate)
 float compute_connection_score(float integration_level)
 {
     // Guard: Valid range
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_eudaimonic_heartbeat("wellbeing_eu_compute_connection_s", 0.0f);
+
+
     float connection = fminf(fmaxf(integration_level, 0.0f), 1.0f);
     return connection;
 }
@@ -165,6 +181,10 @@ float compute_connection_score(float integration_level)
 float compute_growth_score(float adaptation_rate, float development_trajectory)
 {
     // Guard: Valid ranges
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_eudaimonic_heartbeat("wellbeing_eu_compute_growth_score", 0.0f);
+
+
     adaptation_rate = fminf(fmaxf(adaptation_rate, 0.0f), 1.0f);
     development_trajectory = fminf(fmaxf(development_trajectory, 0.0f), 1.0f);
 
@@ -192,6 +212,10 @@ int enhanced_wellbeing_update_eudaimonic(enhanced_wellbeing_system_t* system)
     }
 
     // Thread safety
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_eudaimonic_heartbeat("wellbeing_eu_enhanced_wellbeing_u", 0.0f);
+
+
     if (system->mutex) {
         nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)system->mutex);
     }
@@ -260,6 +284,12 @@ int enhanced_wellbeing_update_eudaimonic(enhanced_wellbeing_system_t* system)
 
         // Early half variance
         for (int i = 0; i < half; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && half > 256) {
+                wellbeing_eudaimonic_heartbeat("wellbeing_eu_loop",
+                                 (float)(i + 1) / (float)half);
+            }
+
             early_variance += system->distress_history[i].distress_score *
                              system->distress_history[i].distress_score;
         }
@@ -360,6 +390,10 @@ int enhanced_wellbeing_compute_satisfaction(
     }
 
     // Thread safety
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_eudaimonic_heartbeat("wellbeing_eu_enhanced_wellbeing_c", 0.0f);
+
+
     if (system->mutex) {
         nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)system->mutex);
     }
@@ -448,6 +482,12 @@ int enhanced_wellbeing_compute_satisfaction(
         int n = system->history_count;
 
         for (int i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                wellbeing_eudaimonic_heartbeat("wellbeing_eu_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             float x = (float)i;
             // Convert distress to satisfaction
             float y = 1.0f - system->distress_history[i].distress_score;
@@ -473,12 +513,24 @@ int enhanced_wellbeing_compute_satisfaction(
         float variance = 0.0f;
 
         for (uint32_t i = 0; i < system->history_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && system->history_count > 256) {
+                wellbeing_eudaimonic_heartbeat("wellbeing_eu_loop",
+                                 (float)(i + 1) / (float)system->history_count);
+            }
+
             float sat = 1.0f - system->distress_history[i].distress_score;
             mean += sat;
         }
         mean /= system->history_count;
 
         for (uint32_t i = 0; i < system->history_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && system->history_count > 256) {
+                wellbeing_eudaimonic_heartbeat("wellbeing_eu_loop",
+                                 (float)(i + 1) / (float)system->history_count);
+            }
+
             float sat = 1.0f - system->distress_history[i].distress_score;
             float diff = sat - mean;
             variance += diff * diff;
@@ -525,6 +577,10 @@ float enhanced_wellbeing_get_life_satisfaction(
     }
 
     // Thread safety
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_eudaimonic_heartbeat("wellbeing_eu_enhanced_wellbeing_g", 0.0f);
+
+
     float result = 0.0f;
     if (system->mutex) {
         nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)system->mutex);
@@ -562,6 +618,10 @@ int enhanced_wellbeing_get_eudaimonic(
     }
 
     // Thread safety
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_eudaimonic_heartbeat("wellbeing_eu_enhanced_wellbeing_g", 0.0f);
+
+
     if (system->mutex) {
         nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)system->mutex);
     }
@@ -593,6 +653,10 @@ bool enhanced_wellbeing_is_flourishing(
     }
 
     // Thread safety
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_eudaimonic_heartbeat("wellbeing_eu_enhanced_wellbeing_i", 0.0f);
+
+
     bool result = false;
     if (system->mutex) {
         nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)system->mutex);
@@ -625,6 +689,10 @@ bool enhanced_wellbeing_is_languishing(
     }
 
     // Thread safety
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_eudaimonic_heartbeat("wellbeing_eu_enhanced_wellbeing_i", 0.0f);
+
+
     bool result = false;
     if (system->mutex) {
         nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)system->mutex);
@@ -650,9 +718,19 @@ bool enhanced_wellbeing_is_languishing(
  */
 int wellbeing_eudaimonic_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_eudaimonic_heartbeat("wellbeing_eu_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Wellbeing_Eudaimonic_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                wellbeing_eudaimonic_heartbeat("wellbeing_eu_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Wellbeing Eudaimonic self-knowledge: %s", self->observations[i]);
         }
     }

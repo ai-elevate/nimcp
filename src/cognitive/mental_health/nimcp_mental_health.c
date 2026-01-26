@@ -45,7 +45,7 @@ static nimcp_health_agent_t* g_mental_health_health_agent = NULL;
  * @brief Set health agent for mental_health heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mental_health_set_health_agent(nimcp_health_agent_t* agent) {
+void mental_health_set_health_agent(nimcp_health_agent_t* agent) {
     g_mental_health_health_agent = agent;
 }
 
@@ -400,6 +400,12 @@ static void run_all_detectors(mental_health_monitor_t* mon) {
 
 static void classify_severities(mental_health_monitor_t* mon) {
     for (int i = 0; i < DISORDER_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && DISORDER_COUNT > 256) {
+            mental_health_heartbeat("mental_healt_loop",
+                             (float)(i + 1) / (float)DISORDER_COUNT);
+        }
+
         mon->disorder_severities[i] = mental_health_classify_severity(mon->disorder_scores[i], &mon->config);
     }
 }
@@ -408,6 +414,12 @@ static void find_primary_disorder(mental_health_monitor_t* mon) {
     float max_score = 0.0f;
     disorder_type_t max_disorder = DISORDER_SOCIOPATHY;
     for (int i = 0; i < DISORDER_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && DISORDER_COUNT > 256) {
+            mental_health_heartbeat("mental_healt_loop",
+                             (float)(i + 1) / (float)DISORDER_COUNT);
+        }
+
         if (mon->disorder_scores[i] > max_score) {
             max_score = mon->disorder_scores[i];
             max_disorder = (disorder_type_t)i;
@@ -419,6 +431,10 @@ static void find_primary_disorder(mental_health_monitor_t* mon) {
 
 /* Public API */
 mental_health_config_t mental_health_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_heartbeat("mental_healt_default_config", 0.0f);
+
+
     mental_health_config_t cfg;
     memset(&cfg, 0, sizeof(cfg));
     cfg.enable_monitoring = true;
@@ -434,6 +450,10 @@ mental_health_config_t mental_health_default_config(void) {
 }
 
 mental_health_monitor_t* mental_health_create_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_heartbeat("mental_healt_create_default", 0.0f);
+
+
     mental_health_config_t cfg = mental_health_default_config();
     return mental_health_create(&cfg);
 }
@@ -442,6 +462,10 @@ mental_health_monitor_t* mental_health_create(const mental_health_config_t* conf
     if (!config) { set_error("NULL config"); return NULL; }
 
     /* Validate config parameters */
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_heartbeat("mental_healt_create", 0.0f);
+
+
     if (config->history_window_size == 0) {
         set_error("Invalid history_window_size: 0");
         return NULL;
@@ -489,6 +513,10 @@ mental_health_monitor_t* mental_health_create(const mental_health_config_t* conf
 void mental_health_destroy(mental_health_monitor_t* mon) {
     if (!mon) return;
     if (mon->magic != MENTAL_HEALTH_MAGIC) return;
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_heartbeat("mental_healt_destroy", 0.0f);
+
+
     if (mon->lock) nimcp_mutex_free(mon->lock);
     mon->magic = 0;
     nimcp_free(mon);
@@ -496,6 +524,10 @@ void mental_health_destroy(mental_health_monitor_t* mon) {
 
 void mental_health_update(mental_health_monitor_t* mon, brain_t brain, const void* output, uint64_t time) {
     if (!is_valid_monitor(mon) || !mon->config.enable_monitoring) return;
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_heartbeat("mental_healt_update", 0.0f);
+
+
     (void)brain; (void)output;
 
     nimcp_mutex_lock(mon->lock);
@@ -514,6 +546,10 @@ disorder_severity_t mental_health_check(mental_health_monitor_t* mon, brain_t br
     /* NULL brain AND no immune system means no source of markers */
     if (!brain && !mon->immune_ref) return DISORDER_SEVERITY_NONE;
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_heartbeat("mental_healt_check", 0.0f);
+
+
     nimcp_mutex_lock(mon->lock);
     run_all_detectors(mon);
     classify_severities(mon);
@@ -530,6 +566,12 @@ disorder_severity_t mental_health_check(mental_health_monitor_t* mon, brain_t br
     }
 
     for (int i = 0; i < DISORDER_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && DISORDER_COUNT > 256) {
+            mental_health_heartbeat("mental_healt_loop",
+                             (float)(i + 1) / (float)DISORDER_COUNT);
+        }
+
         mon->score_history[i][mon->history_index] = mon->disorder_scores[i];
         if (mon->disorder_severities[i] >= DISORDER_SEVERITY_MODERATE)
             mon->stats.detections_by_disorder[i]++;
@@ -555,6 +597,10 @@ float mental_health_check_specific(mental_health_monitor_t* mon, brain_t brain, 
     if (!is_valid_monitor(mon) || d < 0 || d >= DISORDER_COUNT) return 0.0f;
     /* NULL brain AND no immune system means no source of markers */
     if (!brain && !mon->immune_ref) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_heartbeat("mental_healt_check_specific", 0.0f);
+
+
     nimcp_mutex_lock(mon->lock);
 
     /* Update markers from immune system before detection */
@@ -595,6 +641,10 @@ float mental_health_check_specific(mental_health_monitor_t* mon, brain_t brain, 
 
 bool mental_health_intervene(mental_health_monitor_t* mon, brain_t brain) {
     if (!is_valid_monitor(mon)) return false;
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_heartbeat("mental_healt_intervene", 0.0f);
+
+
     (void)brain;
     nimcp_mutex_lock(mon->lock);
     if (mon->primary_severity < DISORDER_SEVERITY_MODERATE) {
@@ -621,6 +671,10 @@ bool mental_health_intervene(mental_health_monitor_t* mon, brain_t brain) {
 
 void mental_health_clear_quarantine(mental_health_monitor_t* mon, brain_t brain) {
     if (!is_valid_monitor(mon)) return;
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_heartbeat("mental_healt_clear_quarantine", 0.0f);
+
+
     (void)brain;
     nimcp_mutex_lock(mon->lock);
     mon->quarantine_mode = false;
@@ -629,6 +683,10 @@ void mental_health_clear_quarantine(mental_health_monitor_t* mon, brain_t brain)
 
 void mental_health_get_report(mental_health_monitor_t* mon, mental_health_report_t* rpt) {
     if (!is_valid_monitor(mon) || !rpt) return;
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_heartbeat("mental_healt_get_report", 0.0f);
+
+
     nimcp_mutex_lock(mon->lock);
     memcpy(rpt->disorder_scores, mon->disorder_scores, sizeof(rpt->disorder_scores));
     memcpy(rpt->disorder_severities, mon->disorder_severities, sizeof(rpt->disorder_severities));
@@ -644,6 +702,10 @@ void mental_health_get_report(mental_health_monitor_t* mon, mental_health_report
 
 void mental_health_display_dashboard(mental_health_monitor_t* mon) {
     if (!is_valid_monitor(mon)) return;
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_heartbeat("mental_healt_display_dashboard", 0.0f);
+
+
     mental_health_report_t rpt;
     mental_health_get_report(mon, &rpt);
     printf("\n=== MENTAL HEALTH DASHBOARD ===\n");
@@ -652,6 +714,12 @@ void mental_health_display_dashboard(mental_health_monitor_t* mon) {
     printf("Decisions: %u | Checks: %u | Interventions: %u\n", rpt.total_decisions, rpt.total_checks, rpt.total_interventions);
     printf("\nDisorder Scores:\n");
     for (int i = 0; i < DISORDER_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && DISORDER_COUNT > 256) {
+            mental_health_heartbeat("mental_healt_loop",
+                             (float)(i + 1) / (float)DISORDER_COUNT);
+        }
+
         if (rpt.disorder_scores[i] > 0.1f)
             printf("  %s: %.2f [%s]\n", disorder_to_string((disorder_type_t)i), rpt.disorder_scores[i], severity_to_string(rpt.disorder_severities[i]));
     }
@@ -660,6 +728,10 @@ void mental_health_display_dashboard(mental_health_monitor_t* mon) {
 
 bool mental_health_get_stats(mental_health_monitor_t* mon, mental_health_stats_t* stats) {
     if (!is_valid_monitor(mon) || !stats) return false;
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_heartbeat("mental_healt_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(mon->lock);
     *stats = mon->stats;
     nimcp_mutex_unlock(mon->lock);
@@ -668,12 +740,20 @@ bool mental_health_get_stats(mental_health_monitor_t* mon, mental_health_stats_t
 
 void mental_health_reset_stats(mental_health_monitor_t* mon) {
     if (!is_valid_monitor(mon)) return;
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_heartbeat("mental_healt_reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(mon->lock);
     memset(&mon->stats, 0, sizeof(mental_health_stats_t));
     nimcp_mutex_unlock(mon->lock);
 }
 
 disorder_severity_t mental_health_classify_severity(float score, const mental_health_config_t* cfg) {
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_heartbeat("mental_healt_classify_severity", 0.0f);
+
+
     float mild = cfg ? cfg->mild_threshold : DEFAULT_MILD_THRESHOLD;
     float moderate = cfg ? cfg->moderate_threshold : DEFAULT_MODERATE_THRESHOLD;
     float severe = cfg ? cfg->severe_threshold : DEFAULT_SEVERE_THRESHOLD;
@@ -696,6 +776,10 @@ bool mental_health_connect_immune(mental_health_monitor_t* mon, brain_immune_sys
             return false;
 
         }  /* Reject NULL immune system */
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_heartbeat("mental_healt_connect_immune", 0.0f);
+
+
     nimcp_mutex_lock(mon->lock);
     mon->immune_ref = immune;
     nimcp_mutex_unlock(mon->lock);
@@ -731,6 +815,10 @@ const char* mental_health_get_last_error(void) { return g_last_error[0] ? g_last
 
 #ifdef NIMCP_TESTING
 bool mental_health_test_memory_reset(mental_health_monitor_t* mon, brain_t brain, float frac) {
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_heartbeat("mental_healt_test_memory_reset", 0.0f);
+
+
     (void)mon;
     /* Reject invalid fraction */
     if (frac < 0.0f || frac > 1.0f) return false;

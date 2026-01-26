@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_resonance_health_agent = NULL;
  * @brief Set health agent for resonance heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void resonance_set_health_agent(nimcp_health_agent_t* agent) {
+void resonance_set_health_agent(nimcp_health_agent_t* agent) {
     g_resonance_health_agent = agent;
 }
 
@@ -113,6 +113,10 @@ static inline float fabsf_fast(float x) {
 //=============================================================================
 
 resonance_config_t resonance_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    resonance_heartbeat("resonance_config_default", 0.0f);
+
+
     resonance_config_t config = {
         .weight_jaccard = RESONANCE_DEFAULT_WEIGHT_JACCARD,
         .weight_phase = RESONANCE_DEFAULT_WEIGHT_PHASE,
@@ -125,6 +129,10 @@ resonance_config_t resonance_config_default(void) {
 }
 
 resonance_config_t resonance_config_content_focused(void) {
+    /* Phase 8: Heartbeat at operation start */
+    resonance_heartbeat("resonance_config_content_focus", 0.0f);
+
+
     resonance_config_t config = {
         .weight_jaccard = 0.6f,
         .weight_phase = 0.1f,
@@ -137,6 +145,10 @@ resonance_config_t resonance_config_content_focused(void) {
 }
 
 resonance_config_t resonance_config_emotion_focused(void) {
+    /* Phase 8: Heartbeat at operation start */
+    resonance_heartbeat("resonance_config_emotion_focus", 0.0f);
+
+
     resonance_config_t config = {
         .weight_jaccard = 0.2f,
         .weight_phase = 0.1f,
@@ -149,6 +161,10 @@ resonance_config_t resonance_config_emotion_focused(void) {
 }
 
 resonance_config_t resonance_config_temporal_focused(void) {
+    /* Phase 8: Heartbeat at operation start */
+    resonance_heartbeat("resonance_config_temporal_focu", 0.0f);
+
+
     resonance_config_t config = {
         .weight_jaccard = 0.2f,
         .weight_phase = 0.5f,
@@ -167,6 +183,10 @@ bool resonance_config_validate(resonance_config_t* config) {
     }
 
     // Check for negative weights
+    /* Phase 8: Heartbeat at operation start */
+    resonance_heartbeat("resonance_config_validate", 0.0f);
+
+
     if (config->weight_jaccard < 0.0f ||
         config->weight_phase < 0.0f ||
         config->weight_quaternion < 0.0f ||
@@ -213,6 +233,10 @@ float resonance_jaccard(const prime_signature_t* sig1, const prime_signature_t* 
 
     // Delegate to prime_sig_jaccard from nimcp_prime_signature module
     // This ensures consistency and avoids code duplication
+    /* Phase 8: Heartbeat at operation start */
+    resonance_heartbeat("resonance_jaccard", 0.0f);
+
+
     float result = prime_sig_jaccard(sig1, sig2);
 
     if (result < 0.0f) {
@@ -226,6 +250,10 @@ float resonance_jaccard(const prime_signature_t* sig1, const prime_signature_t* 
 
 float resonance_phase_coherence(float phase1, float phase2) {
     // Wrap phases to [0, 2*pi]
+    /* Phase 8: Heartbeat at operation start */
+    resonance_heartbeat("resonance_phase_coherence", 0.0f);
+
+
     phase1 = wrap_phase(phase1);
     phase2 = wrap_phase(phase2);
 
@@ -243,6 +271,10 @@ float resonance_phase_coherence(float phase1, float phase2) {
 
 float resonance_quaternion_similarity(nimcp_quaternion_t q1, nimcp_quaternion_t q2) {
     // Normalize quaternions
+    /* Phase 8: Heartbeat at operation start */
+    resonance_heartbeat("resonance_quaternion_similarit", 0.0f);
+
+
     q1 = quat_normalize(q1);
     q2 = quat_normalize(q2);
 
@@ -267,6 +299,10 @@ float resonance_kuramoto_coherence(
     }
 
     // If same module, perfect coherence
+    /* Phase 8: Heartbeat at operation start */
+    resonance_heartbeat("resonance_kuramoto_coherence", 0.0f);
+
+
     if (module1 == module2) {
         return 1.0f;
     }
@@ -307,6 +343,10 @@ bool resonance_compute(
     }
 
     // Initialize result
+    /* Phase 8: Heartbeat at operation start */
+    resonance_heartbeat("resonance_compute", 0.0f);
+
+
     memset(result, 0, sizeof(*result));
 
     // Create working copy of config for validation
@@ -391,6 +431,10 @@ bool resonance_compute_fast(
     }
 
     // Create config copy and redistribute Kuramoto weight to other components
+    /* Phase 8: Heartbeat at operation start */
+    resonance_heartbeat("resonance_compute_fast", 0.0f);
+
+
     resonance_config_t cfg = *config;
     float kuramoto_weight = cfg.weight_kuramoto;
     cfg.weight_kuramoto = 0.0f;
@@ -422,6 +466,10 @@ float resonance_compute_jaccard_only(
         return -1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    resonance_heartbeat("resonance_compute_jaccard_only", 0.0f);
+
+
     s_stats.total_computations++;
     return resonance_jaccard(query->signature, target->signature);
 }
@@ -443,6 +491,10 @@ int resonance_compute_batch(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    resonance_heartbeat("resonance_compute_batch", 0.0f);
+
+
     if (count == 0) {
         return 0;
     }
@@ -460,6 +512,12 @@ int resonance_compute_batch(
 
     int success_count = 0;
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            resonance_heartbeat("resonance_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (resonance_compute(query, &targets[i], &cfg, kuramoto_state, &results[i])) {
             success_count++;
         }
@@ -496,6 +554,10 @@ int resonance_compute_top_k(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    resonance_heartbeat("resonance_compute_top_k", 0.0f);
+
+
     if (count == 0 || k == 0) {
         return 0;
     }
@@ -526,6 +588,12 @@ int resonance_compute_top_k(
     // Compute all resonances
     int success_count = 0;
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            resonance_heartbeat("resonance_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (resonance_compute(query, &targets[i], &cfg, kuramoto_state,
                               &all_results[i].result)) {
             all_results[i].memory_id = targets[i].memory_id;
@@ -567,6 +635,10 @@ bool resonance_compute_above_threshold(
 
     *result_count = 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    resonance_heartbeat("resonance_compute_above_thresh", 0.0f);
+
+
     if (count == 0) {
         clear_error();
         return true;
@@ -588,6 +660,12 @@ bool resonance_compute_above_threshold(
     resonance_result_t temp_result;
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            resonance_heartbeat("resonance_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (resonance_compute(query, &targets[i], &cfg, kuramoto_state, &temp_result)) {
             if (temp_result.above_threshold) {
                 results[found].memory_id = targets[i].memory_id;
@@ -609,6 +687,10 @@ bool resonance_compute_above_threshold(
 
 float resonance_modulate(float base_score, float pink_sample, float depth) {
     // Clamp inputs
+    /* Phase 8: Heartbeat at operation start */
+    resonance_heartbeat("resonance_modulate", 0.0f);
+
+
     base_score = clamp01(base_score);
     depth = clamp01(depth);
 
@@ -630,10 +712,20 @@ bool resonance_modulate_batch(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    resonance_heartbeat("resonance_modulate_batch", 0.0f);
+
+
     depth = clamp01(depth);
 
     // Vectorizable loop
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            resonance_heartbeat("resonance_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         scores[i] = clamp01(scores[i] * (1.0f + depth * pink_buffer[i]));
     }
 
@@ -650,6 +742,10 @@ void resonance_result_print(const resonance_result_t* result) {
         printf("Resonance: (null result)\n");
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    resonance_heartbeat("resonance_result_print", 0.0f);
+
 
     printf("Resonance: %.3f [Jaccard: %.3f, Phase: %.3f, Quat: %.3f, Kuramoto: %.3f] %s\n",
            result->total,
@@ -668,6 +764,10 @@ size_t resonance_explain(const resonance_result_t* result, char* buf, size_t siz
 
             return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    resonance_heartbeat("resonance_explain", 0.0f);
+
 
     const char* strength_total;
     if (result->total >= 0.8f) strength_total = "Very strong";
@@ -710,6 +810,10 @@ size_t resonance_explain(const resonance_result_t* result, char* buf, size_t siz
 void resonance_query_init(resonance_query_t* query) {
     if (!query) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    resonance_heartbeat("resonance_query_init", 0.0f);
+
+
     memset(query, 0, sizeof(*query));
     query->quaternion = quat_identity();
     query->phase = 0.0f;
@@ -718,6 +822,10 @@ void resonance_query_init(resonance_query_t* query) {
 
 void resonance_target_init(resonance_target_t* target) {
     if (!target) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    resonance_heartbeat("resonance_target_init", 0.0f);
+
 
     memset(target, 0, sizeof(*target));
     target->quaternion = quat_identity();
@@ -729,9 +837,17 @@ void resonance_target_init(resonance_target_t* target) {
 void resonance_get_stats(resonance_stats_t* stats) {
     if (!stats) return;
     *stats = s_stats;
+    /* Phase 8: Heartbeat at operation start */
+    resonance_heartbeat("resonance_get_stats", 0.0f);
+
+
 }
 
 void resonance_reset_stats(void) {
+    /* Phase 8: Heartbeat at operation start */
+    resonance_heartbeat("resonance_reset_stats", 0.0f);
+
+
     memset(&s_stats, 0, sizeof(s_stats));
 }
 

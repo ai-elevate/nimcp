@@ -39,7 +39,7 @@ static nimcp_health_agent_t* g_rcog_context_store_health_agent = NULL;
  * @brief Set health agent for rcog_context_store heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void rcog_context_store_set_health_agent(nimcp_health_agent_t* agent) {
+void rcog_context_store_set_health_agent(nimcp_health_agent_t* agent) {
     g_rcog_context_store_health_agent = agent;
 }
 
@@ -367,6 +367,10 @@ static rcog_error_t search_text(
 
 rcog_context_store_config_t rcog_context_store_default_config(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_context_store_heartbeat("rcog_context_default_config", 0.0f);
+
+
     rcog_context_store_config_t config = {0};
 
     config.max_variables = RCOG_MAX_VARIABLES;
@@ -386,6 +390,10 @@ rcog_context_store_config_t rcog_context_store_default_config(void)
 rcog_context_store_t* rcog_context_store_create(
     const rcog_context_store_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_context_store_heartbeat("rcog_context_create", 0.0f);
+
+
     rcog_context_store_t* store = nimcp_calloc(1, sizeof(rcog_context_store_t));
     if (!store) {
 
@@ -432,6 +440,10 @@ rcog_context_store_t* rcog_context_store_create(
 
 rcog_context_store_t* rcog_context_store_create_default(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_context_store_heartbeat("rcog_context_create_default", 0.0f);
+
+
     return rcog_context_store_create(NULL);
 }
 
@@ -440,10 +452,20 @@ void rcog_context_store_destroy(rcog_context_store_t* store)
     if (!store) return;
 
     /* Clear all variables */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_context_store_heartbeat("rcog_context_destroy", 0.0f);
+
+
     rcog_context_store_clear(store);
 
     /* Free cache entries */
     for (int i = 0; i < DECOMPRESSION_CACHE_SIZE; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && DECOMPRESSION_CACHE_SIZE > 256) {
+            rcog_context_store_heartbeat("rcog_context_loop",
+                             (float)(i + 1) / (float)DECOMPRESSION_CACHE_SIZE);
+        }
+
         if (store->cache[i].decompressed_data) {
             nimcp_free(store->cache[i].decompressed_data);
         }
@@ -461,9 +483,19 @@ rcog_error_t rcog_context_store_clear(rcog_context_store_t* store)
 {
     if (!store) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_context_store_heartbeat("rcog_context_clear", 0.0f);
+
+
     nimcp_mutex_lock(store->mutex);
 
     for (int i = 0; i < HASH_TABLE_SIZE; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && HASH_TABLE_SIZE > 256) {
+            rcog_context_store_heartbeat("rcog_context_loop",
+                             (float)(i + 1) / (float)HASH_TABLE_SIZE);
+        }
+
         rcog_variable_t* var = store->buckets[i];
         while (var) {
             rcog_variable_t* next = var->next;
@@ -492,6 +524,10 @@ rcog_error_t rcog_context_store_set(
     if (!store || !name || !data) return RCOG_ERROR_NULL_POINTER;
     if (strlen(name) >= RCOG_MAX_VARIABLE_NAME_LEN) return RCOG_ERROR_INVALID_CONFIG;
     if (size > store->config.max_variable_size) return RCOG_ERROR_CONTEXT_TOO_LARGE;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_context_store_heartbeat("rcog_context_set", 0.0f);
+
 
     nimcp_mutex_lock(store->mutex);
 
@@ -559,6 +595,10 @@ rcog_error_t rcog_context_store_set_text(
     const char* text)
 {
     if (!text) return RCOG_ERROR_NULL_POINTER;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_context_store_heartbeat("rcog_context_set_text", 0.0f);
+
+
     return rcog_context_store_set(store, name, text, strlen(text) + 1, RCOG_DTYPE_TEXT);
 }
 
@@ -567,6 +607,10 @@ rcog_error_t rcog_context_store_remove(
     const char* name)
 {
     if (!store || !name) return RCOG_ERROR_NULL_POINTER;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_context_store_heartbeat("rcog_context_remove", 0.0f);
+
 
     nimcp_mutex_lock(store->mutex);
 
@@ -604,6 +648,10 @@ bool rcog_context_store_exists(
 {
     if (!store || !name) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_context_store_heartbeat("rcog_context_exists", 0.0f);
+
+
     nimcp_mutex_lock(((rcog_context_store_t*)store)->mutex);
     bool exists = (find_variable(store, name) != NULL);
     nimcp_mutex_unlock(((rcog_context_store_t*)store)->mutex);
@@ -617,6 +665,10 @@ rcog_error_t rcog_context_store_get_metadata(
     rcog_variable_metadata_t* metadata)
 {
     if (!store || !name || !metadata) return RCOG_ERROR_NULL_POINTER;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_context_store_heartbeat("rcog_context_get_metadata", 0.0f);
+
 
     nimcp_mutex_lock(((rcog_context_store_t*)store)->mutex);
 
@@ -655,6 +707,10 @@ rcog_error_t rcog_context_store_list(
 {
     if (!store || !names || !count) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_context_store_heartbeat("rcog_context_list", 0.0f);
+
+
     nimcp_mutex_lock(((rcog_context_store_t*)store)->mutex);
 
     size_t n = 0;
@@ -680,6 +736,10 @@ rcog_error_t rcog_context_store_query(
     rcog_query_result_t* result)
 {
     if (!store || !name || !result) return RCOG_ERROR_NULL_POINTER;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_context_store_heartbeat("rcog_context_query", 0.0f);
+
 
     uint64_t start_time = get_current_time_ms();
     rcog_query_params_t default_params = rcog_query_params_default();
@@ -862,6 +922,10 @@ rcog_error_t rcog_context_store_exec(
 {
     if (!store || !name || !helper || !result) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_context_store_heartbeat("rcog_context_exec", 0.0f);
+
+
     nimcp_mutex_lock(store->mutex);
 
     rcog_variable_t* var = find_variable(store, name);
@@ -897,6 +961,10 @@ rcog_error_t rcog_context_store_search_all(
 
     *result_count = 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_context_store_heartbeat("rcog_context_search_all", 0.0f);
+
+
     nimcp_mutex_lock(store->mutex);
 
     for (int i = 0; i < HASH_TABLE_SIZE && *result_count < max_results; i++) {
@@ -924,6 +992,10 @@ rcog_error_t rcog_context_store_get_stats(
 {
     if (!store || !stats) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_context_store_heartbeat("rcog_context_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(((rcog_context_store_t*)store)->mutex);
 
     stats->variable_count = store->variable_count;
@@ -939,6 +1011,12 @@ rcog_error_t rcog_context_store_get_stats(
     /* Find largest variable */
     stats->max_variable_size = 0;
     for (int i = 0; i < HASH_TABLE_SIZE; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && HASH_TABLE_SIZE > 256) {
+            rcog_context_store_heartbeat("rcog_context_loop",
+                             (float)(i + 1) / (float)HASH_TABLE_SIZE);
+        }
+
         rcog_variable_t* var = store->buckets[i];
         while (var) {
             if (var->size > stats->max_variable_size) {
@@ -956,6 +1034,10 @@ void rcog_context_store_reset_stats(rcog_context_store_t* store)
 {
     if (!store) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_context_store_heartbeat("rcog_context_reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(store->mutex);
 
     store->query_count = 0;
@@ -972,6 +1054,10 @@ rcog_error_t rcog_context_store_enable_prediction(
 {
     if (!store) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_context_store_heartbeat("rcog_context_enable_prediction", 0.0f);
+
+
     nimcp_mutex_lock(store->mutex);
     store->prediction_enabled = enable;
     nimcp_mutex_unlock(store->mutex);
@@ -986,6 +1072,10 @@ rcog_error_t rcog_context_store_set_salience(
 {
     if (!store || !name) return RCOG_ERROR_NULL_POINTER;
     if (salience < 0.0f || salience > 1.0f) return RCOG_ERROR_INVALID_CONFIG;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_context_store_heartbeat("rcog_context_set_salience", 0.0f);
+
 
     nimcp_mutex_lock(store->mutex);
 
@@ -1007,6 +1097,10 @@ rcog_error_t rcog_context_store_set_shared(
     bool shared)
 {
     if (!store || !name) return RCOG_ERROR_NULL_POINTER;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_context_store_heartbeat("rcog_context_set_shared", 0.0f);
+
 
     nimcp_mutex_lock(store->mutex);
 
@@ -1030,6 +1124,10 @@ rcog_error_t rcog_context_store_get_shared(
 {
     if (!store || !names || !count) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_context_store_heartbeat("rcog_context_get_shared", 0.0f);
+
+
     nimcp_mutex_lock(((rcog_context_store_t*)store)->mutex);
 
     size_t n = 0;
@@ -1052,6 +1150,10 @@ rcog_error_t rcog_context_store_get_shared(
 rcog_error_t rcog_context_store_lock(rcog_context_store_t* store)
 {
     if (!store) return RCOG_ERROR_NULL_POINTER;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_context_store_heartbeat("rcog_context_lock", 0.0f);
+
+
     nimcp_mutex_lock(store->mutex);
     return RCOG_OK;
 }
@@ -1059,6 +1161,10 @@ rcog_error_t rcog_context_store_lock(rcog_context_store_t* store)
 rcog_error_t rcog_context_store_unlock(rcog_context_store_t* store)
 {
     if (!store) return RCOG_ERROR_NULL_POINTER;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_context_store_heartbeat("rcog_context_unlock", 0.0f);
+
+
     nimcp_mutex_unlock(store->mutex);
     return RCOG_OK;
 }
@@ -1069,9 +1175,19 @@ rcog_error_t rcog_context_store_unlock(rcog_context_store_t* store)
 
 int rcog_context_store_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_context_store_heartbeat("rcog_context_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Recursive_Cognition_Context_Store_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                rcog_context_store_heartbeat("rcog_context_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Log self-knowledge observations */
         }
     }

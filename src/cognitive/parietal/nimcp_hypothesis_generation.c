@@ -37,7 +37,7 @@ static nimcp_health_agent_t* g_hypothesis_generation_health_agent = NULL;
  * @brief Set health agent for hypothesis_generation heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void hypothesis_generation_set_health_agent(nimcp_health_agent_t* agent) {
+void hypothesis_generation_set_health_agent(nimcp_health_agent_t* agent) {
     g_hypothesis_generation_health_agent = agent;
 }
 
@@ -99,6 +99,10 @@ static float apply_mod(const hypothesis_engine_t* e, float v) {
 }
 
 hypogen_config_t hypothesis_engine_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    hypothesis_generation_heartbeat("hypothesis_g_hypothesis_engine_de", 0.0f);
+
+
     return (hypogen_config_t){
         .min_explanatory_power = 0.3f,
         .parsimony_weight = 0.3f,
@@ -112,12 +116,20 @@ hypogen_config_t hypothesis_engine_default_config(void) {
 }
 
 hypothesis_engine_t* hypothesis_engine_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    hypothesis_generation_heartbeat("hypothesis_g_hypothesis_engine_cr", 0.0f);
+
+
     hypogen_config_t c = hypothesis_engine_default_config();
     return hypothesis_engine_create_custom(&c);
 }
 
 hypothesis_engine_t* hypothesis_engine_create_custom(const hypogen_config_t* config) {
     if (!config) { set_error("NULL config"); return NULL; }
+    /* Phase 8: Heartbeat at operation start */
+    hypothesis_generation_heartbeat("hypothesis_g_hypothesis_engine_cr", 0.0f);
+
+
     hypothesis_engine_t* e = nimcp_calloc(1, sizeof(hypothesis_engine_t));
     if (!e) {
 
@@ -134,6 +146,10 @@ hypothesis_engine_t* hypothesis_engine_create_custom(const hypogen_config_t* con
 }
 
 void hypothesis_engine_destroy(hypothesis_engine_t* engine) {
+    /* Phase 8: Heartbeat at operation start */
+    hypothesis_generation_heartbeat("hypothesis_g_hypothesis_engine_de", 0.0f);
+
+
     if (engine) nimcp_free(engine);
 }
 
@@ -178,6 +194,10 @@ hypogen_theory_t* hypothesis_abductive_inference(hypothesis_engine_t* engine,
     if (!engine || !surprising_fact) return NULL;
     if (!engine->config.enable_abduction) return NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    hypothesis_generation_heartbeat("hypothesis_g_hypothesis_abductive", 0.0f);
+
+
     hypogen_theory_t* t = nimcp_calloc(1, sizeof(hypogen_theory_t));
     if (!t) {
 
@@ -205,10 +225,20 @@ int hypothesis_rank_theories(hypothesis_engine_t* engine,
     hypogen_theory_t** theories, uint32_t num_theories, uint32_t* rankings) {
     if (!engine || !theories || !rankings) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    hypothesis_generation_heartbeat("hypothesis_g_hypothesis_rank_theo", 0.0f);
+
+
     for (uint32_t i = 0; i < num_theories; i++) rankings[i] = i;
 
     /* Bubble sort by posterior */
     for (uint32_t i = 0; i < num_theories - 1; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_theories > 256) {
+            hypothesis_generation_heartbeat("hypothesis_g_loop",
+                             (float)(i + 1) / (float)num_theories);
+        }
+
         for (uint32_t j = 0; j < num_theories - i - 1; j++) {
             if (theories[rankings[j]]->posterior < theories[rankings[j+1]]->posterior) {
                 uint32_t tmp = rankings[j];
@@ -237,6 +267,12 @@ hypogen_prediction_t** hypothesis_derive_predictions(hypothesis_engine_t* engine
 
     *num_predictions = 0;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            hypothesis_generation_heartbeat("hypothesis_g_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         hypogen_prediction_t* p = nimcp_calloc(1, sizeof(hypogen_prediction_t));
         if (!p) break;
 
@@ -259,6 +295,10 @@ int hypothesis_test_prediction(hypothesis_engine_t* engine,
     if (!engine || !prediction || !observation) return -1;
 
     /* Simple test: compare confidence */
+    /* Phase 8: Heartbeat at operation start */
+    hypothesis_generation_heartbeat("hypothesis_g_hypothesis_test_pred", 0.0f);
+
+
     if (prediction->confidence > 0.5f && observation->confidence > 0.5f) {
         engine->stats.hypotheses_confirmed++;
         return 1;  /* Confirmed */
@@ -272,6 +312,10 @@ hypogen_theory_t* hypothesis_revise_theory(hypothesis_engine_t* engine,
     if (!engine || !theory || !new_evidence) return NULL;
 
     /* Bayesian update */
+    /* Phase 8: Heartbeat at operation start */
+    hypothesis_generation_heartbeat("hypothesis_g_hypothesis_revise_th", 0.0f);
+
+
     float likelihood = new_evidence->confidence;
     theory->posterior = theory->posterior * likelihood;
     theory->posterior = fmaxf(0.01f, fminf(0.99f, theory->posterior));
@@ -282,6 +326,9 @@ hypogen_theory_t* hypothesis_revise_theory(hypothesis_engine_t* engine,
 int hypothesis_evaluate_theory(hypothesis_engine_t* engine,
     const hypogen_theory_t* theory, float* score) {
     if (!engine || !theory || !score) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    hypothesis_generation_heartbeat("hypothesis_evaluate", 0.0f);
 
     *score = theory->explanatory_power * 0.4f +
              theory->parsimony * engine->config.parsimony_weight +
@@ -298,9 +345,19 @@ int hypothesis_evaluate_theory(hypothesis_engine_t* engine,
 
 void hypothesis_free_theory(hypogen_theory_t* theory) {
     if (!theory) return;
+    /* Phase 8: Heartbeat at operation start */
+    hypothesis_generation_heartbeat("hypothesis_g_hypothesis_free_theo", 0.0f);
+
+
     if (theory->parameters) nimcp_free(theory->parameters);
     if (theory->assumptions) {
         for (uint32_t i = 0; i < theory->num_assumptions; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && theory->num_assumptions > 256) {
+                hypothesis_generation_heartbeat("hypothesis_g_loop",
+                                 (float)(i + 1) / (float)theory->num_assumptions);
+            }
+
             if (theory->assumptions[i]) nimcp_free(theory->assumptions[i]);
         }
         nimcp_free(theory->assumptions);
@@ -310,18 +367,30 @@ void hypothesis_free_theory(hypogen_theory_t* theory) {
 
 void hypothesis_free_prediction(hypogen_prediction_t* prediction) {
     if (!prediction) return;
+    /* Phase 8: Heartbeat at operation start */
+    hypothesis_generation_heartbeat("hypothesis_g_hypothesis_free_pred", 0.0f);
+
+
     if (prediction->predicted_values) nimcp_free(prediction->predicted_values);
     nimcp_free(prediction);
 }
 
 int hypothesis_set_inflammation(hypothesis_engine_t* engine, float level) {
     if (!engine) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    hypothesis_generation_heartbeat("hypothesis_g_hypothesis_set_infla", 0.0f);
+
+
     engine->inflammation = fmaxf(0, fminf(1, level));
     return 0;
 }
 
 int hypothesis_set_fatigue(hypothesis_engine_t* engine, float level) {
     if (!engine) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    hypothesis_generation_heartbeat("hypothesis_g_hypothesis_set_fatig", 0.0f);
+
+
     engine->fatigue = fmaxf(0, fminf(1, level));
     return 0;
 }
@@ -329,10 +398,18 @@ int hypothesis_set_fatigue(hypothesis_engine_t* engine, float level) {
 int hypothesis_get_stats(const hypothesis_engine_t* engine, hypogen_stats_t* stats) {
     if (!engine || !stats) return -1;
     *stats = engine->stats;
+    /* Phase 8: Heartbeat at operation start */
+    hypothesis_generation_heartbeat("hypothesis_g_hypothesis_get_stats", 0.0f);
+
+
     return 0;
 }
 
 void hypothesis_reset_stats(hypothesis_engine_t* engine) {
+    /* Phase 8: Heartbeat at operation start */
+    hypothesis_generation_heartbeat("hypothesis_g_hypothesis_reset_sta", 0.0f);
+
+
     if (engine) memset(&engine->stats, 0, sizeof(engine->stats));
 }
 
@@ -467,6 +544,10 @@ hypogen_theory_t* hypothesis_search_mcts(
     uint32_t num_iterations
 ) {
     if (!engine || !theories || num_theories == 0) return NULL;
+    /* Phase 8: Heartbeat at operation start */
+    hypothesis_generation_heartbeat("hypothesis_g_hypothesis_search_mc", 0.0f);
+
+
     if (num_theories > 32) num_theories = 32;  /* Limit for bitmask */
 
     hypogen_mcts_state_t initial_state = {
@@ -547,6 +628,10 @@ hypogen_theory_t* hypothesis_sample_mc(
     }
 
     /* Find max posterior for numerical stability */
+    /* Phase 8: Heartbeat at operation start */
+    hypothesis_generation_heartbeat("hypothesis_g_hypothesis_sample_mc", 0.0f);
+
+
     float max_posterior = theories[0]->posterior;
     for (uint32_t i = 1; i < num_theories; i++) {
         if (theories[i]->posterior > max_posterior) {
@@ -560,6 +645,12 @@ hypogen_theory_t* hypothesis_sample_mc(
 
     float sum_exp = 0.0f;
     for (uint32_t i = 0; i < num_theories; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_theories > 256) {
+            hypothesis_generation_heartbeat("hypothesis_g_loop",
+                             (float)(i + 1) / (float)num_theories);
+        }
+
         probs[i] = expf((theories[i]->posterior - max_posterior) / temperature);
         sum_exp += probs[i];
     }
@@ -570,6 +661,12 @@ hypogen_theory_t* hypothesis_sample_mc(
     hypogen_theory_t* selected = theories[num_theories - 1];
 
     for (uint32_t i = 0; i < num_theories; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_theories > 256) {
+            hypothesis_generation_heartbeat("hypothesis_g_loop",
+                             (float)(i + 1) / (float)num_theories);
+        }
+
         cumulative += probs[i];
         if (r < cumulative) {
             selected = theories[i];
@@ -600,10 +697,20 @@ float hypothesis_estimate_confidence_mc(
 ) {
     if (!engine || !theory || num_samples == 0) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    hypothesis_generation_heartbeat("hypothesis_g_hypothesis_estimate_", 0.0f);
+
+
     float total = 0.0f;
     float base_posterior = theory->posterior;
 
     for (uint32_t s = 0; s < num_samples; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && num_samples > 256) {
+            hypothesis_generation_heartbeat("hypothesis_g_loop",
+                             (float)(s + 1) / (float)num_samples);
+        }
+
         /* Add noise to simulate uncertainty in evidence */
         float noise = mc_random_normal(&engine->rand_seed, 0.0f, 0.1f);
         float sampled_posterior = base_posterior + noise;
@@ -637,7 +744,17 @@ void hypothesis_add_exploration_noise_mc(
 ) {
     if (!engine || !theories || num_theories == 0) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    hypothesis_generation_heartbeat("hypothesis_g_hypothesis_add_explo", 0.0f);
+
+
     for (uint32_t i = 0; i < num_theories; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_theories > 256) {
+            hypothesis_generation_heartbeat("hypothesis_g_loop",
+                             (float)(i + 1) / (float)num_theories);
+        }
+
         float noise = mc_random_normal(&engine->rand_seed, 0.0f, noise_scale);
         theories[i]->posterior += noise;
 
@@ -670,9 +787,19 @@ uint32_t* hypothesis_get_mc_seed(hypothesis_engine_t* engine) {
 int hypothesis_generation_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    hypothesis_generation_heartbeat("hypothesis_g_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Hypothesis_Generation_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                hypothesis_generation_heartbeat("hypothesis_g_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Hypothesis generation self-knowledge: %s", self->observations[i]);
         }
     }

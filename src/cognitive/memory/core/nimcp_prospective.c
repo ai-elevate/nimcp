@@ -39,7 +39,7 @@ static nimcp_health_agent_t* g_prospective_health_agent = NULL;
  * @brief Set health agent for prospective heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void prospective_set_health_agent(nimcp_health_agent_t* agent) {
+void prospective_set_health_agent(nimcp_health_agent_t* agent) {
     g_prospective_health_agent = agent;
 }
 
@@ -128,6 +128,12 @@ static prospective_intention_t* find_intention(prospective_memory_t pm, uint64_t
     }
 
     for (size_t i = 0; i < pm->num_intentions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pm->num_intentions > 256) {
+            prospective_heartbeat("prospective_loop",
+                             (float)(i + 1) / (float)pm->num_intentions);
+        }
+
         if (pm->intentions[i].intention_id == id) {
             return &pm->intentions[i];
         }
@@ -149,6 +155,12 @@ static prospective_intention_t* find_free_slot(prospective_memory_t pm) {
 
     // Look for empty slot (id = PROSP_INVALID_ID)
     for (size_t i = 0; i < pm->num_intentions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pm->num_intentions > 256) {
+            prospective_heartbeat("prospective_loop",
+                             (float)(i + 1) / (float)pm->num_intentions);
+        }
+
         if (pm->intentions[i].intention_id == PROSP_INVALID_ID) {
             return &pm->intentions[i];
         }
@@ -247,6 +259,12 @@ static bool add_to_active_monitors(prospective_memory_t pm, prospective_intentio
 
     // Check if already monitored
     for (size_t i = 0; i < pm->num_active; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pm->num_active > 256) {
+            prospective_heartbeat("prospective_loop",
+                             (float)(i + 1) / (float)pm->num_active);
+        }
+
         if (pm->active_monitors[i] == intent) {
             return true; // Already there
         }
@@ -264,6 +282,12 @@ static void remove_from_active_monitors(prospective_memory_t pm, prospective_int
     if (!pm || !intent) return;
 
     for (size_t i = 0; i < pm->num_active; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pm->num_active > 256) {
+            prospective_heartbeat("prospective_loop",
+                             (float)(i + 1) / (float)pm->num_active);
+        }
+
         if (pm->active_monitors[i] == intent) {
             // Shift remaining down
             for (size_t j = i; j < pm->num_active - 1; j++) {
@@ -534,6 +558,12 @@ NIMCP_EXPORT prospective_memory_t prospective_create(
 
     // Initialize all slots as empty
     for (size_t i = 0; i < cfg.max_intentions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && cfg.max_intentions > 256) {
+            prospective_heartbeat("prospective_loop",
+                             (float)(i + 1) / (float)cfg.max_intentions);
+        }
+
         init_intention(&pm->intentions[i]);
     }
 
@@ -574,6 +604,12 @@ NIMCP_EXPORT void prospective_destroy(prospective_memory_t pm) {
     // Free intention resources
     if (pm->intentions) {
         for (size_t i = 0; i < pm->max_intentions; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && pm->max_intentions > 256) {
+                prospective_heartbeat("prospective_loop",
+                                 (float)(i + 1) / (float)pm->max_intentions);
+            }
+
             free_intention(&pm->intentions[i]);
         }
         free(pm->intentions);
@@ -595,6 +631,12 @@ NIMCP_EXPORT prospective_error_t prospective_reset(prospective_memory_t pm) {
 
     // Free and reinitialize all intentions
     for (size_t i = 0; i < pm->max_intentions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pm->max_intentions > 256) {
+            prospective_heartbeat("prospective_loop",
+                             (float)(i + 1) / (float)pm->max_intentions);
+        }
+
         free_intention(&pm->intentions[i]);
         init_intention(&pm->intentions[i]);
     }
@@ -1234,6 +1276,12 @@ NIMCP_EXPORT int prospective_signal_activity_complete(
     int num_triggered = 0;
 
     for (size_t i = 0; i < pm->num_intentions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pm->num_intentions > 256) {
+            prospective_heartbeat("prospective_loop",
+                             (float)(i + 1) / (float)pm->num_intentions);
+        }
+
         prospective_intention_t* intent = &pm->intentions[i];
         if (intent->intention_id == PROSP_INVALID_ID) continue;
         if (intent->type != PROSP_ACTIVITY_BASED) continue;
@@ -1262,6 +1310,12 @@ NIMCP_EXPORT int prospective_signal_location(
     int num_triggered = 0;
 
     for (size_t i = 0; i < pm->num_intentions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pm->num_intentions > 256) {
+            prospective_heartbeat("prospective_loop",
+                             (float)(i + 1) / (float)pm->num_intentions);
+        }
+
         prospective_intention_t* intent = &pm->intentions[i];
         if (intent->intention_id == PROSP_INVALID_ID) continue;
         if (intent->type != PROSP_LOCATION_BASED) continue;
@@ -1469,6 +1523,12 @@ NIMCP_EXPORT size_t prospective_prune(prospective_memory_t pm, float min_age) {
     size_t removed = 0;
 
     for (size_t i = 0; i < pm->num_intentions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pm->num_intentions > 256) {
+            prospective_heartbeat("prospective_loop",
+                             (float)(i + 1) / (float)pm->num_intentions);
+        }
+
         prospective_intention_t* intent = &pm->intentions[i];
         if (intent->intention_id == PROSP_INVALID_ID) continue;
 
@@ -1603,6 +1663,12 @@ NIMCP_EXPORT prospective_error_t prospective_get_urgent(
 
     size_t num_entries = 0;
     for (size_t i = 0; i < pm->num_intentions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pm->num_intentions > 256) {
+            prospective_heartbeat("prospective_loop",
+                             (float)(i + 1) / (float)pm->num_intentions);
+        }
+
         prospective_intention_t* intent = &pm->intentions[i];
         if (intent->intention_id == PROSP_INVALID_ID) continue;
         if (intent->status != PROSP_PENDING && intent->status != PROSP_TRIGGERED) continue;
@@ -1643,6 +1709,12 @@ NIMCP_EXPORT prospective_error_t prospective_get_urgent(
     size_t count = (num_entries < k) ? num_entries : k;
     if (intentions_out) {
         for (size_t i = 0; i < count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && count > 256) {
+                prospective_heartbeat("prospective_loop",
+                                 (float)(i + 1) / (float)count);
+            }
+
             intentions_out[i] = *entries[i].intent;
         }
     }
@@ -1799,6 +1871,12 @@ NIMCP_EXPORT prospective_error_t prospective_apply_decay(
     size_t pending_count = 0;
 
     for (size_t i = 0; i < pm->num_intentions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pm->num_intentions > 256) {
+            prospective_heartbeat("prospective_loop",
+                             (float)(i + 1) / (float)pm->num_intentions);
+        }
+
         prospective_intention_t* intent = &pm->intentions[i];
         if (intent->intention_id == PROSP_INVALID_ID) continue;
         if (intent->status != PROSP_PENDING) continue;

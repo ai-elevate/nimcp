@@ -46,7 +46,7 @@ static nimcp_health_agent_t* g_symbolic_logic_lgss_loader_health_agent = NULL;
  * @brief Set health agent for symbolic_logic_lgss_loader heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void symbolic_logic_lgss_loader_set_health_agent(nimcp_health_agent_t* agent) {
+void symbolic_logic_lgss_loader_set_health_agent(nimcp_health_agent_t* agent) {
     g_symbolic_logic_lgss_loader_health_agent = agent;
 }
 
@@ -469,6 +469,12 @@ static void json_free_value(json_value_t* val) {
             break;
         case JSON_ARRAY:
             for (size_t i = 0; i < val->array.count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && val->array.count > 256) {
+                    symbolic_logic_lgss_loader_heartbeat("symbolic_log_loop",
+                                     (float)(i + 1) / (float)val->array.count);
+                }
+
                 json_free_value(val->array.items[i]);
             }
             if (val->array.items) nimcp_free(val->array.items);
@@ -568,6 +574,10 @@ bool symbolic_logic_lgss_parse_domain(const char* domain_str, safety_domain_t* d
     if (strcmp(domain_str, "REPLICATION") == 0) { *domain_out = SAFETY_DOMAIN_REPLICATION; return true; }
     if (strcmp(domain_str, "GOVERNANCE") == 0) { *domain_out = SAFETY_DOMAIN_GOVERNANCE; return true; }
 
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_lgss_loader_heartbeat("symbolic_log_symbolic_logic_lgss_", 0.0f);
+
+
     return false;
 }
 
@@ -580,6 +590,10 @@ bool symbolic_logic_lgss_parse_severity(const char* severity_str, safety_severit
     if (strcmp(severity_str, "LOW") == 0) { *severity_out = SAFETY_SEVERITY_LOW; return true; }
     if (strcmp(severity_str, "INFO") == 0) { *severity_out = SAFETY_SEVERITY_INFO; return true; }
 
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_lgss_loader_heartbeat("symbolic_log_symbolic_logic_lgss_", 0.0f);
+
+
     return false;
 }
 
@@ -591,6 +605,10 @@ bool symbolic_logic_lgss_parse_action(const char* action_str, safety_action_t* a
     if (strcmp(action_str, "ESCALATE") == 0) { *action_out = SAFETY_ACTION_ESCALATE; return true; }
     if (strcmp(action_str, "LOG") == 0) { *action_out = SAFETY_ACTION_LOG; return true; }
     if (strcmp(action_str, "WARN") == 0) { *action_out = SAFETY_ACTION_WARN; return true; }
+
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_lgss_loader_heartbeat("symbolic_log_symbolic_logic_lgss_", 0.0f);
+
 
     return false;
 }
@@ -608,6 +626,10 @@ bool symbolic_logic_lgss_parse_operator(const char* op_str, safety_condition_op_
     if (strcmp(op_str, "NOT_IN") == 0) { *op_out = SAFETY_COND_OP_NOT_IN; return true; }
     if (strcmp(op_str, "CONTAINS") == 0) { *op_out = SAFETY_COND_OP_CONTAINS; return true; }
     if (strcmp(op_str, "MATCHES") == 0) { *op_out = SAFETY_COND_OP_MATCHES; return true; }
+
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_lgss_loader_heartbeat("symbolic_log_symbolic_logic_lgss_", 0.0f);
+
 
     return false;
 }
@@ -637,6 +659,10 @@ const char* symbolic_logic_lgss_error_string(lgss_error_t error_code) {
 
 void symbolic_logic_lgss_init_result(lgss_load_result_t* result) {
     if (!result) return;
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_lgss_loader_heartbeat("symbolic_log_symbolic_logic_lgss_", 0.0f);
+
+
     memset(result, 0, sizeof(lgss_load_result_t));
     result->error_code = LGSS_OK;
 }
@@ -704,6 +730,10 @@ lgss_error_t symbolic_logic_lgss_parse_rule(
     }
 
     // Parse JSON
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_lgss_loader_heartbeat("symbolic_log_symbolic_logic_lgss_", 0.0f);
+
+
     char parse_error[256];
     json_value_t* root = json_parse(rule_json, 0, parse_error, sizeof(parse_error));
     if (!root) {
@@ -807,6 +837,12 @@ lgss_error_t symbolic_logic_lgss_parse_rule(
         }
 
         for (size_t i = 0; i < num_conds; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_conds > 256) {
+                symbolic_logic_lgss_loader_heartbeat("symbolic_log_loop",
+                                 (float)(i + 1) / (float)num_conds);
+            }
+
             json_value_t* cond_obj = json_array_get(conditions_val, i);
             lgss_error_t err = parse_condition(cond_obj, &rule_out->conditions[i]);
             if (err != LGSS_OK) {
@@ -837,6 +873,10 @@ lgss_error_t symbolic_logic_lgss_validate_schema(
         if (error_msg) snprintf(error_msg, error_msg_size, "NULL JSON string");
         return LGSS_ERROR_NULL_ARG;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_lgss_loader_heartbeat("symbolic_log_symbolic_logic_lgss_", 0.0f);
+
 
     if (json_length == 0) json_length = strlen(json_string);
 
@@ -886,6 +926,12 @@ lgss_error_t symbolic_logic_lgss_validate_schema(
     // Validate each rule
     size_t num_rules = json_array_length(rules_val);
     for (size_t i = 0; i < num_rules; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_rules > 256) {
+            symbolic_logic_lgss_loader_heartbeat("symbolic_log_loop",
+                             (float)(i + 1) / (float)num_rules);
+        }
+
         json_value_t* rule_obj = json_array_get(rules_val, i);
         if (!rule_obj || rule_obj->type != JSON_OBJECT) {
             json_free_value(root);
@@ -896,6 +942,12 @@ lgss_error_t symbolic_logic_lgss_validate_schema(
         // Check required fields
         const char* required_fields[] = {"name", "domain", "severity", "action"};
         for (int f = 0; f < 4; f++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((f & 0xFF) == 0 && 4 > 256) {
+                symbolic_logic_lgss_loader_heartbeat("symbolic_log_loop",
+                                 (float)(f + 1) / (float)4);
+            }
+
             if (!json_object_get(rule_obj, required_fields[f])) {
                 json_free_value(root);
                 if (error_msg) snprintf(error_msg, error_msg_size,
@@ -950,6 +1002,10 @@ bool symbolic_logic_lgss_get_version(
     size_t version_size)
 {
     if (!json_string || !version_out || version_size == 0) return false;
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_lgss_loader_heartbeat("symbolic_log_symbolic_logic_lgss_", 0.0f);
+
+
     if (json_length == 0) json_length = strlen(json_string);
 
     char error[256];
@@ -984,6 +1040,10 @@ int symbolic_logic_lgss_load_file(
     safety_kb_t* kb,
     lgss_load_result_t* result)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_lgss_loader_heartbeat("symbolic_log_symbolic_logic_lgss_", 0.0f);
+
+
     lgss_load_result_t local_result;
     if (!result) result = &local_result;
     symbolic_logic_lgss_init_result(result);
@@ -1066,6 +1126,10 @@ int symbolic_logic_lgss_load_string(
     safety_kb_t* kb,
     lgss_load_result_t* result)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_lgss_loader_heartbeat("symbolic_log_symbolic_logic_lgss_", 0.0f);
+
+
     lgss_load_result_t local_result;
     if (!result) result = &local_result;
     symbolic_logic_lgss_init_result(result);
@@ -1121,6 +1185,12 @@ int symbolic_logic_lgss_load_string(
     size_t num_rules = json_array_length(rules_val);
 
     for (size_t i = 0; i < num_rules; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_rules > 256) {
+            symbolic_logic_lgss_loader_heartbeat("symbolic_log_loop",
+                             (float)(i + 1) / (float)num_rules);
+        }
+
         json_value_t* rule_obj = json_array_get(rules_val, i);
 
         // Check if rule is enabled (skip disabled)
@@ -1168,6 +1238,12 @@ int symbolic_logic_lgss_load_string(
             }
 
             for (size_t j = 0; j < num_conds; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && num_conds > 256) {
+                    symbolic_logic_lgss_loader_heartbeat("symbolic_log_loop",
+                                     (float)(j + 1) / (float)num_conds);
+                }
+
                 json_value_t* cond_obj = json_array_get(conditions_val, j);
                 lgss_error_t err = parse_condition(cond_obj, &rule.conditions[j]);
                 if (err == LGSS_OK) {
@@ -1206,6 +1282,10 @@ int symbolic_logic_lgss_export(
 {
     if (!kb || !output_buffer || buffer_size == 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_lgss_loader_heartbeat("symbolic_log_symbolic_logic_lgss_", 0.0f);
+
+
     char* pos = output_buffer;
     size_t remaining = buffer_size;
     int written;
@@ -1219,6 +1299,12 @@ int symbolic_logic_lgss_export(
 
     // Write each rule
     for (uint32_t i = 0; i < kb->num_rules; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && kb->num_rules > 256) {
+            symbolic_logic_lgss_loader_heartbeat("symbolic_log_loop",
+                             (float)(i + 1) / (float)kb->num_rules);
+        }
+
         const safety_rule_t* rule = &kb->rules[i];
 
         if (i > 0) {
@@ -1252,6 +1338,12 @@ int symbolic_logic_lgss_export(
 
         // Write conditions
         for (uint32_t j = 0; j < rule->num_conditions; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && rule->num_conditions > 256) {
+                symbolic_logic_lgss_loader_heartbeat("symbolic_log_loop",
+                                 (float)(j + 1) / (float)rule->num_conditions);
+            }
+
             const safety_condition_t* cond = &rule->conditions[j];
 
             if (j > 0) {

@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_predictive_attention_fep_bridge_health_agent = NU
  * @brief Set health agent for predictive_attention_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void predictive_attention_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void predictive_attention_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_predictive_attention_fep_bridge_health_agent = agent;
 }
 
@@ -290,6 +290,10 @@ static void store_previous_state(pa_fep_bridge_t* bridge) {
  *===========================================================================*/
 
 pa_fep_config_t pa_fep_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_config_defaul", 0.0f);
+
+
     pa_fep_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -317,6 +321,10 @@ pa_fep_config_t pa_fep_config_default(void) {
 }
 
 pa_fep_bridge_t* pa_fep_bridge_create(const pa_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_create", 0.0f);
+
+
     pa_fep_bridge_t* bridge = nimcp_calloc(1, sizeof(pa_fep_bridge_t));
     if (!bridge) {
 
@@ -370,6 +378,10 @@ void pa_fep_bridge_destroy(pa_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Unregister if still registered */
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_destro", 0.0f);
+
+
     if (bridge->registered) {
         pa_fep_bridge_unregister(bridge);
     }
@@ -382,6 +394,10 @@ void pa_fep_bridge_destroy(pa_fep_bridge_t* bridge) {
 
 int pa_fep_bridge_reset(pa_fep_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_reset", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -423,6 +439,10 @@ int pa_fep_bridge_register(
     uint32_t* bridge_id_out
 ) {
     if (!bridge || !orchestrator) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_regist", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -477,6 +497,10 @@ int pa_fep_bridge_register(
 int pa_fep_bridge_unregister(pa_fep_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_unregi", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->registered) {
@@ -508,6 +532,10 @@ int pa_fep_bridge_unregister(pa_fep_bridge_t* bridge) {
 bool pa_fep_bridge_is_registered(const pa_fep_bridge_t* bridge) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_is_reg", 0.0f);
+
+
     nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->base.mutex);
     bool registered = bridge->registered;
     nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->base.mutex);
@@ -517,6 +545,10 @@ bool pa_fep_bridge_is_registered(const pa_fep_bridge_t* bridge) {
 
 uint32_t pa_fep_bridge_get_id(const pa_fep_bridge_t* bridge) {
     if (!bridge) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_get_id", 0.0f);
+
 
     nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->base.mutex);
     uint32_t id = bridge->registered ? bridge->bridge_id : 0;
@@ -530,6 +562,10 @@ uint32_t pa_fep_bridge_get_id(const pa_fep_bridge_t* bridge) {
  *===========================================================================*/
 
 int pa_fep_update_callback(void* handle) {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_update_callba", 0.0f);
+
+
     pa_fep_bridge_t* bridge = (pa_fep_bridge_t*)handle;
     if (!bridge) return -1;
 
@@ -625,6 +661,10 @@ int pa_fep_update_callback(void* handle) {
 
 void pa_fep_destroy_callback(void* handle) {
     /* No-op: Bridge is destroyed separately via pa_fep_bridge_destroy() */
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_destroy_callb", 0.0f);
+
+
     (void)handle;
 }
 
@@ -634,6 +674,10 @@ void pa_fep_destroy_callback(void* handle) {
 
 int pa_fep_bridge_force_update(pa_fep_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_force_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -665,6 +709,10 @@ int pa_fep_bridge_update_prediction_accuracy(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_update", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.prediction_accuracy = clamp_f(accuracy, 0.0f, 1.0f);
     bridge->stats.prediction_computations++;
@@ -679,6 +727,10 @@ int pa_fep_bridge_update_attention_precision(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_update", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.attention_precision = clamp_f(precision, 0.0f, 1.0f);
     bridge->stats.precision_updates++;
@@ -692,6 +744,10 @@ int pa_fep_bridge_update_error_signal_quality(
     float quality
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_update", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.error_signal_quality = clamp_f(quality, 0.0f, 1.0f);
@@ -710,6 +766,10 @@ int pa_fep_bridge_get_metrics(
 ) {
     if (!bridge || !metrics_out) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_get_me", 0.0f);
+
+
     nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->base.mutex);
     *metrics_out = bridge->metrics;
     nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->base.mutex);
@@ -723,6 +783,10 @@ int pa_fep_bridge_get_stats(
 ) {
     if (!bridge || !stats_out) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_get_st", 0.0f);
+
+
     nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->base.mutex);
     *stats_out = bridge->stats;
     nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->base.mutex);
@@ -732,6 +796,10 @@ int pa_fep_bridge_get_stats(
 
 int pa_fep_bridge_reset_stats(pa_fep_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_reset_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(pa_fep_stats_t));
@@ -745,6 +813,10 @@ int pa_fep_bridge_reset_stats(pa_fep_bridge_t* bridge) {
 float pa_fep_bridge_get_free_energy(const pa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_get_fr", 0.0f);
+
+
     nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->base.mutex);
     float fe = bridge->metrics.free_energy;
     nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->base.mutex);
@@ -754,6 +826,10 @@ float pa_fep_bridge_get_free_energy(const pa_fep_bridge_t* bridge) {
 
 float pa_fep_bridge_get_prediction_accuracy(const pa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_get_pr", 0.0f);
+
 
     nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->base.mutex);
     float pa = bridge->metrics.prediction_accuracy;
@@ -765,6 +841,10 @@ float pa_fep_bridge_get_prediction_accuracy(const pa_fep_bridge_t* bridge) {
 float pa_fep_bridge_get_prediction_error(const pa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_get_pr", 0.0f);
+
+
     nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->base.mutex);
     float pe = bridge->metrics.prediction_error;
     nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->base.mutex);
@@ -774,6 +854,10 @@ float pa_fep_bridge_get_prediction_error(const pa_fep_bridge_t* bridge) {
 
 float pa_fep_bridge_get_attention_precision(const pa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_get_at", 0.0f);
+
 
     nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->base.mutex);
     float ap = bridge->metrics.attention_precision;
@@ -789,6 +873,10 @@ float pa_fep_bridge_get_attention_precision(const pa_fep_bridge_t* bridge) {
 pa_fep_state_t pa_fep_bridge_get_state(const pa_fep_bridge_t* bridge) {
     if (!bridge) return PA_FEP_STATE_ERROR;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_get_st", 0.0f);
+
+
     nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->base.mutex);
     pa_fep_state_t state = bridge->state;
     nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->base.mutex);
@@ -799,6 +887,10 @@ pa_fep_state_t pa_fep_bridge_get_state(const pa_fep_bridge_t* bridge) {
 bool pa_fep_bridge_is_degraded(const pa_fep_bridge_t* bridge) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_is_deg", 0.0f);
+
+
     nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->base.mutex);
     bool degraded = (bridge->state == PA_FEP_STATE_DEGRADED);
     nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->base.mutex);
@@ -808,6 +900,10 @@ bool pa_fep_bridge_is_degraded(const pa_fep_bridge_t* bridge) {
 
 bool pa_fep_bridge_is_high_precision(const pa_fep_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_is_hig", 0.0f);
+
 
     nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->base.mutex);
     bool high_precision = bridge->metrics.high_precision_mode;
@@ -838,6 +934,10 @@ int pa_fep_bridge_set_high_fe_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_set_hi", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->high_fe_callback = callback;
     bridge->high_fe_user_data = user_data;
@@ -853,6 +953,10 @@ int pa_fep_bridge_set_surprise_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_set_su", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->surprise_callback = callback;
     bridge->surprise_user_data = user_data;
@@ -867,6 +971,10 @@ int pa_fep_bridge_set_metrics_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_set_me", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics_callback = callback;
@@ -886,6 +994,10 @@ int pa_fep_bridge_set_config(
 ) {
     if (!bridge || !config) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_set_co", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->config = *config;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -898,6 +1010,10 @@ int pa_fep_bridge_get_config(
     pa_fep_config_t* config_out
 ) {
     if (!bridge || !config_out) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_get_co", 0.0f);
+
 
     nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->base.mutex);
     *config_out = bridge->config;

@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_equation_manipulation_health_agent = NULL;
  * @brief Set health agent for equation_manipulation heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void equation_manipulation_set_health_agent(nimcp_health_agent_t* agent) {
+void equation_manipulation_set_health_agent(nimcp_health_agent_t* agent) {
     g_equation_manipulation_health_agent = agent;
 }
 
@@ -125,6 +125,10 @@ static uint32_t compute_depth(const expr_node_t* node) {
  * ============================================================================ */
 
 equation_config_t equation_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_default_con", 0.0f);
+
+
     equation_config_t config = {
         .max_simplify_iterations = 100,
         .max_tree_depth = EQUATION_MAX_DEPTH,
@@ -139,6 +143,10 @@ equation_config_t equation_default_config(void) {
 
 bool equation_validate_config(const equation_config_t* config) {
     if (!config) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_validate_co", 0.0f);
+
 
     if (config->max_simplify_iterations == 0 ||
         config->max_simplify_iterations > 10000) {
@@ -155,10 +163,18 @@ bool equation_validate_config(const equation_config_t* config) {
 }
 
 equation_engine_t* equation_engine_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_engine_crea", 0.0f);
+
+
     return equation_engine_create_custom(NULL);
 }
 
 equation_engine_t* equation_engine_create_custom(const equation_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_engine_crea", 0.0f);
+
+
     equation_config_t cfg;
 
     if (config) {
@@ -193,6 +209,10 @@ equation_engine_t* equation_engine_create_custom(const equation_config_t* config
 void equation_engine_destroy(equation_engine_t* eq) {
     if (!eq) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_engine_dest", 0.0f);
+
+
     if (eq->lock) {
         nimcp_mutex_free(eq->lock);
     }
@@ -205,6 +225,10 @@ void equation_engine_destroy(equation_engine_t* eq) {
  * ============================================================================ */
 
 expr_node_t* equation_create_constant(equation_engine_t* eq, float value) {
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_create_cons", 0.0f);
+
+
     (void)eq;
 
     expr_node_t* node = alloc_node();
@@ -224,6 +248,10 @@ expr_node_t* equation_create_constant(equation_engine_t* eq, float value) {
 }
 
 expr_node_t* equation_create_variable(equation_engine_t* eq, const char* name) {
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_create_vari", 0.0f);
+
+
     (void)eq;
 
     if (!name || strlen(name) == 0) return NULL;
@@ -251,6 +279,10 @@ expr_node_t* equation_create_binary(
     expr_node_t* left,
     expr_node_t* right
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_create_bina", 0.0f);
+
+
     (void)eq;
 
     if (!left || !right) return NULL;
@@ -282,6 +314,10 @@ expr_node_t* equation_create_unary(
     expr_node_type_t type,
     expr_node_t* operand
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_create_unar", 0.0f);
+
+
     (void)eq;
 
     if (!operand) {
@@ -315,6 +351,10 @@ expr_node_t* equation_create_unary(
 void equation_free_expr(expr_node_t* node) {
     if (!node) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_free_expr", 0.0f);
+
+
     equation_free_expr(node->left);
     equation_free_expr(node->right);
     free(node);
@@ -328,6 +368,10 @@ expr_node_t* equation_copy_expr(equation_engine_t* eq, const expr_node_t* node) 
         return NULL;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_copy_expr", 0.0f);
+
 
     expr_node_t* copy = alloc_node();
     if (!copy) {
@@ -504,6 +548,10 @@ expr_node_t* equation_parse(equation_engine_t* eq, const char* expr_string) {
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_parse", 0.0f);
+
+
     nimcp_mutex_lock(eq->lock);
 
     parser_state_t p = {expr_string, 0, eq};
@@ -604,6 +652,10 @@ expr_node_t* equation_simplify(equation_engine_t* eq, const expr_node_t* node) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "equation_simplify: node is NULL");
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_simplify", 0.0f);
+
 
     nimcp_mutex_lock(eq->lock);
 
@@ -740,11 +792,19 @@ expr_node_t* equation_simplify(equation_engine_t* eq, const expr_node_t* node) {
 
 expr_node_t* equation_expand(equation_engine_t* eq, const expr_node_t* node) {
     /* Simplified expand - just copy for now */
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_expand", 0.0f);
+
+
     return equation_copy_expr(eq, node);
 }
 
 expr_node_t* equation_factor(equation_engine_t* eq, const expr_node_t* node) {
     /* Simplified factor - just copy for now */
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_factor", 0.0f);
+
+
     return equation_copy_expr(eq, node);
 }
 
@@ -755,6 +815,10 @@ expr_node_t* equation_substitute(
     const expr_node_t* replacement
 ) {
     if (!node || !var_name || !replacement) return NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_substitute", 0.0f);
+
 
     if (node->type == EXPR_VARIABLE &&
         strcmp(node->data.variable, var_name) == 0) {
@@ -962,6 +1026,10 @@ expr_node_t* equation_differentiate(
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_differentia", 0.0f);
+
+
     nimcp_mutex_lock(eq->lock);
 
     expr_node_t* result = differentiate_unlocked(eq, node, var_name);
@@ -977,6 +1045,10 @@ expr_node_t* equation_partial_derivative(
     const expr_node_t* node,
     const char* var_name
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_partial_der", 0.0f);
+
+
     return equation_differentiate(eq, node, var_name);
 }
 
@@ -991,7 +1063,17 @@ uint32_t equation_gradient(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_gradient", 0.0f);
+
+
     for (uint32_t i = 0; i < num_vars; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_vars > 256) {
+            equation_manipulation_heartbeat("equation_man_loop",
+                             (float)(i + 1) / (float)num_vars);
+        }
+
         gradient[i] = equation_differentiate(eq, node, var_names[i]);
     }
 
@@ -1020,6 +1102,12 @@ static float evaluate_unlocked(
         case EXPR_VARIABLE: {
             result = NAN;
             for (uint32_t i = 0; i < num_bindings; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && num_bindings > 256) {
+                    equation_manipulation_heartbeat("equation_man_loop",
+                                     (float)(i + 1) / (float)num_bindings);
+                }
+
                 if (strcmp(bindings[i].name, node->data.variable) == 0) {
                     result = bindings[i].value;
                     break;
@@ -1110,6 +1198,10 @@ float equation_evaluate(
         return NAN;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_evaluate", 0.0f);
+
+
     nimcp_mutex_lock(eq->lock);
 
     float result = evaluate_unlocked(node, bindings, num_bindings);
@@ -1126,11 +1218,19 @@ bool equation_is_constant(const expr_node_t* node) {
     if (node->type == EXPR_VARIABLE) return false;
     if (node->type == EXPR_CONSTANT) return true;
 
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_is_constant", 0.0f);
+
+
     return equation_is_constant(node->left) && equation_is_constant(node->right);
 }
 
 bool equation_contains_variable(const expr_node_t* node, const char* var_name) {
     if (!node || !var_name) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_contains_va", 0.0f);
+
 
     if (node->type == EXPR_VARIABLE) {
         return strcmp(node->data.variable, var_name) == 0;
@@ -1147,12 +1247,22 @@ uint32_t equation_get_variables(
 ) {
     if (!node || !var_names || max_vars == 0) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_get_variabl", 0.0f);
+
+
     uint32_t count = 0;
 
     if (node->type == EXPR_VARIABLE) {
         /* Check if already in list */
         bool found = false;
         for (uint32_t i = 0; i < count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && count > 256) {
+                equation_manipulation_heartbeat("equation_man_loop",
+                                 (float)(i + 1) / (float)count);
+            }
+
             if (strcmp(var_names[i], node->data.variable) == 0) {
                 found = true;
                 break;
@@ -1183,6 +1293,10 @@ uint32_t equation_get_variables(
  * ============================================================================ */
 
 equation_t equation_create_equation(expr_node_t* lhs, expr_node_t* rhs) {
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_create_equa", 0.0f);
+
+
     equation_t eqn = {lhs, rhs};
     return eqn;
 }
@@ -1193,6 +1307,10 @@ expr_node_t* equation_solve_for(
     const char* var_name
 ) {
     if (!eq || !eqn || !var_name) return NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_solve_for", 0.0f);
+
 
     nimcp_mutex_lock(eq->lock);
 
@@ -1221,6 +1339,10 @@ float equation_find_root(
 ) {
     if (!eq || !node || !var_name) return NAN;
 
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_find_root", 0.0f);
+
+
     nimcp_mutex_lock(eq->lock);
 
     /* Newton's method: x_{n+1} = x_n - f(x_n) / f'(x_n) */
@@ -1236,6 +1358,12 @@ float equation_find_root(
     strncpy(binding.name, var_name, EQUATION_MAX_VAR_NAME - 1);
 
     for (uint32_t i = 0; i < max_iterations; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && max_iterations > 256) {
+            equation_manipulation_heartbeat("equation_man_loop",
+                             (float)(i + 1) / (float)max_iterations);
+        }
+
         binding.value = x;
 
         /* Use unlocked helper since we already hold the lock */
@@ -1269,6 +1397,10 @@ float equation_find_root(
 int equation_set_inflammation(equation_engine_t* eq, float level) {
     if (!eq) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_set_inflamm", 0.0f);
+
+
     nimcp_mutex_lock(eq->lock);
     eq->inflammation_level = clamp01(level);
     nimcp_mutex_unlock(eq->lock);
@@ -1278,6 +1410,10 @@ int equation_set_inflammation(equation_engine_t* eq, float level) {
 
 int equation_set_fatigue(equation_engine_t* eq, float level) {
     if (!eq) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_set_fatigue", 0.0f);
+
 
     nimcp_mutex_lock(eq->lock);
     eq->fatigue_level = clamp01(level);
@@ -1300,6 +1436,10 @@ int equation_get_stats(const equation_engine_t* eq, equation_stats_t* stats) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(((equation_engine_t*)eq)->lock);
 
     stats->expressions_parsed = eq->expressions_parsed;
@@ -1321,6 +1461,10 @@ int equation_get_stats(const equation_engine_t* eq, equation_stats_t* stats) {
 
 void equation_reset_stats(equation_engine_t* eq) {
     if (!eq) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_equation_reset_stats", 0.0f);
+
 
     nimcp_mutex_lock(eq->lock);
 
@@ -1345,9 +1489,19 @@ const char* equation_get_last_error(void) {
 
 int equation_manipulation_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    equation_manipulation_heartbeat("equation_man_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Equation_Manipulation");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                equation_manipulation_heartbeat("equation_man_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Module self-knowledge logged */
         }
     }

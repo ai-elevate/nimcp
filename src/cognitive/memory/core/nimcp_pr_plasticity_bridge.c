@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_pr_plasticity_bridge_health_agent = NULL;
  * @brief Set health agent for pr_plasticity_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void pr_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void pr_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_pr_plasticity_bridge_health_agent = agent;
 }
 
@@ -125,6 +125,12 @@ static pr_bcm_node_state_t* find_bcm_node(
     uint64_t node_id)
 {
     for (uint32_t i = 0; i < bridge->bcm_node_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->bcm_node_count > 256) {
+            pr_plasticity_bridge_heartbeat("pr_plasticit_loop",
+                             (float)(i + 1) / (float)bridge->bcm_node_count);
+        }
+
         if (bridge->bcm_nodes[i].node_id == node_id) {
             return &bridge->bcm_nodes[i];
         }
@@ -204,6 +210,10 @@ static pr_memory_tier_t get_node_tier(
 //=============================================================================
 
 pr_plasticity_bridge_config_t pr_plasticity_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_plasticity_config", 0.0f);
+
+
     pr_plasticity_bridge_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -243,6 +253,12 @@ pr_plasticity_bridge_config_t pr_plasticity_config_default(void) {
 
     /* Tier-specific parameters */
     for (int t = 0; t < PR_PLASTICITY_NUM_TIERS; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && PR_PLASTICITY_NUM_TIERS > 256) {
+            pr_plasticity_bridge_heartbeat("pr_plasticit_loop",
+                             (float)(t + 1) / (float)PR_PLASTICITY_NUM_TIERS);
+        }
+
         float tier_factor = 1.0f - (float)t * 0.25f;  /* Z0=1.0, Z1=0.75, Z2=0.5, Z3=0.25 */
         config.tier[t].stdp_rate_scale = tier_factor;
         config.tier[t].bcm_tau_scale = 1.0f + (float)t * 0.5f;  /* Slower for deeper tiers */
@@ -287,7 +303,17 @@ bool pr_plasticity_config_validate(const pr_plasticity_bridge_config_t* config) 
     if (config->homeostatic.max_scale <= config->homeostatic.min_scale) return false;
 
     /* Target rate validation */
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_plasticity_config", 0.0f);
+
+
     for (int t = 0; t < PR_PLASTICITY_NUM_TIERS; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && PR_PLASTICITY_NUM_TIERS > 256) {
+            pr_plasticity_bridge_heartbeat("pr_plasticit_loop",
+                             (float)(t + 1) / (float)PR_PLASTICITY_NUM_TIERS);
+        }
+
         if (config->homeostatic.target_rate[t] < 0.0f ||
             config->homeostatic.target_rate[t] > 1.0f) {
             return false;
@@ -309,6 +335,10 @@ bool pr_plasticity_config_validate(const pr_plasticity_bridge_config_t* config) 
 pr_plasticity_bridge_t pr_plasticity_bridge_create(
     const pr_plasticity_bridge_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_create", 0.0f);
+
+
     pr_plasticity_bridge_t bridge = nimcp_calloc(1, sizeof(struct pr_plasticity_bridge_struct));
     if (!bridge) {
 
@@ -361,6 +391,12 @@ pr_plasticity_bridge_t pr_plasticity_bridge_create(
 
     /* Initialize tier tracking */
     for (int t = 0; t < PR_PLASTICITY_NUM_TIERS; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && PR_PLASTICITY_NUM_TIERS > 256) {
+            pr_plasticity_bridge_heartbeat("pr_plasticit_loop",
+                             (float)(t + 1) / (float)PR_PLASTICITY_NUM_TIERS);
+        }
+
         bridge->tier_current_activity[t] = bridge->config.homeostatic.target_rate[t];
         bridge->tier_node_count[t] = 0;
     }
@@ -379,6 +415,10 @@ pr_plasticity_bridge_t pr_plasticity_bridge_create(
 void pr_plasticity_bridge_destroy(pr_plasticity_bridge_t bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_destroy", 0.0f);
+
+
     if (bridge->bio_async_connected) {
         pr_plasticity_disconnect_bio_async(bridge);
     }
@@ -396,10 +436,20 @@ void pr_plasticity_bridge_destroy(pr_plasticity_bridge_t bridge) {
 int pr_plasticity_bridge_reset(pr_plasticity_bridge_t bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_reset", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset BCM nodes */
     for (uint32_t i = 0; i < bridge->bcm_node_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->bcm_node_count > 256) {
+            pr_plasticity_bridge_heartbeat("pr_plasticit_loop",
+                             (float)(i + 1) / (float)bridge->bcm_node_count);
+        }
+
         bridge->bcm_nodes[i].theta = bridge->config.bcm.theta_initial;
         bridge->bcm_nodes[i].activity_avg = 0.0f;
         bridge->bcm_nodes[i].activity_squared_avg = 0.0f;
@@ -413,6 +463,12 @@ int pr_plasticity_bridge_reset(pr_plasticity_bridge_t bridge) {
 
     /* Reset tier tracking */
     for (int t = 0; t < PR_PLASTICITY_NUM_TIERS; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && PR_PLASTICITY_NUM_TIERS > 256) {
+            pr_plasticity_bridge_heartbeat("pr_plasticit_loop",
+                             (float)(t + 1) / (float)PR_PLASTICITY_NUM_TIERS);
+        }
+
         bridge->tier_current_activity[t] = bridge->config.homeostatic.target_rate[t];
         bridge->tier_node_count[t] = 0;
     }
@@ -437,6 +493,10 @@ float pr_stdp_compute_delta(
 {
     if (!bridge) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_stdp_compute_delt", 0.0f);
+
+
     float dt = post_time_ms - pre_time_ms;
     float delta = 0.0f;
 
@@ -459,6 +519,10 @@ float pr_stdp_modulate_by_resonance(
     float resonance)
 {
     if (!bridge) return base_delta;
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_stdp_modulate_by_", 0.0f);
+
+
     float modulation = 1.0f + bridge->config.stdp.resonance_modulation * resonance;
     return base_delta * modulation;
 }
@@ -474,6 +538,10 @@ float pr_stdp_apply_to_entanglement(
 {
     if (!bridge || !graph) return -1.0f;
     if (!bridge->config.enable_stdp) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_stdp_apply_to_ent", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -544,9 +612,19 @@ uint32_t pr_stdp_batch_update(
     if (!from_ids || !to_ids || !pre_times || !post_times || !resonances) return 0;
     if (!bridge->config.enable_stdp) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_stdp_batch_update", 0.0f);
+
+
     uint32_t updated = 0;
 
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_plasticity_bridge_heartbeat("pr_plasticit_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         float new_weight = pr_stdp_apply_to_entanglement(
             bridge, graph,
             from_ids[i], to_ids[i],
@@ -566,6 +644,10 @@ uint32_t pr_stdp_batch_update(
 
 float pr_bcm_get_phi(float activity, float theta) {
     /* phi(y) = y * (y - theta) */
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_bcm_get_phi", 0.0f);
+
+
     return activity * (activity - theta);
 }
 
@@ -574,6 +656,10 @@ float pr_bcm_compute_threshold(
     uint64_t node_id)
 {
     if (!bridge) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_bcm_compute_thres", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -597,6 +683,10 @@ int pr_bcm_update_history(
 {
     if (!bridge) return -1;
     if (!bridge->config.enable_bcm) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_bcm_update_histor", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -644,6 +734,10 @@ int pr_bcm_apply_to_node(
     if (!bridge || !graph) return -1;
     if (!bridge->config.enable_bcm) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_bcm_apply_to_node", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get BCM state */
@@ -668,6 +762,12 @@ int pr_bcm_apply_to_node(
 
     /* Apply BCM to each edge */
     for (size_t i = 0; i < edge_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && edge_count > 256) {
+            pr_plasticity_bridge_heartbeat("pr_plasticit_loop",
+                             (float)(i + 1) / (float)edge_count);
+        }
+
         float old_weight = edges[i].weight;
 
         /* BCM weight change: dw = eta * phi * x_pre (use weight as proxy for x_pre) */
@@ -717,6 +817,10 @@ float pr_homeostatic_get_scaling(
     if (!bridge) return 1.0f;
     if (tier >= PR_PLASTICITY_NUM_TIERS) return 1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_homeostatic_get_s", 0.0f);
+
+
     (void)node_id;  /* Could use for per-node tracking in extended version */
 
     float target = bridge->config.homeostatic.target_rate[tier];
@@ -739,6 +843,10 @@ float pr_homeostatic_apply_to_edge(
 {
     if (!bridge || !graph) return -1.0f;
     if (scale <= 0.0f) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_homeostatic_apply", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -788,11 +896,21 @@ uint32_t pr_homeostatic_scale_tier(
     if (!bridge->config.enable_homeostatic) return 0;
     if (tier >= PR_PLASTICITY_NUM_TIERS) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_homeostatic_scale", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Calculate current tier activity */
     float total_activity = 0.0f;
     for (uint32_t n = 0; n < node_count; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && node_count > 256) {
+            pr_plasticity_bridge_heartbeat("pr_plasticit_loop",
+                             (float)(n + 1) / (float)node_count);
+        }
+
         /* Would get activity from node in full implementation */
         /* For now use BCM node state if available */
         pr_bcm_node_state_t* bcm_node = find_bcm_node(bridge, node_ids[n]);
@@ -812,11 +930,23 @@ uint32_t pr_homeostatic_scale_tier(
     /* Apply to all edges in tier */
     uint32_t scaled = 0;
     for (uint32_t n = 0; n < node_count; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && node_count > 256) {
+            pr_plasticity_bridge_heartbeat("pr_plasticit_loop",
+                             (float)(n + 1) / (float)node_count);
+        }
+
         entangle_edge_t edges[256];
         size_t edge_count;
 
         if (entangle_get_outgoing(graph, node_ids[n], edges, 256, &edge_count)) {
             for (size_t e = 0; e < edge_count; e++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((e & 0xFF) == 0 && edge_count > 256) {
+                    pr_plasticity_bridge_heartbeat("pr_plasticit_loop",
+                                     (float)(e + 1) / (float)edge_count);
+                }
+
                 float new_weight = pr_homeostatic_apply_to_edge(
                     bridge, graph, node_ids[n], edges[e].to_id, scale);
                 if (new_weight >= 0.0f) {
@@ -831,6 +961,10 @@ uint32_t pr_homeostatic_scale_tier(
 
 int pr_homeostatic_update_targets(pr_plasticity_bridge_t bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_homeostatic_updat", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -852,6 +986,10 @@ float pr_metaplasticity_adjust_stdp(
 {
     if (!bridge) return 1.0f;
     if (!bridge->config.enable_metaplasticity) return 1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_metaplasticity_ad", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -885,6 +1023,10 @@ float pr_metaplasticity_from_consolidation(
     if (!bridge->config.enable_metaplasticity) return 1.0f;
 
     /* Quaternion w = consolidation strength */
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_metaplasticity_fr", 0.0f);
+
+
     float consolidation = quat.w;
 
     /* High consolidation -> low plasticity */
@@ -911,6 +1053,10 @@ bool pr_structural_create_edge(
 
     /* Check if edge already exists */
     if (entangle_has_edge(graph, from_id, to_id)) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_structural_create", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -964,6 +1110,10 @@ bool pr_structural_prune_edge(
     if (!bridge->config.enable_structural) return false;
 
     /* Get current edge */
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_structural_prune_", 0.0f);
+
+
     entangle_edge_t edge;
     if (!entangle_get_edge(graph, from_id, to_id, &edge)) return false;
 
@@ -1009,6 +1159,10 @@ int pr_structural_remodel(
     if (!bridge || !graph || !node_ids) return -1;
     if (!bridge->config.enable_structural) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_structural_remode", 0.0f);
+
+
     uint32_t created = 0;
     uint32_t pruned = 0;
 
@@ -1049,6 +1203,10 @@ bool pr_consolidation_gate(
     if (!bridge) return true;  /* Allow if no bridge */
 
     /* Check consolidation strength */
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_consolidation_gat", 0.0f);
+
+
     if (quat.w < bridge->config.consolidation_gate) {
         return true;  /* Plasticity allowed for fragile memories */
     }
@@ -1072,6 +1230,10 @@ int pr_plasticity_from_quaternion(
     if (!bridge) return -1;
 
     /* w (consolidation) -> protection level */
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_plasticity_from_q", 0.0f);
+
+
     float consolidation_factor = 1.0f - quat.w * 0.5f;
 
     /* x (emotion) -> modulation (absolute value, extreme emotions enhance) */
@@ -1114,11 +1276,21 @@ int pr_quaternion_from_plasticity(
     if (event_count == 0) return 0;
 
     /* Accumulate effect of plasticity events */
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_quaternion_from_p", 0.0f);
+
+
     float total_ltp = 0.0f;
     float total_ltd = 0.0f;
     uint32_t access_count = 0;
 
     for (uint32_t i = 0; i < event_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && event_count > 256) {
+            pr_plasticity_bridge_heartbeat("pr_plasticit_loop",
+                             (float)(i + 1) / (float)event_count);
+        }
+
         if (events[i].delta_weight > 0) {
             total_ltp += events[i].delta_weight;
         } else {
@@ -1161,6 +1333,10 @@ float pr_resonance_to_learning_rate(
     float resonance)
 {
     if (!bridge) return 1.0f;
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_resonance_to_lear", 0.0f);
+
+
     return 1.0f + bridge->config.stdp.resonance_modulation * resonance;
 }
 
@@ -1169,6 +1345,10 @@ float pr_resonance_to_bcm_weight(
     float resonance)
 {
     if (!bridge) return resonance;
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_resonance_to_bcm_", 0.0f);
+
+
     return resonance * bridge->config.bcm.resonance_weight;
 }
 
@@ -1180,6 +1360,10 @@ float pr_plasticity_update_resonance(
     float delta_weight)
 {
     if (!bridge || !graph) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_plasticity_update", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1212,6 +1396,10 @@ int pr_plasticity_get_tier_params(
     if (!bridge || !params) return -1;
     if (tier >= PR_PLASTICITY_NUM_TIERS) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_plasticity_get_ti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *params = bridge->config.tier[tier];
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1228,6 +1416,10 @@ int pr_plasticity_apply_tier_rules(
 {
     if (!bridge || !graph) return -1;
     if (tier >= PR_PLASTICITY_NUM_TIERS) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_plasticity_apply_", 0.0f);
+
 
     int modifications = 0;
 
@@ -1267,6 +1459,10 @@ int pr_plasticity_log_event(
     if (!bridge || !event) return -1;
     if (!bridge->config.enable_event_logging) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_plasticity_log_ev", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     add_event(bridge, event);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1282,6 +1478,10 @@ int pr_plasticity_get_events(
 {
     if (!bridge || !events || !event_count) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_plasticity_get_ev", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t to_copy = (max_events < bridge->event_count) ? max_events : bridge->event_count;
@@ -1296,6 +1496,12 @@ int pr_plasticity_get_events(
         }
 
         for (uint32_t i = 0; i < to_copy; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && to_copy > 256) {
+                pr_plasticity_bridge_heartbeat("pr_plasticit_loop",
+                                 (float)(i + 1) / (float)to_copy);
+            }
+
             uint32_t idx = (start_idx + i) % bridge->event_capacity;
             events[i] = bridge->events[idx];
         }
@@ -1311,6 +1517,10 @@ int pr_plasticity_get_events(
 int pr_plasticity_clear_events(pr_plasticity_bridge_t bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_plasticity_clear_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->event_count = 0;
     bridge->event_write_idx = 0;
@@ -1324,6 +1534,10 @@ int pr_plasticity_get_stats(
     pr_plasticity_bridge_stats_t* stats)
 {
     if (!bridge || !stats) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_plasticity_get_st", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -1350,12 +1564,20 @@ int pr_plasticity_sync_with_coordinator(pr_plasticity_bridge_t bridge) {
     /* Would sync with plasticity_coordinator here */
     /* For now, just return success */
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_plasticity_sync_w", 0.0f);
+
+
     return 0;
 }
 
 int pr_plasticity_connect_bio_async(pr_plasticity_bridge_t bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_plasticity_connec", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = true;
@@ -1367,6 +1589,10 @@ int pr_plasticity_connect_bio_async(pr_plasticity_bridge_t bridge) {
 int pr_plasticity_disconnect_bio_async(pr_plasticity_bridge_t bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_plasticity_discon", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1376,6 +1602,10 @@ int pr_plasticity_disconnect_bio_async(pr_plasticity_bridge_t bridge) {
 
 bool pr_plasticity_is_bio_async_connected(pr_plasticity_bridge_t bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_plasticity_is_bio", 0.0f);
+
+
     return bridge->bio_async_connected;
 }
 
@@ -1390,6 +1620,10 @@ int pr_plasticity_bridge_update(
 {
     if (!bridge || !graph) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_update", 0.0f);
+
+
     uint64_t start_time_us = nimcp_time_get_us();
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1397,6 +1631,12 @@ int pr_plasticity_bridge_update(
     /* Update all BCM nodes */
     if (bridge->config.enable_bcm) {
         for (uint32_t i = 0; i < bridge->bcm_node_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->bcm_node_count > 256) {
+                pr_plasticity_bridge_heartbeat("pr_plasticit_loop",
+                                 (float)(i + 1) / (float)bridge->bcm_node_count);
+            }
+
             pr_bcm_node_state_t* node = &bridge->bcm_nodes[i];
 
             /* Decay activity averages */
@@ -1465,6 +1705,10 @@ const char* pr_tier_name(pr_memory_tier_t tier) {
 void pr_plasticity_event_print(const pr_plasticity_event_t* event) {
     if (!event) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_plasticity_event_", 0.0f);
+
+
     printf("Plasticity Event:\n");
     printf("  Type: %s\n", pr_plasticity_type_name(event->type));
     printf("  Edge: %lu -> %lu\n", (unsigned long)event->from_node,
@@ -1477,6 +1721,10 @@ void pr_plasticity_event_print(const pr_plasticity_event_t* event) {
 
 void pr_plasticity_print_stats(pr_plasticity_bridge_t bridge) {
     if (!bridge) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_plasticity_bridge_heartbeat("pr_plasticit_pr_plasticity_print_", 0.0f);
+
 
     pr_plasticity_bridge_stats_t stats;
     if (pr_plasticity_get_stats(bridge, &stats) != 0) return;
@@ -1503,6 +1751,12 @@ void pr_plasticity_print_stats(pr_plasticity_bridge_t bridge) {
 
     printf("\nPer-Tier Events:\n");
     for (int t = 0; t < PR_PLASTICITY_NUM_TIERS; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && PR_PLASTICITY_NUM_TIERS > 256) {
+            pr_plasticity_bridge_heartbeat("pr_plasticit_loop",
+                             (float)(t + 1) / (float)PR_PLASTICITY_NUM_TIERS);
+        }
+
         printf("  %s: %lu events, avg activity %.4f\n",
                pr_tier_name((pr_memory_tier_t)t),
                (unsigned long)stats.events_per_tier[t],

@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_pr_visual_bridge_health_agent = NULL;
  * @brief Set health agent for pr_visual_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void pr_visual_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void pr_visual_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_pr_visual_bridge_health_agent = agent;
 }
 
@@ -147,6 +147,12 @@ static float compute_attention_intensity(const pr_visual_feature_vector_t* featu
     float max_val = 0.0f;
 
     for (uint32_t i = 0; i < PR_VISUAL_FEATURE_BINS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_VISUAL_FEATURE_BINS > 256) {
+            pr_visual_bridge_heartbeat("pr_visual_br_loop",
+                             (float)(i + 1) / (float)PR_VISUAL_FEATURE_BINS);
+        }
+
         sum += features->saliency_bins[i];
         if (features->saliency_bins[i] > max_val) {
             max_val = features->saliency_bins[i];
@@ -343,6 +349,12 @@ NIMCP_EXPORT void pr_visual_bridge_destroy(pr_visual_bridge_t* bridge) {
     /* Free memory pool nodes */
     if (bridge->memory_pool) {
         for (uint32_t i = 0; i < bridge->memory_pool_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->memory_pool_count > 256) {
+                pr_visual_bridge_heartbeat("pr_visual_br_loop",
+                                 (float)(i + 1) / (float)bridge->memory_pool_count);
+            }
+
             if (bridge->memory_pool[i]) {
                 pr_memory_node_destroy(bridge->memory_pool[i]);
             }
@@ -381,6 +393,12 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_reset(
 
     /* Reset memory pool */
     for (uint32_t i = 0; i < bridge->memory_pool_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->memory_pool_count > 256) {
+            pr_visual_bridge_heartbeat("pr_visual_br_loop",
+                             (float)(i + 1) / (float)bridge->memory_pool_count);
+        }
+
         if (bridge->memory_pool[i]) {
             pr_memory_node_destroy(bridge->memory_pool[i]);
             bridge->memory_pool[i] = NULL;
@@ -535,6 +553,12 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_extract_features(
 
     /* Generate placeholder features - uniform distribution */
     for (uint32_t i = 0; i < PR_VISUAL_FEATURE_BINS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_VISUAL_FEATURE_BINS > 256) {
+            pr_visual_bridge_heartbeat("pr_visual_br_loop",
+                             (float)(i + 1) / (float)PR_VISUAL_FEATURE_BINS);
+        }
+
         features->color_histogram[i] = 1.0f / PR_VISUAL_FEATURE_BINS;
         features->edge_orientations[i] = 1.0f / PR_VISUAL_FEATURE_BINS;
         features->spatial_frequencies[i] = 1.0f / PR_VISUAL_FEATURE_BINS;
@@ -575,6 +599,12 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_compute_visual_prime_sig(
 
     /* Process color histogram */
     for (uint32_t i = 0; i < PR_VISUAL_FEATURE_BINS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_VISUAL_FEATURE_BINS > 256) {
+            pr_visual_bridge_heartbeat("pr_visual_br_loop",
+                             (float)(i + 1) / (float)PR_VISUAL_FEATURE_BINS);
+        }
+
         if (features->color_histogram[i] > 0.01f) {
             uint32_t prime_idx = hash_feature_bin(i, 0);
             uint8_t exponent = (uint8_t)(features->color_histogram[i] * 7.0f) + 1;
@@ -587,6 +617,12 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_compute_visual_prime_sig(
 
     /* Process edge orientations */
     for (uint32_t i = 0; i < PR_VISUAL_FEATURE_BINS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_VISUAL_FEATURE_BINS > 256) {
+            pr_visual_bridge_heartbeat("pr_visual_br_loop",
+                             (float)(i + 1) / (float)PR_VISUAL_FEATURE_BINS);
+        }
+
         if (features->edge_orientations[i] > 0.01f) {
             uint32_t prime_idx = hash_feature_bin(i, 1);
             uint8_t exponent = (uint8_t)(features->edge_orientations[i] * 7.0f) + 1;
@@ -599,6 +635,12 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_compute_visual_prime_sig(
 
     /* Process spatial frequencies */
     for (uint32_t i = 0; i < PR_VISUAL_FEATURE_BINS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_VISUAL_FEATURE_BINS > 256) {
+            pr_visual_bridge_heartbeat("pr_visual_br_loop",
+                             (float)(i + 1) / (float)PR_VISUAL_FEATURE_BINS);
+        }
+
         if (features->spatial_frequencies[i] > 0.01f) {
             uint32_t prime_idx = hash_feature_bin(i, 2);
             uint8_t exponent = (uint8_t)(features->spatial_frequencies[i] * 7.0f) + 1;
@@ -611,6 +653,12 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_compute_visual_prime_sig(
 
     /* Process texture energy */
     for (uint32_t i = 0; i < PR_VISUAL_FEATURE_BINS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_VISUAL_FEATURE_BINS > 256) {
+            pr_visual_bridge_heartbeat("pr_visual_br_loop",
+                             (float)(i + 1) / (float)PR_VISUAL_FEATURE_BINS);
+        }
+
         if (features->texture_energy[i] > 0.01f) {
             uint32_t prime_idx = hash_feature_bin(i, 3);
             uint8_t exponent = (uint8_t)(features->texture_energy[i] * 7.0f) + 1;
@@ -623,6 +671,12 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_compute_visual_prime_sig(
 
     /* Process multispectral features */
     for (uint32_t i = 0; i < PR_VISUAL_FEATURE_BINS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_VISUAL_FEATURE_BINS > 256) {
+            pr_visual_bridge_heartbeat("pr_visual_br_loop",
+                             (float)(i + 1) / (float)PR_VISUAL_FEATURE_BINS);
+        }
+
         if (features->multispectral[i] > 0.01f) {
             uint32_t prime_idx = hash_feature_bin(i, 4);
             uint8_t exponent = (uint8_t)(features->multispectral[i] * 7.0f) + 1;
@@ -635,6 +689,12 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_compute_visual_prime_sig(
 
     /* Process saliency bins */
     for (uint32_t i = 0; i < PR_VISUAL_FEATURE_BINS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_VISUAL_FEATURE_BINS > 256) {
+            pr_visual_bridge_heartbeat("pr_visual_br_loop",
+                             (float)(i + 1) / (float)PR_VISUAL_FEATURE_BINS);
+        }
+
         if (features->saliency_bins[i] > 0.01f) {
             uint32_t prime_idx = hash_feature_bin(i, 5);
             uint8_t exponent = (uint8_t)(features->saliency_bins[i] * 7.0f) + 1;
@@ -727,7 +787,19 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_apply_attention_to_salien
 
     /* Sample at 8x8 grid points to get average attention */
     for (uint32_t y = 0; y < 8; y++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((y & 0xFF) == 0 && 8 > 256) {
+            pr_visual_bridge_heartbeat("pr_visual_br_loop",
+                             (float)(y + 1) / (float)8);
+        }
+
         for (uint32_t x = 0; x < 8; x++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((x & 0xFF) == 0 && 8 > 256) {
+                pr_visual_bridge_heartbeat("pr_visual_br_loop",
+                                 (float)(x + 1) / (float)8);
+            }
+
             float val = attention_map_get(attention_map, x * 8, y * 8);
             if (val >= 0.0f) {  /* Valid value */
                 sum += val;
@@ -932,6 +1004,12 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_retrieve_similar_visual(
     float total_resonance = 0.0f;
 
     for (uint32_t i = 0; i < bridge->memory_pool_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->memory_pool_count > 256) {
+            pr_visual_bridge_heartbeat("pr_visual_br_loop",
+                             (float)(i + 1) / (float)bridge->memory_pool_count);
+        }
+
         pr_memory_node_t* node = bridge->memory_pool[i];
         if (!node) continue;
 
@@ -1234,6 +1312,12 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_auto_entangle(
 
     /* Find similar memories and create edges */
     for (uint32_t i = 0; i < bridge->memory_pool_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->memory_pool_count > 256) {
+            pr_visual_bridge_heartbeat("pr_visual_br_loop",
+                             (float)(i + 1) / (float)bridge->memory_pool_count);
+        }
+
         pr_memory_node_t* other = bridge->memory_pool[i];
         if (!other || other == current) continue;
 

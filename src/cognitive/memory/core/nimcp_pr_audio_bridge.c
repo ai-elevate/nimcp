@@ -38,7 +38,7 @@ static nimcp_health_agent_t* g_pr_audio_bridge_health_agent = NULL;
  * @brief Set health agent for pr_audio_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void pr_audio_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void pr_audio_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_pr_audio_bridge_health_agent = agent;
 }
 
@@ -575,6 +575,12 @@ NIMCP_EXPORT pr_audio_error_t pr_audio_bridge_extract_features(
     float sum_sq = 0.0f;
     float peak = 0.0f;
     for (uint32_t i = 0; i < num_samples; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_samples > 256) {
+            pr_audio_bridge_heartbeat("pr_audio_bri_loop",
+                             (float)(i + 1) / (float)num_samples);
+        }
+
         float sample = audio_data[i];
         sum_sq += sample * sample;
         float abs_sample = fabsf(sample);
@@ -636,6 +642,12 @@ NIMCP_EXPORT pr_audio_error_t pr_audio_bridge_extract_features(
     float interval_sum = 0.0f;
     uint32_t valid_intervals = 0;
     for (uint32_t i = 0; i < bridge->onset_history_len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->onset_history_len > 256) {
+            pr_audio_bridge_heartbeat("pr_audio_bri_loop",
+                             (float)(i + 1) / (float)bridge->onset_history_len);
+        }
+
         if (bridge->onset_history[i] > 50.0f &&
             bridge->onset_history[i] < 2000.0f) {
             interval_sum += bridge->onset_history[i];
@@ -677,6 +689,12 @@ NIMCP_EXPORT pr_audio_error_t pr_audio_bridge_extract_features(
     if (bridge->mfcc_history) {
         uint32_t offset = bridge->mfcc_history_pos * bridge->num_mfcc;
         for (uint32_t i = 0; i < bridge->num_mfcc; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->num_mfcc > 256) {
+                pr_audio_bridge_heartbeat("pr_audio_bri_loop",
+                                 (float)(i + 1) / (float)bridge->num_mfcc);
+            }
+
             bridge->mfcc_history[offset + i] = features->mfcc[i];
         }
         bridge->mfcc_history_pos =
@@ -1179,6 +1197,12 @@ NIMCP_EXPORT pr_audio_error_t pr_audio_bridge_detect_temporal_pattern(
     float interval_sq_sum = 0.0f;
 
     for (uint32_t i = 0; i < bridge->onset_history_len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->onset_history_len > 256) {
+            pr_audio_bridge_heartbeat("pr_audio_bri_loop",
+                             (float)(i + 1) / (float)bridge->onset_history_len);
+        }
+
         float interval = bridge->onset_history[i];
         if (interval > 50.0f && interval < 2000.0f) {
             result->onset_intervals[valid_count] = interval;
@@ -1653,6 +1677,12 @@ static float compute_interval_regularity(const float* intervals, uint32_t count)
     uint32_t valid = 0;
 
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_audio_bridge_heartbeat("pr_audio_bri_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (intervals[i] > 50.0f && intervals[i] < 2000.0f) {
             sum += intervals[i];
             valid++;
@@ -1666,6 +1696,12 @@ static float compute_interval_regularity(const float* intervals, uint32_t count)
     /* Compute variance */
     float var_sum = 0.0f;
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_audio_bridge_heartbeat("pr_audio_bri_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (intervals[i] > 50.0f && intervals[i] < 2000.0f) {
             float diff = intervals[i] - mean;
             var_sum += diff * diff;
@@ -1692,6 +1728,12 @@ static void update_history_buffer(float* buffer, uint32_t* pos, uint32_t len,
     if (!buffer || !pos || !new_data || len == 0) return;
 
     for (uint32_t i = 0; i < new_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && new_count > 256) {
+            pr_audio_bridge_heartbeat("pr_audio_bri_loop",
+                             (float)(i + 1) / (float)new_count);
+        }
+
         buffer[*pos] = new_data[i];
         *pos = (*pos + 1) % len;
     }

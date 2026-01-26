@@ -44,7 +44,7 @@ static nimcp_health_agent_t* g_mirror_empathy_bridge_health_agent = NULL;
  * @brief Set health agent for mirror_empathy_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_empathy_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_empathy_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_empathy_bridge_health_agent = agent;
 }
 
@@ -137,6 +137,12 @@ static agent_empathy_state_t* find_or_create_agent(
 ) {
     /* Search for existing agent */
     for (uint32_t i = 0; i < bridge->agent_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->agent_count > 256) {
+            mirror_empathy_bridge_heartbeat("mirror_empat_loop",
+                             (float)(i + 1) / (float)bridge->agent_count);
+        }
+
         if (bridge->agents[i].is_active && bridge->agents[i].agent_id == agent_id) {
             return &bridge->agents[i];
         }
@@ -148,6 +154,12 @@ static agent_empathy_state_t* find_or_create_agent(
         uint64_t oldest_time = UINT64_MAX;
         uint32_t oldest_idx = 0;
         for (uint32_t i = 0; i < bridge->agent_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->agent_count > 256) {
+                mirror_empathy_bridge_heartbeat("mirror_empat_loop",
+                                 (float)(i + 1) / (float)bridge->agent_count);
+            }
+
             if (!bridge->agents[i].is_active ||
                 bridge->agents[i].last_interaction_ms < oldest_time) {
                 oldest_time = bridge->agents[i].last_interaction_ms;
@@ -438,6 +450,10 @@ int mirror_empathy_bridge_default_config(mirror_empathy_config_t* config) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_empathy_bridge_heartbeat("mirror_empat_default_config", 0.0f);
+
+
     config->module_id = MIRROR_EMPATHY_DEFAULT_MODULE_ID;
     config->enable_logging = false;
     config->action_understanding_weight = 0.7f;
@@ -458,6 +474,10 @@ mirror_empathy_bridge_t* mirror_empathy_bridge_create(
     const mirror_empathy_config_t* config
 ) {
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_empathy_bridge_heartbeat("mirror_empat_create", 0.0f);
+
+
     mirror_empathy_bridge_t* bridge = (mirror_empathy_bridge_t*)nimcp_calloc(
         1, sizeof(mirror_empathy_bridge_t));
     if (!bridge) {
@@ -516,6 +536,10 @@ void mirror_empathy_bridge_destroy(mirror_empathy_bridge_t* bridge) {
     }
 
     /* Unregister from hub if registered */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_empathy_bridge_heartbeat("mirror_empat_destroy", 0.0f);
+
+
     if (bridge->registered) {
         mirror_empathy_bridge_unregister_from_hub(bridge);
     }
@@ -548,6 +572,10 @@ int mirror_empathy_bridge_register_with_hub(
     if (!bridge || !bridge->initialized || !hub) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_empathy_bridge_heartbeat("mirror_empat_register_with_hub", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -631,6 +659,10 @@ int mirror_empathy_bridge_unregister_from_hub(mirror_empathy_bridge_t* bridge) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_empathy_bridge_heartbeat("mirror_empat_unregister_from_hub", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->registered || !bridge->hub) {
@@ -672,6 +704,10 @@ bool mirror_empathy_bridge_is_registered(const mirror_empathy_bridge_t* bridge) 
     }
 
     /* Cast away const for mutex lock (safe - only reading) */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_empathy_bridge_heartbeat("mirror_empat_is_registered", 0.0f);
+
+
     mirror_empathy_bridge_t* mutable_bridge = (mirror_empathy_bridge_t*)bridge;
 
     nimcp_mutex_lock(mutable_bridge->base.mutex);
@@ -692,6 +728,10 @@ int mirror_empathy_publish_mirrored_action(
     if (!bridge || !bridge->initialized || !action) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_empathy_bridge_heartbeat("mirror_empat_mirror_empathy_publi", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -734,6 +774,10 @@ int mirror_empathy_publish_emotional_resonance(
     if (!bridge || !bridge->initialized || !resonance) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_empathy_bridge_heartbeat("mirror_empat_mirror_empathy_publi", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -785,6 +829,10 @@ int mirror_empathy_request_empathetic_response(
     if (!bridge || !bridge->initialized || !response_out) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_empathy_bridge_heartbeat("mirror_empat_mirror_empathy_reque", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -871,6 +919,10 @@ int mirror_empathy_notify_action_intention(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_empathy_bridge_heartbeat("mirror_empat_mirror_empathy_notif", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->registered || !bridge->hub) {
@@ -918,6 +970,10 @@ int mirror_empathy_publish_social_understanding(
     if (!bridge || !bridge->initialized || !understanding) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_empathy_bridge_heartbeat("mirror_empat_mirror_empathy_publi", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -967,6 +1023,10 @@ int mirror_empathy_set_action_callback(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_empathy_bridge_heartbeat("mirror_empat_mirror_empathy_set_a", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->action_callback = callback;
     bridge->action_callback_user_data = user_data;
@@ -984,6 +1044,10 @@ int mirror_empathy_set_resonance_callback(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_empathy_bridge_heartbeat("mirror_empat_mirror_empathy_set_r", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->resonance_callback = callback;
     bridge->resonance_callback_user_data = user_data;
@@ -1000,6 +1064,10 @@ int mirror_empathy_set_response_callback(
     if (!bridge || !bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_empathy_bridge_heartbeat("mirror_empat_mirror_empathy_set_r", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->response_callback = callback;
@@ -1024,6 +1092,10 @@ int mirror_empathy_get_agent_state(
     }
 
     /* Cast away const for mutex lock */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_empathy_bridge_heartbeat("mirror_empat_mirror_empathy_get_a", 0.0f);
+
+
     mirror_empathy_bridge_t* mutable_bridge = (mirror_empathy_bridge_t*)bridge;
 
     nimcp_mutex_lock(mutable_bridge->base.mutex);
@@ -1031,6 +1103,12 @@ int mirror_empathy_get_agent_state(
     /* Search for agent */
     const agent_empathy_state_t* agent = NULL;
     for (uint32_t i = 0; i < bridge->agent_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->agent_count > 256) {
+            mirror_empathy_bridge_heartbeat("mirror_empat_loop",
+                             (float)(i + 1) / (float)bridge->agent_count);
+        }
+
         if (bridge->agents[i].is_active && bridge->agents[i].agent_id == agent_id) {
             agent = &bridge->agents[i];
             break;
@@ -1066,6 +1144,10 @@ int mirror_empathy_bridge_get_stats(
     }
 
     /* Cast away const for mutex lock */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_empathy_bridge_heartbeat("mirror_empat_get_stats", 0.0f);
+
+
     mirror_empathy_bridge_t* mutable_bridge = (mirror_empathy_bridge_t*)bridge;
 
     nimcp_mutex_lock(mutable_bridge->base.mutex);
@@ -1079,6 +1161,10 @@ int mirror_empathy_bridge_reset_stats(mirror_empathy_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_empathy_bridge_heartbeat("mirror_empat_reset_stats", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(mirror_empathy_stats_t));

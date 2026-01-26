@@ -36,7 +36,7 @@ static nimcp_health_agent_t* g_cognitive_meta_controller_health_agent = NULL;
  * @brief Set health agent for cognitive_meta_controller heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void cognitive_meta_controller_set_health_agent(nimcp_health_agent_t* agent) {
+void cognitive_meta_controller_set_health_agent(nimcp_health_agent_t* agent) {
     g_cognitive_meta_controller_health_agent = agent;
 }
 
@@ -107,6 +107,12 @@ static void notify_allocation_observers(
     if (!controller || !request) return;
 
     for (uint32_t i = 0; i < controller->allocation_callback_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && controller->allocation_callback_count > 256) {
+            cognitive_meta_controller_heartbeat("cognitive_me_loop",
+                             (float)(i + 1) / (float)controller->allocation_callback_count);
+        }
+
         if (controller->allocation_callbacks[i]) {
             controller->allocation_callbacks[i](
                 request,
@@ -130,6 +136,12 @@ static void notify_metacognitive_observers(
     if (!controller) return;
 
     for (uint32_t i = 0; i < controller->metacognitive_callback_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && controller->metacognitive_callback_count > 256) {
+            cognitive_meta_controller_heartbeat("cognitive_me_loop",
+                             (float)(i + 1) / (float)controller->metacognitive_callback_count);
+        }
+
         if (controller->metacognitive_callbacks[i]) {
             controller->metacognitive_callbacks[i](
                 uncertainty,
@@ -160,6 +172,12 @@ static int find_highest_priority_request(
     float best_priority = -1.0f;
 
     for (uint32_t i = 0; i < controller->request_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && controller->request_count > 256) {
+            cognitive_meta_controller_heartbeat("cognitive_me_loop",
+                             (float)(i + 1) / (float)controller->request_count);
+        }
+
         if (controller->requests[i].type == type &&
             !controller->requests[i].granted &&
             controller->requests[i].priority > best_priority) {
@@ -208,6 +226,12 @@ static void arbitrate_priority_weighted(
     float best_weighted_priority = -1.0f;
 
     for (uint32_t i = 0; i < controller->request_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && controller->request_count > 256) {
+            cognitive_meta_controller_heartbeat("cognitive_me_loop",
+                             (float)(i + 1) / (float)controller->request_count);
+        }
+
         if (controller->requests[i].type != type ||
             controller->requests[i].granted) {
             continue;
@@ -248,6 +272,12 @@ static void resolve_conflicts(cognitive_meta_controller_t* controller) {
     uint32_t conflicts[5] = {0}; /* One per resource_type_t */
 
     for (uint32_t i = 0; i < controller->request_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && controller->request_count > 256) {
+            cognitive_meta_controller_heartbeat("cognitive_me_loop",
+                             (float)(i + 1) / (float)controller->request_count);
+        }
+
         if (!controller->requests[i].granted &&
             controller->requests[i].type < 5) {
             conflicts[controller->requests[i].type]++;
@@ -256,6 +286,12 @@ static void resolve_conflicts(cognitive_meta_controller_t* controller) {
 
     /* Resolve each resource type */
     for (int type = 0; type < 5; type++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((type & 0xFF) == 0 && 5 > 256) {
+            cognitive_meta_controller_heartbeat("cognitive_me_loop",
+                             (float)(type + 1) / (float)5);
+        }
+
         if (conflicts[type] == 0) continue;
 
         controller->stats.conflicts_resolved++;
@@ -291,6 +327,12 @@ static void allocate_wm_slots(cognitive_meta_controller_t* controller) {
     if (!controller || !controller->working_memory) return;
 
     for (uint32_t i = 0; i < controller->request_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && controller->request_count > 256) {
+            cognitive_meta_controller_heartbeat("cognitive_me_loop",
+                             (float)(i + 1) / (float)controller->request_count);
+        }
+
         resource_request_t* req = &controller->requests[i];
 
         if (req->type == RESOURCE_WORKING_MEMORY_SLOT && req->granted) {
@@ -328,6 +370,12 @@ static void clear_processed_requests(
     uint32_t write_idx = 0;
 
     for (uint32_t read_idx = 0; read_idx < controller->request_count; read_idx++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((read_idx & 0xFF) == 0 && controller->request_count > 256) {
+            cognitive_meta_controller_heartbeat("cognitive_me_loop",
+                             (float)(read_idx + 1) / (float)controller->request_count);
+        }
+
         resource_request_t* req = &controller->requests[read_idx];
 
         /* Keep if: not granted AND not expired (>5 seconds old) */
@@ -350,6 +398,10 @@ static void clear_processed_requests(
  * ============================================================================ */
 
 int meta_controller_default_config(meta_controller_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_defa", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(meta_controller_config_t));
@@ -380,6 +432,12 @@ int meta_controller_default_config(meta_controller_config_t* config) {
 
     /* Module weights (all equal by default) */
     for (int i = 0; i < META_CONTROLLER_MAX_MODULES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && META_CONTROLLER_MAX_MODULES > 256) {
+            cognitive_meta_controller_heartbeat("cognitive_me_loop",
+                             (float)(i + 1) / (float)META_CONTROLLER_MAX_MODULES);
+        }
+
         config->module_weights[i] = 1.0f;
     }
 
@@ -390,6 +448,10 @@ cognitive_meta_controller_t* meta_controller_create(
     const meta_controller_config_t* config) {
 
     /* Use defaults if no config provided */
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_crea", 0.0f);
+
+
     meta_controller_config_t default_config;
     if (!config) {
         if (meta_controller_default_config(&default_config) != NIMCP_SUCCESS) {
@@ -437,6 +499,12 @@ cognitive_meta_controller_t* meta_controller_create(
 
     /* Initialize module tracking */
     for (int i = 0; i < META_CONTROLLER_MAX_MODULES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && META_CONTROLLER_MAX_MODULES > 256) {
+            cognitive_meta_controller_heartbeat("cognitive_me_loop",
+                             (float)(i + 1) / (float)META_CONTROLLER_MAX_MODULES);
+        }
+
         init_module_performance(&controller->modules[i], (cognitive_module_id_t)i);
     }
 
@@ -463,6 +531,10 @@ cognitive_meta_controller_t* meta_controller_create(
 
 void meta_controller_destroy(cognitive_meta_controller_t* controller) {
     if (!controller) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_dest", 0.0f);
+
 
     NIMCP_LOGGING_INFO("Destroying cognitive meta-controller");
 
@@ -491,6 +563,10 @@ void meta_controller_destroy(cognitive_meta_controller_t* controller) {
 }
 
 int meta_controller_start(cognitive_meta_controller_t* controller) {
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_star", 0.0f);
+
+
     NIMCP_CHECK_THROW(controller, NIMCP_ERROR_NULL_POINTER, "controller is NULL");
 
     if (controller->state == META_CONTROLLER_RUNNING) {
@@ -511,6 +587,10 @@ int meta_controller_start(cognitive_meta_controller_t* controller) {
 }
 
 int meta_controller_stop(cognitive_meta_controller_t* controller) {
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_stop", 0.0f);
+
+
     NIMCP_CHECK_THROW(controller, NIMCP_ERROR_NULL_POINTER, "controller is NULL");
 
     nimcp_platform_mutex_lock(controller->mutex);
@@ -525,6 +605,10 @@ int meta_controller_stop(cognitive_meta_controller_t* controller) {
 }
 
 int meta_controller_pause(cognitive_meta_controller_t* controller) {
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_paus", 0.0f);
+
+
     NIMCP_CHECK_THROW(controller, NIMCP_ERROR_NULL_POINTER, "controller is NULL");
 
     nimcp_platform_mutex_lock(controller->mutex);
@@ -539,6 +623,10 @@ int meta_controller_pause(cognitive_meta_controller_t* controller) {
 }
 
 int meta_controller_resume(cognitive_meta_controller_t* controller) {
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_resu", 0.0f);
+
+
     NIMCP_CHECK_THROW(controller, NIMCP_ERROR_NULL_POINTER, "controller is NULL");
 
     nimcp_platform_mutex_lock(controller->mutex);
@@ -566,6 +654,10 @@ uint32_t meta_controller_request_wm_slot(
 
     if (!controller || !item_data) return 0;
     if (item_size == 0 || item_size > WORKING_MEMORY_MAX_ITEM_SIZE) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_requ", 0.0f);
+
 
     priority = clamp_float(priority, 0.0f, 1.0f);
     salience = clamp_float(salience, 0.0f, 1.0f);
@@ -621,6 +713,10 @@ uint32_t meta_controller_request_attention(
 
     if (!controller) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_requ", 0.0f);
+
+
     salience = clamp_float(salience, 0.0f, 1.0f);
     urgency = clamp_float(urgency, 0.0f, 1.0f);
 
@@ -669,6 +765,10 @@ float meta_controller_request_learning_rate(
 
     if (!controller) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_requ", 0.0f);
+
+
     uncertainty = clamp_float(uncertainty, 0.0f, 1.0f);
     confidence = clamp_float(confidence, 0.0f, 1.0f);
 
@@ -711,6 +811,10 @@ int meta_controller_request_executive_priority(
     uint32_t task_id,
     float priority) {
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_requ", 0.0f);
+
+
     NIMCP_CHECK_THROW(controller && controller->executive, NIMCP_ERROR_NULL_POINTER, "controller or executive is NULL");
 
     /* This would forward to executive controller */
@@ -734,6 +838,10 @@ bool meta_controller_request_workspace_access(
     }
 
     /* Apply module weighting to strength */
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_requ", 0.0f);
+
+
     float module_weight = 1.0f;
     if (requester < META_CONTROLLER_MAX_MODULES) {
         module_weight = controller->config.module_weights[requester];
@@ -772,6 +880,10 @@ int meta_controller_update(
     cognitive_meta_controller_t* controller,
     uint64_t current_time_ms) {
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_upda", 0.0f);
+
+
     NIMCP_CHECK_THROW(controller, NIMCP_ERROR_NULL_POINTER, "controller is NULL");
 
     if (controller->state != META_CONTROLLER_RUNNING) {
@@ -799,6 +911,12 @@ int meta_controller_update(
 
     /* Count denied requests */
     for (uint32_t i = 0; i < controller->request_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && controller->request_count > 256) {
+            cognitive_meta_controller_heartbeat("cognitive_me_loop",
+                             (float)(i + 1) / (float)controller->request_count);
+        }
+
         if (!controller->requests[i].granted) {
             controller->stats.denied_requests++;
 
@@ -840,6 +958,10 @@ int meta_controller_update(
 int meta_controller_update_metacognitive_state(
     cognitive_meta_controller_t* controller) {
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_upda", 0.0f);
+
+
     NIMCP_CHECK_THROW(controller, NIMCP_ERROR_NULL_POINTER, "controller is NULL");
 
     /* Compute system-wide metrics from module performance */
@@ -849,6 +971,12 @@ int meta_controller_update_metacognitive_state(
     uint32_t active_modules = 0;
 
     for (uint32_t i = 0; i < META_CONTROLLER_MAX_MODULES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && META_CONTROLLER_MAX_MODULES > 256) {
+            cognitive_meta_controller_heartbeat("cognitive_me_loop",
+                             (float)(i + 1) / (float)META_CONTROLLER_MAX_MODULES);
+        }
+
         module_performance_t* perf = &controller->modules[i];
 
         if (perf->requests_made > 0) {
@@ -896,6 +1024,10 @@ int meta_controller_connect_working_memory(
     cognitive_meta_controller_t* controller,
     working_memory_t* working_memory) {
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_conn", 0.0f);
+
+
     NIMCP_CHECK_THROW(controller && working_memory, NIMCP_ERROR_NULL_POINTER, "controller or working_memory is NULL");
 
     controller->working_memory = working_memory;
@@ -908,6 +1040,10 @@ int meta_controller_connect_working_memory(
 int meta_controller_connect_executive(
     cognitive_meta_controller_t* controller,
     executive_controller_t* executive) {
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_conn", 0.0f);
+
 
     NIMCP_CHECK_THROW(controller && executive, NIMCP_ERROR_NULL_POINTER, "controller or executive is NULL");
 
@@ -922,6 +1058,10 @@ int meta_controller_connect_global_workspace(
     cognitive_meta_controller_t* controller,
     global_workspace_t* workspace) {
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_conn", 0.0f);
+
+
     NIMCP_CHECK_THROW(controller && workspace, NIMCP_ERROR_NULL_POINTER, "controller or workspace is NULL");
 
     controller->global_workspace = workspace;
@@ -935,6 +1075,10 @@ int meta_controller_connect_brain_immune(
     cognitive_meta_controller_t* controller,
     brain_immune_system_t* immune) {
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_conn", 0.0f);
+
+
     NIMCP_CHECK_THROW(controller && immune, NIMCP_ERROR_NULL_POINTER, "controller or immune is NULL");
 
     controller->brain_immune = immune;
@@ -947,6 +1091,10 @@ int meta_controller_connect_brain_immune(
 
 int meta_controller_connect_bio_async(
     cognitive_meta_controller_t* controller) {
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_conn", 0.0f);
+
 
     NIMCP_CHECK_THROW(controller, NIMCP_ERROR_NULL_POINTER, "controller is NULL");
 
@@ -976,6 +1124,10 @@ int meta_controller_connect_bio_async(
 int meta_controller_disconnect_bio_async(
     cognitive_meta_controller_t* controller) {
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_disc", 0.0f);
+
+
     NIMCP_CHECK_THROW(controller, NIMCP_ERROR_NULL_POINTER, "controller is NULL");
 
     if (controller->bio_async_connected && controller->bio_context) {
@@ -997,6 +1149,10 @@ int meta_controller_register_allocation_observer(
     resource_allocation_callback_t callback,
     void* user_data) {
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_regi", 0.0f);
+
+
     NIMCP_CHECK_THROW(controller && callback, NIMCP_ERROR_NULL_POINTER, "controller or callback is NULL");
 
     if (controller->allocation_callback_count >= META_CONTROLLER_MAX_OBSERVERS) {
@@ -1015,6 +1171,10 @@ int meta_controller_register_metacognitive_observer(
     cognitive_meta_controller_t* controller,
     metacognitive_callback_t callback,
     void* user_data) {
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_regi", 0.0f);
+
 
     NIMCP_CHECK_THROW(controller && callback, NIMCP_ERROR_NULL_POINTER, "controller or callback is NULL");
 
@@ -1038,6 +1198,10 @@ int meta_controller_get_stats(
     const cognitive_meta_controller_t* controller,
     meta_controller_stats_t* stats) {
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_get_", 0.0f);
+
+
     NIMCP_CHECK_THROW(controller && stats, NIMCP_ERROR_NULL_POINTER, "controller or stats is NULL");
 
     *stats = controller->stats;
@@ -1048,10 +1212,20 @@ int meta_controller_get_stats(
 void meta_controller_reset_stats(cognitive_meta_controller_t* controller) {
     if (!controller) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_rese", 0.0f);
+
+
     memset(&controller->stats, 0, sizeof(meta_controller_stats_t));
 
     /* Reinitialize module performance */
     for (int i = 0; i < META_CONTROLLER_MAX_MODULES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && META_CONTROLLER_MAX_MODULES > 256) {
+            cognitive_meta_controller_heartbeat("cognitive_me_loop",
+                             (float)(i + 1) / (float)META_CONTROLLER_MAX_MODULES);
+        }
+
         init_module_performance(&controller->modules[i], (cognitive_module_id_t)i);
     }
 }
@@ -1060,6 +1234,10 @@ int meta_controller_get_module_performance(
     const cognitive_meta_controller_t* controller,
     cognitive_module_id_t module,
     module_performance_t* performance) {
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_get_", 0.0f);
+
 
     NIMCP_CHECK_THROW(controller && performance, NIMCP_ERROR_NULL_POINTER, "controller or performance is NULL");
     NIMCP_CHECK_THROW(module < META_CONTROLLER_MAX_MODULES, NIMCP_ERROR_INVALID_PARAM, "invalid module id: %d", module);
@@ -1074,6 +1252,10 @@ meta_controller_state_t meta_controller_get_state(
 
     if (!controller) return META_CONTROLLER_ERROR;
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_get_", 0.0f);
+
+
     return controller->state;
 }
 
@@ -1084,6 +1266,10 @@ meta_controller_state_t meta_controller_get_state(
 int meta_controller_set_arbitration_strategy(
     cognitive_meta_controller_t* controller,
     arbitration_strategy_t strategy) {
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_set_", 0.0f);
+
 
     NIMCP_CHECK_THROW(controller, NIMCP_ERROR_NULL_POINTER, "controller is NULL");
 
@@ -1096,6 +1282,10 @@ int meta_controller_set_module_weight(
     cognitive_meta_controller_t* controller,
     cognitive_module_id_t module,
     float weight) {
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_meta_controller_set_", 0.0f);
+
 
     NIMCP_CHECK_THROW(controller, NIMCP_ERROR_NULL_POINTER, "controller is NULL");
     NIMCP_CHECK_THROW(module < META_CONTROLLER_MAX_MODULES, NIMCP_ERROR_INVALID_PARAM, "invalid module id: %d", module);
@@ -1169,9 +1359,19 @@ const char* meta_controller_state_to_string(meta_controller_state_t state) {
 int cognitive_meta_controller_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_meta_controller_heartbeat("cognitive_me_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Cognitive_Meta_Controller");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                cognitive_meta_controller_heartbeat("cognitive_me_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

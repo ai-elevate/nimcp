@@ -36,7 +36,7 @@ static nimcp_health_agent_t* g_auction_health_agent = NULL;
  * @brief Set health agent for auction heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void auction_set_health_agent(nimcp_health_agent_t* agent) {
+void auction_set_health_agent(nimcp_health_agent_t* agent) {
     g_auction_health_agent = agent;
 }
 
@@ -110,6 +110,10 @@ static const char* s_auction_type_names[] = {
 //=============================================================================
 
 nimcp_auction_config_t nimcp_auction_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    auction_heartbeat("auction_auction_default_conf", 0.0f);
+
+
     nimcp_auction_config_t config = {
         .type = NIMCP_AUCTION_SECOND_PRICE,
         .num_items = 1,
@@ -129,6 +133,10 @@ nimcp_auction_config_t nimcp_auction_default_config(void) {
 //=============================================================================
 
 nimcp_auction_t nimcp_auction_create(const nimcp_auction_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    auction_heartbeat("auction_auction_create", 0.0f);
+
+
     nimcp_auction_t auction = nimcp_calloc(1, sizeof(struct nimcp_auction_struct));
     NIMCP_API_CHECK_ALLOC(auction, "Failed to allocate auction");
 
@@ -165,6 +173,10 @@ nimcp_auction_t nimcp_auction_create(const nimcp_auction_config_t* config) {
 void nimcp_auction_destroy(nimcp_auction_t auction) {
     if (!auction) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    auction_heartbeat("auction_auction_destroy", 0.0f);
+
+
     nimcp_platform_mutex_destroy(&auction->mutex);
     nimcp_free(auction->bids);
     nimcp_free(auction);
@@ -183,6 +195,10 @@ nimcp_error_t nimcp_auction_bid(
     if (!auction) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    auction_heartbeat("auction_auction_bid", 0.0f);
+
 
     nimcp_platform_mutex_lock(&auction->mutex);
 
@@ -248,6 +264,10 @@ nimcp_error_t nimcp_auction_bid_vcg(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    auction_heartbeat("auction_auction_bid_vcg", 0.0f);
+
+
     nimcp_error_t err = nimcp_auction_bid(auction, bidder_id, bid_amount, item_id);
     if (err != NIMCP_SUCCESS) {
         return err;
@@ -274,6 +294,10 @@ nimcp_error_t nimcp_auction_resolve(
     if (!auction || !result) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    auction_heartbeat("auction_auction_resolve", 0.0f);
+
 
     nimcp_platform_mutex_lock(&auction->mutex);
 
@@ -317,6 +341,12 @@ nimcp_error_t nimcp_auction_resolve(
     nimcp_bid_t* second_bid = NULL;
 
     for (uint32_t i = 0; i < auction->num_bids; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && auction->num_bids > 256) {
+            auction_heartbeat("auction_loop",
+                             (float)(i + 1) / (float)auction->num_bids);
+        }
+
         if (auction->bids[i].is_valid &&
             auction->bids[i].bid_amount >= auction->config.reserve_price) {
             if (!winner_bid) {
@@ -371,6 +401,12 @@ nimcp_error_t nimcp_auction_resolve(
     // Efficiency = winner's valuation / max valuation
     float max_valuation = 0.0f;
     for (uint32_t i = 0; i < auction->num_bids; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && auction->num_bids > 256) {
+            auction_heartbeat("auction_loop",
+                             (float)(i + 1) / (float)auction->num_bids);
+        }
+
         if (auction->bids[i].valuation > max_valuation) {
             max_valuation = auction->bids[i].valuation;
         }
@@ -397,6 +433,10 @@ nimcp_error_t nimcp_auction_resolve_vcg(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    auction_heartbeat("auction_auction_resolve_vcg", 0.0f);
+
+
     nimcp_platform_mutex_lock(&auction->mutex);
 
     if (auction->config.type != NIMCP_AUCTION_VCG) {
@@ -409,15 +449,33 @@ nimcp_error_t nimcp_auction_resolve_vcg(
     result->num_items = auction->config.num_items;
 
     for (uint32_t i = 0; i < NIMCP_GT_MAX_AUCTION_ITEMS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && NIMCP_GT_MAX_AUCTION_ITEMS > 256) {
+            auction_heartbeat("auction_loop",
+                             (float)(i + 1) / (float)NIMCP_GT_MAX_AUCTION_ITEMS);
+        }
+
         result->winners[i] = NIMCP_GT_INVALID_PLAYER;
     }
 
     // For each item, find winner
     for (uint32_t item = 0; item < auction->config.num_items; item++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((item & 0xFF) == 0 && auction->config.num_items > 256) {
+            auction_heartbeat("auction_loop",
+                             (float)(item + 1) / (float)auction->config.num_items);
+        }
+
         nimcp_bid_t* best_bid = NULL;
         nimcp_bid_t* second_bid = NULL;
 
         for (uint32_t i = 0; i < auction->num_bids; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && auction->num_bids > 256) {
+                auction_heartbeat("auction_loop",
+                                 (float)(i + 1) / (float)auction->num_bids);
+            }
+
             nimcp_bid_t* bid = &auction->bids[i];
             if (bid->item_id != item || !bid->is_valid) continue;
 
@@ -457,6 +515,10 @@ nimcp_error_t nimcp_auction_cancel(nimcp_auction_t auction) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    auction_heartbeat("auction_auction_cancel", 0.0f);
+
+
     nimcp_platform_mutex_lock(&auction->mutex);
     auction->state = NIMCP_AUCTION_STATE_CANCELLED;
     nimcp_platform_mutex_unlock(&auction->mutex);
@@ -475,6 +537,10 @@ nimcp_error_t nimcp_auction_ascending_round(
     if (!auction || !current_price) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    auction_heartbeat("auction_auction_ascending_ro", 0.0f);
+
 
     nimcp_platform_mutex_lock(&auction->mutex);
 
@@ -498,6 +564,10 @@ nimcp_error_t nimcp_auction_descending_tick(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    auction_heartbeat("auction_auction_descending_t", 0.0f);
+
+
     nimcp_platform_mutex_lock(&auction->mutex);
 
     if (auction->config.type != NIMCP_AUCTION_DESCENDING) {
@@ -509,6 +579,12 @@ nimcp_error_t nimcp_auction_descending_tick(
 
     // Check if anyone claimed at current price
     for (uint32_t i = 0; i < auction->num_bids; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && auction->num_bids > 256) {
+            auction_heartbeat("auction_loop",
+                             (float)(i + 1) / (float)auction->num_bids);
+        }
+
         if (auction->bids[i].bid_amount >= auction->current_price) {
             *claimed_by = auction->bids[i].bidder_id;
             break;
@@ -535,19 +611,37 @@ nimcp_error_t nimcp_auction_descending_tick(
 
 nimcp_auction_state_t nimcp_auction_get_state(const nimcp_auction_t auction) {
     if (!auction) return NIMCP_AUCTION_STATE_CREATED;
+    /* Phase 8: Heartbeat at operation start */
+    auction_heartbeat("auction_auction_get_state", 0.0f);
+
+
     return auction->state;
 }
 
 uint32_t nimcp_auction_get_bid_count(const nimcp_auction_t auction) {
     if (!auction) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    auction_heartbeat("auction_auction_get_bid_coun", 0.0f);
+
+
     return auction->num_bids;
 }
 
 float nimcp_auction_get_current_highest(const nimcp_auction_t auction) {
     if (!auction || auction->num_bids == 0) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    auction_heartbeat("auction_auction_get_current_", 0.0f);
+
+
     float max_bid = 0.0f;
     for (uint32_t i = 0; i < auction->num_bids; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && auction->num_bids > 256) {
+            auction_heartbeat("auction_loop",
+                             (float)(i + 1) / (float)auction->num_bids);
+        }
+
         if (auction->bids[i].bid_amount > max_bid) {
             max_bid = auction->bids[i].bid_amount;
         }
@@ -557,11 +651,19 @@ float nimcp_auction_get_current_highest(const nimcp_auction_t auction) {
 
 nimcp_auction_type_t nimcp_auction_get_type(const nimcp_auction_t auction) {
     if (!auction) return NIMCP_AUCTION_SECOND_PRICE;
+    /* Phase 8: Heartbeat at operation start */
+    auction_heartbeat("auction_auction_get_type", 0.0f);
+
+
     return auction->config.type;
 }
 
 bool nimcp_auction_is_strategyproof(nimcp_auction_type_t type) {
     // Second-price and VCG are strategyproof (truthful bidding is dominant)
+    /* Phase 8: Heartbeat at operation start */
+    auction_heartbeat("auction_auction_is_strategyp", 0.0f);
+
+
     return (type == NIMCP_AUCTION_SECOND_PRICE || type == NIMCP_AUCTION_VCG);
 }
 
@@ -588,6 +690,9 @@ nimcp_error_t nimcp_auction_get_bids(
         return NIMCP_GT_ERROR_INVALID_STATE;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    auction_heartbeat("auction_get_bids", 0.0f);
+
     nimcp_platform_mutex_lock(&auction->mutex);
 
     uint32_t copy_count = auction->num_bids < max_bids ? auction->num_bids : max_bids;
@@ -606,9 +711,19 @@ nimcp_error_t nimcp_auction_get_bids(
 int auction_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    auction_heartbeat("auction_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Auction_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                auction_heartbeat("auction_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG(LOG_MODULE, "Auction self-knowledge: %s", self->observations[i]);
         }
     }

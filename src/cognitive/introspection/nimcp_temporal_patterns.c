@@ -68,7 +68,7 @@ static nimcp_health_agent_t* g_temporal_patterns_health_agent = NULL;
  * @brief Set health agent for temporal_patterns heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void temporal_patterns_set_health_agent(nimcp_health_agent_t* agent) {
+void temporal_patterns_set_health_agent(nimcp_health_agent_t* agent) {
     g_temporal_patterns_health_agent = agent;
 }
 
@@ -140,6 +140,10 @@ static void notify_pattern_detected(pattern_detection_context_t* ctx,
  */
 temporal_pattern_config_t temporal_pattern_default_config(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_patterns_heartbeat("temporal_pat_temporal_pattern_def", 0.0f);
+
+
     temporal_pattern_config_t config = {
         .window_size = TEMPORAL_DEFAULT_WINDOW_SIZE,
         .min_pattern_length = TEMPORAL_DEFAULT_MIN_PATTERN_LENGTH,
@@ -188,6 +192,10 @@ temporal_pattern_t* introspection_detect_patterns(introspection_context_t contex
     }
 
     /* Use default config if not provided */
+    /* Phase 8: Heartbeat at operation start */
+    temporal_patterns_heartbeat("temporal_pat_introspection_detect", 0.0f);
+
+
     temporal_pattern_config_t default_config = temporal_pattern_default_config();
     const temporal_pattern_config_t* cfg = config ? config : &default_config;
 
@@ -248,6 +256,12 @@ temporal_pattern_t* introspection_detect_patterns(introspection_context_t contex
 
         if (patterns[pattern_count].state_sequence != NULL) {
             for (uint32_t i = 0; i < window_size; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && window_size > 256) {
+                    temporal_patterns_heartbeat("temporal_pat_loop",
+                                     (float)(i + 1) / (float)window_size);
+                }
+
                 patterns[pattern_count].state_sequence[i] = (float*)nimcp_malloc(sizeof(float));
                 if (patterns[pattern_count].state_sequence[i] != NULL) {
                     patterns[pattern_count].state_sequence[i][0] = history[i].avg_activation;
@@ -321,6 +335,10 @@ pattern_match_result_t introspection_match_pattern(introspection_context_t conte
                                                     const temporal_pattern_t* pattern,
                                                     const temporal_pattern_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_patterns_heartbeat("temporal_pat_introspection_match_", 0.0f);
+
+
     pattern_match_result_t result;
     memset(&result, 0, sizeof(pattern_match_result_t));
 
@@ -356,6 +374,12 @@ pattern_match_result_t introspection_match_pattern(introspection_context_t conte
     }
 
     for (uint32_t i = 0; i < compare_len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && compare_len > 256) {
+            temporal_patterns_heartbeat("temporal_pat_loop",
+                             (float)(i + 1) / (float)compare_len);
+        }
+
         float hist_val = history[history_count - compare_len + i].avg_activation;
         float pattern_val = (pattern->state_sequence && pattern->state_sequence[i])
                             ? pattern->state_sequence[i][0]
@@ -388,6 +412,10 @@ pattern_match_result_t introspection_match_pattern(introspection_context_t conte
 brain_state_t introspection_predict_next_state(introspection_context_t context,
                                                 const temporal_pattern_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_patterns_heartbeat("temporal_pat_introspection_predic", 0.0f);
+
+
     brain_state_t predicted_state;
     memset(&predicted_state, 0, sizeof(brain_state_t));
 
@@ -421,6 +449,12 @@ brain_state_t introspection_predict_next_state(introspection_context_t context,
     const temporal_pattern_t* best_pattern = NULL;
 
     for (uint32_t i = 0; i < num_library_patterns; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_library_patterns > 256) {
+            temporal_patterns_heartbeat("temporal_pat_loop",
+                             (float)(i + 1) / (float)num_library_patterns);
+        }
+
         pattern_match_result_t match = introspection_match_pattern(context, &library[i], cfg);
         if (match.confidence > best_confidence) {
             best_confidence = match.confidence;
@@ -471,6 +505,10 @@ temporal_trend_t introspection_get_trend(introspection_context_t context,
                                           const char* metric_name,
                                           const temporal_pattern_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_patterns_heartbeat("temporal_pat_introspection_get_tr", 0.0f);
+
+
     temporal_trend_t trend;
     memset(&trend, 0, sizeof(temporal_trend_t));
     trend.direction = TREND_UNKNOWN;
@@ -522,6 +560,12 @@ temporal_trend_t introspection_get_trend(introspection_context_t context,
     float min_val = FLT_MAX, max_val = -FLT_MAX;
 
     for (uint32_t i = 0; i < window; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && window > 256) {
+            temporal_patterns_heartbeat("temporal_pat_loop",
+                             (float)(i + 1) / (float)window);
+        }
+
         sum += values[i];
         sum_sq += values[i] * values[i];
         if (values[i] < min_val) min_val = values[i];
@@ -607,6 +651,10 @@ bool introspection_register_pattern(introspection_context_t context,
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    temporal_patterns_heartbeat("temporal_pat_introspection_regist", 0.0f);
+
+
     pattern_detection_context_t* ctx = get_pattern_context(context);
     if (ctx == NULL) {
         return false;
@@ -641,6 +689,12 @@ bool introspection_register_pattern(introspection_context_t context,
 
         if (entry->pattern.state_sequence != NULL) {
             for (uint32_t i = 0; i < pattern->sequence_length; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && pattern->sequence_length > 256) {
+                    temporal_patterns_heartbeat("temporal_pat_loop",
+                                     (float)(i + 1) / (float)pattern->sequence_length);
+                }
+
                 entry->pattern.state_sequence[i] =
                     (float*)nimcp_malloc(pattern->state_dimension * sizeof(float));
 
@@ -672,6 +726,10 @@ bool introspection_register_pattern(introspection_context_t context,
  */
 void introspection_clear_pattern_library(introspection_context_t context)
 {
+    /* Phase 8: Heartbeat at operation start */
+    temporal_patterns_heartbeat("temporal_pat_introspection_clear_", 0.0f);
+
+
     pattern_detection_context_t* ctx = get_pattern_context(context);
     if (ctx == NULL) {
         return;
@@ -687,6 +745,12 @@ void introspection_clear_pattern_library(introspection_context_t context)
         /* Free pattern's state sequence */
         if (entry->pattern.state_sequence != NULL) {
             for (uint32_t i = 0; i < entry->pattern.sequence_length; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && entry->pattern.sequence_length > 256) {
+                    temporal_patterns_heartbeat("temporal_pat_loop",
+                                     (float)(i + 1) / (float)entry->pattern.sequence_length);
+                }
+
                 if (entry->pattern.state_sequence[i] != NULL) {
                     nimcp_free(entry->pattern.state_sequence[i]);
                 }
@@ -723,6 +787,10 @@ temporal_pattern_t* introspection_get_pattern_library(introspection_context_t co
     if (!bbb_check_pointer(num_patterns, "introspection_get_pattern_library")) {
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    temporal_patterns_heartbeat("temporal_pat_introspection_get_pa", 0.0f);
+
 
     pattern_detection_context_t* ctx = get_pattern_context(context);
     if (ctx == NULL) {
@@ -765,6 +833,12 @@ temporal_pattern_t* introspection_get_pattern_library(introspection_context_t co
 
             if (patterns[index].state_sequence != NULL) {
                 for (uint32_t j = 0; j < entry->pattern.sequence_length; j++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((j & 0xFF) == 0 && entry->pattern.sequence_length > 256) {
+                        temporal_patterns_heartbeat("temporal_pat_loop",
+                                         (float)(j + 1) / (float)entry->pattern.sequence_length);
+                    }
+
                     if (entry->pattern.state_sequence[j] != NULL) {
                         patterns[index].state_sequence[j] =
                             (float*)nimcp_malloc(entry->pattern.state_dimension * sizeof(float));
@@ -810,6 +884,10 @@ float introspection_pattern_similarity(const temporal_pattern_t* pattern1,
     }
 
     /* Guard clause: dimensions must match */
+    /* Phase 8: Heartbeat at operation start */
+    temporal_patterns_heartbeat("temporal_pat_introspection_patter", 0.0f);
+
+
     if (pattern1->state_dimension != pattern2->state_dimension) {
         LOG_DEBUG("Pattern dimension mismatch: %u vs %u",
                   pattern1->state_dimension, pattern2->state_dimension);
@@ -823,6 +901,12 @@ float introspection_pattern_similarity(const temporal_pattern_t* pattern1,
                        : pattern2->sequence_length;
 
     for (uint32_t i = 0; i < min_len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && min_len > 256) {
+            temporal_patterns_heartbeat("temporal_pat_loop",
+                             (float)(i + 1) / (float)min_len);
+        }
+
         if (pattern1->state_sequence && pattern1->state_sequence[i] &&
             pattern2->state_sequence && pattern2->state_sequence[i]) {
 
@@ -858,6 +942,10 @@ bool brain_enable_pattern_detection(brain_t brain,
     }
 
     /* WHAT: Get introspection context */
+    /* Phase 8: Heartbeat at operation start */
+    temporal_patterns_heartbeat("temporal_pat_brain_enable_pattern", 0.0f);
+
+
     introspection_context_t intro = brain_get_introspection(brain);
     if (intro == NULL) {
         LOG_WARN("Brain does not have introspection enabled");
@@ -901,6 +989,10 @@ temporal_pattern_t* brain_get_active_patterns(brain_t brain, uint32_t* num_patte
     }
 
     /* WHAT: Get introspection context */
+    /* Phase 8: Heartbeat at operation start */
+    temporal_patterns_heartbeat("temporal_pat_brain_get_active_pat", 0.0f);
+
+
     introspection_context_t intro = brain_get_introspection(brain);
     if (intro == NULL) {
         *num_patterns = 0;
@@ -935,6 +1027,12 @@ temporal_pattern_t* brain_get_active_patterns(brain_t brain, uint32_t* num_patte
     uint32_t active_count = 0;
 
     for (uint32_t i = 0; i < library_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && library_size > 256) {
+            temporal_patterns_heartbeat("temporal_pat_loop",
+                             (float)(i + 1) / (float)library_size);
+        }
+
         pattern_match_result_t match =
             introspection_match_pattern(intro, &library[i], &ctx->config);
 
@@ -966,6 +1064,10 @@ bool brain_on_pattern_detected(brain_t brain,
     }
 
     /* WHAT: Get introspection context */
+    /* Phase 8: Heartbeat at operation start */
+    temporal_patterns_heartbeat("temporal_pat_brain_on_pattern_det", 0.0f);
+
+
     introspection_context_t intro = brain_get_introspection(brain);
     if (intro == NULL) {
         LOG_WARN("Brain does not have introspection enabled");
@@ -1006,10 +1108,20 @@ void temporal_pattern_free(temporal_pattern_t* pattern)
 
     if (pattern->state_sequence != NULL) {
         for (uint32_t i = 0; i < pattern->sequence_length; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && pattern->sequence_length > 256) {
+                temporal_patterns_heartbeat("temporal_pat_loop",
+                                 (float)(i + 1) / (float)pattern->sequence_length);
+            }
+
             nimcp_free(pattern->state_sequence[i]);
         }
         nimcp_free(pattern->state_sequence);
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    temporal_patterns_heartbeat("temporal_pat_temporal_pattern_fre", 0.0f);
+
 
     memset(pattern, 0, sizeof(temporal_pattern_t));
 }
@@ -1025,7 +1137,17 @@ void pattern_array_free(temporal_pattern_t* patterns, uint32_t num_patterns)
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    temporal_patterns_heartbeat("temporal_pat_pattern_array_free", 0.0f);
+
+
     for (uint32_t i = 0; i < num_patterns; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_patterns > 256) {
+            temporal_patterns_heartbeat("temporal_pat_loop",
+                             (float)(i + 1) / (float)num_patterns);
+        }
+
         temporal_pattern_free(&patterns[i]);
     }
 
@@ -1045,10 +1167,20 @@ void pattern_sequence_free(pattern_sequence_t* sequence)
 
     if (sequence->states != NULL) {
         for (uint32_t i = 0; i < sequence->num_states; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && sequence->num_states > 256) {
+                temporal_patterns_heartbeat("temporal_pat_loop",
+                                 (float)(i + 1) / (float)sequence->num_states);
+            }
+
             brain_state_free(&sequence->states[i]);
         }
         nimcp_free(sequence->states);
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    temporal_patterns_heartbeat("temporal_pat_pattern_sequence_fre", 0.0f);
+
 
     memset(sequence, 0, sizeof(pattern_sequence_t));
 }
@@ -1065,6 +1197,10 @@ void pattern_match_result_free(pattern_match_result_t* result)
     }
 
     /* Note: matched_pattern is a pointer to library pattern, not owned */
+    /* Phase 8: Heartbeat at operation start */
+    temporal_patterns_heartbeat("temporal_pat_pattern_match_result", 0.0f);
+
+
     memset(result, 0, sizeof(pattern_match_result_t));
 }
 
@@ -1112,6 +1248,12 @@ static float compute_dtw_distance(const float* seq1, uint32_t len1,
             /* Compute Euclidean distance between vectors */
             float dist = 0.0F;
             for (uint32_t d = 0; d < dimension; d++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((d & 0xFF) == 0 && dimension > 256) {
+                    temporal_patterns_heartbeat("temporal_pat_loop",
+                                     (float)(d + 1) / (float)dimension);
+                }
+
                 float diff = seq1[(i-1)*dimension + d] - seq2[(j-1)*dimension + d];
                 dist += diff * diff;
             }
@@ -1154,6 +1296,12 @@ static void extract_metric_values(const activity_history_entry_t* history,
     }
 
     for (uint32_t i = 0; i < num_entries; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_entries > 256) {
+            temporal_patterns_heartbeat("temporal_pat_loop",
+                             (float)(i + 1) / (float)num_entries);
+        }
+
         if (strcmp(metric_name, "avg_activation") == 0) {
             values[i] = history[i].avg_activation;
         } else if (strcmp(metric_name, "max_activation") == 0) {
@@ -1189,6 +1337,12 @@ static void linear_regression(const float* values, uint32_t count,
     float sum_x = 0.0F, sum_y = 0.0F, sum_xx = 0.0F, sum_xy = 0.0F;
 
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            temporal_patterns_heartbeat("temporal_pat_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         float x = (float)i; /* Time index */
         float y = values[i];
         sum_x += x;
@@ -1217,6 +1371,12 @@ static void linear_regression(const float* values, uint32_t count,
     float ss_tot = 0.0F, ss_res = 0.0F;
 
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            temporal_patterns_heartbeat("temporal_pat_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         float x = (float)i;
         float y = values[i];
         float y_pred = (*slope) * x + (*intercept);
@@ -1271,10 +1431,20 @@ int temporal_patterns_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
     /* Query our own entity from the knowledge graph */
+    /* Phase 8: Heartbeat at operation start */
+    temporal_patterns_heartbeat("temporal_pat_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Temporal_Patterns_Module");
     if (self) {
         /* Module now knows its own capabilities from KG */
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                temporal_patterns_heartbeat("temporal_pat_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Temporal patterns self-knowledge: %s", self->observations[i]);
         }
     }

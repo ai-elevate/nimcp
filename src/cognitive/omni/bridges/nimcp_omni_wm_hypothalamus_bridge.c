@@ -60,7 +60,7 @@ static nimcp_health_agent_t* g_omni_wm_hypothalamus_bridge_health_agent = NULL;
  * @brief Set health agent for omni_wm_hypothalamus_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void omni_wm_hypothalamus_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void omni_wm_hypothalamus_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_omni_wm_hypothalamus_bridge_health_agent = agent;
 }
 
@@ -318,6 +318,12 @@ static nimcp_error_t predict_resources_internal(omni_wm_hypothalamus_bridge_t* b
     float overall_confidence = 0.0f;
 
     for (uint32_t r = 0; r < WM_RESOURCE_COUNT; r++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((r & 0xFF) == 0 && WM_RESOURCE_COUNT > 256) {
+            omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_loop",
+                             (float)(r + 1) / (float)WM_RESOURCE_COUNT);
+        }
+
         wm_resource_prediction_t* pred = &forecast->resources[r];
         pred->type = (wm_resource_type_t)r;
         pred->current_availability = bridge->resource_levels[r];
@@ -334,6 +340,12 @@ static nimcp_error_t predict_resources_internal(omni_wm_hypothalamus_bridge_t* b
         float sum_pred = level;
 
         for (uint32_t h = 0; h < horizon; h++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((h & 0xFF) == 0 && horizon > 256) {
+                omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_loop",
+                                 (float)(h + 1) / (float)horizon);
+            }
+
             /* Apply resource-specific dynamics */
             level *= RESOURCE_PREDICTION_DECAY;
             bridge->resource_predictions[r][h] = level;
@@ -581,6 +593,10 @@ static nimcp_error_t handle_homeostasis(const void* msg, size_t msg_size,
 nimcp_error_t omni_wm_hypothalamus_bridge_default_config(
     omni_wm_hypothalamus_bridge_config_t* config) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(omni_wm_hypothalamus_bridge_config_t));
@@ -631,6 +647,10 @@ omni_wm_hypothalamus_bridge_t* omni_wm_hypothalamus_bridge_create(
     const omni_wm_hypothalamus_bridge_config_t* config) {
 
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_create", 0.0f);
+
+
     omni_wm_hypothalamus_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_wm_hypothalamus_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate WM hypothalamus bridge");
@@ -695,11 +715,23 @@ omni_wm_hypothalamus_bridge_t* omni_wm_hypothalamus_bridge_create(
 
     /* Allocate resource prediction arrays in forecast */
     for (uint32_t r = 0; r < WM_HYPO_MAX_RESOURCE_TYPES; r++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((r & 0xFF) == 0 && WM_HYPO_MAX_RESOURCE_TYPES > 256) {
+            omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_loop",
+                             (float)(r + 1) / (float)WM_HYPO_MAX_RESOURCE_TYPES);
+        }
+
         bridge->wm_to_hypo.resource_forecast.resources[r].predicted_availability =
             nimcp_calloc(WM_HYPO_MAX_PREDICTION_HORIZON, sizeof(float));
         if (!bridge->wm_to_hypo.resource_forecast.resources[r].predicted_availability) {
             /* Cleanup already allocated */
             for (uint32_t i = 0; i < r; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && r > 256) {
+                    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_loop",
+                                     (float)(i + 1) / (float)r);
+                }
+
                 nimcp_free(bridge->wm_to_hypo.resource_forecast.resources[i].predicted_availability);
             }
             nimcp_free(bridge->last_predicted_state);
@@ -721,6 +753,12 @@ omni_wm_hypothalamus_bridge_t* omni_wm_hypothalamus_bridge_create(
 
     /* Initialize resource levels to moderate */
     for (uint32_t r = 0; r < WM_HYPO_MAX_RESOURCE_TYPES; r++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((r & 0xFF) == 0 && WM_HYPO_MAX_RESOURCE_TYPES > 256) {
+            omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_loop",
+                             (float)(r + 1) / (float)WM_HYPO_MAX_RESOURCE_TYPES);
+        }
+
         bridge->resource_levels[r] = 0.7f;
     }
 
@@ -735,6 +773,10 @@ void omni_wm_hypothalamus_bridge_destroy(omni_wm_hypothalamus_bridge_t* bridge) 
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         omni_wm_hypothalamus_bridge_disconnect_bio_async(bridge);
     }
@@ -748,6 +790,12 @@ void omni_wm_hypothalamus_bridge_destroy(omni_wm_hypothalamus_bridge_t* bridge) 
 
     /* Free resource prediction arrays */
     for (uint32_t r = 0; r < WM_HYPO_MAX_RESOURCE_TYPES; r++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((r & 0xFF) == 0 && WM_HYPO_MAX_RESOURCE_TYPES > 256) {
+            omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_loop",
+                             (float)(r + 1) / (float)WM_HYPO_MAX_RESOURCE_TYPES);
+        }
+
         nimcp_free(bridge->wm_to_hypo.resource_forecast.resources[r].predicted_availability);
     }
 
@@ -762,6 +810,10 @@ void omni_wm_hypothalamus_bridge_destroy(omni_wm_hypothalamus_bridge_t* bridge) 
 }
 
 nimcp_error_t omni_wm_hypothalamus_bridge_reset(omni_wm_hypothalamus_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_reset", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -791,6 +843,12 @@ nimcp_error_t omni_wm_hypothalamus_bridge_reset(omni_wm_hypothalamus_bridge_t* b
 
     /* Reset resource levels */
     for (uint32_t r = 0; r < WM_HYPO_MAX_RESOURCE_TYPES; r++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((r & 0xFF) == 0 && WM_HYPO_MAX_RESOURCE_TYPES > 256) {
+            omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_loop",
+                             (float)(r + 1) / (float)WM_HYPO_MAX_RESOURCE_TYPES);
+        }
+
         bridge->resource_levels[r] = 0.7f;
     }
 
@@ -820,6 +878,10 @@ nimcp_error_t omni_wm_hypothalamus_bridge_connect(
     hypo_homeostasis_handle_t* homeostasis,
     circadian_rhythm_t* circadian) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_connect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_INVALID_PARAM, "world_model is NULL");
 
@@ -848,6 +910,10 @@ nimcp_error_t omni_wm_hypothalamus_bridge_connect_world_model(
     omni_wm_hypothalamus_bridge_t* bridge,
     omni_world_model_t* world_model) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_connect_world_model", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_NULL_POINTER, "world_model is NULL");
 
@@ -865,6 +931,10 @@ nimcp_error_t omni_wm_hypothalamus_bridge_connect_drives(
     omni_wm_hypothalamus_bridge_t* bridge,
     hypo_drive_system_handle_t* drive_system) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_connect_drives", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(drive_system, NIMCP_ERROR_NULL_POINTER, "drive_system is NULL");
 
@@ -878,6 +948,10 @@ nimcp_error_t omni_wm_hypothalamus_bridge_connect_drives(
 nimcp_error_t omni_wm_hypothalamus_bridge_connect_homeostasis(
     omni_wm_hypothalamus_bridge_t* bridge,
     hypo_homeostasis_handle_t* homeostasis) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_connect_homeostasis", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(homeostasis, NIMCP_ERROR_NULL_POINTER, "homeostasis is NULL");
@@ -893,6 +967,10 @@ nimcp_error_t omni_wm_hypothalamus_bridge_connect_circadian(
     omni_wm_hypothalamus_bridge_t* bridge,
     circadian_rhythm_t* circadian) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_connect_circadian", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(circadian, NIMCP_ERROR_NULL_POINTER, "circadian is NULL");
 
@@ -905,6 +983,10 @@ nimcp_error_t omni_wm_hypothalamus_bridge_connect_circadian(
 
 bool omni_wm_hypothalamus_bridge_is_connected(const omni_wm_hypothalamus_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_is_connected", 0.0f);
+
+
     return bridge->world_model != NULL;
 }
 
@@ -915,6 +997,10 @@ bool omni_wm_hypothalamus_bridge_is_connected(const omni_wm_hypothalamus_bridge_
 nimcp_error_t omni_wm_hypothalamus_bridge_update(
     omni_wm_hypothalamus_bridge_t* bridge,
     float dt) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_update", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_modulation) return NIMCP_SUCCESS;
@@ -956,6 +1042,10 @@ nimcp_error_t omni_wm_hypothalamus_bridge_on_drive_change(
     uint32_t drive_type,
     float new_level,
     float new_urgency) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_on_drive_change", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(drive_type < WM_HYPO_MAX_DRIVES, NIMCP_ERROR_INVALID_PARAM, "drive_type out of range");
@@ -999,6 +1089,10 @@ nimcp_error_t omni_wm_hypothalamus_bridge_on_phase_change(
     omni_wm_hypothalamus_bridge_t* bridge,
     uint32_t new_phase,
     float cycle_position) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_on_phase_change", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -1105,6 +1199,10 @@ float omni_wm_hypothalamus_bridge_get_priority_boost(
 
     if (!bridge || drive_type >= WM_HYPO_MAX_DRIVES) return 1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_get_priority_boost", 0.0f);
+
+
     return bridge->hypo_to_wm.drive_priority_boost[drive_type];
 }
 
@@ -1113,6 +1211,10 @@ float omni_wm_hypothalamus_bridge_get_drive_modifier(
 
     if (!bridge) return 1.0f;
     if (!bridge->config.enable_drive_modulation) return 1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_get_drive_modifier", 0.0f);
+
 
     const wm_hypothal_drive_vector_t* dv = &bridge->hypo_to_wm.drive_vector;
 
@@ -1139,6 +1241,10 @@ bool omni_wm_hypothalamus_bridge_is_conservative(
     const omni_wm_hypothalamus_bridge_t* bridge) {
 
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_is_conservative", 0.0f);
+
+
     return bridge->conservative_mode;
 }
 
@@ -1149,6 +1255,10 @@ bool omni_wm_hypothalamus_bridge_is_conservative(
 nimcp_error_t omni_wm_hypothalamus_bridge_set_stress(
     omni_wm_hypothalamus_bridge_t* bridge,
     float stress_level) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_set_stress", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -1176,6 +1286,10 @@ nimcp_error_t omni_wm_hypothalamus_bridge_set_arousal(
     omni_wm_hypothalamus_bridge_t* bridge,
     float arousal_level) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_set_arousal", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1199,6 +1313,10 @@ float omni_wm_hypothalamus_bridge_get_stress(
     const omni_wm_hypothalamus_bridge_t* bridge) {
 
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_get_stress", 0.0f);
+
+
     return bridge->current_stress_smoothed;
 }
 
@@ -1206,6 +1324,10 @@ float omni_wm_hypothalamus_bridge_get_arousal(
     const omni_wm_hypothalamus_bridge_t* bridge) {
 
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_get_arousal", 0.0f);
+
+
     return bridge->current_arousal_smoothed;
 }
 
@@ -1218,6 +1340,10 @@ float omni_wm_hypothalamus_bridge_get_circadian_modulation(
     uint32_t modulation_type) {
 
     if (!bridge) return 1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_get_circadian_modula", 0.0f);
+
 
     const wm_circadian_state_t* cs = &bridge->hypo_to_wm.circadian_state;
 
@@ -1234,6 +1360,10 @@ uint32_t omni_wm_hypothalamus_bridge_get_circadian_phase(
     const omni_wm_hypothalamus_bridge_t* bridge) {
 
     if (!bridge) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_get_circadian_phase", 0.0f);
+
+
     return bridge->current_circadian_phase;
 }
 
@@ -1241,6 +1371,10 @@ float omni_wm_hypothalamus_bridge_get_sleep_pressure(
     const omni_wm_hypothalamus_bridge_t* bridge) {
 
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_get_sleep_pressure", 0.0f);
+
+
     return bridge->hypo_to_wm.circadian_state.sleep_pressure;
 }
 
@@ -1253,6 +1387,10 @@ nimcp_error_t omni_wm_hypothalamus_bridge_predict_resource(
     wm_resource_type_t resource_type,
     uint32_t horizon_steps,
     wm_resource_prediction_t* prediction_out) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_predict_resource", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(prediction_out, NIMCP_ERROR_NULL_POINTER, "prediction_out is NULL");
@@ -1275,6 +1413,12 @@ nimcp_error_t omni_wm_hypothalamus_bridge_predict_resource(
     float sum_pred = level;
 
     for (uint32_t h = 0; h < horizon_steps; h++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((h & 0xFF) == 0 && horizon_steps > 256) {
+            omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_loop",
+                             (float)(h + 1) / (float)horizon_steps);
+        }
+
         level *= RESOURCE_PREDICTION_DECAY;
         if (prediction_out->predicted_availability) {
             prediction_out->predicted_availability[h] = level;
@@ -1304,6 +1448,10 @@ nimcp_error_t omni_wm_hypothalamus_bridge_forecast_resources(
     omni_wm_hypothalamus_bridge_t* bridge,
     wm_resource_forecast_t* forecast_out) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_forecast_resources", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(forecast_out, NIMCP_ERROR_NULL_POINTER, "forecast_out is NULL");
 
@@ -1321,6 +1469,10 @@ nimcp_error_t omni_wm_hypothalamus_bridge_update_resource(
     omni_wm_hypothalamus_bridge_t* bridge,
     wm_resource_type_t resource_type,
     float level) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_update_resource", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(resource_type < WM_RESOURCE_COUNT, NIMCP_ERROR_INVALID_PARAM, "resource_type out of range");
@@ -1344,6 +1496,10 @@ nimcp_error_t omni_wm_hypothalamus_bridge_predict_reward(
     uint32_t action_dim,
     float* reward_out,
     float* confidence_out) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_predict_reward", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(action, NIMCP_ERROR_INVALID_PARAM, "action is NULL");
@@ -1371,6 +1527,12 @@ nimcp_error_t omni_wm_hypothalamus_bridge_predict_reward(
         /* Simple heuristic: action magnitude correlates with expected reward */
         float action_magnitude = 0.0f;
         for (uint32_t i = 0; i < action_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && action_dim > 256) {
+                omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_loop",
+                                 (float)(i + 1) / (float)action_dim);
+            }
+
             action_magnitude += action[i] * action[i];
         }
         action_magnitude = sqrtf(action_magnitude);
@@ -1399,6 +1561,10 @@ nimcp_error_t omni_wm_hypothalamus_bridge_update_reward_prediction(
     omni_wm_hypothalamus_bridge_t* bridge,
     float predicted_reward,
     float actual_reward) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_update_reward_predic", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -1435,6 +1601,10 @@ const hypothalamus_to_omni_wm_effects_t* omni_wm_hypothalamus_bridge_get_hypo_ef
 
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_get_hypo_effects", 0.0f);
+
+
     return &bridge->hypo_to_wm;
 }
 
@@ -1451,12 +1621,20 @@ const omni_wm_to_hypothalamus_effects_t* omni_wm_hypothalamus_bridge_get_wm_effe
 
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_get_wm_effects", 0.0f);
+
+
     return &bridge->wm_to_hypo;
 }
 
 nimcp_error_t omni_wm_hypothalamus_bridge_get_stats(
     const omni_wm_hypothalamus_bridge_t* bridge,
     omni_wm_hypothalamus_bridge_stats_t* stats) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_get_stats", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
@@ -1470,6 +1648,10 @@ nimcp_error_t omni_wm_hypothalamus_bridge_get_stats(
 
 nimcp_error_t omni_wm_hypothalamus_bridge_reset_stats(
     omni_wm_hypothalamus_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_reset_stats", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -1486,6 +1668,10 @@ nimcp_error_t omni_wm_hypothalamus_bridge_reset_stats(
 
 nimcp_error_t omni_wm_hypothalamus_bridge_connect_bio_async(
     omni_wm_hypothalamus_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_connect_bio_async", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_bio_async) return NIMCP_SUCCESS;
@@ -1540,6 +1726,10 @@ nimcp_error_t omni_wm_hypothalamus_bridge_connect_bio_async(
 nimcp_error_t omni_wm_hypothalamus_bridge_disconnect_bio_async(
     omni_wm_hypothalamus_bridge_t* bridge) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_disconnect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
@@ -1556,6 +1746,10 @@ nimcp_error_t omni_wm_hypothalamus_bridge_disconnect_bio_async(
 
 bool omni_wm_hypothalamus_bridge_is_bio_async_connected(
     const omni_wm_hypothalamus_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_is_bio_async_connect", 0.0f);
+
 
     return bridge_base_is_bio_async_connected(bridge ? &bridge->base : NULL);
 }
@@ -1640,6 +1834,10 @@ const char* wm_resource_type_to_string(wm_resource_type_t resource_type) {
 
 nimcp_error_t omni_wm_hypothalamus_bridge_validate_config(
     const omni_wm_hypothalamus_bridge_config_t* config) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_validate_config", 0.0f);
+
 
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 

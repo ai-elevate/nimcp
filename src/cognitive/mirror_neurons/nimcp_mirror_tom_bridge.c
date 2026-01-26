@@ -37,7 +37,7 @@ static nimcp_health_agent_t* g_mirror_tom_bridge_health_agent = NULL;
  * @brief Set health agent for mirror_tom_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_tom_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_tom_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_tom_bridge_health_agent = agent;
 }
 
@@ -105,6 +105,12 @@ static double simd_dot_product(const float* a, const float* b, uint32_t dim) {
     /* Scalar fallback for small vectors */
     double sum = 0.0;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            mirror_tom_bridge_heartbeat("mirror_tom_b_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         sum += (double)a[i] * (double)b[i];
     }
     return sum;
@@ -120,6 +126,12 @@ static double simd_sum_sq(const float* v, uint32_t dim) {
     /* Scalar fallback */
     double sum = 0.0;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            mirror_tom_bridge_heartbeat("mirror_tom_b_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         sum += (double)v[i] * (double)v[i];
     }
     return sum;
@@ -179,6 +191,12 @@ static int32_t find_agent_slot(const struct mirror_tom_bridge* bridge,
 
     uint32_t start = hash_agent_id(agent_id);
     for (uint32_t i = 0; i < MIRROR_TOM_MAX_AGENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MIRROR_TOM_MAX_AGENTS > 256) {
+            mirror_tom_bridge_heartbeat("mirror_tom_b_loop",
+                             (float)(i + 1) / (float)MIRROR_TOM_MAX_AGENTS);
+        }
+
         uint32_t idx = (start + i) % MIRROR_TOM_MAX_AGENTS;
         if (bridge->agents[idx].is_active &&
             bridge->agents[idx].agent_id == agent_id) {
@@ -215,6 +233,12 @@ static int32_t find_or_create_agent_slot(struct mirror_tom_bridge* bridge,
     /* Find empty slot */
     uint32_t start = hash_agent_id(agent_id);
     for (uint32_t i = 0; i < MIRROR_TOM_MAX_AGENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MIRROR_TOM_MAX_AGENTS > 256) {
+            mirror_tom_bridge_heartbeat("mirror_tom_b_loop",
+                             (float)(i + 1) / (float)MIRROR_TOM_MAX_AGENTS);
+        }
+
         uint32_t idx = (start + i) % MIRROR_TOM_MAX_AGENTS;
         if (!bridge->agents[idx].is_active) {
             /* Initialize agent */
@@ -317,6 +341,10 @@ static void add_intention_to_history(mirror_tom_agent_state_t* agent,
  * ============================================================================ */
 
 mirror_tom_bridge_t mirror_tom_create(const mirror_tom_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_create", 0.0f);
+
+
     struct mirror_tom_bridge* bridge = nimcp_malloc(sizeof(struct mirror_tom_bridge));
     if (!bridge) {
         nimcp_log(LOG_LEVEL_ERROR, "Mirror-ToM: failed to allocate bridge");
@@ -350,6 +378,10 @@ mirror_tom_bridge_t mirror_tom_create(const mirror_tom_config_t* config) {
 void mirror_tom_destroy(mirror_tom_bridge_t bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_destroy", 0.0f);
+
+
     nimcp_log(LOG_LEVEL_INFO, "Mirror-ToM bridge destroyed (tracked %u agents, %u observations)",
               bridge->agent_count, bridge->stats.total_observations);
 
@@ -359,6 +391,10 @@ void mirror_tom_destroy(mirror_tom_bridge_t bridge) {
 }
 
 mirror_tom_config_t mirror_tom_get_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_get_defau", 0.0f);
+
+
     mirror_tom_config_t config;
 
     /* Mirror → ToM thresholds */
@@ -395,6 +431,10 @@ int mirror_tom_connect_mirror(mirror_tom_bridge_t bridge, mirror_neurons_t mirro
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_connect_m", 0.0f);
+
+
     bridge->mirror = mirror;
     nimcp_log(LOG_LEVEL_INFO, "Mirror-ToM: connected to mirror neuron system");
     return 0;
@@ -409,6 +449,10 @@ int mirror_tom_connect_tom(mirror_tom_bridge_t bridge, theory_of_mind_t tom) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_connect_t", 0.0f);
+
+
     bridge->tom = tom;
     nimcp_log(LOG_LEVEL_INFO, "Mirror-ToM: connected to Theory of Mind system");
     return 0;
@@ -422,6 +466,10 @@ int mirror_tom_process_observation(mirror_tom_bridge_t bridge,
                                     uint32_t agent_id,
                                     const mirror_tom_observation_t* observation) {
     if (!bridge || !observation) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_process_o", 0.0f);
+
 
     int32_t slot = find_or_create_agent_slot(bridge, agent_id);
     if (slot < 0) return -1;
@@ -481,6 +529,10 @@ int mirror_tom_infer_intention(mirror_tom_bridge_t bridge,
                                 float* out_confidence) {
     if (!bridge || !action_features || action_dim == 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_infer_int", 0.0f);
+
+
     int32_t slot = find_or_create_agent_slot(bridge, agent_id);
     if (slot < 0) return -1;
 
@@ -530,6 +582,10 @@ int mirror_tom_trigger_empathy(mirror_tom_bridge_t bridge,
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_trigger_e", 0.0f);
+
+
     int32_t slot = find_or_create_agent_slot(bridge, agent_id);
     if (slot < 0) return -1;
 
@@ -561,6 +617,10 @@ int mirror_tom_signal_false_belief(mirror_tom_bridge_t bridge,
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_signal_fa", 0.0f);
+
+
     (void)context_features;
     (void)context_dim;
 
@@ -595,6 +655,10 @@ int mirror_tom_signal_false_belief(mirror_tom_bridge_t bridge,
 int mirror_tom_update_mental_state(mirror_tom_bridge_t bridge,
                                     const mirror_tom_mental_state_t* mental_state) {
     if (!bridge || !mental_state) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_update_me", 0.0f);
+
 
     int32_t slot = find_or_create_agent_slot(bridge, mental_state->agent_id);
     if (slot < 0) return -1;
@@ -634,6 +698,10 @@ float mirror_tom_compute_resonance_gain(mirror_tom_bridge_t bridge,
                                          uint32_t agent_id) {
     if (!bridge) return 1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_compute_r", 0.0f);
+
+
     int32_t slot = find_agent_slot(bridge, agent_id);
     if (slot < 0) return 1.0f;  /* Default for unknown agents */
 
@@ -644,6 +712,10 @@ float mirror_tom_compute_resonance_gain(mirror_tom_bridge_t bridge,
 bool mirror_tom_should_suppress_imitation(mirror_tom_bridge_t bridge,
                                            uint32_t agent_id) {
     if (!bridge || !bridge->config.enable_deception_suppression) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_should_su", 0.0f);
+
 
     int32_t slot = find_agent_slot(bridge, agent_id);
     if (slot < 0) return false;
@@ -663,6 +735,10 @@ int mirror_tom_get_observation_bias(mirror_tom_bridge_t bridge,
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_get_obser", 0.0f);
+
 
     int32_t slot = find_agent_slot(bridge, agent_id);
     if (slot < 0) return -1;
@@ -687,6 +763,10 @@ int mirror_tom_get_observation_bias(mirror_tom_bridge_t bridge,
 float mirror_tom_simd_similarity(const float* action,
                                   const float* intention,
                                   uint32_t dim) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_simd_simi", 0.0f);
+
+
     bool used_simd;
     return compute_cosine_similarity(action, intention, dim, &used_simd);
 }
@@ -698,7 +778,17 @@ int mirror_tom_batch_belief_similarity(const float** belief_states,
     if (!belief_states || !out_similarity || num_agents == 0) return -1;
 
     /* Compute pairwise similarities */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_batch_bel", 0.0f);
+
+
     for (uint32_t i = 0; i < num_agents; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_agents > 256) {
+            mirror_tom_bridge_heartbeat("mirror_tom_b_loop",
+                             (float)(i + 1) / (float)num_agents);
+        }
+
         out_similarity[i * num_agents + i] = 1.0f;  /* Self-similarity */
 
         for (uint32_t j = i + 1; j < num_agents; j++) {
@@ -727,6 +817,10 @@ int mirror_tom_get_mirror_effects(mirror_tom_bridge_t bridge,
                                    mirror_to_tom_effects_t* out_effects) {
     if (!bridge || !out_effects) return -1;
     *out_effects = bridge->mirror_effects;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_get_mirro", 0.0f);
+
+
     return 0;
 }
 
@@ -734,6 +828,10 @@ int mirror_tom_get_tom_effects(mirror_tom_bridge_t bridge,
                                 tom_to_mirror_effects_t* out_effects) {
     if (!bridge || !out_effects) return -1;
     *out_effects = bridge->tom_effects;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_get_tom_e", 0.0f);
+
+
     return 0;
 }
 
@@ -741,6 +839,10 @@ int mirror_tom_get_agent_state(mirror_tom_bridge_t bridge,
                                 uint32_t agent_id,
                                 mirror_tom_agent_state_t* out_state) {
     if (!bridge || !out_state) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_get_agent", 0.0f);
+
 
     int32_t slot = find_agent_slot(bridge, agent_id);
     if (slot < 0) return -1;
@@ -752,6 +854,10 @@ int mirror_tom_get_agent_state(mirror_tom_bridge_t bridge,
 int mirror_tom_get_stats(mirror_tom_bridge_t bridge,
                           mirror_tom_stats_t* out_stats) {
     if (!bridge || !out_stats) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_get_stats", 0.0f);
+
 
     bridge->stats.last_update_us = nimcp_time_now_us();
     *out_stats = bridge->stats;
@@ -772,18 +878,34 @@ int mirror_tom_update(mirror_tom_bridge_t bridge, uint64_t delta_time_us) {
     }
 
     /* Decay belief confidence over time */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_update", 0.0f);
+
+
     float decay_factor = expf(-(float)delta_time_us / (float)BELIEF_DECAY_TIME_CONSTANT_US *
                                bridge->config.belief_decay_rate);
 
     uint64_t now = nimcp_time_now_us();
 
     for (uint32_t i = 0; i < MIRROR_TOM_MAX_AGENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MIRROR_TOM_MAX_AGENTS > 256) {
+            mirror_tom_bridge_heartbeat("mirror_tom_b_loop",
+                             (float)(i + 1) / (float)MIRROR_TOM_MAX_AGENTS);
+        }
+
         if (!bridge->agents[i].is_active) continue;
 
         mirror_tom_agent_state_t* agent = &bridge->agents[i];
 
         /* Decay belief confidence */
         for (uint32_t d = 0; d < agent->belief_dim; d++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((d & 0xFF) == 0 && agent->belief_dim > 256) {
+                mirror_tom_bridge_heartbeat("mirror_tom_b_loop",
+                                 (float)(d + 1) / (float)agent->belief_dim);
+            }
+
             agent->belief_state[d] *= decay_factor;
         }
 
@@ -810,6 +932,10 @@ int mirror_tom_reset_agent(mirror_tom_bridge_t bridge, uint32_t agent_id) {
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_reset_age", 0.0f);
+
 
     int32_t slot = find_agent_slot(bridge, agent_id);
     if (slot < 0) return -1;
@@ -843,6 +969,10 @@ const char* mirror_tom_emotion_name(mirror_tom_emotion_t emotion) {
 void mirror_tom_print_observation(const mirror_tom_observation_t* obs,
                                    const char* prefix) {
     if (!obs) return;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_print_obs", 0.0f);
+
+
     const char* pfx = prefix ? prefix : "";
 
     nimcp_log(LOG_LEVEL_DEBUG, "%sObservation: dim=%u, resonance=%.2f, goal_conf=%.2f",
@@ -855,6 +985,10 @@ void mirror_tom_print_observation(const mirror_tom_observation_t* obs,
 void mirror_tom_print_mental_state(const mirror_tom_mental_state_t* state,
                                     const char* prefix) {
     if (!state) return;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_print_men", 0.0f);
+
+
     const char* pfx = prefix ? prefix : "";
 
     nimcp_log(LOG_LEVEL_DEBUG, "%sMental State (agent %u):", pfx, state->agent_id);

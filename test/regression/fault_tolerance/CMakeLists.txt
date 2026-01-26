@@ -64,4 +64,33 @@ gtest_discover_tests(regression_health_stability
         TIMEOUT 180
 )
 
+# Heartbeat B01 Memory Core Regression Tests (Phase 8: Per-Batch Heartbeat Testing)
+add_executable(regression_heartbeat_B01_memory_core
+    test_heartbeat_B01_memory_core_regression.cpp
+)
+
+target_include_directories(regression_heartbeat_B01_memory_core PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
+)
+
+target_link_libraries(regression_heartbeat_B01_memory_core
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_compile_features(regression_heartbeat_B01_memory_core PRIVATE cxx_std_17)
+target_compile_definitions(regression_heartbeat_B01_memory_core PRIVATE NIMCP_TESTING)
+
+gtest_discover_tests(regression_heartbeat_B01_memory_core
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;fault_tolerance;heartbeat;B01;memory_core"
+        TIMEOUT 180
+)
+
 message(STATUS "Added fault tolerance regression tests")

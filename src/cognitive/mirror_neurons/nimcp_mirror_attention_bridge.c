@@ -39,7 +39,7 @@ static nimcp_health_agent_t* g_mirror_attention_bridge_health_agent = NULL;
  * @brief Set health agent for mirror_attention_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_attention_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_attention_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_attention_bridge_health_agent = agent;
 }
 
@@ -132,6 +132,12 @@ static mirror_attention_agent_t* get_or_create_agent(
 ) {
     /* Find existing */
     for (uint32_t i = 0; i < MIRROR_ATTENTION_MAX_AGENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MIRROR_ATTENTION_MAX_AGENTS > 256) {
+            mirror_attention_bridge_heartbeat("mirror_atten_loop",
+                             (float)(i + 1) / (float)MIRROR_ATTENTION_MAX_AGENTS);
+        }
+
         if (bridge->agents[i].active && bridge->agents[i].agent_id == agent_id) {
             return &bridge->agents[i];
         }
@@ -139,6 +145,12 @@ static mirror_attention_agent_t* get_or_create_agent(
 
     /* Find empty slot */
     for (uint32_t i = 0; i < MIRROR_ATTENTION_MAX_AGENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MIRROR_ATTENTION_MAX_AGENTS > 256) {
+            mirror_attention_bridge_heartbeat("mirror_atten_loop",
+                             (float)(i + 1) / (float)MIRROR_ATTENTION_MAX_AGENTS);
+        }
+
         if (!bridge->agents[i].active) {
             memset(&bridge->agents[i], 0, sizeof(mirror_attention_agent_t));
             bridge->agents[i].agent_id = agent_id;
@@ -239,10 +251,22 @@ static void update_saliency_gaussian(
     float sigma_sq_2 = 2.0f * sigma * sigma;
 
     for (uint32_t i = 0; i < MIRROR_ATTENTION_SALIENCY_SIZE; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MIRROR_ATTENTION_SALIENCY_SIZE > 256) {
+            mirror_attention_bridge_heartbeat("mirror_atten_loop",
+                             (float)(i + 1) / (float)MIRROR_ATTENTION_SALIENCY_SIZE);
+        }
+
         float y = (float)i / (float)(MIRROR_ATTENTION_SALIENCY_SIZE - 1);
         float dy = y - focus_y;
 
         for (uint32_t j = 0; j < MIRROR_ATTENTION_SALIENCY_SIZE; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && MIRROR_ATTENTION_SALIENCY_SIZE > 256) {
+                mirror_attention_bridge_heartbeat("mirror_atten_loop",
+                                 (float)(j + 1) / (float)MIRROR_ATTENTION_SALIENCY_SIZE);
+            }
+
             float x = (float)j / (float)(MIRROR_ATTENTION_SALIENCY_SIZE - 1);
             float dx = x - focus_x;
 
@@ -262,7 +286,19 @@ static void update_saliency_gaussian(
  */
 static void decay_saliency(mirror_saliency_state_t* saliency, float decay_rate) {
     for (uint32_t i = 0; i < MIRROR_ATTENTION_SALIENCY_SIZE; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MIRROR_ATTENTION_SALIENCY_SIZE > 256) {
+            mirror_attention_bridge_heartbeat("mirror_atten_loop",
+                             (float)(i + 1) / (float)MIRROR_ATTENTION_SALIENCY_SIZE);
+        }
+
         for (uint32_t j = 0; j < MIRROR_ATTENTION_SALIENCY_SIZE; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && MIRROR_ATTENTION_SALIENCY_SIZE > 256) {
+                mirror_attention_bridge_heartbeat("mirror_atten_loop",
+                                 (float)(j + 1) / (float)MIRROR_ATTENTION_SALIENCY_SIZE);
+            }
+
             saliency->saliency_boost[i][j] *= (1.0f - decay_rate);
         }
     }
@@ -273,6 +309,10 @@ static void decay_saliency(mirror_saliency_state_t* saliency, float decay_rate) 
 //=============================================================================
 
 mirror_attention_config_t mirror_attention_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_con", 0.0f);
+
+
     mirror_attention_config_t config = {
         .cue_validity_threshold = 0.3f,
         .reflexive_soa_ms = 150.0f,
@@ -300,6 +340,10 @@ mirror_attention_config_t mirror_attention_config_default(void) {
 mirror_attention_bridge_t* mirror_attention_create(
     const mirror_attention_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_cre", 0.0f);
+
+
     mirror_attention_bridge_t* bridge = nimcp_calloc(1,
                                                       sizeof(mirror_attention_bridge_t));
     if (!bridge) {
@@ -344,6 +388,10 @@ mirror_attention_bridge_t* mirror_attention_create(
 void mirror_attention_destroy(mirror_attention_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_des", 0.0f);
+
+
     if (bridge->bio_async_registered) {
         mirror_attention_unregister_bio_async(bridge);
     }
@@ -361,6 +409,10 @@ bool mirror_attention_process_gaze(
     mirror_attention_cue_t* cue
 ) {
     if (!bridge || !observation || !cue) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_pro", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -490,6 +542,10 @@ float mirror_attention_compute_gaze_target(
     /* P = O + t*D where P.y = 0 */
     /* t = -O.y / D.y */
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_com", 0.0f);
+
+
     float t;
     if (fabsf(gaze_direction->y) < 1e-6f) {
         /* Horizontal gaze - use default distance of 3.0m */
@@ -517,8 +573,18 @@ uint32_t mirror_attention_process_batch(
 ) {
     if (!bridge || !observations || !cues || count == 0) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_pro", 0.0f);
+
+
     uint32_t processed = 0;
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            mirror_attention_bridge_heartbeat("mirror_atten_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (mirror_attention_process_gaze(bridge, &observations[i], &cues[i])) {
             processed++;
         }
@@ -537,10 +603,20 @@ joint_attention_state_t mirror_attention_get_joint_state(
 ) {
     if (!bridge) return JOINT_ATTENTION_NONE;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_get", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     joint_attention_state_t state = JOINT_ATTENTION_NONE;
     for (uint32_t i = 0; i < MIRROR_ATTENTION_MAX_AGENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MIRROR_ATTENTION_MAX_AGENTS > 256) {
+            mirror_attention_bridge_heartbeat("mirror_atten_loop",
+                             (float)(i + 1) / (float)MIRROR_ATTENTION_MAX_AGENTS);
+        }
+
         if (bridge->agents[i].active && bridge->agents[i].agent_id == agent_id) {
             state = bridge->agents[i].joint_state;
             break;
@@ -558,6 +634,10 @@ bool mirror_attention_initiate_joint(
 ) {
     if (!bridge || !target) return false;
     if (!bridge->config.enable_joint_attention_initiation) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_ini", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -592,10 +672,20 @@ bool mirror_attention_respond_to_joint(
 ) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_res", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     mirror_attention_agent_t* agent = NULL;
     for (uint32_t i = 0; i < MIRROR_ATTENTION_MAX_AGENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MIRROR_ATTENTION_MAX_AGENTS > 256) {
+            mirror_attention_bridge_heartbeat("mirror_atten_loop",
+                             (float)(i + 1) / (float)MIRROR_ATTENTION_MAX_AGENTS);
+        }
+
         if (bridge->agents[i].active && bridge->agents[i].agent_id == agent_id) {
             agent = &bridge->agents[i];
             break;
@@ -626,9 +716,19 @@ void mirror_attention_break_joint(
 ) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_bre", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < MIRROR_ATTENTION_MAX_AGENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MIRROR_ATTENTION_MAX_AGENTS > 256) {
+            mirror_attention_bridge_heartbeat("mirror_atten_loop",
+                             (float)(i + 1) / (float)MIRROR_ATTENTION_MAX_AGENTS);
+        }
+
         if (bridge->agents[i].active && bridge->agents[i].agent_id == agent_id) {
             mirror_attention_agent_t* agent = &bridge->agents[i];
 
@@ -656,6 +756,10 @@ float mirror_attention_get_sensitivity_at(
 ) {
     if (!bridge || !position) return 1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_get", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute distance from attention focus */
@@ -680,6 +784,10 @@ void mirror_attention_set_focus(
 ) {
     if (!bridge || !focus) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_set", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->saliency.attention_focus = *focus;
@@ -695,6 +803,10 @@ float mirror_attention_get_saliency_boost(
     float y
 ) {
     if (!bridge) return 1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_get", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -722,7 +834,17 @@ void mirror_attention_simd_gaze_targets(
     uint32_t count
 ) {
     /* SIMD batch gaze target computation */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_sim", 0.0f);
+
+
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            mirror_attention_bridge_heartbeat("mirror_atten_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         mirror_attention_vec3_t pos = {
             positions[i * 3 + 0],
             positions[i * 3 + 1],
@@ -751,13 +873,29 @@ void mirror_attention_simd_update_saliency(
     float sigma,
     float strength
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_sim", 0.0f);
+
+
     float sigma_sq_2 = 2.0f * sigma * sigma;
 
     for (uint32_t i = 0; i < size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && size > 256) {
+            mirror_attention_bridge_heartbeat("mirror_atten_loop",
+                             (float)(i + 1) / (float)size);
+        }
+
         float y = (float)i / (float)(size - 1);
         float dy = y - focus_y;
 
         for (uint32_t j = 0; j < size; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && size > 256) {
+                mirror_attention_bridge_heartbeat("mirror_atten_loop",
+                                 (float)(j + 1) / (float)size);
+            }
+
             float x = (float)j / (float)(size - 1);
             float dx = x - focus_x;
 
@@ -782,6 +920,10 @@ mirror_attention_agent_t* mirror_attention_get_agent(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_get", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     mirror_attention_agent_t* agent = get_or_create_agent(bridge, agent_id);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -796,9 +938,19 @@ void mirror_attention_update_validity(
 ) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_upd", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < MIRROR_ATTENTION_MAX_AGENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MIRROR_ATTENTION_MAX_AGENTS > 256) {
+            mirror_attention_bridge_heartbeat("mirror_atten_loop",
+                             (float)(i + 1) / (float)MIRROR_ATTENTION_MAX_AGENTS);
+        }
+
         if (bridge->agents[i].active && bridge->agents[i].agent_id == agent_id) {
             mirror_attention_agent_t* agent = &bridge->agents[i];
 
@@ -824,12 +976,20 @@ bool mirror_attention_register_bio_async(mirror_attention_bridge_t* bridge) {
 
     /* Mark as registered - actual router registration would happen
      * when integrated into a full bio-async context */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_reg", 0.0f);
+
+
     bridge->bio_async_registered = true;
     return true;
 }
 
 void mirror_attention_unregister_bio_async(mirror_attention_bridge_t* bridge) {
     if (!bridge || !bridge->bio_async_registered) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_unr", 0.0f);
+
 
     bridge->bio_async_registered = false;
 }
@@ -839,6 +999,10 @@ bool mirror_attention_get_stats(
     mirror_attention_stats_t* stats
 ) {
     if (!bridge || !stats) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_get", 0.0f);
+
 
     nimcp_mutex_lock(((mirror_attention_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
@@ -851,6 +1015,12 @@ bool mirror_attention_get_stats(
     uint32_t duration_count = 0;
 
     for (uint32_t i = 0; i < MIRROR_ATTENTION_MAX_AGENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MIRROR_ATTENTION_MAX_AGENTS > 256) {
+            mirror_attention_bridge_heartbeat("mirror_atten_loop",
+                             (float)(i + 1) / (float)MIRROR_ATTENTION_MAX_AGENTS);
+        }
+
         if (bridge->agents[i].active) {
             stats->active_agents++;
             total_success += bridge->agents[i].successful_joint_attention_count;
@@ -876,6 +1046,10 @@ bool mirror_attention_get_stats(
 
 void mirror_attention_reset_stats(mirror_attention_bridge_t* bridge) {
     if (!bridge) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_res", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(mirror_attention_stats_t));

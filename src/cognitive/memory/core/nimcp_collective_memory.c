@@ -42,7 +42,7 @@ static nimcp_health_agent_t* g_collective_memory_health_agent = NULL;
  * @brief Set health agent for collective_memory heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void collective_memory_set_health_agent(nimcp_health_agent_t* agent) {
+void collective_memory_set_health_agent(nimcp_health_agent_t* agent) {
     g_collective_memory_health_agent = agent;
 }
 
@@ -98,6 +98,12 @@ static int find_agent_index(collective_memory_system_t* system, uint64_t agent_i
     if (!system) return -1;
 
     for (size_t i = 0; i < system->num_agents; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_agents > 256) {
+            collective_memory_heartbeat("collective_m_loop",
+                             (float)(i + 1) / (float)system->num_agents);
+        }
+
         if (system->agents[i].agent_id == agent_id) {
             return (int)i;
         }
@@ -112,6 +118,12 @@ static int find_memory_index(collective_memory_system_t* system, uint64_t memory
     if (!system) return -1;
 
     for (size_t i = 0; i < system->num_memories; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_memories > 256) {
+            collective_memory_heartbeat("collective_m_loop",
+                             (float)(i + 1) / (float)system->num_memories);
+        }
+
         if (system->memories[i] && system->memories[i]->memory_id == memory_id) {
             return (int)i;
         }
@@ -126,6 +138,12 @@ static bool agent_has_memory(collective_memory_t* memory, uint64_t agent_id) {
     if (!memory) return false;
 
     for (size_t i = 0; i < memory->num_agents; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && memory->num_agents > 256) {
+            collective_memory_heartbeat("collective_m_loop",
+                             (float)(i + 1) / (float)memory->num_agents);
+        }
+
         if (memory->agent_ids[i] == agent_id) {
             return true;
         }
@@ -180,6 +198,12 @@ static collective_error_t remove_agent_from_memory(collective_memory_t* memory,
     if (!memory) return COLLECTIVE_ERROR_NULL_POINTER;
 
     for (size_t i = 0; i < memory->num_agents; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && memory->num_agents > 256) {
+            collective_memory_heartbeat("collective_m_loop",
+                             (float)(i + 1) / (float)memory->num_agents);
+        }
+
         if (memory->agent_ids[i] == agent_id) {
             // Shift remaining agents
             for (size_t j = i; j < memory->num_agents - 1; j++) {
@@ -430,12 +454,24 @@ NIMCP_EXPORT void collective_memory_destroy(collective_memory_system_t* system) 
 
     // Destroy all collective memories
     for (size_t i = 0; i < system->num_memories; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_memories > 256) {
+            collective_memory_heartbeat("collective_m_loop",
+                             (float)(i + 1) / (float)system->num_memories);
+        }
+
         destroy_collective_memory(system->memories[i]);
     }
     free(system->memories);
 
     // Cleanup all agent states
     for (size_t i = 0; i < system->num_agents; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_agents > 256) {
+            collective_memory_heartbeat("collective_m_loop",
+                             (float)(i + 1) / (float)system->num_agents);
+        }
+
         cleanup_agent_state(&system->agents[i]);
     }
     free(system->agents);
@@ -452,6 +488,12 @@ NIMCP_EXPORT collective_error_t collective_memory_reset(
 
     // Destroy all collective memories
     for (size_t i = 0; i < system->num_memories; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_memories > 256) {
+            collective_memory_heartbeat("collective_m_loop",
+                             (float)(i + 1) / (float)system->num_memories);
+        }
+
         destroy_collective_memory(system->memories[i]);
         system->memories[i] = NULL;
     }
@@ -459,6 +501,12 @@ NIMCP_EXPORT collective_error_t collective_memory_reset(
 
     // Cleanup all agent states
     for (size_t i = 0; i < system->num_agents; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_agents > 256) {
+            collective_memory_heartbeat("collective_m_loop",
+                             (float)(i + 1) / (float)system->num_agents);
+        }
+
         cleanup_agent_state(&system->agents[i]);
     }
     system->num_agents = 0;
@@ -526,6 +574,12 @@ NIMCP_EXPORT collective_error_t collective_memory_remove_agent(
 
     // Remove agent from all memories
     for (size_t i = 0; i < system->num_memories; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_memories > 256) {
+            collective_memory_heartbeat("collective_m_loop",
+                             (float)(i + 1) / (float)system->num_memories);
+        }
+
         if (system->memories[i]) {
             remove_agent_from_memory(system->memories[i], agent_id);
         }
@@ -744,6 +798,12 @@ NIMCP_EXPORT size_t collective_memory_sync_all(
     size_t synced = 0;
 
     for (size_t i = 0; i < system->num_memories; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_memories > 256) {
+            collective_memory_heartbeat("collective_m_loop",
+                             (float)(i + 1) / (float)system->num_memories);
+        }
+
         if (system->memories[i]) {
             collective_error_t err = collective_memory_sync(system,
                 system->memories[i]->memory_id);
@@ -773,6 +833,12 @@ NIMCP_EXPORT size_t collective_memory_sync_agents(
 
     // Sync memories shared by both agents
     for (size_t i = 0; i < system->num_memories; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_memories > 256) {
+            collective_memory_heartbeat("collective_m_loop",
+                             (float)(i + 1) / (float)system->num_memories);
+        }
+
         collective_memory_t* memory = system->memories[i];
         if (!memory) continue;
 
@@ -831,6 +897,12 @@ NIMCP_EXPORT collective_error_t collective_memory_compute_consensus(
             nimcp_quaternion_t weighted_state = {0, 0, 0, 0};
 
             for (size_t i = 0; i < memory->num_agents; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && memory->num_agents > 256) {
+                    collective_memory_heartbeat("collective_m_loop",
+                                     (float)(i + 1) / (float)memory->num_agents);
+                }
+
                 uint64_t aid = memory->agent_ids[i];
                 int aidx = find_agent_index(system, aid);
                 if (aidx < 0) continue;
@@ -869,6 +941,12 @@ NIMCP_EXPORT collective_error_t collective_memory_compute_consensus(
             // Find leader agent
             bool found_leader = false;
             for (size_t i = 0; i < memory->num_agents; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && memory->num_agents > 256) {
+                    collective_memory_heartbeat("collective_m_loop",
+                                     (float)(i + 1) / (float)memory->num_agents);
+                }
+
                 uint64_t aid = memory->agent_ids[i];
                 int aidx = find_agent_index(system, aid);
                 if (aidx >= 0 && system->agents[aidx].is_leader) {
@@ -925,6 +1003,12 @@ NIMCP_EXPORT collective_error_t collective_memory_apply_consensus(
 
     // Update version numbers for all agents
     for (size_t i = 0; i < memory->num_agents; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && memory->num_agents > 256) {
+            collective_memory_heartbeat("collective_m_loop",
+                             (float)(i + 1) / (float)memory->num_agents);
+        }
+
         memory->agent_versions[i] += 1.0f;
     }
 
@@ -953,6 +1037,12 @@ NIMCP_EXPORT size_t collective_memory_propagate(
     size_t propagated = 0;
 
     for (size_t i = 0; i < num_targets; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_targets > 256) {
+            collective_memory_heartbeat("collective_m_loop",
+                             (float)(i + 1) / (float)num_targets);
+        }
+
         uint64_t agent_id = target_agents[i];
 
         // Skip if agent already has memory
@@ -1104,6 +1194,12 @@ NIMCP_EXPORT collective_error_t collective_memory_resolve_conflict(
     if (result.consensus_level < system->config.consensus_threshold) {
         // Find leader
         for (size_t i = 0; i < memory->num_agents; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && memory->num_agents > 256) {
+                collective_memory_heartbeat("collective_m_loop",
+                                 (float)(i + 1) / (float)memory->num_agents);
+            }
+
             uint64_t aid = memory->agent_ids[i];
             int aidx = find_agent_index(system, aid);
             if (aidx >= 0 && system->agents[aidx].is_leader) {
@@ -1191,6 +1287,12 @@ NIMCP_EXPORT collective_error_t collective_memory_apply_mutation(
 
     // Apply noise to signature exponents
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            collective_memory_heartbeat("collective_m_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         float noise = (random_float() - 0.5f) * 2.0f * mutation_strength * 10.0f;
         int new_exp = (int)memory->content_signature.exponents[i] + (int)noise;
         if (new_exp < 0) new_exp = 0;
@@ -1385,6 +1487,12 @@ NIMCP_EXPORT collective_error_t collective_memory_get_stats(
     float total_drift = 0.0f;
 
     for (size_t i = 0; i < system->num_memories; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_memories > 256) {
+            collective_memory_heartbeat("collective_m_loop",
+                             (float)(i + 1) / (float)system->num_memories);
+        }
+
         collective_memory_t* memory = system->memories[i];
         if (!memory) continue;
 

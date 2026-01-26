@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_logic_sleep_bridge_health_agent = NULL;
  * @brief Set health agent for logic_sleep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void logic_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void logic_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_logic_sleep_bridge_health_agent = agent;
 }
 
@@ -144,6 +144,10 @@ int logic_sleep_default_config(logic_sleep_config_t* config)
     }
 
     /* Feature enables */
+    /* Phase 8: Heartbeat at operation start */
+    logic_sleep_bridge_heartbeat("logic_sleep__logic_sleep_default_", 0.0f);
+
+
     config->enable_inference_modulation = true;
     config->enable_accuracy_modulation = true;
     config->enable_consistency_modulation = true;
@@ -175,6 +179,10 @@ logic_sleep_bridge_t* logic_sleep_bridge_create(
     }
 
     /* Allocate bridge */
+    /* Phase 8: Heartbeat at operation start */
+    logic_sleep_bridge_heartbeat("logic_sleep__create", 0.0f);
+
+
     logic_sleep_bridge_t* bridge =
         (logic_sleep_bridge_t*)nimcp_malloc(sizeof(logic_sleep_bridge_t));
     if (!bridge) {
@@ -248,6 +256,10 @@ void logic_sleep_bridge_destroy(logic_sleep_bridge_t* bridge)
     if (!bridge) return;
 
     /* Unregister callback if it was registered */
+    /* Phase 8: Heartbeat at operation start */
+    logic_sleep_bridge_heartbeat("logic_sleep__destroy", 0.0f);
+
+
     if (bridge->callback_registered && bridge->sleep_system) {
         bool unregistered = sleep_unregister_state_callback(
             bridge->sleep_system,
@@ -292,6 +304,10 @@ int logic_sleep_update(logic_sleep_bridge_t* bridge)
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    logic_sleep_bridge_heartbeat("logic_sleep__logic_sleep_update", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -393,6 +409,10 @@ int logic_sleep_get_effects(
     /* Guard clauses */
     if (!bridge || !effects) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    logic_sleep_bridge_heartbeat("logic_sleep__logic_sleep_get_effe", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -409,6 +429,10 @@ float logic_sleep_get_inference_capacity(const logic_sleep_bridge_t* bridge)
 {
     /* Guard clause */
     if (!bridge) return 1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    logic_sleep_bridge_heartbeat("logic_sleep__logic_sleep_get_infe", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.inference_capacity_factor;
@@ -427,6 +451,10 @@ bool logic_sleep_is_offline(const logic_sleep_bridge_t* bridge)
     /* Guard clause */
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    logic_sleep_bridge_heartbeat("logic_sleep__logic_sleep_is_offli", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.logic_offline;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -443,6 +471,10 @@ bool logic_sleep_is_consolidation_mode(const logic_sleep_bridge_t* bridge)
 {
     /* Guard clause */
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    logic_sleep_bridge_heartbeat("logic_sleep__logic_sleep_is_conso", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.consolidation_mode;
@@ -462,6 +494,10 @@ bool logic_sleep_is_consolidation_mode(const logic_sleep_bridge_t* bridge)
  */
 float logic_sleep_inference_for_state(sleep_state_t state)
 {
+    /* Phase 8: Heartbeat at operation start */
+    logic_sleep_bridge_heartbeat("logic_sleep__logic_sleep_inferenc", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return LOGIC_SLEEP_INFERENCE_AWAKE;
         case SLEEP_STATE_DROWSY:     return LOGIC_SLEEP_INFERENCE_DROWSY;
@@ -479,6 +515,10 @@ float logic_sleep_inference_for_state(sleep_state_t state)
  */
 float logic_sleep_accuracy_for_state(sleep_state_t state)
 {
+    /* Phase 8: Heartbeat at operation start */
+    logic_sleep_bridge_heartbeat("logic_sleep__logic_sleep_accuracy", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return LOGIC_SLEEP_ACCURACY_AWAKE;
         case SLEEP_STATE_DROWSY:     return LOGIC_SLEEP_ACCURACY_DROWSY;
@@ -496,6 +536,10 @@ float logic_sleep_accuracy_for_state(sleep_state_t state)
  */
 float logic_sleep_consistency_for_state(sleep_state_t state)
 {
+    /* Phase 8: Heartbeat at operation start */
+    logic_sleep_bridge_heartbeat("logic_sleep__logic_sleep_consiste", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return LOGIC_SLEEP_CONSISTENCY_AWAKE;
         case SLEEP_STATE_DROWSY:     return LOGIC_SLEEP_CONSISTENCY_DROWSY;
@@ -528,6 +572,10 @@ int logic_sleep_connect_bio_async(logic_sleep_bridge_t* bridge)
     if (bridge->base.bio_async_enabled) return 0;  /* Already connected */
 
     /* Register with bio-async router */
+    /* Phase 8: Heartbeat at operation start */
+    logic_sleep_bridge_heartbeat("logic_sleep__logic_sleep_connect_", 0.0f);
+
+
     bio_module_info_t info = {
         .module_id = BIO_MODULE_KNOWLEDGE_SYMBOLIC_LOGIC,
         .module_name = "logic_sleep_bridge",
@@ -564,6 +612,10 @@ int logic_sleep_disconnect_bio_async(logic_sleep_bridge_t* bridge)
     if (!bridge->base.bio_async_enabled) return 0;  /* Not connected */
 
     /* Unregister from bio-async router */
+    /* Phase 8: Heartbeat at operation start */
+    logic_sleep_bridge_heartbeat("logic_sleep__logic_sleep_disconne", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -585,6 +637,10 @@ bool logic_sleep_is_bio_async_connected(const logic_sleep_bridge_t* bridge)
     /* Guard clause */
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    logic_sleep_bridge_heartbeat("logic_sleep__logic_sleep_is_bio_a", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -595,9 +651,19 @@ bool logic_sleep_is_bio_async_connected(const logic_sleep_bridge_t* bridge)
 int logic_sleep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    logic_sleep_bridge_heartbeat("logic_sleep__query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Logic_Sleep_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                logic_sleep_bridge_heartbeat("logic_sleep__loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_health_cognitive_bridge_health_agent = NULL;
  * @brief Set health agent for health_cognitive_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void health_cognitive_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void health_cognitive_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_health_cognitive_bridge_health_agent = agent;
 }
 
@@ -120,6 +120,10 @@ static uint64_t get_time_us(void) {
  * ============================================================================ */
 
 cognitive_bridge_config_t health_cognitive_bridge_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    health_cognitive_bridge_heartbeat("health_cogni_default_config", 0.0f);
+
+
     cognitive_bridge_config_t config = {
         /* Collective integration */
         .enable_collective_monitoring = true,
@@ -163,6 +167,10 @@ health_cognitive_bridge_t* health_cognitive_bridge_create(
     rcog_engine_t* rcog,
     const cognitive_bridge_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    health_cognitive_bridge_heartbeat("health_cogni_create", 0.0f);
+
+
     health_cognitive_bridge_t* bridge = calloc(1, sizeof(health_cognitive_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -235,6 +243,10 @@ void health_cognitive_bridge_destroy(health_cognitive_bridge_t* bridge) {
     }
 
     /* Stop if running */
+    /* Phase 8: Heartbeat at operation start */
+    health_cognitive_bridge_heartbeat("health_cogni_destroy", 0.0f);
+
+
     if (bridge->running) {
         health_cognitive_bridge_stop(bridge);
     }
@@ -254,6 +266,10 @@ int health_cognitive_bridge_start(health_cognitive_bridge_t* bridge) {
 
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    health_cognitive_bridge_heartbeat("health_cogni_start", 0.0f);
+
 
     if (bridge->running) {
         return 0;  /* Already running */
@@ -285,6 +301,10 @@ int health_cognitive_bridge_stop(health_cognitive_bridge_t* bridge) {
     }
 
     /* Stop subsystems */
+    /* Phase 8: Heartbeat at operation start */
+    health_cognitive_bridge_heartbeat("health_cogni_stop", 0.0f);
+
+
     if (bridge->collective_monitor) {
         collective_health_monitor_stop(bridge->collective_monitor);
     }
@@ -302,6 +322,10 @@ bool health_cognitive_bridge_is_running(const health_cognitive_bridge_t* bridge)
     if (!bridge) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    health_cognitive_bridge_heartbeat("health_cogni_is_running", 0.0f);
+
+
     return bridge->running;
 }
 
@@ -319,6 +343,10 @@ int health_cognitive_intelligent_handle(
     if (!bridge || !result) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    health_cognitive_bridge_heartbeat("health_cogni_health_cognitive_int", 0.0f);
+
 
     uint64_t start_time = get_time_us();
 
@@ -543,7 +571,17 @@ int health_cognitive_check_handling(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    health_cognitive_bridge_heartbeat("health_cogni_health_cognitive_che", 0.0f);
+
+
     for (uint32_t i = 0; i < bridge->num_pending; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_pending > 256) {
+            health_cognitive_bridge_heartbeat("health_cogni_loop",
+                             (float)(i + 1) / (float)bridge->num_pending);
+        }
+
         if (bridge->pending[i].request_id == request_id) {
             pending_handling_t* pending = &bridge->pending[i];
 
@@ -582,14 +620,26 @@ int health_cognitive_check_handling(
  * ============================================================================ */
 
 collective_health_monitor_t* health_cognitive_get_collective(health_cognitive_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    health_cognitive_bridge_heartbeat("health_cogni_health_cognitive_get", 0.0f);
+
+
     return bridge ? bridge->collective_monitor : NULL;
 }
 
 rcog_health_integration_t* health_cognitive_get_rcog(health_cognitive_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    health_cognitive_bridge_heartbeat("health_cogni_health_cognitive_get", 0.0f);
+
+
     return bridge ? bridge->rcog_health : NULL;
 }
 
 meta_health_reflector_t* health_cognitive_get_meta(health_cognitive_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    health_cognitive_bridge_heartbeat("health_cogni_health_cognitive_get", 0.0f);
+
+
     return bridge ? bridge->meta_reflector : NULL;
 }
 
@@ -604,6 +654,10 @@ int health_cognitive_get_status(
     if (!bridge || !status) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    health_cognitive_bridge_heartbeat("health_cogni_health_cognitive_get", 0.0f);
+
 
     memset(status, 0, sizeof(cognitive_bridge_status_t));
 
@@ -655,6 +709,10 @@ int health_cognitive_force_reflection(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    health_cognitive_bridge_heartbeat("health_cogni_health_cognitive_for", 0.0f);
+
+
     return meta_health_reflect(bridge->meta_reflector, result);
 }
 
@@ -662,6 +720,10 @@ int health_cognitive_force_sync(health_cognitive_bridge_t* bridge) {
     if (!bridge || !bridge->collective_monitor) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    health_cognitive_bridge_heartbeat("health_cogni_health_cognitive_for", 0.0f);
+
 
     return collective_health_force_sync(bridge->collective_monitor);
 }
@@ -688,6 +750,10 @@ int health_cognitive_diagnose_only(
         diagnosis->num_alternatives = 0;
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    health_cognitive_bridge_heartbeat("health_cogni_health_cognitive_dia", 0.0f);
+
 
     rcog_health_answer_t answer;
     int result = rcog_health_diagnose_anomaly(bridge->rcog_health, anomaly_type, source, severity, &answer);
@@ -725,6 +791,10 @@ int health_cognitive_plan_only(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    health_cognitive_bridge_heartbeat("health_cogni_health_cognitive_pla", 0.0f);
+
+
     return rcog_health_plan_recovery(bridge->rcog_health, anomaly_type, source, severity, plan);
 }
 
@@ -741,6 +811,10 @@ int health_cognitive_get_stats(
     }
 
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    health_cognitive_bridge_heartbeat("health_cogni_health_cognitive_get", 0.0f);
+
+
     return 0;
 }
 
@@ -748,6 +822,10 @@ void health_cognitive_reset_stats(health_cognitive_bridge_t* bridge) {
     if (!bridge) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    health_cognitive_bridge_heartbeat("health_cogni_health_cognitive_res", 0.0f);
+
 
     memset(&bridge->stats, 0, sizeof(health_cognitive_stats_t));
 
@@ -772,6 +850,10 @@ void health_cognitive_init_handling_result(intelligent_handling_result_t* result
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    health_cognitive_bridge_heartbeat("health_cogni_health_cognitive_ini", 0.0f);
+
+
     memset(result, 0, sizeof(intelligent_handling_result_t));
     result->success = false;
     result->consensus_required = false;
@@ -788,6 +870,10 @@ void health_cognitive_dump_handling_result(const intelligent_handling_result_t* 
     if (!result) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    health_cognitive_bridge_heartbeat("health_cogni_health_cognitive_dum", 0.0f);
+
 
     printf("=== Intelligent Handling Result ===\n");
     printf("Success: %s\n", result->success ? "yes" : "no");
@@ -824,6 +910,10 @@ void health_cognitive_dump_status(const cognitive_bridge_status_t* status) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    health_cognitive_bridge_heartbeat("health_cogni_health_cognitive_dum", 0.0f);
+
+
     printf("=== Cognitive Status ===\n");
     printf("Mode: %s\n", status->active_mode);
     printf("Collective Connected: %s\n", status->collective_connected ? "yes" : "no");
@@ -854,6 +944,10 @@ int nimcp_health_agent_connect_cognitive(
     }
 
     /* Create bridge */
+    /* Phase 8: Heartbeat at operation start */
+    health_cognitive_bridge_heartbeat("health_cogni_health_agent_connect", 0.0f);
+
+
     health_cognitive_bridge_t* bridge = health_cognitive_bridge_create(
         agent,
         collective,
@@ -892,6 +986,10 @@ int nimcp_health_agent_disconnect_cognitive(nimcp_health_agent_t* agent) {
     /* In a real implementation, we would retrieve and destroy the bridge
      * stored in the agent. For now, this is a simplified version. */
 
+    /* Phase 8: Heartbeat at operation start */
+    health_cognitive_bridge_heartbeat("health_cogni_health_agent_disconn", 0.0f);
+
+
     return 0;
 }
 
@@ -905,6 +1003,10 @@ int nimcp_health_agent_get_bridge_status(
 
     /* In a real implementation, we would get the status from the bridge
      * stored in the agent. For now, return a default status. */
+    /* Phase 8: Heartbeat at operation start */
+    health_cognitive_bridge_heartbeat("health_cogni_health_agent_get_bri", 0.0f);
+
+
     memset(status, 0, sizeof(cognitive_bridge_status_t));
     snprintf(status->active_mode, sizeof(status->active_mode), "DEFAULT");
 

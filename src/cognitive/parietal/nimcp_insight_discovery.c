@@ -31,7 +31,7 @@ static nimcp_health_agent_t* g_insight_discovery_health_agent = NULL;
  * @brief Set health agent for insight_discovery heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void insight_discovery_set_health_agent(nimcp_health_agent_t* agent) {
+void insight_discovery_set_health_agent(nimcp_health_agent_t* agent) {
     g_insight_discovery_health_agent = agent;
 }
 
@@ -97,6 +97,10 @@ static float apply_modulation(const insight_engine_t* e, float v) {
  * ============================================================================ */
 
 insight_config_t insight_engine_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_engine_defau", 0.0f);
+
+
     return (insight_config_t){
         .impasse_threshold = 0.7f,
         .incubation_rate = 0.05f,
@@ -113,12 +117,20 @@ insight_config_t insight_engine_default_config(void) {
 }
 
 insight_engine_t* insight_engine_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_engine_creat", 0.0f);
+
+
     insight_config_t config = insight_engine_default_config();
     return insight_engine_create_custom(&config);
 }
 
 insight_engine_t* insight_engine_create_custom(const insight_config_t* config) {
     if (!config) { set_error("NULL config"); return NULL; }
+
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_engine_creat", 0.0f);
+
 
     insight_engine_t* engine = nimcp_calloc(1, sizeof(insight_engine_t));
     if (!engine) { set_error("Alloc failed"); return NULL; }
@@ -142,8 +154,18 @@ insight_engine_t* insight_engine_create_custom(const insight_config_t* config) {
 void insight_engine_destroy(insight_engine_t* engine) {
     if (!engine) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_engine_destr", 0.0f);
+
+
     if (engine->incubation_queue) {
         for (uint32_t i = 0; i < engine->num_incubating; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && engine->num_incubating > 256) {
+                insight_discovery_heartbeat("insight_disc_loop",
+                                 (float)(i + 1) / (float)engine->num_incubating);
+            }
+
             if (engine->incubation_queue[i].result) {
                 insight_free_eureka(engine->incubation_queue[i].result);
             }
@@ -158,6 +180,10 @@ void insight_engine_destroy(insight_engine_t* engine) {
  * ============================================================================ */
 
 insight_problem_t* insight_create_problem(const char* description) {
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_create_probl", 0.0f);
+
+
     insight_problem_t* problem = nimcp_calloc(1, sizeof(insight_problem_t));
     if (!problem) {
 
@@ -181,6 +207,10 @@ int insight_add_constraint(insight_problem_t* problem, const char* description,
                           float binding_strength, bool is_explicit) {
     if (!problem || problem->num_constraints >= INSIGHT_MAX_CONSTRAINTS) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_add_constrai", 0.0f);
+
+
     insight_constraint_t* c = &problem->constraints[problem->num_constraints];
     c->id = problem->num_constraints + 1;
     if (description) strncpy(c->description, description, sizeof(c->description) - 1);
@@ -196,6 +226,10 @@ int insight_add_constraint(insight_problem_t* problem, const char* description,
 int insight_add_perspective(insight_problem_t* problem, const char* description,
                            const float* representation, uint32_t dim) {
     if (!problem || problem->num_perspectives >= INSIGHT_MAX_PERSPECTIVES) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_add_perspect", 0.0f);
+
 
     insight_perspective_t* p = &problem->perspectives[problem->num_perspectives];
     p->id = problem->num_perspectives + 1;
@@ -219,12 +253,22 @@ int insight_add_perspective(insight_problem_t* problem, const char* description,
 void insight_free_problem(insight_problem_t* problem) {
     if (!problem) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_free_problem", 0.0f);
+
+
     if (problem->state) nimcp_free(problem->state);
     if (problem->goal) nimcp_free(problem->goal);
     if (problem->constraints) nimcp_free(problem->constraints);
 
     if (problem->perspectives) {
         for (uint32_t i = 0; i < problem->num_perspectives; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && problem->num_perspectives > 256) {
+                insight_discovery_heartbeat("insight_disc_loop",
+                                 (float)(i + 1) / (float)problem->num_perspectives);
+            }
+
             if (problem->perspectives[i].representation) {
                 nimcp_free(problem->perspectives[i].representation);
             }
@@ -244,6 +288,10 @@ uint32_t insight_incubate(insight_engine_t* engine, insight_problem_t* problem) 
     if (!engine->config.enable_incubation) return 0;
     if (engine->num_incubating >= engine->config.incubation_queue_size) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_incubate", 0.0f);
+
+
     incubation_entry_t* entry = &engine->incubation_queue[engine->num_incubating];
     entry->id = engine->next_problem_id++;
     entry->problem = problem;
@@ -262,7 +310,17 @@ int insight_check_incubation(insight_engine_t* engine, uint32_t problem_id,
     if (!engine || !result) return -1;
     *result = NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_check_incuba", 0.0f);
+
+
     for (uint32_t i = 0; i < engine->num_incubating; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && engine->num_incubating > 256) {
+            insight_discovery_heartbeat("insight_disc_loop",
+                             (float)(i + 1) / (float)engine->num_incubating);
+        }
+
         if (engine->incubation_queue[i].id == problem_id) {
             if (engine->incubation_queue[i].ready) {
                 *result = engine->incubation_queue[i].result;
@@ -278,10 +336,20 @@ int insight_check_incubation(insight_engine_t* engine, uint32_t problem_id,
 int insight_process_incubation_step(insight_engine_t* engine) {
     if (!engine) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_process_incu", 0.0f);
+
+
     int insights = 0;
     float rate = engine->config.incubation_rate * (1.0f - engine->fatigue * 0.5f);
 
     for (uint32_t i = 0; i < engine->num_incubating; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && engine->num_incubating > 256) {
+            insight_discovery_heartbeat("insight_disc_loop",
+                             (float)(i + 1) / (float)engine->num_incubating);
+        }
+
         incubation_entry_t* e = &engine->incubation_queue[i];
         if (e->ready) continue;
 
@@ -316,7 +384,17 @@ int insight_process_incubation_step(insight_engine_t* engine) {
 int insight_cancel_incubation(insight_engine_t* engine, uint32_t problem_id) {
     if (!engine) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_cancel_incub", 0.0f);
+
+
     for (uint32_t i = 0; i < engine->num_incubating; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && engine->num_incubating > 256) {
+            insight_discovery_heartbeat("insight_disc_loop",
+                             (float)(i + 1) / (float)engine->num_incubating);
+        }
+
         if (engine->incubation_queue[i].id == problem_id) {
             if (engine->incubation_queue[i].result) {
                 insight_free_eureka(engine->incubation_queue[i].result);
@@ -344,6 +422,10 @@ int insight_identify_blocking_constraints(insight_engine_t* engine,
     if (!engine || !problem || !blocking || !num_found) return -1;
     *num_found = 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_identify_blo", 0.0f);
+
+
     for (uint32_t i = 0; i < problem->num_constraints && *num_found < max_constraints; i++) {
         if (problem->constraints[i].binding_strength > 0.5f) {
             blocking[(*num_found)++] = problem->constraints[i];
@@ -360,7 +442,17 @@ int insight_relax_constraint(insight_engine_t* engine,
     if (!engine || !problem) return -1;
     if (!engine->config.enable_constraint_relaxation) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_relax_constr", 0.0f);
+
+
     for (uint32_t i = 0; i < problem->num_constraints; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && problem->num_constraints > 256) {
+            insight_discovery_heartbeat("insight_disc_loop",
+                             (float)(i + 1) / (float)problem->num_constraints);
+        }
+
         if (problem->constraints[i].id == constraint_id) {
             if (!problem->constraints[i].is_relaxable) return -1;
 
@@ -382,6 +474,10 @@ int insight_find_relaxable_constraints(insight_engine_t* engine,
     if (!engine || !problem || !constraint_ids || !num_found) return -1;
     *num_found = 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_find_relaxab", 0.0f);
+
+
     for (uint32_t i = 0; i < problem->num_constraints && *num_found < max_constraints; i++) {
         if (problem->constraints[i].is_relaxable) {
             constraint_ids[(*num_found)++] = problem->constraints[i].id;
@@ -398,6 +494,10 @@ insight_restructuring_t* insight_attempt_restructure(insight_engine_t* engine,
                                                     insight_problem_t* problem) {
     if (!engine || !problem) return NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_attempt_rest", 0.0f);
+
+
     insight_restructuring_t* r = nimcp_calloc(1, sizeof(insight_restructuring_t));
     if (!r) {
 
@@ -409,6 +509,12 @@ insight_restructuring_t* insight_attempt_restructure(insight_engine_t* engine,
 
     /* Find and relax a constraint */
     for (uint32_t i = 0; i < problem->num_constraints; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && problem->num_constraints > 256) {
+            insight_discovery_heartbeat("insight_disc_loop",
+                             (float)(i + 1) / (float)problem->num_constraints);
+        }
+
         if (problem->constraints[i].is_relaxable &&
             problem->constraints[i].binding_strength > 0.3f) {
             r->constraint_relaxed = problem->constraints[i].id;
@@ -437,6 +543,10 @@ int insight_shift_perspective(insight_engine_t* engine,
     if (!engine->config.enable_perspective_shifting) return -1;
     if (new_perspective >= problem->num_perspectives) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_shift_perspe", 0.0f);
+
+
     problem->current_perspective = new_perspective;
     problem->impasse_level *= 0.7f;
 
@@ -448,6 +558,10 @@ int insight_generate_perspectives(insight_engine_t* engine,
                                  insight_problem_t* problem,
                                  uint32_t max_perspectives) {
     if (!engine || !problem) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_generate_per", 0.0f);
+
 
     uint32_t generated = 0;
     while (problem->num_perspectives < INSIGHT_MAX_PERSPECTIVES &&
@@ -463,6 +577,10 @@ int insight_generate_perspectives(insight_engine_t* engine,
 }
 
 void insight_free_restructuring(insight_restructuring_t* r) {
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_free_restruc", 0.0f);
+
+
     if (r) nimcp_free(r);
 }
 
@@ -475,6 +593,10 @@ bool insight_check_eureka(insight_engine_t* engine,
                          insight_eureka_t** result) {
     if (!engine || !problem || !result) return false;
     *result = NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_check_eureka", 0.0f);
+
 
     if (problem->is_solved) {
         *result = nimcp_calloc(1, sizeof(insight_eureka_t));
@@ -494,11 +616,19 @@ bool insight_check_eureka(insight_engine_t* engine,
 float insight_estimate_surprise(insight_engine_t* engine,
                                const insight_eureka_t* eureka) {
     if (!engine || !eureka) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_estimate_sur", 0.0f);
+
+
     return apply_modulation(engine, eureka->surprise_magnitude);
 }
 
 int insight_verify_eureka(insight_engine_t* engine, insight_eureka_t* eureka) {
     if (!engine || !eureka) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_verify_eurek", 0.0f);
+
+
     eureka->verified = true;
     eureka->confidence = fminf(1.0f, eureka->confidence * 1.2f);
     return 0;
@@ -506,6 +636,10 @@ int insight_verify_eureka(insight_engine_t* engine, insight_eureka_t* eureka) {
 
 void insight_free_eureka(insight_eureka_t* eureka) {
     if (!eureka) return;
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_free_eureka", 0.0f);
+
+
     if (eureka->solution) nimcp_free(eureka->solution);
     nimcp_free(eureka);
 }
@@ -518,6 +652,10 @@ int insight_detect_impasse(insight_engine_t* engine,
                           const insight_problem_t* problem,
                           insight_impasse_t* impasse) {
     if (!engine || !problem || !impasse) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_detect_impas", 0.0f);
+
 
     memset(impasse, 0, sizeof(insight_impasse_t));
     impasse->stuckness_level = problem->impasse_level;
@@ -532,7 +670,17 @@ int insight_resolve_impasse(insight_engine_t* engine,
     if (!engine || !problem || !impasse) return -1;
 
     /* Try relaxing constraints */
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_resolve_impa", 0.0f);
+
+
     for (uint32_t i = 0; i < problem->num_constraints; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && problem->num_constraints > 256) {
+            insight_discovery_heartbeat("insight_disc_loop",
+                             (float)(i + 1) / (float)problem->num_constraints);
+        }
+
         if (problem->constraints[i].is_relaxable) {
             insight_relax_constraint(engine, problem, problem->constraints[i].id);
             break;
@@ -557,12 +705,20 @@ int insight_resolve_impasse(insight_engine_t* engine,
 
 int insight_set_inflammation(insight_engine_t* engine, float level) {
     if (!engine) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_set_inflamma", 0.0f);
+
+
     engine->inflammation = fmaxf(0, fminf(1, level));
     return 0;
 }
 
 int insight_set_fatigue(insight_engine_t* engine, float level) {
     if (!engine) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_set_fatigue", 0.0f);
+
+
     engine->fatigue = fmaxf(0, fminf(1, level));
     return 0;
 }
@@ -574,10 +730,18 @@ int insight_set_fatigue(insight_engine_t* engine, float level) {
 int insight_get_stats(const insight_engine_t* engine, insight_stats_t* stats) {
     if (!engine || !stats) return -1;
     *stats = engine->stats;
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_get_stats", 0.0f);
+
+
     return 0;
 }
 
 void insight_reset_stats(insight_engine_t* engine) {
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_insight_reset_stats", 0.0f);
+
+
     if (engine) memset(&engine->stats, 0, sizeof(engine->stats));
 }
 
@@ -592,9 +756,19 @@ const char* insight_get_last_error(void) {
 int insight_discovery_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    insight_discovery_heartbeat("insight_disc_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Insight_Discovery_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                insight_discovery_heartbeat("insight_disc_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Insight discovery self-knowledge: %s", self->observations[i]);
         }
     }

@@ -45,7 +45,7 @@ static nimcp_health_agent_t* g_game_theory_executive_bridge_health_agent = NULL;
  * @brief Set health agent for game_theory_executive_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void game_theory_executive_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void game_theory_executive_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_game_theory_executive_bridge_health_agent = agent;
 }
 
@@ -130,6 +130,12 @@ static gt_exec_opponent_model_t* find_or_create_opponent_model(
 ) {
     /* Search for existing model */
     for (uint32_t i = 0; i < bridge->num_opponent_models; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_opponent_models > 256) {
+            game_theory_executive_bridge_heartbeat("game_theory__loop",
+                             (float)(i + 1) / (float)bridge->num_opponent_models);
+        }
+
         if (bridge->opponent_models[i].opponent_id == opponent_id) {
             return &bridge->opponent_models[i];
         }
@@ -149,6 +155,12 @@ static gt_exec_opponent_model_t* find_or_create_opponent_model(
         /* Initialize uniform prior over strategies */
         float uniform_prob = 1.0f / (float)model->num_strategies;
         for (uint32_t i = 0; i < model->num_strategies; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && model->num_strategies > 256) {
+                game_theory_executive_bridge_heartbeat("game_theory__loop",
+                                 (float)(i + 1) / (float)model->num_strategies);
+            }
+
             model->strategy_probs[i] = uniform_prob;
         }
 
@@ -330,6 +342,10 @@ int game_theory_executive_bridge_default_config(game_theory_executive_config_t* 
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_bridge_heartbeat("game_theory__default_config", 0.0f);
+
+
     config->module_id = GT_EXEC_DEFAULT_MODULE_ID;
     config->enable_logging = false;
     config->strategic_weight = 0.4f;
@@ -355,6 +371,10 @@ game_theory_executive_bridge_t* game_theory_executive_bridge_create(
     const game_theory_executive_config_t* config
 ) {
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_bridge_heartbeat("game_theory__create", 0.0f);
+
+
     game_theory_executive_bridge_t* bridge =
         (game_theory_executive_bridge_t*)nimcp_calloc(
             1, sizeof(game_theory_executive_bridge_t));
@@ -402,6 +422,10 @@ void game_theory_executive_bridge_destroy(game_theory_executive_bridge_t* bridge
     }
 
     /* Disconnect from hub if connected */
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_bridge_heartbeat("game_theory__destroy", 0.0f);
+
+
     if (bridge->connected) {
         game_theory_executive_bridge_disconnect(bridge);
     }
@@ -434,6 +458,10 @@ int game_theory_executive_bridge_connect(
     if (!bridge || !bridge->initialized || !hub) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_bridge_heartbeat("game_theory__connect", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -516,6 +544,10 @@ int game_theory_executive_bridge_disconnect(game_theory_executive_bridge_t* brid
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_bridge_heartbeat("game_theory__disconnect", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->hub) {
@@ -559,6 +591,10 @@ bool game_theory_executive_bridge_is_connected(
     }
 
     /* Cast away const for mutex lock */
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_bridge_heartbeat("game_theory__is_connected", 0.0f);
+
+
     game_theory_executive_bridge_t* mutable_bridge =
         (game_theory_executive_bridge_t*)bridge;
 
@@ -582,6 +618,10 @@ int game_theory_executive_analyze_options(
     if (!bridge || !bridge->initialized || !utilities) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_bridge_heartbeat("game_theory__game_theory_executiv", 0.0f);
+
 
     if (num_actions == 0 || num_outcomes == 0) {
         return -1;
@@ -624,6 +664,10 @@ int game_theory_executive_get_recommendation(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_bridge_heartbeat("game_theory__game_theory_executiv", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->current_utilities || bridge->current_num_actions == 0) {
@@ -639,8 +683,20 @@ int game_theory_executive_get_recommendation(
     float total_utility = 0.0f;
 
     for (uint32_t a = 0; a < bridge->current_num_actions; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && bridge->current_num_actions > 256) {
+            game_theory_executive_bridge_heartbeat("game_theory__loop",
+                             (float)(a + 1) / (float)bridge->current_num_actions);
+        }
+
         float expected_utility = 0.0f;
         for (uint32_t o = 0; o < bridge->current_num_outcomes; o++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((o & 0xFF) == 0 && bridge->current_num_outcomes > 256) {
+                game_theory_executive_bridge_heartbeat("game_theory__loop",
+                                 (float)(o + 1) / (float)bridge->current_num_outcomes);
+            }
+
             /* Assume uniform distribution over outcomes for simplicity */
             float prob = 1.0f / (float)bridge->current_num_outcomes;
             expected_utility += prob *
@@ -665,6 +721,12 @@ int game_theory_executive_get_recommendation(
     /* Estimate risk level (inverse of outcome variance) */
     float variance = 0.0f;
     for (uint32_t o = 0; o < bridge->current_num_outcomes; o++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((o & 0xFF) == 0 && bridge->current_num_outcomes > 256) {
+            game_theory_executive_bridge_heartbeat("game_theory__loop",
+                             (float)(o + 1) / (float)bridge->current_num_outcomes);
+        }
+
         float diff = bridge->current_utilities[
             best_action * bridge->current_num_outcomes + o] - best_utility;
         variance += diff * diff;
@@ -711,6 +773,10 @@ int game_theory_executive_notify_outcome(
     if (!bridge || !bridge->initialized || !outcome) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_bridge_heartbeat("game_theory__game_theory_executiv", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -764,6 +830,10 @@ int game_theory_executive_publish_recommendation(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_bridge_heartbeat("game_theory__game_theory_executiv", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->hub) {
@@ -808,6 +878,10 @@ int game_theory_executive_request_risk_assessment(
     const void* context,
     gt_exec_risk_assessment_t* assessment
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_bridge_heartbeat("game_theory__game_theory_executiv", 0.0f);
+
+
     (void)context;  /* Reserved for future use */
 
     if (!bridge || !bridge->initialized || !assessment) {
@@ -828,6 +902,12 @@ int game_theory_executive_request_risk_assessment(
         /* Calculate variance of outcomes for this action */
         float mean = 0.0f;
         for (uint32_t o = 0; o < bridge->current_num_outcomes; o++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((o & 0xFF) == 0 && bridge->current_num_outcomes > 256) {
+                game_theory_executive_bridge_heartbeat("game_theory__loop",
+                                 (float)(o + 1) / (float)bridge->current_num_outcomes);
+            }
+
             mean += bridge->current_utilities[
                 action_id * bridge->current_num_outcomes + o];
         }
@@ -835,6 +915,12 @@ int game_theory_executive_request_risk_assessment(
 
         float variance = 0.0f;
         for (uint32_t o = 0; o < bridge->current_num_outcomes; o++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((o & 0xFF) == 0 && bridge->current_num_outcomes > 256) {
+                game_theory_executive_bridge_heartbeat("game_theory__loop",
+                                 (float)(o + 1) / (float)bridge->current_num_outcomes);
+            }
+
             float diff = bridge->current_utilities[
                 action_id * bridge->current_num_outcomes + o] - mean;
             variance += diff * diff;
@@ -851,9 +937,21 @@ int game_theory_executive_request_risk_assessment(
         /* Opportunity cost (best alternative - this action's expected value) */
         float best_value = -1e10f;
         for (uint32_t a = 0; a < bridge->current_num_actions; a++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((a & 0xFF) == 0 && bridge->current_num_actions > 256) {
+                game_theory_executive_bridge_heartbeat("game_theory__loop",
+                                 (float)(a + 1) / (float)bridge->current_num_actions);
+            }
+
             if (a == action_id) continue;
             float value = 0.0f;
             for (uint32_t o = 0; o < bridge->current_num_outcomes; o++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((o & 0xFF) == 0 && bridge->current_num_outcomes > 256) {
+                    game_theory_executive_bridge_heartbeat("game_theory__loop",
+                                     (float)(o + 1) / (float)bridge->current_num_outcomes);
+                }
+
                 value += bridge->current_utilities[
                     a * bridge->current_num_outcomes + o];
             }
@@ -915,6 +1013,10 @@ int game_theory_executive_notify_decision_made(
     }
 
     /* Create outcome structure */
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_bridge_heartbeat("game_theory__game_theory_executiv", 0.0f);
+
+
     gt_decision_outcome_t outcome;
     outcome.decision_id = decision_id;
     outcome.recommendation_id = recommendation_id;
@@ -935,6 +1037,10 @@ int game_theory_executive_request_opponent_model(
     const void* context,
     gt_exec_opponent_model_t* model
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_bridge_heartbeat("game_theory__game_theory_executiv", 0.0f);
+
+
     (void)context;  /* Reserved for future use */
 
     if (!bridge || !bridge->initialized || !model) {
@@ -971,6 +1077,10 @@ int game_theory_executive_update_opponent_model(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_bridge_heartbeat("game_theory__game_theory_executiv", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     gt_exec_opponent_model_t* model =
@@ -987,6 +1097,12 @@ int game_theory_executive_update_opponent_model(
 
     /* Decay all probabilities */
     for (uint32_t i = 0; i < model->num_strategies; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && model->num_strategies > 256) {
+            game_theory_executive_bridge_heartbeat("game_theory__loop",
+                             (float)(i + 1) / (float)model->num_strategies);
+        }
+
         model->strategy_probs[i] *= (1.0f - decay);
     }
 
@@ -996,10 +1112,22 @@ int game_theory_executive_update_opponent_model(
     /* Normalize */
     float sum = 0.0f;
     for (uint32_t i = 0; i < model->num_strategies; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && model->num_strategies > 256) {
+            game_theory_executive_bridge_heartbeat("game_theory__loop",
+                             (float)(i + 1) / (float)model->num_strategies);
+        }
+
         sum += model->strategy_probs[i];
     }
     if (sum > 0.0f) {
         for (uint32_t i = 0; i < model->num_strategies; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && model->num_strategies > 256) {
+                game_theory_executive_bridge_heartbeat("game_theory__loop",
+                                 (float)(i + 1) / (float)model->num_strategies);
+            }
+
             model->strategy_probs[i] /= sum;
         }
     }
@@ -1007,6 +1135,12 @@ int game_theory_executive_update_opponent_model(
     /* Update predictability based on entropy */
     float entropy = 0.0f;
     for (uint32_t i = 0; i < model->num_strategies; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && model->num_strategies > 256) {
+            game_theory_executive_bridge_heartbeat("game_theory__loop",
+                             (float)(i + 1) / (float)model->num_strategies);
+        }
+
         if (model->strategy_probs[i] > 0.0f) {
             entropy -= model->strategy_probs[i] *
                 logf(model->strategy_probs[i]);
@@ -1048,6 +1182,10 @@ int game_theory_executive_request_strategic_analysis(
     }
 
     /* Set up the analysis */
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_bridge_heartbeat("game_theory__game_theory_executiv", 0.0f);
+
+
     int result = game_theory_executive_analyze_options(
         bridge,
         situation->num_actions,
@@ -1074,6 +1212,10 @@ game_theory_executive_state_t game_theory_executive_bridge_get_state(
         return GT_EXEC_STATE_ERROR;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_bridge_heartbeat("game_theory__get_state", 0.0f);
+
+
     game_theory_executive_bridge_t* mutable_bridge =
         (game_theory_executive_bridge_t*)bridge;
 
@@ -1091,6 +1233,10 @@ uint32_t game_theory_executive_bridge_get_module_id(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_bridge_heartbeat("game_theory__get_module_id", 0.0f);
+
+
     return bridge->config.module_id;
 }
 
@@ -1100,6 +1246,10 @@ uint32_t game_theory_executive_bridge_get_pending_count(
     if (!bridge || !bridge->initialized) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_bridge_heartbeat("game_theory__get_pending_count", 0.0f);
+
 
     game_theory_executive_bridge_t* mutable_bridge =
         (game_theory_executive_bridge_t*)bridge;
@@ -1123,6 +1273,10 @@ int game_theory_executive_bridge_get_stats(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_bridge_heartbeat("game_theory__get_stats", 0.0f);
+
+
     game_theory_executive_bridge_t* mutable_bridge =
         (game_theory_executive_bridge_t*)bridge;
 
@@ -1138,6 +1292,10 @@ int game_theory_executive_bridge_reset_stats(game_theory_executive_bridge_t* bri
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_bridge_heartbeat("game_theory__reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(game_theory_executive_stats_t));
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1149,6 +1307,10 @@ int game_theory_executive_bridge_force_update(game_theory_executive_bridge_t* br
     if (!bridge || !bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_executive_bridge_heartbeat("game_theory__force_update", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 

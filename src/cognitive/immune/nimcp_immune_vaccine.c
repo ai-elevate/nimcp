@@ -41,7 +41,7 @@ static nimcp_health_agent_t* g_immune_vaccine_health_agent = NULL;
  * @brief Set health agent for immune_vaccine heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void immune_vaccine_set_health_agent(nimcp_health_agent_t* agent) {
+void immune_vaccine_set_health_agent(nimcp_health_agent_t* agent) {
     g_immune_vaccine_health_agent = agent;
 }
 
@@ -136,6 +136,12 @@ static vaccine_entry_t* find_vaccine_by_id(vaccine_system_t* system, uint32_t id
     if (!system || !system->vaccines) return NULL;
 
     for (size_t i = 0; i < system->vaccine_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->vaccine_count > 256) {
+            immune_vaccine_heartbeat("immune_vacci_loop",
+                             (float)(i + 1) / (float)system->vaccine_count);
+        }
+
         if (system->vaccines[i].id == id) {
             return &system->vaccines[i];
         }
@@ -213,6 +219,12 @@ static void update_all_efficacies(vaccine_system_t* system, uint64_t delta_ms) {
     float days_elapsed = (float)delta_ms / (1000.0f * 60.0f * 60.0f * 24.0f);
 
     for (size_t i = 0; i < system->vaccine_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->vaccine_count > 256) {
+            immune_vaccine_heartbeat("immune_vacci_loop",
+                             (float)(i + 1) / (float)system->vaccine_count);
+        }
+
         vaccine_entry_t* vaccine = &system->vaccines[i];
 
         if (vaccine->status == VACCINE_STATUS_ADMINISTERED ||
@@ -250,6 +262,12 @@ static void update_statistics(vaccine_system_t* system) {
     float max_eff = 0.0f;
 
     for (size_t i = 0; i < system->vaccine_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->vaccine_count > 256) {
+            immune_vaccine_heartbeat("immune_vacci_loop",
+                             (float)(i + 1) / (float)system->vaccine_count);
+        }
+
         vaccine_entry_t* v = &system->vaccines[i];
 
         if (v->status == VACCINE_STATUS_ADMINISTERED ||
@@ -279,8 +297,20 @@ static uint32_t calculate_checksum(const void* data, size_t len) {
     uint32_t crc = 0xFFFFFFFF;
 
     for (size_t i = 0; i < len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && len > 256) {
+            immune_vaccine_heartbeat("immune_vacci_loop",
+                             (float)(i + 1) / (float)len);
+        }
+
         crc ^= bytes[i];
         for (int j = 0; j < 8; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && 8 > 256) {
+                immune_vaccine_heartbeat("immune_vacci_loop",
+                                 (float)(j + 1) / (float)8);
+            }
+
             crc = (crc >> 1) ^ (0xEDB88320 & -(crc & 1));
         }
     }
@@ -297,6 +327,10 @@ static uint32_t calculate_checksum(const void* data, size_t len) {
  */
 int vaccine_default_config(vaccine_config_t* config) {
     if (!config) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_default_conf", 0.0f);
+
 
     memset(config, 0, sizeof(vaccine_config_t));
 
@@ -336,6 +370,10 @@ vaccine_system_t* vaccine_create(const vaccine_config_t* config,
     }
 
     /* Allocate system */
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_create", 0.0f);
+
+
     vaccine_system_t* system = (vaccine_system_t*)nimcp_malloc(sizeof(vaccine_system_t));
     if (!system) {
         NIMCP_LOGGING_ERROR("Failed to allocate vaccine system");
@@ -403,6 +441,10 @@ vaccine_system_t* vaccine_create(const vaccine_config_t* config,
 void vaccine_destroy(vaccine_system_t* system) {
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_destroy", 0.0f);
+
+
     NIMCP_LOGGING_INFO("Destroying vaccine system");
 
     /* Stop if running */
@@ -433,6 +475,10 @@ int vaccine_start(vaccine_system_t* system) {
     if (!system) return -1;
     if (system->running) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_start", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     system->running = true;
     nimcp_mutex_unlock(system->mutex);
@@ -447,6 +493,10 @@ int vaccine_start(vaccine_system_t* system) {
 int vaccine_stop(vaccine_system_t* system) {
     if (!system) return -1;
     if (!system->running) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_stop", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
     system->running = false;
@@ -469,6 +519,10 @@ int vaccine_create_entry(vaccine_system_t* system, vaccine_type_t type,
     if (!system || !epitope || epitope_len == 0 || !vaccine_id) return -1;
     if (epitope_len > VACCINE_EPITOPE_SIZE) return -1;
     if (system->vaccine_count >= system->vaccine_capacity) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_create_entry", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -518,6 +572,10 @@ int vaccine_set_properties(vaccine_system_t* system, uint32_t vaccine_id,
                           float attenuation, float affinity, float decay_rate) {
     if (!system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_set_properti", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     vaccine_entry_t* vaccine = find_vaccine_by_id(system, vaccine_id);
@@ -540,6 +598,10 @@ int vaccine_set_properties(vaccine_system_t* system, uint32_t vaccine_id,
 int vaccine_set_description(vaccine_system_t* system, uint32_t vaccine_id,
                            const char* description) {
     if (!system || !description) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_set_descript", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -565,6 +627,10 @@ int vaccine_set_description(vaccine_system_t* system, uint32_t vaccine_id,
  */
 int vaccine_administer(vaccine_system_t* system, uint32_t vaccine_id) {
     if (!system || !system->immune_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_administer", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -643,6 +709,10 @@ int vaccine_administer_attenuated(vaccine_system_t* system, uint32_t vaccine_id,
                                   float severity_reduction) {
     if (!system || !system->immune_system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_administer_a", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     vaccine_entry_t* vaccine = find_vaccine_by_id(system, vaccine_id);
@@ -695,6 +765,10 @@ int vaccine_administer_attenuated(vaccine_system_t* system, uint32_t vaccine_id,
 int vaccine_booster(vaccine_system_t* system, uint32_t vaccine_id) {
     if (!system || !system->immune_system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_booster", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     vaccine_entry_t* vaccine = find_vaccine_by_id(system, vaccine_id);
@@ -741,6 +815,10 @@ int vaccine_import_passive_immunity(vaccine_system_t* system,
     if (!system->config.enable_passive_import) return -1;
 
     /* Create passive vaccine entry */
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_import_passi", 0.0f);
+
+
     uint32_t vid;
     int result = vaccine_create_entry(system, VACCINE_TYPE_PASSIVE,
                                      epitope, epitope_len,
@@ -776,6 +854,10 @@ int vaccine_import_database(vaccine_system_t* system, const char* filepath,
                            uint32_t* imported_count) {
     if (!system || !filepath || !imported_count) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_import_datab", 0.0f);
+
+
     FILE* file = fopen(filepath, "rb");
     if (!file) {
         NIMCP_LOGGING_ERROR("Failed to open vaccine database: %s", filepath);
@@ -806,6 +888,12 @@ int vaccine_import_database(vaccine_system_t* system, const char* filepath,
     /* Import entries */
     uint32_t count = 0;
     for (uint32_t i = 0; i < header.entry_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && header.entry_count > 256) {
+            immune_vaccine_heartbeat("immune_vacci_loop",
+                             (float)(i + 1) / (float)header.entry_count);
+        }
+
         vaccine_entry_t entry;
         if (fread(&entry, sizeof(entry), 1, file) != 1) {
             NIMCP_LOGGING_WARN("Failed to read vaccine entry %u", i);
@@ -840,6 +928,10 @@ int vaccine_import_database(vaccine_system_t* system, const char* filepath,
 int vaccine_export_database(vaccine_system_t* system, const char* filepath,
                            const char* description) {
     if (!system || !filepath) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_export_datab", 0.0f);
+
 
     FILE* file = fopen(filepath, "wb");
     if (!file) {
@@ -893,6 +985,10 @@ int vaccine_schedule_add(vaccine_system_t* system, uint32_t vaccine_id,
                         uint64_t scheduled_time) {
     if (!system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_schedule_add", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     vaccine_entry_t* vaccine = find_vaccine_by_id(system, vaccine_id);
@@ -924,6 +1020,10 @@ int vaccine_schedule_booster(vaccine_system_t* system, uint32_t vaccine_id,
                             uint64_t interval_ms) {
     if (!system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_schedule_boo", 0.0f);
+
+
     uint64_t booster_time = get_timestamp_ms() + interval_ms;
 
     nimcp_mutex_lock(system->mutex);
@@ -944,10 +1044,20 @@ int vaccine_schedule_booster(vaccine_system_t* system, uint32_t vaccine_id,
 int vaccine_schedule_cancel(vaccine_system_t* system, uint32_t vaccine_id) {
     if (!system || !system->schedule) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_schedule_can", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     /* Find and remove from schedule */
     for (size_t i = 0; i < system->schedule_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->schedule_count > 256) {
+            immune_vaccine_heartbeat("immune_vacci_loop",
+                             (float)(i + 1) / (float)system->schedule_count);
+        }
+
         if (system->schedule[i].vaccine_id == vaccine_id) {
             /* Swap with last and decrement count */
             if (i < system->schedule_count - 1) {
@@ -974,6 +1084,10 @@ int vaccine_get_efficacy(vaccine_system_t* system, uint32_t vaccine_id,
                         float* efficacy) {
     if (!system || !efficacy) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_get_efficacy", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     vaccine_entry_t* vaccine = find_vaccine_by_id(system, vaccine_id);
@@ -993,6 +1107,10 @@ int vaccine_get_efficacy(vaccine_system_t* system, uint32_t vaccine_id,
  */
 int vaccine_record_success(vaccine_system_t* system, uint32_t vaccine_id) {
     if (!system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_record_succe", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -1018,6 +1136,10 @@ int vaccine_record_success(vaccine_system_t* system, uint32_t vaccine_id) {
 int vaccine_record_failure(vaccine_system_t* system, uint32_t vaccine_id) {
     if (!system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_record_failu", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     vaccine_entry_t* vaccine = find_vaccine_by_id(system, vaccine_id);
@@ -1041,6 +1163,10 @@ int vaccine_record_failure(vaccine_system_t* system, uint32_t vaccine_id) {
 int vaccine_update_efficacy(vaccine_system_t* system, uint32_t vaccine_id,
                            uint64_t elapsed_ms) {
     if (!system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_update_effic", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -1075,6 +1201,10 @@ const vaccine_entry_t* vaccine_get_entry(vaccine_system_t* system,
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_get_entry", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     vaccine_entry_t* vaccine = find_vaccine_by_id(system, vaccine_id);
     nimcp_mutex_unlock(system->mutex);
@@ -1089,9 +1219,19 @@ int vaccine_find_by_epitope(vaccine_system_t* system, const uint8_t* epitope,
                            size_t epitope_len, uint32_t* vaccine_id) {
     if (!system || !epitope || !vaccine_id) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_find_by_epit", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     for (size_t i = 0; i < system->vaccine_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->vaccine_count > 256) {
+            immune_vaccine_heartbeat("immune_vacci_loop",
+                             (float)(i + 1) / (float)system->vaccine_count);
+        }
+
         vaccine_entry_t* v = &system->vaccines[i];
         if (v->epitope_len == epitope_len &&
             memcmp(v->epitope, epitope, epitope_len) == 0) {
@@ -1111,6 +1251,10 @@ int vaccine_find_by_epitope(vaccine_system_t* system, const uint8_t* epitope,
 int vaccine_get_active_vaccines(vaccine_system_t* system, uint32_t* vaccine_ids,
                                size_t max_count, size_t* count) {
     if (!system || !vaccine_ids || !count) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_get_active_v", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -1135,6 +1279,10 @@ int vaccine_get_active_vaccines(vaccine_system_t* system, uint32_t* vaccine_ids,
 int vaccine_get_stats(vaccine_system_t* system, vaccine_stats_t* stats) {
     if (!system || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     update_statistics(system);
     *stats = system->stats;
@@ -1153,6 +1301,10 @@ int vaccine_get_stats(vaccine_system_t* system, vaccine_stats_t* stats) {
 int vaccine_update(vaccine_system_t* system, uint64_t delta_ms) {
     if (!system) return -1;
     if (!system->running) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_update", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -1187,9 +1339,19 @@ int vaccine_update(vaccine_system_t* system, uint64_t delta_ms) {
  */
 int vaccine_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    immune_vaccine_heartbeat("immune_vacci_vaccine_query_self_k", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Immune_Vaccine");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                immune_vaccine_heartbeat("immune_vacci_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Immune vaccine self-knowledge: %s", self->observations[i]);
         }
     }

@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_health_diagnostic_bridge_health_agent = NULL;
  * @brief Set health agent for health_diagnostic_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void health_diagnostic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void health_diagnostic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_health_diagnostic_bridge_health_agent = agent;
 }
 
@@ -178,6 +178,12 @@ static const anomaly_error_mapping_t* find_anomaly_mapping(
 ) {
     /* Search custom mappings first */
     for (uint32_t i = 0; i < bridge->custom_anomaly_mapping_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->custom_anomaly_mapping_count > 256) {
+            health_diagnostic_bridge_heartbeat("health_diagn_loop",
+                             (float)(i + 1) / (float)bridge->custom_anomaly_mapping_count);
+        }
+
         if (bridge->custom_anomaly_mappings[i].anomaly_type == type) {
             return &bridge->custom_anomaly_mappings[i];
         }
@@ -185,6 +191,12 @@ static const anomaly_error_mapping_t* find_anomaly_mapping(
 
     /* Search default mappings */
     for (size_t i = 0; i < default_anomaly_mapping_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && default_anomaly_mapping_count > 256) {
+            health_diagnostic_bridge_heartbeat("health_diagn_loop",
+                             (float)(i + 1) / (float)default_anomaly_mapping_count);
+        }
+
         if (default_anomaly_mappings[i].anomaly_type == type) {
             return &default_anomaly_mappings[i];
         }
@@ -192,6 +204,12 @@ static const anomaly_error_mapping_t* find_anomaly_mapping(
 
     /* Return unknown mapping as fallback */
     for (size_t i = 0; i < default_anomaly_mapping_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && default_anomaly_mapping_count > 256) {
+            health_diagnostic_bridge_heartbeat("health_diagn_loop",
+                             (float)(i + 1) / (float)default_anomaly_mapping_count);
+        }
+
         if (default_anomaly_mappings[i].anomaly_type == ANOMALY_UNKNOWN) {
             return &default_anomaly_mappings[i];
         }
@@ -209,6 +227,12 @@ static const agent_error_mapping_t* find_agent_mapping(
 ) {
     /* Search custom mappings first */
     for (uint32_t i = 0; i < bridge->custom_agent_mapping_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->custom_agent_mapping_count > 256) {
+            health_diagnostic_bridge_heartbeat("health_diagn_loop",
+                             (float)(i + 1) / (float)bridge->custom_agent_mapping_count);
+        }
+
         if (bridge->custom_agent_mappings[i].msg_type == type) {
             return &bridge->custom_agent_mappings[i];
         }
@@ -216,6 +240,12 @@ static const agent_error_mapping_t* find_agent_mapping(
 
     /* Search default mappings */
     for (size_t i = 0; i < default_agent_mapping_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && default_agent_mapping_count > 256) {
+            health_diagnostic_bridge_heartbeat("health_diagn_loop",
+                             (float)(i + 1) / (float)default_agent_mapping_count);
+        }
+
         if (default_agent_mappings[i].msg_type == type) {
             return &default_agent_mappings[i];
         }
@@ -326,6 +356,10 @@ int health_diag_bridge_default_config(health_diag_bridge_config_t* config) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_d", 0.0f);
+
+
     memset(config, 0, sizeof(*config));
 
     config->capture_stack_trace = true;
@@ -344,6 +378,10 @@ int health_diag_bridge_default_config(health_diag_bridge_config_t* config) {
 health_diag_bridge_t* health_diag_bridge_create(
     const health_diag_bridge_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_c", 0.0f);
+
+
     health_diag_bridge_t* bridge = nimcp_calloc(1, sizeof(health_diag_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -387,6 +425,10 @@ void health_diag_bridge_destroy(health_diag_bridge_t* bridge) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_d", 0.0f);
+
+
     if (bridge->magic != HEALTH_DIAG_BRIDGE_MAGIC) {
         return;
     }
@@ -428,6 +470,10 @@ int health_diag_bridge_convert_anomaly(
     }
 
     /* Check minimum severity filter */
+    /* Phase 8: Heartbeat at operation start */
+    health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_c", 0.0f);
+
+
     if (anomaly->severity < bridge->config.min_severity) {
         return -1;
     }
@@ -529,7 +575,17 @@ int health_diag_bridge_convert_anomalies(
 
     *converted_count = 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_c", 0.0f);
+
+
     for (uint32_t i = 0; i < anomaly_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && anomaly_count > 256) {
+            health_diagnostic_bridge_heartbeat("health_diagn_loop",
+                             (float)(i + 1) / (float)anomaly_count);
+        }
+
         if (health_diag_bridge_convert_anomaly(bridge, &anomalies[i], &results[i]) == 0) {
             (*converted_count)++;
         } else {
@@ -558,6 +614,10 @@ int health_diag_bridge_convert_agent_message(
     }
 
     /* Check minimum severity filter */
+    /* Phase 8: Heartbeat at operation start */
+    health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_c", 0.0f);
+
+
     if (message->severity < bridge->config.min_agent_severity) {
         return -1;
     }
@@ -696,6 +756,10 @@ int health_diag_bridge_enrich_stack_trace(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_e", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     int ret = capture_stack_trace(result);
     if (ret == 0) {
@@ -713,6 +777,10 @@ int health_diag_bridge_enrich_memory_snapshot(
     if (!bridge || !result) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_e", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     int ret = capture_memory_snapshot(result);
@@ -753,6 +821,10 @@ int health_diag_bridge_analyze_patterns(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_a", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     int ret = analyze_patterns_unlocked(bridge, result);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -771,6 +843,10 @@ int health_diag_bridge_add_anomaly_mapping(
     if (!bridge || !mapping) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_a", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -792,6 +868,10 @@ int health_diag_bridge_add_agent_mapping(
     if (!bridge || !mapping) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_a", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -816,6 +896,10 @@ const anomaly_error_mapping_t* health_diag_bridge_get_anomaly_mapping(
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_g", 0.0f);
+
+
     return find_anomaly_mapping(bridge, anomaly_type);
 }
 
@@ -826,6 +910,10 @@ const anomaly_error_mapping_t* health_diag_bridge_get_anomaly_mapping(
 diag_severity_t health_diag_bridge_translate_anomaly_severity(
     anomaly_severity_t anomaly_severity
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_t", 0.0f);
+
+
     if (anomaly_severity <= ANOMALY_SEVERITY_CRITICAL) {
         return anomaly_severity_map[anomaly_severity];
     }
@@ -835,6 +923,10 @@ diag_severity_t health_diag_bridge_translate_anomaly_severity(
 diag_severity_t health_diag_bridge_translate_agent_severity(
     health_agent_severity_t agent_severity
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_t", 0.0f);
+
+
     if (agent_severity <= HEALTH_SEVERITY_FATAL) {
         return agent_severity_map[agent_severity];
     }
@@ -853,6 +945,10 @@ int health_diag_bridge_get_stats(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_g", 0.0f);
+
+
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
@@ -865,6 +961,10 @@ void health_diag_bridge_reset_stats(health_diag_bridge_t* bridge) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_r", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     bridge->total_conversion_time_us = 0;
@@ -876,6 +976,10 @@ bool health_diag_bridge_is_ready(const health_diag_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_i", 0.0f);
+
+
     return bridge->initialized && bridge->magic == HEALTH_DIAG_BRIDGE_MAGIC;
 }
 

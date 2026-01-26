@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_grief_thalamic_bridge_health_agent = NULL;
  * @brief Set health agent for grief_thalamic_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void grief_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void grief_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_grief_thalamic_bridge_health_agent = agent;
 }
 
@@ -62,6 +62,10 @@ struct grief_thalamic_bridge {
 };
 
 grief_thalamic_config_t grief_thalamic_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    grief_thalamic_bridge_heartbeat("grief_thalam_grief_thalamic_defau", 0.0f);
+
+
     grief_thalamic_config_t cfg = {
         .enable_attention_gating = true,
         .enable_gradual_processing = true,
@@ -72,6 +76,10 @@ grief_thalamic_config_t grief_thalamic_default_config(void) {
 }
 
 grief_thalamic_bridge_t* grief_thalamic_bridge_create(void* grief, thalamic_router_t* router, const grief_thalamic_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    grief_thalamic_bridge_heartbeat("grief_thalam_create", 0.0f);
+
+
     grief_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(grief_thalamic_bridge_t));
     if (!bridge) {
 
@@ -95,6 +103,10 @@ grief_thalamic_bridge_t* grief_thalamic_bridge_create(void* grief, thalamic_rout
 
 void grief_thalamic_bridge_destroy(grief_thalamic_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    grief_thalamic_bridge_heartbeat("grief_thalam_destroy", 0.0f);
+
+
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
     }
@@ -103,6 +115,10 @@ void grief_thalamic_bridge_destroy(grief_thalamic_bridge_t* bridge) {
 
 int grief_thalamic_bridge_reset(grief_thalamic_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    grief_thalamic_bridge_heartbeat("grief_thalam_reset", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -119,6 +135,10 @@ int grief_thalamic_bridge_reset(grief_thalamic_bridge_t* bridge) {
  */
 int grief_thalamic_route_loss(grief_thalamic_bridge_t* bridge, const grief_thalamic_signal_t* signal) {
     if (!bridge || !signal) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    grief_thalamic_bridge_heartbeat("grief_thalam_grief_thalamic_route", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -199,6 +219,10 @@ int grief_thalamic_route_loss(grief_thalamic_bridge_t* bridge, const grief_thala
 int grief_thalamic_route_processing(grief_thalamic_bridge_t* bridge, const void* stage, float progress) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    grief_thalamic_bridge_heartbeat("grief_thalam_grief_thalamic_route", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Route through thalamic router if available */
@@ -240,6 +264,10 @@ int grief_thalamic_route_processing(grief_thalamic_bridge_t* bridge, const void*
 
 int grief_thalamic_set_attention(grief_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    grief_thalamic_bridge_heartbeat("grief_thalam_grief_thalamic_set_a", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -248,6 +276,10 @@ int grief_thalamic_set_attention(grief_thalamic_bridge_t* bridge, float attentio
 
 int grief_thalamic_get_attention(grief_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    grief_thalamic_bridge_heartbeat("grief_thalam_grief_thalamic_get_a", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -256,6 +288,10 @@ int grief_thalamic_get_attention(grief_thalamic_bridge_t* bridge, float* attenti
 
 int grief_thalamic_bridge_get_stats(grief_thalamic_bridge_t* bridge, grief_thalamic_stats_t* stats) {
     if (!bridge || !stats) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    grief_thalamic_bridge_heartbeat("grief_thalam_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -269,9 +305,19 @@ int grief_thalamic_bridge_get_stats(grief_thalamic_bridge_t* bridge, grief_thala
 int grief_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    grief_thalamic_bridge_heartbeat("grief_thalam_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Grief_Thalamic_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                grief_thalamic_bridge_heartbeat("grief_thalam_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

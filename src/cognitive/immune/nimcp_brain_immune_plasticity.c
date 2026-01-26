@@ -44,7 +44,7 @@ static nimcp_health_agent_t* g_brain_immune_plasticity_health_agent = NULL;
  * @brief Set health agent for brain_immune_plasticity heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void brain_immune_plasticity_set_health_agent(nimcp_health_agent_t* agent) {
+void brain_immune_plasticity_set_health_agent(nimcp_health_agent_t* agent) {
     g_brain_immune_plasticity_health_agent = agent;
 }
 
@@ -77,6 +77,10 @@ int immune_plasticity_default_config(immune_plasticity_config_t* config) {
     }
 
     /* Cytokine sensitivity (from neuroimmune research) */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_de", 0.0f);
+
+
     config->il1_threshold_sensitivity = 1.5f;    /* IL-1β elevates threshold 1.5x at max */
     config->il6_timing_sensitivity = 0.5f;       /* IL-6 narrows windows to 50% at max */
     config->tnf_attention_sensitivity = 0.7f;    /* TNF-α reduces attention to 30% at max */
@@ -141,8 +145,18 @@ float immune_plasticity_get_cytokine_concentration(
         return 0.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_ge", 0.0f);
+
+
     float total = 0.0f;
     for (size_t i = 0; i < immune_system->cytokine_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && immune_system->cytokine_count > 256) {
+            brain_immune_plasticity_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)immune_system->cytokine_count);
+        }
+
         const brain_cytokine_t* cyt = &immune_system->cytokines[i];
         if (cyt->type == cytokine_type && !cyt->delivered) {
             total += cyt->concentration;
@@ -164,8 +178,18 @@ brain_inflammation_level_t immune_plasticity_get_max_inflammation(
         return INFLAMMATION_NONE;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_ge", 0.0f);
+
+
     brain_inflammation_level_t max_level = INFLAMMATION_NONE;
     for (size_t i = 0; i < immune_system->inflammation_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && immune_system->inflammation_count > 256) {
+            brain_immune_plasticity_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)immune_system->inflammation_count);
+        }
+
         const brain_inflammation_site_t* site = &immune_system->inflammation_sites[i];
         if (site->level > max_level) {
             max_level = site->level;
@@ -192,6 +216,10 @@ int immune_plasticity_compute_modulation(
     }
 
     /* Initialize to baseline (no modulation) */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_co", 0.0f);
+
+
     memset(modulation, 0, sizeof(immune_plasticity_modulation_t));
 
     /* BCM */
@@ -394,6 +422,10 @@ int immune_plasticity_modulate_bcm(
     }
 
     /* Elevate BCM threshold (harder to induce LTP) */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_mo", 0.0f);
+
+
     params->min_threshold *= modulation->bcm_threshold_scale;
     params->max_threshold *= modulation->bcm_threshold_scale;
 
@@ -423,6 +455,10 @@ float immune_plasticity_modulate_bcm_threshold(
         return 0.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_mo", 0.0f);
+
+
     float new_threshold = synapse->threshold * modulation->bcm_threshold_scale;
     synapse->threshold = new_threshold;
 
@@ -447,6 +483,10 @@ int immune_plasticity_modulate_stdp(
     }
 
     /* Narrow STDP timing windows (IL-6 effect) */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_mo", 0.0f);
+
+
     config->tau_plus *= modulation->stdp_tau_plus_scale;
     config->tau_minus *= modulation->stdp_tau_minus_scale;
 
@@ -477,6 +517,10 @@ int immune_plasticity_modulate_stdp_timing(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_mo", 0.0f);
+
+
     synapse->tau_plus *= modulation->stdp_tau_plus_scale;
     synapse->tau_minus *= modulation->stdp_tau_minus_scale;
     synapse->learning_rate *= modulation->stdp_learning_rate_scale;
@@ -502,6 +546,10 @@ int immune_plasticity_modulate_attention_config(
     }
 
     /* Reduce thalamic gate opening (TNF-α effect) */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_mo", 0.0f);
+
+
     config->gate_bias *= modulation->attention_gate_scale;
 
     /* Note: Can't modify temperature per head from config,
@@ -532,6 +580,10 @@ int immune_plasticity_modulate_attention_gate(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_mo", 0.0f);
+
+
     float gate_signal = modulation->attention_gate_scale;
     bool success = multihead_attention_set_gate(mha, gate_signal);
 
@@ -556,6 +608,10 @@ int immune_plasticity_modulate_stp(
     }
 
     /* Reduce release probability (U) */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_mo", 0.0f);
+
+
     params->U *= modulation->stp_u_scale;
 
     /* Increase depression time constant (slower recovery) */
@@ -583,6 +639,10 @@ int immune_plasticity_modulate_stp_state(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_mo", 0.0f);
+
+
     return immune_plasticity_modulate_stp(&state->params, modulation);
 }
 
@@ -604,6 +664,10 @@ int immune_plasticity_modulate_homeostatic_config(
     }
 
     /* Modulate synaptic scaling */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_mo", 0.0f);
+
+
     immune_plasticity_modulate_synaptic_scaling(&config->scaling_params, modulation);
 
     /* Modulate metaplasticity */
@@ -628,6 +692,10 @@ int immune_plasticity_modulate_synaptic_scaling(
     }
 
     /* Shift target firing rate upward during inflammation */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_mo", 0.0f);
+
+
     params->target_rate += modulation->homeostatic_target_shift;
 
     /* Slow down scaling rate */
@@ -649,6 +717,10 @@ int immune_plasticity_modulate_metaplasticity(
     }
 
     /* Elevate BCM threshold range */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_mo", 0.0f);
+
+
     float theta_shift = modulation->metaplasticity_theta_shift;
     params->min_theta *= (1.0f + theta_shift);
     params->max_theta *= (1.0f + theta_shift);
@@ -674,6 +746,10 @@ int immune_plasticity_modulate_nmda(
     }
 
     /* Reduce NMDA conductance */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_mo", 0.0f);
+
+
     params->g_max *= modulation->nmda_conductance_scale;
 
     /* Reduce calcium influx */
@@ -699,6 +775,10 @@ int immune_plasticity_modulate_dendritic_compartment(
     }
 
     /* Raise dendritic spike threshold */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_mo", 0.0f);
+
+
     params->spike_threshold += modulation->dendritic_spike_threshold_shift;
 
     /* Reduce supralinear summation */
@@ -725,6 +805,10 @@ int immune_plasticity_modulate_adaptive_params(
     }
 
     /* Shift sparsity target (more sparse during inflammation) */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_mo", 0.0f);
+
+
     params->sparsity_target += modulation->adaptive_sparsity_target;
 
     /* Clamp to valid range [0, 1] */
@@ -754,6 +838,10 @@ int immune_plasticity_modulate_eligibility_config(
     }
 
     /* Faster decay (shorter credit window) */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_mo", 0.0f);
+
+
     config->decay_lambda *= modulation->eligibility_decay_scale;
 
     /* Clamp to valid range */
@@ -787,6 +875,10 @@ int immune_plasticity_modulate_predictive_coding_layer(
     }
 
     /* Reduce precision learning rate (slower precision updates) */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_mo", 0.0f);
+
+
     params->learning_rate_precision *= modulation->pc_prediction_precision_scale;
 
     /* Reduce representation learning rate */
@@ -818,6 +910,10 @@ int immune_plasticity_modulate_predictive_coding_hierarchy(
     }
 
     /* Reduce global learning rate */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_mo", 0.0f);
+
+
     config->learning_rate *= modulation->pc_learning_rate_scale;
 
     /* Reduce precision learning rate */
@@ -841,6 +937,10 @@ int immune_plasticity_get_stats(immune_plasticity_stats_t* stats) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_ge", 0.0f);
+
+
     memcpy(stats, &g_stats, sizeof(immune_plasticity_stats_t));
     return 0;
 }
@@ -850,6 +950,10 @@ void immune_plasticity_reset_stats(void) {
      * WHY:  Start fresh measurement period
      * HOW:  Zero the struct
      */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_re", 0.0f);
+
+
     memset(&g_stats, 0, sizeof(immune_plasticity_stats_t));
 }
 
@@ -864,6 +968,10 @@ bool immune_plasticity_is_impaired(
     if (!modulation) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_is", 0.0f);
+
 
     return modulation->global_plasticity_scale < threshold;
 }
@@ -884,6 +992,10 @@ int immune_plasticity_modulation_to_string(
     if (!modulation || !buffer || buffer_size == 0) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_plasticity_heartbeat("brain_immune_immune_plasticity_mo", 0.0f);
+
 
     return snprintf(buffer, buffer_size,
         "ImmuneModulation{inflammation=%d, IL1=%.2f, IL6=%.2f, TNFa=%.2f, IL10=%.2f, "
@@ -919,9 +1031,19 @@ int immune_plasticity_modulation_to_string(
  */
 int brain_immune_plasticity_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_plasticity_heartbeat("brain_immune_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Brain_Immune_Plasticity");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                brain_immune_plasticity_heartbeat("brain_immune_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Brain immune plasticity self-knowledge: %s", self->observations[i]);
         }
     }

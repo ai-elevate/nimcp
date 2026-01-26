@@ -31,7 +31,7 @@ static nimcp_health_agent_t* g_salience_substrate_bridge_health_agent = NULL;
  * @brief Set health agent for salience_substrate_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void salience_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void salience_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_salience_substrate_bridge_health_agent = agent;
 }
 
@@ -57,6 +57,10 @@ struct salience_substrate_bridge {
 };
 
 salience_substrate_config_t salience_substrate_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    salience_substrate_bridge_heartbeat("salience_sub_salience_substrate_d", 0.0f);
+
+
     salience_substrate_config_t cfg = { .enable_atp_modulation = true, .enable_fatigue_modulation = true,
         .enable_bio_async = false, .atp_sensitivity = 1.0f, .fatigue_sensitivity = 1.0f, .min_capacity = 0.2f };
     return cfg;
@@ -70,6 +74,10 @@ salience_substrate_bridge_t* salience_substrate_bridge_create(void* salience, ne
         return NULL;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    salience_substrate_bridge_heartbeat("salience_sub_create", 0.0f);
+
+
     salience_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(salience_substrate_bridge_t));
     if (!bridge) {
 
@@ -110,6 +118,10 @@ salience_substrate_bridge_t* salience_substrate_bridge_create(void* salience, ne
 
 void salience_substrate_bridge_destroy(salience_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    salience_substrate_bridge_heartbeat("salience_sub_destroy", 0.0f);
+
+
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
     }
@@ -118,6 +130,10 @@ void salience_substrate_bridge_destroy(salience_substrate_bridge_t* bridge) {
 
 int salience_substrate_bridge_update(salience_substrate_bridge_t* bridge) {
     if (!bridge || !bridge->substrate) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_substrate_bridge_heartbeat("salience_sub_update", 0.0f);
+
 
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
@@ -146,6 +162,10 @@ int salience_substrate_bridge_update(salience_substrate_bridge_t* bridge) {
 int salience_substrate_bridge_get_effects(const salience_substrate_bridge_t* bridge, salience_substrate_effects_t* effects) {
     if (!bridge || !effects) return -1;
     *effects = bridge->effects;
+    /* Phase 8: Heartbeat at operation start */
+    salience_substrate_bridge_heartbeat("salience_sub_get_effects", 0.0f);
+
+
     return 0;
 }
 
@@ -155,6 +175,10 @@ int salience_substrate_bridge_apply_effects(salience_substrate_bridge_t* bridge)
     if (!bridge->bio_async_connected || !bridge->ctx) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_substrate_bridge_heartbeat("salience_sub_apply_effects", 0.0f);
+
 
     substrate_metabolic_state_t metabolic;
     float atp_level = 1.0f, fatigue_level = 0.0f;
@@ -217,6 +241,10 @@ int salience_substrate_bridge_apply_effects(salience_substrate_bridge_t* bridge)
 int salience_substrate_bridge_register_bio_async(salience_substrate_bridge_t* bridge, bio_router_t* router) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_substrate_bridge_heartbeat("salience_sub_register_bio_async", 0.0f);
+
+
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
         bridge->ctx = NULL;
@@ -248,9 +276,19 @@ int salience_substrate_bridge_register_bio_async(salience_substrate_bridge_t* br
 int salience_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_substrate_bridge_heartbeat("salience_sub_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Salience_Substrate_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                salience_substrate_bridge_heartbeat("salience_sub_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

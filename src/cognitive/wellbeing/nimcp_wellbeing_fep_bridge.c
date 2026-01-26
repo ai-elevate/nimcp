@@ -36,7 +36,7 @@ static nimcp_health_agent_t* g_wellbeing_fep_bridge_health_agent = NULL;
  * @brief Set health agent for wellbeing_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void wellbeing_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void wellbeing_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_wellbeing_fep_bridge_health_agent = agent;
 }
 
@@ -49,6 +49,10 @@ static inline void wellbeing_fep_bridge_heartbeat(const char* operation, float p
 
 
 int wellbeing_fep_bridge_default_config(wellbeing_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_fep_bridge_heartbeat("wellbeing_fe_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->chronic_fe_threshold = WELLBEING_FEP_CHRONIC_FE_THRESHOLD;
     config->acute_surprise_threshold = WELLBEING_FEP_ACUTE_SURPRISE_THRESHOLD;
@@ -70,6 +74,10 @@ int wellbeing_fep_bridge_default_config(wellbeing_fep_config_t* config) {
 }
 
 wellbeing_fep_bridge_t* wellbeing_fep_bridge_create(const wellbeing_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_fep_bridge_heartbeat("wellbeing_fe_create", 0.0f);
+
+
     wellbeing_fep_bridge_t* bridge = nimcp_malloc(sizeof(wellbeing_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate wellbeing FEP bridge");
@@ -95,6 +103,10 @@ wellbeing_fep_bridge_t* wellbeing_fep_bridge_create(const wellbeing_fep_config_t
 
 void wellbeing_fep_bridge_destroy(wellbeing_fep_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_fep_bridge_heartbeat("wellbeing_fe_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         wellbeing_fep_bridge_disconnect_bio_async(bridge);
     }
@@ -106,6 +118,10 @@ void wellbeing_fep_bridge_destroy(wellbeing_fep_bridge_t* bridge) {
 }
 
 int wellbeing_fep_bridge_connect_fep(wellbeing_fep_bridge_t* bridge, fep_system_t* fep) {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_fep_bridge_heartbeat("wellbeing_fe_connect_fep", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -115,6 +131,10 @@ int wellbeing_fep_bridge_connect_fep(wellbeing_fep_bridge_t* bridge, fep_system_
 }
 
 int wellbeing_fep_bridge_disconnect(wellbeing_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_fep_bridge_heartbeat("wellbeing_fe_disconnect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -124,6 +144,10 @@ int wellbeing_fep_bridge_disconnect(wellbeing_fep_bridge_t* bridge) {
 }
 
 int wellbeing_fep_bridge_update(wellbeing_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_fep_bridge_heartbeat("wellbeing_fe_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "bridge or fep_system is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state.current_free_energy = fep_get_free_energy(bridge->fep_system);
@@ -142,6 +166,10 @@ int wellbeing_fep_bridge_update(wellbeing_fep_bridge_t* bridge) {
 
 int wellbeing_fep_bridge_get_state(const wellbeing_fep_bridge_t* bridge,
                                     wellbeing_fep_state_t* state) {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_fep_bridge_heartbeat("wellbeing_fe_get_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -151,6 +179,10 @@ int wellbeing_fep_bridge_get_state(const wellbeing_fep_bridge_t* bridge,
 
 int wellbeing_fep_bridge_get_stats(const wellbeing_fep_bridge_t* bridge,
                                     wellbeing_fep_stats_t* stats) {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_fep_bridge_heartbeat("wellbeing_fe_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -159,6 +191,10 @@ int wellbeing_fep_bridge_get_stats(const wellbeing_fep_bridge_t* bridge,
 }
 
 int wellbeing_fep_bridge_connect_bio_async(wellbeing_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_fep_bridge_heartbeat("wellbeing_fe_connect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
@@ -177,6 +213,10 @@ int wellbeing_fep_bridge_connect_bio_async(wellbeing_fep_bridge_t* bridge) {
 
 int wellbeing_fep_bridge_disconnect_bio_async(wellbeing_fep_bridge_t* bridge) {
     if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_fep_bridge_heartbeat("wellbeing_fe_disconnect_bio_async", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -188,6 +228,10 @@ int wellbeing_fep_bridge_disconnect_bio_async(wellbeing_fep_bridge_t* bridge) {
 
 bool wellbeing_fep_bridge_is_bio_async_connected(const wellbeing_fep_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_fep_bridge_heartbeat("wellbeing_fe_is_bio_async_connect", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -202,9 +246,19 @@ bool wellbeing_fep_bridge_is_bio_async_connected(const wellbeing_fep_bridge_t* b
  */
 int wellbeing_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_fep_bridge_heartbeat("wellbeing_fe_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Wellbeing_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                wellbeing_fep_bridge_heartbeat("wellbeing_fe_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Wellbeing FEP Bridge self-knowledge: %s", self->observations[i]);
         }
     }

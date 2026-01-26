@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_game_theory_plasticity_bridge_health_agent = NULL
  * @brief Set health agent for game_theory_plasticity_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void game_theory_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void game_theory_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_game_theory_plasticity_bridge_health_agent = agent;
 }
 
@@ -99,6 +99,12 @@ static inline float clamp_f(float x, float min_val, float max_val) {
 
 static synapse_entry_t* find_synapse(game_theory_plasticity_bridge_t* bridge, uint32_t synapse_id) {
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            game_theory_plasticity_bridge_heartbeat("game_theory__loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use &&
             bridge->synapses[i].synapse.synapse_id == synapse_id) {
             return &bridge->synapses[i];
@@ -109,6 +115,12 @@ static synapse_entry_t* find_synapse(game_theory_plasticity_bridge_t* bridge, ui
 
 static synapse_entry_t* find_free_slot(game_theory_plasticity_bridge_t* bridge) {
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            game_theory_plasticity_bridge_heartbeat("game_theory__loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (!bridge->synapses[i].in_use) {
             return &bridge->synapses[i];
         }
@@ -126,6 +138,10 @@ static bool is_protected_type(game_theory_synapse_type_t type) {
 //=============================================================================
 
 game_theory_plasticity_config_t game_theory_plasticity_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_plasticity_bridge_heartbeat("game_theory__game_theory_plastici", 0.0f);
+
+
     game_theory_plasticity_config_t config = {
         .base_learning_rate = GAME_THEORY_PLASTICITY_DEFAULT_LR,
         .stdp_tau_plus_ms = 20.0f,
@@ -160,6 +176,10 @@ game_theory_plasticity_config_t game_theory_plasticity_config_default(void) {
 game_theory_plasticity_bridge_t* game_theory_plasticity_create(
     const game_theory_plasticity_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_plasticity_bridge_heartbeat("game_theory__game_theory_plastici", 0.0f);
+
+
     game_theory_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(game_theory_plasticity_bridge_t));
     if (!bridge) {
 
@@ -214,6 +234,10 @@ game_theory_plasticity_bridge_t* game_theory_plasticity_create(
 void game_theory_plasticity_destroy(game_theory_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_plasticity_bridge_heartbeat("game_theory__game_theory_plastici", 0.0f);
+
+
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge->synapses);
@@ -223,10 +247,20 @@ void game_theory_plasticity_destroy(game_theory_plasticity_bridge_t* bridge) {
 int game_theory_plasticity_reset(game_theory_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_plasticity_bridge_heartbeat("game_theory__game_theory_plastici", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset all synapses to initial weights */
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            game_theory_plasticity_bridge_heartbeat("game_theory__loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             bridge->synapses[i].synapse.weight = bridge->synapses[i].synapse.initial_weight;
             bridge->synapses[i].synapse.eligibility_trace = 0.0f;
@@ -261,6 +295,10 @@ int game_theory_plasticity_register_synapse(
     float initial_weight
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_plasticity_bridge_heartbeat("game_theory__game_theory_plastici", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -305,6 +343,10 @@ int game_theory_plasticity_unregister_synapse(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_plasticity_bridge_heartbeat("game_theory__game_theory_plastici", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
@@ -327,6 +369,10 @@ int game_theory_plasticity_get_synapse(
 ) {
     if (!bridge || !synapse) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_plasticity_bridge_heartbeat("game_theory__game_theory_plastici", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
@@ -347,6 +393,10 @@ int game_theory_plasticity_protect_synapse(
     bool protect
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_plasticity_bridge_heartbeat("game_theory__game_theory_plastici", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -374,6 +424,10 @@ int game_theory_plasticity_learn(
     float context
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_plasticity_bridge_heartbeat("game_theory__game_theory_plastici", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = GT_PLASTICITY_STATE_LEARNING;
@@ -488,6 +542,10 @@ float game_theory_plasticity_apply_stdp(
 ) {
     if (!bridge) return NAN;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_plasticity_bridge_heartbeat("game_theory__game_theory_plastici", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
@@ -541,6 +599,10 @@ int game_theory_plasticity_apply_reward(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_plasticity_bridge_heartbeat("game_theory__game_theory_plastici", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     reward = clamp_f(reward, -1.0f, 1.0f);
@@ -548,6 +610,12 @@ int game_theory_plasticity_apply_reward(
 
     /* Apply reward modulation to all eligible synapses */
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            game_theory_plasticity_bridge_heartbeat("game_theory__loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use && !bridge->synapses[i].synapse.is_protected) {
             float trace = bridge->synapses[i].synapse.eligibility_trace;
             if (fabsf(trace) > 0.001f) {
@@ -573,12 +641,22 @@ int game_theory_plasticity_update_bcm(
     if (!bridge) return -1;
     if (dt_ms <= 0.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_plasticity_bridge_heartbeat("game_theory__game_theory_plastici", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = GT_PLASTICITY_STATE_UPDATING;
 
     float decay = expf(-dt_ms / bridge->config.bcm_tau_ms);
 
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            game_theory_plasticity_bridge_heartbeat("game_theory__loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             /* Update sliding threshold towards average activity */
             float target = bridge->synapses[i].synapse.avg_activity;
@@ -599,6 +677,10 @@ int game_theory_plasticity_homeostatic_update(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_plasticity_bridge_heartbeat("game_theory__game_theory_plastici", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = GT_PLASTICITY_STATE_UPDATING;
 
@@ -608,6 +690,12 @@ int game_theory_plasticity_homeostatic_update(
     float mean_cooperation = 0.0f;
     uint32_t cooperation_count = 0;
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            game_theory_plasticity_bridge_heartbeat("game_theory__loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use &&
             bridge->synapses[i].synapse.type == GT_SYNAPSE_COOPERATION) {
             mean_cooperation += bridge->synapses[i].synapse.weight;
@@ -627,6 +715,12 @@ int game_theory_plasticity_homeostatic_update(
     }
 
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            game_theory_plasticity_bridge_heartbeat("game_theory__loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use && !bridge->synapses[i].synapse.is_protected) {
             float scaled = bridge->synapses[i].synapse.weight * (1.0f + (scale_factor - 1.0f) * (1.0f - decay));
             bridge->synapses[i].synapse.weight = clamp_f(
@@ -648,11 +742,21 @@ int game_theory_plasticity_update_traces(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_plasticity_bridge_heartbeat("game_theory__game_theory_plastici", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float decay = expf(-dt_ms / bridge->config.stdp_tau_plus_ms);
 
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            game_theory_plasticity_bridge_heartbeat("game_theory__loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             bridge->synapses[i].synapse.eligibility_trace *= decay;
         }
@@ -665,11 +769,21 @@ int game_theory_plasticity_update_traces(
 int game_theory_plasticity_consolidate(game_theory_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_plasticity_bridge_heartbeat("game_theory__game_theory_plastici", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = GT_PLASTICITY_STATE_CONSOLIDATING;
 
     /* Clear eligibility traces */
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            game_theory_plasticity_bridge_heartbeat("game_theory__loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             bridge->synapses[i].synapse.eligibility_trace = 0.0f;
         }
@@ -683,6 +797,12 @@ int game_theory_plasticity_consolidate(game_theory_plasticity_bridge_t* bridge) 
     float equilibrium_sum = 0.0f, equilibrium_count = 0;
 
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            game_theory_plasticity_bridge_heartbeat("game_theory__loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             switch (bridge->synapses[i].synapse.type) {
                 case GT_SYNAPSE_COOPERATION:
@@ -744,6 +864,10 @@ int game_theory_plasticity_get_strategy_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_plasticity_bridge_heartbeat("game_theory__game_theory_plastici", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->strategy_state;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -757,6 +881,10 @@ int game_theory_plasticity_get_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_plasticity_bridge_heartbeat("game_theory__game_theory_plastici", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
@@ -767,6 +895,12 @@ int game_theory_plasticity_get_state(
     float sum = 0.0f;
     float sum_sq = 0.0f;
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            game_theory_plasticity_bridge_heartbeat("game_theory__loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             float w = bridge->synapses[i].synapse.weight;
             sum += w;
@@ -793,6 +927,10 @@ int game_theory_plasticity_get_stats(
 ) {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_plasticity_bridge_heartbeat("game_theory__game_theory_plastici", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -802,6 +940,10 @@ int game_theory_plasticity_get_stats(
 
 int game_theory_plasticity_reset_stats(game_theory_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_plasticity_bridge_heartbeat("game_theory__game_theory_plastici", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(game_theory_plasticity_stats_t));
@@ -821,6 +963,10 @@ int game_theory_plasticity_register_learn_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_plasticity_bridge_heartbeat("game_theory__game_theory_plastici", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->learn_callback = callback;
     bridge->learn_callback_data = user_data;
@@ -835,6 +981,10 @@ int game_theory_plasticity_register_strategy_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_plasticity_bridge_heartbeat("game_theory__game_theory_plastici", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->strategy_callback = callback;
@@ -852,6 +1002,10 @@ int game_theory_plasticity_bio_async_connect(game_theory_plasticity_bridge_t* br
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_plasticity_bridge_heartbeat("game_theory__game_theory_plastici", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
@@ -863,6 +1017,10 @@ int game_theory_plasticity_bio_async_connect(game_theory_plasticity_bridge_t* br
 int game_theory_plasticity_bio_async_disconnect(game_theory_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_plasticity_bridge_heartbeat("game_theory__game_theory_plastici", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -872,6 +1030,10 @@ int game_theory_plasticity_bio_async_disconnect(game_theory_plasticity_bridge_t*
 
 bool game_theory_plasticity_is_bio_async_connected(game_theory_plasticity_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_plasticity_bridge_heartbeat("game_theory__game_theory_plastici", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;

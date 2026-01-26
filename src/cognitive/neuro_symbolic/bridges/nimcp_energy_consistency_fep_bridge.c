@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_energy_consistency_fep_bridge_health_agent = NULL
  * @brief Set health agent for energy_consistency_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void energy_consistency_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void energy_consistency_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_energy_consistency_fep_bridge_health_agent = agent;
 }
 

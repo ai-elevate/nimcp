@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_game_theory_fep_bridge_health_agent = NULL;
  * @brief Set health agent for game_theory_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void game_theory_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void game_theory_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_game_theory_fep_bridge_health_agent = agent;
 }
 
@@ -294,6 +294,10 @@ static void store_previous_state(gt_fep_bridge_t* bridge) {
  *===========================================================================*/
 
 gt_fep_config_t gt_fep_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_config_defaul", 0.0f);
+
+
     gt_fep_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -321,6 +325,10 @@ gt_fep_config_t gt_fep_config_default(void) {
 }
 
 gt_fep_bridge_t* gt_fep_bridge_create(const gt_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_create", 0.0f);
+
+
     gt_fep_bridge_t* bridge = nimcp_calloc(1, sizeof(gt_fep_bridge_t));
     if (!bridge) {
 
@@ -374,6 +382,10 @@ void gt_fep_bridge_destroy(gt_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Unregister if still registered */
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_destro", 0.0f);
+
+
     if (bridge->registered) {
         gt_fep_bridge_unregister(bridge);
     }
@@ -386,6 +398,10 @@ void gt_fep_bridge_destroy(gt_fep_bridge_t* bridge) {
 
 int gt_fep_bridge_reset(gt_fep_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_reset", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -425,6 +441,10 @@ int gt_fep_bridge_register(
     uint32_t* bridge_id_out
 ) {
     if (!bridge || !orchestrator) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_regist", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -475,6 +495,10 @@ int gt_fep_bridge_register(
 int gt_fep_bridge_unregister(gt_fep_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_unregi", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->registered) {
@@ -500,6 +524,10 @@ int gt_fep_bridge_unregister(gt_fep_bridge_t* bridge) {
 bool gt_fep_bridge_is_registered(const gt_fep_bridge_t* bridge) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_is_reg", 0.0f);
+
+
     nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->base.mutex);
     bool registered = bridge->registered;
     nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->base.mutex);
@@ -509,6 +537,10 @@ bool gt_fep_bridge_is_registered(const gt_fep_bridge_t* bridge) {
 
 uint32_t gt_fep_bridge_get_id(const gt_fep_bridge_t* bridge) {
     if (!bridge) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_get_id", 0.0f);
+
 
     nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->base.mutex);
     uint32_t id = bridge->registered ? bridge->bridge_id : 0;
@@ -522,6 +554,10 @@ uint32_t gt_fep_bridge_get_id(const gt_fep_bridge_t* bridge) {
  *===========================================================================*/
 
 int gt_fep_update_callback(void* handle) {
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_update_callba", 0.0f);
+
+
     gt_fep_bridge_t* bridge = (gt_fep_bridge_t*)handle;
     if (!bridge) return -1;
 
@@ -603,6 +639,10 @@ int gt_fep_update_callback(void* handle) {
 
 void gt_fep_destroy_callback(void* handle) {
     /* No-op: Bridge is destroyed separately via gt_fep_bridge_destroy() */
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_destroy_callb", 0.0f);
+
+
     (void)handle;
 }
 
@@ -612,6 +652,10 @@ void gt_fep_destroy_callback(void* handle) {
 
 int gt_fep_bridge_force_update(gt_fep_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_force_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -643,6 +687,10 @@ int gt_fep_bridge_update_strategy_uncertainty(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_update", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.strategy_uncertainty = clamp_f(uncertainty, 0.0f, 1.0f);
     bridge->stats.strategy_computations++;
@@ -657,6 +705,10 @@ int gt_fep_bridge_update_opponent_error(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_update", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.opponent_prediction_error = clamp_f(error, 0.0f, 1.0f);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -669,6 +721,10 @@ int gt_fep_bridge_update_nash_distance(
     float distance
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_update", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.nash_distance = clamp_f(distance, 0.0f, 1.0f);
@@ -688,6 +744,10 @@ int gt_fep_bridge_get_metrics(
 ) {
     if (!bridge || !metrics_out) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_get_me", 0.0f);
+
+
     nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->base.mutex);
     *metrics_out = bridge->metrics;
     nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->base.mutex);
@@ -701,6 +761,10 @@ int gt_fep_bridge_get_stats(
 ) {
     if (!bridge || !stats_out) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_get_st", 0.0f);
+
+
     nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->base.mutex);
     *stats_out = bridge->stats;
     nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->base.mutex);
@@ -710,6 +774,10 @@ int gt_fep_bridge_get_stats(
 
 int gt_fep_bridge_reset_stats(gt_fep_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_reset_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(gt_fep_stats_t));
@@ -723,6 +791,10 @@ int gt_fep_bridge_reset_stats(gt_fep_bridge_t* bridge) {
 float gt_fep_bridge_get_free_energy(const gt_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_get_fr", 0.0f);
+
+
     nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->base.mutex);
     float fe = bridge->metrics.free_energy;
     nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->base.mutex);
@@ -733,6 +805,10 @@ float gt_fep_bridge_get_free_energy(const gt_fep_bridge_t* bridge) {
 float gt_fep_bridge_get_strategy_uncertainty(const gt_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_get_st", 0.0f);
+
+
     nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->base.mutex);
     float su = bridge->metrics.strategy_uncertainty;
     nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->base.mutex);
@@ -742,6 +818,10 @@ float gt_fep_bridge_get_strategy_uncertainty(const gt_fep_bridge_t* bridge) {
 
 float gt_fep_bridge_get_prediction_error(const gt_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_get_pr", 0.0f);
+
 
     nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->base.mutex);
     float pe = bridge->metrics.prediction_error;
@@ -757,6 +837,10 @@ float gt_fep_bridge_get_prediction_error(const gt_fep_bridge_t* bridge) {
 gt_fep_state_t gt_fep_bridge_get_state(const gt_fep_bridge_t* bridge) {
     if (!bridge) return GT_FEP_STATE_ERROR;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_get_st", 0.0f);
+
+
     nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->base.mutex);
     gt_fep_state_t state = bridge->state;
     nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->base.mutex);
@@ -767,6 +851,10 @@ gt_fep_state_t gt_fep_bridge_get_state(const gt_fep_bridge_t* bridge) {
 bool gt_fep_bridge_is_degraded(const gt_fep_bridge_t* bridge) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_is_deg", 0.0f);
+
+
     nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->base.mutex);
     bool degraded = (bridge->state == GT_FEP_STATE_DEGRADED);
     nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->base.mutex);
@@ -776,6 +864,10 @@ bool gt_fep_bridge_is_degraded(const gt_fep_bridge_t* bridge) {
 
 bool gt_fep_bridge_is_at_nash(const gt_fep_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_is_at_", 0.0f);
+
 
     nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->base.mutex);
     bool at_nash = bridge->metrics.at_nash_equilibrium;
@@ -806,6 +898,10 @@ int gt_fep_bridge_set_high_fe_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_set_hi", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->high_fe_callback = callback;
     bridge->high_fe_user_data = user_data;
@@ -821,6 +917,10 @@ int gt_fep_bridge_set_surprise_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_set_su", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->surprise_callback = callback;
     bridge->surprise_user_data = user_data;
@@ -835,6 +935,10 @@ int gt_fep_bridge_set_metrics_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_set_me", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics_callback = callback;
@@ -854,6 +958,10 @@ int gt_fep_bridge_set_config(
 ) {
     if (!bridge || !config) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_set_co", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->config = *config;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -866,6 +974,10 @@ int gt_fep_bridge_get_config(
     gt_fep_config_t* config_out
 ) {
     if (!bridge || !config_out) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_get_co", 0.0f);
+
 
     nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->base.mutex);
     *config_out = bridge->config;

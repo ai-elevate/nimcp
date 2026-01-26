@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_introspection_plasticity_bridge_health_agent = NU
  * @brief Set health agent for introspection_plasticity_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void introspection_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void introspection_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_introspection_plasticity_bridge_health_agent = agent;
 }
 
@@ -96,6 +96,12 @@ static introspection_plasticity_synapse_t* find_synapse(
     uint32_t synapse_id
 ) {
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            introspection_plasticity_bridge_heartbeat("introspectio_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (bridge->synapses[i].synapse_id == synapse_id) {
             return &bridge->synapses[i];
         }
@@ -108,6 +114,10 @@ static introspection_plasticity_synapse_t* find_synapse(
 //=============================================================================
 
 introspection_plasticity_config_t introspection_plasticity_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    introspection_plasticity_bridge_heartbeat("introspectio_introspection_plasti", 0.0f);
+
+
     introspection_plasticity_config_t config = {
         .base_learning_rate = INTROSPECTION_PLASTICITY_DEFAULT_LR,
         .stdp_tau_plus_ms = 20.0f,
@@ -142,6 +152,10 @@ introspection_plasticity_config_t introspection_plasticity_config_default(void) 
 introspection_plasticity_bridge_t* introspection_plasticity_create(
     const introspection_plasticity_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    introspection_plasticity_bridge_heartbeat("introspectio_introspection_plasti", 0.0f);
+
+
     introspection_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(introspection_plasticity_bridge_t));
     if (!bridge) {
 
@@ -194,6 +208,10 @@ introspection_plasticity_bridge_t* introspection_plasticity_create(
 void introspection_plasticity_destroy(introspection_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_plasticity_bridge_heartbeat("introspectio_introspection_plasti", 0.0f);
+
+
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
     }
@@ -205,10 +223,20 @@ void introspection_plasticity_destroy(introspection_plasticity_bridge_t* bridge)
 int introspection_plasticity_reset(introspection_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_plasticity_bridge_heartbeat("introspectio_introspection_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset all synapses to initial weights */
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            introspection_plasticity_bridge_heartbeat("introspectio_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         bridge->synapses[i].weight = bridge->synapses[i].initial_weight;
         bridge->synapses[i].eligibility_trace = 0.0f;
         bridge->synapses[i].bcm_threshold = bridge->config.bcm_target_rate;
@@ -243,6 +271,10 @@ int introspection_plasticity_register_synapse(
     float initial_weight
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    introspection_plasticity_bridge_heartbeat("introspectio_introspection_plasti", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -294,9 +326,19 @@ int introspection_plasticity_unregister_synapse(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_plasticity_bridge_heartbeat("introspectio_introspection_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            introspection_plasticity_bridge_heartbeat("introspectio_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (bridge->synapses[i].synapse_id == synapse_id) {
             /* Move last to current position */
             if (i < bridge->num_synapses - 1) {
@@ -319,6 +361,10 @@ int introspection_plasticity_get_synapse(
 ) {
     if (!bridge || !synapse) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_plasticity_bridge_heartbeat("introspectio_introspection_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     introspection_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
@@ -339,6 +385,10 @@ int introspection_plasticity_protect_synapse(
     bool protect
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    introspection_plasticity_bridge_heartbeat("introspectio_introspection_plasti", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -366,6 +416,10 @@ int introspection_plasticity_learn(
     float context
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    introspection_plasticity_bridge_heartbeat("introspectio_introspection_plasti", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = INTROSPECTION_PLASTICITY_STATE_LEARNING;
@@ -476,6 +530,10 @@ float introspection_plasticity_apply_stdp(
 ) {
     if (!bridge) return NAN;
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_plasticity_bridge_heartbeat("introspectio_introspection_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     introspection_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
@@ -533,6 +591,10 @@ int introspection_plasticity_apply_reward(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_plasticity_bridge_heartbeat("introspectio_introspection_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     reward = clamp_f(reward, -1.0f, 1.0f);
@@ -540,6 +602,12 @@ int introspection_plasticity_apply_reward(
 
     /* Apply reward-modulated learning to all synapses with eligibility */
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            introspection_plasticity_bridge_heartbeat("introspectio_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         introspection_plasticity_synapse_t* syn = &bridge->synapses[i];
 
         if (syn->is_protected || syn->eligibility_trace < 0.001f) {
@@ -570,11 +638,21 @@ int introspection_plasticity_update_bcm(
     if (!bridge) return -1;
     if (dt_ms <= 0.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_plasticity_bridge_heartbeat("introspectio_introspection_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float decay = expf(-dt_ms / bridge->config.bcm_tau_ms);
 
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            introspection_plasticity_bridge_heartbeat("introspectio_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         introspection_plasticity_synapse_t* syn = &bridge->synapses[i];
 
         /* Update sliding threshold towards average activity */
@@ -601,6 +679,10 @@ int introspection_plasticity_homeostatic_update(
     if (!bridge) return -1;
     if (dt_ms <= 0.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_plasticity_bridge_heartbeat("introspectio_introspection_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Calculate mean weight */
@@ -608,6 +690,12 @@ int introspection_plasticity_homeostatic_update(
     uint32_t active_count = 0;
 
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            introspection_plasticity_bridge_heartbeat("introspectio_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (!bridge->synapses[i].is_protected) {
             mean_weight += bridge->synapses[i].weight;
             active_count++;
@@ -627,6 +715,12 @@ int introspection_plasticity_homeostatic_update(
     scale_factor = clamp_f(scale_factor, 0.99f, 1.01f);
 
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            introspection_plasticity_bridge_heartbeat("introspectio_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (!bridge->synapses[i].is_protected) {
             bridge->synapses[i].weight = clamp_f(
                 bridge->synapses[i].weight * scale_factor,
@@ -661,11 +755,21 @@ int introspection_plasticity_update_traces(
     if (!bridge) return -1;
     if (dt_ms <= 0.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_plasticity_bridge_heartbeat("introspectio_introspection_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float decay = expf(-dt_ms / bridge->config.stdp_tau_plus_ms);
 
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            introspection_plasticity_bridge_heartbeat("introspectio_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         bridge->synapses[i].eligibility_trace *= decay;
     }
 
@@ -679,11 +783,21 @@ int introspection_plasticity_update_traces(
 int introspection_plasticity_consolidate(introspection_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_plasticity_bridge_heartbeat("introspectio_introspection_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = INTROSPECTION_PLASTICITY_STATE_CONSOLIDATING;
 
     /* Consolidate learning by resetting eligibility traces */
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            introspection_plasticity_bridge_heartbeat("introspectio_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         bridge->synapses[i].eligibility_trace = 0.0f;
     }
 
@@ -704,6 +818,10 @@ int introspection_plasticity_get_calibration_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_plasticity_bridge_heartbeat("introspectio_introspection_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->calibration;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -717,6 +835,10 @@ int introspection_plasticity_get_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_plasticity_bridge_heartbeat("introspectio_introspection_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
@@ -727,6 +849,12 @@ int introspection_plasticity_get_state(
     float sum_sq = 0.0f;
 
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            introspection_plasticity_bridge_heartbeat("introspectio_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         sum += bridge->synapses[i].weight;
         sum_sq += bridge->synapses[i].weight * bridge->synapses[i].weight;
     }
@@ -753,6 +881,10 @@ int introspection_plasticity_get_stats(
 ) {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_plasticity_bridge_heartbeat("introspectio_introspection_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -762,6 +894,10 @@ int introspection_plasticity_get_stats(
 
 int introspection_plasticity_reset_stats(introspection_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    introspection_plasticity_bridge_heartbeat("introspectio_introspection_plasti", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(introspection_plasticity_stats_t));
@@ -781,6 +917,10 @@ int introspection_plasticity_register_learn_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_plasticity_bridge_heartbeat("introspectio_introspection_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->learn_callback = callback;
     bridge->learn_callback_data = user_data;
@@ -795,6 +935,10 @@ int introspection_plasticity_register_calibration_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    introspection_plasticity_bridge_heartbeat("introspectio_introspection_plasti", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->calibration_callback = callback;
@@ -812,6 +956,10 @@ int introspection_plasticity_bio_async_connect(introspection_plasticity_bridge_t
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_plasticity_bridge_heartbeat("introspectio_introspection_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = true;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -822,6 +970,10 @@ int introspection_plasticity_bio_async_connect(introspection_plasticity_bridge_t
 int introspection_plasticity_bio_async_disconnect(introspection_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_plasticity_bridge_heartbeat("introspectio_introspection_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -831,6 +983,10 @@ int introspection_plasticity_bio_async_disconnect(introspection_plasticity_bridg
 
 bool introspection_plasticity_is_bio_async_connected(introspection_plasticity_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    introspection_plasticity_bridge_heartbeat("introspectio_introspection_plasti", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;

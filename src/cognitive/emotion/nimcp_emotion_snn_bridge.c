@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_emotion_snn_bridge_health_agent = NULL;
  * @brief Set health agent for emotion_snn_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void emotion_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void emotion_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_emotion_snn_bridge_health_agent = agent;
 }
 
@@ -121,6 +121,10 @@ static uint32_t arousal_to_index(float arousal, uint32_t n_neurons) {
 //=============================================================================
 
 emotion_snn_config_t emotion_snn_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_config_d", 0.0f);
+
+
     emotion_snn_config_t config = {
         .input_dim = EMOTION_SNN_INPUT_DIM,
         .hidden_dim = 128,
@@ -152,6 +156,10 @@ emotion_snn_config_t emotion_snn_config_default(void) {
 }
 
 emotion_snn_bridge_t* emotion_snn_create(const emotion_snn_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_create", 0.0f);
+
+
     emotion_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(emotion_snn_bridge_t));
     if (!bridge) {
 
@@ -250,6 +258,10 @@ emotion_snn_bridge_t* emotion_snn_create(const emotion_snn_config_t* config) {
 void emotion_snn_destroy(emotion_snn_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_destroy", 0.0f);
+
+
     if (bridge->bio_async_connected) {
         emotion_snn_disconnect_bio_async(bridge);
     }
@@ -271,6 +283,10 @@ void emotion_snn_destroy(emotion_snn_bridge_t* bridge) {
 
 int emotion_snn_reset(emotion_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_reset", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -308,6 +324,10 @@ int emotion_snn_encode_observation(
 {
     if (!bridge || !result) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_encode_o", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = EMOTION_SNN_STATE_ENCODING;
@@ -331,6 +351,12 @@ int emotion_snn_encode_observation(
                     (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
         for (uint32_t n = 0; n < neurons_per_emotion; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && neurons_per_emotion > 256) {
+                emotion_snn_bridge_heartbeat("emotion_snn__loop",
+                                 (float)(n + 1) / (float)neurons_per_emotion);
+            }
+
             uint32_t idx = detected_cat * neurons_per_emotion + n;
             if (idx < bridge->config.input_dim) {
                 bridge->input_buffer[idx] = rate;
@@ -340,9 +366,21 @@ int emotion_snn_encode_observation(
 
     /* Set baseline activity for other emotion categories */
     for (uint32_t cat = 0; cat < EMOTION_COUNT; cat++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((cat & 0xFF) == 0 && EMOTION_COUNT > 256) {
+            emotion_snn_bridge_heartbeat("emotion_snn__loop",
+                             (float)(cat + 1) / (float)EMOTION_COUNT);
+        }
+
         if (cat == detected_cat) continue;
         float rate = bridge->config.baseline_rate_hz;
         for (uint32_t n = 0; n < neurons_per_emotion; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && neurons_per_emotion > 256) {
+                emotion_snn_bridge_heartbeat("emotion_snn__loop",
+                                 (float)(n + 1) / (float)neurons_per_emotion);
+            }
+
             uint32_t idx = cat * neurons_per_emotion + n;
             if (idx < bridge->config.input_dim) {
                 bridge->input_buffer[idx] = rate;
@@ -360,6 +398,12 @@ int emotion_snn_encode_observation(
 
     /* Count active inputs */
     for (uint32_t i = 0; i < bridge->config.input_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.input_dim > 256) {
+            emotion_snn_bridge_heartbeat("emotion_snn__loop",
+                             (float)(i + 1) / (float)bridge->config.input_dim);
+        }
+
         if (bridge->input_buffer[i] > bridge->config.baseline_rate_hz * 1.5f) {
             total_spikes++;
         }
@@ -391,6 +435,10 @@ int emotion_snn_encode_features(
 {
     if (!bridge || !features) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_encode_f", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = EMOTION_SNN_STATE_ENCODING;
@@ -401,6 +449,12 @@ int emotion_snn_encode_features(
 
     /* Copy and scale features to input buffer */
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            emotion_snn_bridge_heartbeat("emotion_snn__loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         float scaled = features[i] * bridge->config.encoding_gain * bridge->current_intensity_mod;
         bridge->input_buffer[i] = bridge->config.baseline_rate_hz +
             scaled * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
@@ -448,6 +502,10 @@ int emotion_snn_encode_valence_arousal(
     if (!bridge->config.enable_va_encoding) return 0;
 
     /* Clamp values */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_encode_v", 0.0f);
+
+
     valence = clamp_f(valence, -1.0f, 1.0f);
     arousal = clamp_f(arousal, 0.0f, 1.0f);
     intensity = clamp_f(intensity, 0.0f, 1.0f);
@@ -459,6 +517,12 @@ int emotion_snn_encode_valence_arousal(
      * Values are stored for later decoding - VA is a side-channel state */
     uint32_t v_idx = valence_to_index(valence, half_dim);
     for (uint32_t i = 0; i < half_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && half_dim > 256) {
+            emotion_snn_bridge_heartbeat("emotion_snn__loop",
+                             (float)(i + 1) / (float)half_dim);
+        }
+
         float dist = fabsf((float)i - (float)v_idx) / (float)half_dim;
         float rate = bridge->config.baseline_rate_hz +
             intensity * bridge->config.va_encoding_gain *
@@ -471,6 +535,12 @@ int emotion_snn_encode_valence_arousal(
     /* Encode arousal in second half of VA buffer */
     uint32_t a_idx = arousal_to_index(arousal, half_dim);
     for (uint32_t i = 0; i < half_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && half_dim > 256) {
+            emotion_snn_bridge_heartbeat("emotion_snn__loop",
+                             (float)(i + 1) / (float)half_dim);
+        }
+
         float dist = fabsf((float)i - (float)a_idx) / (float)half_dim;
         float rate = bridge->config.baseline_rate_hz +
             intensity * bridge->config.va_encoding_gain *
@@ -495,12 +565,22 @@ int emotion_snn_encode_valence_arousal(
 int emotion_snn_simulate(emotion_snn_bridge_t* bridge, float duration_ms) {
     if (!bridge || !bridge->snn) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_simulate", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = EMOTION_SNN_STATE_SIMULATING;
 
     int steps = (int)(duration_ms / bridge->config.dt_ms);
     for (int s = 0; s < steps; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && steps > 256) {
+            emotion_snn_bridge_heartbeat("emotion_snn__loop",
+                             (float)(s + 1) / (float)steps);
+        }
+
         snn_network_step(bridge->snn, bridge->config.dt_ms);
     }
 
@@ -513,6 +593,10 @@ int emotion_snn_simulate(emotion_snn_bridge_t* bridge, float duration_ms) {
 
 int emotion_snn_step(emotion_snn_bridge_t* bridge) {
     if (!bridge || !bridge->snn) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_step", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -532,6 +616,10 @@ emotion_category_t emotion_snn_get_category_confidences(
     float* confidences)
 {
     if (!bridge || !confidences) return EMOTION_UNKNOWN;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_get_cate", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -563,12 +651,24 @@ emotion_category_t emotion_snn_get_category_confidences(
 
         float sum_exp = 0.0f;
         for (uint32_t i = 0; i < EMOTION_COUNT; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && EMOTION_COUNT > 256) {
+                emotion_snn_bridge_heartbeat("emotion_snn__loop",
+                                 (float)(i + 1) / (float)EMOTION_COUNT);
+            }
+
             float normalized = (rates[i] - max_rate) * 0.1f;  /* Temperature scaling */
             confidences[i] = expf(normalized);
             sum_exp += confidences[i];
         }
 
         for (uint32_t i = 0; i < EMOTION_COUNT; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && EMOTION_COUNT > 256) {
+                emotion_snn_bridge_heartbeat("emotion_snn__loop",
+                                 (float)(i + 1) / (float)EMOTION_COUNT);
+            }
+
             confidences[i] /= sum_exp;
             confidences[i] *= bridge->config.confidence_gain;
             confidences[i] = clamp_f(confidences[i], 0.0f, 1.0f);
@@ -582,6 +682,12 @@ emotion_category_t emotion_snn_get_category_confidences(
         /* Winner-take-all */
         float max_rate = 0.0f;
         for (uint32_t i = 0; i < EMOTION_COUNT; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && EMOTION_COUNT > 256) {
+                emotion_snn_bridge_heartbeat("emotion_snn__loop",
+                                 (float)(i + 1) / (float)EMOTION_COUNT);
+            }
+
             float conf = rates[i] / bridge->config.max_rate_hz;
             conf *= bridge->config.confidence_gain;
             confidences[i] = clamp_f(conf, 0.0f, 1.0f);
@@ -597,6 +703,12 @@ emotion_category_t emotion_snn_get_category_confidences(
     /* Apply temporal smoothing */
     float alpha = bridge->config.temporal_smoothing;
     for (uint32_t i = 0; i < EMOTION_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && EMOTION_COUNT > 256) {
+            emotion_snn_bridge_heartbeat("emotion_snn__loop",
+                             (float)(i + 1) / (float)EMOTION_COUNT);
+        }
+
         bridge->emotion_state.category_confidences[i] =
             alpha * bridge->emotion_state.category_confidences[i] +
             (1.0f - alpha) * confidences[i];
@@ -634,6 +746,10 @@ int emotion_snn_get_valence_arousal(
 {
     if (!bridge || !valence || !arousal) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_get_vale", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->config.enable_va_encoding) {
@@ -651,6 +767,12 @@ int emotion_snn_get_valence_arousal(
     float v_weighted_sum = 0.0f;
     float v_total_rate = 0.0f;
     for (uint32_t i = 0; i < half_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && half_dim > 256) {
+            emotion_snn_bridge_heartbeat("emotion_snn__loop",
+                             (float)(i + 1) / (float)half_dim);
+        }
+
         float rate = bridge->va_buffer[i];  /* Use stored encoding buffer */
         float pos = ((float)i / (float)(half_dim - 1)) * 2.0f - 1.0f;  /* Map to [-1, 1] */
         v_weighted_sum += rate * pos;
@@ -663,6 +785,12 @@ int emotion_snn_get_valence_arousal(
     float a_weighted_sum = 0.0f;
     float a_total_rate = 0.0f;
     for (uint32_t i = 0; i < half_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && half_dim > 256) {
+            emotion_snn_bridge_heartbeat("emotion_snn__loop",
+                             (float)(i + 1) / (float)half_dim);
+        }
+
         float rate = bridge->va_buffer[half_dim + i];  /* Use stored encoding buffer */
         float pos = (float)i / (float)(half_dim - 1);  /* Map to [0, 1] */
         a_weighted_sum += rate * pos;
@@ -686,6 +814,10 @@ int emotion_snn_get_emotion_state(
 {
     if (!bridge || !emotion_state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_get_emot", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     *emotion_state = bridge->emotion_state;
@@ -702,6 +834,10 @@ float emotion_snn_get_transition_prob(
 {
     if (!bridge) return 0.0f;
     if (from_category >= EMOTION_COUNT || to_category >= EMOTION_COUNT) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_get_tran", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -730,6 +866,10 @@ int emotion_snn_get_state(
 {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_get_stat", 0.0f);
+
+
     nimcp_mutex_lock(((emotion_snn_bridge_t*)bridge)->base.mutex);
 
     state->state = bridge->state;
@@ -756,6 +896,10 @@ int emotion_snn_get_stats(
 {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_get_stat", 0.0f);
+
+
     nimcp_mutex_lock(((emotion_snn_bridge_t*)bridge)->base.mutex);
 
     *stats = bridge->stats;
@@ -767,6 +911,10 @@ int emotion_snn_get_stats(
 
 void emotion_snn_reset_stats(emotion_snn_bridge_t* bridge) {
     if (!bridge) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_reset_st", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -786,6 +934,10 @@ int emotion_snn_connect_bio_async(emotion_snn_bridge_t* bridge) {
     }
     if (!bridge->config.enable_bio_async) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_connect_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Bio-async connection would be implemented here */
@@ -802,6 +954,10 @@ int emotion_snn_disconnect_bio_async(emotion_snn_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_disconne", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->bio_async_connected = false;
@@ -813,6 +969,10 @@ int emotion_snn_disconnect_bio_async(emotion_snn_bridge_t* bridge) {
 
 bool emotion_snn_is_bio_async_connected(const emotion_snn_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_is_bio_a", 0.0f);
+
+
     return bridge->bio_async_connected;
 }
 
@@ -825,6 +985,10 @@ int emotion_snn_modulate_by_arousal(
     float arousal_level)
 {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_modulate", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -841,6 +1005,10 @@ int emotion_snn_set_intensity_modulation(
     float intensity)
 {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_set_inte", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 

@@ -42,7 +42,7 @@ static nimcp_health_agent_t* g_self_awareness_coordinator_health_agent = NULL;
  * @brief Set health agent for self_awareness_coordinator heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void self_awareness_coordinator_set_health_agent(nimcp_health_agent_t* agent) {
+void self_awareness_coordinator_set_health_agent(nimcp_health_agent_t* agent) {
     g_self_awareness_coordinator_health_agent = agent;
 }
 
@@ -72,6 +72,12 @@ static uint64_t get_current_time_ms(void) {
  */
 static void init_feedback_loops(self_awareness_coordinator_t* coord) {
     for (int i = 0; i < FEEDBACK_LOOP_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && FEEDBACK_LOOP_COUNT > 256) {
+            self_awareness_coordinator_heartbeat("self_awarene_loop",
+                             (float)(i + 1) / (float)FEEDBACK_LOOP_COUNT);
+        }
+
         coord->loops[i].type = (feedback_loop_type_t)i;
         coord->loops[i].status = FEEDBACK_STATUS_INACTIVE;
         coord->loops[i].last_transfer_time_ms = 0;
@@ -208,6 +214,10 @@ static void update_phi_monitoring(self_awareness_coordinator_t* coord) {
 // ============================================================================
 
 int sac_default_config(sac_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_coordinator_heartbeat("self_awarene_sac_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     config->enable_introspection_feedback = true;
@@ -248,6 +258,10 @@ self_awareness_coordinator_t* sac_create(
     }
 
     /* Allocate coordinator */
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_coordinator_heartbeat("self_awarene_sac_create", 0.0f);
+
+
     self_awareness_coordinator_t* coord = nimcp_malloc(sizeof(self_awareness_coordinator_t));
     if (!coord) {
         NIMCP_LOGGING_ERROR("Failed to allocate self-awareness coordinator");
@@ -329,6 +343,10 @@ void sac_destroy(self_awareness_coordinator_t* coord) {
     }
 
     /* Disconnect bio-async */
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_coordinator_heartbeat("self_awarene_sac_destroy", 0.0f);
+
+
     if (coord->bio_async_enabled) {
         sac_disconnect_bio_async(coord);
     }
@@ -349,6 +367,10 @@ void sac_destroy(self_awareness_coordinator_t* coord) {
 // ============================================================================
 
 int sac_update(self_awareness_coordinator_t* coord) {
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_coordinator_heartbeat("self_awarene_sac_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(coord, NIMCP_ERROR_NULL_POINTER, "coord is NULL");
 
     nimcp_mutex_lock(coord->mutex);
@@ -412,6 +434,10 @@ int sac_update(self_awareness_coordinator_t* coord) {
 }
 
 int sac_check_coherence(self_awareness_coordinator_t* coord, float* score) {
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_coordinator_heartbeat("self_awarene_sac_check_coherence", 0.0f);
+
+
     NIMCP_CHECK_THROW(coord && score, NIMCP_ERROR_NULL_POINTER, "coord or score is NULL");
 
     float total_coherence = 1.0f;
@@ -501,6 +527,10 @@ int sac_check_coherence(self_awareness_coordinator_t* coord, float* score) {
 // ============================================================================
 
 int sac_introspection_to_self_model(self_awareness_coordinator_t* coord) {
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_coordinator_heartbeat("self_awarene_sac_introspection_to", 0.0f);
+
+
     NIMCP_CHECK_THROW(coord && coord->introspection && coord->self_model, NIMCP_ERROR_NULL_POINTER, "coord, introspection, or self_model is NULL");
 
     feedback_loop_state_t* loop = &coord->loops[FEEDBACK_INTROSPECTION_TO_SELF_MODEL];
@@ -534,6 +564,10 @@ int sac_introspection_to_self_model(self_awareness_coordinator_t* coord) {
 }
 
 int sac_autobio_to_self_model(self_awareness_coordinator_t* coord) {
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_coordinator_heartbeat("self_awarene_sac_autobio_to_self_", 0.0f);
+
+
     NIMCP_CHECK_THROW(coord && coord->autobio && coord->self_model, NIMCP_ERROR_NULL_POINTER, "coord, autobio, or self_model is NULL");
 
     feedback_loop_state_t* loop = &coord->loops[FEEDBACK_AUTOBIO_TO_SELF_MODEL];
@@ -566,6 +600,10 @@ int sac_autobio_to_self_model(self_awareness_coordinator_t* coord) {
 }
 
 int sac_ground_tom_in_self(self_awareness_coordinator_t* coord) {
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_coordinator_heartbeat("self_awarene_sac_ground_tom_in_se", 0.0f);
+
+
     NIMCP_CHECK_THROW(coord && coord->tom && coord->self_model, NIMCP_ERROR_NULL_POINTER, "coord, tom, or self_model is NULL");
 
     feedback_loop_state_t* loop = &coord->loops[FEEDBACK_SELF_MODEL_TO_TOM];
@@ -595,6 +633,10 @@ int sac_set_feedback_loop_enabled(
     feedback_loop_type_t loop_type,
     bool enabled
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_coordinator_heartbeat("self_awarene_sac_set_feedback_loo", 0.0f);
+
+
     NIMCP_CHECK_THROW(coord, NIMCP_ERROR_NULL_POINTER, "coord is NULL");
     NIMCP_CHECK_THROW(loop_type < FEEDBACK_LOOP_COUNT, NIMCP_ERROR_INVALID_PARAM, "invalid loop_type: %d", loop_type);
 
@@ -612,6 +654,10 @@ int sac_get_feedback_loop_state(
     feedback_loop_type_t loop_type,
     feedback_loop_state_t* state
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_coordinator_heartbeat("self_awarene_sac_get_feedback_loo", 0.0f);
+
+
     NIMCP_CHECK_THROW(coord && state, NIMCP_ERROR_NULL_POINTER, "coord or state is NULL");
     NIMCP_CHECK_THROW(loop_type < FEEDBACK_LOOP_COUNT, NIMCP_ERROR_INVALID_PARAM, "invalid loop_type: %d", loop_type);
 
@@ -627,6 +673,10 @@ float sac_get_coherence(const self_awareness_coordinator_t* coord) {
     if (!coord) {
         return -1.0f;
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_coordinator_heartbeat("self_awarene_sac_get_coherence", 0.0f);
+
+
     return coord->current_coherence;
 }
 
@@ -636,6 +686,10 @@ int sac_get_conflicts(
     uint32_t max_conflicts,
     uint32_t* count
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_coordinator_heartbeat("self_awarene_sac_get_conflicts", 0.0f);
+
+
     NIMCP_CHECK_THROW(coord && conflicts && count, NIMCP_ERROR_NULL_POINTER, "coord, conflicts, or count is NULL");
 
     uint32_t to_copy = (coord->conflict_count < max_conflicts) ?
@@ -652,11 +706,21 @@ int sac_resolve_conflict(
     uint64_t conflict_id,
     const char* resolution
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_coordinator_heartbeat("self_awarene_sac_resolve_conflict", 0.0f);
+
+
     NIMCP_CHECK_THROW(coord, NIMCP_ERROR_NULL_POINTER, "coord is NULL");
 
     nimcp_mutex_lock(coord->mutex);
 
     for (uint32_t i = 0; i < coord->conflict_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && coord->conflict_count > 256) {
+            self_awareness_coordinator_heartbeat("self_awarene_loop",
+                             (float)(i + 1) / (float)coord->conflict_count);
+        }
+
         if (coord->conflicts[i].conflict_id == conflict_id &&
             !coord->conflicts[i].resolved) {
 
@@ -686,6 +750,10 @@ int sac_auto_resolve_minor_conflicts(
     self_awareness_coordinator_t* coord,
     uint32_t* resolved_count
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_coordinator_heartbeat("self_awarene_sac_auto_resolve_min", 0.0f);
+
+
     NIMCP_CHECK_THROW(coord && resolved_count, NIMCP_ERROR_NULL_POINTER, "coord or resolved_count is NULL");
 
     nimcp_mutex_lock(coord->mutex);
@@ -693,6 +761,12 @@ int sac_auto_resolve_minor_conflicts(
     *resolved_count = 0;
 
     for (uint32_t i = 0; i < coord->conflict_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && coord->conflict_count > 256) {
+            self_awareness_coordinator_heartbeat("self_awarene_loop",
+                             (float)(i + 1) / (float)coord->conflict_count);
+        }
+
         if (!coord->conflicts[i].resolved &&
             coord->conflicts[i].severity == CONFLICT_SEVERITY_MINOR) {
 
@@ -723,6 +797,10 @@ float sac_get_phi(const self_awareness_coordinator_t* coord) {
     if (!coord) {
         return -1.0f;
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_coordinator_heartbeat("self_awarene_sac_get_phi", 0.0f);
+
+
     return coord->current_phi;
 }
 
@@ -730,6 +808,10 @@ bool sac_is_low_consciousness(const self_awareness_coordinator_t* coord) {
     if (!coord) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_coordinator_heartbeat("self_awarene_sac_is_low_conscious", 0.0f);
+
+
     return coord->phi_alert.alert_active;
 }
 
@@ -739,6 +821,10 @@ int sac_set_phi_callbacks(
     void (*on_recovery)(float phi, void* user_data),
     void* user_data
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_coordinator_heartbeat("self_awarene_sac_set_phi_callback", 0.0f);
+
+
     NIMCP_CHECK_THROW(coord, NIMCP_ERROR_NULL_POINTER, "coord is NULL");
 
     nimcp_mutex_lock(coord->mutex);
@@ -755,6 +841,10 @@ int sac_set_phi_thresholds(
     float alert_threshold,
     float recovery_threshold
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_coordinator_heartbeat("self_awarene_sac_set_phi_threshol", 0.0f);
+
+
     NIMCP_CHECK_THROW(coord, NIMCP_ERROR_NULL_POINTER, "coord is NULL");
     NIMCP_CHECK_THROW(alert_threshold >= 0.0f && recovery_threshold >= 0.0f, NIMCP_ERROR_INVALID_PARAM, "negative threshold value");
 
@@ -771,6 +861,10 @@ int sac_set_phi_thresholds(
 // ============================================================================
 
 int sac_connect_bio_async(self_awareness_coordinator_t* coord) {
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_coordinator_heartbeat("self_awarene_sac_connect_bio_asyn", 0.0f);
+
+
     NIMCP_CHECK_THROW(coord, NIMCP_ERROR_NULL_POINTER, "coord is NULL");
 
     if (coord->bio_async_enabled) {
@@ -796,6 +890,10 @@ int sac_connect_bio_async(self_awareness_coordinator_t* coord) {
 }
 
 int sac_disconnect_bio_async(self_awareness_coordinator_t* coord) {
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_coordinator_heartbeat("self_awarene_sac_disconnect_bio_a", 0.0f);
+
+
     NIMCP_CHECK_THROW(coord, NIMCP_ERROR_NULL_POINTER, "coord is NULL");
 
     if (!coord->bio_async_enabled) {
@@ -816,6 +914,10 @@ bool sac_is_bio_async_connected(const self_awareness_coordinator_t* coord) {
     if (!coord) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_coordinator_heartbeat("self_awarene_sac_is_bio_async_con", 0.0f);
+
+
     return coord->bio_async_enabled;
 }
 
@@ -827,6 +929,10 @@ sac_state_t sac_get_state(const self_awareness_coordinator_t* coord) {
     if (!coord) {
         return SAC_STATE_ERROR;
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_coordinator_heartbeat("self_awarene_sac_get_state", 0.0f);
+
+
     return coord->state;
 }
 
@@ -834,6 +940,10 @@ int sac_get_stats(
     const self_awareness_coordinator_t* coord,
     sac_stats_t* stats
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_coordinator_heartbeat("self_awarene_sac_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(coord && stats, NIMCP_ERROR_NULL_POINTER, "coord or stats is NULL");
 
     *stats = coord->stats;
@@ -841,6 +951,10 @@ int sac_get_stats(
 }
 
 int sac_reset_stats(self_awareness_coordinator_t* coord) {
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_coordinator_heartbeat("self_awarene_sac_reset_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(coord, NIMCP_ERROR_NULL_POINTER, "coord is NULL");
 
     nimcp_mutex_lock(coord->mutex);
@@ -915,9 +1029,19 @@ const char* sac_state_name(sac_state_t state) {
 int self_awareness_coordinator_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_coordinator_heartbeat("self_awarene_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Self_Awareness_Coordinator");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                self_awareness_coordinator_heartbeat("self_awarene_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

@@ -38,7 +38,7 @@ static nimcp_health_agent_t* g_consolidation_snn_bridge_health_agent = NULL;
  * @brief Set health agent for consolidation_snn_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void consolidation_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void consolidation_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_consolidation_snn_bridge_health_agent = agent;
 }
 
@@ -112,12 +112,24 @@ static void softmax(float* values, uint32_t n) {
 
     float sum = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            consolidation_snn_bridge_heartbeat("consolidatio_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         values[i] = expf(values[i] - max_val);
         sum += values[i];
     }
 
     if (sum > 0.0f) {
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                consolidation_snn_bridge_heartbeat("consolidatio_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             values[i] /= sum;
         }
     }
@@ -128,6 +140,10 @@ static void softmax(float* values, uint32_t n) {
 //=============================================================================
 
 consolidation_snn_config_t consolidation_snn_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_co", 0.0f);
+
+
     consolidation_snn_config_t config = {
         .num_dimensions = CONSOLIDATION_DIM_COUNT,
         .neurons_per_dim = CONSOLIDATION_SNN_NEURONS_PER_DIM,
@@ -163,6 +179,10 @@ consolidation_snn_config_t consolidation_snn_config_default(void) {
 }
 
 consolidation_snn_bridge_t* consolidation_snn_create(const consolidation_snn_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_cr", 0.0f);
+
+
     consolidation_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(consolidation_snn_bridge_t));
     if (!bridge) {
 
@@ -222,6 +242,12 @@ consolidation_snn_bridge_t* consolidation_snn_create(const consolidation_snn_con
 
     /* Initialize dimension states */
     for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            consolidation_snn_bridge_heartbeat("consolidatio_loop",
+                             (float)(i + 1) / (float)bridge->config.num_dimensions);
+        }
+
         bridge->dim_states[i].activation = 0.0f;
         bridge->dim_states[i].accumulated_evidence = 0.0f;
         bridge->dim_states[i].spike_count = 0;
@@ -253,6 +279,10 @@ consolidation_snn_bridge_t* consolidation_snn_create(const consolidation_snn_con
 void consolidation_snn_destroy(consolidation_snn_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_de", 0.0f);
+
+
     if (bridge->snn) {
         snn_network_destroy(bridge->snn);
     }
@@ -269,6 +299,10 @@ void consolidation_snn_destroy(consolidation_snn_bridge_t* bridge) {
 int consolidation_snn_reset(consolidation_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_re", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset SNN network */
@@ -278,6 +312,12 @@ int consolidation_snn_reset(consolidation_snn_bridge_t* bridge) {
 
     /* Reset dimension states */
     for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            consolidation_snn_bridge_heartbeat("consolidatio_loop",
+                             (float)(i + 1) / (float)bridge->config.num_dimensions);
+        }
+
         bridge->dim_states[i].activation = 0.0f;
         bridge->dim_states[i].accumulated_evidence = 0.0f;
         bridge->dim_states[i].spike_count = 0;
@@ -318,6 +358,10 @@ int consolidation_snn_encode_state(
     if (!bridge || !dimensions) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_en", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = CONSOLIDATION_SNN_STATE_ENCODING;
 
@@ -326,6 +370,12 @@ int consolidation_snn_encode_state(
 
     /* Population encoding for each dimension */
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            consolidation_snn_bridge_heartbeat("consolidatio_loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         float value = clamp_f(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
@@ -336,6 +386,12 @@ int consolidation_snn_encode_state(
 
         /* Population encode */
         for (uint32_t n = 0; n < neurons_per_dim; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && neurons_per_dim > 256) {
+                consolidation_snn_bridge_heartbeat("consolidatio_loop",
+                                 (float)(n + 1) / (float)neurons_per_dim);
+            }
+
             float preferred = (float)n / (neurons_per_dim - 1);
             float diff = value - preferred;
             float tuning = expf(-diff * diff / 0.1f);
@@ -351,6 +407,12 @@ int consolidation_snn_encode_state(
     /* Detect state change */
     float change_magnitude = 0.0f;
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            consolidation_snn_bridge_heartbeat("consolidatio_loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         float diff = dimensions[d] - bridge->prev_state[d];
         change_magnitude += diff * diff;
         bridge->prev_state[d] = dimensions[d];
@@ -374,6 +436,10 @@ int consolidation_snn_encode_replay(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_en", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[CONSOLIDATION_DIM_COUNT] = {0};
@@ -395,6 +461,10 @@ int consolidation_snn_encode_ltp(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_en", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[CONSOLIDATION_DIM_COUNT] = {0};
@@ -413,6 +483,10 @@ int consolidation_snn_encode_schema(
     uint32_t schema_type
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_en", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -446,6 +520,10 @@ int consolidation_snn_simulate(consolidation_snn_bridge_t* bridge, float duratio
     if (!bridge) return -1;
     if (duration_ms <= 0.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_si", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = CONSOLIDATION_SNN_STATE_SIMULATING;
 
@@ -459,6 +537,12 @@ int consolidation_snn_simulate(consolidation_snn_bridge_t* bridge, float duratio
     }
 
     for (uint32_t s = 0; s < steps; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && steps > 256) {
+            consolidation_snn_bridge_heartbeat("consolidatio_loop",
+                             (float)(s + 1) / (float)steps);
+        }
+
         if (bridge->snn) {
             snn_network_step(bridge->snn, dt);
         }
@@ -466,6 +550,12 @@ int consolidation_snn_simulate(consolidation_snn_bridge_t* bridge, float duratio
         /* Update evidence integration */
         float decay = expf(-dt / bridge->config.integration_tau_ms);
         for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+                consolidation_snn_bridge_heartbeat("consolidatio_loop",
+                                 (float)(d + 1) / (float)bridge->config.num_dimensions);
+            }
+
             bridge->dim_states[d].accumulated_evidence *= decay;
             bridge->dim_states[d].accumulated_evidence +=
                 bridge->dim_states[d].activation * dt / bridge->config.integration_tau_ms;
@@ -515,6 +605,10 @@ int consolidation_snn_simulate(consolidation_snn_bridge_t* bridge, float duratio
 
 int consolidation_snn_step(consolidation_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_st", 0.0f);
+
+
     return consolidation_snn_simulate(bridge, bridge->config.dt_ms);
 }
 
@@ -524,6 +618,10 @@ int consolidation_snn_forward(
     uint32_t input_count
 ) {
     if (!bridge || !inputs) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_fo", 0.0f);
+
 
     int spike_count = consolidation_snn_encode_state(bridge, inputs, input_count);
     if (spike_count < 0) return -1;
@@ -545,6 +643,10 @@ int consolidation_snn_get_memory_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_ge", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->last_state;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -560,8 +662,18 @@ int consolidation_snn_get_activations(
     if (!bridge || !activations) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_ge", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            consolidation_snn_bridge_heartbeat("consolidatio_loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         activations[d] = bridge->dim_states[d].activation;
     }
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -574,6 +686,10 @@ bool consolidation_snn_check_replay(
     float* replay_strength
 ) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_ch", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_state.replay_strength;
@@ -592,6 +708,10 @@ bool consolidation_snn_check_stabilization(
 ) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_ch", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_state.stabilization_level;
     if (stabilization_level) {
@@ -609,10 +729,20 @@ bool consolidation_snn_check_state_change(
 ) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_ch", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     /* Calculate magnitude from prev_state differences */
     float mag = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            consolidation_snn_bridge_heartbeat("consolidatio_loop",
+                             (float)(d + 1) / (float)bridge->config.num_dimensions);
+        }
+
         float diff = bridge->dim_states[d].activation - bridge->prev_state[d];
         mag += diff * diff;
     }
@@ -639,6 +769,10 @@ int consolidation_snn_get_dim_state(
     if (!bridge || !state) return -1;
     if (dim >= bridge->config.num_dimensions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_ge", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->dim_states[dim];
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -652,6 +786,10 @@ int consolidation_snn_get_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_ge", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
@@ -663,6 +801,12 @@ int consolidation_snn_get_state(
     state->active_dimensions = 0;
     state->total_activity = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            consolidation_snn_bridge_heartbeat("consolidatio_loop",
+                             (float)(d + 1) / (float)bridge->config.num_dimensions);
+        }
+
         if (bridge->dim_states[d].activation > 0.1f) {
             state->active_dimensions++;
         }
@@ -676,6 +820,10 @@ int consolidation_snn_get_state(
 int consolidation_snn_get_stats(consolidation_snn_bridge_t* bridge, consolidation_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_ge", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -685,6 +833,10 @@ int consolidation_snn_get_stats(consolidation_snn_bridge_t* bridge, consolidatio
 
 int consolidation_snn_reset_stats(consolidation_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_re", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(consolidation_snn_stats_t));
@@ -696,6 +848,10 @@ int consolidation_snn_reset_stats(consolidation_snn_bridge_t* bridge) {
 float consolidation_snn_get_consolidation_level(consolidation_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_ge", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float consolidation = bridge->last_state.stabilization_level;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -706,9 +862,19 @@ float consolidation_snn_get_consolidation_level(consolidation_snn_bridge_t* brid
 float consolidation_snn_get_total_activity(consolidation_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_ge", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float total = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            consolidation_snn_bridge_heartbeat("consolidatio_loop",
+                             (float)(d + 1) / (float)bridge->config.num_dimensions);
+        }
+
         total += bridge->dim_states[d].activation;
     }
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -727,6 +893,10 @@ int consolidation_snn_register_replay_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_re", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->replay_callback = callback;
     bridge->replay_callback_data = user_data;
@@ -742,6 +912,10 @@ int consolidation_snn_register_state_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_re", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state_callback = callback;
     bridge->state_callback_data = user_data;
@@ -756,6 +930,10 @@ int consolidation_snn_register_stabilization_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_re", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->stabilization_callback = callback;
@@ -773,6 +951,10 @@ int consolidation_snn_bio_async_connect(consolidation_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_bi", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
@@ -784,6 +966,10 @@ int consolidation_snn_bio_async_connect(consolidation_snn_bridge_t* bridge) {
 int consolidation_snn_bio_async_disconnect(consolidation_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_bi", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -793,6 +979,10 @@ int consolidation_snn_bio_async_disconnect(consolidation_snn_bridge_t* bridge) {
 
 bool consolidation_snn_is_bio_async_connected(consolidation_snn_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_is", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;

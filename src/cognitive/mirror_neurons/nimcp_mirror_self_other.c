@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_mirror_self_other_health_agent = NULL;
  * @brief Set health agent for mirror_self_other heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_self_other_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_self_other_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_self_other_health_agent = agent;
 }
 
@@ -125,6 +125,12 @@ static efference_copy_t* find_efference_for_action(
     uint64_t window = SELF_OTHER_CONTINGENCY_WINDOW_US;
 
     for (uint32_t i = 0; i < system->efference_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->efference_count > 256) {
+            mirror_self_other_heartbeat("mirror_self__loop",
+                             (float)(i + 1) / (float)system->efference_count);
+        }
+
         uint32_t idx = (system->efference_head - 1 - i + SELF_OTHER_EFFERENCE_BUFFER)
                        % SELF_OTHER_EFFERENCE_BUFFER;
         efference_copy_t* ec = &system->efference_buffer[idx];
@@ -148,6 +154,12 @@ static efference_copy_t* find_efference_for_action(
 static void compute_body_center(const body_schema_t* schema, float* x, float* y, float* z) {
     /* Use torso as body center */
     for (uint32_t i = 0; i < schema->active_part_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && schema->active_part_count > 256) {
+            mirror_self_other_heartbeat("mirror_self__loop",
+                             (float)(i + 1) / (float)schema->active_part_count);
+        }
+
         if (schema->parts[i].part_id == BODY_PART_TORSO) {
             *x = schema->parts[i].pose.x;
             *y = schema->parts[i].pose.y;
@@ -166,6 +178,10 @@ static void compute_body_center(const body_schema_t* schema, float* x, float* y,
 //=============================================================================
 
 self_other_config_t self_other_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_self_other_heartbeat("mirror_self__self_other_config_de", 0.0f);
+
+
     self_other_config_t config = {
         .efference_match_threshold = 0.7f,
         .temporal_contingency_ms = 200.0f,
@@ -190,6 +206,10 @@ self_other_config_t self_other_config_default(void) {
 }
 
 self_other_system_t* self_other_create(const self_other_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_self_other_heartbeat("mirror_self__self_other_create", 0.0f);
+
+
     self_other_system_t* system = nimcp_calloc(1, sizeof(self_other_system_t));
     if (!system) {
         nimcp_log(LOG_LEVEL_ERROR, "Self-Other: Failed to allocate system");
@@ -216,6 +236,12 @@ self_other_system_t* self_other_create(const self_other_config_t* config) {
     system->body_schema.personal_space_radius = 1.5f;
 
     for (int i = 0; i < BODY_PART_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && BODY_PART_COUNT > 256) {
+            mirror_self_other_heartbeat("mirror_self__loop",
+                             (float)(i + 1) / (float)BODY_PART_COUNT);
+        }
+
         system->body_schema.max_joint_velocities[i] = 3.0f;  /* rad/s default */
     }
 
@@ -243,6 +269,10 @@ self_other_system_t* self_other_create(const self_other_config_t* config) {
 void self_other_destroy(self_other_system_t* system) {
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_self_other_heartbeat("mirror_self__self_other_destroy", 0.0f);
+
+
     if (system->bio_async_registered) {
         self_other_unregister_bio_async(system);
     }
@@ -267,6 +297,10 @@ bool self_other_register_efference(
     float predicted_duration_ms
 ) {
     if (!system || !intended_pose) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_self_other_heartbeat("mirror_self__self_other_register_", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -302,7 +336,17 @@ efference_copy_t* self_other_get_efference(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_self_other_heartbeat("mirror_self__self_other_get_effer", 0.0f);
+
+
     for (uint32_t i = 0; i < system->efference_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->efference_count > 256) {
+            mirror_self_other_heartbeat("mirror_self__loop",
+                             (float)(i + 1) / (float)system->efference_count);
+        }
+
         uint32_t idx = (system->efference_head - 1 - i + SELF_OTHER_EFFERENCE_BUFFER)
                        % SELF_OTHER_EFFERENCE_BUFFER;
         if (system->efference_buffer[idx].action_id == action_id) {
@@ -315,12 +359,22 @@ efference_copy_t* self_other_get_efference(
 void self_other_clear_expired_efference(self_other_system_t* system) {
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_self_other_heartbeat("mirror_self__self_other_clear_exp", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     uint64_t now = nimcp_time_now_us();
     uint64_t expiry = 2000000;  /* 2 second expiry */
 
     for (uint32_t i = 0; i < system->efference_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->efference_count > 256) {
+            mirror_self_other_heartbeat("mirror_self__loop",
+                             (float)(i + 1) / (float)system->efference_count);
+        }
+
         uint32_t idx = (system->efference_head - 1 - i + SELF_OTHER_EFFERENCE_BUFFER)
                        % SELF_OTHER_EFFERENCE_BUFFER;
         efference_copy_t* ec = &system->efference_buffer[idx];
@@ -346,11 +400,21 @@ void self_other_update_body_part(
 ) {
     if (!system || !pose || part >= BODY_PART_COUNT) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_self_other_heartbeat("mirror_self__self_other_update_bo", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     /* Find or create entry */
     body_part_state_t* found = NULL;
     for (uint32_t i = 0; i < system->body_schema.active_part_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->body_schema.active_part_count > 256) {
+            mirror_self_other_heartbeat("mirror_self__loop",
+                             (float)(i + 1) / (float)system->body_schema.active_part_count);
+        }
+
         if (system->body_schema.parts[i].part_id == part) {
             found = &system->body_schema.parts[i];
             break;
@@ -377,6 +441,10 @@ void self_other_update_body_part(
 }
 
 const body_schema_t* self_other_get_body_schema(const self_other_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_self_other_heartbeat("mirror_self__self_other_get_body_", 0.0f);
+
+
     return system ? &system->body_schema : NULL;
 }
 
@@ -385,6 +453,10 @@ bool self_other_in_peripersonal_space(
     float x, float y, float z
 ) {
     if (!system) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_self_other_heartbeat("mirror_self__self_other_in_peripe", 0.0f);
+
 
     float dist = self_other_distance_from_body(system, x, y, z);
     return dist <= system->body_schema.personal_space_radius;
@@ -395,6 +467,10 @@ float self_other_distance_from_body(
     float x, float y, float z
 ) {
     if (!system) return 999.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_self_other_heartbeat("mirror_self__self_other_distance_", 0.0f);
+
 
     float cx, cy, cz;
     compute_body_center(&system->body_schema, &cx, &cy, &cz);
@@ -417,6 +493,10 @@ bool self_other_classify_agency(
     agency_decision_t* decision
 ) {
     if (!system || !observation || !decision) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_self_other_heartbeat("mirror_self__self_other_classify_", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -475,6 +555,12 @@ bool self_other_classify_agency(
     if (sensory && sensory->observation_confidence > 0.5f) {
         /* Find body part in schema */
         for (uint32_t i = 0; i < system->body_schema.active_part_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && system->body_schema.active_part_count > 256) {
+                mirror_self_other_heartbeat("mirror_self__loop",
+                                 (float)(i + 1) / (float)system->body_schema.active_part_count);
+            }
+
             if (system->body_schema.parts[i].part_id == sensory->effector) {
                 float sim = compute_pose_similarity(
                     &system->body_schema.parts[i].pose,
@@ -602,6 +688,10 @@ bool self_other_classify_with_efference(
     if (!system || !observation || !efference || !decision) return false;
 
     /* Direct comparison with provided efference copy */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_self_other_heartbeat("mirror_self__self_other_classify_", 0.0f);
+
+
     float match = self_other_compare_efference_sensory(efference, sensory);
 
     decision->efference_match = match;
@@ -630,8 +720,18 @@ uint32_t self_other_classify_batch(
 ) {
     if (!system || !observations || !decisions || count == 0) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_self_other_heartbeat("mirror_self__self_other_classify_", 0.0f);
+
+
     uint32_t processed = 0;
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            mirror_self_other_heartbeat("mirror_self__loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         const sensory_feedback_t* s = sensory ? &sensory[i] : NULL;
         if (self_other_classify_agency(system, &observations[i], s, &decisions[i])) {
             processed++;
@@ -655,6 +755,10 @@ float self_other_get_mirror_suppression(
 ) {
     if (!system) return 1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_self_other_heartbeat("mirror_self__self_other_get_mirro", 0.0f);
+
+
     switch (agency) {
         case AGENCY_SELF:
             return system->config.self_suppression_gain;
@@ -674,6 +778,10 @@ float self_other_compute_mirror_gain(
     const agency_decision_t* decision
 ) {
     if (!system || !decision) return 1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_self_other_heartbeat("mirror_self__self_other_compute_m", 0.0f);
+
 
     float base_gain = self_other_get_mirror_suppression(system, decision->agency);
 
@@ -700,6 +808,10 @@ float self_other_compare_efference_sensory(
     if (!efference || !sensory) return 0.0f;
 
     /* Compare predicted pose with observed pose */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_self_other_heartbeat("mirror_self__self_other_compare_e", 0.0f);
+
+
     float pose_sim = compute_pose_similarity(&efference->predicted_sensory,
                                               &sensory->observed_pose);
 
@@ -714,6 +826,10 @@ float self_other_compute_temporal_contingency(
 ) {
     if (!config) return 0.0f;
     if (action_time < intent_time) return 0.0f;  /* Action before intent */
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_self_other_heartbeat("mirror_self__self_other_compute_t", 0.0f);
+
 
     int64_t delay_us = (int64_t)(action_time - intent_time);
     float delay_ms = (float)delay_us / 1000.0f;
@@ -733,7 +849,17 @@ void self_other_simd_compare_poses(
     uint32_t count
 ) {
     /* Simple scalar implementation - could be vectorized */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_self_other_heartbeat("mirror_self__self_other_simd_comp", 0.0f);
+
+
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            mirror_self_other_heartbeat("mirror_self__loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         float dx = poses_a[i*6 + 0] - poses_b[i*6 + 0];
         float dy = poses_a[i*6 + 1] - poses_b[i*6 + 1];
         float dz = poses_a[i*6 + 2] - poses_b[i*6 + 2];
@@ -759,6 +885,10 @@ bool self_other_register_bio_async(self_other_system_t* system) {
     if (!system) return false;
 
     /* Bio-async registration would go here */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_self_other_heartbeat("mirror_self__self_other_register_", 0.0f);
+
+
     system->bio_async_registered = true;
     nimcp_log(LOG_LEVEL_DEBUG, "Self-Other: Registered with bio-async");
     return true;
@@ -766,6 +896,10 @@ bool self_other_register_bio_async(self_other_system_t* system) {
 
 void self_other_unregister_bio_async(self_other_system_t* system) {
     if (!system) return;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_self_other_heartbeat("mirror_self__self_other_unregiste", 0.0f);
+
+
     system->bio_async_registered = false;
     nimcp_log(LOG_LEVEL_DEBUG, "Self-Other: Unregistered from bio-async");
 }
@@ -780,6 +914,10 @@ bool self_other_get_stats(
 ) {
     if (!system || !stats) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_self_other_heartbeat("mirror_self__self_other_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(((self_other_system_t*)system)->mutex);
     *stats = system->stats;
     nimcp_mutex_unlock(((self_other_system_t*)system)->mutex);
@@ -789,6 +927,10 @@ bool self_other_get_stats(
 
 void self_other_reset_stats(self_other_system_t* system) {
     if (!system) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_self_other_heartbeat("mirror_self__self_other_reset_sta", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
     memset(&system->stats, 0, sizeof(self_other_stats_t));

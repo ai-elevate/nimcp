@@ -54,7 +54,7 @@ static nimcp_health_agent_t* g_curiosity_enhanced_health_agent = NULL;
  * @brief Set health agent for curiosity_enhanced heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void curiosity_enhanced_set_health_agent(nimcp_health_agent_t* agent) {
+void curiosity_enhanced_set_health_agent(nimcp_health_agent_t* agent) {
     g_curiosity_enhanced_health_agent = agent;
 }
 
@@ -255,6 +255,12 @@ static void boredom_report_stimulus(curiosity_enhanced_system_t* sys,
     /* Check if stimulus is repeated */
     bool is_repeat = false;
     for (uint32_t i = 0; i < sys->num_recent_stimuli; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sys->num_recent_stimuli > 256) {
+            curiosity_enhanced_heartbeat("curiosity_en_loop",
+                             (float)(i + 1) / (float)sys->num_recent_stimuli);
+        }
+
         if (sys->recent_stimuli[i].hash == stimulus_hash) {
             is_repeat = true;
             break;
@@ -368,11 +374,23 @@ static void types_init(curiosity_type_profile_t* profile,
     /* Initialize intensities from config weights */
     if (config) {
         for (int i = 0; i < CURIOSITY_TYPE_COUNT; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && CURIOSITY_TYPE_COUNT > 256) {
+                curiosity_enhanced_heartbeat("curiosity_en_loop",
+                                 (float)(i + 1) / (float)CURIOSITY_TYPE_COUNT);
+            }
+
             profile->type_intensities[i] = config->type_weights[i];
         }
     } else {
         /* Default equal distribution */
         for (int i = 0; i < CURIOSITY_TYPE_COUNT; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && CURIOSITY_TYPE_COUNT > 256) {
+                curiosity_enhanced_heartbeat("curiosity_en_loop",
+                                 (float)(i + 1) / (float)CURIOSITY_TYPE_COUNT);
+            }
+
             profile->type_intensities[i] = 1.0f / CURIOSITY_TYPE_COUNT;
         }
     }
@@ -390,6 +408,12 @@ static void types_update(curiosity_enhanced_system_t* sys, float dt_ms) {
     curiosity_type_t new_dominant = profile->dominant_type;
 
     for (int i = 0; i < CURIOSITY_TYPE_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && CURIOSITY_TYPE_COUNT > 256) {
+            curiosity_enhanced_heartbeat("curiosity_en_loop",
+                             (float)(i + 1) / (float)CURIOSITY_TYPE_COUNT);
+        }
+
         if (profile->type_intensities[i] > max_intensity) {
             max_intensity = profile->type_intensities[i];
             new_dominant = (curiosity_type_t)i;
@@ -409,10 +433,22 @@ static void types_update(curiosity_enhanced_system_t* sys, float dt_ms) {
     /* Normalize intensities */
     float total = 0.0f;
     for (int i = 0; i < CURIOSITY_TYPE_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && CURIOSITY_TYPE_COUNT > 256) {
+            curiosity_enhanced_heartbeat("curiosity_en_loop",
+                             (float)(i + 1) / (float)CURIOSITY_TYPE_COUNT);
+        }
+
         total += profile->type_intensities[i];
     }
     if (total > 0.0f) {
         for (int i = 0; i < CURIOSITY_TYPE_COUNT; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && CURIOSITY_TYPE_COUNT > 256) {
+                curiosity_enhanced_heartbeat("curiosity_en_loop",
+                                 (float)(i + 1) / (float)CURIOSITY_TYPE_COUNT);
+            }
+
             profile->type_intensities[i] /= total;
         }
     }
@@ -487,6 +523,12 @@ static curiosity_social_target_t* social_get_or_create_target(
 
     /* Find existing */
     for (uint32_t i = 0; i < state->num_targets; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && state->num_targets > 256) {
+            curiosity_enhanced_heartbeat("curiosity_en_loop",
+                             (float)(i + 1) / (float)state->num_targets);
+        }
+
         if (strcmp(state->targets[i].agent_id, agent_id) == 0) {
             return &state->targets[i];
         }
@@ -520,6 +562,12 @@ static void social_update(curiosity_enhanced_system_t* sys, float dt_ms) {
     /* Decay social interest in targets */
     uint64_t now = get_time_ms();
     for (uint32_t i = 0; i < state->num_targets; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && state->num_targets > 256) {
+            curiosity_enhanced_heartbeat("curiosity_en_loop",
+                             (float)(i + 1) / (float)state->num_targets);
+        }
+
         float time_since = (float)(now - state->targets[i].last_interaction_ms);
         float decay = expf(-time_since / 3600000.0f);  /* 1 hour half-life */
         state->targets[i].social_interest *= decay;
@@ -795,6 +843,10 @@ static void compute_aggregates(curiosity_enhanced_system_t* sys) {
 void curiosity_enhanced_config_default(curiosity_enhanced_config_t* config) {
     if (!config) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_config_default", 0.0f);
+
+
     memset(config, 0, sizeof(*config));
 
     /* Boredom config */
@@ -813,6 +865,12 @@ void curiosity_enhanced_config_default(curiosity_enhanced_config_t* config) {
 
     /* Types config */
     for (int i = 0; i < CURIOSITY_TYPE_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && CURIOSITY_TYPE_COUNT > 256) {
+            curiosity_enhanced_heartbeat("curiosity_en_loop",
+                             (float)(i + 1) / (float)CURIOSITY_TYPE_COUNT);
+        }
+
         config->types.type_weights[i] = 1.0f / CURIOSITY_TYPE_COUNT;
     }
     config->types.transition_threshold = 0.3f;
@@ -871,6 +929,10 @@ void curiosity_enhanced_config_default(curiosity_enhanced_config_t* config) {
 curiosity_enhanced_system_t* curiosity_enhanced_create(
     const curiosity_enhanced_config_t* config,
     curiosity_engine_t base_engine) {
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_create", 0.0f);
+
 
     curiosity_enhanced_system_t* sys = (curiosity_enhanced_system_t*)
         nimcp_calloc(1, sizeof(curiosity_enhanced_system_t));
@@ -960,6 +1022,10 @@ void curiosity_enhanced_destroy(curiosity_enhanced_system_t* system) {
     if (!system) return;
 
     /* Disconnect bio-async */
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_destroy", 0.0f);
+
+
     if (system->bio_async_enabled) {
         curiosity_enhanced_disconnect_bio_async(system);
     }
@@ -991,6 +1057,10 @@ void curiosity_enhanced_destroy(curiosity_enhanced_system_t* system) {
 }
 
 int curiosity_enhanced_update(curiosity_enhanced_system_t* system, float dt_ms) {
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
@@ -1023,6 +1093,10 @@ bool curiosity_enhanced_is_bored(
 
     if (!system) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_is_bored", 0.0f);
+
+
     if (state) {
         *state = system->state.boredom;
     }
@@ -1034,6 +1108,10 @@ int curiosity_enhanced_report_stimulus(
     curiosity_enhanced_system_t* system,
     uint64_t stimulus_hash,
     float novelty) {
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_report_stimulus", 0.0f);
+
 
     NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
 
@@ -1048,6 +1126,10 @@ float curiosity_enhanced_get_boredom_boost(
     const curiosity_enhanced_system_t* system) {
 
     if (!system) return 1.0f;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_get_boredom_boost", 0.0f);
+
+
     return system->state.boredom.novelty_seeking_boost;
 }
 
@@ -1057,6 +1139,10 @@ float curiosity_enhanced_get_topic_interest(
     const char* topic) {
 
     if (!system || !topic) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_get_topic_interest", 0.0f);
+
 
     interest_entry_t* entry = (interest_entry_t*)hash_table_lookup_string(
         system->interest_table, topic);
@@ -1071,6 +1157,10 @@ int curiosity_enhanced_record_exposure(
     curiosity_enhanced_system_t* system,
     const char* topic,
     float learning_value) {
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_record_exposure", 0.0f);
+
 
     NIMCP_CHECK_THROW(system && topic, NIMCP_ERROR_NULL_ARG, "system or topic is NULL");
 
@@ -1102,6 +1192,10 @@ float curiosity_enhanced_compute_satiation(
 
     if (!system || !topic) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_compute_satiation", 0.0f);
+
+
     interest_entry_t* entry = (interest_entry_t*)hash_table_lookup_string(
         system->interest_table, topic);
 
@@ -1116,6 +1210,10 @@ float curiosity_enhanced_get_residual_interest(
 
     if (!system || !topic) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_get_residual_interes", 0.0f);
+
+
     float current = curiosity_enhanced_get_topic_interest(system, topic);
     float satiation = curiosity_enhanced_compute_satiation(system, topic);
     float residual = current * (1.0f - satiation * 0.8f);
@@ -1128,12 +1226,20 @@ curiosity_type_t curiosity_enhanced_get_dominant_type(
     const curiosity_enhanced_system_t* system) {
 
     if (!system) return CURIOSITY_TYPE_EPISTEMIC;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_get_dominant_type", 0.0f);
+
+
     return system->state.types.dominant_type;
 }
 
 int curiosity_enhanced_get_type_profile(
     const curiosity_enhanced_system_t* system,
     curiosity_type_profile_t* profile) {
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_get_type_profile", 0.0f);
+
 
     NIMCP_CHECK_THROW(system && profile, NIMCP_ERROR_NULL_ARG, "system or profile is NULL");
 
@@ -1145,6 +1251,10 @@ int curiosity_enhanced_set_type_intensity(
     curiosity_enhanced_system_t* system,
     curiosity_type_t type,
     float intensity) {
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_set_type_intensity", 0.0f);
+
 
     NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
     NIMCP_CHECK_THROW(type >= 0 && type < CURIOSITY_TYPE_COUNT, NIMCP_ERROR_INVALID, "invalid curiosity type");
@@ -1160,6 +1270,10 @@ int curiosity_enhanced_transition_type(
     curiosity_enhanced_system_t* system,
     curiosity_type_t new_type) {
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_transition_type", 0.0f);
+
+
     NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
     NIMCP_CHECK_THROW(new_type >= 0 && new_type < CURIOSITY_TYPE_COUNT, NIMCP_ERROR_INVALID, "invalid new curiosity type");
 
@@ -1167,6 +1281,12 @@ int curiosity_enhanced_transition_type(
 
     /* Boost new type, reduce others */
     for (int i = 0; i < CURIOSITY_TYPE_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && CURIOSITY_TYPE_COUNT > 256) {
+            curiosity_enhanced_heartbeat("curiosity_en_loop",
+                             (float)(i + 1) / (float)CURIOSITY_TYPE_COUNT);
+        }
+
         if (i == new_type) {
             system->state.types.type_intensities[i] = 0.5f;
         } else {
@@ -1188,6 +1308,10 @@ int curiosity_enhanced_connect_anxiety(
     curiosity_enhanced_system_t* system,
     anxiety_system_t* anxiety) {
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_connect_anxiety", 0.0f);
+
+
     NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
@@ -1202,6 +1326,10 @@ float curiosity_enhanced_get_net_motivation(
     const curiosity_enhanced_system_t* system) {
 
     if (!system) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_get_net_motivation", 0.0f);
+
+
     return system->state.anxiety_balance.net_motivation;
 }
 
@@ -1210,6 +1338,10 @@ bool curiosity_enhanced_should_explore(
     float threat_level) {
 
     if (!system) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_should_explore", 0.0f);
+
 
     float adjusted_avoidance = system->state.anxiety_balance.avoidance_tendency + threat_level;
     float net = system->state.anxiety_balance.approach_tendency - adjusted_avoidance;
@@ -1220,6 +1352,10 @@ bool curiosity_enhanced_should_explore(
 int curiosity_enhanced_report_conflict_resolution(
     curiosity_enhanced_system_t* system,
     bool approach_won) {
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_report_conflict_reso", 0.0f);
+
 
     NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
 
@@ -1247,6 +1383,10 @@ int curiosity_enhanced_connect_tom(
     curiosity_enhanced_system_t* system,
     theory_of_mind_t* tom) {
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_connect_tom", 0.0f);
+
+
     NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
@@ -1263,6 +1403,10 @@ float curiosity_enhanced_assess_social_target(
     curiosity_social_target_t* target) {
 
     if (!system || !agent_id) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_assess_social_target", 0.0f);
+
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1289,6 +1433,10 @@ int curiosity_enhanced_record_social_interaction(
     const char* agent_id,
     float info_gained) {
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_record_social_intera", 0.0f);
+
+
     NIMCP_CHECK_THROW(system && agent_id, NIMCP_ERROR_NULL_ARG, "system or agent_id is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
@@ -1314,6 +1462,10 @@ float curiosity_enhanced_get_gossip_interest(
     const curiosity_enhanced_system_t* system) {
 
     if (!system) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_get_gossip_interest", 0.0f);
+
+
     return system->state.social.gossip_interest;
 }
 
@@ -1321,6 +1473,10 @@ float curiosity_enhanced_get_gossip_interest(
 int curiosity_enhanced_introspect(
     curiosity_enhanced_system_t* system,
     curiosity_meta_state_t* state) {
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_introspect", 0.0f);
+
 
     NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
 
@@ -1351,6 +1507,10 @@ uint32_t curiosity_enhanced_identify_blind_spots(
     curiosity_enhanced_system_t* system) {
 
     if (!system) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_identify_blind_spots", 0.0f);
+
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1384,6 +1544,10 @@ float curiosity_enhanced_get_meta_curiosity(
     const curiosity_enhanced_system_t* system) {
 
     if (!system) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_get_meta_curiosity", 0.0f);
+
+
     return system->state.meta.meta_curiosity_level;
 }
 
@@ -1393,6 +1557,10 @@ bool curiosity_enhanced_observe_curiosity(
     const curiosity_contagion_event_t* event) {
 
     if (!system || !event) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_observe_curiosity", 0.0f);
+
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1429,12 +1597,20 @@ float curiosity_enhanced_get_contagion_susceptibility(
     const curiosity_enhanced_system_t* system) {
 
     if (!system) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_get_contagion_suscep", 0.0f);
+
+
     return system->state.contagion.contagion_susceptibility;
 }
 
 int curiosity_enhanced_set_contagion_susceptibility(
     curiosity_enhanced_system_t* system,
     float susceptibility) {
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_set_contagion_suscep", 0.0f);
+
 
     NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
 
@@ -1453,6 +1629,10 @@ float curiosity_enhanced_report_surprise(
 
     if (!system) return 1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_report_surprise", 0.0f);
+
+
     nimcp_platform_mutex_lock(system->mutex);
     float boost = surprise_report(system, prediction_error, context);
     nimcp_platform_mutex_unlock(system->mutex);
@@ -1464,6 +1644,10 @@ float curiosity_enhanced_get_surprise_boost(
     const curiosity_enhanced_system_t* system) {
 
     if (!system) return 1.0f;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_get_surprise_boost", 0.0f);
+
+
     return system->state.surprise.learning_rate_boost;
 }
 
@@ -1472,6 +1656,10 @@ float curiosity_enhanced_prioritize_surprise(
     const char* experience) {
 
     if (!system) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_prioritize_surprise", 0.0f);
+
 
     (void)experience;  /* Could be used for more sophisticated prioritization */
 
@@ -1485,6 +1673,10 @@ float curiosity_enhanced_check_fatigue(
 
     if (!system) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_check_fatigue", 0.0f);
+
+
     if (state) {
         *state = system->state.fatigue;
     }
@@ -1495,6 +1687,10 @@ float curiosity_enhanced_check_fatigue(
 int curiosity_enhanced_initiate_recovery(
     curiosity_enhanced_system_t* system,
     float rest_duration_ms) {
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_initiate_recovery", 0.0f);
+
 
     NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
 
@@ -1515,11 +1711,19 @@ bool curiosity_enhanced_needs_rest(
     const curiosity_enhanced_system_t* system) {
 
     if (!system) return false;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_needs_rest", 0.0f);
+
+
     return system->state.fatigue.needs_rest;
 }
 
 int curiosity_enhanced_end_recovery(
     curiosity_enhanced_system_t* system) {
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_end_recovery", 0.0f);
+
 
     NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
 
@@ -1541,6 +1745,10 @@ int curiosity_enhanced_generate_counterfactual(
         return NIMCP_ERROR_NULL_ARG;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_generate_counterfact", 0.0f);
+
+
     nimcp_platform_mutex_lock(system->mutex);
     int ret = counterfactual_generate(system, decision_point, actual_outcome, counterfactual);
     nimcp_platform_mutex_unlock(system->mutex);
@@ -1552,6 +1760,10 @@ int curiosity_enhanced_explore_counterfactual(
     curiosity_enhanced_system_t* system,
     curiosity_counterfactual_t* counterfactual,
     float* learning_outcome) {
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_explore_counterfactu", 0.0f);
+
 
     NIMCP_CHECK_THROW(system && counterfactual, NIMCP_ERROR_NULL_ARG, "system or counterfactual is NULL");
 
@@ -1582,6 +1794,10 @@ float curiosity_enhanced_get_counterfactual_curiosity(
     const curiosity_enhanced_system_t* system) {
 
     if (!system) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_get_counterfactual_c", 0.0f);
+
+
     return system->state.counterfactual.counterfactual_curiosity;
 }
 
@@ -1589,6 +1805,10 @@ float curiosity_enhanced_get_counterfactual_curiosity(
 int curiosity_enhanced_get_state(
     const curiosity_enhanced_system_t* system,
     curiosity_enhanced_state_t* state) {
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_get_state", 0.0f);
+
 
     NIMCP_CHECK_THROW(system && state, NIMCP_ERROR_NULL_ARG, "system or state is NULL");
 
@@ -1599,6 +1819,10 @@ int curiosity_enhanced_get_state(
 int curiosity_enhanced_get_stats(
     const curiosity_enhanced_system_t* system,
     curiosity_enhanced_stats_t* stats) {
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_get_stats", 0.0f);
+
 
     NIMCP_CHECK_THROW(system && stats, NIMCP_ERROR_NULL_ARG, "system or stats is NULL");
 
@@ -1611,6 +1835,10 @@ void curiosity_enhanced_reset_stats(
 
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_reset_stats", 0.0f);
+
+
     nimcp_platform_mutex_lock(system->mutex);
     memset(&system->stats, 0, sizeof(system->stats));
     nimcp_platform_mutex_unlock(system->mutex);
@@ -1620,12 +1848,20 @@ float curiosity_enhanced_get_overall_drive(
     const curiosity_enhanced_system_t* system) {
 
     if (!system) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_get_overall_drive", 0.0f);
+
+
     return system->state.overall_curiosity_drive;
 }
 
 /* Bio-async functions */
 int curiosity_enhanced_connect_bio_async(
     curiosity_enhanced_system_t* system) {
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_connect_bio_async", 0.0f);
+
 
     NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
     if (system->bio_async_enabled) return 0;
@@ -1649,6 +1885,10 @@ int curiosity_enhanced_connect_bio_async(
 int curiosity_enhanced_disconnect_bio_async(
     curiosity_enhanced_system_t* system) {
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_disconnect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
     if (!system->bio_async_enabled) return 0;
 
@@ -1664,6 +1904,10 @@ bool curiosity_enhanced_is_bio_async_connected(
     const curiosity_enhanced_system_t* system) {
 
     if (!system) return false;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_is_bio_async_connect", 0.0f);
+
+
     return system->bio_async_enabled;
 }
 
@@ -1690,6 +1934,10 @@ curiosity_type_t curiosity_type_from_string(const char* str) {
     if (strcmp(str, "social") == 0)     return CURIOSITY_TYPE_SOCIAL;
     if (strcmp(str, "morbid") == 0)     return CURIOSITY_TYPE_MORBID;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_curiosity_type_from_", 0.0f);
+
+
     return CURIOSITY_TYPE_EPISTEMIC;
 }
 
@@ -1710,6 +1958,10 @@ curiosity_quantum_bridge_t* curiosity_enhanced_get_quantum_bridge(
 
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_get_quantum_bridge", 0.0f);
+
+
     return system->quantum_bridge;
 }
 
@@ -1719,6 +1971,10 @@ float curiosity_enhanced_quantum_explore(
     char* novel_topic) {
 
     if (!system || !system->quantum_bridge) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_quantum_explore", 0.0f);
+
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1751,6 +2007,10 @@ int curiosity_enhanced_add_quantum_topic(
     const char* topic,
     float curiosity_level,
     float novelty_score) {
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_add_quantum_topic", 0.0f);
+
 
     NIMCP_CHECK_THROW(system && topic, NIMCP_ERROR_NULL_ARG, "system or topic is NULL");
     NIMCP_CHECK_THROW(system->quantum_bridge, NIMCP_ERROR_INVALID, "quantum_bridge is NULL");
@@ -1785,6 +2045,10 @@ float curiosity_enhanced_quantum_evaluate_novelty(
 
     if (!system || !topic || !system->quantum_bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_quantum_evaluate_nov", 0.0f);
+
+
     nimcp_platform_mutex_lock(system->mutex);
 
     float novelty = curiosity_quantum_evaluate_novelty(
@@ -1804,9 +2068,19 @@ float curiosity_enhanced_quantum_evaluate_novelty(
 int curiosity_enhanced_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Curiosity_Enhanced_System");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                curiosity_enhanced_heartbeat("curiosity_en_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }
@@ -1853,6 +2127,10 @@ static float qmc_gaussian(uint32_t* seed, float mean, float std) {
 void curiosity_enhanced_qmc_default_config(curiosity_qmc_config_t* config) {
     if (!config) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_qmc_default_config", 0.0f);
+
+
     memset(config, 0, sizeof(*config));
     config->num_samples = 1000;
     config->burnin = 100;
@@ -1867,6 +2145,10 @@ void curiosity_enhanced_qmc_default_config(curiosity_qmc_config_t* config) {
 int curiosity_enhanced_set_qmc_config(
     curiosity_enhanced_system_t* system,
     const curiosity_qmc_config_t* config) {
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_set_qmc_config", 0.0f);
+
 
     NIMCP_CHECK_THROW(system && config, NIMCP_ERROR_NULL_ARG, "system or config is NULL");
 
@@ -1890,6 +2172,10 @@ int curiosity_enhanced_estimate_uncertainty(
     curiosity_enhanced_system_t* system,
     const char* topic,
     curiosity_qmc_uncertainty_t* result) {
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_estimate_uncertainty", 0.0f);
+
 
     NIMCP_CHECK_THROW(system && topic && result, NIMCP_ERROR_NULL_ARG, "system, topic, or result is NULL");
 
@@ -1920,6 +2206,12 @@ int curiosity_enhanced_estimate_uncertainty(
     float noise_scale = 1.0f / (1.0f + exposure_count * 0.1f);  /* More exposures = less noise */
 
     for (uint32_t i = 0; i < num_samples; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_samples > 256) {
+            curiosity_enhanced_heartbeat("curiosity_en_loop",
+                             (float)(i + 1) / (float)num_samples);
+        }
+
         float sample = qmc_gaussian(&system->qmc_seed, base_interest, noise_scale * 0.2f);
         sample = clampf(sample, 0.0f, 1.0f);
         samples[i] = sample;
@@ -1972,10 +2264,20 @@ int curiosity_enhanced_estimate_uncertainty_batch(
     uint32_t num_topics,
     curiosity_qmc_uncertainty_t* results) {
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_estimate_uncertainty", 0.0f);
+
+
     NIMCP_CHECK_THROW(system && topics && results, NIMCP_ERROR_NULL_ARG, "system, topics, or results is NULL");
     if (num_topics == 0) return 0;
 
     for (uint32_t i = 0; i < num_topics; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_topics > 256) {
+            curiosity_enhanced_heartbeat("curiosity_en_loop",
+                             (float)(i + 1) / (float)num_topics);
+        }
+
         int ret = curiosity_enhanced_estimate_uncertainty(system, topics[i], &results[i]);
         if (ret != 0) {
             memset(&results[i], 0, sizeof(results[i]));
@@ -1990,6 +2292,10 @@ int curiosity_enhanced_compute_empowerment(
     const char* topic,
     uint32_t horizon,
     curiosity_empowerment_result_t* result) {
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_compute_empowerment", 0.0f);
+
 
     NIMCP_CHECK_THROW(system && topic && result, NIMCP_ERROR_NULL_ARG, "system, topic, or result is NULL");
 
@@ -2037,6 +2343,12 @@ int curiosity_enhanced_compute_empowerment(
 
     /* Simulate action-state transitions */
     for (uint32_t s = 0; s < num_samples; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && num_samples > 256) {
+            curiosity_enhanced_heartbeat("curiosity_en_loop",
+                             (float)(s + 1) / (float)num_samples);
+        }
+
         uint32_t action = qmc_lcg_next(&system->qmc_seed) % num_actions;
         uint32_t next_state;
 
@@ -2067,7 +2379,19 @@ int curiosity_enhanced_compute_empowerment(
 
     /* Marginal distributions */
     for (uint32_t a = 0; a < num_actions; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && num_actions > 256) {
+            curiosity_enhanced_heartbeat("curiosity_en_loop",
+                             (float)(a + 1) / (float)num_actions);
+        }
+
         for (uint32_t s = 0; s < num_actions; s++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((s & 0xFF) == 0 && num_actions > 256) {
+                curiosity_enhanced_heartbeat("curiosity_en_loop",
+                                 (float)(s + 1) / (float)num_actions);
+            }
+
             float count = state_counts[a * num_actions + s];
             p_a[a] += count;
             p_s[s] += count;
@@ -2077,6 +2401,12 @@ int curiosity_enhanced_compute_empowerment(
     /* Normalize */
     float total = (float)num_samples;
     for (uint32_t i = 0; i < num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_actions > 256) {
+            curiosity_enhanced_heartbeat("curiosity_en_loop",
+                             (float)(i + 1) / (float)num_actions);
+        }
+
         p_a[i] /= total;
         p_s[i] /= total;
     }
@@ -2084,6 +2414,12 @@ int curiosity_enhanced_compute_empowerment(
     /* Compute entropy H(S') */
     float H_s = 0.0f;
     for (uint32_t s = 0; s < num_actions; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && num_actions > 256) {
+            curiosity_enhanced_heartbeat("curiosity_en_loop",
+                             (float)(s + 1) / (float)num_actions);
+        }
+
         if (p_s[s] > 1e-10f) {
             H_s -= p_s[s] * logf(p_s[s]);
         }
@@ -2092,14 +2428,32 @@ int curiosity_enhanced_compute_empowerment(
     /* Compute conditional entropy H(S'|A) */
     float H_s_given_a = 0.0f;
     for (uint32_t a = 0; a < num_actions; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && num_actions > 256) {
+            curiosity_enhanced_heartbeat("curiosity_en_loop",
+                             (float)(a + 1) / (float)num_actions);
+        }
+
         if (p_a[a] < 1e-10f) continue;
 
         float action_total = 0.0f;
         for (uint32_t s = 0; s < num_actions; s++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((s & 0xFF) == 0 && num_actions > 256) {
+                curiosity_enhanced_heartbeat("curiosity_en_loop",
+                                 (float)(s + 1) / (float)num_actions);
+            }
+
             action_total += state_counts[a * num_actions + s];
         }
 
         for (uint32_t s = 0; s < num_actions; s++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((s & 0xFF) == 0 && num_actions > 256) {
+                curiosity_enhanced_heartbeat("curiosity_en_loop",
+                                 (float)(s + 1) / (float)num_actions);
+            }
+
             float p_s_given_a = state_counts[a * num_actions + s] / (action_total + 1e-10f);
             if (p_s_given_a > 1e-10f) {
                 H_s_given_a -= p_a[a] * p_s_given_a * logf(p_s_given_a);
@@ -2109,6 +2463,12 @@ int curiosity_enhanced_compute_empowerment(
         /* Per-action empowerment */
         float action_entropy = 0.0f;
         for (uint32_t s = 0; s < num_actions; s++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((s & 0xFF) == 0 && num_actions > 256) {
+                curiosity_enhanced_heartbeat("curiosity_en_loop",
+                                 (float)(s + 1) / (float)num_actions);
+            }
+
             float p = state_counts[a * num_actions + s] / (action_total + 1e-10f);
             if (p > 1e-10f) {
                 action_entropy -= p * logf(p);
@@ -2157,6 +2517,10 @@ int curiosity_enhanced_compute_empowerment(
 void curiosity_empowerment_result_free(curiosity_empowerment_result_t* result) {
     if (!result) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_curiosity_empowermen", 0.0f);
+
+
     if (result->action_empowerment) {
         nimcp_free(result->action_empowerment);
         result->action_empowerment = NULL;
@@ -2171,6 +2535,10 @@ float curiosity_enhanced_sample_by_uncertainty(
 
     if (!system || !topics || num_topics == 0 || !selected_topic) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_sample_by_uncertaint", 0.0f);
+
+
     nimcp_platform_mutex_lock(system->mutex);
 
     /* Compute uncertainty-weighted scores */
@@ -2183,6 +2551,12 @@ float curiosity_enhanced_sample_by_uncertainty(
     float total_score = 0.0f;
 
     for (uint32_t i = 0; i < num_topics; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_topics > 256) {
+            curiosity_enhanced_heartbeat("curiosity_en_loop",
+                             (float)(i + 1) / (float)num_topics);
+        }
+
         curiosity_qmc_uncertainty_t uncertainty;
 
         /* Estimate uncertainty (unlock/lock to avoid recursion issues) */
@@ -2218,6 +2592,12 @@ float curiosity_enhanced_sample_by_uncertainty(
     uint32_t selected_idx = 0;
 
     for (uint32_t i = 0; i < num_topics; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_topics > 256) {
+            curiosity_enhanced_heartbeat("curiosity_en_loop",
+                             (float)(i + 1) / (float)num_topics);
+        }
+
         cumsum += scores[i];
         if (r <= cumsum) {
             selected_idx = i;
@@ -2241,6 +2621,10 @@ float curiosity_enhanced_get_exploration_bonus(
     const char* topic) {
 
     if (!system || !topic) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_get_exploration_bonu", 0.0f);
+
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -2282,6 +2666,10 @@ float curiosity_enhanced_update_interest_mc(
 
     if (!system || !topic) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_update_interest_mc", 0.0f);
+
+
     observed_interest = clampf(observed_interest, 0.0f, 1.0f);
     observation_noise = clampf(observation_noise, 0.01f, 1.0f);
 
@@ -2321,6 +2709,10 @@ float curiosity_enhanced_estimate_info_gain_qmc(
     const char* topic) {
 
     if (!system || !topic) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_estimate_info_gain_q", 0.0f);
+
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -2362,6 +2754,10 @@ uint32_t curiosity_enhanced_plan_exploration_mcts(
 
     if (!system || !exploration_path || max_path_length == 0) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_plan_exploration_mct", 0.0f);
+
+
     if (horizon == 0) {
         horizon = system->qmc_config.empowerment_horizon;
     }
@@ -2383,6 +2779,12 @@ uint32_t curiosity_enhanced_plan_exploration_mcts(
             available_topics = (char**)nimcp_malloc(num_topics * sizeof(char*));
             if (available_topics) {
                 for (uint32_t i = 0; i < num_topics; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && num_topics > 256) {
+                        curiosity_enhanced_heartbeat("curiosity_en_loop",
+                                         (float)(i + 1) / (float)num_topics);
+                    }
+
                     available_topics[i] = (char*)nimcp_malloc(256);
                     if (available_topics[i] && system->quantum_bridge->topics[i].is_active) {
                         strncpy(available_topics[i], system->quantum_bridge->topics[i].topic, 255);
@@ -2413,6 +2815,12 @@ uint32_t curiosity_enhanced_plan_exploration_mcts(
         /* Cleanup and return */
         if (available_topics) {
             for (uint32_t i = 0; i < num_topics; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && num_topics > 256) {
+                    curiosity_enhanced_heartbeat("curiosity_en_loop",
+                                     (float)(i + 1) / (float)num_topics);
+                }
+
                 if (available_topics[i]) nimcp_free(available_topics[i]);
             }
             nimcp_free(available_topics);
@@ -2427,6 +2835,12 @@ uint32_t curiosity_enhanced_plan_exploration_mcts(
 
         /* Evaluate each candidate topic */
         for (uint32_t t = 0; t < num_topics; t++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((t & 0xFF) == 0 && num_topics > 256) {
+                curiosity_enhanced_heartbeat("curiosity_en_loop",
+                                 (float)(t + 1) / (float)num_topics);
+            }
+
             if (available_topics[t][0] == '\0') continue;
 
             /* Score = info_gain + exploration_bonus */
@@ -2442,6 +2856,12 @@ uint32_t curiosity_enhanced_plan_exploration_mcts(
         float best_score = -1.0f;
         uint32_t best_idx = 0;
         for (uint32_t t = 0; t < num_topics; t++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((t & 0xFF) == 0 && num_topics > 256) {
+                curiosity_enhanced_heartbeat("curiosity_en_loop",
+                                 (float)(t + 1) / (float)num_topics);
+            }
+
             if (scores[t] > best_score) {
                 best_score = scores[t];
                 best_idx = t;
@@ -2466,6 +2886,12 @@ uint32_t curiosity_enhanced_plan_exploration_mcts(
     /* Cleanup */
     if (available_topics) {
         for (uint32_t i = 0; i < num_topics; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_topics > 256) {
+                curiosity_enhanced_heartbeat("curiosity_en_loop",
+                                 (float)(i + 1) / (float)num_topics);
+            }
+
             if (available_topics[i]) nimcp_free(available_topics[i]);
         }
         nimcp_free(available_topics);
@@ -2480,6 +2906,10 @@ int curiosity_enhanced_get_qmc_stats(
     const curiosity_enhanced_system_t* system,
     curiosity_qmc_stats_t* stats) {
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_get_qmc_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(system && stats, NIMCP_ERROR_NULL_ARG, "system or stats is NULL");
 
     *stats = system->qmc_stats;
@@ -2490,6 +2920,10 @@ void curiosity_enhanced_reset_qmc_stats(
     curiosity_enhanced_system_t* system) {
 
     if (!system) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_enhanced_heartbeat("curiosity_en_reset_qmc_stats", 0.0f);
+
 
     nimcp_platform_mutex_lock(system->mutex);
     memset(&system->qmc_stats, 0, sizeof(system->qmc_stats));

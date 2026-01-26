@@ -48,7 +48,7 @@ static nimcp_health_agent_t* g_self_heal_health_agent = NULL;
  * @brief Set health agent for self_heal heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void self_heal_set_health_agent(nimcp_health_agent_t* agent) {
+void self_heal_set_health_agent(nimcp_health_agent_t* agent) {
     g_self_heal_health_agent = agent;
 }
 
@@ -136,6 +136,12 @@ static void hash_backtrace_to_features(
 
     /* Hash groups of addresses */
     for (size_t i = 0; i < n_features; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n_features > 256) {
+                self_heal_heartbeat("self_heal_loop",
+                                 (float)(i + 1) / (float)n_features);
+            }
+
         uint32_t hash = 5381;
         int group_size = (depth + (int)n_features - 1) / (int)n_features;
         int start = (int)i * group_size;
@@ -201,6 +207,12 @@ static void decay_sample_weights_unlocked(self_heal_engine_t* engine)
     }
 
     for (size_t i = 0; i < n_samples; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n_samples > 256) {
+            self_heal_heartbeat("self_heal_loop",
+                             (float)(i + 1) / (float)n_samples);
+        }
+
         training_sample_t* sample = &engine->training_samples[i];
         float weight = calculate_sample_weight(
             sample->timestamp, now, sample->success_score);
@@ -679,6 +691,12 @@ static int lnn_predict_fix_type(
 
     /* Softmax normalization for confidence */
     for (int i = 0; i < FIX_PATTERN_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && FIX_PATTERN_COUNT > 256) {
+            self_heal_heartbeat("self_heal_loop",
+                             (float)(i + 1) / (float)FIX_PATTERN_COUNT);
+        }
+
         if (output_data[i] > max_val) {
             max_val = output_data[i];
             max_idx = i;
@@ -755,6 +773,10 @@ int self_heal_default_config(self_heal_config_t* config)
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_default_config", 0.0f);
+
+
     memset(config, 0, sizeof(self_heal_config_t));
 
     config->mode = HEAL_MODE_HYBRID;
@@ -777,6 +799,10 @@ int self_heal_default_config(self_heal_config_t* config)
 
 self_heal_engine_t* self_heal_create(const self_heal_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_create", 0.0f);
+
+
     self_heal_engine_t* engine = nimcp_calloc(1, sizeof(self_heal_engine_t));
     if (engine == NULL) {
         LOG_MODULE_ERROR(LOG_TAG, "Failed to allocate engine");
@@ -842,6 +868,10 @@ void self_heal_destroy(self_heal_engine_t* engine)
 {
     if (engine == NULL) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_destroy", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
 
     /* Destroy LNN */
@@ -886,6 +916,10 @@ fix_pattern_type_t self_heal_analyze_crash(
     }
 
     /* First, try to map from antigen source */
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_analyze_crash", 0.0f);
+
+
     if (antigen->source == ANTIGEN_SOURCE_BBB) {
         fix_pattern_type_t pattern = map_bbb_threat_to_pattern(antigen->bbb_threat_type);
         if (pattern != FIX_PATTERN_UNKNOWN) {
@@ -929,6 +963,10 @@ int self_heal_extract_features(
     if (engine == NULL || antigen == NULL || features == NULL) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_extract_features", 0.0f);
+
 
     memset(features, 0, sizeof(crash_features_t));
 
@@ -1011,6 +1049,10 @@ int self_heal_extract_features_from_context(
     if (engine == NULL || crash_ctx == NULL || features == NULL) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_extract_features_fro", 0.0f);
+
 
     memset(features, 0, sizeof(crash_features_t));
     size_t idx = 0;
@@ -1135,6 +1177,10 @@ int self_heal_generate_fix(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_generate_fix", 0.0f);
+
+
     uint64_t start_time = get_time_us();
 
     memset(result, 0, sizeof(heal_result_t));
@@ -1236,6 +1282,9 @@ int self_heal_generate_candidates(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_generate_candidates", 0.0f);
+
     size_t n_candidates = 0;
 
     /* Try all applicable patterns */
@@ -1316,6 +1365,10 @@ float self_heal_lnn_predict(
         return 0.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_lnn_predict", 0.0f);
+
+
     float confidence = 0.0f;
     if (lnn_predict_fix_type(engine, features, fix_type_out, &confidence) != 0) {
         return 0.0f;
@@ -1337,6 +1390,10 @@ int self_heal_train_on_success(
     if (!engine->config.enable_learning) return 0;
 
     /* Extract features */
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_train_on_success", 0.0f);
+
+
     crash_features_t features = {0};
     if (self_heal_extract_features(engine, antigen, &features) != 0) {
         return -1;
@@ -1371,6 +1428,10 @@ int self_heal_train_on_failure(
     if (!engine->config.enable_learning) return 0;
 
     /* Extract features */
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_train_on_failure", 0.0f);
+
+
     crash_features_t features = {0};
     if (self_heal_extract_features(engine, antigen, &features) != 0) {
         return -1;
@@ -1413,6 +1474,10 @@ int self_heal_train_online(
     }
 
     /* Create input tensor from features */
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_train_online", 0.0f);
+
+
     uint32_t input_dims[1] = {SELF_HEAL_FEATURE_DIM};
     nimcp_tensor_t* input = nimcp_tensor_create(input_dims, 1, NIMCP_DTYPE_F32);
     if (input == NULL) {
@@ -1447,6 +1512,12 @@ int self_heal_train_online(
     }
 
     for (int i = 0; i < FIX_PATTERN_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && FIX_PATTERN_COUNT > 256) {
+            self_heal_heartbeat("self_heal_loop",
+                             (float)(i + 1) / (float)FIX_PATTERN_COUNT);
+        }
+
         target_data[i] = (i == (int)correct_type) ? success_score : 0.0f;
     }
 
@@ -1485,6 +1556,10 @@ int self_heal_decay_samples(self_heal_engine_t* engine)
     }
     if (!engine->config.enable_learning) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_decay_samples", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
     decay_sample_weights_unlocked(engine);
     nimcp_mutex_unlock(engine->mutex);
@@ -1508,6 +1583,10 @@ int self_heal_train_batch(self_heal_engine_t* engine)
             "self_heal_train_batch: invalid parameter");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_train_batch", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -1553,6 +1632,12 @@ int self_heal_train_batch(self_heal_engine_t* engine)
     }
 
     for (size_t i = 0; i < batch_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && batch_size > 256) {
+            self_heal_heartbeat("self_heal_loop",
+                             (float)(i + 1) / (float)batch_size);
+        }
+
         training_sample_t* sample = &engine->training_samples[i];
 
         /* Copy features */
@@ -1562,6 +1647,12 @@ int self_heal_train_batch(self_heal_engine_t* engine)
 
         /* Create one-hot target */
         for (int j = 0; j < FIX_PATTERN_COUNT; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && FIX_PATTERN_COUNT > 256) {
+                self_heal_heartbeat("self_heal_loop",
+                                 (float)(j + 1) / (float)FIX_PATTERN_COUNT);
+            }
+
             target_data[i * FIX_PATTERN_COUNT + j] =
                 (j == (int)sample->correct_fix_type) ? sample->success_score : 0.0f;
         }
@@ -1600,6 +1691,10 @@ int self_heal_save_model(self_heal_engine_t* engine, const char* path)
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_save_model", 0.0f);
+
+
     return lnn_save(engine->lnn_network, path);
 }
 
@@ -1622,6 +1717,10 @@ int self_heal_load_model(self_heal_engine_t* engine, const char* path)
     }
 
     /* Load network from file */
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_load_model", 0.0f);
+
+
     engine->lnn_network = lnn_load(path);
     if (engine->lnn_network == NULL) {
         LOG_MODULE_ERROR(LOG_TAG, "Failed to load LNN from %s", path);
@@ -1654,6 +1753,10 @@ const fix_pattern_t* self_heal_get_pattern(
             "self_heal_get_pattern: parameter is NULL");
         return NULL;
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_get_pattern", 0.0f);
+
+
     return heal_pattern_get_by_type(engine->pattern_library, type);
 }
 
@@ -1672,6 +1775,10 @@ int self_heal_register_pattern(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_register_pattern", 0.0f);
+
+
     uint32_t id;
     return heal_pattern_register(engine->pattern_library, pattern, &id);
 }
@@ -1685,6 +1792,10 @@ int self_heal_connect_immune(
             "self_heal_connect_immune: invalid parameter");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_connect_immune", 0.0f);
+
 
     engine->immune_system = immune_system;
     engine->immune_connected = (immune_system != NULL);
@@ -1725,6 +1836,10 @@ int self_heal_get_stats(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
     *stats = engine->stats;
 
@@ -1755,6 +1870,10 @@ int self_heal_reset_stats(self_heal_engine_t* engine)
             "self_heal_reset_stats: invalid parameter");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_reset_stats", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
     memset(&engine->stats, 0, sizeof(self_heal_stats_t));
@@ -1794,6 +1913,10 @@ const char* self_heal_mode_to_string(self_heal_mode_t mode)
 
 pattern_library_t* heal_pattern_library_create(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_heal_pattern_library", 0.0f);
+
+
     pattern_library_t* lib = nimcp_calloc(1, sizeof(pattern_library_t));
     if (lib == NULL) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
@@ -1811,6 +1934,12 @@ pattern_library_t* heal_pattern_library_create(void)
 
     /* Initialize built-in patterns */
     for (int i = 0; i < FIX_PATTERN_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && FIX_PATTERN_COUNT > 256) {
+            self_heal_heartbeat("self_heal_loop",
+                             (float)(i + 1) / (float)FIX_PATTERN_COUNT);
+        }
+
         heal_pattern_init_builtin(&lib->builtin_patterns[i], (fix_pattern_type_t)i);
         lib->builtin_patterns[i].id = i + 1;
     }
@@ -1856,6 +1985,10 @@ void heal_pattern_library_destroy(pattern_library_t* library)
         nimcp_free(library->custom_patterns);
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_heal_pattern_library", 0.0f);
+
+
     nimcp_free(library);
 }
 
@@ -1868,6 +2001,10 @@ const fix_pattern_t* heal_pattern_get_by_type(
             "heal_pattern_get_by_type: parameter is NULL");
         return NULL;
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_heal_pattern_get_by_", 0.0f);
+
+
     if (type < 0 || type >= FIX_PATTERN_COUNT) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
             "heal_pattern_get_by_type: parameter is NULL");
@@ -1888,7 +2025,17 @@ const fix_pattern_t* heal_pattern_get_by_id(
     }
 
     /* Check built-in patterns */
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_heal_pattern_get_by_", 0.0f);
+
+
     for (size_t i = 0; i < library->builtin_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && library->builtin_count > 256) {
+            self_heal_heartbeat("self_heal_loop",
+                             (float)(i + 1) / (float)library->builtin_count);
+        }
+
         if (library->builtin_patterns[i].id == id) {
             return &library->builtin_patterns[i];
         }
@@ -1897,6 +2044,12 @@ const fix_pattern_t* heal_pattern_get_by_id(
     /* Check custom patterns */
     nimcp_mutex_lock(library->mutex);
     for (size_t i = 0; i < library->custom_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && library->custom_count > 256) {
+            self_heal_heartbeat("self_heal_loop",
+                             (float)(i + 1) / (float)library->custom_count);
+        }
+
         if (library->custom_patterns[i].id == id) {
             nimcp_mutex_unlock(library->mutex);
             return &library->custom_patterns[i];
@@ -1917,6 +2070,10 @@ int heal_pattern_register(
             "heal_pattern_register: invalid parameter");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_heal_pattern_registe", 0.0f);
+
 
     nimcp_mutex_lock(library->mutex);
 
@@ -1952,9 +2109,19 @@ int heal_pattern_unregister(pattern_library_t* library, uint32_t id)
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_heal_pattern_unregis", 0.0f);
+
+
     nimcp_mutex_lock(library->mutex);
 
     for (size_t i = 0; i < library->custom_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && library->custom_count > 256) {
+            self_heal_heartbeat("self_heal_loop",
+                             (float)(i + 1) / (float)library->custom_count);
+        }
+
         if (library->custom_patterns[i].id == id) {
             /* Shift remaining patterns */
             for (size_t j = i; j < library->custom_count - 1; j++) {
@@ -1981,6 +2148,10 @@ int heal_pattern_match(
             "heal_pattern_match: invalid parameter");
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_heal_pattern_match", 0.0f);
+
+
     (void)code_len; /* May be used for future bounds checking */
 
     memset(result, 0, sizeof(pattern_match_result_t));
@@ -2119,6 +2290,9 @@ int heal_pattern_apply(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_heal_pattern_apply", 0.0f);
+
     return apply_template_substitution(
         pattern->template_after, match, fixed_code, fixed_code_size);
 }
@@ -2134,12 +2308,22 @@ int heal_pattern_update_stats(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_heal_pattern_update_", 0.0f);
+
+
     nimcp_mutex_lock(library->mutex);
 
     fix_pattern_t* pattern = NULL;
 
     /* Find pattern */
     for (size_t i = 0; i < library->builtin_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && library->builtin_count > 256) {
+            self_heal_heartbeat("self_heal_loop",
+                             (float)(i + 1) / (float)library->builtin_count);
+        }
+
         if (library->builtin_patterns[i].id == id) {
             pattern = &library->builtin_patterns[i];
             break;
@@ -2148,6 +2332,12 @@ int heal_pattern_update_stats(
 
     if (pattern == NULL) {
         for (size_t i = 0; i < library->custom_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && library->custom_count > 256) {
+                self_heal_heartbeat("self_heal_loop",
+                                 (float)(i + 1) / (float)library->custom_count);
+            }
+
             if (library->custom_patterns[i].id == id) {
                 pattern = &library->custom_patterns[i];
                 break;
@@ -2190,6 +2380,10 @@ size_t heal_pattern_get_all_by_type(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_heal_pattern_get_all", 0.0f);
+
+
     size_t count = 0;
 
     /* Check built-in */
@@ -2221,11 +2415,21 @@ const fix_pattern_t* heal_pattern_get_best(
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_heal_pattern_get_bes", 0.0f);
+
+
     const fix_pattern_t* best = NULL;
     float best_confidence = -1.0f;
 
     /* Search built-in patterns */
     for (size_t i = 0; i < library->builtin_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && library->builtin_count > 256) {
+            self_heal_heartbeat("self_heal_loop",
+                             (float)(i + 1) / (float)library->builtin_count);
+        }
+
         if (library->builtin_patterns[i].type == type &&
             library->builtin_patterns[i].enabled &&
             library->builtin_patterns[i].confidence > best_confidence) {
@@ -2237,6 +2441,12 @@ const fix_pattern_t* heal_pattern_get_best(
     /* Search custom patterns */
     nimcp_mutex_lock(library->mutex);
     for (size_t i = 0; i < library->custom_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && library->custom_count > 256) {
+            self_heal_heartbeat("self_heal_loop",
+                             (float)(i + 1) / (float)library->custom_count);
+        }
+
         if (library->custom_patterns[i].type == type &&
             library->custom_patterns[i].enabled &&
             library->custom_patterns[i].confidence > best_confidence) {
@@ -2294,6 +2504,10 @@ fix_pattern_type_t heal_pattern_type_from_string(const char* name)
     if (strcmp(name, "lnn_generated") == 0) return FIX_PATTERN_LNN_GENERATED;
     if (strcmp(name, "custom") == 0) return FIX_PATTERN_CUSTOM;
 
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_heal_pattern_type_fr", 0.0f);
+
+
     return FIX_PATTERN_UNKNOWN;
 }
 
@@ -2304,6 +2518,10 @@ int heal_pattern_init_builtin(fix_pattern_t* pattern, fix_pattern_type_t type)
             "heal_pattern_init_builtin: invalid parameter");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_heal_pattern_init_bu", 0.0f);
+
 
     memset(pattern, 0, sizeof(fix_pattern_t));
     pattern->type = type;
@@ -2520,9 +2738,19 @@ int heal_pattern_init_builtin(fix_pattern_t* pattern, fix_pattern_type_t type)
  */
 int self_heal_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    self_heal_heartbeat("self_heal_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Self_Heal");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                self_heal_heartbeat("self_heal_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Self heal self-knowledge: %s", self->observations[i]);
         }
     }

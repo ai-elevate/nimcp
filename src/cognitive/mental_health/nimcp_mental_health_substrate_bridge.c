@@ -29,7 +29,7 @@ static nimcp_health_agent_t* g_mental_health_substrate_bridge_health_agent = NUL
  * @brief Set health agent for mental_health_substrate_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mental_health_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void mental_health_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_mental_health_substrate_bridge_health_agent = agent;
 }
 
@@ -55,6 +55,10 @@ struct mental_health_substrate_bridge {
 };
 
 mental_health_substrate_config_t mental_health_substrate_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_substrate_bridge_heartbeat("mental_healt_mental_health_substr", 0.0f);
+
+
     mental_health_substrate_config_t cfg = { .enable_atp_modulation = true, .enable_fatigue_modulation = true,
         .enable_bio_async = false, .atp_sensitivity = 1.0f, .fatigue_sensitivity = 1.0f, .min_capacity = 0.2f };
     return cfg;
@@ -68,6 +72,10 @@ mental_health_substrate_bridge_t* mental_health_substrate_bridge_create(void* me
         return NULL;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_substrate_bridge_heartbeat("mental_healt_create", 0.0f);
+
+
     mental_health_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(mental_health_substrate_bridge_t));
     if (!bridge) {
 
@@ -89,6 +97,10 @@ mental_health_substrate_bridge_t* mental_health_substrate_bridge_create(void* me
 
 void mental_health_substrate_bridge_destroy(mental_health_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_substrate_bridge_heartbeat("mental_healt_destroy", 0.0f);
+
+
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
     }
@@ -97,6 +109,10 @@ void mental_health_substrate_bridge_destroy(mental_health_substrate_bridge_t* br
 
 int mental_health_substrate_bridge_update(mental_health_substrate_bridge_t* bridge) {
     if (!bridge || !bridge->substrate) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_substrate_bridge_heartbeat("mental_healt_update", 0.0f);
+
+
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
@@ -119,12 +135,20 @@ int mental_health_substrate_bridge_update(mental_health_substrate_bridge_t* brid
 int mental_health_substrate_bridge_get_effects(const mental_health_substrate_bridge_t* bridge, mental_health_substrate_effects_t* effects) {
     if (!bridge || !effects) return -1;
     *effects = bridge->effects;
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_substrate_bridge_heartbeat("mental_healt_get_effects", 0.0f);
+
+
     return 0;
 }
 
 int mental_health_substrate_bridge_apply_effects(mental_health_substrate_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->bio_async_connected || !bridge->ctx) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_substrate_bridge_heartbeat("mental_healt_apply_effects", 0.0f);
+
 
     substrate_metabolic_state_t metabolic;
     float atp_level = 1.0f, fatigue_level = 0.0f;
@@ -168,6 +192,10 @@ int mental_health_substrate_bridge_apply_effects(mental_health_substrate_bridge_
 
 int mental_health_substrate_bridge_register_bio_async(mental_health_substrate_bridge_t* bridge, bio_router_t* router) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_substrate_bridge_heartbeat("mental_healt_register_bio_async", 0.0f);
+
+
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
         bridge->ctx = NULL;
@@ -187,9 +215,19 @@ int mental_health_substrate_bridge_register_bio_async(mental_health_substrate_br
 int mental_health_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_substrate_bridge_heartbeat("mental_healt_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Mental_Health_Substrate_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                mental_health_substrate_bridge_heartbeat("mental_healt_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

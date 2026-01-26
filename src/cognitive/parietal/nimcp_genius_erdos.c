@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_genius_erdos_health_agent = NULL;
  * @brief Set health agent for genius_erdos heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void genius_erdos_set_health_agent(nimcp_health_agent_t* agent) {
+void genius_erdos_set_health_agent(nimcp_health_agent_t* agent) {
     g_genius_erdos_health_agent = agent;
 }
 
@@ -55,6 +55,10 @@ nimcp_error_t genius_erdos_analyze_impl(
     mathematical_genius_t* genius,
     const math_problem_t* problem,
     genius_result_t* result) {
+
+    /* Phase 8: Heartbeat at operation start */
+    genius_erdos_heartbeat("genius_erdos_analyze_impl", 0.0f);
+
 
     (void)genius;  /* Suppress unused warning for now */
 
@@ -97,6 +101,10 @@ uint32_t genius_erdos_ramsey_lower_bound(
     mathematical_genius_t* genius,
     uint32_t r,
     uint32_t s) {
+
+    /* Phase 8: Heartbeat at operation start */
+    genius_erdos_heartbeat("genius_erdos_ramsey_lower_bound", 0.0f);
+
 
     (void)genius;  /* Unused - function is stateless */
 

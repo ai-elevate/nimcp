@@ -38,7 +38,7 @@ static nimcp_health_agent_t* g_meta_learning_health_agent = NULL;
  * @brief Set health agent for meta_learning heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void meta_learning_set_health_agent(nimcp_health_agent_t* agent) {
+void meta_learning_set_health_agent(nimcp_health_agent_t* agent) {
     g_meta_learning_health_agent = agent;
 }
 
@@ -184,6 +184,10 @@ static bool add_task_to_history(meta_learner_t meta, const meta_task_t* task);
  */
 meta_learning_config_t meta_learning_default_config(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    meta_learning_heartbeat("meta_learnin_default_config", 0.0f);
+
+
     meta_learning_config_t config = {
         .algorithm = META_ALGORITHM_MAML,
         .few_shot_k = FEW_SHOT_5,
@@ -224,6 +228,10 @@ meta_learner_t meta_learner_create(const meta_learning_config_t* config,
     // =========================================================================
     // GUARD: Validate inputs
     // =========================================================================
+
+    /* Phase 8: Heartbeat at operation start */
+    meta_learning_heartbeat("meta_learnin_meta_learner_create", 0.0f);
+
 
     if (num_regions == 0) {
         set_error("Invalid num_regions: must be > 0");
@@ -266,6 +274,12 @@ meta_learner_t meta_learner_create(const meta_learning_config_t* config,
 
     // Initialize previous loss to infinity (no history yet)
     for (uint32_t i = 0; i < META_REGION_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && META_REGION_COUNT > 256) {
+            meta_learning_heartbeat("meta_learnin_loop",
+                             (float)(i + 1) / (float)META_REGION_COUNT);
+        }
+
         meta->previous_loss[i] = INFINITY;
     }
 
@@ -356,6 +370,10 @@ void meta_learner_destroy(meta_learner_t meta)
     }
 
     // Destroy SNN and Plasticity bridges
+    /* Phase 8: Heartbeat at operation start */
+    meta_learning_heartbeat("meta_learnin_meta_learner_destroy", 0.0f);
+
+
     if (meta->snn_bridge) {
         meta_learning_snn_destroy(meta->snn_bridge);
         meta->snn_bridge = NULL;
@@ -369,6 +387,12 @@ void meta_learner_destroy(meta_learner_t meta)
     // Free task history
     if (meta->task_history) {
         for (uint32_t i = 0; i < meta->num_tasks_seen; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && meta->num_tasks_seen > 256) {
+                meta_learning_heartbeat("meta_learnin_loop",
+                                 (float)(i + 1) / (float)meta->num_tasks_seen);
+            }
+
             if (meta->task_history[i]) {
                 meta_task_destroy(meta->task_history[i]);
             }
@@ -424,6 +448,10 @@ bool meta_maml_inner_loop(meta_learner_t meta, brain_t brain,
     }
 
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    meta_learning_heartbeat("meta_learnin_meta_maml_inner_loop", 0.0f);
+
+
     if (meta->bio_async_enabled && meta->bio_ctx) {
         bio_router_process_inbox(meta->bio_ctx, 5);
     }
@@ -469,6 +497,12 @@ bool meta_maml_inner_loop(meta_learner_t meta, brain_t brain,
     // HOW:  Gradient descent with inner_learning_rate
 
     for (uint32_t step = 0; step < meta->config.inner_steps; step++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((step & 0xFF) == 0 && meta->config.inner_steps > 256) {
+            meta_learning_heartbeat("meta_learnin_loop",
+                             (float)(step + 1) / (float)meta->config.inner_steps);
+        }
+
         bool success = apply_gradient_step(cloned, support_inputs, support_labels,
                                           num_support, meta->config.inner_learning_rate);
         if (!success) {
@@ -538,6 +572,10 @@ bool meta_maml_outer_loop(meta_learner_t meta, brain_t brain,
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    meta_learning_heartbeat("meta_learnin_meta_maml_outer_loop", 0.0f);
+
+
     if (num_tasks == 0) {
         set_error("Empty task batch");
         return false;
@@ -573,6 +611,12 @@ bool meta_maml_outer_loop(meta_learner_t meta, brain_t brain,
 
     // Process each task and update statistics
     for (uint32_t i = 0; i < num_tasks; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_tasks > 256) {
+            meta_learning_heartbeat("meta_learnin_loop",
+                             (float)(i + 1) / (float)num_tasks);
+        }
+
         if (tasks[i]) {
             // Update task history for transfer learning
             add_task_to_history(meta, tasks[i]);
@@ -634,6 +678,10 @@ bool meta_evaluate_adaptation(meta_learner_t meta, brain_t brain, brain_t adapte
         set_error("NULL parameter in meta_evaluate_adaptation");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    meta_learning_heartbeat("meta_learnin_meta_evaluate_adapta", 0.0f);
+
 
     if (num_query == 0) {
         set_error("Empty query set");
@@ -715,6 +763,10 @@ float meta_compute_task_similarity(meta_learner_t meta,
         return 0.0F;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    meta_learning_heartbeat("meta_learnin_meta_compute_task_si", 0.0f);
+
+
     if (task_a->input_dim != task_b->input_dim) {
         return 0.0F;  // Incompatible tasks
     }
@@ -730,6 +782,12 @@ float meta_compute_task_similarity(meta_learner_t meta,
     uint32_t num_pairs = 0;
 
     for (uint32_t i = 0; i < min_classes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && min_classes > 256) {
+            meta_learning_heartbeat("meta_learnin_loop",
+                             (float)(i + 1) / (float)min_classes);
+        }
+
         const float* proto_a = &task_a->class_prototypes[i * task_a->input_dim];
         const float* proto_b = &task_b->class_prototypes[i * task_b->input_dim];
 
@@ -779,6 +837,10 @@ bool meta_transfer_knowledge(meta_learner_t meta,
     // CHECK: Task similarity threshold
     // =========================================================================
 
+    /* Phase 8: Heartbeat at operation start */
+    meta_learning_heartbeat("meta_learnin_meta_transfer_knowle", 0.0f);
+
+
     if (similarity >= 0.0F && similarity < meta->config.similarity_threshold) {
         NIMCP_LOGGING_DEBUG("Transfer skipped: similarity %.2f < threshold %.2f",
                            similarity, meta->config.similarity_threshold);
@@ -812,6 +874,10 @@ float meta_get_learning_rate(meta_learner_t meta, meta_region_type_t region)
     if (!meta || region >= META_REGION_COUNT) {
         return DEFAULT_INNER_LR;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    meta_learning_heartbeat("meta_learnin_meta_get_learning_ra", 0.0f);
+
 
     return meta->learning_rates[region];
 }
@@ -849,6 +915,10 @@ float meta_adapt_learning_rate(meta_learner_t meta,
     // =========================================================================
     // ADAPT: Learning rate based on loss trajectory
     // =========================================================================
+
+    /* Phase 8: Heartbeat at operation start */
+    meta_learning_heartbeat("meta_learnin_meta_adapt_learning_", 0.0f);
+
 
     float current_lr = meta->learning_rates[region];
     float prev_loss = meta->previous_loss[region];
@@ -891,6 +961,10 @@ meta_task_t* meta_task_create(const char* name, uint32_t num_classes, uint32_t i
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    meta_learning_heartbeat("meta_learnin_meta_task_create", 0.0f);
+
+
     meta_task_t* task = nimcp_calloc(1, sizeof(meta_task_t));
     if (!task) {
         set_error("Failed to allocate meta_task_t");
@@ -926,6 +1000,10 @@ void meta_task_destroy(meta_task_t* task)
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    meta_learning_heartbeat("meta_learnin_meta_task_destroy", 0.0f);
+
+
     if (task->class_prototypes) {
         nimcp_free(task->class_prototypes);
     }
@@ -952,7 +1030,17 @@ bool meta_task_update_prototypes(meta_task_t* task,
     }
 
     // Update class prototypes using running average
+    /* Phase 8: Heartbeat at operation start */
+    meta_learning_heartbeat("meta_learnin_meta_task_update_pro", 0.0f);
+
+
     for (uint32_t i = 0; i < num_examples; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_examples > 256) {
+            meta_learning_heartbeat("meta_learnin_loop",
+                             (float)(i + 1) / (float)num_examples);
+        }
+
         uint32_t label = labels[i];
         if (label >= task->num_classes) {
             continue;  // Invalid label
@@ -963,6 +1051,12 @@ bool meta_task_update_prototypes(meta_task_t* task,
 
         // Running average: proto = (proto * n + input) / (n + 1)
         for (uint32_t d = 0; d < task->input_dim; d++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((d & 0xFF) == 0 && task->input_dim > 256) {
+                meta_learning_heartbeat("meta_learnin_loop",
+                                 (float)(d + 1) / (float)task->input_dim);
+            }
+
             prototype[d] = (prototype[d] * task->samples_seen + input[d]) /
                           (task->samples_seen + 1);
         }
@@ -989,6 +1083,10 @@ bool meta_get_statistics(meta_learner_t meta,
     if (!meta) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    meta_learning_heartbeat("meta_learnin_meta_get_statistics", 0.0f);
+
 
     if (num_tasks_seen) {
         *num_tasks_seen = meta->num_tasks_seen;
@@ -1018,6 +1116,10 @@ void meta_print_state(meta_learner_t meta)
         printf("NULL meta-learner\n");
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    meta_learning_heartbeat("meta_learnin_meta_print_state", 0.0f);
+
 
     printf("=== META-LEARNER STATE ===\n");
     printf("Algorithm: %s\n",
@@ -1086,6 +1188,12 @@ static float compute_loss(brain_t brain, const float** inputs,
     // Compute cross-entropy loss
     float total_loss = 0.0F;
     for (uint32_t i = 0; i < num_samples; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_samples > 256) {
+            meta_learning_heartbeat("meta_learnin_loop",
+                             (float)(i + 1) / (float)num_samples);
+        }
+
         // NOTE: Could track accuracy here by finding argmax(output_vector)
         // but we only need loss for MAML gradient computation
 
@@ -1169,6 +1277,12 @@ static bool apply_gradient_step(brain_t brain, const float** inputs,
 
     // Convert inputs and labels to brain_example_t format
     for (uint32_t i = 0; i < num_samples; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_samples > 256) {
+            meta_learning_heartbeat("meta_learnin_loop",
+                             (float)(i + 1) / (float)num_samples);
+        }
+
         examples[i].features = (float*)inputs[i];  // Direct pointer (not owned)
         examples[i].num_features = 256;  // Standard input size
 
@@ -1240,9 +1354,19 @@ static bool add_task_to_history(meta_learner_t meta, const meta_task_t* task)
 int meta_learning_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    meta_learning_heartbeat("meta_learnin_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Meta_Learning");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                meta_learning_heartbeat("meta_learnin_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

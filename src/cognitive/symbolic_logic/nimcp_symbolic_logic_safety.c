@@ -43,7 +43,7 @@ static nimcp_health_agent_t* g_symbolic_logic_safety_health_agent = NULL;
  * @brief Set health agent for symbolic_logic_safety heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void symbolic_logic_safety_set_health_agent(nimcp_health_agent_t* agent) {
+void symbolic_logic_safety_set_health_agent(nimcp_health_agent_t* agent) {
     g_symbolic_logic_safety_health_agent = agent;
 }
 
@@ -111,6 +111,12 @@ static void sha256_transform(sha256_ctx_t* ctx, const uint8_t* data) {
     uint32_t t1, t2;
 
     for (int i = 0; i < 16; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 16 > 256) {
+            symbolic_logic_safety_heartbeat("symbolic_log_loop",
+                             (float)(i + 1) / (float)16);
+        }
+
         w[i] = ((uint32_t)data[i * 4] << 24) | ((uint32_t)data[i * 4 + 1] << 16) |
                ((uint32_t)data[i * 4 + 2] << 8) | ((uint32_t)data[i * 4 + 3]);
     }
@@ -122,6 +128,12 @@ static void sha256_transform(sha256_ctx_t* ctx, const uint8_t* data) {
     e = ctx->state[4]; f = ctx->state[5]; g = ctx->state[6]; h = ctx->state[7];
 
     for (int i = 0; i < 64; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 64 > 256) {
+            symbolic_logic_safety_heartbeat("symbolic_log_loop",
+                             (float)(i + 1) / (float)64);
+        }
+
         t1 = h + EP1(e) + CH(e, f, g) + sha256_k[i] + w[i];
         t2 = EP0(a) + MAJ(a, b, c);
         h = g; g = f; f = e; e = d + t1;
@@ -168,11 +180,23 @@ static void sha256_final(sha256_ctx_t* ctx, uint8_t* hash) {
 
     uint8_t len_bytes[8];
     for (int i = 0; i < 8; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 8 > 256) {
+            symbolic_logic_safety_heartbeat("symbolic_log_loop",
+                             (float)(i + 1) / (float)8);
+        }
+
         len_bytes[i] = (uint8_t)(bits >> (56 - i * 8));
     }
     sha256_update(ctx, len_bytes, 8);
 
     for (int i = 0; i < 8; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 8 > 256) {
+            symbolic_logic_safety_heartbeat("symbolic_log_loop",
+                             (float)(i + 1) / (float)8);
+        }
+
         hash[i * 4] = (uint8_t)(ctx->state[i] >> 24);
         hash[i * 4 + 1] = (uint8_t)(ctx->state[i] >> 16);
         hash[i * 4 + 2] = (uint8_t)(ctx->state[i] >> 8);
@@ -215,6 +239,10 @@ static __thread safety_internal_stats_t g_stats = {0};
 
 safety_kb_t* symbolic_logic_safety_kb_create(uint32_t max_rules) {
     // Use default if not specified
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_safety_heartbeat("symbolic_log_kb_create", 0.0f);
+
+
     if (max_rules == 0) {
         max_rules = SAFETY_MAX_RULES;
     }
@@ -270,6 +298,10 @@ void symbolic_logic_safety_kb_destroy(safety_kb_t* kb) {
     if (!kb) return;
 
     // Unmap the region (works even if mprotect'd)
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_safety_heartbeat("symbolic_log_kb_destroy", 0.0f);
+
+
     if (kb->mmap_region && kb->mmap_region != MAP_FAILED) {
         munmap(kb->mmap_region, kb->mmap_size);
     }
@@ -291,6 +323,10 @@ uint32_t symbolic_logic_safety_add_rule(safety_kb_t* kb, const safety_rule_t* ru
         LOG_ERROR("symbolic_logic_safety_add_rule: rule is NULL");
         return 0;
     }
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_safety_heartbeat("symbolic_log_add_rule", 0.0f);
+
+
     if (kb->is_locked) {
         LOG_ERROR("symbolic_logic_safety_add_rule: KB is locked, cannot add rules");
         return 0;
@@ -335,6 +371,10 @@ bool symbolic_logic_safety_remove_rule(safety_kb_t* kb, uint32_t rule_id) {
         LOG_ERROR("symbolic_logic_safety_remove_rule: kb is NULL");
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_safety_heartbeat("symbolic_log_remove_rule", 0.0f);
+
+
     if (kb->is_locked) {
         LOG_ERROR("symbolic_logic_safety_remove_rule: KB is locked");
         return false;
@@ -347,6 +387,12 @@ bool symbolic_logic_safety_remove_rule(safety_kb_t* kb, uint32_t rule_id) {
     // Find rule by ID
     int found_idx = -1;
     for (uint32_t i = 0; i < kb->num_rules; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && kb->num_rules > 256) {
+            symbolic_logic_safety_heartbeat("symbolic_log_loop",
+                             (float)(i + 1) / (float)kb->num_rules);
+        }
+
         if (kb->rules[i].rule_id == rule_id) {
             found_idx = (int)i;
             break;
@@ -379,7 +425,17 @@ bool symbolic_logic_safety_remove_rule(safety_kb_t* kb, uint32_t rule_id) {
 const safety_rule_t* symbolic_logic_safety_get_rule(const safety_kb_t* kb, uint32_t rule_id) {
     if (!kb || rule_id == 0) return NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_safety_heartbeat("symbolic_log_get_rule", 0.0f);
+
+
     for (uint32_t i = 0; i < kb->num_rules; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && kb->num_rules > 256) {
+            symbolic_logic_safety_heartbeat("symbolic_log_loop",
+                             (float)(i + 1) / (float)kb->num_rules);
+        }
+
         if (kb->rules[i].rule_id == rule_id) {
             return &kb->rules[i];
         }
@@ -394,6 +450,10 @@ uint32_t symbolic_logic_safety_get_rules_by_domain(
     uint32_t max_rules)
 {
     if (!kb || !rules_out || max_rules == 0) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_safety_heartbeat("symbolic_log_get_rules_by_domain", 0.0f);
+
 
     uint32_t count = 0;
     for (uint32_t i = 0; i < kb->num_rules && count < max_rules; i++) {
@@ -480,6 +540,10 @@ bool symbolic_logic_safety_compile_rules(safety_kb_t* kb) {
         LOG_ERROR("symbolic_logic_safety_compile_rules: kb is NULL");
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_safety_heartbeat("symbolic_log_compile_rules", 0.0f);
+
+
     if (kb->is_locked) {
         LOG_ERROR("symbolic_logic_safety_compile_rules: KB is locked");
         return false;
@@ -489,6 +553,12 @@ bool symbolic_logic_safety_compile_rules(safety_kb_t* kb) {
 
     // Compile each rule
     for (uint32_t i = 0; i < kb->num_rules; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && kb->num_rules > 256) {
+            symbolic_logic_safety_heartbeat("symbolic_log_loop",
+                             (float)(i + 1) / (float)kb->num_rules);
+        }
+
         compile_rule_to_fol(&kb->rules[i]);
         LOG_DEBUG("Compiled rule %u: %s", kb->rules[i].rule_id, kb->rules[i].fol_representation);
     }
@@ -516,6 +586,10 @@ bool symbolic_logic_safety_lock(safety_kb_t* kb) {
         LOG_ERROR("symbolic_logic_safety_lock: KB must be compiled before locking");
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_safety_heartbeat("symbolic_log_lock", 0.0f);
+
+
     if (kb->is_locked) {
         LOG_WARN("symbolic_logic_safety_lock: KB is already locked");
         return true;
@@ -540,6 +614,10 @@ bool symbolic_logic_safety_lock(safety_kb_t* kb) {
 
 bool symbolic_logic_safety_is_locked(const safety_kb_t* kb) {
     if (!kb) return false;
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_safety_heartbeat("symbolic_log_is_locked", 0.0f);
+
+
     return kb->is_locked;
 }
 
@@ -556,6 +634,10 @@ bool symbolic_logic_safety_verify_integrity(const safety_kb_t* kb) {
         LOG_ERROR("symbolic_logic_safety_verify_integrity: hash not computed (not compiled)");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_safety_heartbeat("symbolic_log_verify_integrity", 0.0f);
+
 
     g_stats.integrity_checks++;
 
@@ -578,6 +660,10 @@ bool symbolic_logic_safety_get_hash(const safety_kb_t* kb, uint8_t* hash_out) {
     if (!kb || !hash_out) return false;
     if (!kb->hash_computed) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_safety_heartbeat("symbolic_log_get_hash", 0.0f);
+
+
     memcpy(hash_out, kb->integrity_hash, SAFETY_HASH_SIZE);
     return true;
 }
@@ -591,6 +677,12 @@ bool symbolic_logic_safety_get_hash(const safety_kb_t* kb, uint8_t* hash_out) {
  */
 static const char* find_string_field(const safety_action_context_t* ctx, const char* key) {
     for (uint32_t i = 0; i < ctx->num_string_fields; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->num_string_fields > 256) {
+            symbolic_logic_safety_heartbeat("symbolic_log_loop",
+                             (float)(i + 1) / (float)ctx->num_string_fields);
+        }
+
         if (strcmp(ctx->string_fields[i].key, key) == 0) {
             return ctx->string_fields[i].value;
         }
@@ -603,6 +695,12 @@ static const char* find_string_field(const safety_action_context_t* ctx, const c
  */
 static bool find_numeric_field(const safety_action_context_t* ctx, const char* key, float* value_out) {
     for (uint32_t i = 0; i < ctx->num_numeric_fields; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->num_numeric_fields > 256) {
+            symbolic_logic_safety_heartbeat("symbolic_log_loop",
+                             (float)(i + 1) / (float)ctx->num_numeric_fields);
+        }
+
         if (strcmp(ctx->numeric_fields[i].key, key) == 0) {
             *value_out = ctx->numeric_fields[i].value;
             return true;
@@ -741,6 +839,12 @@ static bool evaluate_rule_conditions(const safety_rule_t* rule, const safety_act
     }
 
     for (uint32_t i = 0; i < rule->num_conditions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && rule->num_conditions > 256) {
+            symbolic_logic_safety_heartbeat("symbolic_log_loop",
+                             (float)(i + 1) / (float)rule->num_conditions);
+        }
+
         if (!evaluate_condition(&rule->conditions[i], ctx)) {
             return false;  // AND logic - any failure means rule doesn't match
         }
@@ -771,6 +875,10 @@ bool symbolic_logic_safety_evaluate(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_safety_heartbeat("symbolic_log_evaluate", 0.0f);
+
+
     uint64_t start_time = nimcp_time_monotonic_us();
 
     // Initialize result
@@ -800,6 +908,12 @@ bool symbolic_logic_safety_evaluate(
 
     // Forward chaining evaluation over all rules
     for (uint32_t i = 0; i < kb->num_rules; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && kb->num_rules > 256) {
+            symbolic_logic_safety_heartbeat("symbolic_log_loop",
+                             (float)(i + 1) / (float)kb->num_rules);
+        }
+
         const safety_rule_t* rule = &kb->rules[i];
 
         // Skip disabled rules
@@ -896,6 +1010,10 @@ bool symbolic_logic_safety_evaluate(
 void symbolic_logic_safety_free_evaluation(safety_evaluation_t* result) {
     if (!result) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_safety_heartbeat("symbolic_log_free_evaluation", 0.0f);
+
+
     if (result->triggered_rule_ids) {
         nimcp_free(result->triggered_rule_ids);
         result->triggered_rule_ids = NULL;
@@ -909,6 +1027,10 @@ void symbolic_logic_safety_free_evaluation(safety_evaluation_t* result) {
 
 bool symbolic_logic_safety_get_stats(const safety_kb_t* kb, safety_stats_t* stats) {
     if (!kb || !stats) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_safety_heartbeat("symbolic_log_get_stats", 0.0f);
+
 
     memset(stats, 0, sizeof(safety_stats_t));
 
@@ -939,6 +1061,10 @@ bool symbolic_logic_safety_get_stats(const safety_kb_t* kb, safety_stats_t* stat
 
 void symbolic_logic_safety_reset_stats(safety_kb_t* kb) {
     if (!kb) return;
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_safety_heartbeat("symbolic_log_reset_stats", 0.0f);
+
+
     memset(&g_stats, 0, sizeof(g_stats));
     LOG_DEBUG("Safety statistics reset");
 }
@@ -949,6 +1075,10 @@ void symbolic_logic_safety_reset_stats(safety_kb_t* kb) {
 
 void symbolic_logic_safety_init_rule(safety_rule_t* rule) {
     if (!rule) return;
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_safety_heartbeat("symbolic_log_init_rule", 0.0f);
+
+
     memset(rule, 0, sizeof(safety_rule_t));
     rule->enabled = true;
     rule->priority = 0.5f;
@@ -956,6 +1086,10 @@ void symbolic_logic_safety_init_rule(safety_rule_t* rule) {
 
 void symbolic_logic_safety_init_context(safety_action_context_t* context) {
     if (!context) return;
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_safety_heartbeat("symbolic_log_init_context", 0.0f);
+
+
     memset(context, 0, sizeof(safety_action_context_t));
     context->timestamp = nimcp_time_monotonic_ms();
 }
@@ -967,6 +1101,10 @@ bool symbolic_logic_safety_context_add_string(
 {
     if (!context || !key || !value) return false;
     if (context->num_string_fields >= 32) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_safety_heartbeat("symbolic_log_context_add_string", 0.0f);
+
 
     uint32_t idx = context->num_string_fields;
     strncpy(context->string_fields[idx].key, key, sizeof(context->string_fields[idx].key) - 1);
@@ -984,6 +1122,10 @@ bool symbolic_logic_safety_context_add_numeric(
     if (!context || !key) return false;
     if (context->num_numeric_fields >= 16) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_safety_heartbeat("symbolic_log_context_add_numeric", 0.0f);
+
+
     uint32_t idx = context->num_numeric_fields;
     strncpy(context->numeric_fields[idx].key, key, sizeof(context->numeric_fields[idx].key) - 1);
     context->numeric_fields[idx].value = value;
@@ -995,6 +1137,10 @@ bool symbolic_logic_safety_context_add_numeric(
 void symbolic_logic_safety_print_rule(const safety_rule_t* rule) {
     if (!rule) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_safety_heartbeat("symbolic_log_print_rule", 0.0f);
+
+
     LOG_DEBUG("Safety Rule [%u]: %s", rule->rule_id, rule->name);
     LOG_DEBUG("  Description: %s", rule->description);
     LOG_DEBUG("  Domain: %s, Severity: %s, Action: %s",
@@ -1005,6 +1151,12 @@ void symbolic_logic_safety_print_rule(const safety_rule_t* rule) {
     LOG_DEBUG("  Conditions (%u):", rule->num_conditions);
 
     for (uint32_t i = 0; i < rule->num_conditions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && rule->num_conditions > 256) {
+            symbolic_logic_safety_heartbeat("symbolic_log_loop",
+                             (float)(i + 1) / (float)rule->num_conditions);
+        }
+
         const safety_condition_t* cond = &rule->conditions[i];
         LOG_DEBUG("    [%u] %s%s %s '%s'",
                   i,
@@ -1022,6 +1174,10 @@ void symbolic_logic_safety_print_rule(const safety_rule_t* rule) {
 void symbolic_logic_safety_print_evaluation(const safety_evaluation_t* result) {
     if (!result) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_safety_heartbeat("symbolic_log_print_evaluation", 0.0f);
+
+
     LOG_DEBUG("Safety Evaluation Result:");
     LOG_DEBUG("  Action: %s", safety_action_name(result->action));
     LOG_DEBUG("  Max Severity: %s", safety_severity_name(result->max_severity));
@@ -1035,6 +1191,12 @@ void symbolic_logic_safety_print_evaluation(const safety_evaluation_t* result) {
     if (result->num_triggered > 0 && result->triggered_rule_ids) {
         LOG_DEBUG("  Triggered Rule IDs:");
         for (uint32_t i = 0; i < result->num_triggered; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && result->num_triggered > 256) {
+                symbolic_logic_safety_heartbeat("symbolic_log_loop",
+                                 (float)(i + 1) / (float)result->num_triggered);
+            }
+
             LOG_DEBUG("    - %u", result->triggered_rule_ids[i]);
         }
     }

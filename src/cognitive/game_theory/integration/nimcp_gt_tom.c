@@ -44,7 +44,7 @@ static nimcp_health_agent_t* g_gt_tom_health_agent = NULL;
  * @brief Set health agent for gt_tom heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void gt_tom_set_health_agent(nimcp_health_agent_t* agent) {
+void gt_tom_set_health_agent(nimcp_health_agent_t* agent) {
     g_gt_tom_health_agent = agent;
 }
 
@@ -163,6 +163,10 @@ static void predict_action_internal(nimcp_gt_tom_t ctx, const tom_opponent_recor
 //=============================================================================
 
 nimcp_gt_tom_config_t nimcp_gt_tom_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_tom_heartbeat("gt_tom_gt_tom_default_confi", 0.0f);
+
+
     nimcp_gt_tom_config_t config = {
         // Uniform priors
         .prior_cooperative = 0.2f,
@@ -191,6 +195,10 @@ nimcp_gt_tom_config_t nimcp_gt_tom_default_config(void) {
 }
 
 nimcp_gt_tom_t nimcp_gt_tom_create(const nimcp_gt_tom_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_tom_heartbeat("gt_tom_gt_tom_create", 0.0f);
+
+
     nimcp_gt_tom_t ctx = nimcp_calloc(1, sizeof(struct nimcp_gt_tom_struct));
     if (!ctx) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
@@ -208,6 +216,12 @@ nimcp_gt_tom_t nimcp_gt_tom_create(const nimcp_gt_tom_config_t* config) {
 
     // Initialize all opponent slots as inactive
     for (uint32_t i = 0; i < NIMCP_TOM_MAX_OPPONENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && NIMCP_TOM_MAX_OPPONENTS > 256) {
+            gt_tom_heartbeat("gt_tom_loop",
+                             (float)(i + 1) / (float)NIMCP_TOM_MAX_OPPONENTS);
+        }
+
         ctx->opponents[i].active = false;
         ctx->opponents[i].id = NIMCP_GT_INVALID_PLAYER;
     }
@@ -232,6 +246,10 @@ void nimcp_gt_tom_destroy(nimcp_gt_tom_t ctx) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_tom_heartbeat("gt_tom_gt_tom_destroy", 0.0f);
+
+
     ctx->active = false;
 
     // Destroy mutex
@@ -248,6 +266,12 @@ void nimcp_gt_tom_destroy(nimcp_gt_tom_t ctx) {
 
 static tom_opponent_record_t* find_opponent(nimcp_gt_tom_t ctx, nimcp_player_id_t id) {
     for (uint32_t i = 0; i < NIMCP_TOM_MAX_OPPONENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && NIMCP_TOM_MAX_OPPONENTS > 256) {
+            gt_tom_heartbeat("gt_tom_loop",
+                             (float)(i + 1) / (float)NIMCP_TOM_MAX_OPPONENTS);
+        }
+
         if (ctx->opponents[i].active && ctx->opponents[i].id == id) {
             return &ctx->opponents[i];
         }
@@ -264,6 +288,12 @@ static tom_opponent_record_t* get_or_create_opponent(nimcp_gt_tom_t ctx, nimcp_p
 
     // Find empty slot
     for (uint32_t i = 0; i < NIMCP_TOM_MAX_OPPONENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && NIMCP_TOM_MAX_OPPONENTS > 256) {
+            gt_tom_heartbeat("gt_tom_loop",
+                             (float)(i + 1) / (float)NIMCP_TOM_MAX_OPPONENTS);
+        }
+
         if (!ctx->opponents[i].active) {
             record = &ctx->opponents[i];
             reset_opponent_record(ctx, record);
@@ -314,6 +344,12 @@ static void apply_decay(nimcp_gt_tom_t ctx, tom_opponent_record_t* record) {
 
     float decay = 1.0f - ctx->config.decay_rate;
     for (uint32_t i = 0; i < record->history_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && record->history_count > 256) {
+            gt_tom_heartbeat("gt_tom_loop",
+                             (float)(i + 1) / (float)record->history_count);
+        }
+
         record->history[i].weight *= decay;
         if (record->history[i].weight < EPSILON) {
             record->history[i].valid = false;
@@ -324,6 +360,12 @@ static void apply_decay(nimcp_gt_tom_t ctx, tom_opponent_record_t* record) {
 static float compute_entropy(const float* probs, uint32_t n) {
     float entropy = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            gt_tom_heartbeat("gt_tom_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         if (probs[i] > EPSILON) {
             entropy -= probs[i] * logf(probs[i]) * LOG2_E;
         }
@@ -334,15 +376,33 @@ static float compute_entropy(const float* probs, uint32_t n) {
 static void normalize_probs(float* probs, uint32_t n) {
     float sum = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            gt_tom_heartbeat("gt_tom_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         sum += probs[i];
     }
     if (sum > EPSILON) {
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                gt_tom_heartbeat("gt_tom_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             probs[i] /= sum;
         }
     } else {
         // Uniform distribution if all zero
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                gt_tom_heartbeat("gt_tom_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             probs[i] = 1.0f / (float)n;
         }
     }
@@ -414,6 +474,12 @@ static void update_type_distribution(nimcp_gt_tom_t ctx, tom_opponent_record_t* 
     float posteriors[NIMCP_TOM_NUM_OPPONENT_TYPES];
 
     for (uint32_t t = 0; t < NIMCP_TOM_NUM_OPPONENT_TYPES; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && NIMCP_TOM_NUM_OPPONENT_TYPES > 256) {
+            gt_tom_heartbeat("gt_tom_loop",
+                             (float)(t + 1) / (float)NIMCP_TOM_NUM_OPPONENT_TYPES);
+        }
+
         float likelihood = compute_type_likelihood(record, (nimcp_opponent_type_t)t);
         posteriors[t] = likelihood * record->type_probs[t];
     }
@@ -423,6 +489,12 @@ static void update_type_distribution(nimcp_gt_tom_t ctx, tom_opponent_record_t* 
     // Blend with learning rate
     float lr = ctx->config.learning_rate;
     for (uint32_t t = 0; t < NIMCP_TOM_NUM_OPPONENT_TYPES; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && NIMCP_TOM_NUM_OPPONENT_TYPES > 256) {
+            gt_tom_heartbeat("gt_tom_loop",
+                             (float)(t + 1) / (float)NIMCP_TOM_NUM_OPPONENT_TYPES);
+        }
+
         record->type_probs[t] = (1.0f - lr) * record->type_probs[t] + lr * posteriors[t];
     }
 
@@ -430,6 +502,12 @@ static void update_type_distribution(nimcp_gt_tom_t ctx, tom_opponent_record_t* 
     float max_prob = 0.0f;
     record->most_likely_type = NIMCP_OPPONENT_UNKNOWN;
     for (uint32_t t = 0; t < NIMCP_TOM_NUM_OPPONENT_TYPES; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && NIMCP_TOM_NUM_OPPONENT_TYPES > 256) {
+            gt_tom_heartbeat("gt_tom_loop",
+                             (float)(t + 1) / (float)NIMCP_TOM_NUM_OPPONENT_TYPES);
+        }
+
         if (record->type_probs[t] > max_prob) {
             max_prob = record->type_probs[t];
             record->most_likely_type = (nimcp_opponent_type_t)t;
@@ -454,6 +532,12 @@ static void infer_preferences_internal(const tom_opponent_record_t* record, nimc
 
     // Action preferences from frequency
     for (uint32_t a = 0; a < NIMCP_TOM_MAX_ACTIONS; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && NIMCP_TOM_MAX_ACTIONS > 256) {
+            gt_tom_heartbeat("gt_tom_loop",
+                             (float)(a + 1) / (float)NIMCP_TOM_MAX_ACTIONS);
+        }
+
         prefs->action_preferences[a] = (float)record->action_counts[a] / (float)record->total_action_count;
     }
 
@@ -482,12 +566,24 @@ static void infer_mental_state_internal(nimcp_gt_tom_t ctx, const tom_opponent_r
     // Beliefs about my type (mirror of their type distribution)
     // Assume opponent projects their type onto me
     for (uint32_t t = 0; t < NIMCP_TOM_NUM_OPPONENT_TYPES; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && NIMCP_TOM_NUM_OPPONENT_TYPES > 256) {
+            gt_tom_heartbeat("gt_tom_loop",
+                             (float)(t + 1) / (float)NIMCP_TOM_NUM_OPPONENT_TYPES);
+        }
+
         state->believed_my_type[t] = record->type_probs[t];
     }
 
     // Beliefs about my next action (based on our correlation)
     float uniform = 1.0f / (float)NIMCP_TOM_MAX_ACTIONS;
     for (uint32_t a = 0; a < NIMCP_TOM_MAX_ACTIONS; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && NIMCP_TOM_MAX_ACTIONS > 256) {
+            gt_tom_heartbeat("gt_tom_loop",
+                             (float)(a + 1) / (float)NIMCP_TOM_MAX_ACTIONS);
+        }
+
         state->believed_my_next_action[a] = uniform;
     }
 
@@ -505,6 +601,12 @@ static void infer_mental_state_internal(nimcp_gt_tom_t ctx, const tom_opponent_r
     nimcp_opponent_preferences_t prefs;
     infer_preferences_internal(record, &prefs);
     for (uint32_t a = 0; a < NIMCP_TOM_MAX_ACTIONS; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && NIMCP_TOM_MAX_ACTIONS > 256) {
+            gt_tom_heartbeat("gt_tom_loop",
+                             (float)(a + 1) / (float)NIMCP_TOM_MAX_ACTIONS);
+        }
+
         state->intended_action[a] = prefs.action_preferences[a];
     }
 
@@ -512,6 +614,12 @@ static void infer_mental_state_internal(nimcp_gt_tom_t ctx, const tom_opponent_r
     float max_prob = 0.0f;
     state->most_likely_action = 0;
     for (uint32_t a = 0; a < NIMCP_TOM_MAX_ACTIONS; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && NIMCP_TOM_MAX_ACTIONS > 256) {
+            gt_tom_heartbeat("gt_tom_loop",
+                             (float)(a + 1) / (float)NIMCP_TOM_MAX_ACTIONS);
+        }
+
         if (state->intended_action[a] > max_prob) {
             max_prob = state->intended_action[a];
             state->most_likely_action = a;
@@ -540,6 +648,12 @@ static void predict_action_internal(nimcp_gt_tom_t ctx, const tom_opponent_recor
     float total_prob[NIMCP_TOM_MAX_ACTIONS] = {0};
 
     for (uint32_t t = 0; t < NIMCP_TOM_NUM_OPPONENT_TYPES; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && NIMCP_TOM_NUM_OPPONENT_TYPES > 256) {
+            gt_tom_heartbeat("gt_tom_loop",
+                             (float)(t + 1) / (float)NIMCP_TOM_NUM_OPPONENT_TYPES);
+        }
+
         float type_prob = record->type_probs[t];
         if (type_prob < EPSILON) continue;
 
@@ -552,6 +666,12 @@ static void predict_action_internal(nimcp_gt_tom_t ctx, const tom_opponent_recor
                 // Cooperative: prefer mutually beneficial actions
                 // Assume lower action indices are more cooperative
                 for (uint32_t a = 0; a < situation->num_available_actions; a++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((a & 0xFF) == 0 && situation->num_available_actions > 256) {
+                        gt_tom_heartbeat("gt_tom_loop",
+                                         (float)(a + 1) / (float)situation->num_available_actions);
+                    }
+
                     type_pred[a] = 1.0f / (1.0f + (float)a);
                 }
                 break;
@@ -559,6 +679,12 @@ static void predict_action_internal(nimcp_gt_tom_t ctx, const tom_opponent_recor
             case NIMCP_OPPONENT_COMPETITIVE:
                 // Competitive: maximize own payoff
                 for (uint32_t a = 0; a < situation->num_available_actions; a++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((a & 0xFF) == 0 && situation->num_available_actions > 256) {
+                        gt_tom_heartbeat("gt_tom_loop",
+                                         (float)(a + 1) / (float)situation->num_available_actions);
+                    }
+
                     type_pred[a] = situation->available_payoffs[a] + 1.0f;
                     if (type_pred[a] < 0.01f) type_pred[a] = 0.01f;
                 }
@@ -567,6 +693,12 @@ static void predict_action_internal(nimcp_gt_tom_t ctx, const tom_opponent_recor
             case NIMCP_OPPONENT_RANDOM:
                 // Random: uniform
                 for (uint32_t a = 0; a < situation->num_available_actions; a++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((a & 0xFF) == 0 && situation->num_available_actions > 256) {
+                        gt_tom_heartbeat("gt_tom_loop",
+                                         (float)(a + 1) / (float)situation->num_available_actions);
+                    }
+
                     type_pred[a] = 1.0f;
                 }
                 break;
@@ -578,6 +710,12 @@ static void predict_action_internal(nimcp_gt_tom_t ctx, const tom_opponent_recor
                 }
                 // Some noise
                 for (uint32_t a = 0; a < situation->num_available_actions; a++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((a & 0xFF) == 0 && situation->num_available_actions > 256) {
+                        gt_tom_heartbeat("gt_tom_loop",
+                                         (float)(a + 1) / (float)situation->num_available_actions);
+                    }
+
                     type_pred[a] += 0.1f;
                 }
                 break;
@@ -585,6 +723,12 @@ static void predict_action_internal(nimcp_gt_tom_t ctx, const tom_opponent_recor
             case NIMCP_OPPONENT_RATIONAL:
                 // Rational: Nash equilibrium behavior (approximate as mixed strategy)
                 for (uint32_t a = 0; a < situation->num_available_actions; a++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((a & 0xFF) == 0 && situation->num_available_actions > 256) {
+                        gt_tom_heartbeat("gt_tom_loop",
+                                         (float)(a + 1) / (float)situation->num_available_actions);
+                    }
+
                     type_pred[a] = 0.5f + 0.5f * situation->available_payoffs[a];
                     if (type_pred[a] < 0.01f) type_pred[a] = 0.01f;
                 }
@@ -594,6 +738,12 @@ static void predict_action_internal(nimcp_gt_tom_t ctx, const tom_opponent_recor
             default:
                 // Unknown: use empirical frequency
                 for (uint32_t a = 0; a < NIMCP_TOM_MAX_ACTIONS; a++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((a & 0xFF) == 0 && NIMCP_TOM_MAX_ACTIONS > 256) {
+                        gt_tom_heartbeat("gt_tom_loop",
+                                         (float)(a + 1) / (float)NIMCP_TOM_MAX_ACTIONS);
+                    }
+
                     type_pred[a] = (float)record->action_counts[a] + 0.1f;
                 }
                 break;
@@ -603,6 +753,12 @@ static void predict_action_internal(nimcp_gt_tom_t ctx, const tom_opponent_recor
 
         // Add weighted by type probability
         for (uint32_t a = 0; a < NIMCP_TOM_MAX_ACTIONS; a++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((a & 0xFF) == 0 && NIMCP_TOM_MAX_ACTIONS > 256) {
+                gt_tom_heartbeat("gt_tom_loop",
+                                 (float)(a + 1) / (float)NIMCP_TOM_MAX_ACTIONS);
+            }
+
             total_prob[a] += type_prob * type_pred[a];
         }
     }
@@ -616,6 +772,12 @@ static void predict_action_internal(nimcp_gt_tom_t ctx, const tom_opponent_recor
     float max_prob = 0.0f;
     prediction->most_likely_action = 0;
     for (uint32_t a = 0; a < NIMCP_TOM_MAX_ACTIONS; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && NIMCP_TOM_MAX_ACTIONS > 256) {
+            gt_tom_heartbeat("gt_tom_loop",
+                             (float)(a + 1) / (float)NIMCP_TOM_MAX_ACTIONS);
+        }
+
         if (total_prob[a] > max_prob) {
             max_prob = total_prob[a];
             prediction->most_likely_action = a;
@@ -630,6 +792,12 @@ static void predict_action_internal(nimcp_gt_tom_t ctx, const tom_opponent_recor
     // Expected payoff given prediction
     prediction->expected_payoff = 0.0f;
     for (uint32_t a = 0; a < situation->num_available_actions; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && situation->num_available_actions > 256) {
+            gt_tom_heartbeat("gt_tom_loop",
+                             (float)(a + 1) / (float)situation->num_available_actions);
+        }
+
         prediction->expected_payoff += total_prob[a] * situation->available_payoffs[a];
     }
 
@@ -646,6 +814,10 @@ nimcp_error_t nimcp_gt_tom_observe_action(
     uint32_t action,
     const nimcp_action_context_t* context
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_tom_heartbeat("gt_tom_gt_tom_observe_actio", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx && context, NIMCP_ERROR_INVALID_PARAM, "ctx or context is NULL");
     NIMCP_CHECK_THROW(action < NIMCP_TOM_MAX_ACTIONS, NIMCP_ERROR_OUT_OF_RANGE, "action out of range");
     NIMCP_CHECK_THROW(ctx->active, NIMCP_ERROR_INVALID_STATE, "ctx is not active");
@@ -720,6 +892,10 @@ nimcp_error_t nimcp_gt_tom_update_beliefs(
     nimcp_gt_tom_t ctx,
     nimcp_player_id_t opponent_id
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_tom_heartbeat("gt_tom_gt_tom_update_belief", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
     NIMCP_CHECK_THROW(ctx->active, NIMCP_ERROR_INVALID_STATE, "ctx is not active");
 
@@ -761,6 +937,10 @@ nimcp_error_t nimcp_gt_tom_predict_action(
     const nimcp_action_context_t* situation,
     nimcp_action_prediction_t* prediction
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_tom_heartbeat("gt_tom_gt_tom_predict_actio", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx && situation && prediction, NIMCP_ERROR_INVALID_PARAM, "ctx, situation, or prediction is NULL");
     NIMCP_CHECK_THROW(ctx->active, NIMCP_ERROR_INVALID_STATE, "ctx is not active");
 
@@ -795,6 +975,10 @@ nimcp_error_t nimcp_gt_tom_get_type_distribution(
     nimcp_player_id_t opponent_id,
     nimcp_type_distribution_t* dist
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_tom_heartbeat("gt_tom_gt_tom_get_type_dist", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx && dist, NIMCP_ERROR_INVALID_PARAM, "ctx or dist is NULL");
     NIMCP_CHECK_THROW(ctx->active, NIMCP_ERROR_INVALID_STATE, "ctx is not active");
 
@@ -834,6 +1018,10 @@ nimcp_error_t nimcp_gt_tom_infer_preferences(
     nimcp_player_id_t opponent_id,
     nimcp_opponent_preferences_t* preferences
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_tom_heartbeat("gt_tom_gt_tom_infer_prefere", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx && preferences, NIMCP_ERROR_INVALID_PARAM, "ctx or preferences is NULL");
     NIMCP_CHECK_THROW(ctx->active, NIMCP_ERROR_INVALID_STATE, "ctx is not active");
 
@@ -863,6 +1051,10 @@ nimcp_error_t nimcp_gt_tom_infer_mental_state(
     nimcp_player_id_t opponent_id,
     nimcp_mental_state_t* state
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_tom_heartbeat("gt_tom_gt_tom_infer_mental_", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx && state, NIMCP_ERROR_INVALID_PARAM, "ctx or state is NULL");
     NIMCP_CHECK_THROW(ctx->active, NIMCP_ERROR_INVALID_STATE, "ctx is not active");
 
@@ -896,6 +1088,10 @@ nimcp_error_t nimcp_gt_tom_what_do_they_think_i_will_do(
     nimcp_player_id_t opponent_id,
     nimcp_action_prediction_t* my_prediction
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_tom_heartbeat("gt_tom_gt_tom_what_do_they_", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx && my_prediction, NIMCP_ERROR_INVALID_PARAM, "ctx or my_prediction is NULL");
     NIMCP_CHECK_THROW(ctx->active, NIMCP_ERROR_INVALID_STATE, "ctx is not active");
 
@@ -923,6 +1119,12 @@ nimcp_error_t nimcp_gt_tom_what_do_they_think_i_will_do(
     float max_prob = 0.0f;
     my_prediction->most_likely_action = 0;
     for (uint32_t a = 0; a < NIMCP_TOM_MAX_ACTIONS; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && NIMCP_TOM_MAX_ACTIONS > 256) {
+            gt_tom_heartbeat("gt_tom_loop",
+                             (float)(a + 1) / (float)NIMCP_TOM_MAX_ACTIONS);
+        }
+
         if (my_prediction->action_probabilities[a] > max_prob) {
             max_prob = my_prediction->action_probabilities[a];
             my_prediction->most_likely_action = a;
@@ -948,6 +1150,10 @@ nimcp_error_t nimcp_gt_tom_best_response_to_beliefs(
     nimcp_player_id_t opponent_id,
     uint32_t* my_action
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_tom_heartbeat("gt_tom_gt_tom_best_response", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx && my_action, NIMCP_ERROR_INVALID_PARAM, "ctx or my_action is NULL");
     NIMCP_CHECK_THROW(ctx->active, NIMCP_ERROR_INVALID_STATE, "ctx is not active");
 
@@ -1008,6 +1214,10 @@ nimcp_error_t nimcp_gt_tom_reset_opponent(
     nimcp_gt_tom_t ctx,
     nimcp_player_id_t opponent_id
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_tom_heartbeat("gt_tom_gt_tom_reset_opponen", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     if (ctx->thread_safe && ctx->mutex) {
@@ -1041,6 +1251,10 @@ float nimcp_gt_tom_get_confidence(
     if (!ctx || !ctx->active) {
         return -1.0f;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_tom_heartbeat("gt_tom_gt_tom_get_confidenc", 0.0f);
+
 
     if (ctx->thread_safe && ctx->mutex) {
         nimcp_mutex_lock(ctx->mutex);
@@ -1079,6 +1293,10 @@ nimcp_error_t nimcp_gt_tom_get_opponent_belief(
     nimcp_player_id_t opponent_id,
     nimcp_opponent_belief_t* belief
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_tom_heartbeat("gt_tom_gt_tom_get_opponent_", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx && belief, NIMCP_ERROR_INVALID_PARAM, "ctx or belief is NULL");
 
     if (ctx->thread_safe && ctx->mutex) {
@@ -1136,6 +1354,10 @@ uint32_t nimcp_gt_tom_get_opponent_count(nimcp_gt_tom_t ctx) {
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_tom_heartbeat("gt_tom_gt_tom_get_opponent_", 0.0f);
+
+
     if (ctx->thread_safe && ctx->mutex) {
         nimcp_mutex_lock(ctx->mutex);
     }
@@ -1156,6 +1378,10 @@ bool nimcp_gt_tom_is_opponent_tracked(
     if (!ctx) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_tom_heartbeat("gt_tom_gt_tom_is_opponent_t", 0.0f);
+
 
     if (ctx->thread_safe && ctx->mutex) {
         nimcp_mutex_lock(ctx->mutex);
@@ -1201,9 +1427,19 @@ const char* nimcp_opponent_type_name(nimcp_opponent_type_t type) {
 int tom_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_tom_heartbeat("gt_tom_tom_query_self_knowl", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "ToM_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                gt_tom_heartbeat("gt_tom_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG(LOG_MODULE, "ToM self-knowledge: %s", self->observations[i]);
         }
     }

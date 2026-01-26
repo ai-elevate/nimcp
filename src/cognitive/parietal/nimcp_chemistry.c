@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_chemistry_health_agent = NULL;
  * @brief Set health agent for chemistry heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void chemistry_set_health_agent(nimcp_health_agent_t* agent) {
+void chemistry_set_health_agent(nimcp_health_agent_t* agent) {
     g_chemistry_health_agent = agent;
 }
 
@@ -188,6 +188,10 @@ static int parse_element_symbol(const char** ptr, char* symbol, size_t max_len) 
  * ============================================================================ */
 
 chemistry_config_t chemistry_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_default_config", 0.0f);
+
+
     chemistry_config_t config = {
         .enable_3d_coordinates = false,
         .enable_thermodynamics = true,
@@ -206,6 +210,10 @@ bool chemistry_validate_config(const chemistry_config_t* config) {
         set_chemistry_error("Null config");
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_validate_config", 0.0f);
+
+
     if (config->temperature_k <= 0.0f) {
         set_chemistry_error("Invalid temperature");
         return false;
@@ -218,10 +226,18 @@ bool chemistry_validate_config(const chemistry_config_t* config) {
 }
 
 chemistry_t* chemistry_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_create", 0.0f);
+
+
     return chemistry_create_custom(NULL);
 }
 
 chemistry_t* chemistry_create_custom(const chemistry_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_create_custom", 0.0f);
+
+
     chemistry_config_t cfg = config ? *config : chemistry_default_config();
 
     if (!chemistry_validate_config(&cfg)) {
@@ -254,6 +270,10 @@ chemistry_t* chemistry_create_custom(const chemistry_config_t* config) {
 void chemistry_destroy(chemistry_t* chem) {
     if (!chem) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_destroy", 0.0f);
+
+
     if (chem->lock) {
         nimcp_mutex_free(chem->lock);
     }
@@ -270,6 +290,10 @@ int chemistry_get_element(
     element_properties_t* props
 ) {
     if (!chem || !props) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_get_element", 0.0f);
+
+
     if (atomic_number == 0 || atomic_number >= NUM_KNOWN_ELEMENTS) {
         set_chemistry_error("Invalid atomic number");
         return -1;
@@ -286,6 +310,10 @@ int chemistry_get_element_by_symbol(
     element_properties_t* props
 ) {
     if (!chem || !symbol || !props) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_get_element_by_symbo", 0.0f);
+
 
     int idx = find_element_by_symbol(symbol);
     if (idx < 0) {
@@ -307,6 +335,10 @@ bool chemistry_can_form_ionic_bond(
     if (element1 == 0 || element1 >= NUM_KNOWN_ELEMENTS) return false;
     if (element2 == 0 || element2 >= NUM_KNOWN_ELEMENTS) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_can_form_ionic_bond", 0.0f);
+
+
     float en1 = PERIODIC_TABLE[element1].electronegativity;
     float en2 = PERIODIC_TABLE[element2].electronegativity;
 
@@ -322,6 +354,10 @@ bond_type_t chemistry_predict_bond_type(
     if (!chem) return BOND_SINGLE;
     if (element1 == 0 || element1 >= NUM_KNOWN_ELEMENTS) return BOND_SINGLE;
     if (element2 == 0 || element2 >= NUM_KNOWN_ELEMENTS) return BOND_SINGLE;
+
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_predict_bond_type", 0.0f);
+
 
     float en1 = PERIODIC_TABLE[element1].electronegativity;
     float en2 = PERIODIC_TABLE[element2].electronegativity;
@@ -419,6 +455,10 @@ int chemistry_parse_molecule(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_parse_molecule", 0.0f);
+
+
     nimcp_mutex_lock(chem->lock);
     int result = parse_molecule_unlocked(chem, formula, molecule);
     nimcp_mutex_unlock(chem->lock);
@@ -431,6 +471,10 @@ float chemistry_molar_mass(
     const molecule_t* molecule
 ) {
     if (!chem || !molecule) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_molar_mass", 0.0f);
+
+
     return molecule->molar_mass;
 }
 
@@ -443,8 +487,18 @@ molecular_geometry_t chemistry_predict_geometry(
     if (central_atom_idx >= molecule->num_atoms) return GEOMETRY_LINEAR;
 
     /* Count bonds to central atom */
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_predict_geometry", 0.0f);
+
+
     uint32_t bond_count = 0;
     for (uint32_t i = 0; i < molecule->num_bonds; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && molecule->num_bonds > 256) {
+            chemistry_heartbeat("chemistry_loop",
+                             (float)(i + 1) / (float)molecule->num_bonds);
+        }
+
         if (molecule->bonds[i].atom1_idx == central_atom_idx ||
             molecule->bonds[i].atom2_idx == central_atom_idx) {
             bond_count++;
@@ -477,8 +531,18 @@ uint32_t chemistry_count_element(
 ) {
     if (!molecule) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_count_element", 0.0f);
+
+
     uint32_t count = 0;
     for (uint32_t i = 0; i < molecule->num_atoms; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && molecule->num_atoms > 256) {
+            chemistry_heartbeat("chemistry_loop",
+                             (float)(i + 1) / (float)molecule->num_atoms);
+        }
+
         if (molecule->atoms[i].element == atomic_number) {
             count++;
         }
@@ -492,6 +556,10 @@ int chemistry_molecule_to_string(
     size_t buffer_size
 ) {
     if (!molecule || !buffer || buffer_size == 0) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_molecule_to_string", 0.0f);
+
 
     strncpy(buffer, molecule->formula, buffer_size - 1);
     buffer[buffer_size - 1] = '\0';
@@ -564,6 +632,10 @@ int chemistry_parse_reaction(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_parse_reaction", 0.0f);
+
+
     nimcp_mutex_lock(chem->lock);
 
     memset(reaction, 0, sizeof(reaction_t));
@@ -614,20 +686,48 @@ bool chemistry_is_balanced(const reaction_t* reaction) {
     if (!reaction) return false;
 
     /* Count atoms on each side */
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_is_balanced", 0.0f);
+
+
     uint32_t reactant_counts[CHEMISTRY_NUM_ELEMENTS + 1] = {0};
     uint32_t product_counts[CHEMISTRY_NUM_ELEMENTS + 1] = {0};
 
     for (uint32_t i = 0; i < reaction->num_reactants; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && reaction->num_reactants > 256) {
+            chemistry_heartbeat("chemistry_loop",
+                             (float)(i + 1) / (float)reaction->num_reactants);
+        }
+
         const species_t* sp = &reaction->reactants[i];
         for (uint32_t j = 0; j < sp->molecule.num_atoms; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && sp->molecule.num_atoms > 256) {
+                chemistry_heartbeat("chemistry_loop",
+                                 (float)(j + 1) / (float)sp->molecule.num_atoms);
+            }
+
             uint8_t elem = sp->molecule.atoms[j].element;
             reactant_counts[elem] += sp->coefficient;
         }
     }
 
     for (uint32_t i = 0; i < reaction->num_products; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && reaction->num_products > 256) {
+            chemistry_heartbeat("chemistry_loop",
+                             (float)(i + 1) / (float)reaction->num_products);
+        }
+
         const species_t* sp = &reaction->products[i];
         for (uint32_t j = 0; j < sp->molecule.num_atoms; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && sp->molecule.num_atoms > 256) {
+                chemistry_heartbeat("chemistry_loop",
+                                 (float)(j + 1) / (float)sp->molecule.num_atoms);
+            }
+
             uint8_t elem = sp->molecule.atoms[j].element;
             product_counts[elem] += sp->coefficient;
         }
@@ -647,6 +747,10 @@ bool chemistry_balance_equation(
     reaction_t* reaction
 ) {
     if (!chem || !reaction) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_balance_equation", 0.0f);
+
 
     nimcp_mutex_lock(chem->lock);
 
@@ -700,6 +804,10 @@ reaction_type_t chemistry_classify_reaction(
     if (!chem || !reaction) return REACTION_UNKNOWN;
 
     /* Simple classification heuristics */
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_classify_reaction", 0.0f);
+
+
     if (reaction->num_reactants == 2 && reaction->num_products == 1) {
         return REACTION_SYNTHESIS;
     }
@@ -709,10 +817,22 @@ reaction_type_t chemistry_classify_reaction(
     if (reaction->num_reactants == 2 && reaction->num_products == 2) {
         /* Check for O2 reactant (combustion) */
         for (uint32_t i = 0; i < reaction->num_reactants; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && reaction->num_reactants > 256) {
+                chemistry_heartbeat("chemistry_loop",
+                                 (float)(i + 1) / (float)reaction->num_reactants);
+            }
+
             if (strcmp(reaction->reactants[i].molecule.formula, "O2") == 0) {
                 /* Check for CO2 and H2O products */
                 bool has_co2 = false, has_h2o = false;
                 for (uint32_t j = 0; j < reaction->num_products; j++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((j & 0xFF) == 0 && reaction->num_products > 256) {
+                        chemistry_heartbeat("chemistry_loop",
+                                         (float)(j + 1) / (float)reaction->num_products);
+                    }
+
                     if (strcmp(reaction->products[j].molecule.formula, "CO2") == 0)
                         has_co2 = true;
                     if (strcmp(reaction->products[j].molecule.formula, "H2O") == 0)
@@ -736,6 +856,10 @@ int chemistry_calculate_thermodynamics(
     if (!chem || !reaction) return -1;
 
     /* Placeholder - would need enthalpy of formation data */
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_calculate_thermodyna", 0.0f);
+
+
     reaction->enthalpy_kj = 0.0f;
     reaction->entropy_j_k = 0.0f;
     reaction->gibbs_free_energy_kj = 0.0f;
@@ -750,6 +874,10 @@ bool chemistry_is_spontaneous(
     if (!reaction) return false;
 
     /* G = H - TS */
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_is_spontaneous", 0.0f);
+
+
     float gibbs = reaction->enthalpy_kj * 1000.0f -
                   temperature_k * reaction->entropy_j_k;
 
@@ -774,6 +902,10 @@ int chemistry_calculate_stoichiometry(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_calculate_stoichiome", 0.0f);
+
+
     nimcp_mutex_lock(chem->lock);
 
     memset(result, 0, sizeof(stoichiometry_result_t));
@@ -784,6 +916,12 @@ int chemistry_calculate_stoichiometry(
 
     /* Calculate moles needed for reactants */
     for (uint32_t i = 0; i < reaction->num_reactants; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && reaction->num_reactants > 256) {
+            chemistry_heartbeat("chemistry_loop",
+                             (float)(i + 1) / (float)reaction->num_reactants);
+        }
+
         uint32_t coeff = reaction->reactants[i].coefficient;
         float moles = moles_per_coeff * (float)coeff;
         result->moles_needed[i] = moles;
@@ -793,6 +931,12 @@ int chemistry_calculate_stoichiometry(
 
     /* Calculate moles produced for products */
     for (uint32_t i = 0; i < reaction->num_products; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && reaction->num_products > 256) {
+            chemistry_heartbeat("chemistry_loop",
+                             (float)(i + 1) / (float)reaction->num_products);
+        }
+
         uint32_t coeff = reaction->products[i].coefficient;
         float moles = moles_per_coeff * (float)coeff;
         result->moles_produced[i] = moles;
@@ -819,10 +963,20 @@ uint32_t chemistry_find_limiting_reagent(
     if (!chem || !reaction || !reactant_moles) return 0;
     if (reaction->num_reactants == 0) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_find_limiting_reagen", 0.0f);
+
+
     float min_ratio = INFINITY;
     uint32_t limiting_idx = 0;
 
     for (uint32_t i = 0; i < reaction->num_reactants; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && reaction->num_reactants > 256) {
+            chemistry_heartbeat("chemistry_loop",
+                             (float)(i + 1) / (float)reaction->num_reactants);
+        }
+
         float coeff = (float)reaction->reactants[i].coefficient;
         float ratio = reactant_moles[i] / coeff;
         if (ratio < min_ratio) {
@@ -836,15 +990,27 @@ uint32_t chemistry_find_limiting_reagent(
 
 float chemistry_percent_yield(float theoretical_yield, float actual_yield) {
     if (theoretical_yield < EPSILON) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_percent_yield", 0.0f);
+
+
     return (actual_yield / theoretical_yield) * 100.0f;
 }
 
 float chemistry_moles_to_grams(float moles, float molar_mass) {
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_moles_to_grams", 0.0f);
+
+
     return moles * molar_mass;
 }
 
 float chemistry_grams_to_moles(float grams, float molar_mass) {
     if (molar_mass < EPSILON) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_grams_to_moles", 0.0f);
+
+
     return grams / molar_mass;
 }
 
@@ -860,6 +1026,10 @@ int chemistry_set_inflammation(chemistry_t* chem, float level) {
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_set_inflammation", 0.0f);
+
 
     nimcp_mutex_lock(chem->lock);
     chem->inflammation_level = clamp01(level);
@@ -877,6 +1047,10 @@ int chemistry_set_sleep_deprivation(chemistry_t* chem, float level) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_set_sleep_deprivatio", 0.0f);
+
+
     nimcp_mutex_lock(chem->lock);
     chem->sleep_deprivation_level = clamp01(level);
     nimcp_mutex_unlock(chem->lock);
@@ -890,6 +1064,10 @@ int chemistry_set_sleep_deprivation(chemistry_t* chem, float level) {
 
 int chemistry_get_stats(const chemistry_t* chem, chemistry_stats_t* stats) {
     if (!chem || !stats) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_get_stats", 0.0f);
+
 
     nimcp_mutex_lock(((chemistry_t*)chem)->lock);
 
@@ -914,6 +1092,10 @@ int chemistry_get_stats(const chemistry_t* chem, chemistry_stats_t* stats) {
 void chemistry_reset_stats(chemistry_t* chem) {
     if (!chem) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(chem->lock);
     chem->molecules_parsed = 0;
     chem->reactions_balanced = 0;
@@ -933,9 +1115,19 @@ const char* chemistry_get_last_error(void) {
 
 int chemistry_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    chemistry_heartbeat("chemistry_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Chemistry_Reasoning");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                chemistry_heartbeat("chemistry_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Module self-knowledge logged */
         }
     }

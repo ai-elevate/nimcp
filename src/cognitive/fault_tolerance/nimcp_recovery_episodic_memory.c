@@ -65,7 +65,7 @@ static nimcp_health_agent_t* g_recovery_episodic_memory_health_agent = NULL;
  * @brief Set health agent for recovery_episodic_memory heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void recovery_episodic_memory_set_health_agent(nimcp_health_agent_t* agent) {
+void recovery_episodic_memory_set_health_agent(nimcp_health_agent_t* agent) {
     g_recovery_episodic_memory_health_agent = agent;
 }
 
@@ -317,6 +317,12 @@ static void lsh_table_destroy(lsh_table_t* table)
 
     if (table->buckets) {
         for (uint32_t i = 0; i < table->num_buckets; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && table->num_buckets > 256) {
+                recovery_episodic_memory_heartbeat("recovery_epi_loop",
+                                 (float)(i + 1) / (float)table->num_buckets);
+            }
+
             lsh_bucket_destroy(&table->buckets[i]);
         }
         nimcp_free(table->buckets);
@@ -375,6 +381,12 @@ static void lsh_table_query(
         bucket->count : max_results;
 
     for (uint32_t i = 0; i < to_copy; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && to_copy > 256) {
+            recovery_episodic_memory_heartbeat("recovery_epi_loop",
+                             (float)(i + 1) / (float)to_copy);
+        }
+
         indices[*count] = bucket->episode_indices[i];
         (*count)++;
     }
@@ -391,6 +403,12 @@ static void lsh_table_clear(lsh_table_t* table)
     if (!table) return;
 
     for (uint32_t i = 0; i < table->num_buckets; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && table->num_buckets > 256) {
+            recovery_episodic_memory_heartbeat("recovery_epi_loop",
+                             (float)(i + 1) / (float)table->num_buckets);
+        }
+
         lsh_bucket_clear(&table->buckets[i]);
     }
 }
@@ -401,6 +419,10 @@ static void lsh_table_clear(lsh_table_t* table)
 
 episodic_memory_config_t episodic_memory_default_config(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    recovery_episodic_memory_heartbeat("recovery_epi_episodic_memory_defa", 0.0f);
+
+
     episodic_memory_config_t config = {0};
 
     config.max_episodes = EPISODIC_MEMORY_DEFAULT_CAPACITY;
@@ -420,6 +442,10 @@ episodic_memory_config_t episodic_memory_default_config(void)
 
 episodic_memory_t* episodic_memory_create_default(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    recovery_episodic_memory_heartbeat("recovery_epi_episodic_memory_crea", 0.0f);
+
+
     episodic_memory_config_t config = episodic_memory_default_config();
     return episodic_memory_create_custom(&config);
 }
@@ -434,6 +460,10 @@ episodic_memory_t* episodic_memory_create_custom(
     }
 
     // GUARD: Invalid capacity
+    /* Phase 8: Heartbeat at operation start */
+    recovery_episodic_memory_heartbeat("recovery_epi_episodic_memory_crea", 0.0f);
+
+
     if (config->max_episodes == 0) {
         LOG_ERROR("max_episodes cannot be 0");
         return NULL;
@@ -475,6 +505,12 @@ episodic_memory_t* episodic_memory_create_custom(
     // Initialize each LSH table
     uint32_t num_buckets = config->lsh_num_hashes;
     for (uint32_t i = 0; i < memory->num_lsh_tables; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && memory->num_lsh_tables > 256) {
+            recovery_episodic_memory_heartbeat("recovery_epi_loop",
+                             (float)(i + 1) / (float)memory->num_lsh_tables);
+        }
+
         memory->lsh_tables[i] = lsh_table_create(num_buckets);
 
         if (!memory->lsh_tables[i]) {
@@ -482,6 +518,12 @@ episodic_memory_t* episodic_memory_create_custom(
 
             // Cleanup already created tables
             for (uint32_t j = 0; j < i; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && i > 256) {
+                    recovery_episodic_memory_heartbeat("recovery_epi_loop",
+                                     (float)(j + 1) / (float)i);
+                }
+
                 lsh_table_destroy(memory->lsh_tables[j]);
             }
 
@@ -536,6 +578,10 @@ return memory;
 
 void episodic_memory_destroy(episodic_memory_t* memory)
 {
+    /* Phase 8: Heartbeat at operation start */
+    recovery_episodic_memory_heartbeat("recovery_epi_episodic_memory_dest", 0.0f);
+
+
     LOG_DEBUG("Destroying module");
     if (!memory) return;
 
@@ -548,6 +594,12 @@ void episodic_memory_destroy(episodic_memory_t* memory)
     // Free LSH tables
     if (memory->lsh_tables) {
         for (uint32_t i = 0; i < memory->num_lsh_tables; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && memory->num_lsh_tables > 256) {
+                recovery_episodic_memory_heartbeat("recovery_epi_loop",
+                                 (float)(i + 1) / (float)memory->num_lsh_tables);
+            }
+
             lsh_table_destroy(memory->lsh_tables[i]);
         }
         nimcp_free(memory->lsh_tables);
@@ -616,12 +668,30 @@ static void evict_episode_at_index(episodic_memory_t* memory, uint32_t idx)
     // Rebuild LSH index (simplified approach - could be optimized)
     // Clear all tables
     for (uint32_t i = 0; i < memory->num_lsh_tables; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && memory->num_lsh_tables > 256) {
+            recovery_episodic_memory_heartbeat("recovery_epi_loop",
+                             (float)(i + 1) / (float)memory->num_lsh_tables);
+        }
+
         lsh_table_clear(memory->lsh_tables[i]);
     }
 
     // Re-index all remaining episodes
     for (uint32_t i = 0; i < memory->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && memory->count > 256) {
+            recovery_episodic_memory_heartbeat("recovery_epi_loop",
+                             (float)(i + 1) / (float)memory->count);
+        }
+
         for (uint32_t t = 0; t < memory->num_lsh_tables; t++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((t & 0xFF) == 0 && memory->num_lsh_tables > 256) {
+                recovery_episodic_memory_heartbeat("recovery_epi_loop",
+                                 (float)(t + 1) / (float)memory->num_lsh_tables);
+            }
+
             lsh_table_add(memory->lsh_tables[t],
                          &memory->episodes[i].error_sig, i);
         }
@@ -657,6 +727,10 @@ bool episodic_memory_store(
     }
 
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    recovery_episodic_memory_heartbeat("recovery_epi_episodic_memory_stor", 0.0f);
+
+
     if (memory->bio_async_enabled && memory->bio_ctx) {
         bio_router_process_inbox(memory->bio_ctx, 5);
     }
@@ -697,6 +771,12 @@ bool episodic_memory_store(
 
     // Index in LSH tables
     for (uint32_t i = 0; i < memory->num_lsh_tables; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && memory->num_lsh_tables > 256) {
+            recovery_episodic_memory_heartbeat("recovery_epi_loop",
+                             (float)(i + 1) / (float)memory->num_lsh_tables);
+        }
+
         lsh_table_add(memory->lsh_tables[i], &ep.error_sig, insert_idx);
     }
 
@@ -810,6 +890,12 @@ recovery_episode_t** episodic_memory_recall_similar(
     uint32_t candidate_count = 0;
 
     for (uint32_t i = 0; i < memory->num_lsh_tables; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && memory->num_lsh_tables > 256) {
+            recovery_episodic_memory_heartbeat("recovery_epi_loop",
+                             (float)(i + 1) / (float)memory->num_lsh_tables);
+        }
+
         lsh_table_query(memory->lsh_tables[i], query,
                        candidates, &candidate_count,
                        memory->count - candidate_count);
@@ -824,6 +910,12 @@ recovery_episode_t** episodic_memory_recall_similar(
 
     uint32_t unique_count = 0;
     for (uint32_t i = 0; i < candidate_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && candidate_count > 256) {
+            recovery_episodic_memory_heartbeat("recovery_epi_loop",
+                             (float)(i + 1) / (float)candidate_count);
+        }
+
         uint32_t idx = candidates[i];
         if (idx < memory->count && !seen[idx]) {
             seen[idx] = true;
@@ -848,6 +940,12 @@ recovery_episode_t** episodic_memory_recall_similar(
     }
 
     for (uint32_t i = 0; i < unique_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && unique_count > 256) {
+            recovery_episodic_memory_heartbeat("recovery_epi_loop",
+                             (float)(i + 1) / (float)unique_count);
+        }
+
         uint32_t idx = candidates[i];
         scores[i].index = idx;
         scores[i].similarity = calculate_similarity(
@@ -871,6 +969,12 @@ recovery_episode_t** episodic_memory_recall_similar(
     }
 
     for (uint32_t i = 0; i < result_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && result_count > 256) {
+            recovery_episodic_memory_heartbeat("recovery_epi_loop",
+                             (float)(i + 1) / (float)result_count);
+        }
+
         results[i] = &memory->episodes[scores[i].index];
     }
 
@@ -895,6 +999,10 @@ replay_result_t episodic_memory_replay(
     episodic_memory_t* memory,
     uint64_t episode_id)
 {
+    /* Phase 8: Heartbeat at operation start */
+    recovery_episodic_memory_heartbeat("recovery_epi_episodic_memory_repl", 0.0f);
+
+
     replay_result_t result = {0};
 
     // GUARD: NULL memory
@@ -905,6 +1013,12 @@ replay_result_t episodic_memory_replay(
 
     // Find episode by ID
     for (uint32_t i = 0; i < memory->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && memory->count > 256) {
+            recovery_episodic_memory_heartbeat("recovery_epi_loop",
+                             (float)(i + 1) / (float)memory->count);
+        }
+
         if (memory->episodes[i].episode_id == episode_id) {
             // Found it - increment replay count
             memory->episodes[i].replay_count++;
@@ -931,6 +1045,10 @@ replay_result_t episodic_memory_replay(
 consolidation_result_t episodic_memory_consolidate(
     episodic_memory_t* memory)
 {
+    /* Phase 8: Heartbeat at operation start */
+    recovery_episodic_memory_heartbeat("recovery_epi_episodic_memory_cons", 0.0f);
+
+
     consolidation_result_t result = {0};
 
     // GUARD: NULL memory
@@ -960,6 +1078,12 @@ consolidation_result_t episodic_memory_consolidate(
         // Count episodes of this type
         uint32_t type_count = 0;
         for (uint32_t i = 0; i < memory->count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && memory->count > 256) {
+                recovery_episodic_memory_heartbeat("recovery_epi_loop",
+                                 (float)(i + 1) / (float)memory->count);
+            }
+
             if (memory->episodes[i].error_sig.error_type == err_type) {
                 type_count++;
             }
@@ -972,6 +1096,12 @@ consolidation_result_t episodic_memory_consolidate(
             uint32_t strategy_success[STRATEGY_COUNT] = {0};
 
             for (uint32_t i = 0; i < memory->count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && memory->count > 256) {
+                    recovery_episodic_memory_heartbeat("recovery_epi_loop",
+                                     (float)(i + 1) / (float)memory->count);
+                }
+
                 if (memory->episodes[i].error_sig.error_type == err_type) {
                     recovery_strategy_type_t strat =
                         memory->episodes[i].strategy_type;
@@ -1026,11 +1156,19 @@ consolidation_result_t episodic_memory_consolidate(
 
 uint32_t episodic_memory_get_count(const episodic_memory_t* memory)
 {
+    /* Phase 8: Heartbeat at operation start */
+    recovery_episodic_memory_heartbeat("recovery_epi_episodic_memory_get_", 0.0f);
+
+
     return memory ? memory->count : 0;
 }
 
 uint32_t episodic_memory_get_capacity(const episodic_memory_t* memory)
 {
+    /* Phase 8: Heartbeat at operation start */
+    recovery_episodic_memory_heartbeat("recovery_epi_episodic_memory_get_", 0.0f);
+
+
     return memory ? memory->capacity : 0;
 }
 
@@ -1061,6 +1199,12 @@ recovery_episode_t** episodic_memory_get_all(
 
     // Fill with pointers to episodes
     for (uint32_t i = 0; i < memory->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && memory->count > 256) {
+            recovery_episodic_memory_heartbeat("recovery_epi_loop",
+                             (float)(i + 1) / (float)memory->count);
+        }
+
         results[i] = &memory->episodes[i];
     }
 
@@ -1070,6 +1214,10 @@ recovery_episode_t** episodic_memory_get_all(
 episodic_memory_stats_t episodic_memory_get_stats(
     const episodic_memory_t* memory)
 {
+    /* Phase 8: Heartbeat at operation start */
+    recovery_episodic_memory_heartbeat("recovery_epi_episodic_memory_get_", 0.0f);
+
+
     episodic_memory_stats_t stats = {0};
 
     if (memory) {
@@ -1088,6 +1236,10 @@ uint64_t compute_error_signature_hash(
     uint32_t error_code)
 {
     // Combine type and code into hash
+    /* Phase 8: Heartbeat at operation start */
+    recovery_episodic_memory_heartbeat("recovery_epi_compute_error_signat", 0.0f);
+
+
     uint64_t hash = ((uint64_t)error_type << 32) | error_code;
 
     // Mix bits
@@ -1102,6 +1254,10 @@ uint64_t compute_error_signature_hash(
 
 uint64_t get_current_timestamp_ms(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    recovery_episodic_memory_heartbeat("recovery_epi_get_current_timestam", 0.0f);
+
+
     struct timespec ts;
 
     #ifdef __linux__
@@ -1121,9 +1277,19 @@ uint64_t get_current_timestamp_ms(void)
 int recovery_episodic_memory_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    recovery_episodic_memory_heartbeat("recovery_epi_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Recovery_Episodic_Memory");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                recovery_episodic_memory_heartbeat("recovery_epi_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("[KG-Self] %s", self->observations[i]);
         }
     }
@@ -1131,6 +1297,12 @@ int recovery_episodic_memory_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Recovery_Episodic_Memory");
     if (connections) {
         for (uint32_t i = 0; i < connections->count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && connections->count > 256) {
+                recovery_episodic_memory_heartbeat("recovery_epi_loop",
+                                 (float)(i + 1) / (float)connections->count);
+            }
+
             LOG_DEBUG("[KG-Rel] -> %s (%s)",
                       connections->relations[i]->to,
                       connections->relations[i]->relation_type);
@@ -1141,6 +1313,12 @@ int recovery_episodic_memory_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Recovery_Episodic_Memory");
     if (incoming) {
         for (uint32_t i = 0; i < incoming->count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && incoming->count > 256) {
+                recovery_episodic_memory_heartbeat("recovery_epi_loop",
+                                 (float)(i + 1) / (float)incoming->count);
+            }
+
             LOG_DEBUG("[KG-Rel] <- %s (%s)",
                       incoming->relations[i]->from,
                       incoming->relations[i]->relation_type);

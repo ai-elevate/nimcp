@@ -44,7 +44,7 @@ static nimcp_health_agent_t* g_reasoning_attention_health_agent = NULL;
  * @brief Set health agent for reasoning_attention heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void reasoning_attention_set_health_agent(nimcp_health_agent_t* agent) {
+void reasoning_attention_set_health_agent(nimcp_health_agent_t* agent) {
     g_reasoning_attention_health_agent = agent;
 }
 
@@ -104,6 +104,10 @@ static uint64_t get_current_time_us(void) {
 //=============================================================================
 
 reasoning_attention_config_t reasoning_attention_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_attention_heartbeat("reasoning_at_default_config", 0.0f);
+
+
     reasoning_attention_config_t config = {
         .enable_novel_fact_boost = true,
         .enable_contradiction_boost = true,
@@ -135,6 +139,10 @@ bool reasoning_attention_validate_config(const reasoning_attention_config_t* con
     // Validate decay time constant
     if (config->attention_decay_tau_ms == 0) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_attention_heartbeat("reasoning_at_validate_config", 0.0f);
+
+
     return true;
 }
 
@@ -146,6 +154,10 @@ reasoning_attention_t* reasoning_attention_create(
     event_bus_t event_bus,
     fault_attention_t* attention
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_attention_heartbeat("reasoning_at_create", 0.0f);
+
+
     LOG_DEBUG("Creating module");
     reasoning_attention_config_t config = reasoning_attention_default_config();
     return reasoning_attention_create_custom(event_bus, attention, &config);
@@ -162,6 +174,10 @@ reasoning_attention_t* reasoning_attention_create_custom(
     }
 
     // Use default config if NULL
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_attention_heartbeat("reasoning_at_create_custom", 0.0f);
+
+
     reasoning_attention_config_t default_config = reasoning_attention_default_config();
     const reasoning_attention_config_t* final_config = config ? config : &default_config;
 
@@ -224,6 +240,10 @@ return integration;
 }
 
 void reasoning_attention_destroy(reasoning_attention_t* integration) {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_attention_heartbeat("reasoning_at_destroy", 0.0f);
+
+
     LOG_DEBUG("Destroying module");
     if (!integration) return;
 
@@ -254,6 +274,10 @@ float reasoning_attention_compute_fact_salience(
     bool is_contradiction
 ) {
     if (!integration || !fact_description) return 0.0F;
+
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_attention_heartbeat("reasoning_at_compute_fact_salienc", 0.0f);
+
 
     float salience = 0.0F;
 
@@ -286,6 +310,10 @@ float reasoning_attention_compute_fact_salience(
 
 void reasoning_attention_callback(const brain_event_t* event, void* context) {
     if (!event || !context) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_attention_heartbeat("reasoning_at_callback", 0.0f);
+
 
     reasoning_attention_t* integration = (reasoning_attention_t*)context;
 
@@ -391,6 +419,10 @@ bool reasoning_attention_get_config(
 ) {
     if (!integration || !config) return false;
     *config = integration->config;
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_attention_heartbeat("reasoning_at_get_config", 0.0f);
+
+
     return true;
 }
 
@@ -400,6 +432,10 @@ bool reasoning_attention_set_config(
 ) {
     if (!integration || !config) return false;
     if (!reasoning_attention_validate_config(config)) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_attention_heartbeat("reasoning_at_set_config", 0.0f);
+
 
     integration->config = *config;
     return true;
@@ -411,11 +447,19 @@ bool reasoning_attention_get_stats(
 ) {
     if (!integration || !stats) return false;
     *stats = integration->stats;
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_attention_heartbeat("reasoning_at_get_stats", 0.0f);
+
+
     return true;
 }
 
 bool reasoning_attention_reset_stats(reasoning_attention_t* integration) {
     if (!integration) return false;
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_attention_heartbeat("reasoning_at_reset_stats", 0.0f);
+
+
     memset(&integration->stats, 0, sizeof(reasoning_attention_stats_t));
     return true;
 }
@@ -426,9 +470,19 @@ bool reasoning_attention_reset_stats(reasoning_attention_t* integration) {
 
 int reasoning_attention_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_attention_heartbeat("reasoning_at_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Reasoning_Attention");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                reasoning_attention_heartbeat("reasoning_at_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Reasoning_Attention self-knowledge: %s", self->observations[i]);
         }
     }

@@ -39,7 +39,7 @@ static nimcp_health_agent_t* g_immune_exhaustion_health_agent = NULL;
  * @brief Set health agent for immune_exhaustion heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void immune_exhaustion_set_health_agent(nimcp_health_agent_t* agent) {
+void immune_exhaustion_set_health_agent(nimcp_health_agent_t* agent) {
     g_immune_exhaustion_health_agent = agent;
 }
 
@@ -156,6 +156,12 @@ static exhaustion_cell_record_t* find_cell_record(
     if (!system || !system->cells) return NULL;
 
     for (size_t i = 0; i < system->cell_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->cell_count > 256) {
+            immune_exhaustion_heartbeat("immune_exhau_loop",
+                             (float)(i + 1) / (float)system->cell_count);
+        }
+
         if (system->cells[i].active && system->cells[i].t_cell_id == t_cell_id) {
             return &system->cells[i];
         }
@@ -188,6 +194,12 @@ static exhaustion_cell_record_t* get_or_create_cell_record(
 
     /* Find inactive slot */
     for (size_t i = 0; i < system->cell_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->cell_count > 256) {
+            immune_exhaustion_heartbeat("immune_exhau_loop",
+                             (float)(i + 1) / (float)system->cell_count);
+        }
+
         if (!system->cells[i].active) {
             memset(&system->cells[i], 0, sizeof(exhaustion_cell_record_t));
             system->cells[i].active = true;
@@ -476,6 +488,12 @@ static void update_system_stats(exhaustion_system_t* system) {
     uint32_t active_count = 0;
 
     for (size_t i = 0; i < system->cell_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->cell_count > 256) {
+            immune_exhaustion_heartbeat("immune_exhau_loop",
+                             (float)(i + 1) / (float)system->cell_count);
+        }
+
         exhaustion_cell_record_t* cell = &system->cells[i];
         if (!cell->active) continue;
 
@@ -521,6 +539,10 @@ static void update_system_stats(exhaustion_system_t* system) {
 int exhaustion_default_config(exhaustion_config_t* config) {
     if (!config) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_exhaustion_heartbeat("immune_exhau_exhaustion_default_c", 0.0f);
+
+
     memset(config, 0, sizeof(exhaustion_config_t));
 
     /* Thresholds */
@@ -564,6 +586,10 @@ exhaustion_system_t* exhaustion_create(
         return NULL;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_exhaustion_heartbeat("immune_exhau_exhaustion_create", 0.0f);
+
 
     exhaustion_system_t* system = (exhaustion_system_t*)nimcp_malloc(
         sizeof(exhaustion_system_t)
@@ -624,6 +650,10 @@ exhaustion_system_t* exhaustion_create(
 void exhaustion_destroy(exhaustion_system_t* system) {
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_exhaustion_heartbeat("immune_exhau_exhaustion_destroy", 0.0f);
+
+
     system->running = false;
 
     if (system->mutex) {
@@ -652,10 +682,20 @@ int exhaustion_update(
 ) {
     if (!system || !system->running) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_exhaustion_heartbeat("immune_exhau_exhaustion_update", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     /* Update each tracked cell */
     for (size_t i = 0; i < system->cell_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->cell_count > 256) {
+            immune_exhaustion_heartbeat("immune_exhau_loop",
+                             (float)(i + 1) / (float)system->cell_count);
+        }
+
         if (system->cells[i].active) {
             update_cell_exhaustion(system, &system->cells[i], delta_ms);
         }
@@ -681,6 +721,10 @@ exhaustion_state_t exhaustion_get_cell_state(
 ) {
     if (!system) return EXHAUSTION_STATE_NAIVE;
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_exhaustion_heartbeat("immune_exhau_exhaustion_get_cell_", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     exhaustion_cell_record_t* cell = find_cell_record(system, t_cell_id);
     exhaustion_state_t state = cell ? cell->state : EXHAUSTION_STATE_NAIVE;
@@ -697,6 +741,10 @@ float exhaustion_get_effector_capacity(
     uint32_t t_cell_id
 ) {
     if (!system) return 1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_exhaustion_heartbeat("immune_exhau_exhaustion_get_effec", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
     exhaustion_cell_record_t* cell = find_cell_record(system, t_cell_id);
@@ -715,6 +763,10 @@ int exhaustion_get_markers(
     exhaustion_markers_t* markers
 ) {
     if (!system || !markers) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_exhaustion_heartbeat("immune_exhau_exhaustion_get_marke", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
     exhaustion_cell_record_t* cell = find_cell_record(system, t_cell_id);
@@ -735,6 +787,10 @@ int exhaustion_get_markers(
 float exhaustion_get_system_fatigue(exhaustion_system_t* system) {
     if (!system) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_exhaustion_heartbeat("immune_exhau_exhaustion_get_syste", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     float fatigue = system->stats.system_fatigue;
     nimcp_mutex_unlock(system->mutex);
@@ -750,6 +806,10 @@ int exhaustion_get_stats(
     exhaustion_stats_t* stats
 ) {
     if (!system || !stats) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_exhaustion_heartbeat("immune_exhau_exhaustion_get_stats", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
     memcpy(stats, &system->stats, sizeof(exhaustion_stats_t));
@@ -770,6 +830,10 @@ int exhaustion_initiate_recovery(
     uint32_t t_cell_id
 ) {
     if (!system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_exhaustion_heartbeat("immune_exhau_exhaustion_initiate_", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -809,6 +873,10 @@ int exhaustion_checkpoint_blockade(
     uint32_t t_cell_id
 ) {
     if (!system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_exhaustion_heartbeat("immune_exhau_exhaustion_checkpoin", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -859,6 +927,10 @@ int exhaustion_set_exhaustion_callback(
 ) {
     if (!system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_exhaustion_heartbeat("immune_exhau_exhaustion_set_exhau", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     system->on_exhaustion = callback;
     system->callback_user_data = user_data;
@@ -876,6 +948,10 @@ int exhaustion_set_recovery_callback(
     void* user_data
 ) {
     if (!system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_exhaustion_heartbeat("immune_exhau_exhaustion_set_recov", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
     system->on_recovery = callback;
@@ -901,9 +977,19 @@ int exhaustion_set_recovery_callback(
  */
 int exhaustion_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    immune_exhaustion_heartbeat("immune_exhau_exhaustion_query_sel", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Immune_Exhaustion");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                immune_exhaustion_heartbeat("immune_exhau_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Immune exhaustion self-knowledge: %s", self->observations[i]);
         }
     }

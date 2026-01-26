@@ -44,7 +44,7 @@ static nimcp_health_agent_t* g_emotion_substrate_bridge_health_agent = NULL;
  * @brief Set health agent for emotion_substrate_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void emotion_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void emotion_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_emotion_substrate_bridge_health_agent = agent;
 }
 
@@ -292,6 +292,10 @@ void emotion_substrate_default_config(emotion_substrate_config_t* config) {
     }
 
     /* Enable all modulation features */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_substrate_bridge_heartbeat("emotion_subs_emotion_substrate_de", 0.0f);
+
+
     config->enable_atp_modulation = true;
     config->enable_serotonin_modulation = true;
     config->enable_dopamine_modulation = true;
@@ -338,6 +342,10 @@ emotion_substrate_bridge_t* emotion_substrate_bridge_create(
     }
 
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_substrate_bridge_heartbeat("emotion_subs_create", 0.0f);
+
+
     emotion_substrate_bridge_t* bridge = (emotion_substrate_bridge_t*)
         nimcp_malloc(sizeof(emotion_substrate_bridge_t));
     if (!bridge) {
@@ -399,6 +407,10 @@ void emotion_substrate_bridge_destroy(emotion_substrate_bridge_t* bridge) {
     }
 
     /* Disconnect from bio-async */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_substrate_bridge_heartbeat("emotion_subs_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         emotion_substrate_disconnect_bio_async(bridge);
     }
@@ -426,6 +438,10 @@ int emotion_substrate_connect_bio_async(emotion_substrate_bridge_t* bridge) {
     }
 
     /* Guard: check if already connected */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_substrate_bridge_heartbeat("emotion_subs_emotion_substrate_co", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         NIMCP_LOGGING_DEBUG("Bio-async already connected");
         return NIMCP_SUCCESS;
@@ -464,6 +480,10 @@ int emotion_substrate_disconnect_bio_async(emotion_substrate_bridge_t* bridge) {
     }
 
     /* Deregister from bio-async router */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_substrate_bridge_heartbeat("emotion_subs_emotion_substrate_di", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -483,6 +503,10 @@ bool emotion_substrate_is_bio_async_connected(
     if (!bridge) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_substrate_bridge_heartbeat("emotion_subs_emotion_substrate_is", 0.0f);
+
 
     return bridge->base.bio_async_enabled;
 }
@@ -505,6 +529,10 @@ int emotion_substrate_update(emotion_substrate_bridge_t* bridge) {
     }
 
     /* Lock for thread safety */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_substrate_bridge_heartbeat("emotion_subs_emotion_substrate_up", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Query substrate metabolic state */
@@ -611,6 +639,10 @@ float emotion_substrate_get_intensity_mod(
         return 1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_substrate_bridge_heartbeat("emotion_subs_emotion_substrate_ge", 0.0f);
+
+
     return bridge->effects.intensity_modulation;
 }
 
@@ -622,6 +654,10 @@ float emotion_substrate_get_regulation_capacity(
         NIMCP_LOGGING_ERROR("Cannot get regulation capacity: NULL bridge");
         return 1.0f;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_substrate_bridge_heartbeat("emotion_subs_emotion_substrate_ge", 0.0f);
+
 
     return bridge->effects.regulation_capacity;
 }
@@ -635,6 +671,10 @@ float emotion_substrate_get_reactivity_threshold(
         return 0.5f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_substrate_bridge_heartbeat("emotion_subs_emotion_substrate_ge", 0.0f);
+
+
     return bridge->effects.reactivity_threshold;
 }
 
@@ -647,12 +687,20 @@ float emotion_substrate_get_valence_bias(
         return 0.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_substrate_bridge_heartbeat("emotion_subs_emotion_substrate_ge", 0.0f);
+
+
     return bridge->effects.valence_bias;
 }
 
 emotion_substrate_effects_t emotion_substrate_get_effects(
     const emotion_substrate_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_substrate_bridge_heartbeat("emotion_subs_emotion_substrate_ge", 0.0f);
+
+
     emotion_substrate_effects_t effects = {
         .intensity_modulation = 1.0f,
         .regulation_capacity = 1.0f,
@@ -679,12 +727,20 @@ bool emotion_substrate_is_impaired(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_substrate_bridge_heartbeat("emotion_subs_emotion_substrate_is", 0.0f);
+
+
     return bridge->effects.is_impaired;
 }
 
 emotion_substrate_stats_t emotion_substrate_get_stats(
     const emotion_substrate_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_substrate_bridge_heartbeat("emotion_subs_emotion_substrate_ge", 0.0f);
+
+
     emotion_substrate_stats_t stats;
     memset(&stats, 0, sizeof(emotion_substrate_stats_t));
 
@@ -708,9 +764,19 @@ emotion_substrate_stats_t emotion_substrate_get_stats(
  */
 int emotion_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    emotion_substrate_bridge_heartbeat("emotion_subs_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Emotion_Substrate_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                emotion_substrate_bridge_heartbeat("emotion_subs_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Emotion Substrate Bridge self-knowledge: %s", self->observations[i]);
         }
     }

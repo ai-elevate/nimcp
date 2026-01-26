@@ -84,7 +84,7 @@ static nimcp_health_agent_t* g_salience_health_agent = NULL;
  * @brief Set health agent for salience heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void salience_set_health_agent(nimcp_health_agent_t* agent) {
+void salience_set_health_agent(nimcp_health_agent_t* agent) {
     g_salience_health_agent = agent;
 }
 
@@ -494,6 +494,12 @@ static float history_buffer_compute_novelty(history_buffer_t* hist, const float*
     float min_distance = 2.0F;  // Max cosine distance is 2.0
 
     for (uint32_t i = 0; i < hist->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hist->count > 256) {
+            salience_heartbeat("salience_loop",
+                             (float)(i + 1) / (float)hist->count);
+        }
+
         history_entry_t* entry = &hist->entries[i];
         if (!entry->valid || entry->num_features != num_features) {
             continue;
@@ -539,6 +545,12 @@ static void history_buffer_clear(history_buffer_t* hist)
      * NOTE: Much simpler than before - no per-entry nimcp_free()
      */
     for (uint32_t i = 0; i < hist->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hist->count > 256) {
+            salience_heartbeat("salience_loop",
+                             (float)(i + 1) / (float)hist->count);
+        }
+
         hist->entries[i].valid = false;
     }
 
@@ -639,6 +651,12 @@ static void predictor_update(predictor_t* pred, const float* features, uint32_t 
          * HOW: prediction = alpha * new + (1-alpha) * old
          */
         for (uint32_t i = 0; i < safe_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && safe_count > 256) {
+                salience_heartbeat("salience_loop",
+                                 (float)(i + 1) / (float)safe_count);
+            }
+
             pred->prediction[i] =
                 pred->alpha * features[i] + (1.0F - pred->alpha) * pred->prediction[i];
         }
@@ -675,6 +693,12 @@ static float predictor_compute_surprise(predictor_t* pred, const float* features
      */
     float total_error = 0.0F;
     for (uint32_t i = 0; i < safe_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && safe_count > 256) {
+            salience_heartbeat("salience_loop",
+                             (float)(i + 1) / (float)safe_count);
+        }
+
         total_error += fabsf(features[i] - pred->prediction[i]);
     }
 
@@ -855,6 +879,12 @@ static brain_salience_t compute_salience_balanced(salience_evaluator_t eval, con
          */
         float variance = 0.0F;
         for (uint32_t i = 0; i < num_features; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_features > 256) {
+                salience_heartbeat("salience_loop",
+                                 (float)(i + 1) / (float)num_features);
+            }
+
             variance += features[i] * features[i];
         }
         variance /= num_features;
@@ -915,12 +945,24 @@ static brain_salience_t compute_salience_accurate(salience_evaluator_t eval, con
         // Feature statistics for activation estimation
         float feature_mean = 0.0f, feature_max = 0.0f, feature_variance = 0.0f;
         for (uint32_t i = 0; i < safe_features; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && safe_features > 256) {
+                salience_heartbeat("salience_loop",
+                                 (float)(i + 1) / (float)safe_features);
+            }
+
             feature_mean += features[i];
             if (fabsf(features[i]) > fabsf(feature_max)) feature_max = features[i];
         }
         feature_mean /= safe_features;
 
         for (uint32_t i = 0; i < safe_features; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && safe_features > 256) {
+                salience_heartbeat("salience_loop",
+                                 (float)(i + 1) / (float)safe_features);
+            }
+
             float diff = features[i] - feature_mean;
             feature_variance += diff * diff;
         }
@@ -1157,6 +1199,12 @@ static int salience_wiring_handler_callback(
 
     int registered = 0;
     for (uint32_t i = 0; i < message_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && message_count > 256) {
+            salience_heartbeat("salience_loop",
+                             (float)(i + 1) / (float)message_count);
+        }
+
         switch (message_types[i]) {
             case BIO_MSG_SALIENCE_QUERY:
                 bio_router_register_handler(ctx, message_types[i], handle_salience_query);
@@ -1186,6 +1234,10 @@ salience_evaluator_t salience_evaluator_create(brain_t brain, const salience_con
     }
 
     // Allocate evaluator
+    /* Phase 8: Heartbeat at operation start */
+    salience_heartbeat("salience_evaluator_create", 0.0f);
+
+
     salience_evaluator_t eval = nimcp_calloc(1, sizeof(struct salience_evaluator_struct));
     if (!eval) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "salience_evaluator_create: failed to allocate eval");
@@ -1304,6 +1356,12 @@ salience_evaluator_t salience_evaluator_create(brain_t brain, const salience_con
 
     // Initialize cross-modal fusion state
     for (int i = 0; i < SALIENCE_MODALITY_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && SALIENCE_MODALITY_COUNT > 256) {
+            salience_heartbeat("salience_loop",
+                             (float)(i + 1) / (float)SALIENCE_MODALITY_COUNT);
+        }
+
         eval->modalities[i].salience = (brain_salience_t){0};
         eval->modalities[i].weight = config->default_modality_weight;
         eval->modalities[i].active = false;
@@ -1339,6 +1397,10 @@ salience_evaluator_t salience_evaluator_create(brain_t brain, const salience_con
 void salience_evaluator_destroy(salience_evaluator_t eval)
 {
     if (!eval)
+        /* Phase 8: Heartbeat at operation start */
+        salience_heartbeat("salience_evaluator_destroy", 0.0f);
+
+
         return;
 
     // Unregister from bio-async router
@@ -1394,6 +1456,10 @@ void salience_evaluator_destroy(salience_evaluator_t eval)
 brain_salience_t brain_evaluate_salience(salience_evaluator_t eval, const float* features,
                                          uint32_t num_features)
 {
+    /* Phase 8: Heartbeat at operation start */
+    salience_heartbeat("salience_brain_evaluate_salie", 0.0f);
+
+
     return brain_evaluate_salience_temporal(eval, features, num_features, 0);
 }
 
@@ -1449,6 +1515,10 @@ static void evaluate_single_task(void* arg)
 brain_salience_t brain_evaluate_salience_temporal(salience_evaluator_t eval, const float* features,
                                                   uint32_t num_features, uint64_t timestamp)
 {
+    /* Phase 8: Heartbeat at operation start */
+    salience_heartbeat("salience_brain_evaluate_salie", 0.0f);
+
+
     brain_salience_t salience = {0};
 
     if (!eval || !features) {
@@ -1569,6 +1639,10 @@ uint32_t brain_evaluate_salience_batch(salience_evaluator_t eval, const float** 
      *
      * PERFORMANCE: Thread pool overhead ~1ms, so need enough work to amortize
      */
+    /* Phase 8: Heartbeat at operation start */
+    salience_heartbeat("salience_brain_evaluate_salie", 0.0f);
+
+
     const uint32_t PARALLEL_THRESHOLD = 200;
 
     if (num_samples < PARALLEL_THRESHOLD) {
@@ -1578,6 +1652,12 @@ uint32_t brain_evaluate_salience_batch(salience_evaluator_t eval, const float** 
          * HOW: Call evaluation function directly for each sample
          */
         for (uint32_t i = 0; i < num_samples; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_samples > 256) {
+                salience_heartbeat("salience_loop",
+                                 (float)(i + 1) / (float)num_samples);
+            }
+
             salience_scores[i] = brain_evaluate_salience(eval, features[i], num_features);
         }
         return num_samples;
@@ -1607,6 +1687,12 @@ uint32_t brain_evaluate_salience_batch(salience_evaluator_t eval, const float** 
      * WHY: Submit them to thread pool for parallel execution
      */
     for (uint32_t i = 0; i < num_samples; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_samples > 256) {
+            salience_heartbeat("salience_loop",
+                             (float)(i + 1) / (float)num_samples);
+        }
+
         tasks[i].eval = eval;
         tasks[i].features = features[i];
         tasks[i].num_features = num_features;
@@ -1619,6 +1705,12 @@ uint32_t brain_evaluate_salience_batch(salience_evaluator_t eval, const float** 
      * HOW: Pool distributes work across available threads
      */
     for (uint32_t i = 0; i < num_samples; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_samples > 256) {
+            salience_heartbeat("salience_loop",
+                             (float)(i + 1) / (float)num_samples);
+        }
+
         nimcp_result_t result =
             nimcp_pool_submit(eval->thread_pool, evaluate_single_task, &tasks[i]);
 
@@ -1650,6 +1742,12 @@ uint32_t brain_evaluate_salience_batch(salience_evaluator_t eval, const float** 
     nimcp_mutex_lock(&eval->eval_lock);
 
     for (uint32_t i = 0; i < num_samples; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_samples > 256) {
+            salience_heartbeat("salience_loop",
+                             (float)(i + 1) / (float)num_samples);
+        }
+
         /* WHAT: Update history buffer if enabled */
         if (eval->history) {
             history_buffer_add(eval->history, features[i], num_features, 0);
@@ -1706,6 +1804,10 @@ bool salience_set_weights(salience_evaluator_t eval, float novelty_weight, float
                           float urgency_weight)
 {
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    salience_heartbeat("salience_set_weights", 0.0f);
+
+
     if (eval && eval->bio_ctx) {
         bio_router_process_inbox(eval->bio_ctx, 5);
     }
@@ -1729,6 +1831,10 @@ bool salience_set_thresholds(salience_evaluator_t eval, float high_salience_thre
                              float high_urgency_threshold)
 {
     if (!eval)
+        /* Phase 8: Heartbeat at operation start */
+        salience_heartbeat("salience_set_thresholds", 0.0f);
+
+
         return false;
 
     nimcp_mutex_lock(&eval->eval_lock);
@@ -1747,6 +1853,10 @@ bool salience_register_callback(salience_evaluator_t eval, salience_event_callba
                                 void* context)
 {
     if (!eval)
+        /* Phase 8: Heartbeat at operation start */
+        salience_heartbeat("salience_register_callback", 0.0f);
+
+
         return false;
 
     nimcp_mutex_lock(&eval->eval_lock);
@@ -1762,6 +1872,10 @@ bool salience_register_callback(salience_evaluator_t eval, salience_event_callba
 bool salience_clear_history(salience_evaluator_t eval)
 {
     if (!eval || !eval->history)
+        /* Phase 8: Heartbeat at operation start */
+        salience_heartbeat("salience_clear_history", 0.0f);
+
+
         return false;
 
     history_buffer_clear(eval->history);
@@ -1772,6 +1886,10 @@ bool salience_clear_history(salience_evaluator_t eval)
 bool salience_get_stats(salience_evaluator_t eval, salience_stats_t* stats)
 {
     if (!eval || !stats)
+        /* Phase 8: Heartbeat at operation start */
+        salience_heartbeat("salience_get_stats", 0.0f);
+
+
         return false;
 
     nimcp_mutex_lock(&eval->eval_lock);
@@ -1833,6 +1951,10 @@ bool salience_reset_stats(salience_evaluator_t eval)
      * WHY: Provide clean slate for new measurement period
      * HOW: Mutex-protected zero assignment to all counters
      */
+    /* Phase 8: Heartbeat at operation start */
+    salience_heartbeat("salience_reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(&eval->eval_lock);
 
     eval->stats_evaluations = 0;
@@ -1859,6 +1981,10 @@ bool salience_reset_stats(salience_evaluator_t eval)
 
 salience_config_t salience_default_config(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    salience_heartbeat("salience_default_config", 0.0f);
+
+
     salience_config_t config = {.strategy = SALIENCE_STRATEGY_BALANCED,
                                 .history_size = 100,
                                 .enable_novelty = true,
@@ -1882,6 +2008,10 @@ salience_config_t salience_default_config(void)
 brain_salience_t salience_quick_evaluate(brain_t brain, const float* features,
                                          uint32_t num_features)
 {
+    /* Phase 8: Heartbeat at operation start */
+    salience_heartbeat("salience_quick_evaluate", 0.0f);
+
+
     salience_config_t config = salience_default_config();
     config.history_size = 10;  // Small history for quick eval
 
@@ -1925,6 +2055,10 @@ void salience_boost_negative_cues(salience_evaluator_t evaluator, float boost_fa
     }
 
     // Clamp boost factor
+    /* Phase 8: Heartbeat at operation start */
+    salience_heartbeat("salience_boost_negative_cues", 0.0f);
+
+
     boost_factor = fminf(fmaxf(boost_factor, 0.0F), 1.0F);
 
     // WHAT: Increase novelty weight to bias toward unexpected negatives
@@ -1960,6 +2094,10 @@ void salience_boost_threat_detection(salience_evaluator_t evaluator, float boost
     }
 
     // Clamp boost factor
+    /* Phase 8: Heartbeat at operation start */
+    salience_heartbeat("salience_boost_threat_detecti", 0.0f);
+
+
     boost_factor = fminf(fmaxf(boost_factor, 0.0F), 1.0F);
 
     // WHAT: Increase urgency baseline and weight
@@ -1999,6 +2137,10 @@ float salience_get_surprise_level(salience_evaluator_t evaluator)
     // WHAT: Return running average surprise
     // WHY:  More stable than single sample
     // HOW:  Read from statistics
+    /* Phase 8: Heartbeat at operation start */
+    salience_heartbeat("salience_get_surprise_level", 0.0f);
+
+
     nimcp_mutex_lock(&evaluator->eval_lock);
 
     float surprise = evaluator->running_avg_surprise;
@@ -2042,6 +2184,10 @@ bool salience_register_modality(salience_evaluator_t evaluator, salience_modalit
     }
 
     // Guard: Validate modality
+    /* Phase 8: Heartbeat at operation start */
+    salience_heartbeat("salience_register_modality", 0.0f);
+
+
     if (modality < 0 || modality >= SALIENCE_MODALITY_COUNT) {
         salience_set_error("Invalid modality: %d", modality);
         return false;
@@ -2095,6 +2241,10 @@ brain_salience_t salience_evaluate_modality(salience_evaluator_t evaluator,
                                             salience_modality_t modality, const float* features,
                                             uint32_t num_features)
 {
+    /* Phase 8: Heartbeat at operation start */
+    salience_heartbeat("salience_evaluate_modality", 0.0f);
+
+
     brain_salience_t salience = {0};
 
     // Guard: Validate evaluator
@@ -2161,6 +2311,10 @@ brain_salience_t salience_evaluate_modality(salience_evaluator_t evaluator,
  */
 brain_salience_t salience_fuse_modalities(salience_evaluator_t evaluator)
 {
+    /* Phase 8: Heartbeat at operation start */
+    salience_heartbeat("salience_fuse_modalities", 0.0f);
+
+
     brain_salience_t fused = {0};
 
     // Guard: Validate evaluator
@@ -2180,6 +2334,12 @@ brain_salience_t salience_fuse_modalities(salience_evaluator_t evaluator)
     float total_weight = 0.0F;
 
     for (int i = 0; i < SALIENCE_MODALITY_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && SALIENCE_MODALITY_COUNT > 256) {
+            salience_heartbeat("salience_loop",
+                             (float)(i + 1) / (float)SALIENCE_MODALITY_COUNT);
+        }
+
         if (evaluator->modalities[i].active && evaluator->modalities[i].has_data) {
             active_count++;
             total_weight += evaluator->modalities[i].weight;
@@ -2207,6 +2367,12 @@ brain_salience_t salience_fuse_modalities(salience_evaluator_t evaluator)
              * BIOLOGICAL: Superior colliculus winner-take-all circuits
              */
             for (int i = 0; i < SALIENCE_MODALITY_COUNT; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && SALIENCE_MODALITY_COUNT > 256) {
+                    salience_heartbeat("salience_loop",
+                                     (float)(i + 1) / (float)SALIENCE_MODALITY_COUNT);
+                }
+
                 if (!evaluator->modalities[i].active || !evaluator->modalities[i].has_data) {
                     continue;
                 }
@@ -2241,6 +2407,12 @@ brain_salience_t salience_fuse_modalities(salience_evaluator_t evaluator)
              * BIOLOGICAL: Parietal cortex weighted integration
              */
             for (int i = 0; i < SALIENCE_MODALITY_COUNT; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && SALIENCE_MODALITY_COUNT > 256) {
+                    salience_heartbeat("salience_loop",
+                                     (float)(i + 1) / (float)SALIENCE_MODALITY_COUNT);
+                }
+
                 if (!evaluator->modalities[i].active || !evaluator->modalities[i].has_data) {
                     continue;
                 }
@@ -2284,6 +2456,12 @@ brain_salience_t salience_fuse_modalities(salience_evaluator_t evaluator)
             float urgencies[SALIENCE_MODALITY_COUNT] = {0};
 
             for (int i = 0; i < SALIENCE_MODALITY_COUNT; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && SALIENCE_MODALITY_COUNT > 256) {
+                    salience_heartbeat("salience_loop",
+                                     (float)(i + 1) / (float)SALIENCE_MODALITY_COUNT);
+                }
+
                 if (evaluator->modalities[i].active && evaluator->modalities[i].has_data) {
                     saliences[i] = evaluator->modalities[i].salience.salience;
                     novelties[i] = evaluator->modalities[i].salience.novelty;
@@ -2295,6 +2473,12 @@ brain_salience_t salience_fuse_modalities(salience_evaluator_t evaluator)
             // Linear terms: sum(w_i * s_i)
             float sal_linear = 0.0f, nov_linear = 0.0f, sur_linear = 0.0f, urg_linear = 0.0f;
             for (int i = 0; i < SALIENCE_MODALITY_COUNT; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && SALIENCE_MODALITY_COUNT > 256) {
+                    salience_heartbeat("salience_loop",
+                                     (float)(i + 1) / (float)SALIENCE_MODALITY_COUNT);
+                }
+
                 if (evaluator->modalities[i].active && evaluator->modalities[i].has_data) {
                     float w = evaluator->modalities[i].weight;
                     sal_linear += w * saliences[i];
@@ -2308,6 +2492,12 @@ brain_salience_t salience_fuse_modalities(salience_evaluator_t evaluator)
             // Boost salience when multiple modalities are active and salient
             float sal_quad = 0.0f;
             for (int i = 0; i < SALIENCE_MODALITY_COUNT; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && SALIENCE_MODALITY_COUNT > 256) {
+                    salience_heartbeat("salience_loop",
+                                     (float)(i + 1) / (float)SALIENCE_MODALITY_COUNT);
+                }
+
                 if (!evaluator->modalities[i].active || !evaluator->modalities[i].has_data) continue;
                 for (int j = i + 1; j < SALIENCE_MODALITY_COUNT; j++) {
                     if (!evaluator->modalities[j].active || !evaluator->modalities[j].has_data) continue;
@@ -2334,6 +2524,12 @@ brain_salience_t salience_fuse_modalities(salience_evaluator_t evaluator)
     // Estimate cost as average of modality costs
     float cost_sum = 0.0F;
     for (int i = 0; i < SALIENCE_MODALITY_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && SALIENCE_MODALITY_COUNT > 256) {
+            salience_heartbeat("salience_loop",
+                             (float)(i + 1) / (float)SALIENCE_MODALITY_COUNT);
+        }
+
         if (evaluator->modalities[i].active && evaluator->modalities[i].has_data) {
             cost_sum += evaluator->modalities[i].salience.estimated_cost;
         }
@@ -2378,6 +2574,10 @@ bool salience_set_modality_weight(salience_evaluator_t evaluator, salience_modal
     }
 
     // Guard: Validate modality
+    /* Phase 8: Heartbeat at operation start */
+    salience_heartbeat("salience_set_modality_weight", 0.0f);
+
+
     if (modality < 0 || modality >= SALIENCE_MODALITY_COUNT) {
         salience_set_error("Invalid modality: %d", modality);
         return false;
@@ -2414,6 +2614,10 @@ bool salience_set_modality_weight(salience_evaluator_t evaluator, salience_modal
 brain_salience_t salience_get_modality_salience(salience_evaluator_t evaluator,
                                                 salience_modality_t modality)
 {
+    /* Phase 8: Heartbeat at operation start */
+    salience_heartbeat("salience_get_modality_salienc", 0.0f);
+
+
     brain_salience_t salience = {0};
 
     // Guard: Validate evaluator
@@ -2461,6 +2665,10 @@ bool salience_set_fusion_strategy(salience_evaluator_t evaluator,
     }
 
     // Guard: Validate strategy
+    /* Phase 8: Heartbeat at operation start */
+    salience_heartbeat("salience_set_fusion_strategy", 0.0f);
+
+
     if (strategy < SALIENCE_FUSION_MAX || strategy > SALIENCE_FUSION_LEARNED) {
         salience_set_error("Invalid fusion strategy: %d", strategy);
         return false;
@@ -2513,9 +2721,19 @@ const char* salience_modality_name(salience_modality_t modality)
 int salience_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_heartbeat("salience_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Salience");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                salience_heartbeat("salience_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

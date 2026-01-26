@@ -56,7 +56,7 @@ static nimcp_health_agent_t* g_reasoning_integration_health_agent = NULL;
  * @brief Set health agent for reasoning_integration heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void reasoning_integration_set_health_agent(nimcp_health_agent_t* agent) {
+void reasoning_integration_set_health_agent(nimcp_health_agent_t* agent) {
     g_reasoning_integration_health_agent = agent;
 }
 
@@ -155,6 +155,12 @@ static active_inference_t* find_inference_by_id(
 )
 {
     for (uint32_t i = 0; i < integration->num_active_inferences; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && integration->num_active_inferences > 256) {
+            reasoning_integration_heartbeat("reasoning_in_loop",
+                             (float)(i + 1) / (float)integration->num_active_inferences);
+        }
+
         if (integration->active_inferences[i].inference_id == inference_id &&
             integration->active_inferences[i].is_active) {
             return &integration->active_inferences[i];
@@ -172,6 +178,12 @@ static rule_usage_t* find_rule_by_string(
 )
 {
     for (uint32_t i = 0; i < integration->num_tracked_rules; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && integration->num_tracked_rules > 256) {
+            reasoning_integration_heartbeat("reasoning_in_loop",
+                             (float)(i + 1) / (float)integration->num_tracked_rules);
+        }
+
         if (strcmp(integration->tracked_rules[i].rule, rule_str) == 0) {
             return &integration->tracked_rules[i];
         }
@@ -249,6 +261,12 @@ static bool track_rule(
         uint32_t oldest_idx = 0;
         uint64_t oldest_time = UINT64_MAX;
         for (uint32_t i = 0; i < integration->num_tracked_rules; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && integration->num_tracked_rules > 256) {
+                reasoning_integration_heartbeat("reasoning_in_loop",
+                                 (float)(i + 1) / (float)integration->num_tracked_rules);
+            }
+
             if (!integration->tracked_rules[i].consolidated &&
                 integration->tracked_rules[i].first_used_ms < oldest_time) {
                 oldest_time = integration->tracked_rules[i].first_used_ms;
@@ -410,6 +428,12 @@ static nimcp_error_t handle_decision_request(
 
     // Check if any high-importance rules relate to this decision
     for (uint32_t i = 0; i < integration->num_tracked_rules; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && integration->num_tracked_rules > 256) {
+            reasoning_integration_heartbeat("reasoning_in_loop",
+                             (float)(i + 1) / (float)integration->num_tracked_rules);
+        }
+
         if (integration->tracked_rules[i].importance > 0.7F) {
             decision_confidence = fmaxf(decision_confidence, integration->tracked_rules[i].importance);
         }
@@ -419,6 +443,12 @@ static nimcp_error_t handle_decision_request(
     if (integration->num_active_inferences > 0) {
         float avg_salience = 0.0F;
         for (uint32_t i = 0; i < integration->num_active_inferences; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && integration->num_active_inferences > 256) {
+                reasoning_integration_heartbeat("reasoning_in_loop",
+                                 (float)(i + 1) / (float)integration->num_active_inferences);
+            }
+
             avg_salience += integration->active_inferences[i].salience;
         }
         avg_salience /= integration->num_active_inferences;
@@ -472,6 +502,12 @@ static int reasoning_wiring_handler_callback(
         message_count);
 
     for (uint32_t i = 0; i < message_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && message_count > 256) {
+            reasoning_integration_heartbeat("reasoning_in_loop",
+                             (float)(i + 1) / (float)message_count);
+        }
+
         switch (message_types[i]) {
             case BIO_MSG_KNOWLEDGE_QUERY:
                 bio_router_register_handler(ctx, message_types[i], handle_knowledge_query);
@@ -591,6 +627,10 @@ static void reasoning_event_callback(const brain_event_t* event, void* context)
 
 reasoning_integration_t* reasoning_integration_create(event_bus_t event_bus)
 {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_integration_heartbeat("reasoning_in_create", 0.0f);
+
+
     reasoning_integration_config_t default_config = reasoning_integration_default_config();
     return reasoning_integration_create_custom(event_bus, &default_config);
 }
@@ -606,6 +646,10 @@ reasoning_integration_t* reasoning_integration_create_custom(
 
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_integration_heartbeat("reasoning_in_create_custom", 0.0f);
+
 
     if (config && !reasoning_integration_validate_config(config)) {
         set_error("Invalid configuration");
@@ -762,7 +806,17 @@ void reasoning_integration_destroy(reasoning_integration_t* integration)
     if (!integration) return;
 
     // Unsubscribe from all events
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_integration_heartbeat("reasoning_in_destroy", 0.0f);
+
+
     for (uint32_t i = 0; i < integration->num_subscriptions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && integration->num_subscriptions > 256) {
+            reasoning_integration_heartbeat("reasoning_in_loop",
+                             (float)(i + 1) / (float)integration->num_subscriptions);
+        }
+
         event_bus_unsubscribe(integration->event_bus, integration->subscriptions[i]);
     }
 
@@ -803,6 +857,10 @@ bool reasoning_attention_hook(
 )
 {
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_integration_heartbeat("reasoning_in_reasoning_attention_", 0.0f);
+
+
     if (integration && integration->bio_ctx) {
         bio_router_process_inbox(integration->bio_ctx, 5);
     }
@@ -841,6 +899,10 @@ bool reasoning_curiosity_hook(
     if (!integration || !event) return false;
     if (!integration->config.enable_curiosity_integration) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_integration_heartbeat("reasoning_in_reasoning_curiosity_", 0.0f);
+
+
     float curiosity_boost = 0.0F;
 
     switch (event->type) {
@@ -871,6 +933,10 @@ bool reasoning_working_memory_hook(
 {
     if (!integration || !event) return false;
     if (!integration->config.enable_working_memory_integration) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_integration_heartbeat("reasoning_in_reasoning_working_me", 0.0f);
+
 
     switch (event->type) {
         case EVENT_LOGIC_INFERENCE_STARTED: {
@@ -916,6 +982,10 @@ bool reasoning_executive_hook(
     if (!integration || !event) return false;
     // if (!integration->config.enable_executive_integration) return false; // Executive not available
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_integration_heartbeat("reasoning_in_reasoning_executive_", 0.0f);
+
+
     switch (event->type) {
         case EVENT_LOGIC_INFERENCE_STARTED: {
             // Check if inference requires planning (based on estimated complexity)
@@ -945,6 +1015,10 @@ bool reasoning_consolidation_hook(
 {
     if (!integration || !event) return false;
     if (!integration->config.enable_consolidation_integration) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_integration_heartbeat("reasoning_in_reasoning_consolidat", 0.0f);
+
 
     switch (event->type) {
         case EVENT_RULE_ADDED: {
@@ -1001,6 +1075,10 @@ uint32_t reasoning_integration_get_active_inferences(
 {
     if (!integration || !inferences || max_count == 0) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_integration_heartbeat("reasoning_in_get_active_inference", 0.0f);
+
+
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&integration->mutex);
 
     uint32_t count = (max_count < integration->num_active_inferences) ?
@@ -1020,6 +1098,10 @@ uint32_t reasoning_integration_get_tracked_rules(
 )
 {
     if (!integration || !rules || max_count == 0) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_integration_heartbeat("reasoning_in_get_tracked_rules", 0.0f);
+
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&integration->mutex);
 
@@ -1044,6 +1126,10 @@ bool reasoning_integration_get_config(
 {
     if (!integration || !config) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_integration_heartbeat("reasoning_in_get_config", 0.0f);
+
+
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&integration->mutex);
     *config = integration->config;
     nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&integration->mutex);
@@ -1058,6 +1144,10 @@ bool reasoning_integration_set_config(
 {
     if (!integration || !config) return false;
     if (!reasoning_integration_validate_config(config)) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_integration_heartbeat("reasoning_in_set_config", 0.0f);
+
 
     nimcp_platform_mutex_lock(&integration->mutex);
     integration->config = *config;
@@ -1077,6 +1167,10 @@ bool reasoning_integration_get_stats(
 {
     if (!integration || !stats) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_integration_heartbeat("reasoning_in_get_stats", 0.0f);
+
+
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&integration->mutex);
     *stats = integration->stats;
     nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&integration->mutex);
@@ -1087,6 +1181,10 @@ bool reasoning_integration_get_stats(
 bool reasoning_integration_reset_stats(reasoning_integration_t* integration)
 {
     if (!integration) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_integration_heartbeat("reasoning_in_reset_stats", 0.0f);
+
 
     nimcp_platform_mutex_lock(&integration->mutex);
     memset(&integration->stats, 0, sizeof(reasoning_integration_stats_t));
@@ -1101,6 +1199,10 @@ bool reasoning_integration_reset_stats(reasoning_integration_t* integration)
 
 reasoning_integration_config_t reasoning_integration_default_config(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_integration_heartbeat("reasoning_in_default_config", 0.0f);
+
+
     reasoning_integration_config_t config = {
         // Integration enable flags
         .enable_attention_integration = true,
@@ -1140,6 +1242,10 @@ bool reasoning_integration_validate_config(
     if (!config) return false;
 
     // Validate salience boosts [0.0, 1.0]
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_integration_heartbeat("reasoning_in_validate_config", 0.0f);
+
+
     if (config->novel_fact_salience_boost < 0.0F || config->novel_fact_salience_boost > 1.0F)
         return false;
     if (config->contradiction_salience_boost < 0.0F || config->contradiction_salience_boost > 1.0F)
@@ -1191,6 +1297,10 @@ bool reasoning_integration_connect_kg(reasoning_integration_t* integration, brai
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_integration_heartbeat("reasoning_in_connect_kg", 0.0f);
+
+
     nimcp_platform_mutex_lock(&integration->mutex);
 
     int result = kg_module_init(&integration->kg_context, brain, "Reasoning_Integration");
@@ -1231,6 +1341,10 @@ int reasoning_integration_query_resources(reasoning_integration_t* integration)
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_integration_heartbeat("reasoning_in_query_resources", 0.0f);
+
+
     nimcp_platform_mutex_lock(&integration->mutex);
 
     if (!kg_is_available(&integration->kg_context)) {
@@ -1268,6 +1382,10 @@ bool reasoning_integration_query_self_knowledge(reasoning_integration_t* integra
     if (!integration || !integration->kg_connected) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_integration_heartbeat("reasoning_in_query_self_knowledge", 0.0f);
+
 
     nimcp_platform_mutex_lock(&integration->mutex);
 

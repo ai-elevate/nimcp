@@ -39,7 +39,7 @@ static nimcp_health_agent_t* g_mirror_plasticity_bridge_health_agent = NULL;
  * @brief Set health agent for mirror_plasticity_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_plasticity_bridge_health_agent = agent;
 }
 
@@ -128,6 +128,12 @@ static void init_synapse(mirror_plasticity_synapse_t* s, uint32_t id,
 static mirror_plasticity_synapse_t* find_synapse(
     mirror_plasticity_bridge_t* bridge, uint32_t id) {
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            mirror_plasticity_bridge_heartbeat("mirror_plast_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (bridge->synapses[i].synapse_id == id) {
             return &bridge->synapses[i];
         }
@@ -233,6 +239,12 @@ static void on_homeostatic_event(const plasticity_event_t* event, void* user_dat
 
     /* Apply scaling to all synapses */
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            mirror_plasticity_bridge_heartbeat("mirror_plast_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         float old_w = bridge->synapses[i].weight;
         bridge->synapses[i].weight *= event->delta;
         bridge->synapses[i].weight = clamp_f(bridge->synapses[i].weight,
@@ -271,6 +283,10 @@ static void on_energy_restored(const plasticity_event_t* event, void* user_data)
 //=============================================================================
 
 mirror_plasticity_config_t mirror_plasticity_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_co", 0.0f);
+
+
     mirror_plasticity_config_t cfg = {
         .stdp_ltp_window_ms = MIRROR_PLASTICITY_STDP_WINDOW,
         .stdp_ltd_window_ms = 30.0f,
@@ -308,6 +324,10 @@ mirror_plasticity_config_t mirror_plasticity_config_default(void) {
 mirror_plasticity_bridge_t* mirror_plasticity_create(
     const mirror_plasticity_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_cr", 0.0f);
+
+
     mirror_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
 
@@ -385,6 +405,10 @@ mirror_plasticity_bridge_t* mirror_plasticity_create_with_orchestrator(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_cr", 0.0f);
+
+
     mirror_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
 
@@ -433,6 +457,10 @@ mirror_plasticity_bridge_t* mirror_plasticity_create_with_orchestrator(
 void mirror_plasticity_destroy(mirror_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_de", 0.0f);
+
+
     mirror_plasticity_disconnect_bio_async(bridge);
 
     if (bridge->owns_orchestrator && bridge->orchestrator) {
@@ -460,6 +488,10 @@ uint32_t mirror_plasticity_register_synapse(
     if (!bridge || bridge->num_synapses >= bridge->max_synapses) return UINT32_MAX;
     if (action_id >= MIRROR_PLASTICITY_MAX_ACTIONS) return UINT32_MAX;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_re", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t id = bridge->next_synapse_id++;
@@ -478,9 +510,19 @@ int mirror_plasticity_unregister_synapse(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_un", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            mirror_plasticity_bridge_heartbeat("mirror_plast_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (bridge->synapses[i].synapse_id == synapse_id) {
             uint32_t action = bridge->synapses[i].action_id;
             if (action < MIRROR_PLASTICITY_MAX_ACTIONS) {
@@ -506,6 +548,10 @@ int mirror_plasticity_get_synapse(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_ge", 0.0f);
+
+
     nimcp_mutex_lock(((mirror_plasticity_bridge_t*)bridge)->base.mutex);
     mirror_plasticity_synapse_t* s = find_synapse((mirror_plasticity_bridge_t*)bridge, synapse_id);
     if (s) {
@@ -523,6 +569,10 @@ float mirror_plasticity_get_weight(
 ) {
     if (!bridge) return NAN;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_ge", 0.0f);
+
+
     nimcp_mutex_lock(((mirror_plasticity_bridge_t*)bridge)->base.mutex);
     mirror_plasticity_synapse_t* s = find_synapse((mirror_plasticity_bridge_t*)bridge, synapse_id);
     float w = s ? s->weight : NAN;
@@ -537,6 +587,10 @@ int mirror_plasticity_get_action_weights(
     uint32_t max_weights
 ) {
     if (!bridge || !weights) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_ge", 0.0f);
+
 
     nimcp_mutex_lock(((mirror_plasticity_bridge_t*)bridge)->base.mutex);
 
@@ -676,6 +730,10 @@ float mirror_plasticity_pre_spike(
 ) {
     if (!bridge) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_pr", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float dw = pre_spike_unlocked(bridge, synapse_id, timestamp_us);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -688,6 +746,10 @@ float mirror_plasticity_post_spike(
     uint64_t timestamp_us
 ) {
     if (!bridge) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_po", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     float dw = post_spike_unlocked(bridge, synapse_id, timestamp_us);
@@ -703,10 +765,20 @@ int mirror_plasticity_observation(
 ) {
     if (!bridge || action_id >= MIRROR_PLASTICITY_MAX_ACTIONS) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_ob", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Trigger pre-spike for all synapses of this action */
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            mirror_plasticity_bridge_heartbeat("mirror_plast_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (bridge->synapses[i].action_id == action_id &&
             bridge->synapses[i].type == MIRROR_SYNAPSE_OBS_TO_HIDDEN) {
             /* Probabilistic spike based on strength */
@@ -728,10 +800,20 @@ int mirror_plasticity_execution(
 ) {
     if (!bridge || action_id >= MIRROR_PLASTICITY_MAX_ACTIONS) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_ex", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Trigger post-spike for all synapses of this action */
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            mirror_plasticity_bridge_heartbeat("mirror_plast_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (bridge->synapses[i].action_id == action_id) {
             if (strength > 0.5f || ((float)rand() / RAND_MAX) < strength) {
                 post_spike_unlocked(bridge, bridge->synapses[i].synapse_id, timestamp_us);
@@ -754,6 +836,10 @@ int mirror_plasticity_reward(
 ) {
     if (!bridge || bridge->learning_blocked) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_re", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = MIRROR_PLASTICITY_STATE_LEARNING;
 
@@ -762,6 +848,12 @@ int mirror_plasticity_reward(
 
     /* Apply reward to all eligible synapses */
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            mirror_plasticity_bridge_heartbeat("mirror_plast_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         mirror_plasticity_synapse_t* s = &bridge->synapses[i];
         if (s->eligibility_trace > 0.01f) {
             float dw = scaled_reward * s->eligibility_trace * bridge->current_lr_modulation;
@@ -798,12 +890,22 @@ int mirror_plasticity_reward_action(
 ) {
     if (!bridge || action_id >= MIRROR_PLASTICITY_MAX_ACTIONS) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_re", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     int updated = 0;
     float scaled_reward = reward * bridge->config.reward_modulation_gain;
 
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            mirror_plasticity_bridge_heartbeat("mirror_plast_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (bridge->synapses[i].action_id == action_id) {
             mirror_plasticity_synapse_t* s = &bridge->synapses[i];
             if (s->eligibility_trace > 0.01f) {
@@ -822,12 +924,22 @@ int mirror_plasticity_reward_action(
 int mirror_plasticity_consolidate(mirror_plasticity_bridge_t* bridge) {
     if (!bridge) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_co", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = MIRROR_PLASTICITY_STATE_CONSOLIDATING;
 
     int consolidated = 0;
 
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            mirror_plasticity_bridge_heartbeat("mirror_plast_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         mirror_plasticity_synapse_t* s = &bridge->synapses[i];
         /* Consolidate synapses with significant weight changes */
         if (fabsf(s->weight - s->initial_weight) > 0.1f) {
@@ -859,12 +971,22 @@ int mirror_plasticity_get_action_modulation(
 ) {
     if (!bridge || !modulation || action_id >= MIRROR_PLASTICITY_MAX_ACTIONS) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_ge", 0.0f);
+
+
     nimcp_mutex_lock(((mirror_plasticity_bridge_t*)bridge)->base.mutex);
 
     /* Compute average weight for action as modulation */
     float sum = 0.0f;
     uint32_t count = 0;
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            mirror_plasticity_bridge_heartbeat("mirror_plast_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (bridge->synapses[i].action_id == action_id) {
             sum += bridge->synapses[i].weight;
             count++;
@@ -878,10 +1000,18 @@ int mirror_plasticity_get_action_modulation(
 }
 
 float mirror_plasticity_get_lr_modulation(const mirror_plasticity_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_ge", 0.0f);
+
+
     return bridge ? bridge->current_lr_modulation : 1.0f;
 }
 
 bool mirror_plasticity_is_learning_blocked(const mirror_plasticity_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_is", 0.0f);
+
+
     return bridge ? bridge->learning_blocked : true;
 }
 
@@ -894,6 +1024,10 @@ int mirror_plasticity_connect_immune(
     void* immune_system
 ) {
     if (!bridge || !immune_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_co", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->immune_system = immune_system;
@@ -908,6 +1042,10 @@ int mirror_plasticity_connect_sleep(
 ) {
     if (!bridge || !sleep_system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_co", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->sleep_system = sleep_system;
     plasticity_orchestrator_connect_sleep(bridge->orchestrator, sleep_system);
@@ -918,6 +1056,10 @@ int mirror_plasticity_connect_sleep(
 int mirror_plasticity_connect_bio_async(mirror_plasticity_bridge_t* bridge) {
     if (!bridge || bridge->bio_async_connected) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_co", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     int ret = plasticity_orchestrator_connect_bio_async(bridge->orchestrator);
     if (ret == 0) bridge->bio_async_connected = true;
@@ -927,11 +1069,19 @@ int mirror_plasticity_connect_bio_async(mirror_plasticity_bridge_t* bridge) {
 
 int mirror_plasticity_disconnect_bio_async(mirror_plasticity_bridge_t* bridge) {
     if (!bridge || !bridge->bio_async_connected) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_di", 0.0f);
+
+
     bridge->bio_async_connected = false;
     return 0;
 }
 
 bool mirror_plasticity_is_bio_async_connected(const mirror_plasticity_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_is", 0.0f);
+
+
     return bridge && bridge->bio_async_connected;
 }
 
@@ -945,6 +1095,10 @@ int mirror_plasticity_register_weight_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_re", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->weight_callback = callback;
     bridge->weight_callback_data = user_data;
@@ -958,6 +1112,10 @@ int mirror_plasticity_register_consolidation_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_re", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->consolidation_callback = callback;
     bridge->consolidation_callback_data = user_data;
@@ -971,6 +1129,10 @@ int mirror_plasticity_register_homeostatic_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_re", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->homeostatic_callback = callback;
     bridge->homeostatic_callback_data = user_data;
@@ -984,6 +1146,10 @@ int mirror_plasticity_register_energy_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_re", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->energy_callback = callback;
     bridge->energy_callback_data = user_data;
@@ -1001,6 +1167,10 @@ int mirror_plasticity_get_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_ge", 0.0f);
+
+
     nimcp_mutex_lock(((mirror_plasticity_bridge_t*)bridge)->base.mutex);
 
     state->state = bridge->state;
@@ -1013,6 +1183,12 @@ int mirror_plasticity_get_state(
     state->max_weight = bridge->config.weight_min;
 
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            mirror_plasticity_bridge_heartbeat("mirror_plast_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         const mirror_plasticity_synapse_t* s = &bridge->synapses[i];
         state->mean_weight += s->weight;
         if (s->weight < state->min_weight) state->min_weight = s->weight;
@@ -1028,6 +1204,12 @@ int mirror_plasticity_get_state(
         /* Compute variance */
         state->weight_variance = 0.0f;
         for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+                mirror_plasticity_bridge_heartbeat("mirror_plast_loop",
+                                 (float)(i + 1) / (float)bridge->num_synapses);
+            }
+
             float diff = bridge->synapses[i].weight - state->mean_weight;
             state->weight_variance += diff * diff;
         }
@@ -1047,6 +1229,10 @@ int mirror_plasticity_get_stats(
     mirror_plasticity_stats_t* stats
 ) {
     if (!bridge || !stats) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_ge", 0.0f);
+
+
     nimcp_mutex_lock(((mirror_plasticity_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(((mirror_plasticity_bridge_t*)bridge)->base.mutex);
@@ -1055,6 +1241,10 @@ int mirror_plasticity_get_stats(
 
 void mirror_plasticity_reset_stats(mirror_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_re", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1062,6 +1252,10 @@ void mirror_plasticity_reset_stats(mirror_plasticity_bridge_t* bridge) {
 
 float mirror_plasticity_get_atp_level(const mirror_plasticity_bridge_t* bridge) {
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_ge", 0.0f);
+
+
     return plasticity_orchestrator_get_atp_level(bridge->orchestrator);
 }
 
@@ -1071,6 +1265,10 @@ float mirror_plasticity_get_atp_level(const mirror_plasticity_bridge_t* bridge) 
 
 int mirror_plasticity_update(mirror_plasticity_bridge_t* bridge, float dt_ms) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_up", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1086,6 +1284,12 @@ int mirror_plasticity_update(mirror_plasticity_bridge_t* bridge, float dt_ms) {
     /* Decay traces */
     float decay = expf(-dt_ms / bridge->config.stdp_tau_plus);
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            mirror_plasticity_bridge_heartbeat("mirror_plast_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         bridge->synapses[i].pre_trace *= decay;
         bridge->synapses[i].post_trace *= decay;
         if (bridge->config.enable_eligibility) {
@@ -1115,9 +1319,19 @@ int mirror_plasticity_update(mirror_plasticity_bridge_t* bridge, float dt_ms) {
 int mirror_plasticity_reset(mirror_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_re", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            mirror_plasticity_bridge_heartbeat("mirror_plast_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         mirror_plasticity_synapse_t* s = &bridge->synapses[i];
         s->weight = s->initial_weight;
         s->pre_trace = 0.0f;
@@ -1143,6 +1357,10 @@ int mirror_plasticity_reset(mirror_plasticity_bridge_t* bridge) {
 plasticity_orchestrator_t* mirror_plasticity_get_orchestrator(
     mirror_plasticity_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_ge", 0.0f);
+
+
     return bridge ? bridge->orchestrator : NULL;
 }
 
@@ -1151,5 +1369,9 @@ int mirror_plasticity_get_orchestrator_stats(
     plasticity_stats_t* stats
 ) {
     if (!bridge || !stats) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_ge", 0.0f);
+
+
     return plasticity_orchestrator_get_stats(bridge->orchestrator, stats);
 }

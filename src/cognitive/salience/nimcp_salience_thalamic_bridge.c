@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_salience_thalamic_bridge_health_agent = NULL;
  * @brief Set health agent for salience_thalamic_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void salience_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void salience_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_salience_thalamic_bridge_health_agent = agent;
 }
 
@@ -63,6 +63,10 @@ struct salience_thalamic_bridge {
 };
 
 salience_thalamic_config_t salience_thalamic_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    salience_thalamic_bridge_heartbeat("salience_tha_salience_thalamic_de", 0.0f);
+
+
     salience_thalamic_config_t cfg = {
         .enable_attention_gating = true,
         .enable_priority_override = true,
@@ -73,6 +77,10 @@ salience_thalamic_config_t salience_thalamic_default_config(void) {
 }
 
 salience_thalamic_bridge_t* salience_thalamic_bridge_create(void* salience, thalamic_router_t* router, const salience_thalamic_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    salience_thalamic_bridge_heartbeat("salience_tha_create", 0.0f);
+
+
     salience_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(salience_thalamic_bridge_t));
     if (!bridge) {
 
@@ -96,6 +104,10 @@ salience_thalamic_bridge_t* salience_thalamic_bridge_create(void* salience, thal
 
 void salience_thalamic_bridge_destroy(salience_thalamic_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    salience_thalamic_bridge_heartbeat("salience_tha_destroy", 0.0f);
+
+
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
     }
@@ -104,6 +116,10 @@ void salience_thalamic_bridge_destroy(salience_thalamic_bridge_t* bridge) {
 
 int salience_thalamic_bridge_reset(salience_thalamic_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    salience_thalamic_bridge_heartbeat("salience_tha_reset", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -120,6 +136,10 @@ int salience_thalamic_bridge_reset(salience_thalamic_bridge_t* bridge) {
  */
 int salience_thalamic_route_detection(salience_thalamic_bridge_t* bridge, const salience_thalamic_signal_t* signal) {
     if (!bridge || !signal) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_thalamic_bridge_heartbeat("salience_tha_salience_thalamic_ro", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -202,6 +222,10 @@ int salience_thalamic_route_detection(salience_thalamic_bridge_t* bridge, const 
 int salience_thalamic_route_priority(salience_thalamic_bridge_t* bridge, const void* stimulus, float priority) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_thalamic_bridge_heartbeat("salience_tha_salience_thalamic_ro", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Route through thalamic router if available */
@@ -255,6 +279,10 @@ int salience_thalamic_route_priority(salience_thalamic_bridge_t* bridge, const v
 
 int salience_thalamic_set_attention(salience_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    salience_thalamic_bridge_heartbeat("salience_tha_salience_thalamic_se", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -263,6 +291,10 @@ int salience_thalamic_set_attention(salience_thalamic_bridge_t* bridge, float at
 
 int salience_thalamic_get_attention(const salience_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    salience_thalamic_bridge_heartbeat("salience_tha_salience_thalamic_ge", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -271,6 +303,10 @@ int salience_thalamic_get_attention(const salience_thalamic_bridge_t* bridge, fl
 
 int salience_thalamic_bridge_get_stats(const salience_thalamic_bridge_t* bridge, salience_thalamic_stats_t* stats) {
     if (!bridge || !stats) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    salience_thalamic_bridge_heartbeat("salience_tha_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -284,9 +320,19 @@ int salience_thalamic_bridge_get_stats(const salience_thalamic_bridge_t* bridge,
 int salience_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_thalamic_bridge_heartbeat("salience_tha_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Salience_Thalamic_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                salience_thalamic_bridge_heartbeat("salience_tha_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

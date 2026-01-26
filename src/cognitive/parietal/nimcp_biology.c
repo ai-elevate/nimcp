@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_biology_health_agent = NULL;
  * @brief Set health agent for biology heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void biology_set_health_agent(nimcp_health_agent_t* agent) {
+void biology_set_health_agent(nimcp_health_agent_t* agent) {
     g_biology_health_agent = agent;
 }
 
@@ -176,6 +176,10 @@ static int max3_int(int a, int b, int c) {
  * ============================================================================ */
 
 biology_config_t biology_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_default_config", 0.0f);
+
+
     biology_config_t config = {
         .gap_open_penalty = -10,
         .gap_extend_penalty = -1,
@@ -195,6 +199,10 @@ bool biology_validate_config(const biology_config_t* config) {
         return false;
     }
     /* Basic sanity checks */
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_validate_config", 0.0f);
+
+
     if (config->match_score < 0) {
         set_biology_error("Match score should be non-negative");
         return false;
@@ -203,10 +211,18 @@ bool biology_validate_config(const biology_config_t* config) {
 }
 
 biology_t* biology_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_create", 0.0f);
+
+
     return biology_create_custom(NULL);
 }
 
 biology_t* biology_create_custom(const biology_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_create_custom", 0.0f);
+
+
     biology_config_t cfg = config ? *config : biology_default_config();
 
     if (!biology_validate_config(&cfg)) {
@@ -237,6 +253,10 @@ biology_t* biology_create_custom(const biology_config_t* config) {
 void biology_destroy(biology_t* bio) {
     if (!bio) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_destroy", 0.0f);
+
+
     if (bio->lock) {
         nimcp_mutex_free(bio->lock);
     }
@@ -250,6 +270,10 @@ void biology_destroy(biology_t* bio) {
 bool biology_validate_dna(const biology_t* bio, const char* sequence) {
     if (!bio || !sequence) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_validate_dna", 0.0f);
+
+
     for (const char* p = sequence; *p; p++) {
         char c = toupper(*p);
         if (c != 'A' && c != 'T' && c != 'G' && c != 'C') {
@@ -261,6 +285,10 @@ bool biology_validate_dna(const biology_t* bio, const char* sequence) {
 
 bool biology_validate_rna(const biology_t* bio, const char* sequence) {
     if (!bio || !sequence) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_validate_rna", 0.0f);
+
 
     for (const char* p = sequence; *p; p++) {
         char c = toupper(*p);
@@ -282,6 +310,10 @@ int biology_complement_dna(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_complement_dna", 0.0f);
+
+
     nimcp_mutex_lock(bio->lock);
 
     size_t len = strlen(dna);
@@ -292,6 +324,12 @@ int biology_complement_dna(
     }
 
     for (size_t i = 0; i < len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && len > 256) {
+            biology_heartbeat("biology_loop",
+                             (float)(i + 1) / (float)len);
+        }
+
         complement[i] = dna_complement(dna[i]);
     }
     complement[len] = '\0';
@@ -312,6 +350,10 @@ int biology_reverse_complement(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_reverse_complement", 0.0f);
+
+
     nimcp_mutex_lock(bio->lock);
 
     size_t len = strlen(dna);
@@ -322,6 +364,12 @@ int biology_reverse_complement(
     }
 
     for (size_t i = 0; i < len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && len > 256) {
+            biology_heartbeat("biology_loop",
+                             (float)(i + 1) / (float)len);
+        }
+
         reverse_complement[i] = dna_complement(dna[len - 1 - i]);
     }
     reverse_complement[len] = '\0';
@@ -342,6 +390,10 @@ int biology_transcribe(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_transcribe", 0.0f);
+
+
     nimcp_mutex_lock(bio->lock);
 
     size_t len = strlen(dna);
@@ -353,6 +405,12 @@ int biology_transcribe(
 
     /* Transcription: T -> U, others stay same */
     for (size_t i = 0; i < len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && len > 256) {
+            biology_heartbeat("biology_loop",
+                             (float)(i + 1) / (float)len);
+        }
+
         char c = toupper(dna[i]);
         if (c == 'T') {
             rna[i] = 'U';
@@ -377,6 +435,10 @@ int biology_translate(
         set_biology_error("Null parameter");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_translate", 0.0f);
+
 
     nimcp_mutex_lock(bio->lock);
 
@@ -416,6 +478,10 @@ char biology_codon_to_amino(const biology_t* bio, const char* codon) {
 float biology_gc_content(const biology_t* bio, const char* sequence) {
     if (!bio || !sequence) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_gc_content", 0.0f);
+
+
     size_t gc_count = 0;
     size_t total = 0;
 
@@ -431,6 +497,10 @@ float biology_gc_content(const biology_t* bio, const char* sequence) {
 
 float biology_melting_temp(biology_t* bio, const char* dna) {
     if (!bio || !dna) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_melting_temp", 0.0f);
+
 
     size_t len = strlen(dna);
     if (len == 0) return 0.0f;
@@ -469,6 +539,10 @@ int biology_align_global(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_align_global", 0.0f);
+
+
     nimcp_mutex_lock(bio->lock);
 
     size_t len1 = strlen(seq1);
@@ -489,6 +563,12 @@ int biology_align_global(
     size_t mismatches = 0;
 
     for (size_t i = 0; i < min_len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && min_len > 256) {
+            biology_heartbeat("biology_loop",
+                             (float)(i + 1) / (float)min_len);
+        }
+
         if (toupper(seq1[i]) == toupper(seq2[i])) {
             matches++;
             result->aligned_seq1[i] = seq1[i];
@@ -544,6 +624,10 @@ int biology_align_local(
     alignment_result_t* result
 ) {
     /* For now, use same as global */
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_align_local", 0.0f);
+
+
     return biology_align_global(bio, seq1, seq2, result);
 }
 
@@ -553,6 +637,10 @@ float biology_sequence_similarity(
     const char* seq2
 ) {
     if (!bio || !seq1 || !seq2) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_sequence_similarity", 0.0f);
+
 
     alignment_result_t result;
     if (biology_align_global(bio, seq1, seq2, &result) != 0) {
@@ -574,6 +662,10 @@ mutation_type_t biology_identify_mutation(
 ) {
     if (!bio || !original || !mutated) return MUTATION_SUBSTITUTION;
 
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_identify_mutation", 0.0f);
+
+
     size_t len_orig = strlen(original);
     size_t len_mut = strlen(mutated);
 
@@ -582,6 +674,12 @@ mutation_type_t biology_identify_mutation(
     if (len_orig == len_mut) {
         /* Same length - likely substitution */
         for (size_t i = 0; i < len_orig; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && len_orig > 256) {
+                biology_heartbeat("biology_loop",
+                                 (float)(i + 1) / (float)len_orig);
+            }
+
             if (toupper(original[i]) != toupper(mutated[i])) {
                 if (position) *position = (uint32_t)i;
                 return MUTATION_SUBSTITUTION;
@@ -611,6 +709,10 @@ bool biology_is_silent_mutation(
     if (!bio || !original_codon || !mutated_codon) return false;
     if (strlen(original_codon) != 3 || strlen(mutated_codon) != 3) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_is_silent_mutation", 0.0f);
+
+
     char aa1 = biology_codon_to_amino(bio, original_codon);
     char aa2 = biology_codon_to_amino(bio, mutated_codon);
 
@@ -632,6 +734,10 @@ phylo_tree_t* biology_create_phylo_tree(
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_create_phylo_tree", 0.0f);
+
+
     if (num_species > BIOLOGY_MAX_SPECIES) {
         set_biology_error("Too many species");
         return NULL;
@@ -649,6 +755,12 @@ phylo_tree_t* biology_create_phylo_tree(
     /* Create leaf nodes */
     phylo_node_t** nodes = calloc(num_species, sizeof(phylo_node_t*));
     for (uint32_t i = 0; i < num_species; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_species > 256) {
+            biology_heartbeat("biology_loop",
+                             (float)(i + 1) / (float)num_species);
+        }
+
         nodes[i] = calloc(1, sizeof(phylo_node_t));
         nodes[i]->id = i;
         strncpy(nodes[i]->name, species_names[i], sizeof(nodes[i]->name) - 1);
@@ -665,6 +777,12 @@ phylo_tree_t* biology_create_phylo_tree(
         uint32_t min_i = 0, min_j = 1;
 
         for (uint32_t i = 0; i < num_species; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_species > 256) {
+                biology_heartbeat("biology_loop",
+                                 (float)(i + 1) / (float)num_species);
+            }
+
             if (!nodes[i]) continue;
             for (uint32_t j = i + 1; j < num_species; j++) {
                 if (!nodes[j]) continue;
@@ -699,6 +817,12 @@ phylo_tree_t* biology_create_phylo_tree(
 
     /* Find root */
     for (uint32_t i = 0; i < num_species; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_species > 256) {
+            biology_heartbeat("biology_loop",
+                             (float)(i + 1) / (float)num_species);
+        }
+
         if (nodes[i]) {
             tree->root = nodes[i];
             break;
@@ -724,6 +848,10 @@ static void destroy_phylo_node(phylo_node_t* node) {
 
 void biology_destroy_phylo_tree(phylo_tree_t* tree) {
     if (!tree) return;
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_destroy_phylo_tree", 0.0f);
+
+
     destroy_phylo_node(tree->root);
     free(tree);
 }
@@ -751,6 +879,10 @@ phylo_node_t* biology_find_mrca(
 ) {
     if (!tree || !species1 || !species2) return NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_find_mrca", 0.0f);
+
+
     phylo_node_t* n1 = find_node_by_name(tree->root, species1);
     phylo_node_t* n2 = find_node_by_name(tree->root, species2);
 
@@ -777,6 +909,10 @@ float biology_evolutionary_distance(
     const char* species2
 ) {
     if (!tree || !species1 || !species2) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_evolutionary_distanc", 0.0f);
+
 
     phylo_node_t* n1 = find_node_by_name(tree->root, species1);
     phylo_node_t* n2 = find_node_by_name(tree->root, species2);
@@ -815,6 +951,10 @@ int biology_hardy_weinberg(
 ) {
     if (!bio || !params || !result) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_hardy_weinberg", 0.0f);
+
+
     nimcp_mutex_lock(bio->lock);
 
     float p = params->allele_freq_p;
@@ -841,12 +981,22 @@ float biology_selection_frequency(
 ) {
     if (!bio || !params) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_selection_frequency", 0.0f);
+
+
     float p = params->allele_freq_p;
     float s = params->selection_coefficient;
 
     /* Simple model: delta_p = spq(q + h*2pq) / mean_fitness */
     /* Simplified: assuming complete dominance */
     for (uint32_t g = 0; g < generations; g++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((g & 0xFF) == 0 && generations > 256) {
+            biology_heartbeat("biology_loop",
+                             (float)(g + 1) / (float)generations);
+        }
+
         float q = 1.0f - p;
         float w_bar = 1.0f - s * q * q;
         float delta_p = (s * p * q * q) / w_bar;
@@ -863,6 +1013,10 @@ float biology_genetic_drift(
 ) {
     if (!bio || !params) return 0.0f;
     if (params->population_size == 0) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_genetic_drift", 0.0f);
+
 
     float p = params->allele_freq_p;
     float N = (float)params->population_size;
@@ -882,6 +1036,10 @@ float biology_genetic_drift(
 int biology_set_inflammation(biology_t* bio, float level) {
     if (!bio) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_set_inflammation", 0.0f);
+
+
     nimcp_mutex_lock(bio->lock);
     bio->inflammation_level = clamp01(level);
     nimcp_mutex_unlock(bio->lock);
@@ -891,6 +1049,10 @@ int biology_set_inflammation(biology_t* bio, float level) {
 
 int biology_set_sleep_deprivation(biology_t* bio, float level) {
     if (!bio) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_set_sleep_deprivatio", 0.0f);
+
 
     nimcp_mutex_lock(bio->lock);
     bio->sleep_deprivation_level = clamp01(level);
@@ -905,6 +1067,10 @@ int biology_set_sleep_deprivation(biology_t* bio, float level) {
 
 int biology_get_stats(const biology_t* bio, biology_stats_t* stats) {
     if (!bio || !stats) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_get_stats", 0.0f);
+
 
     nimcp_mutex_lock(((biology_t*)bio)->lock);
 
@@ -929,6 +1095,10 @@ int biology_get_stats(const biology_t* bio, biology_stats_t* stats) {
 void biology_reset_stats(biology_t* bio) {
     if (!bio) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(bio->lock);
     bio->sequences_analyzed = 0;
     bio->alignments_performed = 0;
@@ -948,9 +1118,19 @@ const char* biology_get_last_error(void) {
 
 int biology_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    biology_heartbeat("biology_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Biology_Reasoning");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                biology_heartbeat("biology_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Module self-knowledge logged */
         }
     }

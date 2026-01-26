@@ -42,7 +42,7 @@ static nimcp_health_agent_t* g_wellbeing_resources_health_agent = NULL;
  * @brief Set health agent for wellbeing_resources heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void wellbeing_resources_set_health_agent(nimcp_health_agent_t* agent) {
+void wellbeing_resources_set_health_agent(nimcp_health_agent_t* agent) {
     g_wellbeing_resources_health_agent = agent;
 }
 
@@ -523,6 +523,10 @@ int enhanced_wellbeing_collect_resources(enhanced_resource_metrics_t* metrics)
     }
 
     // Initialize structure
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_resources_heartbeat("wellbeing_re_enhanced_wellbeing_c", 0.0f);
+
+
     memset(metrics, 0, sizeof(enhanced_resource_metrics_t));
     metrics->timestamp_us = nimcp_time_get_us();
 
@@ -587,6 +591,10 @@ int enhanced_wellbeing_collect_resources(enhanced_resource_metrics_t* metrics)
 
 int enhanced_wellbeing_reset_resource_state(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_resources_heartbeat("wellbeing_re_enhanced_wellbeing_r", 0.0f);
+
+
     memset(&prev_metrics, 0, sizeof(enhanced_resource_metrics_t));
     has_previous_sample = false;
     return 0;
@@ -603,6 +611,10 @@ float enhanced_wellbeing_get_resource_distress(const enhanced_resource_metrics_t
     if (!metrics->collection_successful) {
         return 0.0f;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_resources_heartbeat("wellbeing_re_enhanced_wellbeing_g", 0.0f);
+
 
     float distress_score = 0.0f;
 
@@ -673,6 +685,10 @@ int enhanced_wellbeing_describe_resource_distress(
     if (!metrics->collection_successful) {
         return snprintf(buffer, buffer_size, "Resource collection failed");
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_resources_heartbeat("wellbeing_re_enhanced_wellbeing_d", 0.0f);
+
 
     float distress = enhanced_wellbeing_get_resource_distress(metrics);
 
@@ -745,9 +761,19 @@ int enhanced_wellbeing_describe_resource_distress(
  */
 int wellbeing_resources_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_resources_heartbeat("wellbeing_re_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Wellbeing_Resources_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                wellbeing_resources_heartbeat("wellbeing_re_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Wellbeing Resources self-knowledge: %s", self->observations[i]);
         }
     }

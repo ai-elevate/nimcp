@@ -27,7 +27,7 @@ static nimcp_health_agent_t* g_gw_thalamic_bridge_health_agent = NULL;
  * @brief Set health agent for gw_thalamic_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void gw_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void gw_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_gw_thalamic_bridge_health_agent = agent;
 }
 
@@ -50,6 +50,10 @@ struct gw_thalamic_bridge {
 };
 
 gw_thalamic_config_t gw_thalamic_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    gw_thalamic_bridge_heartbeat("gw_thalamic__gw_thalamic_default_", 0.0f);
+
+
     gw_thalamic_config_t cfg = {
         .enable_attention_gating = true,
         .enable_competition_routing = true,
@@ -60,6 +64,10 @@ gw_thalamic_config_t gw_thalamic_default_config(void) {
 }
 
 gw_thalamic_bridge_t* gw_thalamic_bridge_create(void* gw, thalamic_router_t* router, const gw_thalamic_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    gw_thalamic_bridge_heartbeat("gw_thalamic__create", 0.0f);
+
+
     gw_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(gw_thalamic_bridge_t));
     if (!bridge) {
 
@@ -77,11 +85,19 @@ gw_thalamic_bridge_t* gw_thalamic_bridge_create(void* gw, thalamic_router_t* rou
 }
 
 void gw_thalamic_bridge_destroy(gw_thalamic_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    gw_thalamic_bridge_heartbeat("gw_thalamic__destroy", 0.0f);
+
+
     if (bridge) nimcp_free(bridge);
 }
 
 int gw_thalamic_bridge_reset(gw_thalamic_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    gw_thalamic_bridge_heartbeat("gw_thalamic__reset", 0.0f);
+
+
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return 0;
@@ -89,6 +105,10 @@ int gw_thalamic_bridge_reset(gw_thalamic_bridge_t* bridge) {
 
 int gw_thalamic_route_broadcast(gw_thalamic_bridge_t* bridge, const gw_thalamic_signal_t* signal) {
     if (!bridge || !signal) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    gw_thalamic_bridge_heartbeat("gw_thalamic__gw_thalamic_route_br", 0.0f);
+
+
     if (bridge->config.enable_attention_gating && signal->salience < bridge->config.min_salience_threshold) {
         bridge->stats.signals_gated++;
         return 0;
@@ -102,12 +122,20 @@ int gw_thalamic_route_broadcast(gw_thalamic_bridge_t* bridge, const gw_thalamic_
 int gw_thalamic_route_ignition(gw_thalamic_bridge_t* bridge, const void* content, float strength) {
     if (!bridge) return -1;
     if (strength < bridge->config.ignition_threshold) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    gw_thalamic_bridge_heartbeat("gw_thalamic__gw_thalamic_route_ig", 0.0f);
+
+
     bridge->stats.ignitions_triggered++;
     return 0;
 }
 
 int gw_thalamic_set_attention(gw_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    gw_thalamic_bridge_heartbeat("gw_thalamic__gw_thalamic_set_atte", 0.0f);
+
+
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
     return 0;
 }
@@ -115,12 +143,20 @@ int gw_thalamic_set_attention(gw_thalamic_bridge_t* bridge, float attention) {
 int gw_thalamic_get_attention(const gw_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) return -1;
     *attention = bridge->attention_weight;
+    /* Phase 8: Heartbeat at operation start */
+    gw_thalamic_bridge_heartbeat("gw_thalamic__gw_thalamic_get_atte", 0.0f);
+
+
     return 0;
 }
 
 int gw_thalamic_bridge_get_stats(const gw_thalamic_bridge_t* bridge, gw_thalamic_stats_t* stats) {
     if (!bridge || !stats) return -1;
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    gw_thalamic_bridge_heartbeat("gw_thalamic__get_stats", 0.0f);
+
+
     return 0;
 }
 
@@ -131,9 +167,19 @@ int gw_thalamic_bridge_get_stats(const gw_thalamic_bridge_t* bridge, gw_thalamic
 int gw_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_thalamic_bridge_heartbeat("gw_thalamic__query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Global_Workspace_Thalamic_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                gw_thalamic_bridge_heartbeat("gw_thalamic__loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

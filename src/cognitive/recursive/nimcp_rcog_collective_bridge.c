@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_rcog_collective_bridge_health_agent = NULL;
  * @brief Set health agent for rcog_collective_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void rcog_collective_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void rcog_collective_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_rcog_collective_bridge_health_agent = agent;
 }
 
@@ -110,6 +110,10 @@ struct rcog_collective_bridge {
  *===========================================================================*/
 
 rcog_collective_bridge_config_t rcog_collective_bridge_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_collective_bridge_heartbeat("rcog_collect_default_config", 0.0f);
+
+
     rcog_collective_bridge_config_t config = {0};
 
     config.local_drone_id = 0;  /* Should be set by caller */
@@ -135,6 +139,10 @@ rcog_collective_bridge_config_t rcog_collective_bridge_default_config(void) {
 rcog_collective_bridge_t* rcog_collective_bridge_create(
     const rcog_collective_bridge_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_collective_bridge_heartbeat("rcog_collect_create", 0.0f);
+
+
     rcog_collective_bridge_t* bridge = nimcp_calloc(1, sizeof(rcog_collective_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -158,6 +166,10 @@ rcog_collective_bridge_t* rcog_collective_bridge_create(
 }
 
 rcog_collective_bridge_t* rcog_collective_bridge_create_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_collective_bridge_heartbeat("rcog_collect_create_default", 0.0f);
+
+
     return rcog_collective_bridge_create(NULL);
 }
 
@@ -167,7 +179,17 @@ void rcog_collective_bridge_destroy(rcog_collective_bridge_t* bridge) {
     }
 
     /* Free active handles */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_collective_bridge_heartbeat("rcog_collect_destroy", 0.0f);
+
+
     for (size_t i = 0; i < bridge->num_active_handles; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_active_handles > 256) {
+            rcog_collective_bridge_heartbeat("rcog_collect_loop",
+                             (float)(i + 1) / (float)bridge->num_active_handles);
+        }
+
         if (bridge->active_handles[i]) {
             nimcp_free(bridge->active_handles[i]);
         }
@@ -191,6 +213,10 @@ int rcog_collective_bridge_connect_workspace(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_collective_bridge_heartbeat("rcog_collect_connect_workspace", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->workspace = workspace;
     bridge->connected = (bridge->workspace != NULL &&
@@ -208,6 +234,10 @@ int rcog_collective_bridge_connect_consciousness(
     if (!bridge || !consciousness) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_collective_bridge_heartbeat("rcog_collect_connect_consciousnes", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->consciousness = consciousness;
@@ -227,6 +257,10 @@ int rcog_collective_bridge_connect_engine(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_collective_bridge_heartbeat("rcog_collect_connect_engine", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->engine = engine;
     bridge->connected = (bridge->workspace != NULL &&
@@ -238,6 +272,10 @@ int rcog_collective_bridge_connect_engine(
 }
 
 bool rcog_collective_bridge_is_connected(const rcog_collective_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_collective_bridge_heartbeat("rcog_collect_is_connected", 0.0f);
+
+
     return bridge && bridge->connected;
 }
 
@@ -253,12 +291,22 @@ int rcog_collective_bridge_update(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_collective_bridge_heartbeat("rcog_collect_update", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Decay stigmergy salience over time */
     if (bridge->config.enable_stigmergy) {
         float decay = delta_time_ms / 1000.0f * bridge->config.stigmergy_decay_rate;
         for (size_t i = 0; i < bridge->num_shared_vars; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->num_shared_vars > 256) {
+                rcog_collective_bridge_heartbeat("rcog_collect_loop",
+                                 (float)(i + 1) / (float)bridge->num_shared_vars);
+            }
+
             bridge->shared_vars[i].salience -= decay;
             if (bridge->shared_vars[i].salience < 0) {
                 bridge->shared_vars[i].salience = 0;
@@ -273,6 +321,12 @@ int rcog_collective_bridge_update(
     float total_load = 0.0f;
 
     for (size_t i = 0; i < bridge->num_members; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_members > 256) {
+            rcog_collective_bridge_heartbeat("rcog_collect_loop",
+                             (float)(i + 1) / (float)bridge->num_members);
+        }
+
         if (bridge->members[i].is_available) {
             bridge->incoming_effects.available_members++;
         }
@@ -322,6 +376,10 @@ int rcog_collective_bridge_broadcast_subtask(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_collective_bridge_heartbeat("rcog_collect_broadcast_subtask", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
@@ -369,6 +427,10 @@ int rcog_collective_bridge_collect_results(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_collective_bridge_heartbeat("rcog_collect_collect_results", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* In full implementation, would collect results from swarm */
@@ -398,6 +460,10 @@ int rcog_collective_bridge_volunteer_for_subtask(
     if (!bridge) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_collective_bridge_heartbeat("rcog_collect_volunteer_for_subtas", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -437,6 +503,10 @@ int rcog_collective_bridge_share_context(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_collective_bridge_heartbeat("rcog_collect_share_context", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
@@ -451,6 +521,12 @@ int rcog_collective_bridge_share_context(
 
     /* Check if variable already shared */
     for (size_t i = 0; i < bridge->num_shared_vars; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_shared_vars > 256) {
+            rcog_collective_bridge_heartbeat("rcog_collect_loop",
+                             (float)(i + 1) / (float)bridge->num_shared_vars);
+        }
+
         if (strcmp(bridge->shared_vars[i].name, variable_name) == 0) {
             /* Update salience */
             bridge->shared_vars[i].salience = salience;
@@ -495,6 +571,10 @@ int rcog_collective_bridge_import_context(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_collective_bridge_heartbeat("rcog_collect_import_context", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
@@ -504,6 +584,12 @@ int rcog_collective_bridge_import_context(
 
     /* Find the shared variable */
     for (size_t i = 0; i < bridge->num_shared_vars; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_shared_vars > 256) {
+            rcog_collective_bridge_heartbeat("rcog_collect_loop",
+                             (float)(i + 1) / (float)bridge->num_shared_vars);
+        }
+
         if (bridge->shared_vars[i].source_drone == source_drone &&
             strcmp(bridge->shared_vars[i].name, variable_name) == 0) {
             bridge->shared_vars[i].is_local = true;
@@ -526,6 +612,10 @@ int rcog_collective_bridge_list_shared_context(
     if (!bridge || !vars || !num_vars) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_collective_bridge_heartbeat("rcog_collect_list_shared_context", 0.0f);
+
 
     nimcp_mutex_lock(((rcog_collective_bridge_t*)bridge)->base.mutex);
 
@@ -554,6 +644,10 @@ int rcog_collective_bridge_refine_answer(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_collective_bridge_heartbeat("rcog_collect_refine_answer", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
@@ -580,6 +674,10 @@ bool rcog_collective_bridge_consensus_reached(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_collective_bridge_heartbeat("rcog_collect_consensus_reached", 0.0f);
+
+
     (void)state;  /* Would compare in full implementation */
 
     return bridge->consensus_reached &&
@@ -592,6 +690,10 @@ float rcog_collective_bridge_get_consensus_confidence(
     if (!bridge) {
         return 0.0f;
     }
+    /* Phase 8: Heartbeat at operation start */
+    rcog_collective_bridge_heartbeat("rcog_collect_get_consensus_confid", 0.0f);
+
+
     return bridge->consensus_confidence;
 }
 
@@ -608,6 +710,10 @@ int rcog_collective_bridge_get_swarm_members(
     if (!bridge || !members || !num_members) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_collective_bridge_heartbeat("rcog_collect_get_swarm_members", 0.0f);
+
 
     nimcp_mutex_lock(((rcog_collective_bridge_t*)bridge)->base.mutex);
 
@@ -630,6 +736,10 @@ float rcog_collective_bridge_get_swarm_coherence(
     if (!bridge) {
         return 0.0f;
     }
+    /* Phase 8: Heartbeat at operation start */
+    rcog_collective_bridge_heartbeat("rcog_collect_get_swarm_coherence", 0.0f);
+
+
     return bridge->incoming_effects.swarm_coherence;
 }
 
@@ -639,6 +749,10 @@ uint32_t rcog_collective_bridge_get_active_subtasks(
     if (!bridge) {
         return 0;
     }
+    /* Phase 8: Heartbeat at operation start */
+    rcog_collective_bridge_heartbeat("rcog_collect_get_active_subtasks", 0.0f);
+
+
     return (uint32_t)bridge->num_subtasks;
 }
 
@@ -654,6 +768,10 @@ int rcog_collective_bridge_get_outgoing_effects(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_collective_bridge_heartbeat("rcog_collect_get_outgoing_effects", 0.0f);
+
+
     nimcp_mutex_lock(((rcog_collective_bridge_t*)bridge)->base.mutex);
     *effects = bridge->outgoing_effects;
     nimcp_mutex_unlock(((rcog_collective_bridge_t*)bridge)->base.mutex);
@@ -668,6 +786,10 @@ int rcog_collective_bridge_get_incoming_effects(
     if (!bridge || !effects) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_collective_bridge_heartbeat("rcog_collect_get_incoming_effects", 0.0f);
+
 
     nimcp_mutex_lock(((rcog_collective_bridge_t*)bridge)->base.mutex);
     *effects = bridge->incoming_effects;
@@ -688,6 +810,10 @@ int rcog_collective_bridge_get_stats(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_collective_bridge_heartbeat("rcog_collect_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(((rcog_collective_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(((rcog_collective_bridge_t*)bridge)->base.mutex);
@@ -700,6 +826,10 @@ void rcog_collective_bridge_reset_stats(rcog_collective_bridge_t* bridge) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_collective_bridge_heartbeat("rcog_collect_reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(rcog_collective_bridge_stats_t));
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -711,9 +841,19 @@ void rcog_collective_bridge_reset_stats(rcog_collective_bridge_t* bridge) {
 
 int rcog_collective_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_collective_bridge_heartbeat("rcog_collect_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Recursive_Cognition_Collective_Bridge_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                rcog_collective_bridge_heartbeat("rcog_collect_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Log self-knowledge observations */
         }
     }

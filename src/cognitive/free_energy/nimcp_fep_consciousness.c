@@ -37,7 +37,7 @@ static nimcp_health_agent_t* g_fep_consciousness_health_agent = NULL;
  * @brief Set health agent for fep_consciousness heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void fep_consciousness_set_health_agent(nimcp_health_agent_t* agent) {
+void fep_consciousness_set_health_agent(nimcp_health_agent_t* agent) {
     g_fep_consciousness_health_agent = agent;
 }
 
@@ -101,6 +101,10 @@ static uint64_t get_time_ms(void) {
 void fep_consciousness_default_config(fep_consciousness_config_t* config) {
     if (!config) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_consciousness_heartbeat("fep_consciou_default_config", 0.0f);
+
+
     config->phi_threshold = FEP_CONSCIOUSNESS_DEFAULT_PHI_THRESHOLD;
     config->attention_gain = FEP_CONSCIOUSNESS_DEFAULT_ATTENTION_GAIN;
     config->coherence_weight = FEP_CONSCIOUSNESS_DEFAULT_COHERENCE_WEIGHT;
@@ -114,6 +118,10 @@ void fep_consciousness_default_config(fep_consciousness_config_t* config) {
 fep_consciousness_bridge_t* fep_consciousness_create(
     const fep_consciousness_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_consciousness_heartbeat("fep_consciou_create", 0.0f);
+
+
     fep_consciousness_bridge_t* bridge = (fep_consciousness_bridge_t*)nimcp_calloc(
         1, sizeof(fep_consciousness_bridge_t));
     NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate consciousness bridge");
@@ -162,6 +170,10 @@ fep_consciousness_bridge_t* fep_consciousness_create(
 void fep_consciousness_destroy(fep_consciousness_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_consciousness_heartbeat("fep_consciou_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         fep_consciousness_disconnect_bio_async(bridge);
     }
@@ -187,6 +199,10 @@ int fep_consciousness_connect_fep(
     fep_consciousness_bridge_t* bridge,
     fep_system_t* fep
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_consciousness_heartbeat("fep_consciou_connect_fep", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -201,6 +217,10 @@ int fep_consciousness_connect_introspection(
     fep_consciousness_bridge_t* bridge,
     introspection_context_t introspection
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_consciousness_heartbeat("fep_consciou_connect_introspectio", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -212,6 +232,10 @@ int fep_consciousness_connect_introspection(
 }
 
 int fep_consciousness_disconnect(fep_consciousness_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_consciousness_heartbeat("fep_consciou_disconnect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -231,6 +255,10 @@ int fep_consciousness_gate_action(
     uint32_t proposed_action,
     uint32_t* gated_action
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_consciousness_heartbeat("fep_consciou_gate_action", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && gated_action, NIMCP_ERROR_NULL_POINTER, "bridge or gated_action is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -272,6 +300,10 @@ int fep_consciousness_modulate_precision(
     fep_consciousness_bridge_t* bridge,
     float* precision
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_consciousness_heartbeat("fep_consciou_modulate_precision", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && precision, NIMCP_ERROR_NULL_POINTER, "bridge or precision is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -293,6 +325,10 @@ int fep_consciousness_evaluate_coherence(
     const fep_policy_t* policy,
     float* coherence
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_consciousness_heartbeat("fep_consciou_evaluate_coherence", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && policy && coherence, NIMCP_ERROR_NULL_POINTER, "bridge, policy, or coherence is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -326,6 +362,10 @@ int fep_consciousness_assess_model_quality(
     fep_consciousness_bridge_t* bridge,
     float* quality
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_consciousness_heartbeat("fep_consciou_assess_model_quality", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && quality, NIMCP_ERROR_NULL_POINTER, "bridge or quality is NULL");
     NIMCP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "fep_system is NULL");
 
@@ -336,6 +376,12 @@ int fep_consciousness_assess_model_quality(
 
     float total_error = 0.0f;
     for (uint32_t l = 0; l < fep->num_levels; l++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((l & 0xFF) == 0 && fep->num_levels > 256) {
+            fep_consciousness_heartbeat("fep_consciou_loop",
+                             (float)(l + 1) / (float)fep->num_levels);
+        }
+
         total_error += fep->levels[l].errors.magnitude;
     }
     float avg_error = total_error / (float)fep->num_levels;
@@ -355,6 +401,10 @@ int fep_consciousness_request_attention(
     uint32_t target,
     float priority
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_consciousness_heartbeat("fep_consciou_request_attention", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(priority >= 0.0f && priority <= 1.0f, NIMCP_ERROR_INVALID_PARAM, "priority out of range");
     NIMCP_CHECK_THROW(bridge->config.enable_global_workspace, NIMCP_ERROR_INVALID_STATE, "global workspace not enabled");
@@ -370,6 +420,12 @@ int fep_consciousness_request_attention(
     /* Update overall attention level */
     float max_priority = 0.0f;
     for (uint32_t i = 0; i < bridge->attention_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->attention_count > 256) {
+            fep_consciousness_heartbeat("fep_consciou_loop",
+                             (float)(i + 1) / (float)bridge->attention_count);
+        }
+
         if (bridge->attention_priorities[i] > max_priority) {
             max_priority = bridge->attention_priorities[i];
         }
@@ -388,6 +444,10 @@ int fep_consciousness_update(
     fep_consciousness_bridge_t* bridge,
     uint64_t delta_ms
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_consciousness_heartbeat("fep_consciou_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -419,6 +479,12 @@ int fep_consciousness_update(
 
     /* Decay attention priorities */
     for (uint32_t i = 0; i < bridge->attention_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->attention_count > 256) {
+            fep_consciousness_heartbeat("fep_consciou_loop",
+                             (float)(i + 1) / (float)bridge->attention_count);
+        }
+
         bridge->attention_priorities[i] *= 0.99f;
     }
 
@@ -430,6 +496,10 @@ int fep_consciousness_get_state(
     const fep_consciousness_bridge_t* bridge,
     fep_consciousness_state_t* state
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_consciousness_heartbeat("fep_consciou_get_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     *state = bridge->state;
     return 0;
@@ -440,6 +510,10 @@ int fep_consciousness_get_state(
  * ============================================================================ */
 
 int fep_consciousness_connect_bio_async(fep_consciousness_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_consciousness_heartbeat("fep_consciou_connect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
@@ -461,6 +535,10 @@ int fep_consciousness_connect_bio_async(fep_consciousness_bridge_t* bridge) {
 }
 
 int fep_consciousness_disconnect_bio_async(fep_consciousness_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_consciousness_heartbeat("fep_consciou_disconnect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return 0;
 
@@ -484,6 +562,10 @@ bool fep_consciousness_is_bio_async_connected(
             return false;
 
         }
+    /* Phase 8: Heartbeat at operation start */
+    fep_consciousness_heartbeat("fep_consciou_is_bio_async_connect", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -494,9 +576,19 @@ bool fep_consciousness_is_bio_async_connected(
 int fep_consciousness_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_consciousness_heartbeat("fep_consciou_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "FEP_Consciousness");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                fep_consciousness_heartbeat("fep_consciou_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("FEP Consciousness self-knowledge: %s", self->observations[i]);
         }
     }

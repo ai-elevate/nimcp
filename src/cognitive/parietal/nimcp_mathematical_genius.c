@@ -37,7 +37,7 @@ static nimcp_health_agent_t* g_mathematical_genius_health_agent = NULL;
  * @brief Set health agent for mathematical_genius heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mathematical_genius_set_health_agent(nimcp_health_agent_t* agent) {
+void mathematical_genius_set_health_agent(nimcp_health_agent_t* agent) {
     g_mathematical_genius_health_agent = agent;
 }
 
@@ -294,6 +294,12 @@ static void init_mode_capabilities(genius_mode_capabilities_t* caps, genius_mode
             caps->name = "Adaptive";
             caps->description = "Auto-select based on problem";
             for (int i = 0; i < GENIUS_DOMAIN_COUNT; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && GENIUS_DOMAIN_COUNT > 256) {
+                    mathematical_genius_heartbeat("mathematical_loop",
+                                     (float)(i + 1) / (float)GENIUS_DOMAIN_COUNT);
+                }
+
                 caps->domain_strengths[i] = 0.80f;
             }
             caps->creativity = 0.80f;
@@ -338,6 +344,12 @@ NIMCP_API mathematical_genius_t* genius_create(const genius_config_t* config) {
 
     /* Initialize mode capabilities */
     for (int i = 0; i < GENIUS_MODE_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && GENIUS_MODE_COUNT > 256) {
+            mathematical_genius_heartbeat("mathematical_loop",
+                             (float)(i + 1) / (float)GENIUS_MODE_COUNT);
+        }
+
         init_mode_capabilities(&genius->capabilities[i], (genius_mode_t)i);
     }
 
@@ -690,6 +702,12 @@ NIMCP_API nimcp_error_t genius_collaborate(
     uint32_t best_idx = 0;
 
     for (uint32_t i = 0; i < num_geniuses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_geniuses > 256) {
+            mathematical_genius_heartbeat("mathematical_loop",
+                             (float)(i + 1) / (float)num_geniuses);
+        }
+
         genius_solve_problem(geniuses[i], problem, &individual_results[i]);
 
         float score = individual_results[i].elegance_score +
@@ -706,10 +724,22 @@ NIMCP_API nimcp_error_t genius_collaborate(
     /* Aggregate statistics */
     result->num_insights = 0;
     for (uint32_t i = 0; i < num_geniuses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_geniuses > 256) {
+            mathematical_genius_heartbeat("mathematical_loop",
+                             (float)(i + 1) / (float)num_geniuses);
+        }
+
         result->num_insights += individual_results[i].num_insights;
     }
 
     for (uint32_t i = 0; i < num_geniuses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_geniuses > 256) {
+            mathematical_genius_heartbeat("mathematical_loop",
+                             (float)(i + 1) / (float)num_geniuses);
+        }
+
         geniuses[i]->stats.collaborations++;
     }
 
@@ -923,6 +953,12 @@ NIMCP_API void genius_result_cleanup(genius_result_t* result) {
 
     if (result->proofs) {
         for (uint32_t i = 0; i < result->num_proofs; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && result->num_proofs > 256) {
+                mathematical_genius_heartbeat("mathematical_loop",
+                                 (float)(i + 1) / (float)result->num_proofs);
+            }
+
             genius_proof_trace_cleanup(&result->proofs[i]);
         }
         nimcp_free(result->proofs);
@@ -953,6 +989,12 @@ NIMCP_API void genius_proof_trace_cleanup(proof_trace_t* trace) {
 
     if (trace->steps) {
         for (uint32_t i = 0; i < trace->num_steps; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && trace->num_steps > 256) {
+                mathematical_genius_heartbeat("mathematical_loop",
+                                 (float)(i + 1) / (float)trace->num_steps);
+            }
+
             nimcp_free(trace->steps[i].statement);
             nimcp_free(trace->steps[i].justification);
             nimcp_free(trace->steps[i].premises);

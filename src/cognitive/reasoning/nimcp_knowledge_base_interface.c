@@ -53,7 +53,7 @@ static nimcp_health_agent_t* g_knowledge_base_interface_health_agent = NULL;
  * @brief Set health agent for knowledge_base_interface heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void knowledge_base_interface_set_health_agent(nimcp_health_agent_t* agent) {
+void knowledge_base_interface_set_health_agent(nimcp_health_agent_t* agent) {
     g_knowledge_base_interface_health_agent = agent;
 }
 
@@ -188,6 +188,12 @@ static int kb_wiring_handler_callback(
         message_count);
 
     for (uint32_t i = 0; i < message_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && message_count > 256) {
+            knowledge_base_interface_heartbeat("knowledge_ba_loop",
+                             (float)(i + 1) / (float)message_count);
+        }
+
         switch (message_types[i]) {
             case BIO_MSG_KNOWLEDGE_QUERY:
                 bio_router_register_handler(ctx, message_types[i], handle_kb_knowledge_query);
@@ -258,6 +264,10 @@ bool brain_add_fact(
     float salience)
 {
     // Initialize bio-async on first use
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_base_interface_heartbeat("knowledge_ba_brain_add_fact", 0.0f);
+
+
     kb_init_bio_async();
 
     // Process pending bio-async messages
@@ -316,6 +326,12 @@ bool brain_add_fact(
 
     // Add all clauses to knowledge base
     for (int i = 0; i < num_clauses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_clauses > 256) {
+            knowledge_base_interface_heartbeat("knowledge_ba_loop",
+                             (float)(i + 1) / (float)num_clauses);
+        }
+
         if (!symbolic_logic_add_fact(engine, clauses[i], salience)) {
             set_error("Failed to add fact clause %d to knowledge base", i);
             NIMCP_LOGGING_ERROR("brain_add_fact: failed to add clause %d", i);
@@ -380,6 +396,10 @@ bool brain_add_rule(
         NIMCP_LOGGING_ERROR("brain_add_rule: rule_str is NULL");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_base_interface_heartbeat("knowledge_ba_brain_add_rule", 0.0f);
+
 
     if (priority < 0.0F || priority > 1.0F) {
         set_error("Priority must be in range [0,1], got %.2f", priority);
@@ -508,6 +528,10 @@ bool brain_query_knowledge(
     }
 
     // Initialize result
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_base_interface_heartbeat("knowledge_ba_brain_query_knowledg", 0.0f);
+
+
     memset(result, 0, sizeof(kb_query_result_t));
 
     // Get logic engine
@@ -540,6 +564,12 @@ bool brain_query_knowledge(
 
     // Clean up query clauses
     for (int i = 0; i < num_clauses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_clauses > 256) {
+            knowledge_base_interface_heartbeat("knowledge_ba_loop",
+                             (float)(i + 1) / (float)num_clauses);
+        }
+
         nimcp_free(clauses[i]);
     }
     nimcp_free(clauses);
@@ -578,6 +608,10 @@ void kb_free_query_result(kb_query_result_t* result)
 {
     if (!result) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_base_interface_heartbeat("knowledge_ba_kb_free_query_result", 0.0f);
+
+
     if (result->matches) {
         nimcp_free(result->matches);
         result->matches = NULL;
@@ -585,6 +619,12 @@ void kb_free_query_result(kb_query_result_t* result)
 
     if (result->bindings) {
         for (int i = 0; i < result->num_bindings; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && result->num_bindings > 256) {
+                knowledge_base_interface_heartbeat("knowledge_ba_loop",
+                                 (float)(i + 1) / (float)result->num_bindings);
+            }
+
             if (result->bindings[i]) {
                 nimcp_free(result->bindings[i]);
             }
@@ -602,6 +642,10 @@ uint32_t brain_get_fact_count(brain_t brain)
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_base_interface_heartbeat("knowledge_ba_brain_get_fact_count", 0.0f);
+
+
     logic_stats_t stats;
     symbolic_logic_t* engine = brain_get_symbolic_logic(brain);
 
@@ -617,6 +661,10 @@ uint32_t brain_get_rule_count(brain_t brain)
     if (!brain || !brain_has_symbolic_logic(brain)) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_base_interface_heartbeat("knowledge_ba_brain_get_rule_count", 0.0f);
+
 
     logic_stats_t stats;
     symbolic_logic_t* engine = brain_get_symbolic_logic(brain);
@@ -634,9 +682,19 @@ uint32_t brain_get_rule_count(brain_t brain)
 
 int knowledge_base_interface_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_base_interface_heartbeat("knowledge_ba_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Knowledge_Base_Interface");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                knowledge_base_interface_heartbeat("knowledge_ba_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Knowledge_Base_Interface self-knowledge: %s", self->observations[i]);
         }
     }

@@ -41,7 +41,7 @@ static nimcp_health_agent_t* g_counterfactual_imagination_health_agent = NULL;
  * @brief Set health agent for counterfactual_imagination heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void counterfactual_imagination_set_health_agent(nimcp_health_agent_t* agent) {
+void counterfactual_imagination_set_health_agent(nimcp_health_agent_t* agent) {
     g_counterfactual_imagination_health_agent = agent;
 }
 
@@ -78,6 +78,10 @@ static void add_history_entry(nimcp_counterfactual_t* cf, uint32_t var_id,
  *===========================================================================*/
 
 cf_config_t cf_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_default_config", 0.0f);
+
+
     cf_config_t config = {
         .max_variables = CF_MAX_VARIABLES,
         .max_scenarios = CF_MAX_SCENARIOS,
@@ -95,6 +99,10 @@ cf_config_t cf_default_config(void) {
 }
 
 nimcp_counterfactual_t* cf_create(const cf_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_create", 0.0f);
+
+
     nimcp_counterfactual_t* cf = calloc(1, sizeof(nimcp_counterfactual_t));
     if (!cf) {
 
@@ -151,6 +159,10 @@ cf_error_t cf_init(nimcp_counterfactual_t* cf) {
     if (!cf) return CF_ERR_NULL_PTR;
 
     /* Reset statistics */
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_init", 0.0f);
+
+
     memset(&cf->stats, 0, sizeof(cf_stats_t));
 
     /* Mark initialized */
@@ -165,6 +177,10 @@ cf_error_t cf_reset(nimcp_counterfactual_t* cf) {
     if (!cf) return CF_ERR_NULL_PTR;
 
     /* Reset causal model variables to default values */
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_reset", 0.0f);
+
+
     if (cf->causal_model) {
         for (uint32_t i = 0; i < cf->causal_model->num_variables; i++) {
             cf_variable_t* var = &cf->causal_model->variables[i];
@@ -194,6 +210,10 @@ cf_error_t cf_reset(nimcp_counterfactual_t* cf) {
 void cf_destroy(nimcp_counterfactual_t* cf) {
     if (!cf) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_destroy", 0.0f);
+
+
     if (cf->causal_model) {
         causal_model_destroy(cf->causal_model);
     }
@@ -216,6 +236,10 @@ cf_error_t cf_add_variable(
     if (!cf || !name || !variable_id) return CF_ERR_NULL_PTR;
     if (!cf->initialized) return CF_ERR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_add_variable", 0.0f);
+
+
     cf_error_t err = causal_model_add_variable(cf->causal_model, name, type, variable_id);
     if (err == CF_OK) {
         cf->stats.variables_created++;
@@ -230,6 +254,10 @@ cf_error_t cf_set_variable(
 {
     if (!cf) return CF_ERR_NULL_PTR;
     if (!cf->initialized) return CF_ERR_NOT_INITIALIZED;
+
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_set_variable", 0.0f);
+
 
     cf_variable_t* var = causal_model_get_variable(cf->causal_model, variable_id);
     if (!var) {
@@ -257,6 +285,10 @@ cf_error_t cf_get_variable(
     if (!cf || !value) return CF_ERR_NULL_PTR;
     if (!cf->initialized) return CF_ERR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_get_variable", 0.0f);
+
+
     cf_variable_t* var = causal_model_get_variable(cf->causal_model, variable_id);
     if (!var) {
         cf->last_error = CF_ERR_VARIABLE_NOT_FOUND;
@@ -275,8 +307,18 @@ cf_error_t cf_get_variable_by_name(
     if (!cf || !name || !variable) return CF_ERR_NULL_PTR;
     if (!cf->initialized) return CF_ERR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_get_variable_by_n", 0.0f);
+
+
     cf_causal_model_t* model = cf->causal_model;
     for (uint32_t i = 0; i < model->num_variables; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && model->num_variables > 256) {
+            counterfactual_imagination_heartbeat("counterfactu_loop",
+                             (float)(i + 1) / (float)model->num_variables);
+        }
+
         if (strcmp(model->variables[i].name, name) == 0) {
             *variable = model->variables[i];
             return CF_OK;
@@ -295,6 +337,10 @@ cf_error_t cf_observe(
 {
     if (!cf) return CF_ERR_NULL_PTR;
     if (!cf->initialized) return CF_ERR_NOT_INITIALIZED;
+
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_observe", 0.0f);
+
 
     cf_variable_t* var = causal_model_get_variable(cf->causal_model, variable_id);
     if (!var) {
@@ -333,6 +379,10 @@ cf_error_t cf_add_causal_link(
     if (!cf) return CF_ERR_NULL_PTR;
     if (!cf->initialized) return CF_ERR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_add_causal_link", 0.0f);
+
+
     return causal_model_add_edge(cf->causal_model, parent_id, child_id, weight);
 }
 
@@ -347,6 +397,10 @@ cf_error_t cf_intervene(
 {
     if (!cf) return CF_ERR_NULL_PTR;
     if (!cf->initialized) return CF_ERR_NOT_INITIALIZED;
+
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_intervene", 0.0f);
+
 
     cf->status = CF_STATUS_INTERVENING;
 
@@ -400,6 +454,10 @@ cf_error_t cf_undo_intervention(nimcp_counterfactual_t* cf) {
     if (cf->history_count == 0) return CF_OK;
 
     /* Get last history entry */
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_undo_intervention", 0.0f);
+
+
     cf_history_entry_t* entry = &cf->history[cf->history_count - 1];
 
     cf_variable_t* var = causal_model_get_variable(cf->causal_model, entry->variable_id);
@@ -417,8 +475,18 @@ cf_error_t cf_clear_interventions(nimcp_counterfactual_t* cf) {
     if (!cf->initialized) return CF_ERR_NOT_INITIALIZED;
 
     /* Reset all counterfactual values to factual values */
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_clear_interventio", 0.0f);
+
+
     cf_causal_model_t* model = cf->causal_model;
     for (uint32_t i = 0; i < model->num_variables; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && model->num_variables > 256) {
+            counterfactual_imagination_heartbeat("counterfactu_loop",
+                             (float)(i + 1) / (float)model->num_variables);
+        }
+
         model->variables[i].counterfactual_value = model->variables[i].value;
     }
 
@@ -438,6 +506,10 @@ cf_error_t cf_create_scenario(
     if (!cf || !scenario_id) return CF_ERR_NULL_PTR;
     if (!cf->initialized) return CF_ERR_NOT_INITIALIZED;
     if (cf->num_scenarios >= cf->scenario_capacity) return CF_ERR_CAPACITY_EXCEEDED;
+
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_create_scenario", 0.0f);
+
 
     cf_scenario_t* scenario = &cf->scenarios[cf->num_scenarios];
     memset(scenario, 0, sizeof(cf_scenario_t));
@@ -470,6 +542,10 @@ cf_error_t cf_scenario_add_intervention(
     if (!cf->initialized) return CF_ERR_NOT_INITIALIZED;
     if (scenario_id >= cf->num_scenarios) return CF_ERR_INVALID_CONFIG;
 
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_scenario_add_inte", 0.0f);
+
+
     cf_scenario_t* scenario = &cf->scenarios[scenario_id];
     if (scenario->num_interventions >= CF_MAX_INTERVENTIONS) {
         return CF_ERR_CAPACITY_EXCEEDED;
@@ -501,6 +577,10 @@ cf_error_t cf_scenario_add_outcome(
     if (!cf->initialized) return CF_ERR_NOT_INITIALIZED;
     if (scenario_id >= cf->num_scenarios) return CF_ERR_INVALID_CONFIG;
 
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_scenario_add_outc", 0.0f);
+
+
     cf_scenario_t* scenario = &cf->scenarios[scenario_id];
     if (scenario->num_outcomes >= CF_MAX_OUTCOMES) {
         return CF_ERR_CAPACITY_EXCEEDED;
@@ -531,6 +611,10 @@ cf_error_t cf_imagine_scenario(
     if (!cf->initialized) return CF_ERR_NOT_INITIALIZED;
     if (scenario_id >= cf->num_scenarios) return CF_ERR_INVALID_CONFIG;
 
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_imagine_scenario", 0.0f);
+
+
     cf->status = CF_STATUS_SIMULATING;
 
     cf_scenario_t* scenario = &cf->scenarios[scenario_id];
@@ -545,6 +629,12 @@ cf_error_t cf_imagine_scenario(
     }
 
     for (uint32_t i = 0; i < model->num_variables; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && model->num_variables > 256) {
+            counterfactual_imagination_heartbeat("counterfactu_loop",
+                             (float)(i + 1) / (float)model->num_variables);
+        }
+
         factual_values[i] = model->variables[i].value;
         model->variables[i].counterfactual_value = model->variables[i].value;
     }
@@ -562,6 +652,12 @@ cf_error_t cf_imagine_scenario(
 
     /* STEP 3: Apply interventions (do-operator) */
     for (uint32_t i = 0; i < scenario->num_interventions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && scenario->num_interventions > 256) {
+            counterfactual_imagination_heartbeat("counterfactu_loop",
+                             (float)(i + 1) / (float)scenario->num_interventions);
+        }
+
         cf_intervention_t* interv = &scenario->interventions[i];
         cf_variable_t* var = causal_model_get_variable(model, interv->variable_id);
         if (var) {
@@ -583,6 +679,12 @@ cf_error_t cf_imagine_scenario(
 
     /* STEP 5: Record outcomes */
     for (uint32_t i = 0; i < scenario->num_outcomes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && scenario->num_outcomes > 256) {
+            counterfactual_imagination_heartbeat("counterfactu_loop",
+                             (float)(i + 1) / (float)scenario->num_outcomes);
+        }
+
         cf_outcome_t* outcome = &scenario->outcomes[i];
         cf_variable_t* var = causal_model_get_variable(model, outcome->variable_id);
         if (var) {
@@ -599,6 +701,12 @@ cf_error_t cf_imagine_scenario(
     /* STEP 6: Compute scenario plausibility */
     float plausibility = 1.0f;
     for (uint32_t i = 0; i < scenario->num_interventions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && scenario->num_interventions > 256) {
+            counterfactual_imagination_heartbeat("counterfactu_loop",
+                             (float)(i + 1) / (float)scenario->num_interventions);
+        }
+
         cf_intervention_t* interv = &scenario->interventions[i];
         cf_variable_t* var = causal_model_get_variable(model, interv->variable_id);
         if (var && var->variance > 0.0f) {
@@ -613,6 +721,12 @@ cf_error_t cf_imagine_scenario(
     /* STEP 7: Compute surprise */
     float surprise = 0.0f;
     for (uint32_t i = 0; i < scenario->num_outcomes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && scenario->num_outcomes > 256) {
+            counterfactual_imagination_heartbeat("counterfactu_loop",
+                             (float)(i + 1) / (float)scenario->num_outcomes);
+        }
+
         cf_outcome_t* outcome = &scenario->outcomes[i];
         surprise += fabsf(outcome->causal_effect);
     }
@@ -626,6 +740,12 @@ cf_error_t cf_imagine_scenario(
 
     /* Restore factual values */
     for (uint32_t i = 0; i < model->num_variables; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && model->num_variables > 256) {
+            counterfactual_imagination_heartbeat("counterfactu_loop",
+                             (float)(i + 1) / (float)model->num_variables);
+        }
+
         model->variables[i].value = factual_values[i];
     }
 
@@ -643,6 +763,10 @@ cf_error_t cf_evaluate_scenario(
     if (!cf) return CF_ERR_NULL_PTR;
     if (!cf->initialized) return CF_ERR_NOT_INITIALIZED;
     if (scenario_id >= cf->num_scenarios) return CF_ERR_INVALID_CONFIG;
+
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_evaluate_scenario", 0.0f);
+
 
     cf->status = CF_STATUS_EVALUATING;
 
@@ -664,6 +788,12 @@ cf_error_t cf_evaluate_scenario(
             {
                 float prob = scenario->plausibility;
                 for (uint32_t i = 0; i < scenario->num_outcomes; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && scenario->num_outcomes > 256) {
+                        counterfactual_imagination_heartbeat("counterfactu_loop",
+                                         (float)(i + 1) / (float)scenario->num_outcomes);
+                    }
+
                     prob *= scenario->outcomes[i].confidence;
                 }
                 scenario->probability = prob;
@@ -676,6 +806,12 @@ cf_error_t cf_evaluate_scenario(
             {
                 float prob = 1.0f;
                 for (uint32_t i = 0; i < scenario->num_outcomes; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && scenario->num_outcomes > 256) {
+                        counterfactual_imagination_heartbeat("counterfactu_loop",
+                                         (float)(i + 1) / (float)scenario->num_outcomes);
+                    }
+
                     cf_outcome_t* outcome = &scenario->outcomes[i];
                     cf_variable_t* var = causal_model_get_variable(
                         cf->causal_model, outcome->variable_id);
@@ -710,6 +846,12 @@ cf_error_t cf_evaluate_scenario(
 
     float total_confidence = 0.0f;
     for (uint32_t i = 0; i < scenario->num_outcomes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && scenario->num_outcomes > 256) {
+            counterfactual_imagination_heartbeat("counterfactu_loop",
+                             (float)(i + 1) / (float)scenario->num_outcomes);
+        }
+
         total_confidence += scenario->outcomes[i].confidence;
     }
     if (scenario->num_outcomes > 0) {
@@ -732,6 +874,10 @@ cf_error_t cf_get_scenario(
     if (scenario_id >= cf->num_scenarios) return CF_ERR_INVALID_CONFIG;
 
     *scenario = cf->scenarios[scenario_id];
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_get_scenario", 0.0f);
+
+
     return CF_OK;
 }
 
@@ -748,6 +894,10 @@ cf_error_t cf_compute_causal_effect(
 {
     if (!cf || !effect) return CF_ERR_NULL_PTR;
     if (!cf->initialized) return CF_ERR_NOT_INITIALIZED;
+
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_compute_causal_ef", 0.0f);
+
 
     cf_variable_t* cause_var = causal_model_get_variable(cf->causal_model, cause_id);
     cf_variable_t* effect_var = causal_model_get_variable(cf->causal_model, effect_id);
@@ -797,6 +947,10 @@ cf_error_t cf_get_counterfactual_outcome(
     if (!cf || !outcome) return CF_ERR_NULL_PTR;
     if (!cf->initialized) return CF_ERR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_get_counterfactua", 0.0f);
+
+
     cf_variable_t* var = causal_model_get_variable(cf->causal_model, variable_id);
     if (!var) {
         cf->last_error = CF_ERR_VARIABLE_NOT_FOUND;
@@ -831,6 +985,10 @@ cf_error_t cf_query_counterfactual(
     if (!cf->initialized) return CF_ERR_NOT_INITIALIZED;
 
     /* Create temporary scenario */
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_query_counterfact", 0.0f);
+
+
     uint32_t scenario_id;
     cf_error_t err = cf_create_scenario(cf, CF_SCENARIO_HYPOTHETICAL,
                                         "Query counterfactual", &scenario_id);
@@ -871,6 +1029,10 @@ cf_error_t cf_update(nimcp_counterfactual_t* cf, float dt_ms) {
     if (!cf) return CF_ERR_NULL_PTR;
     if (!cf->initialized) return CF_ERR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_update", 0.0f);
+
+
     (void)dt_ms;  /* Currently unused */
 
     /* Decay old history entries */
@@ -883,6 +1045,10 @@ cf_error_t cf_get_stats(nimcp_counterfactual_t* cf, cf_stats_t* stats) {
     if (!cf || !stats) return CF_ERR_NULL_PTR;
 
     *stats = cf->stats;
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_get_stats", 0.0f);
+
+
     return CF_OK;
 }
 
@@ -891,10 +1057,18 @@ cf_error_t cf_get_stats(nimcp_counterfactual_t* cf, cf_stats_t* stats) {
  *===========================================================================*/
 
 cf_status_t cf_get_status(nimcp_counterfactual_t* cf) {
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_get_status", 0.0f);
+
+
     return cf ? cf->status : CF_STATUS_ERROR;
 }
 
 cf_error_t cf_get_last_error(nimcp_counterfactual_t* cf) {
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_imagination_heartbeat("counterfactu_cf_get_last_error", 0.0f);
+
+
     return cf ? cf->last_error : CF_ERR_NULL_PTR;
 }
 
@@ -1010,6 +1184,12 @@ static void causal_model_destroy(cf_causal_model_t* model) {
 
     /* Free parent arrays in variables */
     for (uint32_t i = 0; i < model->num_variables; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && model->num_variables > 256) {
+            counterfactual_imagination_heartbeat("counterfactu_loop",
+                             (float)(i + 1) / (float)model->num_variables);
+        }
+
         free(model->variables[i].parent_ids);
         free(model->variables[i].causal_weights);
     }
@@ -1113,7 +1293,19 @@ static cf_error_t compute_topological_order(cf_causal_model_t* model) {
     if (!in_degree) return CF_ERR_MEMORY_ALLOC;
 
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            counterfactual_imagination_heartbeat("counterfactu_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         for (uint32_t j = 0; j < n; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && n > 256) {
+                counterfactual_imagination_heartbeat("counterfactu_loop",
+                                 (float)(j + 1) / (float)n);
+            }
+
             if (model->has_edge[j * cap + i]) {
                 in_degree[i]++;
             }
@@ -1132,6 +1324,12 @@ static cf_error_t compute_topological_order(cf_causal_model_t* model) {
 
     /* Add all nodes with in-degree 0 to queue */
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            counterfactual_imagination_heartbeat("counterfactu_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         if (in_degree[i] == 0) {
             queue[back++] = i;
         }
@@ -1143,6 +1341,12 @@ static cf_error_t compute_topological_order(cf_causal_model_t* model) {
 
         /* Reduce in-degree of neighbors */
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                counterfactual_imagination_heartbeat("counterfactu_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             if (model->has_edge[node * cap + i]) {
                 in_degree[i]--;
                 if (in_degree[i] == 0) {
@@ -1176,6 +1380,12 @@ static float compute_structural_equation(cf_variable_t* var, cf_causal_model_t* 
     /* This implements a linear structural equation model */
     float value = 0.0f;
     for (uint32_t i = 0; i < var->num_parents; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && var->num_parents > 256) {
+            counterfactual_imagination_heartbeat("counterfactu_loop",
+                             (float)(i + 1) / (float)var->num_parents);
+        }
+
         cf_variable_t* parent = causal_model_get_variable(model, var->parent_ids[i]);
         if (parent) {
             value += var->causal_weights[i] * parent->counterfactual_value;
@@ -1191,6 +1401,12 @@ static cf_error_t propagate_values(cf_causal_model_t* model) {
 
     /* Propagate in topological order */
     for (uint32_t i = 0; i < model->num_variables; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && model->num_variables > 256) {
+            counterfactual_imagination_heartbeat("counterfactu_loop",
+                             (float)(i + 1) / (float)model->num_variables);
+        }
+
         uint32_t var_id = model->topological_order[i];
         cf_variable_t* var = &model->variables[var_id];
 

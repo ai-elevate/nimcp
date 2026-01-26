@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_rcog_imagination_bridge_health_agent = NULL;
  * @brief Set health agent for rcog_imagination_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void rcog_imagination_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void rcog_imagination_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_rcog_imagination_bridge_health_agent = agent;
 }
 
@@ -83,6 +83,10 @@ struct rcog_imagination_bridge {
  *===========================================================================*/
 
 rcog_imagination_bridge_config_t rcog_imagination_bridge_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_imagination_bridge_heartbeat("rcog_imagina_default_config", 0.0f);
+
+
     rcog_imagination_bridge_config_t config = {0};
 
     config.simulation_threshold = RCOG_IMAG_DEFAULT_SIMULATION_THRESHOLD;
@@ -105,6 +109,10 @@ rcog_imagination_bridge_config_t rcog_imagination_bridge_default_config(void) {
 rcog_imagination_bridge_t* rcog_imagination_bridge_create(
     const rcog_imagination_bridge_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_imagination_bridge_heartbeat("rcog_imagina_create", 0.0f);
+
+
     rcog_imagination_bridge_t* bridge = nimcp_calloc(1, sizeof(rcog_imagination_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -128,6 +136,10 @@ rcog_imagination_bridge_t* rcog_imagination_bridge_create(
 }
 
 rcog_imagination_bridge_t* rcog_imagination_bridge_create_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_imagination_bridge_heartbeat("rcog_imagina_create_default", 0.0f);
+
+
     return rcog_imagination_bridge_create(NULL);
 }
 
@@ -137,6 +149,10 @@ void rcog_imagination_bridge_destroy(rcog_imagination_bridge_t* bridge) {
     }
 
     /* Cleanup base bridge infrastructure */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_imagination_bridge_heartbeat("rcog_imagina_destroy", 0.0f);
+
+
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
@@ -154,6 +170,10 @@ int rcog_imagination_bridge_connect(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_imagination_bridge_heartbeat("rcog_imagina_connect", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->imagination = imagination;
     bridge->connected = (bridge->imagination != NULL && bridge->engine != NULL);
@@ -170,6 +190,10 @@ int rcog_imagination_bridge_connect_engine(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_imagination_bridge_heartbeat("rcog_imagina_connect_engine", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->engine = engine;
     bridge->connected = (bridge->imagination != NULL && bridge->engine != NULL);
@@ -179,6 +203,10 @@ int rcog_imagination_bridge_connect_engine(
 }
 
 bool rcog_imagination_bridge_is_connected(const rcog_imagination_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_imagination_bridge_heartbeat("rcog_imagina_is_connected", 0.0f);
+
+
     return bridge && bridge->connected;
 }
 
@@ -193,6 +221,10 @@ int rcog_imagination_bridge_update(
     if (!bridge) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_imagination_bridge_heartbeat("rcog_imagina_update", 0.0f);
+
 
     (void)delta_time_ms;
 
@@ -223,6 +255,10 @@ int rcog_imagination_bridge_simulate_decompositions(
     if (!bridge || !goal || !decompositions || !results) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_imagination_bridge_heartbeat("rcog_imagina_simulate_decompositi", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -262,6 +298,10 @@ int rcog_imagination_bridge_rehearse_subtasks(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_imagination_bridge_heartbeat("rcog_imagina_rehearse_subtasks", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
@@ -298,6 +338,10 @@ int rcog_imagination_bridge_counterfactual_analysis(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_imagination_bridge_heartbeat("rcog_imagina_counterfactual_analy", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
@@ -307,6 +351,12 @@ int rcog_imagination_bridge_counterfactual_analysis(
 
     /* Generate placeholder benefit scores */
     for (size_t i = 0; i < num_alternatives; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_alternatives > 256) {
+            rcog_imagination_bridge_heartbeat("rcog_imagina_loop",
+                             (float)(i + 1) / (float)num_alternatives);
+        }
+
         benefit_scores[i] = 0.1f * (float)i; /* First alternatives have lower benefit */
     }
 
@@ -326,6 +376,10 @@ int rcog_imagination_bridge_predict_answer(
     if (!bridge || !goal || !predicted_confidence || !predicted_steps) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_imagination_bridge_heartbeat("rcog_imagina_predict_answer", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -360,6 +414,10 @@ int rcog_imagination_bridge_generate_creative_strategy(
     if (!bridge || !goal || !strategy || !novelty_score) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_imagination_bridge_heartbeat("rcog_imagina_generate_creative_st", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -397,6 +455,10 @@ int rcog_imagination_bridge_get_outgoing_effects(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_imagination_bridge_heartbeat("rcog_imagina_get_outgoing_effects", 0.0f);
+
+
     nimcp_mutex_lock(((rcog_imagination_bridge_t*)bridge)->base.mutex);
     *effects = bridge->outgoing_effects;
     nimcp_mutex_unlock(((rcog_imagination_bridge_t*)bridge)->base.mutex);
@@ -411,6 +473,10 @@ int rcog_imagination_bridge_get_incoming_effects(
     if (!bridge || !effects) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_imagination_bridge_heartbeat("rcog_imagina_get_incoming_effects", 0.0f);
+
 
     nimcp_mutex_lock(((rcog_imagination_bridge_t*)bridge)->base.mutex);
     *effects = bridge->incoming_effects;
@@ -431,6 +497,10 @@ int rcog_imagination_bridge_get_stats(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_imagination_bridge_heartbeat("rcog_imagina_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(((rcog_imagination_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(((rcog_imagination_bridge_t*)bridge)->base.mutex);
@@ -443,6 +513,10 @@ void rcog_imagination_bridge_reset_stats(rcog_imagination_bridge_t* bridge) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_imagination_bridge_heartbeat("rcog_imagina_reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(rcog_imagination_bridge_stats_t));
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -454,9 +528,19 @@ void rcog_imagination_bridge_reset_stats(rcog_imagination_bridge_t* bridge) {
 
 int rcog_imagination_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_imagination_bridge_heartbeat("rcog_imagina_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Recursive_Cognition_Imagination_Bridge_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                rcog_imagination_bridge_heartbeat("rcog_imagina_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Log self-knowledge observations */
         }
     }

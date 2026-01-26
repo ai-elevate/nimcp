@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_mental_health_plasticity_bridge_health_agent = NU
  * @brief Set health agent for mental_health_plasticity_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mental_health_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void mental_health_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_mental_health_plasticity_bridge_health_agent = agent;
 }
 
@@ -99,6 +99,12 @@ static inline float clamp_f(float x, float min_val, float max_val) {
 
 static synapse_entry_t* find_synapse(mental_health_plasticity_bridge_t* bridge, uint32_t synapse_id) {
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            mental_health_plasticity_bridge_heartbeat("mental_healt_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use &&
             bridge->synapses[i].synapse.synapse_id == synapse_id) {
             return &bridge->synapses[i];
@@ -109,6 +115,12 @@ static synapse_entry_t* find_synapse(mental_health_plasticity_bridge_t* bridge, 
 
 static synapse_entry_t* find_free_slot(mental_health_plasticity_bridge_t* bridge) {
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            mental_health_plasticity_bridge_heartbeat("mental_healt_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (!bridge->synapses[i].in_use) {
             return &bridge->synapses[i];
         }
@@ -127,6 +139,10 @@ static bool is_protected_type(mental_health_synapse_type_t type) {
 //=============================================================================
 
 mental_health_plasticity_config_t mental_health_plasticity_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_plasticity_bridge_heartbeat("mental_healt_mental_health_plasti", 0.0f);
+
+
     mental_health_plasticity_config_t config = {
         .base_learning_rate = MENTAL_HEALTH_PLASTICITY_DEFAULT_LR,
         .stdp_tau_plus_ms = 20.0f,
@@ -162,6 +178,10 @@ mental_health_plasticity_config_t mental_health_plasticity_config_default(void) 
 mental_health_plasticity_bridge_t* mental_health_plasticity_create(
     const mental_health_plasticity_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_plasticity_bridge_heartbeat("mental_healt_mental_health_plasti", 0.0f);
+
+
     mental_health_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(mental_health_plasticity_bridge_t));
     if (!bridge) {
 
@@ -216,6 +236,10 @@ mental_health_plasticity_bridge_t* mental_health_plasticity_create(
 void mental_health_plasticity_destroy(mental_health_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_plasticity_bridge_heartbeat("mental_healt_mental_health_plasti", 0.0f);
+
+
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge->synapses);
     nimcp_free(bridge);
@@ -224,10 +248,20 @@ void mental_health_plasticity_destroy(mental_health_plasticity_bridge_t* bridge)
 int mental_health_plasticity_reset(mental_health_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_plasticity_bridge_heartbeat("mental_healt_mental_health_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset all synapses to initial weights */
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            mental_health_plasticity_bridge_heartbeat("mental_healt_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             bridge->synapses[i].synapse.weight = bridge->synapses[i].synapse.initial_weight;
             bridge->synapses[i].synapse.eligibility_trace = 0.0f;
@@ -263,6 +297,10 @@ int mental_health_plasticity_register_synapse(
     float initial_weight
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_plasticity_bridge_heartbeat("mental_healt_mental_health_plasti", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -309,6 +347,10 @@ int mental_health_plasticity_unregister_synapse(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_plasticity_bridge_heartbeat("mental_healt_mental_health_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
@@ -331,6 +373,10 @@ int mental_health_plasticity_get_synapse(
 ) {
     if (!bridge || !synapse) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_plasticity_bridge_heartbeat("mental_healt_mental_health_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
@@ -351,6 +397,10 @@ int mental_health_plasticity_protect_synapse(
     bool protect
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_plasticity_bridge_heartbeat("mental_healt_mental_health_plasti", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -378,6 +428,10 @@ int mental_health_plasticity_learn(
     float context
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_plasticity_bridge_heartbeat("mental_healt_mental_health_plasti", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = MENTAL_HEALTH_PLASTICITY_STATE_LEARNING;
@@ -494,6 +548,10 @@ float mental_health_plasticity_apply_stdp(
 ) {
     if (!bridge) return NAN;
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_plasticity_bridge_heartbeat("mental_healt_mental_health_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
@@ -547,6 +605,10 @@ int mental_health_plasticity_apply_stress(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_plasticity_bridge_heartbeat("mental_healt_mental_health_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     stress_level = clamp_f(stress_level, 0.0f, 1.0f);
@@ -576,12 +638,22 @@ int mental_health_plasticity_update_bcm(
     if (!bridge) return -1;
     if (dt_ms <= 0.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_plasticity_bridge_heartbeat("mental_healt_mental_health_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = MENTAL_HEALTH_PLASTICITY_STATE_UPDATING;
 
     float decay = expf(-dt_ms / bridge->config.bcm_tau_ms);
 
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            mental_health_plasticity_bridge_heartbeat("mental_healt_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             /* Update sliding threshold towards average activity */
             float target = bridge->synapses[i].synapse.avg_activity;
@@ -602,6 +674,10 @@ int mental_health_plasticity_homeostatic_update(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_plasticity_bridge_heartbeat("mental_healt_mental_health_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = MENTAL_HEALTH_PLASTICITY_STATE_UPDATING;
 
@@ -611,6 +687,12 @@ int mental_health_plasticity_homeostatic_update(
     float mean_mood_regulation = 0.0f;
     uint32_t mood_count = 0;
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            mental_health_plasticity_bridge_heartbeat("mental_healt_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use &&
             bridge->synapses[i].synapse.type == MENTAL_HEALTH_SYNAPSE_MOOD_REGULATION) {
             mean_mood_regulation += bridge->synapses[i].synapse.weight;
@@ -630,6 +712,12 @@ int mental_health_plasticity_homeostatic_update(
     }
 
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            mental_health_plasticity_bridge_heartbeat("mental_healt_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use && !bridge->synapses[i].synapse.is_protected) {
             float scaled = bridge->synapses[i].synapse.weight * (1.0f + (scale_factor - 1.0f) * (1.0f - decay));
             bridge->synapses[i].synapse.weight = clamp_f(
@@ -651,11 +739,21 @@ int mental_health_plasticity_update_traces(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_plasticity_bridge_heartbeat("mental_healt_mental_health_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float decay = expf(-dt_ms / bridge->config.stdp_tau_plus_ms);
 
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            mental_health_plasticity_bridge_heartbeat("mental_healt_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             bridge->synapses[i].synapse.eligibility_trace *= decay;
         }
@@ -668,11 +766,21 @@ int mental_health_plasticity_update_traces(
 int mental_health_plasticity_consolidate(mental_health_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_plasticity_bridge_heartbeat("mental_healt_mental_health_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = MENTAL_HEALTH_PLASTICITY_STATE_CONSOLIDATING;
 
     /* Clear eligibility traces */
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            mental_health_plasticity_bridge_heartbeat("mental_healt_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             bridge->synapses[i].synapse.eligibility_trace = 0.0f;
         }
@@ -686,6 +794,12 @@ int mental_health_plasticity_consolidate(mental_health_plasticity_bridge_t* brid
     float social_sum = 0.0f, social_count = 0;
 
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            mental_health_plasticity_bridge_heartbeat("mental_healt_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             switch (bridge->synapses[i].synapse.type) {
                 case MENTAL_HEALTH_SYNAPSE_MOOD_REGULATION:
@@ -747,6 +861,10 @@ int mental_health_plasticity_get_regulation_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_plasticity_bridge_heartbeat("mental_healt_mental_health_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->regulation_state;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -760,6 +878,10 @@ int mental_health_plasticity_get_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_plasticity_bridge_heartbeat("mental_healt_mental_health_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
@@ -770,6 +892,12 @@ int mental_health_plasticity_get_state(
     float sum = 0.0f;
     float sum_sq = 0.0f;
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            mental_health_plasticity_bridge_heartbeat("mental_healt_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             float w = bridge->synapses[i].synapse.weight;
             sum += w;
@@ -796,6 +924,10 @@ int mental_health_plasticity_get_stats(
 ) {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_plasticity_bridge_heartbeat("mental_healt_mental_health_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -805,6 +937,10 @@ int mental_health_plasticity_get_stats(
 
 int mental_health_plasticity_reset_stats(mental_health_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_plasticity_bridge_heartbeat("mental_healt_mental_health_plasti", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(mental_health_plasticity_stats_t));
@@ -824,6 +960,10 @@ int mental_health_plasticity_register_learn_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_plasticity_bridge_heartbeat("mental_healt_mental_health_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->learn_callback = callback;
     bridge->learn_callback_data = user_data;
@@ -838,6 +978,10 @@ int mental_health_plasticity_register_regulation_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_plasticity_bridge_heartbeat("mental_healt_mental_health_plasti", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->regulation_callback = callback;
@@ -855,6 +999,10 @@ int mental_health_plasticity_bio_async_connect(mental_health_plasticity_bridge_t
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_plasticity_bridge_heartbeat("mental_healt_mental_health_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
@@ -866,6 +1014,10 @@ int mental_health_plasticity_bio_async_connect(mental_health_plasticity_bridge_t
 int mental_health_plasticity_bio_async_disconnect(mental_health_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_plasticity_bridge_heartbeat("mental_healt_mental_health_plasti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -875,6 +1027,10 @@ int mental_health_plasticity_bio_async_disconnect(mental_health_plasticity_bridg
 
 bool mental_health_plasticity_is_bio_async_connected(mental_health_plasticity_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_plasticity_bridge_heartbeat("mental_healt_mental_health_plasti", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;

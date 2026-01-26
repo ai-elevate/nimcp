@@ -58,7 +58,7 @@ static nimcp_health_agent_t* g_network_analysis_health_agent = NULL;
  * @brief Set health agent for network_analysis heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void network_analysis_set_health_agent(nimcp_health_agent_t* agent) {
+void network_analysis_set_health_agent(nimcp_health_agent_t* agent) {
     g_network_analysis_health_agent = agent;
 }
 
@@ -99,6 +99,12 @@ static NimcpGraph* build_graph_from_network(neural_network_t network) {
 
     // Add vertices (neurons)
     for (uint32_t i = 0; i < num_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_neurons > 256) {
+            network_analysis_heartbeat("network_anal_loop",
+                             (float)(i + 1) / (float)num_neurons);
+        }
+
         uint32_t vertex_idx = nimcp_graph_add_vertex(graph, i, 0.0F, 0.0F, 0.0F, 0);
         if (vertex_idx == NIMCP_INVALID_VERTEX) {
             NIMCP_LOGGING_WARN("Failed to add vertex %u to graph", i);
@@ -107,10 +113,22 @@ static NimcpGraph* build_graph_from_network(neural_network_t network) {
 
     // Add edges (synapses) by iterating through each neuron's synapses
     for (uint32_t i = 0; i < num_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_neurons > 256) {
+            network_analysis_heartbeat("network_anal_loop",
+                             (float)(i + 1) / (float)num_neurons);
+        }
+
         neuron_t* neuron = neural_network_get_neuron(network, i);
         if (!neuron) continue;
 
         for (uint32_t s = 0; s < neuron->num_synapses; s++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((s & 0xFF) == 0 && neuron->num_synapses > 256) {
+                network_analysis_heartbeat("network_anal_loop",
+                                 (float)(s + 1) / (float)neuron->num_synapses);
+            }
+
             synapse_t* syn = &neuron->synapses[s];
             if (syn) {
                 // Add edge with absolute weight
@@ -137,6 +155,10 @@ network_analyzer_t* network_analyzer_create(brain_t brain)
         NIMCP_LOGGING_ERROR("network_analyzer_create: NULL brain");
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    network_analysis_heartbeat("network_anal_network_analyzer_cre", 0.0f);
+
 
     network_analyzer_t* analyzer = nimcp_calloc(1, sizeof(network_analyzer_t));
     if (!analyzer) {
@@ -200,6 +222,10 @@ void network_analyzer_destroy(network_analyzer_t* analyzer)
     if (!analyzer) return;
 
     // Unregister from bio-async router
+    /* Phase 8: Heartbeat at operation start */
+    network_analysis_heartbeat("network_anal_network_analyzer_des", 0.0f);
+
+
     if (analyzer->bio_async_enabled && analyzer->bio_ctx) {
         bio_router_unregister_module(analyzer->bio_ctx);
         analyzer->bio_ctx = NULL;
@@ -247,6 +273,10 @@ void network_analyzer_destroy(network_analyzer_t* analyzer)
 bool network_analyzer_run(network_analyzer_t* analyzer)
 {
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    network_analysis_heartbeat("network_anal_network_analyzer_run", 0.0f);
+
+
     if (analyzer && analyzer->bio_ctx) {
         bio_router_process_inbox(analyzer->bio_ctx, 5);
     }
@@ -296,6 +326,10 @@ bool network_analyzer_detect_communities(network_analyzer_t* analyzer)
 {
     if (!analyzer || !analyzer->brain) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    network_analysis_heartbeat("network_anal_network_analyzer_det", 0.0f);
+
+
     NIMCP_LOGGING_INFO("network_analyzer_detect_communities: running real community detection");
 
     // Get adaptive network from brain and extract base network
@@ -340,6 +374,10 @@ bool network_analyzer_detect_communities(network_analyzer_t* analyzer)
 bool network_analyzer_detect_hubs(network_analyzer_t* analyzer)
 {
     if (!analyzer || !analyzer->brain) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    network_analysis_heartbeat("network_anal_network_analyzer_det", 0.0f);
+
 
     NIMCP_LOGGING_INFO("network_analyzer_detect_hubs: running real hub detection");
 
@@ -397,6 +435,12 @@ bool network_analyzer_detect_hubs(network_analyzer_t* analyzer)
 
         // Copy hub data
         for (uint32_t i = 0; i < hub_struct->num_hubs; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && hub_struct->num_hubs > 256) {
+                network_analysis_heartbeat("network_anal_loop",
+                                 (float)(i + 1) / (float)hub_struct->num_hubs);
+            }
+
             analyzer->hubs->hubs[i].neuron_id = hub_struct->hub_indices[i];
             analyzer->hubs->hubs[i].degree_centrality = hub_struct->degree_centrality[i];
             analyzer->hubs->hubs[i].betweenness = hub_struct->betweenness_centrality[i];
@@ -418,6 +462,10 @@ bool network_analyzer_detect_hubs(network_analyzer_t* analyzer)
 bool network_analyzer_compute_metrics(network_analyzer_t* analyzer)
 {
     if (!analyzer || !analyzer->brain) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    network_analysis_heartbeat("network_anal_network_analyzer_com", 0.0f);
+
 
     NIMCP_LOGGING_INFO("network_analyzer_compute_metrics: computing real topology metrics");
 
@@ -446,6 +494,12 @@ bool network_analyzer_compute_metrics(network_analyzer_t* analyzer)
     // Count total synapses for density calculation
     uint32_t total_synapses = 0;
     for (uint32_t i = 0; i < num_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_neurons > 256) {
+            network_analysis_heartbeat("network_anal_loop",
+                             (float)(i + 1) / (float)num_neurons);
+        }
+
         neuron_t* neuron = neural_network_get_neuron(network, i);
         if (neuron) {
             total_synapses += neuron->num_synapses;
@@ -520,6 +574,10 @@ bool network_analyzer_validate_learning(network_analyzer_t* analyzer)
     }
 
     // Stub: validate that we have reasonable results
+    /* Phase 8: Heartbeat at operation start */
+    network_analysis_heartbeat("network_anal_network_analyzer_val", 0.0f);
+
+
     analyzer->last_error[0] = '\0';  // Clear error
     return true;
 }
@@ -538,6 +596,10 @@ void network_analyzer_set_auto_analyze(network_analyzer_t* analyzer, bool enable
 {
     if (!analyzer) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    network_analysis_heartbeat("network_anal_network_analyzer_set", 0.0f);
+
+
     analyzer->auto_analyze = enable;
     analyzer->analysis_interval = interval;
 }
@@ -545,6 +607,10 @@ void network_analyzer_set_auto_analyze(network_analyzer_t* analyzer, bool enable
 void network_analyzer_set_hub_threshold(network_analyzer_t* analyzer, float threshold)
 {
     if (!analyzer) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    network_analysis_heartbeat("network_anal_network_analyzer_set", 0.0f);
+
 
     analyzer->hub_threshold = threshold;
 }
@@ -556,17 +622,29 @@ void network_analyzer_set_hub_threshold(network_analyzer_t* analyzer, float thre
 const community_structure_t* network_analyzer_get_communities(network_analyzer_t* analyzer)
 {
     if (!analyzer) return NULL;
+    /* Phase 8: Heartbeat at operation start */
+    network_analysis_heartbeat("network_anal_network_analyzer_get", 0.0f);
+
+
     return analyzer->communities;
 }
 
 const hub_detection_t* network_analyzer_get_hubs(network_analyzer_t* analyzer)
 {
     if (!analyzer) return NULL;
+    /* Phase 8: Heartbeat at operation start */
+    network_analysis_heartbeat("network_anal_network_analyzer_get", 0.0f);
+
+
     return analyzer->hubs;
 }
 
 topology_metrics_t network_analyzer_get_metrics(network_analyzer_t* analyzer)
 {
+    /* Phase 8: Heartbeat at operation start */
+    network_analysis_heartbeat("network_anal_network_analyzer_get", 0.0f);
+
+
     topology_metrics_t metrics = {0};
     if (!analyzer) return metrics;
     return analyzer->metrics;
@@ -587,6 +665,10 @@ const float* network_analyzer_get_modularity_history(network_analyzer_t* analyze
 void network_analyzer_print_report(network_analyzer_t* analyzer)
 {
     if (!analyzer) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    network_analysis_heartbeat("network_anal_network_analyzer_pri", 0.0f);
+
 
     printf("=== Network Topology Analysis ===\n");
 
@@ -618,6 +700,10 @@ void network_analyzer_print_modularity_trend(network_analyzer_t* analyzer)
 {
     if (!analyzer) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    network_analysis_heartbeat("network_anal_network_analyzer_pri", 0.0f);
+
+
     printf("=== Modularity Trend ===\n");
     printf("Analysis runs: %u\n", analyzer->analysis_count);
 
@@ -637,6 +723,10 @@ void network_analyzer_on_learning_event(network_analyzer_t* analyzer)
 {
     if (!analyzer) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    network_analysis_heartbeat("network_anal_network_analyzer_on_", 0.0f);
+
+
     analyzer->iteration_counter++;
 
     if (analyzer->auto_analyze &&
@@ -651,6 +741,10 @@ bool network_analyzer_check_new_community(network_analyzer_t* analyzer)
     if (!analyzer) return false;
 
     // Stub: always return false (no new community)
+    /* Phase 8: Heartbeat at operation start */
+    network_analysis_heartbeat("network_anal_network_analyzer_che", 0.0f);
+
+
     return false;
 }
 
@@ -665,9 +759,19 @@ bool network_analyzer_check_new_community(network_analyzer_t* analyzer)
  */
 int network_analysis_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    network_analysis_heartbeat("network_anal_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Network_Analysis");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                network_analysis_heartbeat("network_anal_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Log observation if logging available */
         }
     }

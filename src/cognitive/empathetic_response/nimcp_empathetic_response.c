@@ -48,7 +48,7 @@ static nimcp_health_agent_t* g_empathetic_response_health_agent = NULL;
  * @brief Set health agent for empathetic_response heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void empathetic_response_set_health_agent(nimcp_health_agent_t* agent) {
+void empathetic_response_set_health_agent(nimcp_health_agent_t* agent) {
     g_empathetic_response_health_agent = agent;
 }
 
@@ -173,6 +173,10 @@ empathetic_response_engine_t empathetic_response_create(
     void* ethics_engine,
     void* empathy_network)
 {
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_heartbeat("empathetic_r_create", 0.0f);
+
+
     empathetic_response_engine_t engine = nimcp_calloc(1, sizeof(struct empathetic_response_engine_struct));
     if (!engine) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
@@ -207,6 +211,10 @@ return engine;
 
 void empathetic_response_destroy(empathetic_response_engine_t engine)
 {
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_heartbeat("empathetic_r_destroy", 0.0f);
+
+
     if (engine) {
         nimcp_free(engine);
     }
@@ -248,6 +256,10 @@ bool empathetic_response_detect_crisis(
     float* confidence)
 {
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_heartbeat("empathetic_r_detect_crisis", 0.0f);
+
+
     if (engine && engine->bio_ctx) {
         bio_router_process_inbox(engine->bio_ctx, 5);
     }
@@ -391,6 +403,10 @@ bool empathetic_response_generate(
     }
 
     // Initialize response
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_heartbeat("empathetic_r_generate", 0.0f);
+
+
     memset(response, 0, sizeof(empathetic_response_t));
 
     // Check for crisis
@@ -463,6 +479,10 @@ bool empathetic_response_get_grounding_exercise(
     }
 
     // Select exercise based on emotion type and intensity
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_heartbeat("empathetic_r_get_grounding_exerci", 0.0f);
+
+
     if (emotion_type == EMOTION_PANIC || emotion_type == EMOTION_FEAR) {
         // Breathing exercise for anxiety/panic
         strncpy(exercise->name, "4-4-4 Breathing", sizeof(exercise->name) - 1);
@@ -520,6 +540,10 @@ float empathetic_response_predict_safety(
     }
 
     // Simple heuristic safety check (would use empathy_network in full version)
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_heartbeat("empathetic_r_predict_safety", 0.0f);
+
+
     float safety_score = 1.0F;
 
     char lowercase_response[1024];
@@ -572,6 +596,10 @@ void empathetic_response_track_effectiveness(
     }
 
     // Update running average
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_heartbeat("empathetic_r_track_effectiveness", 0.0f);
+
+
     float alpha = 0.1F;  // Learning rate
     engine->avg_effectiveness = (1.0F - alpha) * engine->avg_effectiveness +
                                alpha * effectiveness;
@@ -592,9 +620,19 @@ void empathetic_response_track_effectiveness(
 int empathetic_response_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_heartbeat("empathetic_r_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Empathetic_Response");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                empathetic_response_heartbeat("empathetic_r_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

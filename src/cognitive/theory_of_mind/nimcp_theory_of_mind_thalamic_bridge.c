@@ -27,7 +27,7 @@ static nimcp_health_agent_t* g_theory_of_mind_thalamic_bridge_health_agent = NUL
  * @brief Set health agent for theory_of_mind_thalamic_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void theory_of_mind_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void theory_of_mind_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_theory_of_mind_thalamic_bridge_health_agent = agent;
 }
 
@@ -49,6 +49,10 @@ struct tom_thalamic_bridge {
 };
 
 tom_thalamic_config_t tom_thalamic_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_thalamic_bridge_heartbeat("theory_of_mi_tom_thalamic_default", 0.0f);
+
+
     tom_thalamic_config_t cfg = {
         .enable_attention_gating = true,
         .enable_salience_boost = true,
@@ -59,6 +63,10 @@ tom_thalamic_config_t tom_thalamic_default_config(void) {
 }
 
 tom_thalamic_bridge_t* tom_thalamic_bridge_create(void* tom, thalamic_router_t* router, const tom_thalamic_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_thalamic_bridge_heartbeat("theory_of_mi_tom_thalamic_bridge_", 0.0f);
+
+
     tom_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(tom_thalamic_bridge_t));
     if (!bridge) {
 
@@ -76,11 +84,19 @@ tom_thalamic_bridge_t* tom_thalamic_bridge_create(void* tom, thalamic_router_t* 
 }
 
 void tom_thalamic_bridge_destroy(tom_thalamic_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_thalamic_bridge_heartbeat("theory_of_mi_tom_thalamic_bridge_", 0.0f);
+
+
     if (bridge) nimcp_free(bridge);
 }
 
 int tom_thalamic_bridge_reset(tom_thalamic_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_thalamic_bridge_heartbeat("theory_of_mi_tom_thalamic_bridge_", 0.0f);
+
+
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return 0;
@@ -89,6 +105,10 @@ int tom_thalamic_bridge_reset(tom_thalamic_bridge_t* bridge) {
 int tom_thalamic_route_inference(tom_thalamic_bridge_t* bridge, const tom_thalamic_signal_t* signal) {
     if (!bridge || !signal) return -1;
     /* Deception signals bypass attention gating */
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_thalamic_bridge_heartbeat("theory_of_mi_tom_thalamic_route_i", 0.0f);
+
+
     if (bridge->config.enable_attention_gating &&
         signal->social_salience < bridge->config.min_salience_threshold &&
         signal->signal_type != TOM_SIGNAL_DECEPTION) {
@@ -105,12 +125,20 @@ int tom_thalamic_route_inference(tom_thalamic_bridge_t* bridge, const tom_thalam
 
 int tom_thalamic_route_prediction(tom_thalamic_bridge_t* bridge, const void* prediction, float confidence) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_thalamic_bridge_heartbeat("theory_of_mi_tom_thalamic_route_p", 0.0f);
+
+
     bridge->stats.predictions_made++;
     return 0;
 }
 
 int tom_thalamic_set_attention(tom_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_thalamic_bridge_heartbeat("theory_of_mi_tom_thalamic_set_att", 0.0f);
+
+
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
     return 0;
 }
@@ -118,12 +146,20 @@ int tom_thalamic_set_attention(tom_thalamic_bridge_t* bridge, float attention) {
 int tom_thalamic_get_attention(const tom_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) return -1;
     *attention = bridge->attention_weight;
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_thalamic_bridge_heartbeat("theory_of_mi_tom_thalamic_get_att", 0.0f);
+
+
     return 0;
 }
 
 int tom_thalamic_bridge_get_stats(const tom_thalamic_bridge_t* bridge, tom_thalamic_stats_t* stats) {
     if (!bridge || !stats) return -1;
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_thalamic_bridge_heartbeat("theory_of_mi_tom_thalamic_bridge_", 0.0f);
+
+
     return 0;
 }
 
@@ -134,9 +170,19 @@ int tom_thalamic_bridge_get_stats(const tom_thalamic_bridge_t* bridge, tom_thala
 int tom_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_thalamic_bridge_heartbeat("theory_of_mi_tom_thalamic_bridge_", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Theory_Of_Mind_Thalamic_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                theory_of_mind_thalamic_bridge_heartbeat("theory_of_mi_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

@@ -43,7 +43,7 @@ static nimcp_health_agent_t* g_grief_and_loss_health_agent = NULL;
  * @brief Set health agent for grief_and_loss heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void grief_and_loss_set_health_agent(nimcp_health_agent_t* agent) {
+void grief_and_loss_set_health_agent(nimcp_health_agent_t* agent) {
     g_grief_and_loss_health_agent = agent;
 }
 
@@ -81,6 +81,12 @@ static int grief_wiring_handler_callback(
 
     int registered = 0;
     for (uint32_t i = 0; i < message_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && message_count > 256) {
+            grief_and_loss_heartbeat("grief_and_lo_loop",
+                             (float)(i + 1) / (float)message_count);
+        }
+
         switch (message_types[i]) {
             case BIO_MSG_INTROSPECTION_QUERY:
                 bio_router_register_handler(ctx, message_types[i], handle_grief_query);
@@ -160,6 +166,10 @@ grief_system_t* grief_system_create(void) {
     // WHY:  Central system for processing loss and mortality
     // HOW:  Zero-initialize all state, set up default parameters
 
+    /* Phase 8: Heartbeat at operation start */
+    grief_and_loss_heartbeat("grief_and_lo_grief_system_create", 0.0f);
+
+
     grief_system_t* system = (grief_system_t*)nimcp_calloc(1, sizeof(grief_system_t));
     if (!system) {
 
@@ -171,6 +181,12 @@ grief_system_t* grief_system_create(void) {
 
     // Initialize all attachments as inactive
     for (int i = 0; i < GRIEF_MAX_ATTACHMENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && GRIEF_MAX_ATTACHMENTS > 256) {
+            grief_and_loss_heartbeat("grief_and_lo_loop",
+                             (float)(i + 1) / (float)GRIEF_MAX_ATTACHMENTS);
+        }
+
         system->attachments[i].active = false;
     }
 
@@ -230,6 +246,10 @@ void grief_system_destroy(grief_system_t* system) {
     if (!system) return;
 
     // Unregister from bio-router
+    /* Phase 8: Heartbeat at operation start */
+    grief_and_loss_heartbeat("grief_and_lo_grief_system_destroy", 0.0f);
+
+
     if (system->bio_async_enabled && system->bio_ctx_ptr) {
         bio_router_unregister_module(system->bio_ctx_ptr);
         system->bio_ctx_ptr = NULL;
@@ -247,6 +267,10 @@ void grief_system_reset(grief_system_t* system) {
     if (!system) return;
 
     // Preserve integration settings only
+    /* Phase 8: Heartbeat at operation start */
+    grief_and_loss_heartbeat("grief_and_lo_grief_system_reset", 0.0f);
+
+
     bool integrate_nm = system->integrate_with_neuromodulators;
     bool integrate_mem = system->integrate_with_memory;
     bool integrate_wb = system->integrate_with_wellbeing;
@@ -282,8 +306,18 @@ uint32_t grief_create_attachment(grief_system_t* system,
     if (!system) return 0;
 
     // Find empty slot
+    /* Phase 8: Heartbeat at operation start */
+    grief_and_loss_heartbeat("grief_and_lo_grief_create_attachm", 0.0f);
+
+
     int slot = -1;
     for (int i = 0; i < GRIEF_MAX_ATTACHMENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && GRIEF_MAX_ATTACHMENTS > 256) {
+            grief_and_loss_heartbeat("grief_and_lo_loop",
+                             (float)(i + 1) / (float)GRIEF_MAX_ATTACHMENTS);
+        }
+
         if (!system->attachments[i].active) {
             slot = i;
             break;
@@ -323,7 +357,17 @@ void grief_strengthen_attachment(grief_system_t* system,
 
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    grief_and_loss_heartbeat("grief_and_lo_grief_strengthen_att", 0.0f);
+
+
     for (int i = 0; i < GRIEF_MAX_ATTACHMENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && GRIEF_MAX_ATTACHMENTS > 256) {
+            grief_and_loss_heartbeat("grief_and_lo_loop",
+                             (float)(i + 1) / (float)GRIEF_MAX_ATTACHMENTS);
+        }
+
         if (system->attachments[i].active &&
             system->attachments[i].attachment_id == attachment_id) {
 
@@ -342,7 +386,17 @@ void grief_add_shared_memory(grief_system_t* system, uint32_t attachment_id) {
 
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    grief_and_loss_heartbeat("grief_and_lo_grief_add_shared_mem", 0.0f);
+
+
     for (int i = 0; i < GRIEF_MAX_ATTACHMENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && GRIEF_MAX_ATTACHMENTS > 256) {
+            grief_and_loss_heartbeat("grief_and_lo_loop",
+                             (float)(i + 1) / (float)GRIEF_MAX_ATTACHMENTS);
+        }
+
         if (system->attachments[i].active &&
             system->attachments[i].attachment_id == attachment_id) {
 
@@ -373,8 +427,18 @@ void grief_process_loss(grief_system_t* system,
     if (!system) return;
 
     // Find the attachment
+    /* Phase 8: Heartbeat at operation start */
+    grief_and_loss_heartbeat("grief_and_lo_grief_process_loss", 0.0f);
+
+
     attachment_bond_t* lost_bond = NULL;
     for (int i = 0; i < GRIEF_MAX_ATTACHMENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && GRIEF_MAX_ATTACHMENTS > 256) {
+            grief_and_loss_heartbeat("grief_and_lo_loop",
+                             (float)(i + 1) / (float)GRIEF_MAX_ATTACHMENTS);
+        }
+
         if (system->attachments[i].active &&
             system->attachments[i].attachment_id == attachment_id) {
             lost_bond = &system->attachments[i];
@@ -503,6 +567,10 @@ void grief_process_loss(grief_system_t* system,
 
 void grief_update(grief_system_t* system, float dt, uint64_t current_time_us) {
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    grief_and_loss_heartbeat("grief_and_lo_grief_update", 0.0f);
+
+
     if (system && system->bio_async_enabled && system->bio_ctx_ptr) {
         bio_router_process_inbox(system->bio_ctx_ptr, 5);
     }
@@ -533,6 +601,12 @@ void grief_update(grief_system_t* system, float dt, uint64_t current_time_us) {
     // Find loss type for this grief
     loss_type_t current_loss_type = LOSS_TYPE_DEATH;
     for (int i = 0; i < GRIEF_MAX_ATTACHMENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && GRIEF_MAX_ATTACHMENTS > 256) {
+            grief_and_loss_heartbeat("grief_and_lo_loop",
+                             (float)(i + 1) / (float)GRIEF_MAX_ATTACHMENTS);
+        }
+
         if (system->attachments[i].attachment_id == grief->lost_attachment_id) {
             current_loss_type = system->attachments[i].loss_type;
             break;
@@ -583,6 +657,12 @@ void grief_update(grief_system_t* system, float dt, uint64_t current_time_us) {
     float max_intensity = 0.0F;
     grief_stage_t max_stage = GRIEF_STAGE_SHOCK;
     for (int i = 0; i < 7; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 7 > 256) {
+            grief_and_loss_heartbeat("grief_and_lo_loop",
+                             (float)(i + 1) / (float)7);
+        }
+
         if (grief->stage_intensities[i] > max_intensity) {
             max_intensity = grief->stage_intensities[i];
             max_stage = (grief_stage_t)i;
@@ -694,6 +774,12 @@ void grief_update(grief_system_t* system, float dt, uint64_t current_time_us) {
     // Prolonged grief disorder: intense grief persisting > 6 months (death) or > 12 months (other)
     bool is_death = false;  // Need to check loss type
     for (int i = 0; i < GRIEF_MAX_ATTACHMENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && GRIEF_MAX_ATTACHMENTS > 256) {
+            grief_and_loss_heartbeat("grief_and_lo_loop",
+                             (float)(i + 1) / (float)GRIEF_MAX_ATTACHMENTS);
+        }
+
         if (system->attachments[i].attachment_id == grief->lost_attachment_id) {
             is_death = (system->attachments[i].loss_type == LOSS_TYPE_DEATH);
             break;
@@ -746,6 +832,12 @@ void grief_update(grief_system_t* system, float dt, uint64_t current_time_us) {
     // Calculate permanent sadness baseline from bond strength and loss type
     float permanent_sadness_baseline = 0.0F;
     for (int i = 0; i < GRIEF_MAX_ATTACHMENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && GRIEF_MAX_ATTACHMENTS > 256) {
+            grief_and_loss_heartbeat("grief_and_lo_loop",
+                             (float)(i + 1) / (float)GRIEF_MAX_ATTACHMENTS);
+        }
+
         if (system->attachments[i].attachment_id == grief->lost_attachment_id && system->attachments[i].severed) {
             // Permanent baseline proportional to bond strength and loss permanence
             float bond_factor = system->attachments[i].strength * 0.15F;  // Up to 15% baseline
@@ -825,6 +917,10 @@ void grief_contemplate_mortality(grief_system_t* system,
 
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    grief_and_loss_heartbeat("grief_and_lo_grief_contemplate_mo", 0.0f);
+
+
     existential_state_t* ex = &system->existential;
 
     // Awakens mortality awareness
@@ -864,6 +960,10 @@ void grief_find_meaning(grief_system_t* system, float meaning_making_effort) {
     // HOW:  Increase purpose, acceptance, reduce anxiety
 
     if (!system) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    grief_and_loss_heartbeat("grief_and_lo_grief_find_meaning", 0.0f);
+
 
     grief_state_t* grief = &system->current_grief;
     existential_state_t* ex = &system->existential;
@@ -908,6 +1008,10 @@ void grief_seek_support(grief_system_t* system, float support_quality) {
 
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    grief_and_loss_heartbeat("grief_and_lo_grief_seek_support", 0.0f);
+
+
     grief_state_t* grief = &system->current_grief;
 
     grief->social_support_seeking = support_quality;
@@ -928,6 +1032,10 @@ void grief_avoid_reminders(grief_system_t* system, float avoidance_intensity) {
     // HOW:  Reduces intrusive thoughts short-term, but prolongs grief
 
     if (!system) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    grief_and_loss_heartbeat("grief_and_lo_grief_avoid_reminder", 0.0f);
+
 
     grief_state_t* grief = &system->current_grief;
 
@@ -951,6 +1059,10 @@ void grief_express_emotions(grief_system_t* system, float expression_intensity) 
 
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    grief_and_loss_heartbeat("grief_and_lo_grief_express_emotio", 0.0f);
+
+
     grief_state_t* grief = &system->current_grief;
 
     grief->predominant_coping = COPING_ADAPTIVE;
@@ -972,18 +1084,34 @@ void grief_express_emotions(grief_system_t* system, float expression_intensity) 
 //=============================================================================
 
 bool grief_is_grieving(const grief_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    grief_and_loss_heartbeat("grief_and_lo_grief_is_grieving", 0.0f);
+
+
     return system ? system->current_grief.experiencing_grief : false;
 }
 
 float grief_get_pain_intensity(const grief_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    grief_and_loss_heartbeat("grief_and_lo_grief_get_pain_inten", 0.0f);
+
+
     return system ? system->current_grief.emotional_pain_intensity : 0.0F;
 }
 
 grief_stage_t grief_get_current_stage(const grief_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    grief_and_loss_heartbeat("grief_and_lo_grief_get_current_st", 0.0f);
+
+
     return system ? system->current_grief.current_stage : GRIEF_STAGE_SHOCK;
 }
 
 bool grief_has_prolonged_grief_risk(const grief_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    grief_and_loss_heartbeat("grief_and_lo_grief_has_prolonged_", 0.0f);
+
+
     return system ? system->current_grief.prolonged_grief_risk : false;
 }
 
@@ -1001,6 +1129,10 @@ void grief_get_neuromodulator_effects(const grief_system_t* system,
         if (norepinephrine_factor) *norepinephrine_factor = 1.0F;
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    grief_and_loss_heartbeat("grief_and_lo_grief_get_neuromodul", 0.0f);
+
 
     const grief_state_t* grief = &system->current_grief;
 
@@ -1043,6 +1175,10 @@ emotional_tag_t grief_get_sadness_emotion(const grief_system_t* system) {
         return emotional_tag_neutral();
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    grief_and_loss_heartbeat("grief_and_lo_grief_get_sadness_em", 0.0f);
+
+
     const grief_state_t* grief = &system->current_grief;
 
     // Valence: More negative with higher grief intensity
@@ -1073,6 +1209,10 @@ float grief_get_total_sadness(const grief_system_t* system) {
 
     if (!system) return 0.0F;
 
+    /* Phase 8: Heartbeat at operation start */
+    grief_and_loss_heartbeat("grief_and_lo_grief_get_total_sadn", 0.0f);
+
+
     const grief_state_t* grief = &system->current_grief;
 
     // Total sadness = pre-existing + grief-induced
@@ -1089,6 +1229,10 @@ void grief_set_baseline_sadness(grief_system_t* system, float sadness_level) {
 
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    grief_and_loss_heartbeat("grief_and_lo_grief_set_baseline_s", 0.0f);
+
+
     system->current_grief.baseline_sadness = clamp(sadness_level, 0.0F, 1.0F);
 }
 
@@ -1099,9 +1243,19 @@ void grief_set_baseline_sadness(grief_system_t* system, float sadness_level) {
 int grief_and_loss_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    grief_and_loss_heartbeat("grief_and_lo_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Grief_And_Loss");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                grief_and_loss_heartbeat("grief_and_lo_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

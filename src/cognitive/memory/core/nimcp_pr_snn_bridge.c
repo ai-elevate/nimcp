@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_pr_snn_bridge_health_agent = NULL;
  * @brief Set health agent for pr_snn_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void pr_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void pr_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_pr_snn_bridge_health_agent = agent;
 }
 
@@ -156,6 +156,12 @@ static void rng_seed(pr_snn_bridge_t bridge, uint64_t seed) {
     bridge->rng_state[1] = seed ^ 0x5A5A5A5A5A5A5A5AULL;
     /* Warm up */
     for (int i = 0; i < 20; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 20 > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)20);
+        }
+
         uint64_t s1 = bridge->rng_state[0];
         uint64_t s0 = bridge->rng_state[1];
         bridge->rng_state[0] = s0;
@@ -592,6 +598,12 @@ NIMCP_EXPORT pr_spike_pattern_t* pr_spike_pattern_merge(
     float max_duration = 0.0f;
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (!patterns[i]) continue;
         total_spikes += patterns[i]->num_spikes;
         if (patterns[i]->num_neurons > max_neurons) {
@@ -620,6 +632,12 @@ NIMCP_EXPORT pr_spike_pattern_t* pr_spike_pattern_merge(
 
     /* Copy all spikes */
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (!patterns[i]) continue;
         for (size_t j = 0; j < patterns[i]->num_spikes; j++) {
             merged->spike_times[merged->num_spikes] = patterns[i]->spike_times[j];
@@ -643,6 +661,12 @@ NIMCP_EXPORT pr_snn_error_t pr_spike_pattern_sort(pr_spike_pattern_t* pattern) {
     if (!entries) return PR_SNN_ERROR_NO_MEMORY;
 
     for (size_t i = 0; i < pattern->num_spikes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pattern->num_spikes > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)pattern->num_spikes);
+        }
+
         entries[i].time = pattern->spike_times[i];
         entries[i].neuron_id = pattern->neuron_ids[i];
     }
@@ -650,6 +674,12 @@ NIMCP_EXPORT pr_snn_error_t pr_spike_pattern_sort(pr_spike_pattern_t* pattern) {
     qsort(entries, pattern->num_spikes, sizeof(spike_entry_t), compare_spikes);
 
     for (size_t i = 0; i < pattern->num_spikes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pattern->num_spikes > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)pattern->num_spikes);
+        }
+
         pattern->spike_times[i] = entries[i].time;
         pattern->neuron_ids[i] = entries[i].neuron_id;
     }
@@ -674,6 +704,12 @@ NIMCP_EXPORT pr_spike_pattern_t* pr_spike_pattern_extract_neurons(
     /* Count spikes in range */
     size_t count = 0;
     for (size_t i = 0; i < pattern->num_spikes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pattern->num_spikes > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)pattern->num_spikes);
+        }
+
         if (pattern->neuron_ids[i] >= neuron_start &&
             pattern->neuron_ids[i] < neuron_end) {
             count++;
@@ -691,6 +727,12 @@ NIMCP_EXPORT pr_spike_pattern_t* pr_spike_pattern_extract_neurons(
     }
 
     for (size_t i = 0; i < pattern->num_spikes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pattern->num_spikes > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)pattern->num_spikes);
+        }
+
         if (pattern->neuron_ids[i] >= neuron_start &&
             pattern->neuron_ids[i] < neuron_end) {
             pr_spike_pattern_add_spike(extracted,
@@ -718,6 +760,12 @@ NIMCP_EXPORT pr_spike_pattern_t* pr_spike_pattern_extract_time(
     /* Count spikes in range */
     size_t count = 0;
     for (size_t i = 0; i < pattern->num_spikes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pattern->num_spikes > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)pattern->num_spikes);
+        }
+
         if (pattern->spike_times[i] >= time_start &&
             pattern->spike_times[i] < time_end) {
             count++;
@@ -735,6 +783,12 @@ NIMCP_EXPORT pr_spike_pattern_t* pr_spike_pattern_extract_time(
     }
 
     for (size_t i = 0; i < pattern->num_spikes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pattern->num_spikes > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)pattern->num_spikes);
+        }
+
         if (pattern->spike_times[i] >= time_start &&
             pattern->spike_times[i] < time_end) {
             pr_spike_pattern_add_spike(extracted,
@@ -779,6 +833,12 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_rate(
     float duration = bridge->config.encoding_window_ms;
 
     for (size_t n = 0; n < pop_size; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && pop_size > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(n + 1) / (float)pop_size);
+        }
+
         float t = 0.0f;
         while (t < duration) {
             /* Inter-spike interval from exponential distribution */
@@ -854,6 +914,12 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_burst(
     size_t bursting_neurons = (size_t)(pop_size * abs_val * bp->burst_probability);
 
     for (size_t n = 0; n < bursting_neurons; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && bursting_neurons > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(n + 1) / (float)bursting_neurons);
+        }
+
         /* Random burst onset */
         float onset = rng_uniform(bridge) * (duration * 0.5f);
 
@@ -864,6 +930,12 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_burst(
             if (num_spikes < 2) num_spikes = 2;
 
             for (uint32_t s = 0; s < num_spikes; s++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((s & 0xFF) == 0 && num_spikes > 256) {
+                    pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                                     (float)(s + 1) / (float)num_spikes);
+                }
+
                 float t = onset + s * bp->positive_isi_ms;
                 float jitter = rng_gaussian(bridge, 0.0f, 0.5f);
                 t += jitter;
@@ -879,6 +951,12 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_burst(
 
             float t = onset;
             for (uint32_t s = 0; s < num_spikes; s++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((s & 0xFF) == 0 && num_spikes > 256) {
+                    pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                                     (float)(s + 1) / (float)num_spikes);
+                }
+
                 /* Highly variable ISI */
                 float isi = bp->negative_isi_ms * (0.5f + rng_uniform(bridge));
                 if (s > 0) t += isi;
@@ -960,6 +1038,12 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_population(
     float base_rate_hz = bridge->config.max_rate_hz * 0.5f;  /* Moderate rate */
 
     for (size_t n = 0; n < pop_size; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && pop_size > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(n + 1) / (float)pop_size);
+        }
+
         if (!bridge->active_mask[n]) continue;
 
         /* Generate spikes for this neuron */
@@ -1025,6 +1109,12 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_latency(
 
     /* Each neuron fires once at approximately the target latency */
     for (size_t n = 0; n < pop_size; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && pop_size > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(n + 1) / (float)pop_size);
+        }
+
         /* Add jitter */
         float jitter = rng_gaussian(bridge, 0.0f, target_latency * 0.1f);
         float t = target_latency + jitter;
@@ -1085,6 +1175,12 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_phase(
 
     /* Generate phase-locked spikes */
     for (size_t n = 0; n < pop_size; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && pop_size > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(n + 1) / (float)pop_size);
+        }
+
         /* Calculate spike times aligned to theta phase */
         float t = 0.0f;
         float cycle_start = theta_phase / M_2PI * theta_period_ms;
@@ -1190,12 +1286,30 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_quaternion(
     /* Merge all patterns */
     /* Offset neuron IDs to separate components */
     for (size_t i = 0; i < x_pattern->num_spikes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && x_pattern->num_spikes > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)x_pattern->num_spikes);
+        }
+
         x_pattern->neuron_ids[i] += (uint32_t)pop_size;
     }
     for (size_t i = 0; i < y_pattern->num_spikes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && y_pattern->num_spikes > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)y_pattern->num_spikes);
+        }
+
         y_pattern->neuron_ids[i] += (uint32_t)(pop_size * 2);
     }
     for (size_t i = 0; i < z_pattern->num_spikes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && z_pattern->num_spikes > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)z_pattern->num_spikes);
+        }
+
         z_pattern->neuron_ids[i] += (uint32_t)(pop_size * 3);
     }
 
@@ -1204,18 +1318,42 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_quaternion(
     pattern->num_neurons = pop_size * 4;
 
     for (size_t i = 0; i < w_pattern->num_spikes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && w_pattern->num_spikes > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)w_pattern->num_spikes);
+        }
+
         pr_spike_pattern_add_spike(pattern, w_pattern->spike_times[i],
                                    w_pattern->neuron_ids[i]);
     }
     for (size_t i = 0; i < x_pattern->num_spikes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && x_pattern->num_spikes > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)x_pattern->num_spikes);
+        }
+
         pr_spike_pattern_add_spike(pattern, x_pattern->spike_times[i],
                                    x_pattern->neuron_ids[i]);
     }
     for (size_t i = 0; i < y_pattern->num_spikes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && y_pattern->num_spikes > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)y_pattern->num_spikes);
+        }
+
         pr_spike_pattern_add_spike(pattern, y_pattern->spike_times[i],
                                    y_pattern->neuron_ids[i]);
     }
     for (size_t i = 0; i < z_pattern->num_spikes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && z_pattern->num_spikes > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)z_pattern->num_spikes);
+        }
+
         pr_spike_pattern_add_spike(pattern, z_pattern->spike_times[i],
                                    z_pattern->neuron_ids[i]);
     }
@@ -1279,6 +1417,12 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_quaternion_components(
             /* Copy to combined */
             pr_spike_pattern_clear(patterns->combined);
             for (size_t i = 0; i < merged->num_spikes; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && merged->num_spikes > 256) {
+                    pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                                     (float)(i + 1) / (float)merged->num_spikes);
+                }
+
                 pr_spike_pattern_add_spike(patterns->combined,
                     merged->spike_times[i], merged->neuron_ids[i]);
             }
@@ -1316,6 +1460,12 @@ NIMCP_EXPORT pr_snn_error_t pr_spike_compute_neuron_rates(
     memset(rates, 0, pattern->num_neurons * sizeof(float));
 
     for (size_t i = 0; i < pattern->num_spikes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pattern->num_spikes > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)pattern->num_spikes);
+        }
+
         uint32_t n = pattern->neuron_ids[i];
         if (n < pattern->num_neurons) {
             rates[n] += 1.0f;
@@ -1326,6 +1476,12 @@ NIMCP_EXPORT pr_snn_error_t pr_spike_compute_neuron_rates(
     float duration_sec = pattern->duration_ms / 1000.0f;
     if (duration_sec > 0.0f) {
         for (size_t n = 0; n < pattern->num_neurons; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && pattern->num_neurons > 256) {
+                pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                                 (float)(n + 1) / (float)pattern->num_neurons);
+            }
+
             rates[n] /= duration_sec;
         }
     }
@@ -1352,6 +1508,12 @@ NIMCP_EXPORT float pr_spike_compute_burst_index(
     float* last_spike = bridge->latency_buffer;
     memset(last_spike, 0, bridge->buffer_capacity * sizeof(float));
     for (size_t n = 0; n < bridge->buffer_capacity; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && bridge->buffer_capacity > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(n + 1) / (float)bridge->buffer_capacity);
+        }
+
         last_spike[n] = -1000.0f;
     }
 
@@ -1360,6 +1522,12 @@ NIMCP_EXPORT float pr_spike_compute_burst_index(
     size_t isi_count = 0;
 
     for (size_t i = 0; i < pattern->num_spikes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pattern->num_spikes > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)pattern->num_spikes);
+        }
+
         uint32_t n = pattern->neuron_ids[i];
         if (n >= bridge->buffer_capacity) continue;
 
@@ -1379,12 +1547,24 @@ NIMCP_EXPORT float pr_spike_compute_burst_index(
 
     /* Compute mean ISI */
     for (size_t i = 0; i < isi_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && isi_count > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)isi_count);
+        }
+
         mean_isi += isis[i];
     }
     mean_isi /= isi_count;
 
     /* Compute variance */
     for (size_t i = 0; i < isi_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && isi_count > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)isi_count);
+        }
+
         float diff = isis[i] - mean_isi;
         isi_variance += diff * diff;
     }
@@ -1426,6 +1606,12 @@ NIMCP_EXPORT size_t pr_spike_compute_population_size(const pr_spike_pattern_t* p
         size_t count = 0;
 
         for (size_t i = 0; i < pattern->num_spikes; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && pattern->num_spikes > 256) {
+                pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                                 (float)(i + 1) / (float)pattern->num_spikes);
+            }
+
             uint32_t n = pattern->neuron_ids[i];
             if (n < 1024) {
                 size_t byte = n / 8;
@@ -1443,7 +1629,19 @@ NIMCP_EXPORT size_t pr_spike_compute_population_size(const pr_spike_pattern_t* p
     /* This is O(n*m) but acceptable for typical usage */
     size_t count = 0;
     for (size_t n = 0; n < pattern->num_neurons; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && pattern->num_neurons > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(n + 1) / (float)pattern->num_neurons);
+        }
+
         for (size_t i = 0; i < pattern->num_spikes; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && pattern->num_spikes > 256) {
+                pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                                 (float)(i + 1) / (float)pattern->num_spikes);
+            }
+
             if (pattern->neuron_ids[i] == n) {
                 count++;
                 break;
@@ -1469,6 +1667,12 @@ NIMCP_EXPORT float pr_spike_compute_latency(const pr_spike_pattern_t* pattern) {
 
     /* Find first spike for each neuron */
     for (size_t i = 0; i < pattern->num_spikes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pattern->num_spikes > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)pattern->num_spikes);
+        }
+
         uint32_t n = pattern->neuron_ids[i];
         if (n < 1024 && n < pattern->num_neurons) {
             if (first_spike[n] < 0.0f || pattern->spike_times[i] < first_spike[n]) {
@@ -1509,10 +1713,22 @@ NIMCP_EXPORT pr_snn_error_t pr_spike_compute_isi(
     size_t isi_count = 0;
     float last_spike[1024];
     for (size_t i = 0; i < 1024; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 1024 > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)1024);
+        }
+
         last_spike[i] = -1000.0f;
     }
 
     for (size_t i = 0; i < pattern->num_spikes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pattern->num_spikes > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)pattern->num_spikes);
+        }
+
         uint32_t n = pattern->neuron_ids[i];
         if (n >= 1024) continue;
 
@@ -1537,6 +1753,12 @@ NIMCP_EXPORT pr_snn_error_t pr_spike_compute_isi(
 
     float sum = 0.0f;
     for (size_t i = 0; i < isi_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && isi_count > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)isi_count);
+        }
+
         sum += isis[i];
         if (isis[i] < stats->min_isi_ms) stats->min_isi_ms = isis[i];
         if (isis[i] > stats->max_isi_ms) stats->max_isi_ms = isis[i];
@@ -1545,6 +1767,12 @@ NIMCP_EXPORT pr_snn_error_t pr_spike_compute_isi(
 
     float var_sum = 0.0f;
     for (size_t i = 0; i < isi_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && isi_count > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)isi_count);
+        }
+
         float diff = isis[i] - stats->mean_isi_ms;
         var_sum += diff * diff;
     }
@@ -1569,6 +1797,12 @@ NIMCP_EXPORT float pr_spike_compute_synchrony(
     size_t total_pairs = 0;
 
     for (size_t i = 0; i < pattern->num_spikes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pattern->num_spikes > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)pattern->num_spikes);
+        }
+
         for (size_t j = i + 1; j < pattern->num_spikes; j++) {
             if (pattern->neuron_ids[i] != pattern->neuron_ids[j]) {
                 total_pairs++;
@@ -1856,6 +2090,12 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_entanglement(
 
     /* Generate spikes for pattern1 */
     for (size_t n = 0; n < pop_size; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && pop_size > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(n + 1) / (float)pop_size);
+        }
+
         float t = 0.0f;
         while (t < duration) {
             float isi = rng_exponential(bridge, rate_per_ms);
@@ -1914,9 +2154,21 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_decode_entanglement(
     float total_delay = 0.0f;
 
     for (size_t i = 0; i < pattern1->num_spikes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pattern1->num_spikes > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)pattern1->num_spikes);
+        }
+
         float t1 = pattern1->spike_times[i];
 
         for (size_t j = 0; j < pattern2->num_spikes; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && pattern2->num_spikes > 256) {
+                pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                                 (float)(j + 1) / (float)pattern2->num_spikes);
+            }
+
             float t2 = pattern2->spike_times[j];
             float dt = fabsf(t1 - t2);
 
@@ -2001,6 +2253,12 @@ NIMCP_EXPORT float pr_snn_sync_coherence(
     size_t pairs = 0;
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (!patterns[i]) continue;
         for (size_t j = i + 1; j < count; j++) {
             if (!patterns[j]) continue;
@@ -2037,6 +2295,12 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_phase_lock(
 
     /* Shift all spike times to align with theta phase */
     for (size_t i = 0; i < pattern->num_spikes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pattern->num_spikes > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)pattern->num_spikes);
+        }
+
         float t = pattern->spike_times[i];
 
         /* Find which theta cycle this spike is in */
@@ -2069,12 +2333,24 @@ NIMCP_EXPORT float pr_snn_compute_plv(
     size_t count = 0;
 
     for (size_t i = 0; i < pattern1->num_spikes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pattern1->num_spikes > 256) {
+            pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                             (float)(i + 1) / (float)pattern1->num_spikes);
+        }
+
         float phase1 = fmodf(pattern1->spike_times[i], period) / period * M_2PI;
 
         /* Find nearest spike in pattern2 */
         float min_dt = FLT_MAX;
         size_t nearest = 0;
         for (size_t j = 0; j < pattern2->num_spikes; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && pattern2->num_spikes > 256) {
+                pr_snn_bridge_heartbeat("pr_snn_bridg_loop",
+                                 (float)(j + 1) / (float)pattern2->num_spikes);
+            }
+
             float dt = fabsf(pattern1->spike_times[i] - pattern2->spike_times[j]);
             if (dt < min_dt) {
                 min_dt = dt;

@@ -27,7 +27,7 @@ static nimcp_health_agent_t* g_fractal_cognitive_thalamic_bridge_health_agent = 
  * @brief Set health agent for fractal_cognitive_thalamic_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void fractal_cognitive_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void fractal_cognitive_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_fractal_cognitive_thalamic_bridge_health_agent = agent;
 }
 
@@ -49,6 +49,10 @@ struct fractal_cognitive_thalamic_bridge {
 };
 
 fractal_cognitive_thalamic_config_t fractal_cognitive_thalamic_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_thalamic_bridge_heartbeat("fractal_cogn_fractal_cognitive_th", 0.0f);
+
+
     fractal_cognitive_thalamic_config_t cfg = {
         .enable_attention_gating = true,
         .enable_scale_boost = true,
@@ -59,6 +63,10 @@ fractal_cognitive_thalamic_config_t fractal_cognitive_thalamic_default_config(vo
 }
 
 fractal_cognitive_thalamic_bridge_t* fractal_cognitive_thalamic_bridge_create(void* fractal_cognitive, thalamic_router_t* router, const fractal_cognitive_thalamic_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_thalamic_bridge_heartbeat("fractal_cogn_create", 0.0f);
+
+
     fractal_cognitive_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(fractal_cognitive_thalamic_bridge_t));
     if (!bridge) {
 
@@ -82,6 +90,10 @@ fractal_cognitive_thalamic_bridge_t* fractal_cognitive_thalamic_bridge_create(vo
 
 void fractal_cognitive_thalamic_bridge_destroy(fractal_cognitive_thalamic_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_thalamic_bridge_heartbeat("fractal_cogn_destroy", 0.0f);
+
+
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
     }
@@ -90,6 +102,10 @@ void fractal_cognitive_thalamic_bridge_destroy(fractal_cognitive_thalamic_bridge
 
 int fractal_cognitive_thalamic_bridge_reset(fractal_cognitive_thalamic_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_thalamic_bridge_heartbeat("fractal_cogn_reset", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -99,6 +115,10 @@ int fractal_cognitive_thalamic_bridge_reset(fractal_cognitive_thalamic_bridge_t*
 
 int fractal_cognitive_thalamic_route_scale(fractal_cognitive_thalamic_bridge_t* bridge, const fractal_cognitive_thalamic_signal_t* signal) {
     if (!bridge || !signal) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_thalamic_bridge_heartbeat("fractal_cogn_fractal_cognitive_th", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_attention_gating && signal->complexity < bridge->config.min_complexity_threshold) {
         nimcp_mutex_unlock(bridge->base.mutex);
@@ -113,6 +133,10 @@ int fractal_cognitive_thalamic_route_scale(fractal_cognitive_thalamic_bridge_t* 
 
 int fractal_cognitive_thalamic_route_integration(fractal_cognitive_thalamic_bridge_t* bridge, const void* scales, uint32_t num_scales) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_thalamic_bridge_heartbeat("fractal_cogn_fractal_cognitive_th", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.integrations_performed++;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -121,6 +145,10 @@ int fractal_cognitive_thalamic_route_integration(fractal_cognitive_thalamic_brid
 
 int fractal_cognitive_thalamic_set_attention(fractal_cognitive_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_thalamic_bridge_heartbeat("fractal_cogn_fractal_cognitive_th", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -129,6 +157,10 @@ int fractal_cognitive_thalamic_set_attention(fractal_cognitive_thalamic_bridge_t
 
 int fractal_cognitive_thalamic_get_attention(const fractal_cognitive_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_thalamic_bridge_heartbeat("fractal_cogn_fractal_cognitive_th", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -137,6 +169,10 @@ int fractal_cognitive_thalamic_get_attention(const fractal_cognitive_thalamic_br
 
 int fractal_cognitive_thalamic_bridge_get_stats(const fractal_cognitive_thalamic_bridge_t* bridge, fractal_cognitive_thalamic_stats_t* stats) {
     if (!bridge || !stats) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_thalamic_bridge_heartbeat("fractal_cogn_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -150,9 +186,19 @@ int fractal_cognitive_thalamic_bridge_get_stats(const fractal_cognitive_thalamic
 int fractal_cognitive_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_thalamic_bridge_heartbeat("fractal_cogn_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Fractal_Cognitive_Thalamic_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                fractal_cognitive_thalamic_bridge_heartbeat("fractal_cogn_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

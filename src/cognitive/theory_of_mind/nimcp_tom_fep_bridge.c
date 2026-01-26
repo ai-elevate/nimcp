@@ -36,7 +36,7 @@ static nimcp_health_agent_t* g_tom_fep_bridge_health_agent = NULL;
  * @brief Set health agent for tom_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void tom_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void tom_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_tom_fep_bridge_health_agent = agent;
 }
 
@@ -53,6 +53,10 @@ static inline void tom_fep_bridge_heartbeat(const char* operation, float progres
  * ============================================================================ */
 
 int tom_fep_bridge_default_config(tom_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    tom_fep_bridge_heartbeat("tom_fep_brid_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     config->action_pe_threshold = TOM_FEP_PE_ACTION_THRESHOLD;
@@ -74,6 +78,10 @@ int tom_fep_bridge_default_config(tom_fep_config_t* config) {
 }
 
 tom_fep_bridge_t* tom_fep_bridge_create(const tom_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    tom_fep_bridge_heartbeat("tom_fep_brid_create", 0.0f);
+
+
     tom_fep_bridge_t* bridge =
         (tom_fep_bridge_t*)nimcp_malloc(sizeof(tom_fep_bridge_t));
     if (!bridge) {
@@ -112,6 +120,10 @@ tom_fep_bridge_t* tom_fep_bridge_create(const tom_fep_config_t* config) {
 void tom_fep_bridge_destroy(tom_fep_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    tom_fep_bridge_heartbeat("tom_fep_brid_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         tom_fep_bridge_disconnect_bio_async(bridge);
     }
@@ -129,6 +141,10 @@ void tom_fep_bridge_destroy(tom_fep_bridge_t* bridge) {
  * ============================================================================ */
 
 int tom_fep_bridge_connect_fep(tom_fep_bridge_t* bridge, fep_system_t* fep) {
+    /* Phase 8: Heartbeat at operation start */
+    tom_fep_bridge_heartbeat("tom_fep_brid_connect_fep", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -140,6 +156,10 @@ int tom_fep_bridge_connect_fep(tom_fep_bridge_t* bridge, fep_system_t* fep) {
 }
 
 int tom_fep_bridge_connect_tom(tom_fep_bridge_t* bridge, theory_of_mind_t tom) {
+    /* Phase 8: Heartbeat at operation start */
+    tom_fep_bridge_heartbeat("tom_fep_brid_connect_tom", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && tom, NIMCP_ERROR_NULL_POINTER, "bridge or tom is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -155,6 +175,10 @@ int tom_fep_bridge_connect_tom(tom_fep_bridge_t* bridge, theory_of_mind_t tom) {
  * ============================================================================ */
 
 int tom_fep_infer_belief(tom_fep_bridge_t* bridge, float prediction_error) {
+    /* Phase 8: Heartbeat at operation start */
+    tom_fep_bridge_heartbeat("tom_fep_brid_tom_fep_infer_belief", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_belief_inference) return NIMCP_SUCCESS;
 
@@ -185,6 +209,10 @@ int tom_fep_infer_belief(tom_fep_bridge_t* bridge, float prediction_error) {
 }
 
 int tom_fep_infer_intention(tom_fep_bridge_t* bridge, float action_pe) {
+    /* Phase 8: Heartbeat at operation start */
+    tom_fep_bridge_heartbeat("tom_fep_brid_tom_fep_infer_intent", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_intention_inference) return NIMCP_SUCCESS;
 
@@ -211,6 +239,10 @@ int tom_fep_activate_empathy(
     tom_fep_bridge_t* bridge,
     tom_emotion_t observed_emotion
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    tom_fep_bridge_heartbeat("tom_fep_brid_tom_fep_activate_emp", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_empathy) return NIMCP_SUCCESS;
 
@@ -260,6 +292,10 @@ int tom_fep_activate_empathy(
  * ============================================================================ */
 
 int tom_fep_apply_social_priors(tom_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    tom_fep_bridge_heartbeat("tom_fep_brid_tom_fep_apply_social", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -277,6 +313,10 @@ int tom_fep_modulate_empathic_precision(
     tom_fep_bridge_t* bridge,
     tom_emotion_t emotion
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    tom_fep_bridge_heartbeat("tom_fep_brid_tom_fep_modulate_emp", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -299,6 +339,10 @@ int tom_fep_add_mentalizing_overhead(
     tom_fep_bridge_t* bridge,
     uint32_t recursion_depth
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    tom_fep_bridge_heartbeat("tom_fep_brid_tom_fep_add_mentaliz", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -330,6 +374,10 @@ int tom_fep_add_mentalizing_overhead(
  * ============================================================================ */
 
 int tom_fep_bridge_update(tom_fep_bridge_t* bridge, uint64_t delta_ms) {
+    /* Phase 8: Heartbeat at operation start */
+    tom_fep_bridge_heartbeat("tom_fep_brid_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -374,6 +422,10 @@ int tom_fep_bridge_get_state(
     const tom_fep_bridge_t* bridge,
     tom_fep_state_t* state
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    tom_fep_bridge_heartbeat("tom_fep_brid_get_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -387,6 +439,10 @@ int tom_fep_bridge_get_stats(
     const tom_fep_bridge_t* bridge,
     tom_fep_stats_t* stats
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    tom_fep_bridge_heartbeat("tom_fep_brid_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -398,11 +454,19 @@ int tom_fep_bridge_get_stats(
 
 bool tom_fep_is_empathy_active(const tom_fep_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    tom_fep_bridge_heartbeat("tom_fep_brid_tom_fep_is_empathy_a", 0.0f);
+
+
     return bridge->state.empathy_active;
 }
 
 uint32_t tom_fep_get_mentalizing_depth(const tom_fep_bridge_t* bridge) {
     if (!bridge) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    tom_fep_bridge_heartbeat("tom_fep_brid_tom_fep_get_mentaliz", 0.0f);
+
+
     return bridge->state.mentalizing_depth;
 }
 
@@ -416,6 +480,10 @@ int tom_fep_bridge_connect_bio_async(tom_fep_bridge_t* bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
+
+    /* Phase 8: Heartbeat at operation start */
+    tom_fep_bridge_heartbeat("tom_fep_brid_connect_bio_async", 0.0f);
+
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_TOM_BRIDGE,
@@ -443,6 +511,10 @@ int tom_fep_bridge_disconnect_bio_async(tom_fep_bridge_t* bridge) {
     }
     if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
+    /* Phase 8: Heartbeat at operation start */
+    tom_fep_bridge_heartbeat("tom_fep_brid_disconnect_bio_async", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -458,6 +530,10 @@ bool tom_fep_bridge_is_bio_async_connected(const tom_fep_bridge_t* bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    tom_fep_bridge_heartbeat("tom_fep_brid_is_bio_async_connect", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -468,9 +544,19 @@ bool tom_fep_bridge_is_bio_async_connected(const tom_fep_bridge_t* bridge) {
 int tom_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    tom_fep_bridge_heartbeat("tom_fep_brid_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Theory_Of_Mind_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                tom_fep_bridge_heartbeat("tom_fep_brid_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_credit_assignment_health_agent = NULL;
  * @brief Set health agent for credit_assignment heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void credit_assignment_set_health_agent(nimcp_health_agent_t* agent) {
+void credit_assignment_set_health_agent(nimcp_health_agent_t* agent) {
     g_credit_assignment_health_agent = agent;
 }
 
@@ -111,6 +111,10 @@ static uint32_t popcount(uint32_t x) {
 //=============================================================================
 
 nimcp_credit_config_t nimcp_credit_default_config(uint32_t num_players) {
+    /* Phase 8: Heartbeat at operation start */
+    credit_assignment_heartbeat("credit_assig_credit_default_confi", 0.0f);
+
+
     nimcp_credit_config_t config = {
         .method = NIMCP_CREDIT_SHAPLEY,
         .num_players = num_players > NIMCP_GT_MAX_PLAYERS ? NIMCP_GT_MAX_PLAYERS : num_players,
@@ -129,6 +133,10 @@ nimcp_credit_system_t nimcp_credit_create(const nimcp_credit_config_t* config) {
     if (!config || config->num_players == 0 || config->num_players > NIMCP_GT_MAX_PLAYERS) {
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    credit_assignment_heartbeat("credit_assig_credit_create", 0.0f);
+
 
     nimcp_credit_system_t system = nimcp_calloc(1, sizeof(struct nimcp_credit_system_struct));
     if (!system) {
@@ -178,6 +186,10 @@ nimcp_credit_system_t nimcp_credit_create(const nimcp_credit_config_t* config) {
 
 void nimcp_credit_destroy(nimcp_credit_system_t system) {
     if (!system) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    credit_assignment_heartbeat("credit_assig_credit_destroy", 0.0f);
+
 
     nimcp_platform_mutex_destroy(&system->mutex);
     nimcp_free(system->factorial);
@@ -231,6 +243,10 @@ nimcp_error_t nimcp_credit_compute_shapley(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    credit_assignment_heartbeat("credit_assig_credit_compute_shapl", 0.0f);
+
+
     nimcp_platform_mutex_lock(&system->mutex);
 
     uint32_t n = system->config.num_players;
@@ -246,11 +262,23 @@ nimcp_error_t nimcp_credit_compute_shapley(
 
     // Compute Shapley value for each player
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            credit_assignment_heartbeat("credit_assig_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         float shapley_i = 0.0f;
         uint32_t player_bit = 1u << i;
 
         // Iterate over all coalitions NOT containing i
         for (uint32_t S = 0; S < num_coalitions; S++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((S & 0xFF) == 0 && num_coalitions > 256) {
+                credit_assignment_heartbeat("credit_assig_loop",
+                                 (float)(S + 1) / (float)num_coalitions);
+            }
+
             if (S & player_bit) continue;  // Skip if i in S
 
             uint32_t s_size = popcount(S);
@@ -277,6 +305,12 @@ nimcp_error_t nimcp_credit_compute_shapley(
     // Check efficiency (sum of Shapley values = grand coalition value)
     float sum = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            credit_assignment_heartbeat("credit_assig_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         sum += result->credits[i];
     }
     result->efficiency_error = fabsf(sum - result->total_value);
@@ -299,6 +333,10 @@ nimcp_error_t nimcp_credit_compute_shapley_single(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    credit_assignment_heartbeat("credit_assig_credit_compute_shapl", 0.0f);
+
+
     if (player >= system->config.num_players) {
         return NIMCP_GT_ERROR_INVALID_PARAMETER;
     }
@@ -313,6 +351,12 @@ nimcp_error_t nimcp_credit_compute_shapley_single(
     float shapley_i = 0.0f;
 
     for (uint32_t S = 0; S < num_coalitions; S++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((S & 0xFF) == 0 && num_coalitions > 256) {
+            credit_assignment_heartbeat("credit_assig_loop",
+                             (float)(S + 1) / (float)num_coalitions);
+        }
+
         if (S & player_bit) continue;
 
         uint32_t s_size = popcount(S);
@@ -347,6 +391,10 @@ nimcp_error_t nimcp_credit_approximate_shapley(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    credit_assignment_heartbeat("credit_assig_credit_approximate_s", 0.0f);
+
+
     nimcp_platform_mutex_lock(&system->mutex);
 
     uint32_t n = system->config.num_players;
@@ -363,11 +411,23 @@ nimcp_error_t nimcp_credit_approximate_shapley(
 
     // Initialize permutation
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            credit_assignment_heartbeat("credit_assig_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         permutation[i] = i;
     }
 
     // Sample random permutations
     for (uint32_t sample = 0; sample < samples; sample++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((sample & 0xFF) == 0 && samples > 256) {
+            credit_assignment_heartbeat("credit_assig_loop",
+                             (float)(sample + 1) / (float)samples);
+        }
+
         // Shuffle permutation using consolidated Monte Carlo utility
         mc_shuffle_u32(permutation, n, &system->rand_seed);
 
@@ -376,6 +436,12 @@ nimcp_error_t nimcp_credit_approximate_shapley(
         float prev_value = 0.0f;
 
         for (uint32_t pos = 0; pos < n; pos++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((pos & 0xFF) == 0 && n > 256) {
+                credit_assignment_heartbeat("credit_assig_loop",
+                                 (float)(pos + 1) / (float)n);
+            }
+
             uint32_t player = permutation[pos];
             coalition |= (1u << player);
 
@@ -391,6 +457,12 @@ nimcp_error_t nimcp_credit_approximate_shapley(
 
     // Average
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            credit_assignment_heartbeat("credit_assig_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         result->credits[i] /= (float)samples;
     }
 
@@ -401,6 +473,12 @@ nimcp_error_t nimcp_credit_approximate_shapley(
     // Check efficiency
     float sum = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            credit_assignment_heartbeat("credit_assig_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         sum += result->credits[i];
     }
     result->efficiency_error = fabsf(sum - result->total_value);
@@ -409,6 +487,12 @@ nimcp_error_t nimcp_credit_approximate_shapley(
     if (result->efficiency_error > 1e-6f && result->total_value > 0.0f) {
         float scale = result->total_value / sum;
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                credit_assignment_heartbeat("credit_assig_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             result->credits[i] *= scale;
         }
         result->efficiency_error = 0.0f;
@@ -435,6 +519,10 @@ nimcp_error_t nimcp_credit_compute_banzhaf(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    credit_assignment_heartbeat("credit_assig_credit_compute_banzh", 0.0f);
+
+
     nimcp_platform_mutex_lock(&system->mutex);
 
     uint32_t n = system->config.num_players;
@@ -456,12 +544,24 @@ nimcp_error_t nimcp_credit_compute_banzhaf(
 
     // Count pivotal coalitions for each player
     for (uint32_t S = 0; S < num_coalitions; S++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((S & 0xFF) == 0 && num_coalitions > 256) {
+            credit_assignment_heartbeat("credit_assig_loop",
+                             (float)(S + 1) / (float)num_coalitions);
+        }
+
         float v_S = value_fn(S, n, user_data);
         result->coalitions_evaluated++;
 
         bool S_wins = (v_S >= threshold);
 
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                credit_assignment_heartbeat("credit_assig_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             uint32_t player_bit = 1u << i;
 
             if (S & player_bit) {
@@ -489,17 +589,35 @@ nimcp_error_t nimcp_credit_compute_banzhaf(
     // Compute Banzhaf index
     uint32_t total_swings = 0;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            credit_assignment_heartbeat("credit_assig_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         total_swings += swing_counts[i];
     }
 
     if (total_swings > 0) {
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                credit_assignment_heartbeat("credit_assig_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             result->credits[i] = (float)swing_counts[i] / (float)total_swings * result->total_value;
         }
     } else {
         // No swings - equal split
         float equal = result->total_value / (float)n;
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                credit_assignment_heartbeat("credit_assig_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             result->credits[i] = equal;
         }
     }
@@ -525,6 +643,10 @@ nimcp_error_t nimcp_credit_compute_equal_split(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    credit_assignment_heartbeat("credit_assig_credit_compute_equal", 0.0f);
+
+
     nimcp_platform_mutex_lock(&system->mutex);
 
     uint32_t n = system->config.num_players;
@@ -537,6 +659,12 @@ nimcp_error_t nimcp_credit_compute_equal_split(
 
     float equal = result->total_value / (float)n;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            credit_assignment_heartbeat("credit_assig_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         result->credits[i] = equal;
     }
 
@@ -561,6 +689,10 @@ bool nimcp_credit_is_in_core(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    credit_assignment_heartbeat("credit_assig_credit_is_in_core", 0.0f);
+
+
     uint32_t n = system->config.num_players;
     uint32_t num_coalitions = 1u << n;
 
@@ -569,6 +701,12 @@ bool nimcp_credit_is_in_core(
         // Sum of allocations for coalition S
         float alloc_sum = 0.0f;
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                credit_assignment_heartbeat("credit_assig_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             if (S & (1u << i)) {
                 alloc_sum += allocation[i];
             }
@@ -599,6 +737,10 @@ const char* nimcp_credit_method_name(nimcp_credit_method_t method) {
 
 uint32_t nimcp_credit_get_num_players(const nimcp_credit_system_t system) {
     if (!system) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    credit_assignment_heartbeat("credit_assig_credit_get_num_playe", 0.0f);
+
+
     return system->config.num_players;
 }
 
@@ -614,6 +756,10 @@ bool nimcp_credit_verify_axioms(
     }
 
     // Efficiency already computed
+    /* Phase 8: Heartbeat at operation start */
+    credit_assignment_heartbeat("credit_assig_credit_verify_axioms", 0.0f);
+
+
     if (efficiency_error) {
         *efficiency_error = result->efficiency_error;
     }
@@ -640,9 +786,19 @@ bool nimcp_credit_verify_axioms(
  */
 int credit_assignment_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    credit_assignment_heartbeat("credit_assig_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Credit_Assignment");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                credit_assignment_heartbeat("credit_assig_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Credit assignment self-knowledge logged */
         }
     }

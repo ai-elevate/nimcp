@@ -75,3 +75,8 @@
 {"type":"relation","from":"Swarm_Flocking_Module","to":"BIO_MSG_BRAIN_STATE_QUERY","relationType":"HANDLES_MESSAGE","message_type":7001}
 {"type":"relation","from":"Swarm_Narrative_Module","to":"BIO_MSG_NARRATIVE_SHARED","relationType":"HANDLES_MESSAGE","message_type":7002}
 {"type":"relation","from":"Gossip_Beliefs_Module","to":"BIO_MSG_GOSSIP_SPREAD","relationType":"HANDLES_MESSAGE","message_type":7003}
+{"type":"entity","name":"cycle_coordinator","entityType":"CoreModule","subsystem":"core","min_tier":0,"enabled":true}
+{"type":"relation","from":"cycle_coordinator","to":"BIO_MSG_CYCLE_HEALTH_CHANGED","relationType":"HANDLES_MESSAGE","message_type":28416}
+{"type":"relation","from":"cycle_coordinator","to":"BIO_MSG_CYCLE_STALL_DETECTED","relationType":"HANDLES_MESSAGE","message_type":28417}
+{"type":"relation","from":"cycle_coordinator","to":"BIO_MSG_CYCLE_DEPENDENCY_VIOLATED","relationType":"HANDLES_MESSAGE","message_type":28418}
+{"type":"relation","from":"cycle_coordinator","to":"BIO_MSG_CYCLE_COORDINATOR_STATS","relationType":"HANDLES_MESSAGE","message_type":28419}

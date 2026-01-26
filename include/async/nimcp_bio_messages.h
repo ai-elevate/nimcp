@@ -1071,6 +1071,12 @@ typedef enum {
     BIO_MSG_REPAIR_HEALTH_REPEATED_FAILURE,          /**< Repeated failure escalation */
     BIO_MSG_REPAIR_HEALTH_INTERVENTION,              /**< Intervention suggestion */
 
+    /* Cycle Coordinator messages (0x6F00 - 0x6F0F) */
+    BIO_MSG_CYCLE_HEALTH_CHANGED = 0x6F00,           /**< Cycle health state changed */
+    BIO_MSG_CYCLE_STALL_DETECTED,                     /**< Cycle stall detected */
+    BIO_MSG_CYCLE_DEPENDENCY_VIOLATED,                /**< Cycle dependency violation */
+    BIO_MSG_CYCLE_COORDINATOR_STATS,                  /**< Coordinator statistics update */
+
     /* Sentinel */
     BIO_MSG_TYPE_COUNT
 } bio_message_type_t;
@@ -1784,6 +1790,7 @@ typedef enum {
     BIO_MODULE_COGNITIVE_META_CONTROLLER,       /**< Cognitive meta-controller - arbitrates cognitive modules */
     BIO_MODULE_SWARM_REGISTRY,                  /**< Swarm module registry - plugin architecture for swarm behaviors */
     BIO_MODULE_SECURITY_PERCEPTION,             /**< Security-perception bridge - sensory threat analysis */
+    BIO_MODULE_CYCLE_COORDINATOR,               /**< Brain cycle coordinator - unified cycle observability */
 
     /* Core Directives modules (0x1000 - 0x10FF) - Asimov's Laws, Golden Rule, Ethical Foundation */
     BIO_MODULE_CORE_DIRECTIVES = 0x1000,        /**< Core directives orchestrator - ALL actions pass through */

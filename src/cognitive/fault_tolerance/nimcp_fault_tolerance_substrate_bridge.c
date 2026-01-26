@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_fault_tolerance_substrate_bridge_health_agent = N
  * @brief Set health agent for fault_tolerance_substrate_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void fault_tolerance_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void fault_tolerance_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_fault_tolerance_substrate_bridge_health_agent = agent;
 }
 
@@ -59,6 +59,10 @@ struct fault_tolerance_substrate_bridge {
 };
 
 fault_tolerance_substrate_config_t fault_tolerance_substrate_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    fault_tolerance_substrate_bridge_heartbeat("fault_tolera_fault_tolerance_subs", 0.0f);
+
+
     fault_tolerance_substrate_config_t cfg = {
         .enable_atp_modulation = true,
         .enable_fatigue_modulation = true,
@@ -78,6 +82,10 @@ fault_tolerance_substrate_bridge_t* fault_tolerance_substrate_bridge_create(void
         return NULL;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    fault_tolerance_substrate_bridge_heartbeat("fault_tolera_create", 0.0f);
+
 
     fault_tolerance_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(fault_tolerance_substrate_bridge_t));
     if (!bridge) {
@@ -119,6 +127,10 @@ void fault_tolerance_substrate_bridge_destroy(fault_tolerance_substrate_bridge_t
     if (!bridge) return;
 
     /* Destroy mutex */
+    /* Phase 8: Heartbeat at operation start */
+    fault_tolerance_substrate_bridge_heartbeat("fault_tolera_destroy", 0.0f);
+
+
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
@@ -128,6 +140,10 @@ void fault_tolerance_substrate_bridge_destroy(fault_tolerance_substrate_bridge_t
 
 int fault_tolerance_substrate_bridge_update(fault_tolerance_substrate_bridge_t* bridge) {
     if (!bridge || !bridge->substrate) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    fault_tolerance_substrate_bridge_heartbeat("fault_tolera_update", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -169,16 +185,28 @@ int fault_tolerance_substrate_bridge_update(fault_tolerance_substrate_bridge_t* 
 int fault_tolerance_substrate_bridge_get_effects(const fault_tolerance_substrate_bridge_t* bridge, fault_tolerance_substrate_effects_t* effects) {
     if (!bridge || !effects) return -1;
     *effects = bridge->effects;
+    /* Phase 8: Heartbeat at operation start */
+    fault_tolerance_substrate_bridge_heartbeat("fault_tolera_get_effects", 0.0f);
+
+
     return 0;
 }
 
 int fault_tolerance_substrate_bridge_apply_effects(fault_tolerance_substrate_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    fault_tolerance_substrate_bridge_heartbeat("fault_tolera_apply_effects", 0.0f);
+
+
     return 0;
 }
 
 int fault_tolerance_substrate_bridge_register_bio_async(fault_tolerance_substrate_bridge_t* bridge, bio_router_t* router) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    fault_tolerance_substrate_bridge_heartbeat("fault_tolera_register_bio_async", 0.0f);
+
+
     bridge->router = router;
     bridge->bio_async_connected = (router != NULL);
     return 0;
@@ -191,9 +219,19 @@ int fault_tolerance_substrate_bridge_register_bio_async(fault_tolerance_substrat
 int fault_tolerance_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    fault_tolerance_substrate_bridge_heartbeat("fault_tolera_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Fault_Tolerance_Substrate_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                fault_tolerance_substrate_bridge_heartbeat("fault_tolera_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Log self-knowledge observations */
         }
     }

@@ -54,7 +54,7 @@ static nimcp_health_agent_t* g_autobiographical_fep_bridge_health_agent = NULL;
  * @brief Set health agent for autobiographical_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void autobiographical_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void autobiographical_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_autobiographical_fep_bridge_health_agent = agent;
 }
 
@@ -129,6 +129,10 @@ int autobiographical_fep_bridge_default_config(autobiographical_fep_config_t* co
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_fep_bridge_heartbeat("autobiograph_default_config", 0.0f);
+
+
     config->surprise_memory_threshold = SURPRISE_MEMORY_THRESHOLD;
     config->memory_importance_weight = 1.0f;
     config->model_update_rate = MEMORY_MODEL_UPDATE_RATE;
@@ -149,6 +153,10 @@ int autobiographical_fep_bridge_default_config(autobiographical_fep_config_t* co
 autobiographical_fep_bridge_t* autobiographical_fep_bridge_create(
     const autobiographical_fep_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_fep_bridge_heartbeat("autobiograph_create", 0.0f);
+
+
     autobiographical_fep_bridge_t* bridge = (autobiographical_fep_bridge_t*)nimcp_calloc(
         1, sizeof(autobiographical_fep_bridge_t));
     if (!bridge) {
@@ -204,6 +212,10 @@ void autobiographical_fep_bridge_destroy(autobiographical_fep_bridge_t* bridge) 
     if (!bridge) return;
 
     /* Disconnect bio-async if enabled */
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_fep_bridge_heartbeat("autobiograph_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         autobiographical_fep_bridge_disconnect_bio_async(bridge);
     }
@@ -239,6 +251,10 @@ int autobiographical_fep_bridge_connect_fep(
     }
     /* Allow NULL fep to disconnect/reset FEP connection */
 
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_fep_bridge_heartbeat("autobiograph_connect_fep", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -264,6 +280,10 @@ int autobiographical_fep_bridge_connect_autobiographical(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_fep_bridge_heartbeat("autobiograph_connect_autobiograph", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->autobio_system = autobio;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -284,6 +304,10 @@ int autobiographical_fep_bridge_connect_autobiographical(
 int autobiographical_fep_encode_surprising_episode(autobiographical_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system || !bridge->autobio_system) return -1;
     if (!bridge->config.enable_surprise_encoding) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_fep_bridge_heartbeat("autobiograph_autobiographical_fep", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -375,6 +399,10 @@ int autobiographical_fep_replay_memories(autobiographical_fep_bridge_t* bridge) 
     if (!bridge || !bridge->fep_system || !bridge->autobio_system) return -1;
     if (!bridge->config.enable_memory_replay) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_fep_bridge_heartbeat("autobiograph_autobiographical_fep", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Query recent high-importance memories */
@@ -414,6 +442,10 @@ int autobiographical_fep_update_priors_from_memory(autobiographical_fep_bridge_t
     if (!bridge || !bridge->fep_system || !bridge->autobio_system) return -1;
     if (!bridge->config.enable_prior_updates) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_fep_bridge_heartbeat("autobiograph_autobiographical_fep", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get core (identity-defining) memories */
@@ -431,6 +463,12 @@ int autobiographical_fep_update_priors_from_memory(autobiographical_fep_bridge_t
         /* Compute average importance of core memories */
         float total_importance = 0.0f;
         for (uint32_t i = 0; i < num_core; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_core > 256) {
+                autobiographical_fep_bridge_heartbeat("autobiograph_loop",
+                                 (float)(i + 1) / (float)num_core);
+            }
+
             total_importance += core_memories[i].importance;
         }
         float avg_core_importance = total_importance / (float)num_core;
@@ -444,6 +482,12 @@ int autobiographical_fep_update_priors_from_memory(autobiographical_fep_bridge_t
 
             /* Strengthen prior precision based on autobiographical knowledge */
             for (uint32_t i = 0; i < level->beliefs.dim; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && level->beliefs.dim > 256) {
+                    autobiographical_fep_bridge_heartbeat("autobiograph_loop",
+                                     (float)(i + 1) / (float)level->beliefs.dim);
+                }
+
                 level->prior_precision[i] *= (1.0f + prior_adjustment);
             }
         }
@@ -483,6 +527,10 @@ int autobiographical_fep_bridge_update(
     }
 
     /* Check for surprising episodes to encode */
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_fep_bridge_heartbeat("autobiograph_update", 0.0f);
+
+
     if (bridge->config.enable_surprise_encoding && bridge->fep_system) {
         autobiographical_fep_encode_surprising_episode(bridge);
     }
@@ -517,6 +565,10 @@ int autobiographical_fep_bridge_get_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_fep_bridge_heartbeat("autobiograph_get_state", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -534,6 +586,10 @@ int autobiographical_fep_bridge_get_stats(
     autobiographical_fep_stats_t* stats
 ) {
     if (!bridge || !stats) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_fep_bridge_heartbeat("autobiograph_get_stats", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -560,6 +616,10 @@ int autobiographical_fep_bridge_connect_bio_async(autobiographical_fep_bridge_t*
 
     }
     if (bridge->base.bio_async_enabled) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_fep_bridge_heartbeat("autobiograph_connect_bio_async", 0.0f);
+
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_AUTOBIOGRAPHICAL_BRIDGE,
@@ -594,6 +654,10 @@ int autobiographical_fep_bridge_disconnect_bio_async(autobiographical_fep_bridge
     }
     if (!bridge->base.bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_fep_bridge_heartbeat("autobiograph_disconnect_bio_async", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -612,6 +676,10 @@ int autobiographical_fep_bridge_disconnect_bio_async(autobiographical_fep_bridge
 bool autobiographical_fep_bridge_is_bio_async_connected(
     const autobiographical_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_fep_bridge_heartbeat("autobiograph_is_bio_async_connect", 0.0f);
+
+
     return bridge && bridge->base.bio_async_enabled;
 }
 
@@ -622,9 +690,19 @@ bool autobiographical_fep_bridge_is_bio_async_connected(
 int autobiographical_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_fep_bridge_heartbeat("autobiograph_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Autobiographical_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                autobiographical_fep_bridge_heartbeat("autobiograph_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

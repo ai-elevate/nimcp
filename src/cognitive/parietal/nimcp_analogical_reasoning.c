@@ -39,7 +39,7 @@ static nimcp_health_agent_t* g_analogical_reasoning_health_agent = NULL;
  * @brief Set health agent for analogical_reasoning heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void analogical_reasoning_set_health_agent(nimcp_health_agent_t* agent) {
+void analogical_reasoning_set_health_agent(nimcp_health_agent_t* agent) {
     g_analogical_reasoning_health_agent = agent;
 }
 
@@ -114,6 +114,12 @@ static float feature_similarity(const float* a, const float* b, uint32_t dim) {
 
     float dot = 0.0f, norm_a = 0.0f, norm_b = 0.0f;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            analogical_reasoning_heartbeat("analogical_r_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         dot += a[i] * b[i];
         norm_a += a[i] * a[i];
         norm_b += b[i] * b[i];
@@ -206,6 +212,12 @@ static analog_entity_t* find_entity_by_id(
     uint32_t id
 ) {
     for (uint32_t i = 0; i < domain->num_entities; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && domain->num_entities > 256) {
+            analogical_reasoning_heartbeat("analogical_r_loop",
+                             (float)(i + 1) / (float)domain->num_entities);
+        }
+
         if (domain->entities[i].id == id) {
             return &domain->entities[i];
         }
@@ -218,6 +230,10 @@ static analog_entity_t* find_entity_by_id(
  * ============================================================================ */
 
 analog_config_t analogical_engine_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_engine_de", 0.0f);
+
+
     analog_config_t config = {
         .min_mapping_strength = 0.4f,
         .systematicity_weight = 0.4f,
@@ -236,6 +252,10 @@ analog_config_t analogical_engine_default_config(void) {
 }
 
 analogical_engine_t* analogical_engine_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_engine_cr", 0.0f);
+
+
     analog_config_t config = analogical_engine_default_config();
     return analogical_engine_create_custom(&config);
 }
@@ -247,6 +267,10 @@ analogical_engine_t* analogical_engine_create_custom(const analog_config_t* conf
 
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_engine_cr", 0.0f);
+
 
     analogical_engine_t* engine = nimcp_calloc(1, sizeof(analogical_engine_t));
     if (!engine) {
@@ -293,6 +317,10 @@ void analogical_engine_destroy(analogical_engine_t* engine) {
     if (!engine) return;
 
     /* Note: We don't free cached domains/analogies as we don't own them */
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_engine_de", 0.0f);
+
+
     if (engine->cached_domains) {
         nimcp_free(engine->cached_domains);
     }
@@ -311,6 +339,10 @@ analog_domain_t* analogical_create_domain(
     const char* name,
     const char* description
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_create_do", 0.0f);
+
+
     analog_domain_t* domain = nimcp_calloc(1, sizeof(analog_domain_t));
     if (!domain) {
         set_error("Failed to allocate domain");
@@ -360,6 +392,10 @@ uint32_t analogical_add_entity(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_add_entit", 0.0f);
+
+
     analog_entity_t* entity = &domain->entities[domain->num_entities];
 
     entity->id = domain->num_entities + 1;
@@ -397,6 +433,10 @@ uint32_t analogical_add_relation(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_add_relat", 0.0f);
+
+
     analog_relation_t* relation = &domain->relations[domain->num_relations];
 
     relation->id = domain->num_relations + 1;
@@ -426,6 +466,10 @@ int analogical_register_domain(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_register_", 0.0f);
+
+
     if (engine->num_cached_domains >= engine->config.max_domains_cache) {
         set_error("Domain cache full");
         return -1;
@@ -442,7 +486,17 @@ void analogical_free_domain(analog_domain_t* domain) {
     if (!domain) return;
 
     /* Free entity features */
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_free_doma", 0.0f);
+
+
     for (uint32_t i = 0; i < domain->num_entities; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && domain->num_entities > 256) {
+            analogical_reasoning_heartbeat("analogical_r_loop",
+                             (float)(i + 1) / (float)domain->num_entities);
+        }
+
         if (domain->entities[i].features) {
             nimcp_free(domain->entities[i].features);
         }
@@ -468,6 +522,10 @@ analog_analogy_t* analogical_find_analogy(
         set_error("Invalid parameters");
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_find_anal", 0.0f);
+
 
     uint64_t start_time = get_timestamp_us();
 
@@ -526,6 +584,12 @@ analog_analogy_t* analogical_find_analogy(
     /* Compute analogy quality metrics */
     float total_strength = 0.0f;
     for (uint32_t i = 0; i < analogy->num_mappings; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && analogy->num_mappings > 256) {
+            analogical_reasoning_heartbeat("analogical_r_loop",
+                             (float)(i + 1) / (float)analogy->num_mappings);
+        }
+
         total_strength += analogy->mappings[i].confidence;
     }
     analogy->mapping_strength = (analogy->num_mappings > 0) ?
@@ -579,10 +643,20 @@ analog_analogy_t* analogical_find_best_analogy(
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_find_best", 0.0f);
+
+
     analog_analogy_t* best = NULL;
     float best_strength = 0.0f;
 
     for (uint32_t i = 0; i < engine->num_cached_domains; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && engine->num_cached_domains > 256) {
+            analogical_reasoning_heartbeat("analogical_r_loop",
+                             (float)(i + 1) / (float)engine->num_cached_domains);
+        }
+
         if (engine->cached_domains[i] == target) continue;
 
         analog_analogy_t* candidate = analogical_find_analogy(
@@ -616,6 +690,10 @@ int analogical_find_multiple_analogies(
 
     *num_found = 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_find_mult", 0.0f);
+
+
     for (uint32_t i = 0; i < engine->num_cached_domains && *num_found < max_analogies; i++) {
         if (engine->cached_domains[i] == target) continue;
 
@@ -640,12 +718,22 @@ int analogical_evaluate_analogy(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_evaluate_", 0.0f);
+
+
     memset(quality, 0, sizeof(analog_quality_t));
 
     /* Structural similarity based on mapping coverage */
     float entity_coverage = 0.0f;
     uint32_t entity_count = 0;
     for (uint32_t i = 0; i < analogy->num_mappings; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && analogy->num_mappings > 256) {
+            analogical_reasoning_heartbeat("analogical_r_loop",
+                             (float)(i + 1) / (float)analogy->num_mappings);
+        }
+
         if (analogy->mappings[i].is_entity_mapping) {
             entity_coverage += analogy->mappings[i].confidence;
             entity_count++;
@@ -684,6 +772,10 @@ int analogical_evaluate_analogy(
 void analogical_free_analogy(analog_analogy_t* analogy) {
     if (!analogy) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_free_anal", 0.0f);
+
+
     if (analogy->mappings) nimcp_free(analogy->mappings);
     if (analogy->inference_potential) nimcp_free(analogy->inference_potential);
 
@@ -701,13 +793,29 @@ float analogical_structural_similarity(
 ) {
     if (!engine || !domain1 || !domain2) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_structura", 0.0f);
+
+
     float similarity = 0.0f;
     uint32_t comparisons = 0;
 
     /* Compare entity types */
     for (uint32_t i = 0; i < domain1->num_entities; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && domain1->num_entities > 256) {
+            analogical_reasoning_heartbeat("analogical_r_loop",
+                             (float)(i + 1) / (float)domain1->num_entities);
+        }
+
         float best_match = 0.0f;
         for (uint32_t j = 0; j < domain2->num_entities; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && domain2->num_entities > 256) {
+                analogical_reasoning_heartbeat("analogical_r_loop",
+                                 (float)(j + 1) / (float)domain2->num_entities);
+            }
+
             float sim = entity_similarity(&domain1->entities[i],
                                           &domain2->entities[j]);
             if (sim > best_match) best_match = sim;
@@ -718,8 +826,20 @@ float analogical_structural_similarity(
 
     /* Compare relation types */
     for (uint32_t i = 0; i < domain1->num_relations; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && domain1->num_relations > 256) {
+            analogical_reasoning_heartbeat("analogical_r_loop",
+                             (float)(i + 1) / (float)domain1->num_relations);
+        }
+
         float best_match = 0.0f;
         for (uint32_t j = 0; j < domain2->num_relations; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && domain2->num_relations > 256) {
+                analogical_reasoning_heartbeat("analogical_r_loop",
+                                 (float)(j + 1) / (float)domain2->num_relations);
+            }
+
             float sim = relation_similarity(&domain1->relations[i],
                                            &domain2->relations[j]);
             if (sim > best_match) best_match = sim;
@@ -747,6 +867,10 @@ int analogical_map_entities(
     *num_found = 0;
 
     /* Greedy matching: for each source entity, find best target match */
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_map_entit", 0.0f);
+
+
     bool* target_used = nimcp_calloc(target->num_entities, sizeof(bool));
     if (!target_used) {
         set_error("Failed to allocate tracking array");
@@ -758,6 +882,12 @@ int analogical_map_entities(
         int best_j = -1;
 
         for (uint32_t j = 0; j < target->num_entities; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && target->num_entities > 256) {
+                analogical_reasoning_heartbeat("analogical_r_loop",
+                                 (float)(j + 1) / (float)target->num_entities);
+            }
+
             if (target_used[j]) continue;
 
             float sim = entity_similarity(&source->entities[i],
@@ -802,12 +932,22 @@ int analogical_map_relations(
     *num_found = 0;
 
     /* For each source relation, find matching target relation */
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_map_relat", 0.0f);
+
+
     for (uint32_t i = 0; i < source->num_relations && *num_found < max_mappings; i++) {
         const analog_relation_t* src_rel = &source->relations[i];
 
         /* Find mapped subject and object */
         uint32_t mapped_subject = 0, mapped_object = 0;
         for (uint32_t m = 0; m < num_entity_mappings; m++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((m & 0xFF) == 0 && num_entity_mappings > 256) {
+                analogical_reasoning_heartbeat("analogical_r_loop",
+                                 (float)(m + 1) / (float)num_entity_mappings);
+            }
+
             if (entity_mappings[m].source_id == src_rel->subject_id) {
                 mapped_subject = entity_mappings[m].target_id;
             }
@@ -820,6 +960,12 @@ int analogical_map_relations(
 
         /* Find target relation with same structure */
         for (uint32_t j = 0; j < target->num_relations; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && target->num_relations > 256) {
+                analogical_reasoning_heartbeat("analogical_r_loop",
+                                 (float)(j + 1) / (float)target->num_relations);
+            }
+
             const analog_relation_t* tgt_rel = &target->relations[j];
 
             if (tgt_rel->subject_id == mapped_subject &&
@@ -855,6 +1001,10 @@ analog_solution_t* analogical_transfer_solution(
         set_error("Invalid parameters");
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_transfer_", 0.0f);
+
 
     analog_solution_t* transferred = nimcp_calloc(1, sizeof(analog_solution_t));
     if (!transferred) {
@@ -903,9 +1053,19 @@ float analogical_infer_relation(
     }
 
     /* Find mapped subject and object */
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_infer_rel", 0.0f);
+
+
     uint32_t mapped_subject = 0, mapped_object = 0;
 
     for (uint32_t i = 0; i < analogy->num_mappings; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && analogy->num_mappings > 256) {
+            analogical_reasoning_heartbeat("analogical_r_loop",
+                             (float)(i + 1) / (float)analogy->num_mappings);
+        }
+
         if (analogy->mappings[i].is_entity_mapping) {
             if (analogy->mappings[i].source_id == source_relation->subject_id) {
                 mapped_subject = analogy->mappings[i].target_id;
@@ -946,10 +1106,20 @@ int analogical_predict_properties(
     }
 
     /* Find mapping for this entity */
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_predict_p", 0.0f);
+
+
     uint32_t mapped_id = 0;
     float mapping_confidence = 0.0f;
 
     for (uint32_t i = 0; i < analogy->num_mappings; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && analogy->num_mappings > 256) {
+            analogical_reasoning_heartbeat("analogical_r_loop",
+                             (float)(i + 1) / (float)analogy->num_mappings);
+        }
+
         if (analogy->mappings[i].is_entity_mapping &&
             analogy->mappings[i].source_id == source_entity->id) {
             mapped_id = analogy->mappings[i].target_id;
@@ -977,9 +1147,19 @@ int analogical_predict_properties(
 void analogical_free_solution(analog_solution_t* solution) {
     if (!solution) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_free_solu", 0.0f);
+
+
     if (solution->solution_steps) nimcp_free(solution->solution_steps);
     if (solution->adaptations) {
         for (uint32_t i = 0; i < solution->num_adaptations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && solution->num_adaptations > 256) {
+                analogical_reasoning_heartbeat("analogical_r_loop",
+                                 (float)(i + 1) / (float)solution->num_adaptations);
+            }
+
             if (solution->adaptations[i]) nimcp_free(solution->adaptations[i]);
         }
         nimcp_free(solution->adaptations);
@@ -1006,6 +1186,10 @@ analog_abstraction_t* analogical_extract_principle(
         set_error("Abstraction disabled");
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_extract_p", 0.0f);
+
 
     analog_abstraction_t* abstraction = nimcp_calloc(1, sizeof(analog_abstraction_t));
     if (!abstraction) {
@@ -1047,6 +1231,10 @@ float analogical_abstract_relation(
     }
 
     /* Simple abstraction: use first relation name as template */
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_abstract_", 0.0f);
+
+
     strncpy(abstract_name, relations[0].name, max_name_len - 1);
 
     /* Abstraction level based on similarity of all relations */
@@ -1077,6 +1265,10 @@ int analogical_apply_abstraction(
     *num_found = 0;
 
     /* Simplified: return existing relations that might match abstract patterns */
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_apply_abs", 0.0f);
+
+
     for (uint32_t i = 0; i < target->num_relations && *num_found < max_relations; i++) {
         instantiated_relations[(*num_found)++] = target->relations[i];
     }
@@ -1087,8 +1279,18 @@ int analogical_apply_abstraction(
 void analogical_free_abstraction(analog_abstraction_t* abstraction) {
     if (!abstraction) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_free_abst", 0.0f);
+
+
     if (abstraction->abstract_relations) {
         for (uint32_t i = 0; i < abstraction->num_abstract_relations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && abstraction->num_abstract_relations > 256) {
+                analogical_reasoning_heartbeat("analogical_r_loop",
+                                 (float)(i + 1) / (float)abstraction->num_abstract_relations);
+            }
+
             if (abstraction->abstract_relations[i]) {
                 nimcp_free(abstraction->abstract_relations[i]);
             }
@@ -1118,6 +1320,10 @@ analog_analogy_t* analogical_generate_explanation(
     }
 
     /* Find analogy from familiar to concept */
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_generate_", 0.0f);
+
+
     return analogical_find_analogy(engine, audience_familiarity, concept_domain);
 }
 
@@ -1140,6 +1346,10 @@ float analogical_complete_analogy(
      * Simplified: compute feature difference A->B and apply to C
      */
 
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_complete_", 0.0f);
+
+
     uint32_t common_features = a->num_features;
     if (b->num_features < common_features) common_features = b->num_features;
     if (c->num_features < common_features) common_features = c->num_features;
@@ -1148,6 +1358,12 @@ float analogical_complete_analogy(
     *num_features = common_features;
 
     for (uint32_t i = 0; i < common_features; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && common_features > 256) {
+            analogical_reasoning_heartbeat("analogical_r_loop",
+                             (float)(i + 1) / (float)common_features);
+        }
+
         float diff = b->features[i] - a->features[i];
         d_features[i] = c->features[i] + diff;
     }
@@ -1170,6 +1386,10 @@ int analogical_set_inflammation(analogical_engine_t* engine, float level) {
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_set_infla", 0.0f);
+
+
     engine->inflammation = fmaxf(0.0f, fminf(1.0f, level));
     return 0;
 }
@@ -1182,6 +1402,10 @@ int analogical_set_fatigue(analogical_engine_t* engine, float level) {
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_set_fatig", 0.0f);
+
+
     engine->fatigue = fmaxf(0.0f, fminf(1.0f, level));
     return 0;
 }
@@ -1193,11 +1417,19 @@ int analogical_set_fatigue(analogical_engine_t* engine, float level) {
 int analogical_get_stats(const analogical_engine_t* engine, analog_stats_t* stats) {
     if (!engine || !stats) return -1;
     *stats = engine->stats;
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_get_stats", 0.0f);
+
+
     return 0;
 }
 
 void analogical_reset_stats(analogical_engine_t* engine) {
     if (!engine) return;
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_analogical_reset_sta", 0.0f);
+
+
     memset(&engine->stats, 0, sizeof(engine->stats));
 }
 
@@ -1211,9 +1443,19 @@ const char* analogical_get_last_error(void) {
 
 int analogical_reasoning_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    analogical_reasoning_heartbeat("analogical_r_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Analogical_Reasoning");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                analogical_reasoning_heartbeat("analogical_r_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Module self-knowledge logged */
         }
     }

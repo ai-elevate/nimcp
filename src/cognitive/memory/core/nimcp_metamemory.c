@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_metamemory_health_agent = NULL;
  * @brief Set health agent for metamemory heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void metamemory_set_health_agent(nimcp_health_agent_t* agent) {
+void metamemory_set_health_agent(nimcp_health_agent_t* agent) {
     g_metamemory_health_agent = agent;
 }
 
@@ -146,6 +146,12 @@ static void update_calibration_curve(metamemory_t meta) {
 
     // Accumulate from history
     for (size_t i = 0; i < meta->history_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && meta->history_count > 256) {
+            metamemory_heartbeat("metamemory_loop",
+                             (float)(i + 1) / (float)meta->history_count);
+        }
+
         confidence_record_t* record = &meta->confidence_history[i];
         size_t bin = get_calibration_bin(record->confidence);
         bin_sum[bin] += record->was_correct ? 1.0f : 0.0f;
@@ -154,6 +160,12 @@ static void update_calibration_curve(metamemory_t meta) {
 
     // Compute curve (accuracy per bin)
     for (size_t i = 0; i < METAMEM_CALIBRATION_BINS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && METAMEM_CALIBRATION_BINS > 256) {
+            metamemory_heartbeat("metamemory_loop",
+                             (float)(i + 1) / (float)METAMEM_CALIBRATION_BINS);
+        }
+
         if (bin_count[i] > 0) {
             meta->calibration_curve[i] = bin_sum[i] / bin_count[i];
             meta->calibration_counts[i] = bin_count[i];
@@ -168,6 +180,12 @@ static void update_calibration_curve(metamemory_t meta) {
     float total_error = 0.0f;
     size_t total_samples = 0;
     for (size_t i = 0; i < METAMEM_CALIBRATION_BINS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && METAMEM_CALIBRATION_BINS > 256) {
+            metamemory_heartbeat("metamemory_loop",
+                             (float)(i + 1) / (float)METAMEM_CALIBRATION_BINS);
+        }
+
         if (meta->calibration_counts[i] > 0) {
             float expected = (i + 0.5f) / METAMEM_CALIBRATION_BINS;
             float actual = meta->calibration_curve[i];
@@ -198,6 +216,12 @@ static float compute_partial_match(
     uint32_t total = 0;
 
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            metamemory_heartbeat("metamemory_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         uint8_t q_exp = query->exponents[i];
         uint8_t t_exp = target->exponents[i];
 
@@ -233,6 +257,12 @@ static void extract_partial_info(
     info->total_primes = 0;
 
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            metamemory_heartbeat("metamemory_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         if (query->exponents[i] > 0) {
             info->total_primes++;
             if (best_match->exponents[i] > 0) {
@@ -305,6 +335,12 @@ static float compute_familiarity_signal(
     float sum_resonance = 0.0f;
 
     for (size_t i = 0; i < num_neighbors; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_neighbors > 256) {
+            metamemory_heartbeat("metamemory_loop",
+                             (float)(i + 1) / (float)num_neighbors);
+        }
+
         float score = neighbors[i].edge.resonance_score;
         if (score > max_resonance) max_resonance = score;
         sum_resonance += score;
@@ -454,6 +490,12 @@ NIMCP_EXPORT metamemory_t metamemory_create(
 
     // Initialize calibration curve to identity
     for (size_t i = 0; i < METAMEM_CALIBRATION_BINS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && METAMEM_CALIBRATION_BINS > 256) {
+            metamemory_heartbeat("metamemory_loop",
+                             (float)(i + 1) / (float)METAMEM_CALIBRATION_BINS);
+        }
+
         meta->calibration_curve[i] = (i + 0.5f) / METAMEM_CALIBRATION_BINS;
         meta->calibration_counts[i] = 0;
     }
@@ -1013,6 +1055,12 @@ NIMCP_EXPORT void metamemory_reset_calibration(metamemory_t meta) {
 
     // Reset curve to identity
     for (size_t i = 0; i < METAMEM_CALIBRATION_BINS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && METAMEM_CALIBRATION_BINS > 256) {
+            metamemory_heartbeat("metamemory_loop",
+                             (float)(i + 1) / (float)METAMEM_CALIBRATION_BINS);
+        }
+
         meta->calibration_curve[i] = (i + 0.5f) / METAMEM_CALIBRATION_BINS;
         meta->calibration_counts[i] = 0;
     }
@@ -1205,6 +1253,12 @@ NIMCP_EXPORT void metamemory_stats_print(const metamemory_stats_t* stats) {
     printf("    fok_confirmations: %lu\n", (unsigned long)stats->fok_confirmations);
     printf("  Calibration Curve:\n");
     for (size_t i = 0; i < METAMEM_CALIBRATION_BINS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && METAMEM_CALIBRATION_BINS > 256) {
+            metamemory_heartbeat("metamemory_loop",
+                             (float)(i + 1) / (float)METAMEM_CALIBRATION_BINS);
+        }
+
         printf("    [%.1f-%.1f): %.3f (n=%u)\n",
                (float)i / METAMEM_CALIBRATION_BINS,
                (float)(i + 1) / METAMEM_CALIBRATION_BINS,

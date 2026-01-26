@@ -41,7 +41,7 @@ static nimcp_health_agent_t* g_curiosity_reasoning_bridge_health_agent = NULL;
  * @brief Set health agent for curiosity_reasoning_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void curiosity_reasoning_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void curiosity_reasoning_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_curiosity_reasoning_bridge_health_agent = agent;
 }
 
@@ -116,6 +116,12 @@ static exploration_topic_t* find_topic_unlocked(
     uint32_t topic_id
 ) {
     for (size_t i = 0; i < bridge->topic_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->topic_count > 256) {
+            curiosity_reasoning_bridge_heartbeat("curiosity_re_loop",
+                             (float)(i + 1) / (float)bridge->topic_count);
+        }
+
         if (bridge->topics[i].active && bridge->topics[i].topic_id == topic_id) {
             return &bridge->topics[i];
         }
@@ -147,6 +153,12 @@ static exploration_topic_t* find_or_create_topic_unlocked(
 
     /* Find first inactive slot or use next slot */
     for (size_t i = 0; i < bridge->topic_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->topic_capacity > 256) {
+            curiosity_reasoning_bridge_heartbeat("curiosity_re_loop",
+                             (float)(i + 1) / (float)bridge->topic_capacity);
+        }
+
         if (!bridge->topics[i].active) {
             bridge->topics[i].topic_id = topic_id;
             bridge->topics[i].curiosity_level = 0.0f;
@@ -173,6 +185,10 @@ int curiosity_reasoning_bridge_default_config(curiosity_reasoning_config_t* conf
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_reasoning_bridge_heartbeat("curiosity_re_default_config", 0.0f);
+
+
     config->exploration_bias = 0.7f;
     config->novelty_threshold = 0.5f;
     config->uncertainty_weight = 0.3f;
@@ -184,6 +200,10 @@ curiosity_reasoning_bridge_t* curiosity_reasoning_bridge_create(
     const curiosity_reasoning_config_t* config
 ) {
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_reasoning_bridge_heartbeat("curiosity_re_create", 0.0f);
+
+
     curiosity_reasoning_bridge_t* bridge = (curiosity_reasoning_bridge_t*)nimcp_calloc(
         1, sizeof(curiosity_reasoning_bridge_t));
     if (!bridge) {
@@ -230,6 +250,10 @@ void curiosity_reasoning_bridge_destroy(curiosity_reasoning_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_reasoning_bridge_heartbeat("curiosity_re_destroy", 0.0f);
+
+
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
         bridge->base.mutex = NULL;
@@ -259,6 +283,10 @@ int curiosity_reasoning_drive_exploration(
     }
 
     /* Clamp curiosity level to valid range */
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_reasoning_bridge_heartbeat("curiosity_re_curiosity_reasoning_", 0.0f);
+
+
     curiosity_level = clamp_f(curiosity_level,
                                CURIOSITY_REASONING_MIN_LEVEL,
                                CURIOSITY_REASONING_MAX_LEVEL);
@@ -309,6 +337,10 @@ int curiosity_reasoning_share_uncertainty(
     }
 
     /* Clamp uncertainty level to valid range */
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_reasoning_bridge_heartbeat("curiosity_re_curiosity_reasoning_", 0.0f);
+
+
     uncertainty_level = clamp_f(uncertainty_level,
                                  CURIOSITY_REASONING_MIN_LEVEL,
                                  CURIOSITY_REASONING_MAX_LEVEL);
@@ -355,6 +387,10 @@ int curiosity_reasoning_on_novel_conclusion(
     }
 
     /* Clamp novelty score to valid range */
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_reasoning_bridge_heartbeat("curiosity_re_curiosity_reasoning_", 0.0f);
+
+
     novelty_score = clamp_f(novelty_score,
                              CURIOSITY_REASONING_MIN_LEVEL,
                              CURIOSITY_REASONING_MAX_LEVEL);
@@ -415,6 +451,10 @@ float curiosity_reasoning_get_exploration_priority(
         return -1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_reasoning_bridge_heartbeat("curiosity_re_curiosity_reasoning_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t tid = (uint32_t)(topic_id & 0xFFFFFFFF);
@@ -444,6 +484,10 @@ int curiosity_reasoning_bridge_get_stats(
     /* Note: For const correctness, we cast away const for mutex lock.
      * This is acceptable since we're only reading. Alternatively,
      * a read-write lock could be used. */
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_reasoning_bridge_heartbeat("curiosity_re_get_stats", 0.0f);
+
+
     curiosity_reasoning_bridge_t* mutable_bridge =
         (curiosity_reasoning_bridge_t*)bridge;
 

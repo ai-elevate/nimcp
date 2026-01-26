@@ -60,7 +60,7 @@ static nimcp_health_agent_t* g_omni_wm_memory_bridge_health_agent = NULL;
  * @brief Set health agent for omni_wm_memory_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void omni_wm_memory_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void omni_wm_memory_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_omni_wm_memory_bridge_health_agent = agent;
 }
 
@@ -170,6 +170,12 @@ static void free_replay_buffer(omni_wm_memory_bridge_t* bridge) {
 
     if (bridge->replay_buffer_states) {
         for (uint32_t i = 0; i < bridge->replay_buffer_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->replay_buffer_size > 256) {
+                omni_wm_memory_bridge_heartbeat("omni_wm_memo_loop",
+                                 (float)(i + 1) / (float)bridge->replay_buffer_size);
+            }
+
             nimcp_free(bridge->replay_buffer_states[i]);
         }
         nimcp_free(bridge->replay_buffer_states);
@@ -178,6 +184,12 @@ static void free_replay_buffer(omni_wm_memory_bridge_t* bridge) {
 
     if (bridge->replay_buffer_actions) {
         for (uint32_t i = 0; i < bridge->replay_buffer_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->replay_buffer_size > 256) {
+                omni_wm_memory_bridge_heartbeat("omni_wm_memo_loop",
+                                 (float)(i + 1) / (float)bridge->replay_buffer_size);
+            }
+
             nimcp_free(bridge->replay_buffer_actions[i]);
         }
         nimcp_free(bridge->replay_buffer_actions);
@@ -239,6 +251,12 @@ static nimcp_error_t process_replay_buffer(omni_wm_memory_bridge_t* bridge) {
 
     /* Clear buffer after processing */
     for (uint32_t i = 0; i < bridge->replay_buffer_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->replay_buffer_size > 256) {
+            omni_wm_memory_bridge_heartbeat("omni_wm_memo_loop",
+                             (float)(i + 1) / (float)bridge->replay_buffer_size);
+        }
+
         nimcp_free(bridge->replay_buffer_states[i]);
         bridge->replay_buffer_states[i] = NULL;
         nimcp_free(bridge->replay_buffer_actions[i]);
@@ -431,6 +449,10 @@ static nimcp_error_t handle_pattern_separate(const void* msg, size_t msg_size,
 nimcp_error_t omni_wm_memory_bridge_default_config(
     omni_wm_memory_bridge_config_t* config) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(omni_wm_memory_bridge_config_t));
@@ -476,6 +498,10 @@ omni_wm_memory_bridge_t* omni_wm_memory_bridge_create(
     const omni_wm_memory_bridge_config_t* config) {
 
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_create", 0.0f);
+
+
     omni_wm_memory_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_wm_memory_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate WM memory bridge");
@@ -530,6 +556,10 @@ void omni_wm_memory_bridge_destroy(omni_wm_memory_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         omni_wm_memory_bridge_disconnect_bio_async(bridge);
     }
@@ -542,12 +572,24 @@ void omni_wm_memory_bridge_destroy(omni_wm_memory_bridge_t* bridge) {
     /* Free memory to WM effects dynamic arrays */
     if (bridge->memory_to_wm.replay_states) {
         for (uint32_t i = 0; i < bridge->memory_to_wm.replay_length; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->memory_to_wm.replay_length > 256) {
+                omni_wm_memory_bridge_heartbeat("omni_wm_memo_loop",
+                                 (float)(i + 1) / (float)bridge->memory_to_wm.replay_length);
+            }
+
             nimcp_free(bridge->memory_to_wm.replay_states[i]);
         }
         nimcp_free(bridge->memory_to_wm.replay_states);
     }
     if (bridge->memory_to_wm.replay_actions) {
         for (uint32_t i = 0; i < bridge->memory_to_wm.replay_length; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->memory_to_wm.replay_length > 256) {
+                omni_wm_memory_bridge_heartbeat("omni_wm_memo_loop",
+                                 (float)(i + 1) / (float)bridge->memory_to_wm.replay_length);
+            }
+
             nimcp_free(bridge->memory_to_wm.replay_actions[i]);
         }
         nimcp_free(bridge->memory_to_wm.replay_actions);
@@ -570,6 +612,10 @@ void omni_wm_memory_bridge_destroy(omni_wm_memory_bridge_t* bridge) {
 }
 
 nimcp_error_t omni_wm_memory_bridge_reset(omni_wm_memory_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_reset", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -586,6 +632,12 @@ nimcp_error_t omni_wm_memory_bridge_reset(omni_wm_memory_bridge_t* bridge) {
 
     /* Clear replay buffer */
     for (uint32_t i = 0; i < bridge->replay_buffer_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->replay_buffer_size > 256) {
+            omni_wm_memory_bridge_heartbeat("omni_wm_memo_loop",
+                             (float)(i + 1) / (float)bridge->replay_buffer_size);
+        }
+
         nimcp_free(bridge->replay_buffer_states[i]);
         bridge->replay_buffer_states[i] = NULL;
         nimcp_free(bridge->replay_buffer_actions[i]);
@@ -618,6 +670,10 @@ nimcp_error_t omni_wm_memory_bridge_connect(
     engram_system_t* engram_system,
     systems_consolidation_system_t* consolidation) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_connect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_INVALID_PARAM, "world_model is required");
 
@@ -646,6 +702,10 @@ nimcp_error_t omni_wm_memory_bridge_connect_world_model(
     omni_wm_memory_bridge_t* bridge,
     omni_world_model_t* world_model) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_connect_world_model", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_NULL_POINTER, "world_model is NULL");
 
@@ -663,6 +723,10 @@ nimcp_error_t omni_wm_memory_bridge_connect_hippocampus(
     omni_wm_memory_bridge_t* bridge,
     nimcp_hippocampus_t* hippocampus) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_connect_hippocampus", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(hippocampus, NIMCP_ERROR_NULL_POINTER, "hippocampus is NULL");
 
@@ -676,6 +740,10 @@ nimcp_error_t omni_wm_memory_bridge_connect_hippocampus(
 nimcp_error_t omni_wm_memory_bridge_connect_engram(
     omni_wm_memory_bridge_t* bridge,
     engram_system_t* engram_system) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_connect_engram", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(engram_system, NIMCP_ERROR_NULL_POINTER, "engram_system is NULL");
@@ -691,6 +759,10 @@ nimcp_error_t omni_wm_memory_bridge_connect_consolidation(
     omni_wm_memory_bridge_t* bridge,
     systems_consolidation_system_t* consolidation) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_connect_consolidatio", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(consolidation, NIMCP_ERROR_NULL_POINTER, "consolidation is NULL");
 
@@ -703,6 +775,10 @@ nimcp_error_t omni_wm_memory_bridge_connect_consolidation(
 
 bool omni_wm_memory_bridge_is_connected(const omni_wm_memory_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_is_connected", 0.0f);
+
+
     return bridge->world_model != NULL;
 }
 
@@ -713,6 +789,10 @@ bool omni_wm_memory_bridge_is_connected(const omni_wm_memory_bridge_t* bridge) {
 nimcp_error_t omni_wm_memory_bridge_update(
     omni_wm_memory_bridge_t* bridge,
     float dt) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_update", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_modulation) return NIMCP_SUCCESS;
@@ -764,6 +844,10 @@ nimcp_error_t omni_wm_memory_bridge_set_sleep_state(
     bool is_sleeping,
     float sleep_stage) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_set_sleep_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -801,6 +885,10 @@ nimcp_error_t omni_wm_memory_bridge_train_from_replay(
     uint32_t length,
     bool is_reverse) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_train_from_replay", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(states, NIMCP_ERROR_NULL_POINTER, "states is NULL");
     NIMCP_CHECK_THROW(actions, NIMCP_ERROR_NULL_POINTER, "actions is NULL");
@@ -829,6 +917,12 @@ nimcp_error_t omni_wm_memory_bridge_train_from_replay(
     /* Simple placeholder loss calculation */
     float training_loss = 0.0f;
     for (uint32_t i = 0; i < length; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && length > 256) {
+            omni_wm_memory_bridge_heartbeat("omni_wm_memo_loop",
+                             (float)(i + 1) / (float)length);
+        }
+
         training_loss += fabsf(rewards[i]);
     }
     training_loss /= (float)length;
@@ -852,6 +946,10 @@ nimcp_error_t omni_wm_memory_bridge_train_from_replay(
 nimcp_error_t omni_wm_memory_bridge_on_ripple(
     omni_wm_memory_bridge_t* bridge,
     const struct nimcp_ripple_event* ripple) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_on_ripple", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(ripple, NIMCP_ERROR_NULL_POINTER, "ripple is NULL");
@@ -879,6 +977,10 @@ nimcp_error_t omni_wm_memory_bridge_encode_engram(
     float emotional_tag,
     bool force_encode,
     uint64_t* engram_id_out) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_encode_engram", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_engram_encoding) return NIMCP_SUCCESS;
@@ -931,6 +1033,10 @@ nimcp_error_t omni_wm_memory_bridge_retrieve_episodic_context(
     float* context_out,
     uint32_t context_dim,
     float* confidence_out) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_retrieve_episodic_co", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(context_out, NIMCP_ERROR_INVALID_PARAM, "context_out is NULL");
@@ -993,6 +1099,10 @@ nimcp_error_t omni_wm_memory_bridge_pattern_complete(
     uint32_t completed_dim,
     float* confidence_out) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_pattern_complete", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(partial_pattern, NIMCP_ERROR_NULL_POINTER, "partial_pattern is NULL");
     NIMCP_CHECK_THROW(completed_out, NIMCP_ERROR_NULL_POINTER, "completed_out is NULL");
@@ -1039,6 +1149,10 @@ nimcp_error_t omni_wm_memory_bridge_pattern_separate(
     uint32_t separated_dim,
     float* separation_strength_out) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_pattern_separate", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(input_pattern, NIMCP_ERROR_NULL_POINTER, "input_pattern is NULL");
     NIMCP_CHECK_THROW(separated_out, NIMCP_ERROR_NULL_POINTER, "separated_out is NULL");
@@ -1058,6 +1172,12 @@ nimcp_error_t omni_wm_memory_bridge_pattern_separate(
     float expansion = 5.0f;
 
     for (uint32_t i = 0; i < separated_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && separated_dim > 256) {
+            omni_wm_memory_bridge_heartbeat("omni_wm_memo_loop",
+                             (float)(i + 1) / (float)separated_dim);
+        }
+
         if (i < input_dim) {
             /* Apply nonlinear sparsification */
             float val = input_pattern[i];
@@ -1091,6 +1211,10 @@ nimcp_error_t omni_wm_memory_bridge_extract_semantics(
     float* features_out,
     uint32_t features_dim) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_extract_semantics", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(features_out, NIMCP_ERROR_INVALID_PARAM, "features_out is NULL");
     NIMCP_CHECK_THROW(features_dim > 0, NIMCP_ERROR_INVALID_PARAM, "features_dim must be greater than 0");
@@ -1107,6 +1231,12 @@ nimcp_error_t omni_wm_memory_bridge_extract_semantics(
     float abstraction = bridge->config.semantic_abstraction_level;
 
     for (uint32_t i = 0; i < features_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && features_dim > 256) {
+            omni_wm_memory_bridge_heartbeat("omni_wm_memo_loop",
+                             (float)(i + 1) / (float)features_dim);
+        }
+
         /* Generate placeholder semantic features */
         features_out[i] = (float)(i % 10) / 10.0f * abstraction;
     }
@@ -1125,6 +1255,10 @@ nimcp_error_t omni_wm_memory_bridge_extract_semantics(
 nimcp_error_t omni_wm_memory_bridge_consolidation_sync(
     omni_wm_memory_bridge_t* bridge,
     float consolidation_signal) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_consolidation_sync", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_consolidation_sync) return NIMCP_SUCCESS;
@@ -1174,6 +1308,10 @@ const omni_wm_to_memory_effects_t* omni_wm_memory_bridge_get_wm_effects(
 
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_get_wm_effects", 0.0f);
+
+
     return &bridge->wm_to_memory;
 }
 
@@ -1190,12 +1328,20 @@ const memory_to_omni_wm_effects_t* omni_wm_memory_bridge_get_memory_effects(
 
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_get_memory_effects", 0.0f);
+
+
     return &bridge->memory_to_wm;
 }
 
 nimcp_error_t omni_wm_memory_bridge_get_stats(
     const omni_wm_memory_bridge_t* bridge,
     omni_wm_memory_bridge_stats_t* stats) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_get_stats", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
@@ -1209,6 +1355,10 @@ nimcp_error_t omni_wm_memory_bridge_get_stats(
 
 nimcp_error_t omni_wm_memory_bridge_reset_stats(
     omni_wm_memory_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_reset_stats", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -1225,6 +1375,10 @@ nimcp_error_t omni_wm_memory_bridge_reset_stats(
 
 nimcp_error_t omni_wm_memory_bridge_connect_bio_async(
     omni_wm_memory_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_connect_bio_async", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_bio_async) return NIMCP_SUCCESS;
@@ -1279,6 +1433,10 @@ nimcp_error_t omni_wm_memory_bridge_connect_bio_async(
 nimcp_error_t omni_wm_memory_bridge_disconnect_bio_async(
     omni_wm_memory_bridge_t* bridge) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_disconnect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
@@ -1295,6 +1453,10 @@ nimcp_error_t omni_wm_memory_bridge_disconnect_bio_async(
 
 bool omni_wm_memory_bridge_is_bio_async_connected(
     const omni_wm_memory_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_is_bio_async_connect", 0.0f);
+
 
     return bridge_base_is_bio_async_connected(bridge ? &bridge->base : NULL);
 }
@@ -1344,6 +1506,10 @@ const char* omni_wm_memory_msg_type_to_string(omni_wm_memory_msg_type_t msg_type
 
 nimcp_error_t omni_wm_memory_bridge_validate_config(
     const omni_wm_memory_bridge_config_t* config) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_memory_bridge_heartbeat("omni_wm_memo_validate_config", 0.0f);
+
 
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 

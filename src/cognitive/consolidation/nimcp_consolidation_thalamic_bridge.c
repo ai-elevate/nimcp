@@ -27,7 +27,7 @@ static nimcp_health_agent_t* g_consolidation_thalamic_bridge_health_agent = NULL
  * @brief Set health agent for consolidation_thalamic_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void consolidation_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void consolidation_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_consolidation_thalamic_bridge_health_agent = agent;
 }
 
@@ -49,6 +49,10 @@ struct consolidation_thalamic_bridge {
 };
 
 consolidation_thalamic_config_t consolidation_thalamic_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_thalamic_bridge_heartbeat("consolidatio_consolidation_thalam", 0.0f);
+
+
     consolidation_thalamic_config_t cfg = {
         .enable_attention_gating = true,
         .enable_emotional_boost = true,
@@ -59,6 +63,10 @@ consolidation_thalamic_config_t consolidation_thalamic_default_config(void) {
 }
 
 consolidation_thalamic_bridge_t* consolidation_thalamic_bridge_create(void* consolidation, thalamic_router_t* router, const consolidation_thalamic_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_thalamic_bridge_heartbeat("consolidatio_create", 0.0f);
+
+
     consolidation_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(consolidation_thalamic_bridge_t));
     if (!bridge) {
 
@@ -84,6 +92,10 @@ consolidation_thalamic_bridge_t* consolidation_thalamic_bridge_create(void* cons
 }
 
 void consolidation_thalamic_bridge_destroy(consolidation_thalamic_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_thalamic_bridge_heartbeat("consolidatio_destroy", 0.0f);
+
+
     if (bridge) {
         if (bridge->base.mutex) {
             bridge_base_cleanup(&bridge->base);
@@ -94,6 +106,10 @@ void consolidation_thalamic_bridge_destroy(consolidation_thalamic_bridge_t* brid
 
 int consolidation_thalamic_bridge_reset(consolidation_thalamic_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_thalamic_bridge_heartbeat("consolidatio_reset", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -103,6 +119,10 @@ int consolidation_thalamic_bridge_reset(consolidation_thalamic_bridge_t* bridge)
 
 int consolidation_thalamic_route_encode(consolidation_thalamic_bridge_t* bridge, const consolidation_thalamic_signal_t* signal) {
     if (!bridge || !signal) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_thalamic_bridge_heartbeat("consolidatio_consolidation_thalam", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_attention_gating && signal->memory_salience < bridge->config.min_memory_salience) {
         nimcp_mutex_unlock(bridge->base.mutex);
@@ -117,6 +137,10 @@ int consolidation_thalamic_route_encode(consolidation_thalamic_bridge_t* bridge,
 
 int consolidation_thalamic_route_replay(consolidation_thalamic_bridge_t* bridge, const void* memory, float importance) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_thalamic_bridge_heartbeat("consolidatio_consolidation_thalam", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.replays_triggered++;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -125,6 +149,10 @@ int consolidation_thalamic_route_replay(consolidation_thalamic_bridge_t* bridge,
 
 int consolidation_thalamic_set_attention(consolidation_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_thalamic_bridge_heartbeat("consolidatio_consolidation_thalam", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -133,6 +161,10 @@ int consolidation_thalamic_set_attention(consolidation_thalamic_bridge_t* bridge
 
 int consolidation_thalamic_get_attention(const consolidation_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_thalamic_bridge_heartbeat("consolidatio_consolidation_thalam", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -141,6 +173,10 @@ int consolidation_thalamic_get_attention(const consolidation_thalamic_bridge_t* 
 
 int consolidation_thalamic_bridge_get_stats(const consolidation_thalamic_bridge_t* bridge, consolidation_thalamic_stats_t* stats) {
     if (!bridge || !stats) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_thalamic_bridge_heartbeat("consolidatio_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -154,9 +190,19 @@ int consolidation_thalamic_bridge_get_stats(const consolidation_thalamic_bridge_
 int consolidation_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_thalamic_bridge_heartbeat("consolidatio_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Consolidation_Thalamic_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                consolidation_thalamic_bridge_heartbeat("consolidatio_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

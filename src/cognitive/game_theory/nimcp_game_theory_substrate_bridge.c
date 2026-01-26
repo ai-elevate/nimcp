@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_game_theory_substrate_bridge_health_agent = NULL;
  * @brief Set health agent for game_theory_substrate_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void game_theory_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void game_theory_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_game_theory_substrate_bridge_health_agent = agent;
 }
 
@@ -61,6 +61,10 @@ struct game_theory_substrate_bridge {
 };
 
 game_theory_substrate_config_t game_theory_substrate_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_substrate_bridge_heartbeat("game_theory__game_theory_substrat", 0.0f);
+
+
     game_theory_substrate_config_t cfg = {
         .enable_atp_modulation = true,
         .enable_fatigue_modulation = true,
@@ -80,6 +84,10 @@ game_theory_substrate_bridge_t* game_theory_substrate_bridge_create(void* game_t
         return NULL;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_substrate_bridge_heartbeat("game_theory__create", 0.0f);
+
 
     game_theory_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(game_theory_substrate_bridge_t));
     if (!bridge) {
@@ -104,11 +112,19 @@ game_theory_substrate_bridge_t* game_theory_substrate_bridge_create(void* game_t
 }
 
 void game_theory_substrate_bridge_destroy(game_theory_substrate_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_substrate_bridge_heartbeat("game_theory__destroy", 0.0f);
+
+
     if (bridge) nimcp_free(bridge);
 }
 
 int game_theory_substrate_bridge_update(game_theory_substrate_bridge_t* bridge) {
     if (!bridge || !bridge->substrate) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_substrate_bridge_heartbeat("game_theory__update", 0.0f);
+
 
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
@@ -143,6 +159,10 @@ int game_theory_substrate_bridge_update(game_theory_substrate_bridge_t* bridge) 
 int game_theory_substrate_bridge_get_effects(const game_theory_substrate_bridge_t* bridge, game_theory_substrate_effects_t* effects) {
     if (!bridge || !effects) return -1;
     *effects = bridge->effects;
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_substrate_bridge_heartbeat("game_theory__get_effects", 0.0f);
+
+
     return 0;
 }
 
@@ -152,6 +172,10 @@ int game_theory_substrate_bridge_apply_effects(game_theory_substrate_bridge_t* b
     if (!bridge->bio_async_connected || !bridge->ctx) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_substrate_bridge_heartbeat("game_theory__apply_effects", 0.0f);
+
 
     substrate_metabolic_state_t metabolic;
     float atp_level = 1.0f, fatigue_level = 0.0f;
@@ -214,6 +238,10 @@ int game_theory_substrate_bridge_apply_effects(game_theory_substrate_bridge_t* b
 int game_theory_substrate_bridge_register_bio_async(game_theory_substrate_bridge_t* bridge, bio_router_t* router) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_substrate_bridge_heartbeat("game_theory__register_bio_async", 0.0f);
+
+
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
         bridge->ctx = NULL;
@@ -251,9 +279,19 @@ int game_theory_substrate_bridge_register_bio_async(game_theory_substrate_bridge
  */
 int game_theory_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_substrate_bridge_heartbeat("game_theory__query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Game_Theory_Substrate_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                game_theory_substrate_bridge_heartbeat("game_theory__loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* GT Substrate bridge self-knowledge logged */
         }
     }

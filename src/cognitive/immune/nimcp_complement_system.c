@@ -41,7 +41,7 @@ static nimcp_health_agent_t* g_complement_system_health_agent = NULL;
  * @brief Set health agent for complement_system heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void complement_system_set_health_agent(nimcp_health_agent_t* agent) {
+void complement_system_set_health_agent(nimcp_health_agent_t* agent) {
     g_complement_system_health_agent = agent;
 }
 
@@ -143,6 +143,12 @@ static complement_c3b_t* find_c3b_by_id(complement_system_t* system, uint32_t id
 
     }
     for (size_t i = 0; i < system->c3b_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->c3b_count > 256) {
+            complement_system_heartbeat("complement_s_loop",
+                             (float)(i + 1) / (float)system->c3b_count);
+        }
+
         if (system->c3b_pool[i].id == id) {
             return &system->c3b_pool[i];
         }
@@ -162,6 +168,12 @@ static complement_mac_t* find_mac_by_id(complement_system_t* system, uint32_t id
 
     }
     for (size_t i = 0; i < system->mac_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->mac_count > 256) {
+            complement_system_heartbeat("complement_s_loop",
+                             (float)(i + 1) / (float)system->mac_count);
+        }
+
         if (system->mac_pool[i].id == id) {
             return &system->mac_pool[i];
         }
@@ -237,6 +249,12 @@ static void decay_c3b_pool(complement_system_t* system, uint64_t delta_ms) {
     if (decay_factor < 0.0f) decay_factor = 0.0f;
 
     for (size_t i = 0; i < system->c3b_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->c3b_count > 256) {
+            complement_system_heartbeat("complement_s_loop",
+                             (float)(i + 1) / (float)system->c3b_count);
+        }
+
         system->c3b_pool[i].concentration *= decay_factor;
     }
 }
@@ -254,6 +272,12 @@ static void progress_mac_assembly(complement_system_t* system, uint64_t delta_ms
     uint64_t now = get_timestamp_ms();
 
     for (size_t i = 0; i < system->mac_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->mac_count > 256) {
+            complement_system_heartbeat("complement_s_loop",
+                             (float)(i + 1) / (float)system->mac_count);
+        }
+
         complement_mac_t* mac = &system->mac_pool[i];
         if (mac->state == MAC_STATE_COMPLETE) continue;
 
@@ -286,6 +310,12 @@ static float compute_opsonization_level(complement_system_t* system, uint32_t ta
 
     float total = 0.0f;
     for (size_t i = 0; i < system->c3b_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->c3b_count > 256) {
+            complement_system_heartbeat("complement_s_loop",
+                             (float)(i + 1) / (float)system->c3b_count);
+        }
+
         if (system->c3b_pool[i].target_antigen_id == target_id) {
             total += system->c3b_pool[i].concentration;
         }
@@ -303,6 +333,10 @@ static float compute_opsonization_level(complement_system_t* system, uint32_t ta
  */
 int complement_default_config(complement_config_t* config) {
     if (!config) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    complement_system_heartbeat("complement_s_complement_default_c", 0.0f);
+
 
     memset(config, 0, sizeof(complement_config_t));
 
@@ -357,6 +391,10 @@ complement_system_t* complement_create(const complement_config_t* config,
         return NULL;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    complement_system_heartbeat("complement_s_complement_create", 0.0f);
+
 
     complement_system_t* system = nimcp_malloc(sizeof(complement_system_t));
     if (!system) {
@@ -433,6 +471,10 @@ error:
 void complement_destroy(complement_system_t* system) {
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    complement_system_heartbeat("complement_s_complement_destroy", 0.0f);
+
+
     if (system->config.enable_logging) {
         NIMCP_LOGGING_INFO("Destroying complement system (generated %llu C3b, %llu MACs)",
                           (unsigned long long)system->stats.c3b_generated,
@@ -460,6 +502,10 @@ int complement_activate(complement_system_t* system, complement_pathway_t pathwa
     if (!system) return -1;
     if (!system->running) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    complement_system_heartbeat("complement_s_complement_activate", 0.0f);
+
+
     switch (pathway) {
         case COMPLEMENT_PATHWAY_CLASSICAL:
             return complement_activate_classical(system, 0, target_id);
@@ -478,6 +524,10 @@ int complement_activate(complement_system_t* system, complement_pathway_t pathwa
 int complement_activate_classical(complement_system_t* system, uint32_t antibody_id,
                                   uint32_t target_id) {
     if (!system || !system->config.enable_classical_pathway) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    complement_system_heartbeat("complement_s_complement_activate_", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -504,6 +554,10 @@ int complement_activate_classical(complement_system_t* system, uint32_t antibody
 int complement_activate_alternative(complement_system_t* system, uint32_t target_id) {
     if (!system || !system->config.enable_alternative_pathway) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    complement_system_heartbeat("complement_s_complement_activate_", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     /* Spontaneous C3 hydrolysis, forms C3bBb convertase */
@@ -529,6 +583,10 @@ int complement_activate_alternative(complement_system_t* system, uint32_t target
 int complement_activate_lectin(complement_system_t* system, uint32_t target_id,
                                const uint8_t* pattern, size_t pattern_len) {
     if (!system || !system->config.enable_lectin_pathway) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    complement_system_heartbeat("complement_s_complement_activate_", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -559,11 +617,21 @@ int complement_activate_lectin(complement_system_t* system, uint32_t target_id,
 int complement_opsonize(complement_system_t* system, uint32_t target_id) {
     if (!system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    complement_system_heartbeat("complement_s_complement_opsonize", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     /* Generate multiple C3b for opsonization */
     int count = 0;
     for (int i = 0; i < 5; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 5 > 256) {
+            complement_system_heartbeat("complement_s_loop",
+                             (float)(i + 1) / (float)5);
+        }
+
         if (generate_c3b(system, target_id, COMPLEMENT_PATHWAY_ALTERNATIVE) == 0) {
             count++;
         }
@@ -587,6 +655,10 @@ int complement_opsonize(complement_system_t* system, uint32_t target_id) {
 float complement_get_c3b_level(complement_system_t* system, uint32_t target_id) {
     if (!system) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    complement_system_heartbeat("complement_s_complement_get_c3b_l", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     float level = compute_opsonization_level(system, target_id);
     nimcp_mutex_unlock(system->mutex);
@@ -605,11 +677,21 @@ uint32_t complement_form_mac(complement_system_t* system, uint32_t target_id) {
     if (!system) return 0;
     if (system->mac_count >= system->mac_capacity) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    complement_system_heartbeat("complement_s_complement_form_mac", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     /* Need C3b to generate C5b */
     uint32_t c3b_id = 0;
     for (size_t i = 0; i < system->c3b_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->c3b_count > 256) {
+            complement_system_heartbeat("complement_s_loop",
+                             (float)(i + 1) / (float)system->c3b_count);
+        }
+
         if (system->c3b_pool[i].target_antigen_id == target_id) {
             c3b_id = system->c3b_pool[i].id;
             break;
@@ -657,6 +739,10 @@ uint32_t complement_form_mac(complement_system_t* system, uint32_t target_id) {
 bool complement_is_mac_complete(complement_system_t* system, uint32_t mac_id) {
     if (!system) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    complement_system_heartbeat("complement_s_complement_is_mac_co", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     complement_mac_t* mac = find_mac_by_id(system, mac_id);
     bool complete = (mac && mac->state == MAC_STATE_COMPLETE);
@@ -674,6 +760,10 @@ bool complement_is_mac_complete(complement_system_t* system, uint32_t mac_id) {
  */
 int complement_cascade_amplify(complement_system_t* system, float factor) {
     if (!system || !system->config.enable_amplification_loop) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    complement_system_heartbeat("complement_s_complement_cascade_a", 0.0f);
+
+
     if (factor <= 0.0f) factor = 1.0f;
 
     nimcp_mutex_lock(system->mutex);
@@ -681,6 +771,12 @@ int complement_cascade_amplify(complement_system_t* system, float factor) {
     /* Count current C3b eligible for amplification */
     int amplifiable = 0;
     for (size_t i = 0; i < system->c3b_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->c3b_count > 256) {
+            complement_system_heartbeat("complement_s_loop",
+                             (float)(i + 1) / (float)system->c3b_count);
+        }
+
         if (system->c3b_pool[i].concentration > 0.5f &&
             !system->c3b_pool[i].part_of_amplification) {
             amplifiable++;
@@ -724,6 +820,10 @@ int complement_cascade_amplify(complement_system_t* system, float factor) {
 float complement_get_amplification_level(complement_system_t* system) {
     if (!system) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    complement_system_heartbeat("complement_s_complement_get_ampli", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     float level = system->stats.current_amplification_level;
     nimcp_mutex_unlock(system->mutex);
@@ -743,6 +843,10 @@ uint32_t complement_release_anaphylatoxin(complement_system_t* system,
                                           uint32_t target_id) {
     if (!system || !system->config.enable_anaphylatoxins) return 0;
     if (system->anaphylatoxin_count >= system->anaphylatoxin_capacity) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    complement_system_heartbeat("complement_s_complement_release_a", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -790,6 +894,10 @@ uint32_t complement_release_anaphylatoxin(complement_system_t* system,
 int complement_update(complement_system_t* system, uint64_t delta_ms) {
     if (!system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    complement_system_heartbeat("complement_s_complement_update", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     /* Decay C3b pool */
@@ -800,6 +908,12 @@ int complement_update(complement_system_t* system, uint64_t delta_ms) {
 
     /* Mark eliminated targets */
     for (size_t i = 0; i < system->mac_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->mac_count > 256) {
+            complement_system_heartbeat("complement_s_loop",
+                             (float)(i + 1) / (float)system->mac_count);
+        }
+
         if (system->mac_pool[i].state == MAC_STATE_COMPLETE &&
             !system->mac_pool[i].target_eliminated) {
             system->mac_pool[i].target_eliminated = true;
@@ -816,6 +930,12 @@ int complement_update(complement_system_t* system, uint64_t delta_ms) {
     /* Update active counts */
     system->stats.active_c3b = 0;
     for (size_t i = 0; i < system->c3b_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->c3b_count > 256) {
+            complement_system_heartbeat("complement_s_loop",
+                             (float)(i + 1) / (float)system->c3b_count);
+        }
+
         if (system->c3b_pool[i].concentration > 0.1f) {
             system->stats.active_c3b++;
         }
@@ -823,6 +943,12 @@ int complement_update(complement_system_t* system, uint64_t delta_ms) {
     system->stats.active_c5b = (uint32_t)system->c5b_count;
     system->stats.active_macs = 0;
     for (size_t i = 0; i < system->mac_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->mac_count > 256) {
+            complement_system_heartbeat("complement_s_loop",
+                             (float)(i + 1) / (float)system->mac_count);
+        }
+
         if (system->mac_pool[i].state != MAC_STATE_INACTIVE) {
             system->stats.active_macs++;
         }
@@ -838,6 +964,10 @@ int complement_update(complement_system_t* system, uint64_t delta_ms) {
 int complement_get_stats(complement_system_t* system, complement_stats_t* stats) {
     if (!system || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    complement_system_heartbeat("complement_s_complement_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     *stats = system->stats;
     nimcp_mutex_unlock(system->mutex);
@@ -850,6 +980,10 @@ int complement_get_stats(complement_system_t* system, complement_stats_t* stats)
  */
 bool complement_is_opsonized(complement_system_t* system, uint32_t target_id) {
     if (!system) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    complement_system_heartbeat("complement_s_complement_is_opsoni", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
     bool opsonized = (compute_opsonization_level(system, target_id) > 0.1f);
@@ -864,10 +998,20 @@ bool complement_is_opsonized(complement_system_t* system, uint32_t target_id) {
 uint32_t complement_get_mac_count(complement_system_t* system, uint32_t target_id) {
     if (!system) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    complement_system_heartbeat("complement_s_complement_get_mac_c", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     uint32_t count = 0;
     for (size_t i = 0; i < system->mac_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->mac_count > 256) {
+            complement_system_heartbeat("complement_s_loop",
+                             (float)(i + 1) / (float)system->mac_count);
+        }
+
         if (system->mac_pool[i].target_antigen_id == target_id) {
             count++;
         }
@@ -893,9 +1037,19 @@ uint32_t complement_get_mac_count(complement_system_t* system, uint32_t target_i
  */
 int complement_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    complement_system_heartbeat("complement_s_complement_query_sel", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Complement_System");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                complement_system_heartbeat("complement_s_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Complement system self-knowledge: %s", self->observations[i]);
         }
     }

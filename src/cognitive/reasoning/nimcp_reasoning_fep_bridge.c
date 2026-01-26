@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_reasoning_fep_bridge_health_agent = NULL;
  * @brief Set health agent for reasoning_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void reasoning_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void reasoning_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_reasoning_fep_bridge_health_agent = agent;
 }
 
@@ -46,6 +46,10 @@ static inline void reasoning_fep_bridge_heartbeat(const char* operation, float p
 
 
 int reasoning_fep_bridge_default_config(reasoning_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_fep_bridge_heartbeat("reasoning_fe_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->pe_abduction_threshold = REASONING_FEP_PE_ABDUCTION_THRESHOLD;
     config->hypothesis_selection_temperature = 1.0f;
@@ -65,6 +69,10 @@ int reasoning_fep_bridge_default_config(reasoning_fep_config_t* config) {
 }
 
 reasoning_fep_bridge_t* reasoning_fep_bridge_create(const reasoning_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_fep_bridge_heartbeat("reasoning_fe_create", 0.0f);
+
+
     reasoning_fep_bridge_t* bridge = nimcp_malloc(sizeof(reasoning_fep_bridge_t));
     if (!bridge) {
 
@@ -83,6 +91,10 @@ reasoning_fep_bridge_t* reasoning_fep_bridge_create(const reasoning_fep_config_t
 
 void reasoning_fep_bridge_destroy(reasoning_fep_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_fep_bridge_heartbeat("reasoning_fe_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) reasoning_fep_bridge_disconnect_bio_async(bridge);
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
@@ -91,6 +103,10 @@ void reasoning_fep_bridge_destroy(reasoning_fep_bridge_t* bridge) {
 }
 
 int reasoning_fep_bridge_connect_fep(reasoning_fep_bridge_t* bridge, fep_system_t* fep) {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_fep_bridge_heartbeat("reasoning_fe_connect_fep", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -99,6 +115,10 @@ int reasoning_fep_bridge_connect_fep(reasoning_fep_bridge_t* bridge, fep_system_
 }
 
 int reasoning_fep_bridge_connect_reasoning(reasoning_fep_bridge_t* bridge, reasoning_integration_t* reasoning) {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_fep_bridge_heartbeat("reasoning_fe_connect_reasoning", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && reasoning, NIMCP_ERROR_NULL_POINTER, "bridge or reasoning is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->reasoning_system = reasoning;
@@ -107,6 +127,10 @@ int reasoning_fep_bridge_connect_reasoning(reasoning_fep_bridge_t* bridge, reaso
 }
 
 int reasoning_fep_bridge_disconnect(reasoning_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_fep_bridge_heartbeat("reasoning_fe_disconnect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -116,6 +140,10 @@ int reasoning_fep_bridge_disconnect(reasoning_fep_bridge_t* bridge) {
 }
 
 int reasoning_fep_trigger_abduction(reasoning_fep_bridge_t* bridge, float pe_magnitude) {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_fep_bridge_heartbeat("reasoning_fe_reasoning_fep_trigge", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_pe_abduction) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -130,6 +158,10 @@ int reasoning_fep_trigger_abduction(reasoning_fep_bridge_t* bridge, float pe_mag
 }
 
 int reasoning_fep_select_hypothesis_by_fe(reasoning_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_fep_bridge_heartbeat("reasoning_fe_reasoning_fep_select", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_fe_hypothesis_selection) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -140,6 +172,10 @@ int reasoning_fep_select_hypothesis_by_fe(reasoning_fep_bridge_t* bridge) {
 }
 
 int reasoning_fep_modulate_inference_confidence(reasoning_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_fep_bridge_heartbeat("reasoning_fe_reasoning_fep_modula", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_precision_inference) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -150,6 +186,10 @@ int reasoning_fep_modulate_inference_confidence(reasoning_fep_bridge_t* bridge) 
 }
 
 int reasoning_fep_apply_rule_priors(reasoning_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_fep_bridge_heartbeat("reasoning_fe_reasoning_fep_apply_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_rule_priors) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -161,6 +201,10 @@ int reasoning_fep_apply_rule_priors(reasoning_fep_bridge_t* bridge) {
 }
 
 int reasoning_fep_apply_conclusion_constraints(reasoning_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_fep_bridge_heartbeat("reasoning_fe_reasoning_fep_apply_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_conclusion_constraints) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -172,6 +216,10 @@ int reasoning_fep_apply_conclusion_constraints(reasoning_fep_bridge_t* bridge) {
 }
 
 int reasoning_fep_apply_explanation_reduction(reasoning_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_fep_bridge_heartbeat("reasoning_fe_reasoning_fep_apply_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_explanation_reduction) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -182,6 +230,10 @@ int reasoning_fep_apply_explanation_reduction(reasoning_fep_bridge_t* bridge) {
 }
 
 int reasoning_fep_bridge_update(reasoning_fep_bridge_t* bridge, uint64_t delta_ms) {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_fep_bridge_heartbeat("reasoning_fe_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     reasoning_fep_select_hypothesis_by_fe(bridge);
     reasoning_fep_modulate_inference_confidence(bridge);
@@ -192,6 +244,10 @@ int reasoning_fep_bridge_update(reasoning_fep_bridge_t* bridge, uint64_t delta_m
 }
 
 int reasoning_fep_bridge_get_state(const reasoning_fep_bridge_t* bridge, reasoning_fep_state_t* state) {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_fep_bridge_heartbeat("reasoning_fe_get_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -200,6 +256,10 @@ int reasoning_fep_bridge_get_state(const reasoning_fep_bridge_t* bridge, reasoni
 }
 
 int reasoning_fep_bridge_get_stats(const reasoning_fep_bridge_t* bridge, reasoning_fep_stats_t* stats) {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_fep_bridge_heartbeat("reasoning_fe_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -208,6 +268,10 @@ int reasoning_fep_bridge_get_stats(const reasoning_fep_bridge_t* bridge, reasoni
 }
 
 int reasoning_fep_bridge_connect_bio_async(reasoning_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_fep_bridge_heartbeat("reasoning_fe_connect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
@@ -223,6 +287,10 @@ int reasoning_fep_bridge_connect_bio_async(reasoning_fep_bridge_t* bridge) {
 
 int reasoning_fep_bridge_disconnect_bio_async(reasoning_fep_bridge_t* bridge) {
     if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_fep_bridge_heartbeat("reasoning_fe_disconnect_bio_async", 0.0f);
+
+
     if (bridge->base.bio_ctx) bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_ctx = NULL;
     bridge->base.bio_async_enabled = false;
@@ -230,6 +298,10 @@ int reasoning_fep_bridge_disconnect_bio_async(reasoning_fep_bridge_t* bridge) {
 }
 
 bool reasoning_fep_bridge_is_bio_async_connected(const reasoning_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_fep_bridge_heartbeat("reasoning_fe_is_bio_async_connect", 0.0f);
+
+
     return bridge ? bridge->base.bio_async_enabled : false;
 }
 
@@ -239,9 +311,19 @@ bool reasoning_fep_bridge_is_bio_async_connected(const reasoning_fep_bridge_t* b
 
 int reasoning_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_fep_bridge_heartbeat("reasoning_fe_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Reasoning_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                reasoning_fep_bridge_heartbeat("reasoning_fe_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Reasoning_FEP_Bridge self-knowledge: %s", self->observations[i]);
         }
     }

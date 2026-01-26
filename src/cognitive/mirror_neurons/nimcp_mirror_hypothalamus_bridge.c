@@ -42,7 +42,7 @@ static nimcp_health_agent_t* g_mirror_hypothalamus_bridge_health_agent = NULL;
  * @brief Set health agent for mirror_hypothalamus_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_hypothalamus_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_hypothalamus_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_hypothalamus_bridge_health_agent = agent;
 }
 
@@ -108,6 +108,10 @@ int mirror_hypo_get_default_config(mirror_hypo_config_t* config) {
     if (!config) return -1;
 
     /* Hypothalamus -> Mirror modulation */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_get_defa", 0.0f);
+
+
     config->cortisol_sensitivity = MIRROR_HYPO_CORTISOL_SENSITIVITY;
     config->max_stress_suppression = MIRROR_HYPO_MAX_STRESS_SUPPRESSION;
     config->enable_circadian_gating = true;
@@ -140,6 +144,10 @@ mirror_hypo_bridge_t* mirror_hypo_create(
      * WHY:  Set up bidirectional coupling
      * HOW:  Allocate, copy config, init state */
     if (!mirror_system || !hypothalamus) return NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_create", 0.0f);
+
 
     mirror_hypo_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
@@ -190,6 +198,10 @@ void mirror_hypo_destroy(mirror_hypo_bridge_t* bridge) {
      * HOW:  Destroy mutex, free struct */
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_destroy", 0.0f);
+
+
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
@@ -201,6 +213,10 @@ int mirror_hypo_enable(mirror_hypo_bridge_t* bridge) {
      * WHY:  Begin bidirectional modulation
      * HOW:  Set flag, reset timers */
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_enable", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->enabled = true;
@@ -220,6 +236,10 @@ int mirror_hypo_disable(mirror_hypo_bridge_t* bridge) {
      * HOW:  Clear flag, reset modulation */
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_disable", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->enabled = false;
     bridge->state.stress_suppression = 0.0f;
@@ -237,6 +257,10 @@ int mirror_hypo_reset(mirror_hypo_bridge_t* bridge) {
      * WHY:  Prepare for new simulation
      * HOW:  Zero state, reset counters */
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_reset", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -265,6 +289,10 @@ int mirror_hypo_apply_modulation(mirror_hypo_bridge_t* bridge) {
      * WHY:  Stress, circadian, drives affect social cognition
      * HOW:  Sample hypothalamus, compute effects, apply */
     if (!bridge || !bridge->enabled) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_apply_mo", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -335,6 +363,10 @@ float mirror_hypo_compute_stress_suppression(const mirror_hypo_bridge_t* bridge)
      * HOW:  Scale cortisol by sensitivity */
     if (!bridge) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_compute_", 0.0f);
+
+
     float cortisol = bridge->state.cortisol_level;
     float sensitivity = bridge->config.cortisol_sensitivity;
     float max_supp = bridge->config.max_stress_suppression;
@@ -348,6 +380,10 @@ float mirror_hypo_compute_circadian_modifier(const mirror_hypo_bridge_t* bridge)
      * WHY:  Circadian phase affects social receptivity
      * HOW:  Map circadian phase to modifier */
     if (!bridge || !bridge->config.enable_circadian_gating) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_compute_", 0.0f);
+
 
     hypo_circadian_phase_t phase = hypothalamus_get_circadian_phase(bridge->hypothalamus);
     float night_boost = bridge->config.circadian_night_threshold_boost;
@@ -381,6 +417,10 @@ float mirror_hypo_compute_drive_suppression(const mirror_hypo_bridge_t* bridge) 
      * HOW:  Check thresholds, compute weighted suppression */
     if (!bridge || !bridge->config.enable_drive_suppression) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_compute_", 0.0f);
+
+
     float hunger = bridge->state.hunger_drive;
     float thirst = bridge->state.thirst_drive;
     float hunger_thresh = bridge->config.hunger_suppression_threshold;
@@ -409,6 +449,10 @@ circadian_social_phase_t mirror_hypo_get_social_phase(const mirror_hypo_bridge_t
      * WHY:  Simplify social receptivity assessment
      * HOW:  Query hypothalamus, map phases */
     if (!bridge) return CIRCADIAN_SOCIAL_HIGH;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_get_soci", 0.0f);
+
 
     hypo_circadian_phase_t phase = hypothalamus_get_circadian_phase(bridge->hypothalamus);
 
@@ -444,6 +488,10 @@ int mirror_hypo_trigger_isolation_stress(mirror_hypo_bridge_t* bridge) {
      * HOW:  Apply stress to hypothalamus */
     if (!bridge || !bridge->config.enable_isolation_stress) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_trigger_", 0.0f);
+
+
     float stress_level = bridge->config.isolation_stress_level;
     float cortisol_delta = hypothalamus_apply_stress(bridge->hypothalamus, stress_level);
 
@@ -462,6 +510,10 @@ int mirror_hypo_trigger_empathic_arousal(mirror_hypo_bridge_t* bridge, float aro
      * WHY:  Observing distress activates autonomic
      * HOW:  Modulate autonomic balance */
     if (!bridge || !bridge->config.enable_empathic_arousal) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_trigger_", 0.0f);
+
 
     arousal_level = clamp_f(arousal_level, 0.0f, 1.0f);
 
@@ -486,6 +538,10 @@ int mirror_hypo_send_reward_signal(mirror_hypo_bridge_t* bridge) {
     if (!bridge || !bridge->config.enable_imitation_reward) return -1;
 
     /* Negative stress = reward/relaxation effect */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_send_rew", 0.0f);
+
+
     float reward_level = -bridge->config.imitation_reward_signal * 0.5f;
     hypothalamus_apply_stress(bridge->hypothalamus, reward_level);
 
@@ -505,6 +561,10 @@ int mirror_hypo_trigger_rejection_stress(mirror_hypo_bridge_t* bridge) {
      * WHY:  Social rejection activates HPA
      * HOW:  Check failure count, apply stress */
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_trigger_", 0.0f);
+
 
     const uint32_t REJECTION_THRESHOLD = 5;
 
@@ -541,6 +601,10 @@ int mirror_hypo_update(mirror_hypo_bridge_t* bridge, uint64_t current_time) {
     if (!bridge || !bridge->enabled) return -1;
 
     /* Check if update interval elapsed */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_update", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     uint64_t elapsed_ms = (current_time - bridge->last_update_time) / 1000;
     if (elapsed_ms < bridge->config.update_interval_ms) {
@@ -594,6 +658,10 @@ int mirror_hypo_get_stats(const mirror_hypo_bridge_t* bridge, mirror_hypo_stats_
      * HOW:  Copy accumulated metrics */
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_get_stat", 0.0f);
+
+
     nimcp_mutex_lock(((mirror_hypo_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(((mirror_hypo_bridge_t*)bridge)->base.mutex);
@@ -607,6 +675,10 @@ int mirror_hypo_get_state(const mirror_hypo_bridge_t* bridge, mirror_hypo_state_
      * HOW:  Copy state struct */
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_get_stat", 0.0f);
+
+
     nimcp_mutex_lock(((mirror_hypo_bridge_t*)bridge)->base.mutex);
     *state = bridge->state;
     nimcp_mutex_unlock(((mirror_hypo_bridge_t*)bridge)->base.mutex);
@@ -615,10 +687,18 @@ int mirror_hypo_get_state(const mirror_hypo_bridge_t* bridge, mirror_hypo_state_
 }
 
 mirror_hypo_effect_t mirror_hypo_get_effect(const mirror_hypo_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_get_effe", 0.0f);
+
+
     return bridge ? bridge->state.current_effect : HYPO_EFFECT_NONE;
 }
 
 mirror_hypo_feedback_t mirror_hypo_get_last_feedback(const mirror_hypo_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_get_last", 0.0f);
+
+
     return bridge ? bridge->state.last_feedback : MIRROR_FEEDBACK_NONE;
 }
 
@@ -627,6 +707,10 @@ float mirror_hypo_get_total_suppression(const mirror_hypo_bridge_t* bridge) {
      * WHY:  Single value for modulation
      * HOW:  Combine stress, circadian, drive effects */
     if (!bridge) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_get_tota", 0.0f);
+
 
     float stress = bridge->state.stress_suppression;
     float circadian = bridge->state.circadian_threshold_mod;
@@ -653,6 +737,10 @@ void mirror_hypo_notify_observation(mirror_hypo_bridge_t* bridge, uint64_t times
      * HOW:  Set last observation time */
     if (!bridge || !bridge->enabled) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_notify_o", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state.last_observation_time = timestamp_us;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -663,6 +751,10 @@ void mirror_hypo_notify_imitation_success(mirror_hypo_bridge_t* bridge, uint64_t
      * WHY:  Trigger reward signal
      * HOW:  Update timestamp, send reward */
     if (!bridge || !bridge->enabled) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_notify_i", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state.last_imitation_time = timestamp_us;
@@ -677,6 +769,10 @@ void mirror_hypo_notify_imitation_failure(mirror_hypo_bridge_t* bridge) {
      * HOW:  Increment counter */
     if (!bridge || !bridge->enabled) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_notify_i", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state.failed_imitation_count++;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -687,6 +783,10 @@ void mirror_hypo_notify_empathic_resonance(mirror_hypo_bridge_t* bridge, float r
      * WHY:  Trigger arousal if high
      * HOW:  Store level for update check */
     if (!bridge || !bridge->enabled) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_notify_e", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state.empathic_resonance_level = clamp_f(resonance_level, 0.0f, 1.0f);

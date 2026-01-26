@@ -29,7 +29,7 @@ static nimcp_health_agent_t* g_analysis_substrate_bridge_health_agent = NULL;
  * @brief Set health agent for analysis_substrate_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void analysis_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void analysis_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_analysis_substrate_bridge_health_agent = agent;
 }
 
@@ -55,6 +55,10 @@ struct analysis_substrate_bridge {
 };
 
 analysis_substrate_config_t analysis_substrate_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    analysis_substrate_bridge_heartbeat("analysis_sub_analysis_substrate_d", 0.0f);
+
+
     analysis_substrate_config_t cfg = { .enable_atp_modulation = true, .enable_fatigue_modulation = true,
         .enable_bio_async = false, .atp_sensitivity = 1.0f, .fatigue_sensitivity = 1.0f, .min_capacity = 0.2f };
     return cfg;
@@ -65,6 +69,10 @@ analysis_substrate_bridge_t* analysis_substrate_bridge_create(void* analysis, ne
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_substrate_bridge_create: substrate is NULL");
         return NULL;
     }
+    /* Phase 8: Heartbeat at operation start */
+    analysis_substrate_bridge_heartbeat("analysis_sub_create", 0.0f);
+
+
     analysis_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(analysis_substrate_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "analysis_substrate_bridge_create: failed to allocate bridge");
@@ -83,6 +91,10 @@ analysis_substrate_bridge_t* analysis_substrate_bridge_create(void* analysis, ne
 
 void analysis_substrate_bridge_destroy(analysis_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    analysis_substrate_bridge_heartbeat("analysis_sub_destroy", 0.0f);
+
+
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
     }
@@ -94,6 +106,10 @@ int analysis_substrate_bridge_update(analysis_substrate_bridge_t* bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_substrate_bridge_update: bridge or substrate is NULL");
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    analysis_substrate_bridge_heartbeat("analysis_sub_update", 0.0f);
+
+
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "analysis_substrate_bridge_update: failed to get metabolic state");
@@ -122,6 +138,10 @@ int analysis_substrate_bridge_get_effects(const analysis_substrate_bridge_t* bri
         return -1;
     }
     *effects = bridge->effects;
+    /* Phase 8: Heartbeat at operation start */
+    analysis_substrate_bridge_heartbeat("analysis_sub_get_effects", 0.0f);
+
+
     return 0;
 }
 
@@ -131,6 +151,10 @@ int analysis_substrate_bridge_apply_effects(analysis_substrate_bridge_t* bridge)
         return -1;
     }
     if (!bridge->bio_async_connected || !bridge->ctx) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    analysis_substrate_bridge_heartbeat("analysis_sub_apply_effects", 0.0f);
+
 
     substrate_metabolic_state_t metabolic;
     float atp_level = 1.0f, fatigue_level = 0.0f;
@@ -177,6 +201,10 @@ int analysis_substrate_bridge_register_bio_async(analysis_substrate_bridge_t* br
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_substrate_bridge_register_bio_async: bridge is NULL");
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    analysis_substrate_bridge_heartbeat("analysis_sub_register_bio_async", 0.0f);
+
+
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
         bridge->ctx = NULL;
@@ -200,9 +228,19 @@ int analysis_substrate_bridge_register_bio_async(analysis_substrate_bridge_t* br
  */
 int analysis_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    analysis_substrate_bridge_heartbeat("analysis_sub_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Analysis_Substrate_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                analysis_substrate_bridge_heartbeat("analysis_sub_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Log observation */
         }
     }

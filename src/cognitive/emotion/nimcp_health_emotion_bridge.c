@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_health_emotion_bridge_health_agent = NULL;
  * @brief Set health agent for health_emotion_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void health_emotion_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void health_emotion_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_health_emotion_bridge_health_agent = agent;
 }
 
@@ -75,6 +75,10 @@ static inline void health_emotion_bridge_heartbeat(const char* operation, float 
 
 void health_emotion_default_factors(threshold_adjustment_factors_t* factors) {
     if (!factors) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    health_emotion_bridge_heartbeat("health_emoti_health_emotion_defau", 0.0f);
+
 
     factors->high_stress_modifier = 0.8f;        /* Lower thresholds by 20% */
     factors->negative_valence_modifier = 1.2f;   /* Raise sensitivity by 20% */
@@ -213,6 +217,10 @@ int health_emotion_compute_thresholds(
     const threshold_adjustment_factors_t* factors,
     emotion_adjusted_thresholds_t* thresholds
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    health_emotion_bridge_heartbeat("health_emoti_health_emotion_compu", 0.0f);
+
+
     (void)agent;  /* May use agent for baseline thresholds */
 
     if (!thresholds) {
@@ -318,6 +326,10 @@ int health_emotion_get_state(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    health_emotion_bridge_heartbeat("health_emoti_health_emotion_get_s", 0.0f);
+
+
     memset(state, 0, sizeof(health_emotion_state_t));
 
     /* Default to neutral if no emotion system */
@@ -362,6 +374,10 @@ void health_emotion_get_event_mapping(
 ) {
     if (!mapping) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    health_emotion_bridge_heartbeat("health_emoti_health_emotion_get_e", 0.0f);
+
+
     if (event_type >= HEALTH_EMOTION_EVENT_COUNT) {
         event_type = HEALTH_EMOTION_EVENT_MINOR_ANOMALY;
     }
@@ -381,6 +397,10 @@ int health_emotion_report_event(
     health_emotion_event_type_t event_type,
     float severity
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    health_emotion_bridge_heartbeat("health_emoti_health_emotion_repor", 0.0f);
+
+
     (void)agent;  /* May be used for context */
 
     if (!emotion_system) {
@@ -425,6 +445,10 @@ bool health_emotion_permits_action(
     if (!emotion_system) return true;  /* No emotion system = no restrictions */
 
     /* Query emotional state */
+    /* Phase 8: Heartbeat at operation start */
+    health_emotion_bridge_heartbeat("health_emoti_health_emotion_permi", 0.0f);
+
+
     health_emotion_state_t state;
     if (health_emotion_get_state(emotion_system, &state) != 0) {
         return true;  /* Error querying = allow action */
@@ -487,6 +511,10 @@ int health_emotion_adjust_recovery(
         }
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    health_emotion_bridge_heartbeat("health_emoti_health_emotion_adjus", 0.0f);
+
+
     return 0;
 }
 
@@ -514,6 +542,10 @@ int health_agent_detect_shadow_patterns(
      * - Human help requests (decision paralysis)
      */
 
+    /* Phase 8: Heartbeat at operation start */
+    health_emotion_bridge_heartbeat("health_emoti_health_agent_detect_", 0.0f);
+
+
     (void)agent;  /* Will be used in full implementation */
 
     /* Return empty result for now */
@@ -521,6 +553,10 @@ int health_agent_detect_shadow_patterns(
 }
 
 shadow_intervention_type_t health_shadow_get_intervention(health_shadow_pattern_t pattern) {
+    /* Phase 8: Heartbeat at operation start */
+    health_emotion_bridge_heartbeat("health_emoti_health_shadow_get_in", 0.0f);
+
+
     switch (pattern) {
         case HEALTH_SHADOW_HYPERVIGILANCE:
             return SHADOW_INTERVENTION_RAISE_THRESHOLD;
@@ -556,6 +592,10 @@ int health_agent_intervene_shadow(
     }
     if (pattern == HEALTH_SHADOW_NONE || pattern >= HEALTH_SHADOW_COUNT) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    health_emotion_bridge_heartbeat("health_emoti_health_agent_interve", 0.0f);
+
+
     shadow_intervention_type_t intervention = health_shadow_get_intervention(pattern);
 
     /* In real implementation, this would apply the intervention:
@@ -590,6 +630,10 @@ int health_emotion_update_unified_state(
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    health_emotion_bridge_heartbeat("health_emoti_health_emotion_updat", 0.0f);
+
 
     memset(state, 0, sizeof(immune_emotion_health_state_t));
 
@@ -641,6 +685,10 @@ float health_emotion_compute_combined_stress(const immune_emotion_health_state_t
     if (!state) return 0.5f;
 
     /* Weights for each component */
+    /* Phase 8: Heartbeat at operation start */
+    health_emotion_bridge_heartbeat("health_emoti_health_emotion_compu", 0.0f);
+
+
     const float w_inflammation = 0.25f;
     const float w_arousal = 0.25f;
     const float w_anomaly = 0.25f;
@@ -707,6 +755,10 @@ int health_emotion_get_holistic_recommendation(
     if (!state) return 0;
 
     /* High combined stress = more conservative */
+    /* Phase 8: Heartbeat at operation start */
+    health_emotion_bridge_heartbeat("health_emoti_health_emotion_get_h", 0.0f);
+
+
     if (state->combined_stress_index > 0.7f) {
         if (base_recommendation > HEALTH_RECOVERY_PARTIAL_RESTART) {
             *adjusted_recommendation = HEALTH_RECOVERY_PARTIAL_RESTART;
@@ -754,6 +806,10 @@ int health_emotion_get_stats(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    health_emotion_bridge_heartbeat("health_emoti_health_emotion_get_s", 0.0f);
+
+
     memset(stats, 0, sizeof(health_emotion_stats_t));
 
     /* In full implementation, this would query accumulated statistics
@@ -767,6 +823,10 @@ int health_emotion_get_stats(
 void health_emotion_reset_stats(nimcp_health_agent_t* agent) {
     /* In full implementation, this would reset the emotion bridge
      * statistics stored in the health agent */
+
+    /* Phase 8: Heartbeat at operation start */
+    health_emotion_bridge_heartbeat("health_emoti_health_emotion_reset", 0.0f);
+
 
     (void)agent;  /* Will be used in full implementation */
 }

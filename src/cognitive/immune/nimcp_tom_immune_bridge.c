@@ -37,7 +37,7 @@ static nimcp_health_agent_t* g_tom_immune_bridge_health_agent = NULL;
  * @brief Set health agent for tom_immune_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void tom_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void tom_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_tom_immune_bridge_health_agent = agent;
 }
 
@@ -81,6 +81,12 @@ static float query_cytokine_concentration(
 
     float total_concentration = 0.0f;
     for (size_t i = 0; i < immune->cytokine_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && immune->cytokine_count > 256) {
+            tom_immune_bridge_heartbeat("tom_immune_b_loop",
+                             (float)(i + 1) / (float)immune->cytokine_count);
+        }
+
         if (immune->cytokines[i].type == type) {
             total_concentration += immune->cytokines[i].concentration;
         }
@@ -103,6 +109,12 @@ static float get_inflammation_duration_sec(const brain_immune_system_t* immune) 
     uint64_t oldest_start = current_time;
 
     for (size_t i = 0; i < immune->inflammation_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && immune->inflammation_count > 256) {
+            tom_immune_bridge_heartbeat("tom_immune_b_loop",
+                             (float)(i + 1) / (float)immune->inflammation_count);
+        }
+
         if (immune->inflammation_sites[i].start_time < oldest_start) {
             oldest_start = immune->inflammation_sites[i].start_time;
         }
@@ -125,6 +137,12 @@ static brain_inflammation_level_t get_max_inflammation_level(
 
     brain_inflammation_level_t max_level = INFLAMMATION_NONE;
     for (size_t i = 0; i < immune->inflammation_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && immune->inflammation_count > 256) {
+            tom_immune_bridge_heartbeat("tom_immune_b_loop",
+                             (float)(i + 1) / (float)immune->inflammation_count);
+        }
+
         if (immune->inflammation_sites[i].level > max_level) {
             max_level = immune->inflammation_sites[i].level;
         }
@@ -147,6 +165,10 @@ int tom_immune_default_config(tom_immune_config_t* config) {
     }
 
     /* All features enabled by default */
+    /* Phase 8: Heartbeat at operation start */
+    tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_default_c", 0.0f);
+
+
     config->enable_cytokine_tom_modulation = true;
     config->enable_inflammation_impairment = true;
     config->enable_social_stress_immune_trigger = true;
@@ -179,6 +201,10 @@ tom_immune_bridge_t* tom_immune_bridge_create(
     }
 
     /* Allocate bridge */
+    /* Phase 8: Heartbeat at operation start */
+    tom_immune_bridge_heartbeat("tom_immune_b_create", 0.0f);
+
+
     tom_immune_bridge_t* bridge = (tom_immune_bridge_t*)
         nimcp_malloc(sizeof(tom_immune_bridge_t));
     if (!bridge) {
@@ -229,6 +255,10 @@ void tom_immune_bridge_destroy(tom_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
+    /* Phase 8: Heartbeat at operation start */
+    tom_immune_bridge_heartbeat("tom_immune_b_destroy", 0.0f);
+
+
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
     }
@@ -253,6 +283,10 @@ int tom_immune_apply_cytokine_effects(tom_immune_bridge_t* bridge) {
     }
     if (!bridge->enable_cytokine_tom_modulation) return 0;
     if (!bridge->immune_system || !bridge->tom_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_apply_cyt", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -308,6 +342,10 @@ int tom_immune_apply_inflammation_effects(tom_immune_bridge_t* bridge) {
     if (!bridge->enable_inflammation_impairment) return 0;
     if (!bridge->immune_system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_apply_inf", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     inflammation_tom_state_t* state = &bridge->inflammation_state;
@@ -351,6 +389,10 @@ float tom_immune_compute_impairment(const tom_immune_bridge_t* bridge) {
     if (!bridge) return 0.0f;
 
     /* Combine cytokine-induced and inflammation-induced impairment */
+    /* Phase 8: Heartbeat at operation start */
+    tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_compute_i", 0.0f);
+
+
     float cytokine_impairment = bridge->cytokine_effects.total_perspective_impairment;
     float inflammation_impairment = bridge->inflammation_state.perspective_score_reduction;
 
@@ -371,6 +413,10 @@ int tom_immune_impair_perspective_taking(tom_immune_bridge_t* bridge) {
     if (!bridge->tom_system) return -1;
 
     /* Compute impairment */
+    /* Phase 8: Heartbeat at operation start */
+    tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_impair_pe", 0.0f);
+
+
     float impairment = tom_immune_compute_impairment(bridge);
 
     /* This would reduce the perspective score in the ToM system */
@@ -392,6 +438,10 @@ int tom_immune_impair_empathy(tom_immune_bridge_t* bridge) {
     if (!bridge->tom_system) return -1;
 
     /* Get empathy reduction from both cytokines and inflammation */
+    /* Phase 8: Heartbeat at operation start */
+    tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_impair_em", 0.0f);
+
+
     float cytokine_empathy_loss = bridge->cytokine_effects.empathy_reduction;
     float inflammation_empathy_loss = bridge->inflammation_state.empathy_capacity_loss;
 
@@ -424,6 +474,10 @@ int tom_immune_trigger_from_rejection(
     if (!bridge->enable_rejection_inflammation) return 0;
     if (!bridge->immune_system) return -1;
     if (rejection_severity < 0.0f || rejection_severity > 1.0f) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_trigger_f", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -471,6 +525,10 @@ int tom_immune_trigger_from_prediction_error(
     if (!bridge->immune_system) return -1;
     if (prediction_error < 0.0f || prediction_error > 1.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_trigger_f", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Update social stress state */
@@ -513,6 +571,10 @@ int tom_immune_trigger_from_isolation(
     if (!bridge->enable_isolation_chronic_inflammation) return 0;
     if (!bridge->immune_system) return -1;
     if (isolation_duration_sec < 0.0f) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_trigger_f", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -578,6 +640,10 @@ int tom_immune_boost_from_social_connection(
     if (!bridge->immune_system) return -1;
     if (connection_strength < 0.0f || connection_strength > 1.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_boost_fro", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Update social connection state */
@@ -629,6 +695,10 @@ int tom_immune_bridge_update(
     }
 
     /* Apply immune → ToM effects */
+    /* Phase 8: Heartbeat at operation start */
+    tom_immune_bridge_heartbeat("tom_immune_b_update", 0.0f);
+
+
     tom_immune_apply_cytokine_effects(bridge);
     tom_immune_apply_inflammation_effects(bridge);
     tom_immune_impair_perspective_taking(bridge);
@@ -651,6 +721,10 @@ int tom_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_get_cytok", 0.0f);
+
+
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_tom_effects_t));
     return 0;
 }
@@ -661,6 +735,10 @@ int tom_immune_get_inflammation_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_get_infla", 0.0f);
+
+
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_tom_state_t));
     return 0;
 }
@@ -669,6 +747,10 @@ bool tom_immune_is_social_withdrawal(const tom_immune_bridge_t* bridge) {
     if (!bridge) return false;
 
     /* Social withdrawal if high social motivation loss or sickness behavior */
+    /* Phase 8: Heartbeat at operation start */
+    tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_is_social", 0.0f);
+
+
     float motivation_loss = bridge->cytokine_effects.social_motivation_loss;
     float social_withdrawal = bridge->inflammation_state.social_withdrawal;
 
@@ -677,16 +759,28 @@ bool tom_immune_is_social_withdrawal(const tom_immune_bridge_t* bridge) {
 
 float tom_immune_get_impairment_severity(const tom_immune_bridge_t* bridge) {
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_get_impai", 0.0f);
+
+
     return tom_immune_compute_impairment(bridge);
 }
 
 float tom_immune_get_perspective_impairment(const tom_immune_bridge_t* bridge) {
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_get_persp", 0.0f);
+
+
     return bridge->cytokine_effects.total_perspective_impairment;
 }
 
 float tom_immune_get_empathy_impairment(const tom_immune_bridge_t* bridge) {
     if (!bridge) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_get_empat", 0.0f);
+
 
     float cytokine_empathy = bridge->cytokine_effects.empathy_reduction;
     float inflammation_empathy = bridge->inflammation_state.empathy_capacity_loss;
@@ -712,6 +806,10 @@ int tom_immune_connect_bio_async(tom_immune_bridge_t* bridge) {
 
     }
     if (bridge->base.bio_async_enabled) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_connect_b", 0.0f);
+
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_TOM,
@@ -744,6 +842,10 @@ int tom_immune_disconnect_bio_async(tom_immune_bridge_t* bridge) {
     }
     if (!bridge->base.bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_disconnec", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -759,6 +861,10 @@ int tom_immune_disconnect_bio_async(tom_immune_bridge_t* bridge) {
  */
 bool tom_immune_is_bio_async_connected(const tom_immune_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_is_bio_as", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -778,9 +884,19 @@ bool tom_immune_is_bio_async_connected(const tom_immune_bridge_t* bridge) {
  */
 int tom_immune_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_query_sel", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Tom_Immune_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                tom_immune_bridge_heartbeat("tom_immune_b_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Theory of mind immune bridge self-knowledge: %s", self->observations[i]);
         }
     }

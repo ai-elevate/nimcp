@@ -31,7 +31,7 @@ static nimcp_health_agent_t* g_joy_substrate_bridge_health_agent = NULL;
  * @brief Set health agent for joy_substrate_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void joy_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void joy_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_joy_substrate_bridge_health_agent = agent;
 }
 
@@ -58,6 +58,10 @@ struct joy_substrate_bridge {
 };
 
 joy_substrate_config_t joy_substrate_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    joy_substrate_bridge_heartbeat("joy_substrat_joy_substrate_defaul", 0.0f);
+
+
     joy_substrate_config_t cfg = { .enable_atp_modulation = true, .enable_fatigue_modulation = true,
         .enable_bio_async = false, .atp_sensitivity = 1.0f, .fatigue_sensitivity = 1.0f, .min_capacity = 0.2f };
     return cfg;
@@ -71,6 +75,10 @@ joy_substrate_bridge_t* joy_substrate_bridge_create(void* joy, neural_substrate_
         return NULL;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    joy_substrate_bridge_heartbeat("joy_substrat_create", 0.0f);
+
+
     joy_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(joy_substrate_bridge_t));
     if (!bridge) {
 
@@ -111,6 +119,10 @@ joy_substrate_bridge_t* joy_substrate_bridge_create(void* joy, neural_substrate_
 
 void joy_substrate_bridge_destroy(joy_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    joy_substrate_bridge_heartbeat("joy_substrat_destroy", 0.0f);
+
+
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
     }
@@ -119,6 +131,10 @@ void joy_substrate_bridge_destroy(joy_substrate_bridge_t* bridge) {
 
 int joy_substrate_bridge_update(joy_substrate_bridge_t* bridge) {
     if (!bridge || !bridge->substrate) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    joy_substrate_bridge_heartbeat("joy_substrat_update", 0.0f);
+
 
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
@@ -149,6 +165,10 @@ int joy_substrate_bridge_update(joy_substrate_bridge_t* bridge) {
 int joy_substrate_bridge_get_effects(const joy_substrate_bridge_t* bridge, joy_substrate_effects_t* effects) {
     if (!bridge || !effects) return -1;
     *effects = bridge->effects;
+    /* Phase 8: Heartbeat at operation start */
+    joy_substrate_bridge_heartbeat("joy_substrat_get_effects", 0.0f);
+
+
     return 0;
 }
 
@@ -158,6 +178,10 @@ int joy_substrate_bridge_apply_effects(joy_substrate_bridge_t* bridge) {
     if (!bridge->bio_async_connected || !bridge->ctx) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    joy_substrate_bridge_heartbeat("joy_substrat_apply_effects", 0.0f);
+
 
     substrate_metabolic_state_t metabolic;
     float atp_level = 1.0f, fatigue_level = 0.0f;
@@ -220,6 +244,10 @@ int joy_substrate_bridge_apply_effects(joy_substrate_bridge_t* bridge) {
 int joy_substrate_bridge_register_bio_async(joy_substrate_bridge_t* bridge, bio_router_t* router) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    joy_substrate_bridge_heartbeat("joy_substrat_register_bio_async", 0.0f);
+
+
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
         bridge->ctx = NULL;
@@ -251,9 +279,19 @@ int joy_substrate_bridge_register_bio_async(joy_substrate_bridge_t* bridge, bio_
 int joy_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    joy_substrate_bridge_heartbeat("joy_substrat_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Joy_Substrate_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                joy_substrate_bridge_heartbeat("joy_substrat_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

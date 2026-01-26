@@ -30,7 +30,7 @@ static nimcp_health_agent_t* g_fep_parietal_bridge_health_agent = NULL;
  * @brief Set health agent for fep_parietal_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void fep_parietal_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void fep_parietal_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_fep_parietal_bridge_health_agent = agent;
 }
 
@@ -69,10 +69,20 @@ static void set_error(const char* msg) {
  * ============================================================================ */
 
 fep_parietal_config_t fep_parietal_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_default", 0.0f);
+
+
     fep_parietal_config_t config = {0};
     config.enabled = true;
     config.num_levels = 4;
     for (uint32_t i = 0; i < FEP_PARIETAL_MAX_LEVELS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && FEP_PARIETAL_MAX_LEVELS > 256) {
+            fep_parietal_bridge_heartbeat("fep_parietal_loop",
+                             (float)(i + 1) / (float)FEP_PARIETAL_MAX_LEVELS);
+        }
+
         config.level_dims[i] = 32;
     }
     config.belief_learning_rate = 0.1f;
@@ -96,6 +106,10 @@ fep_parietal_config_t fep_parietal_default_config(void) {
 }
 
 fep_parietal_bridge_t* fep_parietal_bridge_create(const fep_parietal_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_create", 0.0f);
+
+
     fep_parietal_bridge_t* bridge = calloc(1, sizeof(fep_parietal_bridge_t));
     if (!bridge) {
         set_error("Failed to allocate fep_parietal_bridge");
@@ -109,6 +123,10 @@ fep_parietal_bridge_t* fep_parietal_bridge_create(const fep_parietal_config_t* c
 }
 
 void fep_parietal_bridge_destroy(fep_parietal_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_destroy", 0.0f);
+
+
     if (bridge) {
         free(bridge);
     }
@@ -122,11 +140,19 @@ int fep_parietal_set_enabled(fep_parietal_bridge_t* bridge, bool enabled) {
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_set_ena", 0.0f);
+
+
     bridge->enabled = enabled;
     return 0;
 }
 
 bool fep_parietal_is_available(const fep_parietal_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_is_avai", 0.0f);
+
+
     return bridge && bridge->enabled;
 }
 
@@ -141,6 +167,10 @@ int fep_parietal_update_beliefs(
     fep_math_domain_t domain,
     fep_math_belief_t* beliefs
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_update_", 0.0f);
+
+
     (void)bridge; (void)observations; (void)num_observations; (void)domain;
     if (beliefs) {
         memset(beliefs, 0, sizeof(*beliefs));
@@ -154,6 +184,10 @@ int fep_parietal_predict(
     const fep_math_belief_t* beliefs,
     fep_math_prediction_t* prediction
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_predict", 0.0f);
+
+
     (void)bridge; (void)beliefs;
     if (prediction) {
         memset(prediction, 0, sizeof(*prediction));
@@ -168,6 +202,10 @@ int fep_parietal_prediction_error(
     uint32_t dim,
     fep_math_prediction_t* error
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_predict", 0.0f);
+
+
     (void)bridge; (void)predicted; (void)actual; (void)dim;
     if (error) {
         memset(error, 0, sizeof(*error));
@@ -181,6 +219,10 @@ float fep_parietal_compute_free_energy(
     const float* observations,
     uint32_t num_observations
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_compute", 0.0f);
+
+
     (void)bridge; (void)beliefs; (void)observations; (void)num_observations;
     return 0.0f;
 }
@@ -195,6 +237,10 @@ int fep_parietal_evaluate_policies(
     fep_math_policy_t* policies,
     uint32_t* num_policies
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_evaluat", 0.0f);
+
+
     (void)bridge; (void)problem; (void)policies;
     if (num_policies) *num_policies = 0;
     return 0;
@@ -205,6 +251,10 @@ int fep_parietal_active_inference(
     const fep_problem_state_t* problem,
     fep_active_inference_result_t* result
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_active_", 0.0f);
+
+
     (void)bridge; (void)problem;
     if (result) {
         memset(result, 0, sizeof(*result));
@@ -220,6 +270,10 @@ int fep_parietal_update_from_action(
     const float* outcome,
     uint32_t outcome_dim
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_update_", 0.0f);
+
+
     (void)bridge; (void)action; (void)action_dim; (void)outcome; (void)outcome_dim;
     return 0;
 }
@@ -233,11 +287,19 @@ int fep_parietal_set_attention_precision(
     const float* attention_weights,
     uint32_t dim
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_set_att", 0.0f);
+
+
     (void)bridge; (void)attention_weights; (void)dim;
     return 0;
 }
 
 int fep_parietal_adapt_precision(fep_parietal_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_adapt_p", 0.0f);
+
+
     (void)bridge;
     return 0;
 }
@@ -248,6 +310,10 @@ int fep_parietal_get_precision(
     float** precision,
     uint32_t* dim
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_get_pre", 0.0f);
+
+
     (void)bridge; (void)level;
     if (precision) *precision = NULL;
     if (dim) *dim = 0;
@@ -262,6 +328,10 @@ int fep_parietal_get_generative_model(
     const fep_parietal_bridge_t* bridge,
     fep_math_generative_model_t* model
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_get_gen", 0.0f);
+
+
     (void)bridge;
     if (model) {
         memset(model, 0, sizeof(*model));
@@ -275,6 +345,10 @@ float fep_parietal_train_model(
     const float** targets,
     uint32_t num_samples
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_train_m", 0.0f);
+
+
     (void)bridge; (void)observations; (void)targets; (void)num_samples;
     return 0.0f;
 }
@@ -289,6 +363,10 @@ int fep_parietal_numerical_inference(
     uint32_t num_quantities,
     fep_math_belief_t* estimated
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_numeric", 0.0f);
+
+
     (void)bridge; (void)quantities; (void)num_quantities;
     if (estimated) {
         memset(estimated, 0, sizeof(*estimated));
@@ -304,6 +382,10 @@ int fep_parietal_spatial_inference(
     uint32_t num_positions,
     fep_math_belief_t* transformed
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_spatial", 0.0f);
+
+
     (void)bridge; (void)positions; (void)num_positions;
     if (transformed) {
         memset(transformed, 0, sizeof(*transformed));
@@ -320,6 +402,10 @@ int fep_parietal_physics_inference(
     float dt,
     fep_math_belief_t* predicted
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_physics", 0.0f);
+
+
     (void)bridge; (void)state; (void)state_dim; (void)dt;
     if (predicted) {
         memset(predicted, 0, sizeof(*predicted));
@@ -336,6 +422,10 @@ int fep_parietal_engineering_inference(
     fep_math_domain_t domain,
     fep_math_belief_t* result
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_enginee", 0.0f);
+
+
     (void)bridge; (void)input; (void)input_dim;
     if (result) {
         memset(result, 0, sizeof(*result));
@@ -354,6 +444,10 @@ float fep_parietal_compute_surprise(
     const float* observation,
     uint32_t dim
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_compute", 0.0f);
+
+
     (void)bridge; (void)observation; (void)dim;
     return 0.0f;
 }
@@ -363,6 +457,10 @@ float fep_parietal_epistemic_value(
     const float* query,
     uint32_t query_dim
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_epistem", 0.0f);
+
+
     (void)bridge; (void)query; (void)query_dim;
     return 0.0f;
 }
@@ -379,6 +477,10 @@ int fep_parietal_set_inflammation(fep_parietal_bridge_t* bridge, float level) {
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_set_inf", 0.0f);
+
+
     bridge->inflammation_level = level < 0.0f ? 0.0f : (level > 1.0f ? 1.0f : level);
     return 0;
 }
@@ -391,6 +493,10 @@ int fep_parietal_set_fatigue(fep_parietal_bridge_t* bridge, float level) {
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_set_fat", 0.0f);
+
+
     bridge->fatigue_level = level < 0.0f ? 0.0f : (level > 1.0f ? 1.0f : level);
     return 0;
 }
@@ -405,10 +511,18 @@ int fep_parietal_get_stats(
 ) {
     if (!bridge || !stats) return -1;
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_get_sta", 0.0f);
+
+
     return 0;
 }
 
 void fep_parietal_reset_stats(fep_parietal_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_reset_s", 0.0f);
+
+
     if (bridge) {
         memset(&bridge->stats, 0, sizeof(bridge->stats));
     }
@@ -433,11 +547,19 @@ int fep_parietal_attach_fep_system(
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_attach_", 0.0f);
+
+
     bridge->fep_system = fep;
     return 0;
 }
 
 void fep_parietal_free_belief(fep_math_belief_t* belief) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_free_be", 0.0f);
+
+
     if (belief) {
         free(belief->mean);
         free(belief->precision);
@@ -446,6 +568,10 @@ void fep_parietal_free_belief(fep_math_belief_t* belief) {
 }
 
 void fep_parietal_free_prediction(fep_math_prediction_t* prediction) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_free_pr", 0.0f);
+
+
     if (prediction) {
         free(prediction->predicted);
         free(prediction->actual);
@@ -456,6 +582,10 @@ void fep_parietal_free_prediction(fep_math_prediction_t* prediction) {
 }
 
 void fep_parietal_free_inference_result(fep_active_inference_result_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_free_in", 0.0f);
+
+
     if (result) {
         free(result->action);
         free(result->evaluated_policies);
@@ -469,9 +599,19 @@ void fep_parietal_free_inference_result(fep_active_inference_result_t* result) {
 
 int fep_parietal_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    fep_parietal_bridge_heartbeat("fep_parietal_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "FEP_Parietal_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                fep_parietal_bridge_heartbeat("fep_parietal_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Module self-knowledge logged */
         }
     }

@@ -31,7 +31,7 @@ static nimcp_health_agent_t* g_attention_sleep_bridge_health_agent = NULL;
  * @brief Set health agent for attention_sleep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void attention_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void attention_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_attention_sleep_bridge_health_agent = agent;
 }
 
@@ -114,6 +114,10 @@ int attention_sleep_default_config(attention_sleep_config_t* config) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_sleep_default_config: config is NULL");
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    attention_sleep_bridge_heartbeat("attention_sl_attention_sleep_defa", 0.0f);
+
+
     config->enable_capacity_modulation = true;
     config->enable_vigilance_modulation = true;
     config->modulation_strength = 1.0f;
@@ -128,6 +132,10 @@ attention_sleep_bridge_t attention_sleep_bridge_create(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_sleep_bridge_create: sleep is NULL");
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_sleep_bridge_heartbeat("attention_sl_create", 0.0f);
+
 
     struct attention_sleep_bridge_struct* bridge =
         (struct attention_sleep_bridge_struct*)nimcp_malloc(sizeof(struct attention_sleep_bridge_struct));
@@ -178,6 +186,10 @@ void attention_sleep_bridge_destroy(attention_sleep_bridge_t bridge) {
     if (!bridge) return;
 
     /* Unregister callback if it was registered */
+    /* Phase 8: Heartbeat at operation start */
+    attention_sleep_bridge_heartbeat("attention_sl_destroy", 0.0f);
+
+
     if (bridge->callback_registered && bridge->sleep_system) {
         bool unregistered = sleep_unregister_state_callback(
             bridge->sleep_system,
@@ -198,6 +210,10 @@ int attention_sleep_update(attention_sleep_bridge_t bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_sleep_update: bridge is NULL");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_sleep_bridge_heartbeat("attention_sl_attention_sleep_upda", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -237,6 +253,10 @@ int attention_sleep_get_effects(const attention_sleep_bridge_t bridge, attention
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_sleep_get_effects: bridge or effects is NULL");
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    attention_sleep_bridge_heartbeat("attention_sl_attention_sleep_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -245,6 +265,10 @@ int attention_sleep_get_effects(const attention_sleep_bridge_t bridge, attention
 
 float attention_sleep_get_capacity(const attention_sleep_bridge_t bridge) {
     if (!bridge) return 1.0f;
+    /* Phase 8: Heartbeat at operation start */
+    attention_sleep_bridge_heartbeat("attention_sl_attention_sleep_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.capacity_factor;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -253,6 +277,10 @@ float attention_sleep_get_capacity(const attention_sleep_bridge_t bridge) {
 
 bool attention_sleep_is_offline(const attention_sleep_bridge_t bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    attention_sleep_bridge_heartbeat("attention_sl_attention_sleep_is_o", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.attention_offline;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -260,6 +288,10 @@ bool attention_sleep_is_offline(const attention_sleep_bridge_t bridge) {
 }
 
 float attention_sleep_capacity_for_state(sleep_state_t state) {
+    /* Phase 8: Heartbeat at operation start */
+    attention_sleep_bridge_heartbeat("attention_sl_attention_sleep_capa", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return ATTN_SLEEP_CAPACITY_AWAKE;
         case SLEEP_STATE_DROWSY:     return ATTN_SLEEP_CAPACITY_DROWSY;
@@ -271,6 +303,10 @@ float attention_sleep_capacity_for_state(sleep_state_t state) {
 }
 
 float attention_sleep_vigilance_for_state(sleep_state_t state) {
+    /* Phase 8: Heartbeat at operation start */
+    attention_sleep_bridge_heartbeat("attention_sl_attention_sleep_vigi", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return ATTN_SLEEP_VIGILANCE_AWAKE;
         case SLEEP_STATE_DROWSY:     return ATTN_SLEEP_VIGILANCE_DROWSY;
@@ -292,9 +328,19 @@ float attention_sleep_vigilance_for_state(sleep_state_t state) {
  */
 int attention_sleep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    attention_sleep_bridge_heartbeat("attention_sl_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Attention_Sleep_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                attention_sleep_bridge_heartbeat("attention_sl_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Attention Sleep Bridge self-knowledge: %s", self->observations[i]);
         }
     }

@@ -43,7 +43,7 @@ static nimcp_health_agent_t* g_ensemble_uncertainty_pink_noise_bridge_health_age
  * @brief Set health agent for ensemble_uncertainty_pink_noise_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void ensemble_uncertainty_pink_noise_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void ensemble_uncertainty_pink_noise_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_ensemble_uncertainty_pink_noise_bridge_health_agent = agent;
 }
 
@@ -84,6 +84,10 @@ static inline float ema_update(float avg, float value, float alpha) {
 //=============================================================================
 
 int ensemble_pink_default_config(ensemble_pink_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_ensemble_pink_defaul", 0.0f);
+
+
     NIMCP_CHECK_THROW(config != NULL, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(ensemble_pink_config_t));
@@ -125,6 +129,10 @@ int ensemble_pink_default_config(ensemble_pink_config_t* config) {
 
 ensemble_pink_bridge_t* ensemble_pink_create(const ensemble_pink_config_t* config) {
     // Allocate bridge structure
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_ensemble_pink_create", 0.0f);
+
+
     ensemble_pink_bridge_t* bridge = (ensemble_pink_bridge_t*)nimcp_malloc(
         sizeof(ensemble_pink_bridge_t)
     );
@@ -177,6 +185,10 @@ void ensemble_pink_destroy(ensemble_pink_bridge_t* bridge) {
     }
 
     // Disconnect bio-async if connected
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_ensemble_pink_destro", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         ensemble_pink_disconnect_bio_async(bridge);
     }
@@ -203,6 +215,10 @@ int ensemble_pink_connect_ensemble(
     ensemble_pink_bridge_t* bridge,
     ensemble_context_t ensemble)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_ensemble_pink_connec", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(ensemble != NULL, NIMCP_ERROR_NULL_POINTER, "ensemble is NULL");
 
@@ -242,12 +258,24 @@ int ensemble_pink_connect_ensemble(
 
     // Create generators
     for (uint32_t i = 0; i < bridge->num_generators; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_generators > 256) {
+            ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_loop",
+                             (float)(i + 1) / (float)bridge->num_generators);
+        }
+
         noise_config.seed = i + 1;  // Different seed per generator
         bridge->generators[i] = pink_noise_create(&noise_config);
         if (!bridge->generators[i]) {
             NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to create generator %u", i);
             // Cleanup already created generators
             for (uint32_t j = 0; j < i; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && i > 256) {
+                    ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_loop",
+                                     (float)(j + 1) / (float)i);
+                }
+
                 pink_noise_destroy(bridge->generators[j]);
             }
             nimcp_free(bridge->generators);
@@ -266,6 +294,12 @@ int ensemble_pink_connect_ensemble(
     if (!bridge->state.noise_samples) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to allocate noise buffer");
         for (uint32_t i = 0; i < bridge->num_generators; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->num_generators > 256) {
+                ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_loop",
+                                 (float)(i + 1) / (float)bridge->num_generators);
+            }
+
             pink_noise_destroy(bridge->generators[i]);
         }
         nimcp_free(bridge->generators);
@@ -285,6 +319,10 @@ int ensemble_pink_connect_ensemble(
 }
 
 int ensemble_pink_disconnect_ensemble(ensemble_pink_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_ensemble_pink_discon", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -292,6 +330,12 @@ int ensemble_pink_disconnect_ensemble(ensemble_pink_bridge_t* bridge) {
     // Destroy generators
     if (bridge->generators) {
         for (uint32_t i = 0; i < bridge->num_generators; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->num_generators > 256) {
+                ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_loop",
+                                 (float)(i + 1) / (float)bridge->num_generators);
+            }
+
             pink_noise_destroy(bridge->generators[i]);
         }
         nimcp_free(bridge->generators);
@@ -319,6 +363,10 @@ bool ensemble_pink_is_connected(const ensemble_pink_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_ensemble_pink_is_con", 0.0f);
+
+
     return bridge->ensemble != NULL;
 }
 
@@ -327,6 +375,10 @@ bool ensemble_pink_is_connected(const ensemble_pink_bridge_t* bridge) {
 //=============================================================================
 
 int ensemble_pink_generate_noise(ensemble_pink_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_ensemble_pink_genera", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(bridge->ensemble != NULL && bridge->generators != NULL,
                       NIMCP_ERROR_INVALID_STATE, "ensemble or generators not connected");
@@ -339,6 +391,12 @@ int ensemble_pink_generate_noise(ensemble_pink_bridge_t* bridge) {
     if (bridge->config.per_model_noise) {
         // Independent noise per model
         for (uint32_t i = 0; i < num_models; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_models > 256) {
+                ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_loop",
+                                 (float)(i + 1) / (float)num_models);
+            }
+
             float sample = 0.0f;
             if (!pink_noise_generate_sample(bridge->generators[i], &sample)) {
                 NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to generate noise sample %u", i);
@@ -358,6 +416,12 @@ int ensemble_pink_generate_noise(ensemble_pink_bridge_t* bridge) {
         }
         float modulated_sample = sample * bridge->effects.effective_amplitude;
         for (uint32_t i = 0; i < num_models; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_models > 256) {
+                ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_loop",
+                                 (float)(i + 1) / (float)num_models);
+            }
+
             bridge->state.noise_samples[i] = modulated_sample;
         }
     }
@@ -366,6 +430,12 @@ int ensemble_pink_generate_noise(ensemble_pink_bridge_t* bridge) {
     if (bridge->config.enable_temporal_smoothing) {
         float alpha = bridge->config.smoothing_alpha;
         for (uint32_t i = 0; i < num_models; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_models > 256) {
+                ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_loop",
+                                 (float)(i + 1) / (float)num_models);
+            }
+
             bridge->state.noise_samples[i] = ema_update(
                 bridge->state.temporal_smoothing_state,
                 bridge->state.noise_samples[i],
@@ -375,6 +445,12 @@ int ensemble_pink_generate_noise(ensemble_pink_bridge_t* bridge) {
         // Update smoothing state (use mean of samples)
         float mean_sample = 0.0f;
         for (uint32_t i = 0; i < num_models; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_models > 256) {
+                ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_loop",
+                                 (float)(i + 1) / (float)num_models);
+            }
+
             mean_sample += bridge->state.noise_samples[i];
         }
         bridge->state.temporal_smoothing_state = mean_sample / (float)num_models;
@@ -391,6 +467,10 @@ int ensemble_pink_inject_noise(
     ensemble_prediction_t* predictions,
     uint32_t num_predictions)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_ensemble_pink_inject", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(predictions != NULL, NIMCP_ERROR_NULL_POINTER, "predictions is NULL");
 
@@ -414,6 +494,12 @@ int ensemble_pink_inject_noise(
     float scale = bridge->config.prediction_noise_scale;
 
     for (uint32_t i = 0; i < num_predictions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_predictions > 256) {
+            ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_loop",
+                             (float)(i + 1) / (float)num_predictions);
+        }
+
         float noise = bridge->state.noise_samples[i];
 
         // Apply to prediction vector
@@ -452,6 +538,10 @@ int ensemble_pink_inject_feature_noise(
     float* features,
     uint32_t num_features)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_ensemble_pink_inject", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(features != NULL, NIMCP_ERROR_NULL_POINTER, "features is NULL");
 
@@ -469,6 +559,12 @@ int ensemble_pink_inject_feature_noise(
 
     // Generate and apply noise to each feature
     for (uint32_t i = 0; i < num_features; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_features > 256) {
+            ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_loop",
+                             (float)(i + 1) / (float)num_features);
+        }
+
         float sample = 0.0f;
         pink_noise_generate_sample(bridge->generators[0], &sample);
         features[i] += sample * scale * bridge->effects.effective_amplitude;
@@ -486,6 +582,10 @@ int ensemble_pink_update_uncertainty(
     ensemble_pink_bridge_t* bridge,
     const ensemble_uncertainty_result_t* uncertainty)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_ensemble_pink_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(uncertainty != NULL, NIMCP_ERROR_NULL_POINTER, "uncertainty is NULL");
 
@@ -537,6 +637,10 @@ int ensemble_pink_update_uncertainty(
 }
 
 int ensemble_pink_adapt_noise(ensemble_pink_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_ensemble_pink_adapt_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->config.enable_adaptation) {
@@ -649,6 +753,10 @@ int ensemble_pink_update(
     ensemble_pink_bridge_t* bridge,
     uint64_t delta_ms)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_ensemble_pink_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     // Adapt noise parameters based on uncertainty
@@ -673,6 +781,10 @@ float ensemble_pink_get_amplitude(const ensemble_pink_bridge_t* bridge) {
     if (!bridge) {
         return 0.0f;
     }
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_ensemble_pink_get_am", 0.0f);
+
+
     return bridge->effects.effective_amplitude;
 }
 
@@ -680,6 +792,10 @@ float ensemble_pink_get_alpha(const ensemble_pink_bridge_t* bridge) {
     if (!bridge) {
         return 0.0f;
     }
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_ensemble_pink_get_al", 0.0f);
+
+
     return bridge->effects.effective_alpha;
 }
 
@@ -699,6 +815,10 @@ int ensemble_pink_get_stats(
     const ensemble_pink_bridge_t* bridge,
     ensemble_pink_stats_t* stats)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_ensemble_pink_get_st", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge != NULL && stats != NULL,
                       NIMCP_ERROR_NULL_POINTER, "NULL parameter in get_stats");
 
@@ -713,6 +833,10 @@ int ensemble_pink_get_uncertainty(
     const ensemble_pink_bridge_t* bridge,
     ensemble_pink_uncertainty_t* uncertainty)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_ensemble_pink_get_un", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge != NULL && uncertainty != NULL,
                       NIMCP_ERROR_NULL_POINTER, "NULL parameter in get_uncertainty");
 
@@ -731,6 +855,10 @@ int ensemble_pink_set_enabled(
     ensemble_pink_bridge_t* bridge,
     bool enable)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_ensemble_pink_set_en", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -746,6 +874,10 @@ int ensemble_pink_set_adaptation_enabled(
     ensemble_pink_bridge_t* bridge,
     bool enable)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_ensemble_pink_set_ad", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -758,6 +890,10 @@ int ensemble_pink_set_adaptation_enabled(
 }
 
 int ensemble_pink_reset(ensemble_pink_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_ensemble_pink_reset", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -765,6 +901,12 @@ int ensemble_pink_reset(ensemble_pink_bridge_t* bridge) {
     // Reset generators
     if (bridge->generators) {
         for (uint32_t i = 0; i < bridge->num_generators; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->num_generators > 256) {
+                ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_loop",
+                                 (float)(i + 1) / (float)bridge->num_generators);
+            }
+
             pink_noise_reset(bridge->generators[i], i + 1);
         }
     }
@@ -804,6 +946,10 @@ int ensemble_pink_reset(ensemble_pink_bridge_t* bridge) {
 //=============================================================================
 
 int ensemble_pink_connect_bio_async(ensemble_pink_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_ensemble_pink_connec", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (bridge->base.bio_async_enabled) {
@@ -833,6 +979,10 @@ int ensemble_pink_connect_bio_async(ensemble_pink_bridge_t* bridge) {
 }
 
 int ensemble_pink_disconnect_bio_async(ensemble_pink_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_ensemble_pink_discon", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->base.bio_async_enabled) {
@@ -860,6 +1010,10 @@ bool ensemble_pink_is_bio_async_connected(
     if (!bridge) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_ensemble_pink_is_bio", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -879,10 +1033,20 @@ int ensemble_pink_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
     /* Query our own entity from the knowledge graph */
+    /* Phase 8: Heartbeat at operation start */
+    ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_ensemble_pink_bridge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Ensemble_Pink_Noise_Bridge");
     if (self) {
         /* Module now knows its own capabilities from KG */
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                ensemble_uncertainty_pink_noise_bridge_heartbeat("ensemble_unc_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG(LOG_MODULE " self-knowledge: %s", self->observations[i]);
         }
     }

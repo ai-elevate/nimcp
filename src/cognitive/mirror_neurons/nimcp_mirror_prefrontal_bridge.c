@@ -37,7 +37,7 @@ static nimcp_health_agent_t* g_mirror_prefrontal_bridge_health_agent = NULL;
  * @brief Set health agent for mirror_prefrontal_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_prefrontal_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_prefrontal_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_prefrontal_bridge_health_agent = agent;
 }
 
@@ -184,6 +184,12 @@ static void evaluate_imitation_decision(
  */
 static int find_sequence_slot(mirror_prefrontal_bridge_t bridge, uint32_t sequence_id) {
     for (uint32_t i = 0; i < bridge->sequence_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->sequence_count > 256) {
+            mirror_prefrontal_bridge_heartbeat("mirror_prefr_loop",
+                             (float)(i + 1) / (float)bridge->sequence_count);
+        }
+
         if (bridge->sequences[i].sequence_id == sequence_id) {
             return (int)i;
         }
@@ -286,6 +292,10 @@ int mirror_prefrontal_default_config(mirror_prefrontal_config_t* config) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_de", 0.0f);
+
+
     memset(config, 0, sizeof(mirror_prefrontal_config_t));
 
     /* Inhibitory control parameters */
@@ -323,6 +333,10 @@ mirror_prefrontal_bridge_t mirror_prefrontal_bridge_create(
     void* mirror,
     void* prefrontal
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_create", 0.0f);
+
+
     mirror_prefrontal_bridge_t bridge = nimcp_calloc(1, sizeof(struct mirror_prefrontal_bridge_struct));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Mirror-PFC bridge: Failed to allocate bridge");
@@ -393,6 +407,10 @@ void mirror_prefrontal_bridge_destroy(mirror_prefrontal_bridge_t bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_destroy", 0.0f);
+
+
     if (bridge->bio_async_enabled) {
         mirror_prefrontal_disconnect_bio_async(bridge);
     }
@@ -419,6 +437,10 @@ int mirror_prefrontal_bridge_reset(mirror_prefrontal_bridge_t bridge) {
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_reset", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -457,6 +479,10 @@ int mirror_prefrontal_request_imitation(
     imitation_decision_t* decision
 ) {
     if (!bridge || !request || !decision) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_re", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -513,6 +539,10 @@ int mirror_prefrontal_set_inhibition(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_se", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->current_inhibition = level < 0.0f ? 0.0f : (level > 1.0f ? 1.0f : level);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -522,6 +552,10 @@ int mirror_prefrontal_set_inhibition(
 
 float mirror_prefrontal_get_inhibition(const mirror_prefrontal_bridge_t bridge) {
     if (!bridge) return -1.0f;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_ge", 0.0f);
+
+
     return bridge->current_inhibition;
 }
 
@@ -536,6 +570,10 @@ int mirror_prefrontal_set_imitation_mode(
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_se", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->imitation_mode = mode;
@@ -552,6 +590,10 @@ imitation_mode_t mirror_prefrontal_get_imitation_mode(
     const mirror_prefrontal_bridge_t bridge
 ) {
     if (!bridge) return IMITATION_MODE_BLOCKED;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_ge", 0.0f);
+
+
     return bridge->imitation_mode;
 }
 
@@ -570,6 +612,10 @@ int mirror_prefrontal_set_social_context(
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_se", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -603,6 +649,10 @@ social_context_type_t mirror_prefrontal_get_social_context(
     const mirror_prefrontal_bridge_t bridge
 ) {
     if (!bridge) return SOCIAL_CONTEXT_NONE;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_ge", 0.0f);
+
+
     return bridge->social_context;
 }
 
@@ -617,6 +667,10 @@ uint32_t mirror_prefrontal_store_sequence(
     if (!bridge || !sequence) return 0;
     if (!bridge->config.enable_wm_integration || !bridge->sequences) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_st", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check capacity */
@@ -629,6 +683,12 @@ uint32_t mirror_prefrontal_store_sequence(
     /* Find empty slot */
     int slot = -1;
     for (uint32_t i = 0; i < bridge->config.wm_sequence_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.wm_sequence_capacity > 256) {
+            mirror_prefrontal_bridge_heartbeat("mirror_prefr_loop",
+                             (float)(i + 1) / (float)bridge->config.wm_sequence_capacity);
+        }
+
         if (bridge->sequences[i].sequence_id == 0) {
             slot = (int)i;
             break;
@@ -679,6 +739,10 @@ int mirror_prefrontal_recall_sequence(
     if (!bridge || !sequence || sequence_id == 0) return -1;
     if (!bridge->config.enable_wm_integration || !bridge->sequences) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_re", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     int slot = find_sequence_slot(bridge, sequence_id);
@@ -710,6 +774,10 @@ uint32_t mirror_prefrontal_get_sequence_count(
     const mirror_prefrontal_bridge_t bridge
 ) {
     if (!bridge) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_ge", 0.0f);
+
+
     return bridge->sequence_count;
 }
 
@@ -722,6 +790,10 @@ int mirror_prefrontal_clear_sequences(mirror_prefrontal_bridge_t bridge) {
 
     }
     if (!bridge->sequences) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_cl", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -752,6 +824,10 @@ int mirror_prefrontal_set_active_goal(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_se", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->active_goal_id = goal_id;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -767,6 +843,10 @@ float mirror_prefrontal_get_goal_relevance(
     if (!bridge) return -1.0f;
 
     /* If no active goal, all actions have neutral relevance */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_ge", 0.0f);
+
+
     if (bridge->active_goal_id == 0) {
         return 0.5f;
     }
@@ -789,6 +869,10 @@ int mirror_prefrontal_notify_goal_inference(
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_no", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -837,6 +921,10 @@ int mirror_prefrontal_update(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_up", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Decay inhibition towards context-appropriate level */
@@ -883,6 +971,10 @@ int mirror_prefrontal_get_effects(
 ) {
     if (!bridge || !effects) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_ge", 0.0f);
+
+
     nimcp_mutex_lock(((mirror_prefrontal_bridge_t)bridge)->mutex);
 
     /* PFC -> Mirror effects */
@@ -924,6 +1016,10 @@ int mirror_prefrontal_connect_bio_async(mirror_prefrontal_bridge_t bridge) {
     }
     if (bridge->bio_async_enabled) return 0; /* Already connected */
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_co", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Register with bio-async router */
@@ -956,6 +1052,10 @@ int mirror_prefrontal_disconnect_bio_async(mirror_prefrontal_bridge_t bridge) {
     }
     if (!bridge->bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_di", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->bio_context) {
@@ -974,6 +1074,10 @@ bool mirror_prefrontal_is_bio_async_connected(
     const mirror_prefrontal_bridge_t bridge
 ) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_is", 0.0f);
+
+
     return bridge->bio_async_enabled;
 }
 
@@ -987,6 +1091,10 @@ uint32_t mirror_prefrontal_process_messages(
 
     /* Message processing would be done via bio_router_poll_messages
      * For now, return 0 as a stub implementation */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_pr", 0.0f);
+
+
     (void)max_messages;
     return 0;
 }
@@ -1000,6 +1108,10 @@ int mirror_prefrontal_get_stats(
     mirror_prefrontal_stats_t* stats
 ) {
     if (!bridge || !stats) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_ge", 0.0f);
+
 
     nimcp_mutex_lock(((mirror_prefrontal_bridge_t)bridge)->mutex);
     *stats = bridge->stats;
@@ -1016,6 +1128,10 @@ int mirror_prefrontal_reset_stats(mirror_prefrontal_bridge_t bridge) {
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_re", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(mirror_prefrontal_stats_t));
@@ -1054,5 +1170,9 @@ const char* mirror_prefrontal_imitation_mode_name(imitation_mode_t mode) {
 float mirror_prefrontal_default_inhibition_for_context(
     social_context_type_t context
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_de", 0.0f);
+
+
     return get_context_inhibition(context);
 }

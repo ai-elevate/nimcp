@@ -37,7 +37,7 @@ static nimcp_health_agent_t* g_fractal_cognitive_health_agent = NULL;
  * @brief Set health agent for fractal_cognitive heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void fractal_cognitive_set_health_agent(nimcp_health_agent_t* agent) {
+void fractal_cognitive_set_health_agent(nimcp_health_agent_t* agent) {
     g_fractal_cognitive_health_agent = agent;
 }
 
@@ -61,6 +61,10 @@ bool fractal_cognitive_init(neural_network_t network, fractal_cognitive_cache_t 
 
             return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_heartbeat("fractal_cogn_init", 0.0f);
+
 
     memset(cache, 0, sizeof(fractal_cognitive_cache_t));
 
@@ -106,6 +110,12 @@ bool fractal_cognitive_init(neural_network_t network, fractal_cognitive_cache_t 
     // Normalize degrees by maximum degree
     float max_degree = 0.0F;
     for (uint32_t i = 0; i < N; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && N > 256) {
+            fractal_cognitive_heartbeat("fractal_cogn_loop",
+                             (float)(i + 1) / (float)N);
+        }
+
         // Get degree from network (would need network API - use placeholder)
         float degree = 1.0F;  // TODO: Get actual degree from network
         if (degree > max_degree) {
@@ -115,12 +125,24 @@ bool fractal_cognitive_init(neural_network_t network, fractal_cognitive_cache_t 
 
     if (max_degree > 0.0F) {
         for (uint32_t i = 0; i < N; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && N > 256) {
+                fractal_cognitive_heartbeat("fractal_cogn_loop",
+                                 (float)(i + 1) / (float)N);
+            }
+
             float degree = 1.0F;  // TODO: Get actual degree
             cache->degree_normalized[i] = degree / max_degree;
         }
     } else {
         // All degrees are 0, set uniform
         for (uint32_t i = 0; i < N; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && N > 256) {
+                fractal_cognitive_heartbeat("fractal_cogn_loop",
+                                 (float)(i + 1) / (float)N);
+            }
+
             cache->degree_normalized[i] = 0.0F;
         }
     }
@@ -133,6 +155,10 @@ void fractal_cognitive_free(fractal_cognitive_cache_t *cache) {
     if (!cache) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_heartbeat("fractal_cogn_free", 0.0f);
+
 
     if (cache->hub_indices) {
         nimcp_free(cache->hub_indices);
@@ -163,6 +189,10 @@ bool fractal_cognitive_refresh(neural_network_t network, fractal_cognitive_cache
     }
 
     // Free old cache
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_heartbeat("fractal_cogn_refresh", 0.0f);
+
+
     fractal_cognitive_free(cache);
 
     // Reinitialize
@@ -183,6 +213,10 @@ bool fractal_is_hub_neuron(const fractal_cognitive_cache_t *cache, uint32_t neur
     }
 
     // Binary search (assuming hub_indices is sorted)
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_heartbeat("fractal_cogn_fractal_is_hub_neuro", 0.0f);
+
+
     uint32_t left = 0;
     uint32_t right = cache->num_hubs;
 
@@ -219,10 +253,20 @@ uint32_t fractal_nearest_hub(neural_network_t network,
 
     // Simplified: Return first hub with lowest index difference
     // TODO: Implement proper BFS for graph distance
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_heartbeat("fractal_cogn_fractal_nearest_hub", 0.0f);
+
+
     uint32_t nearest = UINT32_MAX;
     uint32_t min_dist = UINT32_MAX;
 
     for (uint32_t i = 0; i < cache->num_hubs; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && cache->num_hubs > 256) {
+            fractal_cognitive_heartbeat("fractal_cogn_loop",
+                             (float)(i + 1) / (float)cache->num_hubs);
+        }
+
         uint32_t hub = cache->hub_indices[i];
         uint32_t dist = (hub > neuron_index) ? (hub - neuron_index) : (neuron_index - hub);
 
@@ -256,6 +300,10 @@ uint32_t fractal_get_central_neighbors(neural_network_t network,
     // Simplified: Return k most central neurons from entire network
     // TODO: Implement radius-constrained search
 
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_heartbeat("fractal_cogn_fractal_get_central_", 0.0f);
+
+
     typedef struct {
         uint32_t index;
         float centrality;
@@ -273,6 +321,12 @@ uint32_t fractal_get_central_neighbors(neural_network_t network,
 
     // Score all neurons
     for (uint32_t i = 0; i < N; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && N > 256) {
+            fractal_cognitive_heartbeat("fractal_cogn_loop",
+                             (float)(i + 1) / (float)N);
+        }
+
         scored[i].index = i;
         scored[i].centrality = cache->centrality_scores[i];
     }
@@ -291,6 +345,12 @@ uint32_t fractal_get_central_neighbors(neural_network_t network,
     // Copy top k to output
     uint32_t count = (k < N) ? k : N;
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            fractal_cognitive_heartbeat("fractal_cogn_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         central_out[i] = scored[i].index;
     }
 
@@ -307,6 +367,10 @@ float fractal_get_centrality(const fractal_cognitive_cache_t *cache, uint32_t ne
         return 0.0F;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_heartbeat("fractal_cogn_fractal_get_centrali", 0.0f);
+
+
     if (neuron_index >= cache->stats.num_neurons) {
         return 0.0F;
     }
@@ -318,6 +382,10 @@ float fractal_get_degree_normalized(const fractal_cognitive_cache_t *cache, uint
     if (!cache || !cache->valid || !cache->degree_normalized) {
         return 0.0F;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_heartbeat("fractal_cogn_fractal_get_degree_n", 0.0f);
+
 
     if (neuron_index >= cache->stats.num_neurons) {
         return 0.0F;
@@ -334,6 +402,10 @@ float fractal_get_hierarchical_level(const fractal_cognitive_cache_t *cache, uin
     if (!cache || !cache->valid) {
         return 0.5F;  // Mid-level default
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_heartbeat("fractal_cogn_fractal_get_hierarch", 0.0f);
+
 
     float centrality = fractal_get_centrality(cache, neuron_index);
     float degree = fractal_get_degree_normalized(cache, neuron_index);
@@ -366,11 +438,21 @@ bool fractal_get_neurons_at_level(const fractal_cognitive_cache_t *cache,
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_heartbeat("fractal_cogn_fractal_get_neurons_", 0.0f);
+
+
     uint32_t N = cache->stats.num_neurons;
 
     // Count matching neurons
     uint32_t count = 0;
     for (uint32_t i = 0; i < N; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && N > 256) {
+            fractal_cognitive_heartbeat("fractal_cogn_loop",
+                             (float)(i + 1) / (float)N);
+        }
+
         float neuron_level = fractal_get_hierarchical_level(cache, i);
         if (fabsf(neuron_level - level) <= tolerance) {
             count++;
@@ -395,6 +477,12 @@ bool fractal_get_neurons_at_level(const fractal_cognitive_cache_t *cache,
     // Fill output array
     uint32_t idx = 0;
     for (uint32_t i = 0; i < N; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && N > 256) {
+            fractal_cognitive_heartbeat("fractal_cogn_loop",
+                             (float)(i + 1) / (float)N);
+        }
+
         float neuron_level = fractal_get_hierarchical_level(cache, i);
         if (fabsf(neuron_level - level) <= tolerance) {
             (*neurons_out)[idx++] = i;
@@ -415,6 +503,10 @@ void fractal_cognitive_print_summary(const fractal_cognitive_cache_t *cache) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_heartbeat("fractal_cogn_print_summary", 0.0f);
+
+
     printf("=== Fractal Cognitive Properties ===\n");
     printf("Total neurons: %u\n", cache->stats.num_neurons);
     printf("Total synapses: %u\n", cache->stats.num_synapses);
@@ -431,6 +523,12 @@ void fractal_cognitive_print_summary(const fractal_cognitive_cache_t *cache) {
     uint32_t top_neurons[5];
     uint32_t num_found = fractal_get_central_neighbors(NULL, cache, 0, UINT32_MAX, 5, top_neurons);
     for (uint32_t i = 0; i < num_found; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_found > 256) {
+            fractal_cognitive_heartbeat("fractal_cogn_loop",
+                             (float)(i + 1) / (float)num_found);
+        }
+
         printf("  %u: centrality=%.4f, level=%.3f\n",
                top_neurons[i],
                fractal_get_centrality(cache, top_neurons[i]),
@@ -446,9 +544,19 @@ void fractal_cognitive_print_summary(const fractal_cognitive_cache_t *cache) {
 int fractal_cognitive_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_heartbeat("fractal_cogn_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Fractal_Cognitive");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                fractal_cognitive_heartbeat("fractal_cogn_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

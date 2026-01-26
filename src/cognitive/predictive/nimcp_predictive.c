@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_predictive_health_agent = NULL;
  * @brief Set health agent for predictive heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void predictive_set_health_agent(nimcp_health_agent_t* agent) {
+void predictive_set_health_agent(nimcp_health_agent_t* agent) {
     g_predictive_health_agent = agent;
 }
 
@@ -145,6 +145,10 @@ static bool update_states(predictive_network_t net, float step_size);
  */
 predictive_config_t predictive_default_config(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_heartbeat("predictive_default_config", 0.0f);
+
+
     LOG_DEBUG("Creating default predictive config");
 
     // Allocate default layer sizes on heap (freed by caller)
@@ -188,6 +192,10 @@ predictive_network_t predictive_create(const predictive_config_t* config)
     // =========================================================================
     // GUARD: Validate inputs
     // =========================================================================
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_heartbeat("predictive_create", 0.0f);
+
 
     predictive_config_t actual_config;
     if (config) {
@@ -280,6 +288,12 @@ predictive_network_t predictive_create(const predictive_config_t* config)
     // =========================================================================
 
     for (uint32_t i = 0; i < net->num_layers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && net->num_layers > 256) {
+            predictive_heartbeat("predictive_loop",
+                             (float)(i + 1) / (float)net->num_layers);
+        }
+
         uint32_t size = actual_config.layer_sizes[i];
 
         predictive_layer_t* layer = (predictive_layer_t*)nimcp_malloc(
@@ -311,6 +325,12 @@ predictive_network_t predictive_create(const predictive_config_t* config)
 
         // Initialize precision
         for (uint32_t j = 0; j < size; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && size > 256) {
+                predictive_heartbeat("predictive_loop",
+                                 (float)(j + 1) / (float)size);
+            }
+
             layer->precision[j] = actual_config.initial_precision;
         }
 
@@ -335,6 +355,10 @@ void predictive_destroy(predictive_network_t net)
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_heartbeat("predictive_destroy", 0.0f);
+
+
     LOG_INFO("predictive: Destroying predictive network (num_layers=%u)...", net->num_layers);
 
     // Unregister from bio-async router
@@ -348,6 +372,12 @@ void predictive_destroy(predictive_network_t net)
 
     if (net->layers) {
         for (uint32_t i = 0; i < net->num_layers; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && net->num_layers > 256) {
+                predictive_heartbeat("predictive_loop",
+                                 (float)(i + 1) / (float)net->num_layers);
+            }
+
             if (net->layers[i]) {
                 nimcp_free(net->layers[i]->state);
                 nimcp_free(net->layers[i]->prediction);
@@ -396,6 +426,10 @@ float predictive_forward(predictive_network_t net, const float* input,
         return INFINITY;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_heartbeat("predictive_forward", 0.0f);
+
+
     if (num_iterations == 0) {
         num_iterations = DEFAULT_NUM_ITERATIONS;
     }
@@ -417,6 +451,12 @@ float predictive_forward(predictive_network_t net, const float* input,
     // =========================================================================
 
     for (uint32_t iter = 0; iter < num_iterations; iter++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((iter & 0xFF) == 0 && num_iterations > 256) {
+            predictive_heartbeat("predictive_loop",
+                             (float)(iter + 1) / (float)num_iterations);
+        }
+
         // Compute prediction errors (bottom-up)
         if (!compute_prediction_errors(net)) {
             return INFINITY;
@@ -469,6 +509,10 @@ bool predictive_get_layer_prediction(predictive_network_t net,
                                      uint32_t layer_index, float* output)
 {
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    predictive_heartbeat("predictive_get_layer_prediction", 0.0f);
+
+
     if (net && net->bio_ctx) {
         bio_router_process_inbox(net->bio_ctx, 5);
     }
@@ -505,6 +549,10 @@ bool predictive_get_layer_error(predictive_network_t net,
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_heartbeat("predictive_get_layer_error", 0.0f);
+
+
     if (layer_index >= net->num_layers) {
         set_error("Invalid layer_index: %u", layer_index);
         return false;
@@ -540,6 +588,10 @@ bool predictive_update_model(predictive_network_t net)
 
     // In a full implementation, this would update synaptic weights
     // For now, we just track that learning occurred
+    /* Phase 8: Heartbeat at operation start */
+    predictive_heartbeat("predictive_update_model", 0.0f);
+
+
     return true;
 }
 
@@ -562,6 +614,10 @@ bool predictive_update_precision(predictive_network_t net, uint32_t layer_index)
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_heartbeat("predictive_update_precision", 0.0f);
+
+
     if (layer_index >= net->num_layers) {
         set_error("Invalid layer_index");
         return false;
@@ -576,6 +632,12 @@ bool predictive_update_precision(predictive_network_t net, uint32_t layer_index)
     // Update precision based on squared error (inverse variance)
     float lr = net->config.precision_learning_rate;
     for (uint32_t i = 0; i < layer->size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && layer->size > 256) {
+            predictive_heartbeat("predictive_loop",
+                             (float)(i + 1) / (float)layer->size);
+        }
+
         float error_sq = layer->prediction_error[i] * layer->prediction_error[i];
 
         // Move precision toward inverse error (with learning rate)
@@ -625,10 +687,20 @@ float predictive_active_inference(predictive_network_t net,
     }
 
     // Find action with lowest expected free energy
+    /* Phase 8: Heartbeat at operation start */
+    predictive_heartbeat("predictive_active_inference", 0.0f);
+
+
     float min_efe = INFINITY;
     uint32_t best_action = 0;
 
     for (uint32_t i = 0; i < num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_actions > 256) {
+            predictive_heartbeat("predictive_loop",
+                             (float)(i + 1) / (float)num_actions);
+        }
+
         if (actions[i].expected_free_energy < min_efe) {
             min_efe = actions[i].expected_free_energy;
             best_action = i;
@@ -659,12 +731,22 @@ bool predictive_get_statistics(predictive_network_t net, predictive_stats_t* sta
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_heartbeat("predictive_get_statistics", 0.0f);
+
+
     stats->total_free_energy = 0.0F;
     stats->average_precision = 0.0F;
     stats->max_prediction_error = 0.0F;
     uint32_t total_units = 0;
 
     for (uint32_t i = 0; i < net->num_layers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && net->num_layers > 256) {
+            predictive_heartbeat("predictive_loop",
+                             (float)(i + 1) / (float)net->num_layers);
+        }
+
         predictive_layer_t* layer = net->layers[i];
 
         // Accumulate free energy
@@ -672,6 +754,12 @@ bool predictive_get_statistics(predictive_network_t net, predictive_stats_t* sta
 
         // Average precision across layers
         for (uint32_t j = 0; j < layer->size; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && layer->size > 256) {
+                predictive_heartbeat("predictive_loop",
+                                 (float)(j + 1) / (float)layer->size);
+            }
+
             stats->average_precision += layer->precision[j];
 
             float abs_error = fabsf(layer->prediction_error[j]);
@@ -708,18 +796,34 @@ void predictive_print_state(predictive_network_t net)
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_heartbeat("predictive_print_state", 0.0f);
+
+
     printf("=== PREDICTIVE NETWORK STATE ===\n");
     printf("Layers: %u\n", net->num_layers);
     printf("Total updates: %lu\n", (unsigned long)net->total_updates);
     printf("Total free energy: %.4f\n", net->prev_free_energy);
 
     for (uint32_t i = 0; i < net->num_layers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && net->num_layers > 256) {
+            predictive_heartbeat("predictive_loop",
+                             (float)(i + 1) / (float)net->num_layers);
+        }
+
         predictive_layer_t* layer = net->layers[i];
 
         // Compute layer statistics
         float avg_error = 0.0F;
         float avg_precision = 0.0F;
         for (uint32_t j = 0; j < layer->size; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && layer->size > 256) {
+                predictive_heartbeat("predictive_loop",
+                                 (float)(j + 1) / (float)layer->size);
+            }
+
             avg_error += fabsf(layer->prediction_error[j]);
             avg_precision += layer->precision[j];
         }
@@ -748,7 +852,17 @@ bool predictive_reset(predictive_network_t net)
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_heartbeat("predictive_reset", 0.0f);
+
+
     for (uint32_t i = 0; i < net->num_layers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && net->num_layers > 256) {
+            predictive_heartbeat("predictive_loop",
+                             (float)(i + 1) / (float)net->num_layers);
+        }
+
         predictive_layer_t* layer = net->layers[i];
         memset(layer->state, 0, layer->size * sizeof(float));
         memset(layer->prediction, 0, layer->size * sizeof(float));
@@ -767,6 +881,10 @@ bool predictive_reset(predictive_network_t net)
  */
 uint32_t predictive_get_num_layers(predictive_network_t net)
 {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_heartbeat("predictive_get_num_layers", 0.0f);
+
+
     return net ? net->num_layers : 0;
 }
 
@@ -780,6 +898,10 @@ uint32_t predictive_get_layer_size(predictive_network_t net, uint32_t layer_inde
     if (!net || layer_index >= net->num_layers) {
         return 0;
     }
+    /* Phase 8: Heartbeat at operation start */
+    predictive_heartbeat("predictive_get_layer_size", 0.0f);
+
+
     return net->layers[layer_index]->size;
 }
 
@@ -799,9 +921,21 @@ uint32_t predictive_get_layer_size(predictive_network_t net, uint32_t layer_inde
 static bool compute_prediction_errors(predictive_network_t net)
 {
     for (uint32_t i = 0; i < net->num_layers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && net->num_layers > 256) {
+            predictive_heartbeat("predictive_loop",
+                             (float)(i + 1) / (float)net->num_layers);
+        }
+
         predictive_layer_t* layer = net->layers[i];
 
         for (uint32_t j = 0; j < layer->size; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && layer->size > 256) {
+                predictive_heartbeat("predictive_loop",
+                                 (float)(j + 1) / (float)layer->size);
+            }
+
             layer->prediction_error[j] = layer->state[j] - layer->prediction[j];
         }
     }
@@ -833,6 +967,12 @@ static bool generate_predictions(predictive_network_t net)
         if (ratio == 0) ratio = 1;
 
         for (uint32_t j = 0; j < lower->size; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && lower->size > 256) {
+                predictive_heartbeat("predictive_loop",
+                                 (float)(j + 1) / (float)lower->size);
+            }
+
             uint32_t upper_idx = j / ratio;
             if (upper_idx >= upper->size) {
                 upper_idx = upper->size - 1;
@@ -858,10 +998,22 @@ static float compute_free_energy(predictive_network_t net)
     float total_fe = 0.0F;
 
     for (uint32_t i = 0; i < net->num_layers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && net->num_layers > 256) {
+            predictive_heartbeat("predictive_loop",
+                             (float)(i + 1) / (float)net->num_layers);
+        }
+
         predictive_layer_t* layer = net->layers[i];
 
         float layer_fe = 0.0F;
         for (uint32_t j = 0; j < layer->size; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && layer->size > 256) {
+                predictive_heartbeat("predictive_loop",
+                                 (float)(j + 1) / (float)layer->size);
+            }
+
             float error = layer->prediction_error[j];
             layer_fe += layer->precision[j] * error * error;
         }
@@ -889,6 +1041,12 @@ static bool update_states(predictive_network_t net, float step_size)
         predictive_layer_t* layer = net->layers[i];
 
         for (uint32_t j = 0; j < layer->size; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && layer->size > 256) {
+                predictive_heartbeat("predictive_loop",
+                                 (float)(j + 1) / (float)layer->size);
+            }
+
             // Gradient = precision * error
             float gradient = layer->precision[j] * layer->prediction_error[j];
 
@@ -907,9 +1065,19 @@ static bool update_states(predictive_network_t net, float step_size)
 int predictive_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_heartbeat("predictive_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Predictive");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                predictive_heartbeat("predictive_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

@@ -43,7 +43,7 @@ static nimcp_health_agent_t* g_schemas_health_agent = NULL;
  * @brief Set health agent for schemas heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void schemas_set_health_agent(nimcp_health_agent_t* agent) {
+void schemas_set_health_agent(nimcp_health_agent_t* agent) {
     g_schemas_health_agent = agent;
 }
 
@@ -272,6 +272,12 @@ static void free_schema_contents(schema_t* schema) {
 
     if (schema->slots) {
         for (size_t i = 0; i < schema->num_slots; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && schema->num_slots > 256) {
+                schemas_heartbeat("schemas_loop",
+                                 (float)(i + 1) / (float)schema->num_slots);
+            }
+
             free_slot(&schema->slots[i]);
         }
         free(schema->slots);
@@ -312,6 +318,12 @@ static int find_slot_index(const schema_t* schema, const char* slot_name) {
     if (!schema || !slot_name) return -1;
 
     for (size_t i = 0; i < schema->num_slots; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && schema->num_slots > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(i + 1) / (float)schema->num_slots);
+        }
+
         if (schema->slots[i].slot_name &&
             strcmp(schema->slots[i].slot_name, slot_name) == 0) {
             return (int)i;
@@ -332,6 +344,12 @@ static void update_cooccurrence(
 
     // For each pair of filled slots, increment cooccurrence
     for (size_t i = 0; i < instantiation->num_filled; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && instantiation->num_filled > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(i + 1) / (float)instantiation->num_filled);
+        }
+
         for (size_t j = i + 1; j < instantiation->num_filled; j++) {
             // Use simple hash of slot names as indices
             // In production, would use proper slot indexing
@@ -357,6 +375,10 @@ static void update_cooccurrence(
 //=============================================================================
 
 schema_config_t schema_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_config_defaul", 0.0f);
+
+
     schema_config_t config = {
         .min_fit_threshold = SCHEMA_DEFAULT_MIN_FIT,
         .inferred_confidence = SCHEMA_DEFAULT_INFERRED_CONFIDENCE,
@@ -375,6 +397,10 @@ bool schema_config_validate(const schema_config_t* config) {
         set_error("NULL config pointer");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_config_valida", 0.0f);
+
 
     if (config->min_fit_threshold < 0.0f || config->min_fit_threshold > 1.0f) {
         set_error("min_fit_threshold must be in [0, 1]");
@@ -415,6 +441,10 @@ schema_system_t schema_system_create(
     const schema_config_t* config)
 {
     // Use default config if not provided
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_system_create", 0.0f);
+
+
     schema_config_t cfg = config ? *config : schema_config_default();
 
     if (!schema_config_validate(&cfg)) {
@@ -488,7 +518,17 @@ void schema_system_destroy(schema_system_t system) {
     if (!system) return;
 
     // Destroy all schemas
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_system_destro", 0.0f);
+
+
     for (size_t i = 0; i < system->num_schemas; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_schemas > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(i + 1) / (float)system->num_schemas);
+        }
+
         if (system->schemas[i]) {
             free_schema_contents(system->schemas[i]);
             free(system->schemas[i]);
@@ -498,6 +538,12 @@ void schema_system_destroy(schema_system_t system) {
 
     // Destroy all instantiations
     for (size_t i = 0; i < system->num_active; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_active > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(i + 1) / (float)system->num_active);
+        }
+
         if (system->active[i]) {
             schema_instantiation_destroy(system->active[i]);
         }
@@ -522,7 +568,17 @@ bool schema_system_clear(schema_system_t system) {
     }
 
     // Destroy all schemas
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_system_clear", 0.0f);
+
+
     for (size_t i = 0; i < system->num_schemas; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_schemas > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(i + 1) / (float)system->num_schemas);
+        }
+
         if (system->schemas[i]) {
             free_schema_contents(system->schemas[i]);
             free(system->schemas[i]);
@@ -537,6 +593,12 @@ bool schema_system_clear(schema_system_t system) {
 
     // Destroy all instantiations
     for (size_t i = 0; i < system->num_active; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_active > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(i + 1) / (float)system->num_active);
+        }
+
         if (system->active[i]) {
             schema_instantiation_destroy(system->active[i]);
             system->active[i] = NULL;
@@ -575,6 +637,10 @@ schema_t* schema_create(
         set_error("Schema name required");
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_create", 0.0f);
+
 
     if (type < 0 || type >= SCHEMA_TYPE_COUNT) {
         set_error("Invalid schema type");
@@ -637,6 +703,10 @@ bool schema_destroy(schema_system_t system, schema_t* schema) {
     }
 
     // Find and remove from system
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_destroy", 0.0f);
+
+
     size_t idx;
     if (!id_table_lookup(system, schema->schema_id, &idx)) {
         set_error("Schema not in system");
@@ -648,6 +718,12 @@ bool schema_destroy(schema_system_t system, schema_t* schema) {
         schema_t* parent = schema_find_by_id(system, schema->parent_schema_id);
         if (parent) {
             for (size_t i = 0; i < parent->num_children; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && parent->num_children > 256) {
+                    schemas_heartbeat("schemas_loop",
+                                     (float)(i + 1) / (float)parent->num_children);
+                }
+
                 if (parent->child_schemas[i] == schema->schema_id) {
                     // Remove by shifting
                     memmove(&parent->child_schemas[i],
@@ -705,6 +781,10 @@ bool schema_add(schema_system_t system, schema_t* schema) {
     }
 
     // Check capacity
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_add", 0.0f);
+
+
     if (system->num_schemas >= system->schemas_capacity) {
         // Grow array
         size_t new_capacity = system->schemas_capacity * 2;
@@ -746,6 +826,12 @@ bool schema_add(schema_system_t system, schema_t* schema) {
         system->id_table_capacity = new_table_cap;
 
         for (size_t i = 0; i < old_cap; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && old_cap > 256) {
+                schemas_heartbeat("schemas_loop",
+                                 (float)(i + 1) / (float)old_cap);
+            }
+
             if (old_keys[i] != 0 && old_keys[i] != UINT64_MAX) {
                 id_table_insert(system, old_keys[i], old_values[i]);
             }
@@ -780,6 +866,10 @@ bool schema_add(schema_system_t system, schema_t* schema) {
 schema_t* schema_find_by_id(schema_system_t system, uint64_t schema_id) {
     if (!system || schema_id == SCHEMA_INVALID_ID) return NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_find_by_id", 0.0f);
+
+
     size_t idx;
     if (id_table_lookup(system, schema_id, &idx)) {
         if (idx < system->num_schemas) {
@@ -792,7 +882,17 @@ schema_t* schema_find_by_id(schema_system_t system, uint64_t schema_id) {
 schema_t* schema_find_by_name(schema_system_t system, const char* name) {
     if (!system || !name) return NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_find_by_name", 0.0f);
+
+
     for (size_t i = 0; i < system->num_schemas; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_schemas > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(i + 1) / (float)system->num_schemas);
+        }
+
         if (system->schemas[i] && system->schemas[i]->schema_name &&
             strcmp(system->schemas[i]->schema_name, name) == 0) {
             return system->schemas[i];
@@ -814,6 +914,10 @@ bool schema_get_by_type(
     }
 
     *count = 0;
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_get_by_type", 0.0f);
+
+
     for (size_t i = 0; i < system->num_schemas && *count < max_schemas; i++) {
         if (system->schemas[i] && system->schemas[i]->type == type) {
             schemas[*count] = system->schemas[i];
@@ -839,6 +943,10 @@ bool schema_define_slot(
         set_error("Invalid parameters");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_define_slot", 0.0f);
+
 
     if (strlen(slot_name) >= SCHEMA_MAX_SLOT_NAME_LENGTH) {
         set_error("Slot name too long");
@@ -914,6 +1022,10 @@ bool schema_define_slot_constrained(
     }
 
     // Then add constraint
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_define_slot_c", 0.0f);
+
+
     schema_slot_t* slot = &schema->slots[schema->num_slots - 1];
     slot->constraint_type = constraint_type;
 
@@ -949,6 +1061,10 @@ bool schema_remove_slot(schema_t* schema, const char* slot_name) {
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_remove_slot", 0.0f);
+
+
     int idx = find_slot_index(schema, slot_name);
     if (idx < 0) {
         set_error("Slot not found: %s", slot_name);
@@ -970,6 +1086,10 @@ bool schema_remove_slot(schema_t* schema, const char* slot_name) {
 schema_slot_t* schema_get_slot(schema_t* schema, const char* slot_name) {
     if (!schema || !slot_name) return NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_get_slot", 0.0f);
+
+
     int idx = find_slot_index(schema, slot_name);
     if (idx < 0) return NULL;
 
@@ -977,14 +1097,28 @@ schema_slot_t* schema_get_slot(schema_t* schema, const char* slot_name) {
 }
 
 size_t schema_get_slot_count(const schema_t* schema) {
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_get_slot_coun", 0.0f);
+
+
     return schema ? schema->num_slots : 0;
 }
 
 size_t schema_get_required_slot_count(const schema_t* schema) {
     if (!schema) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_get_required_", 0.0f);
+
+
     size_t count = 0;
     for (size_t i = 0; i < schema->num_slots; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && schema->num_slots > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(i + 1) / (float)schema->num_slots);
+        }
+
         if (schema->slots[i].is_required) {
             count++;
         }
@@ -1009,6 +1143,10 @@ schema_instantiation_t* schema_instantiate(
     }
 
     // Check active capacity
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_instantiate", 0.0f);
+
+
     if (system->num_active >= system->active_capacity) {
         size_t new_capacity = system->active_capacity * 2;
         if (new_capacity > system->config.max_active) {
@@ -1091,6 +1229,12 @@ schema_instantiation_t* schema_instantiate(
     // Compute overall confidence
     float conf_sum = 0.0f;
     for (size_t i = 0; i < inst->num_filled; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && inst->num_filled > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(i + 1) / (float)inst->num_filled);
+        }
+
         conf_sum += inst->filled_slots[i].confidence;
     }
     inst->overall_confidence = inst->num_filled > 0 ?
@@ -1127,6 +1271,10 @@ schema_instantiation_t* schema_instantiate_from_memory(
     }
 
     // Get memory data
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_instantiate_f", 0.0f);
+
+
     const void* data = pr_memory_node_read(memory);
     if (!data) {
         set_error("Failed to read memory node");
@@ -1163,8 +1311,18 @@ void schema_instantiation_destroy(schema_instantiation_t* instantiation) {
     if (!instantiation) return;
 
     // Free filled slots
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_instantiation", 0.0f);
+
+
     if (instantiation->filled_slots) {
         for (size_t i = 0; i < instantiation->num_filled; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && instantiation->num_filled > 256) {
+                schemas_heartbeat("schemas_loop",
+                                 (float)(i + 1) / (float)instantiation->num_filled);
+            }
+
             free_slot(&instantiation->filled_slots[i]);
         }
         free(instantiation->filled_slots);
@@ -1173,6 +1331,12 @@ void schema_instantiation_destroy(schema_instantiation_t* instantiation) {
     // Free inferred slots
     if (instantiation->inferred_slots) {
         for (size_t i = 0; i < instantiation->num_inferred; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && instantiation->num_inferred > 256) {
+                schemas_heartbeat("schemas_loop",
+                                 (float)(i + 1) / (float)instantiation->num_inferred);
+            }
+
             free_slot(&instantiation->inferred_slots[i]);
         }
         free(instantiation->inferred_slots);
@@ -1196,7 +1360,17 @@ schema_instantiation_t* schema_get_instantiation(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_get_instantia", 0.0f);
+
+
     for (size_t i = 0; i < system->num_active; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_active > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(i + 1) / (float)system->num_active);
+        }
+
         if (system->active[i] &&
             system->active[i]->instantiation_id == instantiation_id) {
             return system->active[i];
@@ -1222,6 +1396,10 @@ bool schema_instantiation_update_slot(
     }
 
     // Check if slot exists in schema
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_instantiation", 0.0f);
+
+
     int schema_idx = find_slot_index(instantiation->schema, slot_name);
     if (schema_idx < 0) {
         set_error("Slot not in schema: %s", slot_name);
@@ -1230,6 +1408,12 @@ bool schema_instantiation_update_slot(
 
     // Check if already in filled slots
     for (size_t i = 0; i < instantiation->num_filled; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && instantiation->num_filled > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(i + 1) / (float)instantiation->num_filled);
+        }
+
         if (instantiation->filled_slots[i].slot_name &&
             strcmp(instantiation->filled_slots[i].slot_name, slot_name) == 0) {
             // Update existing
@@ -1253,6 +1437,12 @@ bool schema_instantiation_update_slot(
 
     // Remove from inferred if present
     for (size_t i = 0; i < instantiation->num_inferred; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && instantiation->num_inferred > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(i + 1) / (float)instantiation->num_inferred);
+        }
+
         if (instantiation->inferred_slots[i].slot_name &&
             strcmp(instantiation->inferred_slots[i].slot_name, slot_name) == 0) {
             free_slot(&instantiation->inferred_slots[i]);
@@ -1283,6 +1473,10 @@ float schema_compute_fit(
         return -1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_compute_fit", 0.0f);
+
+
     if (schema->num_slots == 0) {
         return 1.0f;  // Empty schema matches everything
     }
@@ -1298,6 +1492,12 @@ float schema_compute_fit(
     const float optional_weight = 1.0f;
 
     for (size_t i = 0; i < schema->num_slots; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && schema->num_slots > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(i + 1) / (float)schema->num_slots);
+        }
+
         float weight = schema->slots[i].is_required ? required_weight : optional_weight;
         max_score += weight;
 
@@ -1353,6 +1553,10 @@ bool schema_match(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_match", 0.0f);
+
+
     memset(result, 0, sizeof(schema_match_result_t));
     result->schema_id = SCHEMA_INVALID_ID;
 
@@ -1360,6 +1564,12 @@ bool schema_match(
     schema_t* best_schema = NULL;
 
     for (size_t i = 0; i < system->num_schemas; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_schemas > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(i + 1) / (float)system->num_schemas);
+        }
+
         if (!system->schemas[i]) continue;
 
         float fit = schema_compute_fit(system->schemas[i], slot_names, values, num_slots);
@@ -1415,6 +1625,10 @@ bool schema_match_top_k(
     *result_count = 0;
 
     // Compute fit for all schemas
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_match_top_k", 0.0f);
+
+
     typedef struct {
         schema_t* schema;
         float fit;
@@ -1428,6 +1642,12 @@ bool schema_match_top_k(
 
     size_t valid_count = 0;
     for (size_t i = 0; i < system->num_schemas; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_schemas > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(i + 1) / (float)system->num_schemas);
+        }
+
         if (!system->schemas[i]) continue;
 
         float fit = schema_compute_fit(system->schemas[i], slot_names, values, num_slots);
@@ -1486,10 +1706,20 @@ int schema_infer(schema_instantiation_t* instantiation) {
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_infer", 0.0f);
+
+
     int inferred_count = 0;
     schema_t* schema = instantiation->schema;
 
     for (size_t i = 0; i < schema->num_slots; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && schema->num_slots > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(i + 1) / (float)schema->num_slots);
+        }
+
         // Skip if already filled
         bool is_filled = false;
         for (size_t j = 0; j < instantiation->num_filled && !is_filled; j++) {
@@ -1546,6 +1776,10 @@ bool schema_infer_slot(
     }
 
     // First try default value
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_infer_slot", 0.0f);
+
+
     schema_slot_t* slot = schema_get_slot(instantiation->schema, slot_name);
     if (!slot) {
         set_error("Slot not in schema: %s", slot_name);
@@ -1585,6 +1819,10 @@ bool schema_get_expectation(
         set_error("Instantiation has no schema");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_get_expectati", 0.0f);
+
 
     schema_t* schema = instantiation->schema;
 
@@ -1650,7 +1888,17 @@ bool schema_learn_from_instance(
     // Update schema statistics (already done in instantiate)
 
     // Update slot statistics
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_learn_from_in", 0.0f);
+
+
     for (size_t i = 0; i < instantiation->num_filled; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && instantiation->num_filled > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(i + 1) / (float)instantiation->num_filled);
+        }
+
         schema_slot_t* schema_slot = schema_get_slot(
             instantiation->schema, instantiation->filled_slots[i].slot_name);
         if (schema_slot) {
@@ -1688,6 +1936,10 @@ schema_t* schema_abstract(
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_abstract", 0.0f);
+
+
     schema_type_t type = instantiations[0]->schema->type;
 
     // Create new abstract schema
@@ -1706,6 +1958,12 @@ schema_t* schema_abstract(
     schema_t* first = instantiations[0]->schema;
 
     for (size_t s = 0; s < first->num_slots; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && first->num_slots > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(s + 1) / (float)first->num_slots);
+        }
+
         const char* slot_name = first->slots[s].slot_name;
         bool in_all = true;
         size_t fill_count = 0;
@@ -1763,6 +2021,10 @@ schema_t* schema_specialize(
     }
 
     // Create new schema with same type
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_specialize", 0.0f);
+
+
     schema_t* child = schema_create(system, name, parent_schema->type);
     if (!child) {
 
@@ -1776,6 +2038,12 @@ schema_t* schema_specialize(
 
     // Copy parent slots
     for (size_t i = 0; i < parent_schema->num_slots; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && parent_schema->num_slots > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(i + 1) / (float)parent_schema->num_slots);
+        }
+
         schema_define_slot(child, parent_schema->slots[i].slot_name,
                           parent_schema->slots[i].is_required,
                           &parent_schema->slots[i].default_value);
@@ -1834,6 +2102,10 @@ schema_t* schema_merge(
     }
 
     // Check similarity
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_merge", 0.0f);
+
+
     float sim = schema_similarity(schema1, schema2);
     if (sim < system->config.abstraction_threshold) {
         set_error("Schemas not similar enough to merge (%.2f < %.2f)",
@@ -1855,12 +2127,24 @@ schema_t* schema_merge(
 
     // Union of slots
     for (size_t i = 0; i < schema1->num_slots; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && schema1->num_slots > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(i + 1) / (float)schema1->num_slots);
+        }
+
         schema_define_slot(merged, schema1->slots[i].slot_name,
                           schema1->slots[i].is_required,
                           &schema1->slots[i].default_value);
     }
 
     for (size_t i = 0; i < schema2->num_slots; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && schema2->num_slots > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(i + 1) / (float)schema2->num_slots);
+        }
+
         // Only add if not already present
         if (find_slot_index(merged, schema2->slots[i].slot_name) < 0) {
             schema_define_slot(merged, schema2->slots[i].slot_name,
@@ -1894,6 +2178,10 @@ bool schema_detect_violation(
         set_error("NULL pointer");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_detect_violat", 0.0f);
+
 
     memset(violation, 0, sizeof(schema_violation_t));
 
@@ -1974,6 +2262,10 @@ bool schema_get_violations(
     *count = 0;
 
     // Check each filled slot for violations
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_get_violation", 0.0f);
+
+
     for (size_t i = 0; i < instantiation->num_filled && *count < max_violations; i++) {
         schema_violation_t v;
         if (schema_detect_violation(system, instantiation,
@@ -2008,10 +2300,20 @@ bool schema_set_parent(
     }
 
     // Remove from old parent if any
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_set_parent", 0.0f);
+
+
     if (child->parent_schema_id != SCHEMA_INVALID_ID) {
         schema_t* old_parent = schema_find_by_id(system, child->parent_schema_id);
         if (old_parent) {
             for (size_t i = 0; i < old_parent->num_children; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && old_parent->num_children > 256) {
+                    schemas_heartbeat("schemas_loop",
+                                     (float)(i + 1) / (float)old_parent->num_children);
+                }
+
                 if (old_parent->child_schemas[i] == child->schema_id) {
                     memmove(&old_parent->child_schemas[i],
                             &old_parent->child_schemas[i + 1],
@@ -2055,6 +2357,10 @@ schema_t* schema_get_parent(schema_system_t system, const schema_t* schema) {
     if (!system || !schema) return NULL;
     if (schema->parent_schema_id == SCHEMA_INVALID_ID) return NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_get_parent", 0.0f);
+
+
     return schema_find_by_id(system, schema->parent_schema_id);
 }
 
@@ -2071,6 +2377,10 @@ bool schema_get_children(
     }
 
     *count = 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_get_children", 0.0f);
+
 
     for (size_t i = 0; i < schema->num_children && *count < max_children; i++) {
         schema_t* child = schema_find_by_id(system, schema->child_schemas[i]);
@@ -2098,6 +2408,10 @@ bool schema_get_ancestors(
 
     *count = 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_get_ancestors", 0.0f);
+
+
     schema_t* current = schema_get_parent(system, schema);
     while (current && *count < max_ancestors) {
         ancestors[*count] = current;
@@ -2122,12 +2436,22 @@ bool schema_get_stats(schema_system_t system, schema_stats_t* stats) {
     *stats = system->stats;
 
     // Update dynamic stats
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_get_stats", 0.0f);
+
+
     stats->num_schemas = system->num_schemas;
     stats->num_active = system->num_active;
 
     // Recalculate type counts
     memset(stats->schemas_by_type, 0, sizeof(stats->schemas_by_type));
     for (size_t i = 0; i < system->num_schemas; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_schemas > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(i + 1) / (float)system->num_schemas);
+        }
+
         if (system->schemas[i] &&
             system->schemas[i]->type < SCHEMA_TYPE_COUNT) {
             stats->schemas_by_type[system->schemas[i]->type]++;
@@ -2145,6 +2469,12 @@ bool schema_get_stats(schema_system_t system, schema_stats_t* stats) {
     }
 
     for (size_t i = 0; i < system->num_schemas; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_schemas > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(i + 1) / (float)system->num_schemas);
+        }
+
         if (system->schemas[i]) {
             stats->memory_bytes += sizeof(schema_t);
             stats->memory_bytes += system->schemas[i]->num_slots * sizeof(schema_slot_t);
@@ -2157,6 +2487,10 @@ bool schema_get_stats(schema_system_t system, schema_stats_t* stats) {
 }
 
 void schema_reset_stats(schema_system_t system) {
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_reset_stats", 0.0f);
+
+
     if (system) {
         memset(&system->stats, 0, sizeof(schema_stats_t));
     }
@@ -2187,6 +2521,10 @@ void schema_print(const schema_t* schema) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_print", 0.0f);
+
+
     printf("Schema [%lu]: %s\n", schema->schema_id,
            schema->schema_name ? schema->schema_name : "(unnamed)");
     printf("  Type: %s\n", schema_type_name(schema->type));
@@ -2196,6 +2534,12 @@ void schema_print(const schema_t* schema) {
            schema_get_required_slot_count(schema));
 
     for (size_t i = 0; i < schema->num_slots; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && schema->num_slots > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(i + 1) / (float)schema->num_slots);
+        }
+
         printf("    [%zu] %s%s", i,
                schema->slots[i].slot_name ? schema->slots[i].slot_name : "?",
                schema->slots[i].is_required ? " (required)" : "");
@@ -2218,6 +2562,10 @@ void schema_instantiation_print(const schema_instantiation_t* instantiation) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_instantiation", 0.0f);
+
+
     printf("Instantiation [%lu]\n", instantiation->instantiation_id);
 
     if (instantiation->schema) {
@@ -2232,6 +2580,12 @@ void schema_instantiation_print(const schema_instantiation_t* instantiation) {
     printf("  Filled slots: %zu\n", instantiation->num_filled);
 
     for (size_t i = 0; i < instantiation->num_filled; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && instantiation->num_filled > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(i + 1) / (float)instantiation->num_filled);
+        }
+
         printf("    %s (conf: %.2f)\n",
                instantiation->filled_slots[i].slot_name ?
                    instantiation->filled_slots[i].slot_name : "?",
@@ -2240,6 +2594,12 @@ void schema_instantiation_print(const schema_instantiation_t* instantiation) {
 
     printf("  Inferred slots: %zu\n", instantiation->num_inferred);
     for (size_t i = 0; i < instantiation->num_inferred; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && instantiation->num_inferred > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(i + 1) / (float)instantiation->num_inferred);
+        }
+
         printf("    %s (conf: %.2f)\n",
                instantiation->inferred_slots[i].slot_name ?
                    instantiation->inferred_slots[i].slot_name : "?",
@@ -2258,6 +2618,10 @@ bool schema_validate(const schema_t* schema) {
     }
 
     // Check type
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_validate", 0.0f);
+
+
     if (schema->type < 0 || schema->type >= SCHEMA_TYPE_COUNT) {
         return false;
     }
@@ -2295,10 +2659,20 @@ float schema_similarity(const schema_t* schema1, const schema_t* schema2) {
     }
 
     // Count shared slots
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_similarity", 0.0f);
+
+
     size_t shared = 0;
     size_t total = schema1->num_slots + schema2->num_slots;
 
     for (size_t i = 0; i < schema1->num_slots; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && schema1->num_slots > 256) {
+            schemas_heartbeat("schemas_loop",
+                             (float)(i + 1) / (float)schema1->num_slots);
+        }
+
         if (find_slot_index((schema_t*)schema2, schema1->slots[i].slot_name) >= 0) {
             shared++;
         }
@@ -2318,6 +2692,10 @@ float schema_similarity(const schema_t* schema1, const schema_t* schema2) {
 }
 
 uint64_t schema_current_time_ms(void) {
+    /* Phase 8: Heartbeat at operation start */
+    schemas_heartbeat("schemas_schema_current_time_", 0.0f);
+
+
     struct timespec ts;
     if (clock_gettime(CLOCK_REALTIME, &ts) == 0) {
         return (uint64_t)ts.tv_sec * 1000ULL + (uint64_t)ts.tv_nsec / 1000000ULL;

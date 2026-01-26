@@ -64,7 +64,7 @@ static nimcp_health_agent_t* g_omni_wm_security_immune_bridge_health_agent = NUL
  * @brief Set health agent for omni_wm_security_immune_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void omni_wm_security_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void omni_wm_security_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_omni_wm_security_immune_bridge_health_agent = agent;
 }
 
@@ -197,6 +197,12 @@ static void free_prediction_buffer(omni_wm_security_immune_bridge_t* bridge) {
     if (bridge->prediction_buffer) {
         /* Free any allocated state vectors in predictions */
         for (uint32_t i = 0; i < bridge->prediction_buffer_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->prediction_buffer_size > 256) {
+                omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_loop",
+                                 (float)(i + 1) / (float)bridge->prediction_buffer_size);
+            }
+
             nimcp_free(bridge->prediction_buffer[i].predicted_state);
         }
         nimcp_free(bridge->prediction_buffer);
@@ -235,6 +241,12 @@ static void free_event_buffer(omni_wm_security_immune_bridge_t* bridge) {
 
     if (bridge->event_buffer) {
         for (uint32_t i = 0; i < bridge->event_buffer_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->event_buffer_size > 256) {
+                omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_loop",
+                                 (float)(i + 1) / (float)bridge->event_buffer_size);
+            }
+
             nimcp_free(bridge->event_buffer[i].pre_event_state);
             nimcp_free(bridge->event_buffer[i].post_event_state);
             nimcp_free(bridge->event_buffer[i].threat_signature);
@@ -273,6 +285,12 @@ static void free_signature_cache(omni_wm_security_immune_bridge_t* bridge) {
 
     if (bridge->signature_cache) {
         for (uint32_t i = 0; i < bridge->signature_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->signature_count > 256) {
+                omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_loop",
+                                 (float)(i + 1) / (float)bridge->signature_count);
+            }
+
             nimcp_free(bridge->signature_cache[i]);
         }
         nimcp_free(bridge->signature_cache);
@@ -511,6 +529,12 @@ static nimcp_error_t process_pending_events(
 
     /* Process events (placeholder - would invoke WM training) */
     for (uint32_t i = 0; i < bridge->event_buffer_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->event_buffer_size > 256) {
+            omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_loop",
+                             (float)(i + 1) / (float)bridge->event_buffer_size);
+        }
+
         security_event_for_wm_t* event = &bridge->event_buffer[i];
 
         /* In full implementation:
@@ -647,6 +671,10 @@ static nimcp_error_t handle_inflammation_state(
 nimcp_error_t omni_wm_security_immune_bridge_default_config(
     omni_wm_security_immune_config_t* config) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(omni_wm_security_immune_config_t));
@@ -721,6 +749,10 @@ omni_wm_security_immune_bridge_t* omni_wm_security_immune_bridge_create(
     const omni_wm_security_immune_config_t* config) {
 
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_create", 0.0f);
+
+
     omni_wm_security_immune_bridge_t* bridge =
         nimcp_calloc(1, sizeof(omni_wm_security_immune_bridge_t));
     if (!bridge) {
@@ -802,6 +834,10 @@ void omni_wm_security_immune_bridge_destroy(
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         omni_wm_security_immune_bridge_disconnect_bio_async(bridge);
     }
@@ -810,6 +846,12 @@ void omni_wm_security_immune_bridge_destroy(
     nimcp_free(bridge->wm_to_security.anomaly_features);
     if (bridge->wm_to_security.active_predictions) {
         for (uint32_t i = 0; i < bridge->wm_to_security.num_predictions; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->wm_to_security.num_predictions > 256) {
+                omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_loop",
+                                 (float)(i + 1) / (float)bridge->wm_to_security.num_predictions);
+            }
+
             nimcp_free(bridge->wm_to_security.active_predictions[i].predicted_state);
         }
         nimcp_free(bridge->wm_to_security.active_predictions);
@@ -819,6 +861,12 @@ void omni_wm_security_immune_bridge_destroy(
     /* Free security to WM effects dynamic arrays */
     if (bridge->security_to_wm.pending_events) {
         for (uint32_t i = 0; i < bridge->security_to_wm.num_pending_events; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->security_to_wm.num_pending_events > 256) {
+                omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_loop",
+                                 (float)(i + 1) / (float)bridge->security_to_wm.num_pending_events);
+            }
+
             nimcp_free(bridge->security_to_wm.pending_events[i].pre_event_state);
             nimcp_free(bridge->security_to_wm.pending_events[i].post_event_state);
             nimcp_free(bridge->security_to_wm.pending_events[i].threat_signature);
@@ -827,6 +875,12 @@ void omni_wm_security_immune_bridge_destroy(
     }
     if (bridge->security_to_wm.threat_signatures) {
         for (uint32_t i = 0; i < bridge->security_to_wm.num_signatures; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->security_to_wm.num_signatures > 256) {
+                omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_loop",
+                                 (float)(i + 1) / (float)bridge->security_to_wm.num_signatures);
+            }
+
             nimcp_free(bridge->security_to_wm.threat_signatures[i]);
         }
         nimcp_free(bridge->security_to_wm.threat_signatures);
@@ -846,6 +900,10 @@ void omni_wm_security_immune_bridge_destroy(
 
 nimcp_error_t omni_wm_security_immune_bridge_reset(
     omni_wm_security_immune_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_reset", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -898,6 +956,10 @@ nimcp_error_t omni_wm_security_immune_bridge_connect(
     bbb_system_t bbb_system,
     brain_immune_system_t* immune) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_connect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_INVALID_PARAM, "world_model is NULL");
 
@@ -927,6 +989,10 @@ nimcp_error_t omni_wm_security_immune_bridge_connect_world_model(
     omni_wm_security_immune_bridge_t* bridge,
     omni_world_model_t* world_model) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_connect_world_model", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_NULL_POINTER, "world_model is NULL");
 
@@ -944,6 +1010,10 @@ nimcp_error_t omni_wm_security_immune_bridge_connect_security(
     omni_wm_security_immune_bridge_t* bridge,
     nimcp_security_system_t* security) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_connect_security", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(security, NIMCP_ERROR_NULL_POINTER, "security is NULL");
 
@@ -957,6 +1027,10 @@ nimcp_error_t omni_wm_security_immune_bridge_connect_security(
 nimcp_error_t omni_wm_security_immune_bridge_connect_bbb(
     omni_wm_security_immune_bridge_t* bridge,
     bbb_system_t bbb_system) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_connect_bbb", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(bbb_system, NIMCP_ERROR_NULL_POINTER, "bbb_system is NULL");
@@ -972,6 +1046,10 @@ nimcp_error_t omni_wm_security_immune_bridge_connect_immune(
     omni_wm_security_immune_bridge_t* bridge,
     brain_immune_system_t* immune) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_connect_immune", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(immune, NIMCP_ERROR_NULL_POINTER, "immune is NULL");
 
@@ -985,6 +1063,10 @@ nimcp_error_t omni_wm_security_immune_bridge_connect_immune(
 nimcp_error_t omni_wm_security_immune_bridge_connect_anomaly_detector(
     omni_wm_security_immune_bridge_t* bridge,
     nimcp_anomaly_detector_t detector) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_connect_anomaly_dete", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(detector, NIMCP_ERROR_NULL_POINTER, "detector is NULL");
@@ -1000,6 +1082,10 @@ bool omni_wm_security_immune_bridge_is_connected(
     const omni_wm_security_immune_bridge_t* bridge) {
 
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_is_connected", 0.0f);
+
+
     return bridge->world_model != NULL;
 }
 
@@ -1010,6 +1096,10 @@ bool omni_wm_security_immune_bridge_is_connected(
 nimcp_error_t omni_wm_security_immune_bridge_update(
     omni_wm_security_immune_bridge_t* bridge,
     float dt) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_update", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_modulation) return NIMCP_SUCCESS;
@@ -1066,6 +1156,10 @@ nimcp_error_t omni_wm_security_immune_bridge_predict_anomaly(
     float* anomaly_score_out,
     float* confidence_out) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_predict_anomaly", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(anomaly_score_out, NIMCP_ERROR_NULL_POINTER, "anomaly_score_out is NULL");
     NIMCP_CHECK_THROW(confidence_out, NIMCP_ERROR_NULL_POINTER, "confidence_out is NULL");
@@ -1116,6 +1210,10 @@ nimcp_error_t omni_wm_security_immune_bridge_report_anomaly(
     bool was_true_positive,
     float actual_severity) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_report_anomaly", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1153,6 +1251,10 @@ nimcp_error_t omni_wm_security_immune_bridge_forecast_threat(
     omni_wm_security_immune_bridge_t* bridge,
     uint32_t threat_type,
     wm_threat_prediction_t* prediction_out) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_forecast_threat", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(prediction_out, NIMCP_ERROR_NULL_POINTER, "prediction_out is NULL");
@@ -1195,6 +1297,10 @@ const wm_threat_prediction_t* omni_wm_security_immune_bridge_get_active_predicti
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_get_active_predictio", 0.0f);
+
+
     if (count_out) *count_out = bridge->prediction_buffer_size;
     return bridge->prediction_buffer;
 }
@@ -1206,6 +1312,10 @@ const wm_threat_prediction_t* omni_wm_security_immune_bridge_get_active_predicti
 nimcp_error_t omni_wm_security_immune_bridge_process_security_event(
     omni_wm_security_immune_bridge_t* bridge,
     const security_event_for_wm_t* event) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_process_security_eve", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(event, NIMCP_ERROR_NULL_POINTER, "event is NULL");
@@ -1268,6 +1378,10 @@ nimcp_error_t omni_wm_security_immune_bridge_update_bbb_state(
     omni_wm_security_immune_bridge_t* bridge,
     const bbb_state_for_wm_t* bbb_state) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_update_bbb_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(bbb_state, NIMCP_ERROR_NULL_POINTER, "bbb_state is NULL");
 
@@ -1296,6 +1410,10 @@ nimcp_error_t omni_wm_security_immune_bridge_set_alert_level(
     omni_wm_security_immune_bridge_t* bridge,
     uint32_t alert_level,
     bool under_attack) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_set_alert_level", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (alert_level > 4) alert_level = 4;
@@ -1337,6 +1455,10 @@ nimcp_error_t omni_wm_security_immune_bridge_update_cytokines(
     float il10_level,
     float ifn_gamma_level) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_update_cytokines", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1361,6 +1483,10 @@ nimcp_error_t omni_wm_security_immune_bridge_update_cytokines(
 nimcp_error_t omni_wm_security_immune_bridge_set_inflammation(
     omni_wm_security_immune_bridge_t* bridge,
     uint32_t inflammation_level) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_set_inflammation", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (inflammation_level > 4) inflammation_level = 4;
@@ -1397,6 +1523,10 @@ const immune_to_wm_modulation_t* omni_wm_security_immune_bridge_get_modulation(
 
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_get_modulation", 0.0f);
+
+
     return &bridge->current_modulation;
 }
 
@@ -1405,6 +1535,10 @@ nimcp_error_t omni_wm_security_immune_bridge_check_pe_trigger(
     float prediction_error,
     bool* should_trigger_out,
     float* trigger_strength_out) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_check_pe_trigger", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(should_trigger_out, NIMCP_ERROR_NULL_POINTER, "should_trigger_out is NULL");
@@ -1436,6 +1570,10 @@ nimcp_error_t omni_wm_security_immune_bridge_trigger_immune(
     omni_wm_security_immune_bridge_t* bridge,
     float prediction_error,
     uint32_t error_source) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_trigger_immune", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -1476,6 +1614,10 @@ const omni_wm_to_security_effects_t* omni_wm_security_immune_bridge_get_wm_effec
 
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_get_wm_effects", 0.0f);
+
+
     return &bridge->wm_to_security;
 }
 
@@ -1492,12 +1634,20 @@ const security_immune_to_wm_effects_t* omni_wm_security_immune_bridge_get_securi
 
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_get_security_effects", 0.0f);
+
+
     return &bridge->security_to_wm;
 }
 
 nimcp_error_t omni_wm_security_immune_bridge_get_stats(
     const omni_wm_security_immune_bridge_t* bridge,
     omni_wm_security_immune_stats_t* stats) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_get_stats", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
@@ -1512,6 +1662,10 @@ nimcp_error_t omni_wm_security_immune_bridge_get_stats(
 nimcp_error_t omni_wm_security_immune_bridge_reset_stats(
     omni_wm_security_immune_bridge_t* bridge) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_reset_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1525,6 +1679,10 @@ float omni_wm_security_immune_bridge_get_modulated_confidence(
     const omni_wm_security_immune_bridge_t* bridge) {
 
     if (!bridge) return 1.0f;
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_get_modulated_confid", 0.0f);
+
+
     return bridge->baseline_confidence *
            bridge->current_modulation.combined_confidence_mod;
 }
@@ -1533,6 +1691,10 @@ uint32_t omni_wm_security_immune_bridge_get_modulated_horizon(
     const omni_wm_security_immune_bridge_t* bridge) {
 
     if (!bridge) return 1;
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_get_modulated_horizo", 0.0f);
+
+
     uint32_t modulated = (uint32_t)(
         (float)bridge->baseline_horizon *
         bridge->current_modulation.combined_horizon_mod);
@@ -1543,6 +1705,10 @@ float omni_wm_security_immune_bridge_get_modulated_learning_rate(
     const omni_wm_security_immune_bridge_t* bridge) {
 
     if (!bridge) return 0.001f;
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_get_modulated_learni", 0.0f);
+
+
     return bridge->baseline_learning_rate *
            bridge->current_modulation.combined_learning_mod;
 }
@@ -1553,6 +1719,10 @@ float omni_wm_security_immune_bridge_get_modulated_learning_rate(
 
 nimcp_error_t omni_wm_security_immune_bridge_connect_bio_async(
     omni_wm_security_immune_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_connect_bio_async", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_bio_async) return NIMCP_SUCCESS;
@@ -1604,6 +1774,10 @@ nimcp_error_t omni_wm_security_immune_bridge_connect_bio_async(
 nimcp_error_t omni_wm_security_immune_bridge_disconnect_bio_async(
     omni_wm_security_immune_bridge_t* bridge) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_disconnect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
@@ -1620,6 +1794,10 @@ nimcp_error_t omni_wm_security_immune_bridge_disconnect_bio_async(
 
 bool omni_wm_security_immune_bridge_is_bio_async_connected(
     const omni_wm_security_immune_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_is_bio_async_connect", 0.0f);
+
 
     return bridge_base_is_bio_async_connected(bridge ? &bridge->base : NULL);
 }
@@ -1675,6 +1853,10 @@ const char* omni_wm_security_immune_msg_type_to_string(
 
 nimcp_error_t omni_wm_security_immune_bridge_validate_config(
     const omni_wm_security_immune_config_t* config) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_validate_config", 0.0f);
+
 
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
@@ -1744,6 +1926,10 @@ nimcp_error_t omni_wm_security_immune_bridge_validate_config(
 
 nimcp_error_t omni_wm_security_immune_bridge_compute_modulation(
     omni_wm_security_immune_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_security_immune_bridge_heartbeat("omni_wm_secu_compute_modulation", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 

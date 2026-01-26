@@ -44,7 +44,7 @@ static nimcp_health_agent_t* g_pr_memory_node_health_agent = NULL;
  * @brief Set health agent for pr_memory_node heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void pr_memory_node_set_health_agent(nimcp_health_agent_t* agent) {
+void pr_memory_node_set_health_agent(nimcp_health_agent_t* agent) {
     g_pr_memory_node_health_agent = agent;
 }
 
@@ -138,8 +138,20 @@ static uint32_t compute_crc32(const void* data, size_t size) {
     uint32_t crc = 0xFFFFFFFF;
 
     for (size_t i = 0; i < size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && size > 256) {
+            pr_memory_node_heartbeat("pr_memory_no_loop",
+                             (float)(i + 1) / (float)size);
+        }
+
         crc ^= bytes[i];
         for (int j = 0; j < 8; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && 8 > 256) {
+                pr_memory_node_heartbeat("pr_memory_no_loop",
+                                 (float)(j + 1) / (float)8);
+            }
+
             if (crc & 1) {
                 crc = (crc >> 1) ^ CRC32_POLYNOMIAL;
             } else {
@@ -197,6 +209,10 @@ static uint64_t generate_node_id(pr_node_manager_t manager) {
 //=============================================================================
 
 pr_node_manager_config_t pr_node_manager_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_pr_node_manager_defa", 0.0f);
+
+
     pr_node_manager_config_t config = {
         .mem_manager = NULL,
         .starting_id = 1,
@@ -207,6 +223,10 @@ pr_node_manager_config_t pr_node_manager_default_config(void) {
 }
 
 pr_node_manager_t pr_node_manager_create(const pr_node_manager_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_pr_node_manager_crea", 0.0f);
+
+
     pr_node_manager_t manager = (pr_node_manager_t)malloc(
         sizeof(struct pr_node_manager_struct));
     if (!manager) {
@@ -252,6 +272,10 @@ void pr_node_manager_destroy(pr_node_manager_t manager) {
     }
 
     // Free tracking array (but NOT the nodes themselves)
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_pr_node_manager_dest", 0.0f);
+
+
     if (manager->tracked_nodes) {
         free(manager->tracked_nodes);
     }
@@ -265,6 +289,10 @@ unified_mem_manager_t pr_node_manager_get_mem_manager(pr_node_manager_t manager)
 
         return NULL;
     }
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_pr_node_manager_get_", 0.0f);
+
+
     return manager->mem_manager;
 }
 
@@ -272,6 +300,10 @@ uint64_t pr_node_manager_get_node_count(pr_node_manager_t manager) {
     if (!manager) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_pr_node_manager_get_", 0.0f);
+
 
     if (manager->track_nodes) {
         return atomic_load(&manager->tracked_count);
@@ -285,6 +317,10 @@ uint64_t pr_node_manager_get_node_count(pr_node_manager_t manager) {
 //=============================================================================
 
 pr_node_config_t pr_memory_node_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_default_config", 0.0f);
+
+
     pr_node_config_t config = {
         .initial_tier = PR_MEMORY_TIER_Z0,
         .initial_strength = 1.0f,
@@ -315,6 +351,10 @@ pr_memory_node_t* pr_memory_node_create(
     }
 
     // Use defaults if no config
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_create", 0.0f);
+
+
     pr_node_config_t cfg;
     if (config) {
         cfg = *config;
@@ -401,6 +441,10 @@ pr_memory_node_t* pr_memory_node_create_with_signature(
     const pr_node_config_t* config
 ) {
     // Create node without auto-computing signature
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_create_with_signatur", 0.0f);
+
+
     pr_node_config_t cfg;
     if (config) {
         cfg = *config;
@@ -430,6 +474,10 @@ void pr_memory_node_destroy(pr_memory_node_t* node) {
     }
 
     // Release COW handle
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_destroy", 0.0f);
+
+
     if (node->data_handle) {
         unified_mem_free(node->data_handle);
         node->data_handle = NULL;
@@ -448,6 +496,10 @@ pr_memory_node_t* pr_memory_node_clone(
     }
 
     // Allocate new node
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_clone", 0.0f);
+
+
     pr_memory_node_t* clone = (pr_memory_node_t*)malloc(sizeof(pr_memory_node_t));
     if (!clone) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
@@ -532,6 +584,10 @@ bool pr_memory_node_is_shared(const pr_memory_node_t* node) {
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_is_shared", 0.0f);
+
+
     return unified_mem_is_shared(node->data_handle);
 }
 
@@ -539,6 +595,10 @@ size_t pr_memory_node_get_data_size(const pr_memory_node_t* node) {
     if (!node) {
         return 0;
     }
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_get_data_size", 0.0f);
+
+
     return node->data_size;
 }
 
@@ -554,6 +614,10 @@ pr_node_error_t pr_memory_node_make_private(pr_memory_node_t* node) {
     if (!unified_mem_make_private(node->data_handle)) {
         return PR_NODE_ERROR_COW_FAILED;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_make_private", 0.0f);
+
 
     return PR_NODE_SUCCESS;
 }
@@ -571,6 +635,10 @@ pr_node_error_t pr_memory_node_update_state(
     }
 
     // Clamp components to valid ranges
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_update_state", 0.0f);
+
+
     node->state.w = clampf(state.w, 0.0f, 1.0f);        // Consolidation
     node->state.x = clampf(state.x, -1.0f, 1.0f);      // Emotion
     node->state.y = clampf(state.y, 0.0f, 1.0f);       // Salience
@@ -586,6 +654,10 @@ nimcp_quaternion_t pr_memory_node_get_state(const pr_memory_node_t* node) {
     if (!node) {
         return quat_identity();
     }
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_get_state", 0.0f);
+
+
     return node->state;
 }
 
@@ -597,6 +669,10 @@ pr_node_error_t pr_memory_node_blend_state(
     if (!node) {
         return PR_NODE_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_blend_state", 0.0f);
+
 
     t = clampf(t, 0.0f, 1.0f);
 
@@ -638,6 +714,10 @@ pr_node_error_t pr_memory_node_update_state_components(
         node->state.z = clampf(accessibility, 0.0f, 1.0f);
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_update_state_compone", 0.0f);
+
+
     return PR_NODE_SUCCESS;
 }
 
@@ -651,6 +731,10 @@ pr_node_error_t pr_memory_node_update_signature(pr_memory_node_t* node) {
     }
 
     // Get data for signature computation
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_update_signature", 0.0f);
+
+
     const void* data = NULL;
     if (node->data_handle) {
         data = unified_mem_read(node->data_handle);
@@ -687,6 +771,10 @@ pr_node_error_t pr_memory_node_set_signature(
         return PR_NODE_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_set_signature", 0.0f);
+
+
     memcpy(&node->signature, signature, sizeof(prime_signature_t));
 
     // Clear dirty flag since we explicitly set signature
@@ -701,6 +789,10 @@ const prime_signature_t* pr_memory_node_get_signature(const pr_memory_node_t* no
 
         return NULL;
     }
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_get_signature", 0.0f);
+
+
     return &node->signature;
 }
 
@@ -712,6 +804,10 @@ float pr_memory_node_signature_similarity(
     if (!node || !other) {
         return -1.0f;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_signature_similarity", 0.0f);
+
 
     return prime_sig_similarity(&node->signature, &other->signature, method);
 }
@@ -726,6 +822,10 @@ pr_node_error_t pr_memory_node_promote(pr_memory_node_t* node) {
     }
 
     // Check if already at top tier
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_promote", 0.0f);
+
+
     if (node->tier >= PR_MEMORY_TIER_Z3) {
         return PR_NODE_ERROR_ALREADY_TOP;
     }
@@ -760,6 +860,10 @@ pr_node_error_t pr_memory_node_demote(pr_memory_node_t* node) {
     }
 
     // Check if already at bottom tier
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_demote", 0.0f);
+
+
     if (node->tier <= PR_MEMORY_TIER_Z0) {
         return PR_NODE_ERROR_ALREADY_BOTTOM;
     }
@@ -793,6 +897,10 @@ pr_node_error_t pr_memory_node_set_tier(
         return PR_NODE_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_set_tier", 0.0f);
+
+
     if (tier >= PR_MEMORY_TIER_COUNT) {
         return PR_NODE_ERROR_INVALID_TIER;
     }
@@ -807,6 +915,10 @@ pr_memory_tier_t pr_memory_node_get_tier(const pr_memory_node_t* node) {
     if (!node) {
         return PR_MEMORY_TIER_Z0;
     }
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_get_tier", 0.0f);
+
+
     return node->tier;
 }
 
@@ -835,6 +947,10 @@ float pr_memory_node_apply_decay(pr_memory_node_t* node, float elapsed_seconds) 
     }
 
     // Z3 never decays
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_apply_decay", 0.0f);
+
+
     if (node->tier == PR_MEMORY_TIER_Z3 || node->decay_rate <= 0.0f) {
         return node->current_strength;
     }
@@ -864,6 +980,10 @@ float pr_memory_node_reinforce(pr_memory_node_t* node, float reinforcement) {
     }
 
     // Add reinforcement
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_reinforce", 0.0f);
+
+
     node->current_strength += clampf(reinforcement, 0.0f, 1.0f);
     node->current_strength = clampf(node->current_strength, 0.0f, 1.0f);
 
@@ -887,6 +1007,10 @@ bool pr_memory_node_check_eligibility(const pr_memory_node_t* node) {
     }
 
     // Cannot promote from Z3
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_check_eligibility", 0.0f);
+
+
     if (node->tier >= PR_MEMORY_TIER_Z3) {
         return false;
     }
@@ -914,6 +1038,10 @@ float pr_memory_node_update_eligibility(
     }
 
     // Combine access pattern with time factor
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_update_eligibility", 0.0f);
+
+
     float boost = clampf(access_boost, 0.0f, 1.0f) * clampf(time_factor, 0.0f, 1.0f);
 
     // Update eligibility with gradual increase
@@ -928,6 +1056,10 @@ float pr_memory_node_update_eligibility(
 }
 
 float pr_memory_node_default_decay_rate(pr_memory_tier_t tier) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_default_decay_rate", 0.0f);
+
+
     switch (tier) {
         case PR_MEMORY_TIER_Z0:
             return PR_NODE_DECAY_Z0;
@@ -950,6 +1082,10 @@ pr_node_error_t pr_memory_node_set_decay_rate(
         return PR_NODE_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_set_decay_rate", 0.0f);
+
+
     node->decay_rate = (decay_rate >= 0.0f) ? decay_rate : 0.0f;
 
     return PR_NODE_SUCCESS;
@@ -963,6 +1099,10 @@ uint32_t pr_memory_node_add_entanglement(pr_memory_node_t* node) {
     if (!node) {
         return 0;
     }
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_add_entanglement", 0.0f);
+
+
     return atomic_fetch_add(&node->entanglement_count, 1) + 1;
 }
 
@@ -970,6 +1110,10 @@ uint32_t pr_memory_node_remove_entanglement(pr_memory_node_t* node) {
     if (!node) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_remove_entanglement", 0.0f);
+
 
     uint32_t current = atomic_load(&node->entanglement_count);
     if (current == 0) {
@@ -983,6 +1127,10 @@ uint32_t pr_memory_node_get_entanglement_count(const pr_memory_node_t* node) {
     if (!node) {
         return 0;
     }
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_get_entanglement_cou", 0.0f);
+
+
     return atomic_load(&node->entanglement_count);
 }
 
@@ -994,6 +1142,10 @@ uint32_t pr_memory_node_set_flags(pr_memory_node_t* node, uint32_t flags) {
     if (!node) {
         return 0;
     }
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_set_flags", 0.0f);
+
+
     return atomic_fetch_or(&node->flags, flags);
 }
 
@@ -1001,6 +1153,10 @@ uint32_t pr_memory_node_clear_flags(pr_memory_node_t* node, uint32_t flags) {
     if (!node) {
         return 0;
     }
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_clear_flags", 0.0f);
+
+
     return atomic_fetch_and(&node->flags, ~flags);
 }
 
@@ -1008,6 +1164,10 @@ uint32_t pr_memory_node_get_flags(const pr_memory_node_t* node) {
     if (!node) {
         return 0;
     }
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_get_flags", 0.0f);
+
+
     return atomic_load(&node->flags);
 }
 
@@ -1015,6 +1175,10 @@ bool pr_memory_node_has_flag(const pr_memory_node_t* node, pr_node_flags_t flag)
     if (!node) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_has_flag", 0.0f);
+
+
     return (atomic_load(&node->flags) & flag) != 0;
 }
 
@@ -1024,6 +1188,10 @@ pr_node_error_t pr_memory_node_lock(pr_memory_node_t* node) {
     }
 
     // Try to set lock flag atomically
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_lock", 0.0f);
+
+
     uint32_t expected = atomic_load(&node->flags);
     if (expected & PR_NODE_FLAG_LOCKED) {
         return PR_NODE_ERROR_LOCKED;
@@ -1045,6 +1213,10 @@ pr_node_error_t pr_memory_node_unlock(pr_memory_node_t* node) {
         return PR_NODE_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_unlock", 0.0f);
+
+
     atomic_fetch_and(&node->flags, ~PR_NODE_FLAG_LOCKED);
     return PR_NODE_SUCCESS;
 }
@@ -1060,6 +1232,10 @@ pr_node_error_t pr_memory_node_get_stats(
     if (!node || !stats) {
         return PR_NODE_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_get_stats", 0.0f);
+
 
     uint64_t now = get_current_time_ms();
 
@@ -1084,6 +1260,10 @@ uint64_t pr_memory_node_get_id(const pr_memory_node_t* node) {
     if (!node) {
         return PR_NODE_INVALID_ID;
     }
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_get_id", 0.0f);
+
+
     return node->node_id;
 }
 
@@ -1094,6 +1274,10 @@ uint64_t pr_memory_node_get_age_ms(
     if (!node) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_get_age_ms", 0.0f);
+
 
     if (current_time_ms >= node->created_time_ms) {
         return current_time_ms - node->created_time_ms;
@@ -1109,6 +1293,10 @@ uint64_t pr_memory_node_get_idle_ms(
     if (!node) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_get_idle_ms", 0.0f);
+
 
     if (current_time_ms >= node->last_accessed_ms) {
         return current_time_ms - node->last_accessed_ms;
@@ -1127,6 +1315,10 @@ size_t pr_memory_node_serialization_size(const pr_memory_node_t* node) {
     }
 
     // Header + signature + state + metadata + data
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_serialization_size", 0.0f);
+
+
     return sizeof(pr_node_serial_header_t) +
            sizeof(prime_signature_t) +
            sizeof(nimcp_quaternion_t) +
@@ -1143,6 +1335,10 @@ pr_node_error_t pr_memory_node_serialize(
     if (!node) {
         return PR_NODE_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_serialize", 0.0f);
+
 
     size_t required = pr_memory_node_serialization_size(node);
 
@@ -1258,6 +1454,10 @@ pr_memory_node_t* pr_memory_node_deserialize(
     if (!manager || !buffer) {
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_deserialize", 0.0f);
+
 
     if (buffer_size < sizeof(pr_node_serial_header_t)) {
         return NULL;
@@ -1418,6 +1618,10 @@ const char* pr_node_error_string(pr_node_error_t error) {
 }
 
 uint64_t pr_node_current_time_ms(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_pr_node_current_time", 0.0f);
+
+
     return get_current_time_ms();
 }
 
@@ -1432,6 +1636,10 @@ float pr_memory_node_resonance(
     }
 
     // Normalize weights
+    /* Phase 8: Heartbeat at operation start */
+    pr_memory_node_heartbeat("pr_memory_no_resonance", 0.0f);
+
+
     float total_weight = signature_weight + state_weight;
     if (total_weight < PR_NODE_EPSILON) {
         return 0.0f;

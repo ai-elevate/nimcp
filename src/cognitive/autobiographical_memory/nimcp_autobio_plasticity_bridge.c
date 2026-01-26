@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_autobio_plasticity_bridge_health_agent = NULL;
  * @brief Set health agent for autobio_plasticity_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void autobio_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void autobio_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_autobio_plasticity_bridge_health_agent = agent;
 }
 
@@ -100,6 +100,12 @@ static inline float clamp_f(float x, float min_val, float max_val) {
 
 static synapse_entry_t* find_synapse(autobio_plasticity_bridge_t* bridge, uint32_t synapse_id) {
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            autobio_plasticity_bridge_heartbeat("autobio_plas_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use &&
             bridge->synapses[i].synapse.synapse_id == synapse_id) {
             return &bridge->synapses[i];
@@ -110,6 +116,12 @@ static synapse_entry_t* find_synapse(autobio_plasticity_bridge_t* bridge, uint32
 
 static synapse_entry_t* find_free_slot(autobio_plasticity_bridge_t* bridge) {
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            autobio_plasticity_bridge_heartbeat("autobio_plas_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (!bridge->synapses[i].in_use) {
             return &bridge->synapses[i];
         }
@@ -127,6 +139,10 @@ static bool is_protected_type(autobio_synapse_type_t type) {
 //=============================================================================
 
 autobio_plasticity_config_t autobio_plasticity_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    autobio_plasticity_bridge_heartbeat("autobio_plas_autobio_plasticity_c", 0.0f);
+
+
     autobio_plasticity_config_t config = {
         .base_learning_rate = AUTOBIO_PLASTICITY_DEFAULT_LR,
         .stdp_tau_plus_ms = 20.0f,
@@ -161,6 +177,10 @@ autobio_plasticity_config_t autobio_plasticity_config_default(void) {
 autobio_plasticity_bridge_t* autobio_plasticity_create(
     const autobio_plasticity_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    autobio_plasticity_bridge_heartbeat("autobio_plas_autobio_plasticity_c", 0.0f);
+
+
     autobio_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(autobio_plasticity_bridge_t));
     if (!bridge) {
 
@@ -215,6 +235,10 @@ autobio_plasticity_bridge_t* autobio_plasticity_create(
 void autobio_plasticity_destroy(autobio_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobio_plasticity_bridge_heartbeat("autobio_plas_autobio_plasticity_d", 0.0f);
+
+
     nimcp_free(bridge->synapses);
 
     /* Cleanup base bridge infrastructure */
@@ -226,10 +250,20 @@ void autobio_plasticity_destroy(autobio_plasticity_bridge_t* bridge) {
 int autobio_plasticity_reset(autobio_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobio_plasticity_bridge_heartbeat("autobio_plas_autobio_plasticity_r", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset all synapses to initial weights */
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            autobio_plasticity_bridge_heartbeat("autobio_plas_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             bridge->synapses[i].synapse.weight = bridge->synapses[i].synapse.initial_weight;
             bridge->synapses[i].synapse.eligibility_trace = 0.0f;
@@ -266,6 +300,10 @@ int autobio_plasticity_register_synapse(
     float initial_weight
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    autobio_plasticity_bridge_heartbeat("autobio_plas_autobio_plasticity_r", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -310,6 +348,10 @@ int autobio_plasticity_unregister_synapse(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobio_plasticity_bridge_heartbeat("autobio_plas_autobio_plasticity_u", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
@@ -332,6 +374,10 @@ int autobio_plasticity_get_synapse(
 ) {
     if (!bridge || !synapse) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobio_plasticity_bridge_heartbeat("autobio_plas_autobio_plasticity_g", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
@@ -352,6 +398,10 @@ int autobio_plasticity_protect_synapse(
     bool protect
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    autobio_plasticity_bridge_heartbeat("autobio_plas_autobio_plasticity_p", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -379,6 +429,10 @@ int autobio_plasticity_learn(
     float context
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    autobio_plasticity_bridge_heartbeat("autobio_plas_autobio_plasticity_l", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = AUTOBIO_PLASTICITY_STATE_LEARNING;
@@ -493,6 +547,10 @@ float autobio_plasticity_apply_stdp(
 ) {
     if (!bridge) return NAN;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobio_plasticity_bridge_heartbeat("autobio_plas_autobio_plasticity_a", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
@@ -546,6 +604,10 @@ int autobio_plasticity_apply_emotional_boost(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobio_plasticity_bridge_heartbeat("autobio_plas_autobio_plasticity_a", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     emotional_intensity = clamp_f(emotional_intensity, 0.0f, 1.0f);
@@ -553,6 +615,12 @@ int autobio_plasticity_apply_emotional_boost(
 
     /* Apply emotional modulation to all eligible synapses */
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            autobio_plasticity_bridge_heartbeat("autobio_plas_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use && !bridge->synapses[i].synapse.is_protected) {
             float trace = bridge->synapses[i].synapse.eligibility_trace;
             if (fabsf(trace) > 0.001f) {
@@ -583,12 +651,22 @@ int autobio_plasticity_update_bcm(
     if (!bridge) return -1;
     if (dt_ms <= 0.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobio_plasticity_bridge_heartbeat("autobio_plas_autobio_plasticity_u", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = AUTOBIO_PLASTICITY_STATE_UPDATING;
 
     float decay = expf(-dt_ms / bridge->config.bcm_tau_ms);
 
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            autobio_plasticity_bridge_heartbeat("autobio_plas_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             /* Update sliding threshold towards average activity */
             float target = bridge->synapses[i].synapse.avg_activity;
@@ -609,6 +687,10 @@ int autobio_plasticity_homeostatic_update(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobio_plasticity_bridge_heartbeat("autobio_plas_autobio_plasticity_h", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = AUTOBIO_PLASTICITY_STATE_UPDATING;
 
@@ -618,6 +700,12 @@ int autobio_plasticity_homeostatic_update(
     float mean_strength = 0.0f;
     uint32_t episodic_count = 0;
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            autobio_plasticity_bridge_heartbeat("autobio_plas_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use &&
             bridge->synapses[i].synapse.type == AUTOBIO_SYNAPSE_EPISODIC) {
             mean_strength += bridge->synapses[i].synapse.weight;
@@ -637,6 +725,12 @@ int autobio_plasticity_homeostatic_update(
     }
 
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            autobio_plasticity_bridge_heartbeat("autobio_plas_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use && !bridge->synapses[i].synapse.is_protected) {
             float scaled = bridge->synapses[i].synapse.weight * (1.0f + (scale_factor - 1.0f) * (1.0f - decay));
             bridge->synapses[i].synapse.weight = clamp_f(
@@ -658,11 +752,21 @@ int autobio_plasticity_update_traces(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobio_plasticity_bridge_heartbeat("autobio_plas_autobio_plasticity_u", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float decay = expf(-dt_ms / bridge->config.stdp_tau_plus_ms);
 
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            autobio_plasticity_bridge_heartbeat("autobio_plas_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             bridge->synapses[i].synapse.eligibility_trace *= decay;
         }
@@ -675,11 +779,21 @@ int autobio_plasticity_update_traces(
 int autobio_plasticity_consolidate(autobio_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobio_plasticity_bridge_heartbeat("autobio_plas_autobio_plasticity_c", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = AUTOBIO_PLASTICITY_STATE_CONSOLIDATING;
 
     /* Clear eligibility traces */
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            autobio_plasticity_bridge_heartbeat("autobio_plas_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             bridge->synapses[i].synapse.eligibility_trace = 0.0f;
         }
@@ -693,6 +807,12 @@ int autobio_plasticity_consolidate(autobio_plasticity_bridge_t* bridge) {
     float retrieval_sum = 0.0f, retrieval_count = 0;
 
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            autobio_plasticity_bridge_heartbeat("autobio_plas_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             switch (bridge->synapses[i].synapse.type) {
                 case AUTOBIO_SYNAPSE_EPISODIC:
@@ -764,6 +884,10 @@ int autobio_plasticity_get_consolidation_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobio_plasticity_bridge_heartbeat("autobio_plas_autobio_plasticity_g", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->consolidation_state;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -777,6 +901,10 @@ int autobio_plasticity_get_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobio_plasticity_bridge_heartbeat("autobio_plas_autobio_plasticity_g", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
@@ -787,6 +915,12 @@ int autobio_plasticity_get_state(
     float sum = 0.0f;
     float sum_sq = 0.0f;
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            autobio_plasticity_bridge_heartbeat("autobio_plas_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             float w = bridge->synapses[i].synapse.weight;
             sum += w;
@@ -813,6 +947,10 @@ int autobio_plasticity_get_stats(
 ) {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobio_plasticity_bridge_heartbeat("autobio_plas_autobio_plasticity_g", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -822,6 +960,10 @@ int autobio_plasticity_get_stats(
 
 int autobio_plasticity_reset_stats(autobio_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    autobio_plasticity_bridge_heartbeat("autobio_plas_autobio_plasticity_r", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(autobio_plasticity_stats_t));
@@ -841,6 +983,10 @@ int autobio_plasticity_register_learn_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobio_plasticity_bridge_heartbeat("autobio_plas_autobio_plasticity_r", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->learn_callback = callback;
     bridge->learn_callback_data = user_data;
@@ -855,6 +1001,10 @@ int autobio_plasticity_register_consolidation_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    autobio_plasticity_bridge_heartbeat("autobio_plas_autobio_plasticity_r", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->consolidation_callback = callback;
@@ -872,6 +1022,10 @@ int autobio_plasticity_bio_async_connect(autobio_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobio_plasticity_bridge_heartbeat("autobio_plas_autobio_plasticity_b", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
@@ -883,6 +1037,10 @@ int autobio_plasticity_bio_async_connect(autobio_plasticity_bridge_t* bridge) {
 int autobio_plasticity_bio_async_disconnect(autobio_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobio_plasticity_bridge_heartbeat("autobio_plas_autobio_plasticity_b", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -892,6 +1050,10 @@ int autobio_plasticity_bio_async_disconnect(autobio_plasticity_bridge_t* bridge)
 
 bool autobio_plasticity_is_bio_async_connected(autobio_plasticity_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    autobio_plasticity_bridge_heartbeat("autobio_plas_autobio_plasticity_i", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;

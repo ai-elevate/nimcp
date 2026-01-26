@@ -31,7 +31,7 @@ static nimcp_health_agent_t* g_mathematical_intuition_health_agent = NULL;
  * @brief Set health agent for mathematical_intuition heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mathematical_intuition_set_health_agent(nimcp_health_agent_t* agent) {
+void mathematical_intuition_set_health_agent(nimcp_health_agent_t* agent) {
     g_mathematical_intuition_health_agent = agent;
 }
 
@@ -129,11 +129,23 @@ static bool is_constant(const float* arr, uint32_t len, float tolerance, float* 
 
     float mean = 0.0f;
     for (uint32_t i = 0; i < len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && len > 256) {
+            mathematical_intuition_heartbeat("mathematical_loop",
+                             (float)(i + 1) / (float)len);
+        }
+
         mean += arr[i];
     }
     mean /= (float)len;
 
     for (uint32_t i = 0; i < len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && len > 256) {
+            mathematical_intuition_heartbeat("mathematical_loop",
+                             (float)(i + 1) / (float)len);
+        }
+
         if (fabsf(arr[i] - mean) > tolerance) {
             return false;
         }
@@ -149,6 +161,12 @@ static bool is_constant(const float* arr, uint32_t len, float tolerance, float* 
 static float compute_mse(const float* actual, const float* predicted, uint32_t len) {
     float mse = 0.0f;
     for (uint32_t i = 0; i < len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && len > 256) {
+            mathematical_intuition_heartbeat("mathematical_loop",
+                             (float)(i + 1) / (float)len);
+        }
+
         float diff = actual[i] - predicted[i];
         mse += diff * diff;
     }
@@ -173,6 +191,12 @@ static float fit_polynomial(const float* x, const float* y, uint32_t n,
     float Xty[6] = {0};
 
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            mathematical_intuition_heartbeat("mathematical_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         float xi_powers[6];
         xi_powers[0] = 1.0f;
         for (uint8_t j = 1; j < m; j++) {
@@ -238,6 +262,12 @@ static float fit_polynomial(const float* x, const float* y, uint32_t n,
     /* Compute MSE */
     float mse = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            mathematical_intuition_heartbeat("mathematical_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         float pred = 0.0f;
         float xi_pow = 1.0f;
         for (uint8_t j = 0; j < m; j++) {
@@ -268,6 +298,12 @@ static float eval_polynomial(const float* coeffs, uint8_t degree, float x) {
 static vec3_t compute_centroid(const vec3_t* points, uint32_t n) {
     vec3_t c = {0, 0, 0};
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            mathematical_intuition_heartbeat("mathematical_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         c.x += points[i].x;
         c.y += points[i].y;
         c.z += points[i].z;
@@ -283,6 +319,10 @@ static vec3_t compute_centroid(const vec3_t* points, uint32_t n) {
  * ============================================================================ */
 
 math_intuition_config_t math_intuition_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    mathematical_intuition_heartbeat("mathematical_math_intuition_defau", 0.0f);
+
+
     math_intuition_config_t config = {
         .pattern_confidence_threshold = 0.7f,
         .symmetry_tolerance = 0.01f,
@@ -297,6 +337,10 @@ math_intuition_config_t math_intuition_default_config(void) {
 
 bool math_intuition_validate_config(const math_intuition_config_t* config) {
     if (!config) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    mathematical_intuition_heartbeat("mathematical_math_intuition_valid", 0.0f);
+
 
     if (config->pattern_confidence_threshold < 0.0f ||
         config->pattern_confidence_threshold > 1.0f) {
@@ -319,10 +363,18 @@ bool math_intuition_validate_config(const math_intuition_config_t* config) {
 }
 
 math_intuition_t* math_intuition_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    mathematical_intuition_heartbeat("mathematical_math_intuition_creat", 0.0f);
+
+
     return math_intuition_create_custom(NULL);
 }
 
 math_intuition_t* math_intuition_create_custom(const math_intuition_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    mathematical_intuition_heartbeat("mathematical_math_intuition_creat", 0.0f);
+
+
     math_intuition_config_t cfg;
 
     if (config) {
@@ -359,6 +411,10 @@ math_intuition_t* math_intuition_create_custom(const math_intuition_config_t* co
 void math_intuition_destroy(math_intuition_t* mi) {
     if (!mi) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mathematical_intuition_heartbeat("mathematical_math_intuition_destr", 0.0f);
+
+
     if (mi->lock) {
         nimcp_mutex_free(mi->lock);
     }
@@ -375,6 +431,10 @@ detected_pattern_t math_detect_pattern(
     const float* sequence,
     uint32_t length
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mathematical_intuition_heartbeat("mathematical_math_detect_pattern", 0.0f);
+
+
     detected_pattern_t result = {0};
     result.type = PATTERN_UNKNOWN;
     result.sequence_length = length;
@@ -409,6 +469,12 @@ detected_pattern_t math_detect_pattern(
     }
 
     for (uint32_t i = 0; i < length; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && length > 256) {
+            mathematical_intuition_heartbeat("mathematical_loop",
+                             (float)(i + 1) / (float)length);
+        }
+
         x_vals[i] = (float)i;
     }
 
@@ -439,6 +505,12 @@ detected_pattern_t math_detect_pattern(
         /* Compute fit error */
         float mse = 0.0f;
         for (uint32_t i = 0; i < length; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && length > 256) {
+                mathematical_intuition_heartbeat("mathematical_loop",
+                                 (float)(i + 1) / (float)length);
+            }
+
             float pred = sequence[0] + i * common_diff;
             float err = sequence[i] - pred;
             mse += err * err;
@@ -462,6 +534,12 @@ detected_pattern_t math_detect_pattern(
             float mse = 0.0f;
             float pred = sequence[0];
             for (uint32_t i = 0; i < length; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && length > 256) {
+                    mathematical_intuition_heartbeat("mathematical_loop",
+                                     (float)(i + 1) / (float)length);
+                }
+
                 float err = sequence[i] - pred;
                 mse += err * err;
                 pred *= common_ratio;
@@ -499,6 +577,12 @@ detected_pattern_t math_detect_pattern(
     if (length >= 3) {
         bool is_squares = true;
         for (uint32_t i = 0; i < length; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && length > 256) {
+                mathematical_intuition_heartbeat("mathematical_loop",
+                                 (float)(i + 1) / (float)length);
+            }
+
             float expected = (float)((i + 1) * (i + 1));
             if (fabsf(sequence[i] - expected) > tolerance * expected) {
                 is_squares = false;
@@ -517,6 +601,12 @@ detected_pattern_t math_detect_pattern(
     if (length >= 3) {
         bool is_triangular = true;
         for (uint32_t i = 0; i < length; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && length > 256) {
+                mathematical_intuition_heartbeat("mathematical_loop",
+                                 (float)(i + 1) / (float)length);
+            }
+
             float expected = (float)((i + 1) * (i + 2)) / 2.0f;
             if (fabsf(sequence[i] - expected) > tolerance * fabsf_safe(expected)) {
                 is_triangular = false;
@@ -577,6 +667,10 @@ float math_extrapolate(
         return 0.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mathematical_intuition_heartbeat("mathematical_math_extrapolate", 0.0f);
+
+
     switch (pattern->type) {
         case PATTERN_CONSTANT:
             return pattern->params.constant.value;
@@ -626,7 +720,17 @@ uint32_t math_predict_sequence(
 ) {
     if (!mi || !pattern || !predictions || num_predictions == 0) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    mathematical_intuition_heartbeat("mathematical_math_predict_sequenc", 0.0f);
+
+
     for (uint32_t i = 0; i < num_predictions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_predictions > 256) {
+            mathematical_intuition_heartbeat("mathematical_loop",
+                             (float)(i + 1) / (float)num_predictions);
+        }
+
         predictions[i] = math_extrapolate(mi, pattern, pattern->sequence_length + i);
     }
 
@@ -640,6 +744,10 @@ float math_check_pattern_fit(
     uint32_t index
 ) {
     if (!mi || !pattern) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    mathematical_intuition_heartbeat("mathematical_math_check_pattern_f", 0.0f);
+
 
     float expected = math_extrapolate(mi, pattern, index);
     float error = fabsf(value - expected) / fabsf_safe(expected);
@@ -675,6 +783,10 @@ geometric_result_t math_analyze_lines(
     vec3_t line1_start, vec3_t line1_end,
     vec3_t line2_start, vec3_t line2_end
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mathematical_intuition_heartbeat("mathematical_math_analyze_lines", 0.0f);
+
+
     geometric_result_t result = {0};
 
     if (!mi) return result;
@@ -734,6 +846,10 @@ geometric_result_t math_check_congruent(
     const vec3_t* shape1, uint32_t num_vertices1,
     const vec3_t* shape2, uint32_t num_vertices2
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mathematical_intuition_heartbeat("mathematical_math_check_congruent", 0.0f);
+
+
     geometric_result_t result = {0};
 
     if (!mi || !shape1 || !shape2) return result;
@@ -761,6 +877,12 @@ geometric_result_t math_check_congruent(
     }
 
     for (uint32_t i = 0; i < num_vertices1; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_vertices1 > 256) {
+            mathematical_intuition_heartbeat("mathematical_loop",
+                             (float)(i + 1) / (float)num_vertices1);
+        }
+
         uint32_t next = (i + 1) % num_vertices1;
         edges1[i] = vec3_distance(shape1[i], shape1[next]);
         edges2[i] = vec3_distance(shape2[i], shape2[next]);
@@ -786,12 +908,24 @@ geometric_result_t math_check_congruent(
     /* Compare sorted edges */
     float max_diff = 0.0f;
     for (uint32_t i = 0; i < num_vertices1; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_vertices1 > 256) {
+            mathematical_intuition_heartbeat("mathematical_loop",
+                             (float)(i + 1) / (float)num_vertices1);
+        }
+
         float diff = fabsf(edges1[i] - edges2[i]);
         if (diff > max_diff) max_diff = diff;
     }
 
     float avg_edge = 0.0f;
     for (uint32_t i = 0; i < num_vertices1; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_vertices1 > 256) {
+            mathematical_intuition_heartbeat("mathematical_loop",
+                             (float)(i + 1) / (float)num_vertices1);
+        }
+
         avg_edge += edges1[i];
     }
     avg_edge /= (float)num_vertices1;
@@ -819,6 +953,10 @@ geometric_result_t math_check_similar(
     const vec3_t* shape1, uint32_t num_vertices1,
     const vec3_t* shape2, uint32_t num_vertices2
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mathematical_intuition_heartbeat("mathematical_math_check_similar", 0.0f);
+
+
     geometric_result_t result = {0};
 
     if (!mi || !shape1 || !shape2 || num_vertices1 != num_vertices2) {
@@ -830,6 +968,12 @@ geometric_result_t math_check_similar(
     /* Compute perimeters */
     float perim1 = 0.0f, perim2 = 0.0f;
     for (uint32_t i = 0; i < num_vertices1; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_vertices1 > 256) {
+            mathematical_intuition_heartbeat("mathematical_loop",
+                             (float)(i + 1) / (float)num_vertices1);
+        }
+
         uint32_t next = (i + 1) % num_vertices1;
         perim1 += vec3_distance(shape1[i], shape1[next]);
         perim2 += vec3_distance(shape2[i], shape2[next]);
@@ -840,6 +984,12 @@ geometric_result_t math_check_similar(
     /* Check if shapes are similar by comparing scaled edge ratios */
     float max_ratio_diff = 0.0f;
     for (uint32_t i = 0; i < num_vertices1; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_vertices1 > 256) {
+            mathematical_intuition_heartbeat("mathematical_loop",
+                             (float)(i + 1) / (float)num_vertices1);
+        }
+
         uint32_t next = (i + 1) % num_vertices1;
         float e1 = vec3_distance(shape1[i], shape1[next]);
         float e2 = vec3_distance(shape2[i], shape2[next]) * scale;
@@ -869,6 +1019,10 @@ symmetry_result_t math_detect_symmetry(
     const vec3_t* points,
     uint32_t num_points
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mathematical_intuition_heartbeat("mathematical_math_detect_symmetry", 0.0f);
+
+
     symmetry_result_t result = {0};
 
     if (!mi) {
@@ -894,12 +1048,24 @@ symmetry_result_t math_detect_symmetry(
     uint32_t point_sym_matches = 0;
 
     for (uint32_t i = 0; i < num_points; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_points > 256) {
+            mathematical_intuition_heartbeat("mathematical_loop",
+                             (float)(i + 1) / (float)num_points);
+        }
+
         /* Find antipodal point */
         vec3_t antipode = vec3_sub(vec3_scale(centroid, 2.0f), points[i]);
 
         /* Check if antipode exists in point set */
         float min_dist = INFINITY;
         for (uint32_t j = 0; j < num_points; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && num_points > 256) {
+                mathematical_intuition_heartbeat("mathematical_loop",
+                                 (float)(j + 1) / (float)num_points);
+            }
+
             float dist = vec3_distance(antipode, points[j]);
             if (dist < min_dist) min_dist = dist;
         }
@@ -928,6 +1094,12 @@ symmetry_result_t math_detect_symmetry(
         /* For each point, check if reflection exists */
         uint32_t matches = 0;
         for (uint32_t i = 0; i < num_points; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_points > 256) {
+                mathematical_intuition_heartbeat("mathematical_loop",
+                                 (float)(i + 1) / (float)num_points);
+            }
+
             vec3_t rel = vec3_sub(points[i], centroid);
 
             /* Project onto axis and compute reflection */
@@ -937,6 +1109,12 @@ symmetry_result_t math_detect_symmetry(
 
             /* Look for reflected point */
             for (uint32_t j = 0; j < num_points; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && num_points > 256) {
+                    mathematical_intuition_heartbeat("mathematical_loop",
+                                     (float)(j + 1) / (float)num_points);
+                }
+
                 if (vec3_distance(reflected, points[j]) < mi->config.symmetry_tolerance * 10.0f) {
                     matches++;
                     break;
@@ -970,6 +1148,12 @@ symmetry_result_t math_detect_symmetry(
         uint32_t matches = 0;
 
         for (uint32_t i = 0; i < num_points; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_points > 256) {
+                mathematical_intuition_heartbeat("mathematical_loop",
+                                 (float)(i + 1) / (float)num_points);
+            }
+
             vec3_t rel = vec3_sub(points[i], centroid);
 
             /* Rotate by angle */
@@ -979,6 +1163,12 @@ symmetry_result_t math_detect_symmetry(
 
             /* Check if rotated point exists */
             for (uint32_t j = 0; j < num_points; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && num_points > 256) {
+                    mathematical_intuition_heartbeat("mathematical_loop",
+                                     (float)(j + 1) / (float)num_points);
+                }
+
                 if (vec3_distance(rotated, points[j]) < mi->config.symmetry_tolerance * 10.0f) {
                     matches++;
                     break;
@@ -1018,6 +1208,10 @@ float math_check_symmetry_type(
     uint32_t num_points,
     symmetry_type_t type
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mathematical_intuition_heartbeat("mathematical_math_check_symmetry_", 0.0f);
+
+
     symmetry_result_t sym = math_detect_symmetry(mi, points, num_points);
 
     switch (type) {
@@ -1039,6 +1233,10 @@ float math_find_reflection_axis(
     vec3_t* axis_point,
     vec3_t* axis_direction
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mathematical_intuition_heartbeat("mathematical_math_find_reflection", 0.0f);
+
+
     symmetry_result_t sym = math_detect_symmetry(mi, points, num_points);
 
     if (sym.has_reflection && axis_point && axis_direction) {
@@ -1057,6 +1255,10 @@ float math_find_rotation_symmetry(
     vec3_t* center,
     uint32_t* order
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mathematical_intuition_heartbeat("mathematical_math_find_rotation_s", 0.0f);
+
+
     symmetry_result_t sym = math_detect_symmetry(mi, points, num_points);
 
     if (sym.has_rotation && center && order) {
@@ -1076,6 +1278,10 @@ analogy_result_t math_solve_analogy(
     math_intuition_t* mi,
     float a, float b, float c
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mathematical_intuition_heartbeat("mathematical_math_solve_analogy", 0.0f);
+
+
     analogy_result_t result = {0};
 
     if (!mi) {
@@ -1143,6 +1349,10 @@ float math_check_analogy(
     math_intuition_t* mi,
     float a, float b, float c, float d
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mathematical_intuition_heartbeat("mathematical_math_check_analogy", 0.0f);
+
+
     analogy_result_t result = math_solve_analogy(mi, a, b, c);
 
     float error = fabsf(result.answer - d) / fabsf_safe(d);
@@ -1162,6 +1372,10 @@ int math_intuition_set_inflammation(math_intuition_t* mi, float level) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mathematical_intuition_heartbeat("mathematical_math_intuition_set_i", 0.0f);
+
+
     nimcp_mutex_lock(mi->lock);
     mi->inflammation_level = clamp01(level);
     nimcp_mutex_unlock(mi->lock);
@@ -1177,6 +1391,10 @@ int math_intuition_set_fatigue(math_intuition_t* mi, float level) {
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mathematical_intuition_heartbeat("mathematical_math_intuition_set_f", 0.0f);
+
 
     nimcp_mutex_lock(mi->lock);
     mi->fatigue_level = clamp01(level);
@@ -1198,6 +1416,10 @@ int math_intuition_get_stats(const math_intuition_t* mi, math_intuition_stats_t*
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "math_intuition_get_stats: stats is NULL");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mathematical_intuition_heartbeat("mathematical_math_intuition_get_s", 0.0f);
+
 
     nimcp_mutex_lock(((math_intuition_t*)mi)->lock);
 
@@ -1228,6 +1450,10 @@ int math_intuition_get_stats(const math_intuition_t* mi, math_intuition_stats_t*
 void math_intuition_reset_stats(math_intuition_t* mi) {
     if (!mi) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mathematical_intuition_heartbeat("mathematical_math_intuition_reset", 0.0f);
+
+
     nimcp_mutex_lock(mi->lock);
 
     mi->patterns_detected = 0;
@@ -1250,9 +1476,19 @@ const char* math_intuition_get_last_error(void) {
 
 int mathematical_intuition_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    mathematical_intuition_heartbeat("mathematical_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Mathematical_Intuition");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                mathematical_intuition_heartbeat("mathematical_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Module self-knowledge logged */
         }
     }

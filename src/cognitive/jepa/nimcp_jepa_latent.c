@@ -39,7 +39,7 @@ static nimcp_health_agent_t* g_jepa_latent_health_agent = NULL;
  * @brief Set health agent for jepa_latent heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void jepa_latent_set_health_agent(nimcp_health_agent_t* agent) {
+void jepa_latent_set_health_agent(nimcp_health_agent_t* agent) {
     g_jepa_latent_health_agent = agent;
 }
 
@@ -62,6 +62,10 @@ static jepa_latent_stats_t g_latent_stats = {0};
  * ============================================================================ */
 
 int jepa_latent_default_config(jepa_latent_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, LOG_MODULE " NULL config pointer");
 
     config->latent_dim = NIMCP_JEPA_LATENT_DIM;
@@ -78,6 +82,10 @@ int jepa_latent_default_config(jepa_latent_config_t* config) {
  * ============================================================================ */
 
 jepa_latent_t* jepa_latent_create(const jepa_latent_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_create", 0.0f);
+
+
     jepa_latent_config_t default_config;
 
     /* Use defaults if no config provided */
@@ -122,6 +130,12 @@ jepa_latent_t* jepa_latent_create(const jepa_latent_config_t* config) {
         }
         /* Initialize variance to 1.0 (unit variance) */
         for (uint32_t i = 0; i < config->latent_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && config->latent_dim > 256) {
+                jepa_latent_heartbeat("jepa_latent_loop",
+                                 (float)(i + 1) / (float)config->latent_dim);
+            }
+
             latent->variance[i] = 1.0f;
         }
     }
@@ -148,6 +162,10 @@ jepa_latent_t* jepa_latent_create(const jepa_latent_config_t* config) {
 }
 
 jepa_latent_t* jepa_latent_create_dim(uint32_t latent_dim) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_create_dim", 0.0f);
+
+
     jepa_latent_config_t config;
     jepa_latent_default_config(&config);
     config.latent_dim = latent_dim;
@@ -162,6 +180,10 @@ jepa_latent_t* jepa_latent_clone(const jepa_latent_t* src) {
     }
 
     /* Create config from source */
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_clone", 0.0f);
+
+
     jepa_latent_config_t config = {
         .latent_dim = src->latent_dim,
         .enable_variance = (src->variance != NULL),
@@ -200,6 +222,10 @@ void jepa_latent_destroy(jepa_latent_t* latent) {
     }
 
     /* Thread-safe decrement and check - atomic fetch-and-subtract returns old value */
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_destroy", 0.0f);
+
+
     uint32_t old_count = __atomic_fetch_sub(&latent->ref_count, 1, __ATOMIC_ACQ_REL);
     if (old_count > 1) {
         return;  /* Other references still exist */
@@ -224,6 +250,10 @@ void jepa_latent_destroy(jepa_latent_t* latent) {
 }
 
 int jepa_latent_reset(jepa_latent_t* latent) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_reset", 0.0f);
+
+
     NIMCP_CHECK_THROW(latent, NIMCP_ERROR_NULL_POINTER, "latent is NULL");
 
     /* Zero embedding */
@@ -232,6 +262,12 @@ int jepa_latent_reset(jepa_latent_t* latent) {
     /* Reset variance to unit if present */
     if (latent->variance) {
         for (uint32_t i = 0; i < latent->latent_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && latent->latent_dim > 256) {
+                jepa_latent_heartbeat("jepa_latent_loop",
+                                 (float)(i + 1) / (float)latent->latent_dim);
+            }
+
             latent->variance[i] = 1.0f;
         }
     }
@@ -250,6 +286,10 @@ int jepa_latent_reset(jepa_latent_t* latent) {
  * ============================================================================ */
 
 int jepa_latent_set_embedding(jepa_latent_t* latent, const float* values, uint32_t dim) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_set_embedding", 0.0f);
+
+
     NIMCP_CHECK_THROW(latent && values, NIMCP_ERROR_NULL_POINTER, "latent or values is NULL");
 
     if (dim != latent->latent_dim) {
@@ -271,6 +311,10 @@ int jepa_latent_get_embedding(const jepa_latent_t* latent, float* values, uint32
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_get_embedding", 0.0f);
+
+
     uint32_t copy_dim = (max_dim < latent->latent_dim) ? max_dim : latent->latent_dim;
     memcpy(values, latent->embedding, copy_dim * sizeof(float));
 
@@ -278,6 +322,10 @@ int jepa_latent_get_embedding(const jepa_latent_t* latent, float* values, uint32
 }
 
 int jepa_latent_set_variance(jepa_latent_t* latent, const float* variance, uint32_t dim) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_set_variance", 0.0f);
+
+
     NIMCP_CHECK_THROW(latent && variance, NIMCP_ERROR_NULL_POINTER, "latent or variance is NULL");
 
     if (!latent->variance) {
@@ -299,6 +347,10 @@ int jepa_latent_set_variance(jepa_latent_t* latent, const float* variance, uint3
 }
 
 int jepa_latent_update_precision(jepa_latent_t* latent) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_update_precision", 0.0f);
+
+
     NIMCP_CHECK_THROW(latent, NIMCP_ERROR_NULL_POINTER, "latent is NULL");
 
     if (!latent->variance) {
@@ -310,6 +362,12 @@ int jepa_latent_update_precision(jepa_latent_t* latent) {
     /* Compute mean variance */
     double sum_var = 0.0;
     for (uint32_t i = 0; i < latent->latent_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && latent->latent_dim > 256) {
+            jepa_latent_heartbeat("jepa_latent_loop",
+                             (float)(i + 1) / (float)latent->latent_dim);
+        }
+
         sum_var += latent->variance[i];
     }
     float mean_var = (float)(sum_var / latent->latent_dim);
@@ -352,8 +410,18 @@ float jepa_latent_norm(const jepa_latent_t* latent) {
         return -1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_norm", 0.0f);
+
+
     double sum_sq = 0.0;
     for (uint32_t i = 0; i < latent->latent_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && latent->latent_dim > 256) {
+            jepa_latent_heartbeat("jepa_latent_loop",
+                             (float)(i + 1) / (float)latent->latent_dim);
+        }
+
         sum_sq += (double)latent->embedding[i] * latent->embedding[i];
     }
 
@@ -361,6 +429,10 @@ float jepa_latent_norm(const jepa_latent_t* latent) {
 }
 
 int jepa_latent_normalize(jepa_latent_t* latent) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_normalize", 0.0f);
+
+
     NIMCP_CHECK_THROW(latent && latent->embedding, NIMCP_ERROR_NULL_POINTER, "latent or embedding is NULL");
 
     float norm = jepa_latent_norm(latent);
@@ -372,6 +444,12 @@ int jepa_latent_normalize(jepa_latent_t* latent) {
 
     float inv_norm = 1.0f / norm;
     for (uint32_t i = 0; i < latent->latent_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && latent->latent_dim > 256) {
+            jepa_latent_heartbeat("jepa_latent_loop",
+                             (float)(i + 1) / (float)latent->latent_dim);
+        }
+
         latent->embedding[i] *= inv_norm;
     }
 
@@ -383,11 +461,21 @@ int jepa_latent_normalize(jepa_latent_t* latent) {
 }
 
 int jepa_latent_layer_normalize(jepa_latent_t* latent) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_layer_normalize", 0.0f);
+
+
     NIMCP_CHECK_THROW(latent && latent->embedding, NIMCP_ERROR_NULL_POINTER, "latent or embedding is NULL");
 
     /* Compute mean */
     double sum = 0.0;
     for (uint32_t i = 0; i < latent->latent_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && latent->latent_dim > 256) {
+            jepa_latent_heartbeat("jepa_latent_loop",
+                             (float)(i + 1) / (float)latent->latent_dim);
+        }
+
         sum += latent->embedding[i];
     }
     float mean = (float)(sum / latent->latent_dim);
@@ -395,6 +483,12 @@ int jepa_latent_layer_normalize(jepa_latent_t* latent) {
     /* Compute variance */
     double sum_sq_diff = 0.0;
     for (uint32_t i = 0; i < latent->latent_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && latent->latent_dim > 256) {
+            jepa_latent_heartbeat("jepa_latent_loop",
+                             (float)(i + 1) / (float)latent->latent_dim);
+        }
+
         float diff = latent->embedding[i] - mean;
         sum_sq_diff += diff * diff;
     }
@@ -404,6 +498,12 @@ int jepa_latent_layer_normalize(jepa_latent_t* latent) {
     /* Normalize: (x - mean) / std */
     float inv_std = 1.0f / std;
     for (uint32_t i = 0; i < latent->latent_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && latent->latent_dim > 256) {
+            jepa_latent_heartbeat("jepa_latent_loop",
+                             (float)(i + 1) / (float)latent->latent_dim);
+        }
+
         latent->embedding[i] = (latent->embedding[i] - mean) * inv_std;
     }
 
@@ -423,6 +523,10 @@ float jepa_latent_dot(const jepa_latent_t* a, const jepa_latent_t* b) {
         return NAN;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_dot", 0.0f);
+
+
     if (a->latent_dim != b->latent_dim) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Dimension mismatch: %u vs %u",
                            a->latent_dim, b->latent_dim);
@@ -431,6 +535,12 @@ float jepa_latent_dot(const jepa_latent_t* a, const jepa_latent_t* b) {
 
     double dot = 0.0;
     for (uint32_t i = 0; i < a->latent_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && a->latent_dim > 256) {
+            jepa_latent_heartbeat("jepa_latent_loop",
+                             (float)(i + 1) / (float)a->latent_dim);
+        }
+
         dot += (double)a->embedding[i] * b->embedding[i];
     }
 
@@ -441,6 +551,10 @@ float jepa_latent_cosine_similarity(const jepa_latent_t* a, const jepa_latent_t*
     if (!a || !b) {
         return NAN;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_cosine_similarity", 0.0f);
+
 
     float dot = jepa_latent_dot(a, b);
     if (isnan(dot)) {
@@ -460,6 +574,10 @@ float jepa_latent_cosine_similarity(const jepa_latent_t* a, const jepa_latent_t*
 
 float jepa_latent_similarity(const jepa_latent_t* a, const jepa_latent_t* b,
                               jepa_similarity_t metric) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_similarity", 0.0f);
+
+
     switch (metric) {
         case JEPA_SIM_COSINE:
             return jepa_latent_cosine_similarity(a, b);
@@ -485,6 +603,10 @@ float jepa_latent_precision_similarity(const jepa_latent_t* a, const jepa_latent
         return NAN;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_precision_similarity", 0.0f);
+
+
     if (a->latent_dim != b->latent_dim) {
         return NAN;
     }
@@ -494,6 +616,12 @@ float jepa_latent_precision_similarity(const jepa_latent_t* a, const jepa_latent
     double total_precision = 0.0;
 
     for (uint32_t i = 0; i < a->latent_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && a->latent_dim > 256) {
+            jepa_latent_heartbeat("jepa_latent_loop",
+                             (float)(i + 1) / (float)a->latent_dim);
+        }
+
         /* Compute per-dimension precision */
         float prec_a = (a->variance && a->variance[i] > JEPA_LATENT_EPSILON) ?
                        (1.0f / a->variance[i]) : 1.0f;
@@ -521,12 +649,22 @@ float jepa_latent_distance(const jepa_latent_t* a, const jepa_latent_t* b) {
         return -1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_distance", 0.0f);
+
+
     if (a->latent_dim != b->latent_dim) {
         return -1.0f;
     }
 
     double sum_sq = 0.0;
     for (uint32_t i = 0; i < a->latent_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && a->latent_dim > 256) {
+            jepa_latent_heartbeat("jepa_latent_loop",
+                             (float)(i + 1) / (float)a->latent_dim);
+        }
+
         float diff = a->embedding[i] - b->embedding[i];
         sum_sq += diff * diff;
     }
@@ -540,6 +678,10 @@ float jepa_latent_distance(const jepa_latent_t* a, const jepa_latent_t* b) {
 
 int jepa_latent_interpolate(const jepa_latent_t* a, const jepa_latent_t* b,
                              float alpha, jepa_latent_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_interpolate", 0.0f);
+
+
     NIMCP_CHECK_THROW(a && b && result, NIMCP_ERROR_NULL_POINTER, "a, b, or result is NULL");
 
     if (a->latent_dim != b->latent_dim || a->latent_dim != result->latent_dim) {
@@ -554,6 +696,12 @@ int jepa_latent_interpolate(const jepa_latent_t* a, const jepa_latent_t* b,
 
     /* Linear interpolation */
     for (uint32_t i = 0; i < a->latent_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && a->latent_dim > 256) {
+            jepa_latent_heartbeat("jepa_latent_loop",
+                             (float)(i + 1) / (float)a->latent_dim);
+        }
+
         result->embedding[i] = one_minus_alpha * a->embedding[i] +
                                alpha * b->embedding[i];
     }
@@ -561,6 +709,12 @@ int jepa_latent_interpolate(const jepa_latent_t* a, const jepa_latent_t* b,
     /* Interpolate variance if both have it */
     if (a->variance && b->variance && result->variance) {
         for (uint32_t i = 0; i < a->latent_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && a->latent_dim > 256) {
+                jepa_latent_heartbeat("jepa_latent_loop",
+                                 (float)(i + 1) / (float)a->latent_dim);
+            }
+
             result->variance[i] = one_minus_alpha * a->variance[i] +
                                   alpha * b->variance[i];
         }
@@ -575,6 +729,10 @@ int jepa_latent_interpolate(const jepa_latent_t* a, const jepa_latent_t* b,
 
 int jepa_latent_slerp(const jepa_latent_t* a, const jepa_latent_t* b,
                        float alpha, jepa_latent_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_slerp", 0.0f);
+
+
     NIMCP_CHECK_THROW(a && b && result, NIMCP_ERROR_NULL_POINTER, "a, b, or result is NULL");
 
     if (a->latent_dim != b->latent_dim || a->latent_dim != result->latent_dim) {
@@ -607,6 +765,12 @@ int jepa_latent_slerp(const jepa_latent_t* a, const jepa_latent_t* b,
     float scale_b = sinf(alpha * theta) / sin_theta;
 
     for (uint32_t i = 0; i < a->latent_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && a->latent_dim > 256) {
+            jepa_latent_heartbeat("jepa_latent_loop",
+                             (float)(i + 1) / (float)a->latent_dim);
+        }
+
         result->embedding[i] = scale_a * a->embedding[i] +
                                scale_b * b->embedding[i];
     }
@@ -624,6 +788,10 @@ int jepa_latent_slerp(const jepa_latent_t* a, const jepa_latent_t* b,
 
 int jepa_latent_add(const jepa_latent_t* a, const jepa_latent_t* b,
                      jepa_latent_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_add", 0.0f);
+
+
     NIMCP_CHECK_THROW(a && b && result, NIMCP_ERROR_NULL_POINTER, "a, b, or result is NULL");
 
     if (a->latent_dim != b->latent_dim || a->latent_dim != result->latent_dim) {
@@ -631,6 +799,12 @@ int jepa_latent_add(const jepa_latent_t* a, const jepa_latent_t* b,
     }
 
     for (uint32_t i = 0; i < a->latent_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && a->latent_dim > 256) {
+            jepa_latent_heartbeat("jepa_latent_loop",
+                             (float)(i + 1) / (float)a->latent_dim);
+        }
+
         result->embedding[i] = a->embedding[i] + b->embedding[i];
     }
 
@@ -640,6 +814,10 @@ int jepa_latent_add(const jepa_latent_t* a, const jepa_latent_t* b,
 
 int jepa_latent_subtract(const jepa_latent_t* a, const jepa_latent_t* b,
                           jepa_latent_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_subtract", 0.0f);
+
+
     NIMCP_CHECK_THROW(a && b && result, NIMCP_ERROR_NULL_POINTER, "a, b, or result is NULL");
 
     if (a->latent_dim != b->latent_dim || a->latent_dim != result->latent_dim) {
@@ -647,6 +825,12 @@ int jepa_latent_subtract(const jepa_latent_t* a, const jepa_latent_t* b,
     }
 
     for (uint32_t i = 0; i < a->latent_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && a->latent_dim > 256) {
+            jepa_latent_heartbeat("jepa_latent_loop",
+                             (float)(i + 1) / (float)a->latent_dim);
+        }
+
         result->embedding[i] = a->embedding[i] - b->embedding[i];
     }
 
@@ -655,9 +839,19 @@ int jepa_latent_subtract(const jepa_latent_t* a, const jepa_latent_t* b,
 }
 
 int jepa_latent_scale(jepa_latent_t* latent, float scale) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_scale", 0.0f);
+
+
     NIMCP_CHECK_THROW(latent, NIMCP_ERROR_NULL_POINTER, "latent is NULL");
 
     for (uint32_t i = 0; i < latent->latent_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && latent->latent_dim > 256) {
+            jepa_latent_heartbeat("jepa_latent_loop",
+                             (float)(i + 1) / (float)latent->latent_dim);
+        }
+
         latent->embedding[i] *= scale;
     }
 
@@ -678,6 +872,10 @@ int jepa_latent_project(const jepa_latent_t* src,
                          const float* bias,
                          uint32_t target_dim,
                          jepa_latent_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_project", 0.0f);
+
+
     NIMCP_CHECK_THROW(src && projection && result, NIMCP_ERROR_NULL_POINTER, "src, projection, or result is NULL");
 
     if (result->latent_dim < target_dim) {
@@ -687,8 +885,20 @@ int jepa_latent_project(const jepa_latent_t* src,
     /* Matrix-vector multiplication: result = projection @ src + bias */
     /* projection is [target_dim x src_dim] in row-major order */
     for (uint32_t i = 0; i < target_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && target_dim > 256) {
+            jepa_latent_heartbeat("jepa_latent_loop",
+                             (float)(i + 1) / (float)target_dim);
+        }
+
         double sum = 0.0;
         for (uint32_t j = 0; j < src->latent_dim; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && src->latent_dim > 256) {
+                jepa_latent_heartbeat("jepa_latent_loop",
+                                 (float)(j + 1) / (float)src->latent_dim);
+            }
+
             sum += projection[i * src->latent_dim + j] * src->embedding[j];
         }
         if (bias) {
@@ -707,11 +917,21 @@ int jepa_latent_project(const jepa_latent_t* src,
 
 int jepa_latent_mean_pool(const jepa_latent_t** latents, uint32_t num_latents,
                            jepa_latent_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_mean_pool", 0.0f);
+
+
     NIMCP_CHECK_THROW(latents && result && num_latents > 0, NIMCP_ERROR_NULL_POINTER, "latents or result is NULL, or num_latents is 0");
 
     /* Verify all latents have same dimension */
     uint32_t dim = result->latent_dim;
     for (uint32_t n = 0; n < num_latents; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && num_latents > 256) {
+            jepa_latent_heartbeat("jepa_latent_loop",
+                             (float)(n + 1) / (float)num_latents);
+        }
+
         if (!latents[n] || latents[n]->latent_dim != dim) {
             return NIMCP_ERROR_INVALID_PARAM;
         }
@@ -721,13 +941,31 @@ int jepa_latent_mean_pool(const jepa_latent_t** latents, uint32_t num_latents,
     memset(result->embedding, 0, dim * sizeof(float));
 
     for (uint32_t n = 0; n < num_latents; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && num_latents > 256) {
+            jepa_latent_heartbeat("jepa_latent_loop",
+                             (float)(n + 1) / (float)num_latents);
+        }
+
         for (uint32_t i = 0; i < dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && dim > 256) {
+                jepa_latent_heartbeat("jepa_latent_loop",
+                                 (float)(i + 1) / (float)dim);
+            }
+
             result->embedding[i] += latents[n]->embedding[i];
         }
     }
 
     float inv_n = 1.0f / (float)num_latents;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            jepa_latent_heartbeat("jepa_latent_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         result->embedding[i] *= inv_n;
     }
 
@@ -737,6 +975,10 @@ int jepa_latent_mean_pool(const jepa_latent_t** latents, uint32_t num_latents,
 
 int jepa_latent_max_pool(const jepa_latent_t** latents, uint32_t num_latents,
                           jepa_latent_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_max_pool", 0.0f);
+
+
     NIMCP_CHECK_THROW(latents && result && num_latents > 0, NIMCP_ERROR_NULL_POINTER, "latents or result is NULL, or num_latents is 0");
 
     uint32_t dim = result->latent_dim;
@@ -753,6 +995,12 @@ int jepa_latent_max_pool(const jepa_latent_t** latents, uint32_t num_latents,
             return NIMCP_ERROR_INVALID_PARAM;
         }
         for (uint32_t i = 0; i < dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && dim > 256) {
+                jepa_latent_heartbeat("jepa_latent_loop",
+                                 (float)(i + 1) / (float)dim);
+            }
+
             if (latents[n]->embedding[i] > result->embedding[i]) {
                 result->embedding[i] = latents[n]->embedding[i];
             }
@@ -768,6 +1016,10 @@ int jepa_latent_max_pool(const jepa_latent_t** latents, uint32_t num_latents,
  * ============================================================================ */
 
 int jepa_latent_get_stats(jepa_latent_stats_t* stats) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     /* Thread-safe copy using atomic loads for integers, direct read for float */
@@ -782,6 +1034,10 @@ int jepa_latent_get_stats(jepa_latent_stats_t* stats) {
 
 int jepa_latent_reset_stats(void) {
     /* Thread-safe reset using atomic stores for integers, direct write for float */
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_reset_stats", 0.0f);
+
+
     __atomic_store_n(&g_latent_stats.latents_created, 0, __ATOMIC_RELAXED);
     __atomic_store_n(&g_latent_stats.latents_destroyed, 0, __ATOMIC_RELAXED);
     __atomic_store_n(&g_latent_stats.normalizations, 0, __ATOMIC_RELAXED);
@@ -834,9 +1090,19 @@ const char* jepa_similarity_to_string(jepa_similarity_t metric) {
 int jepa_latent_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_latent_heartbeat("jepa_latent_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "JEPA_Latent_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                jepa_latent_heartbeat("jepa_latent_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

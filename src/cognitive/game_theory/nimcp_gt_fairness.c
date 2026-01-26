@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_gt_fairness_health_agent = NULL;
  * @brief Set health agent for gt_fairness heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void gt_fairness_set_health_agent(nimcp_health_agent_t* agent) {
+void gt_fairness_set_health_agent(nimcp_health_agent_t* agent) {
     g_gt_fairness_health_agent = agent;
 }
 
@@ -80,6 +80,12 @@ static float compute_mean(const float* values, uint32_t n) {
 
     float sum = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         sum += values[i];
     }
     return sum / (float)n;
@@ -94,6 +100,12 @@ static float compute_bundle_value(const float* player_valuations,
                                    uint32_t num_items) {
     float value = 0.0f;
     for (uint32_t item = 0; item < num_items; item++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((item & 0xFF) == 0 && num_items > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(item + 1) / (float)num_items);
+        }
+
         if (assignment[item] == player) {
             value += player_valuations[item];
         }
@@ -107,6 +119,12 @@ static float compute_bundle_value(const float* player_valuations,
 static float compute_total_value(const float* player_valuations, uint32_t num_items) {
     float total = 0.0f;
     for (uint32_t item = 0; item < num_items; item++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((item & 0xFF) == 0 && num_items > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(item + 1) / (float)num_items);
+        }
+
         total += player_valuations[item];
     }
     return total;
@@ -126,11 +144,23 @@ static void mms_partition_helper(const float* valuations,
         // Compute minimum bundle value for this partition
         float bundle_values[NIMCP_GT_MAX_PLAYERS] = {0};
         for (uint32_t i = 0; i < num_items; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_items > 256) {
+                gt_fairness_heartbeat("gt_fairness_loop",
+                                 (float)(i + 1) / (float)num_items);
+            }
+
             bundle_values[current_assignment[i]] += valuations[i];
         }
 
         float min_val = FLT_MAX;
         for (uint32_t p = 0; p < num_players; p++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((p & 0xFF) == 0 && num_players > 256) {
+                gt_fairness_heartbeat("gt_fairness_loop",
+                                 (float)(p + 1) / (float)num_players);
+            }
+
             if (bundle_values[p] < min_val) {
                 min_val = bundle_values[p];
             }
@@ -145,6 +175,12 @@ static void mms_partition_helper(const float* valuations,
 
     // Try assigning current item to each player
     for (uint32_t p = 0; p < num_players; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && num_players > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(p + 1) / (float)num_players);
+        }
+
         current_assignment[item_index] = p;
         mms_partition_helper(valuations, num_items, num_players,
                             current_assignment, item_index + 1,
@@ -157,6 +193,10 @@ static void mms_partition_helper(const float* valuations,
 //=============================================================================
 
 nimcp_fairness_config_t nimcp_fairness_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_fairness_heartbeat("gt_fairness_fairness_default_con", 0.0f);
+
+
     nimcp_fairness_config_t config = {
         .atkinson_epsilon = NIMCP_FAIRNESS_DEFAULT_ATKINSON_EPSILON,
         .compute_all_measures = true,
@@ -178,10 +218,20 @@ float nimcp_fairness_jain_index(const float* values, uint32_t num_values) {
     }
 
     // Compute Jain's fairness index: J = (sum x_i)^2 / (n * sum x_i^2)
+    /* Phase 8: Heartbeat at operation start */
+    gt_fairness_heartbeat("gt_fairness_fairness_jain_index", 0.0f);
+
+
     float sum = 0.0f;
     float sum_sq = 0.0f;
 
     for (uint32_t i = 0; i < num_values; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_values > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(i + 1) / (float)num_values);
+        }
+
         sum += values[i];
         sum_sq += values[i] * values[i];
     }
@@ -201,6 +251,10 @@ float nimcp_fairness_gini_coefficient(const float* values, uint32_t num_values) 
     }
 
     // Single value is perfectly equal
+    /* Phase 8: Heartbeat at operation start */
+    gt_fairness_heartbeat("gt_fairness_fairness_gini_coeffi", 0.0f);
+
+
     if (num_values == 1) {
         return 0.0f;
     }
@@ -215,7 +269,19 @@ float nimcp_fairness_gini_coefficient(const float* values, uint32_t num_values) 
     // Simplified: G = sum|x_i - x_j| / (2 * n^2 * mean)
     float abs_diff_sum = 0.0f;
     for (uint32_t i = 0; i < num_values; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_values > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(i + 1) / (float)num_values);
+        }
+
         for (uint32_t j = 0; j < num_values; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && num_values > 256) {
+                gt_fairness_heartbeat("gt_fairness_loop",
+                                 (float)(j + 1) / (float)num_values);
+            }
+
             abs_diff_sum += fabsf(values[i] - values[j]);
         }
     }
@@ -231,6 +297,10 @@ float nimcp_fairness_theil_index(const float* values, uint32_t num_values) {
     }
 
     // Compute mean
+    /* Phase 8: Heartbeat at operation start */
+    gt_fairness_heartbeat("gt_fairness_fairness_theil_index", 0.0f);
+
+
     float mean = compute_mean(values, num_values);
     if (mean < 1e-10f) {
         return 0.0f;  // All zeros
@@ -239,6 +309,12 @@ float nimcp_fairness_theil_index(const float* values, uint32_t num_values) {
     // Theil = (1/n) * sum (x_i/mu) * ln(x_i/mu)
     float theil = 0.0f;
     for (uint32_t i = 0; i < num_values; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_values > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(i + 1) / (float)num_values);
+        }
+
         if (values[i] > 1e-10f) {
             float ratio = values[i] / mean;
             theil += ratio * logf(ratio);
@@ -257,6 +333,10 @@ float nimcp_fairness_atkinson_index(const float* values, uint32_t num_values,
     }
 
     // Guard: epsilon must be in [0, 1)
+    /* Phase 8: Heartbeat at operation start */
+    gt_fairness_heartbeat("gt_fairness_fairness_atkinson_in", 0.0f);
+
+
     if (epsilon < 0.0f || epsilon >= 1.0f) {
         return -1.0f;
     }
@@ -269,6 +349,12 @@ float nimcp_fairness_atkinson_index(const float* values, uint32_t num_values,
 
     // Check for zero values (problematic with epsilon > 0)
     for (uint32_t i = 0; i < num_values; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_values > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(i + 1) / (float)num_values);
+        }
+
         if (values[i] < 1e-10f && epsilon > 0.0f) {
             // With epsilon > 0 and zero income, Atkinson = 1
             return 1.0f;
@@ -280,6 +366,12 @@ float nimcp_fairness_atkinson_index(const float* values, uint32_t num_values,
     float sum_powered = 0.0f;
 
     for (uint32_t i = 0; i < num_values; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_values > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(i + 1) / (float)num_values);
+        }
+
         sum_powered += powf(values[i], exponent);
     }
 
@@ -296,6 +388,10 @@ float nimcp_fairness_coefficient_variation(const float* values, uint32_t num_val
     }
 
     // Compute mean
+    /* Phase 8: Heartbeat at operation start */
+    gt_fairness_heartbeat("gt_fairness_fairness_coefficient", 0.0f);
+
+
     float mean = compute_mean(values, num_values);
     if (mean < 1e-10f) {
         return 0.0f;  // All zeros
@@ -304,6 +400,12 @@ float nimcp_fairness_coefficient_variation(const float* values, uint32_t num_val
     // Compute variance
     float variance = 0.0f;
     for (uint32_t i = 0; i < num_values; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_values > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(i + 1) / (float)num_values);
+        }
+
         float diff = values[i] - mean;
         variance += diff * diff;
     }
@@ -327,16 +429,38 @@ bool nimcp_fairness_is_envy_free(const float* const* valuations,
     }
 
     // Compute bundle values for each player
+    /* Phase 8: Heartbeat at operation start */
+    gt_fairness_heartbeat("gt_fairness_fairness_is_envy_fre", 0.0f);
+
+
     float bundle_values[NIMCP_GT_MAX_PLAYERS];
     for (uint32_t p = 0; p < num_players; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && num_players > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(p + 1) / (float)num_players);
+        }
+
         bundle_values[p] = compute_bundle_value(valuations[p], assignment, p, num_items);
     }
 
     // Check if any player envies another
     for (uint32_t i = 0; i < num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_players > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(i + 1) / (float)num_players);
+        }
+
         float my_value = bundle_values[i];
 
         for (uint32_t j = 0; j < num_players; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && num_players > 256) {
+                gt_fairness_heartbeat("gt_fairness_loop",
+                                 (float)(j + 1) / (float)num_players);
+            }
+
             if (i == j) continue;
 
             // Compute value of j's bundle from i's perspective
@@ -361,10 +485,26 @@ bool nimcp_fairness_is_ef1(const float* const* valuations,
     }
 
     // For each pair (i, j), check if envy can be eliminated by removing one item from j
+    /* Phase 8: Heartbeat at operation start */
+    gt_fairness_heartbeat("gt_fairness_fairness_is_ef1", 0.0f);
+
+
     for (uint32_t i = 0; i < num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_players > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(i + 1) / (float)num_players);
+        }
+
         float my_value = compute_bundle_value(valuations[i], assignment, i, num_items);
 
         for (uint32_t j = 0; j < num_players; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && num_players > 256) {
+                gt_fairness_heartbeat("gt_fairness_loop",
+                                 (float)(j + 1) / (float)num_players);
+            }
+
             if (i == j) continue;
 
             float others_value = compute_bundle_value(valuations[i], assignment, j, num_items);
@@ -378,6 +518,12 @@ bool nimcp_fairness_is_ef1(const float* const* valuations,
             bool can_eliminate_envy = false;
 
             for (uint32_t item = 0; item < num_items; item++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((item & 0xFF) == 0 && num_items > 256) {
+                    gt_fairness_heartbeat("gt_fairness_loop",
+                                     (float)(item + 1) / (float)num_items);
+                }
+
                 if (assignment[item] != j) continue;
 
                 // Try removing this item from j's bundle
@@ -407,10 +553,26 @@ bool nimcp_fairness_is_efx(const float* const* valuations,
     }
 
     // For each pair (i, j), check if removing ANY positively-valued item eliminates envy
+    /* Phase 8: Heartbeat at operation start */
+    gt_fairness_heartbeat("gt_fairness_fairness_is_efx", 0.0f);
+
+
     for (uint32_t i = 0; i < num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_players > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(i + 1) / (float)num_players);
+        }
+
         float my_value = compute_bundle_value(valuations[i], assignment, i, num_items);
 
         for (uint32_t j = 0; j < num_players; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && num_players > 256) {
+                gt_fairness_heartbeat("gt_fairness_loop",
+                                 (float)(j + 1) / (float)num_players);
+            }
+
             if (i == j) continue;
 
             float others_value = compute_bundle_value(valuations[i], assignment, j, num_items);
@@ -422,6 +584,12 @@ bool nimcp_fairness_is_efx(const float* const* valuations,
 
             // Check that removing ANY positively-valued item eliminates envy
             for (uint32_t item = 0; item < num_items; item++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((item & 0xFF) == 0 && num_items > 256) {
+                    gt_fairness_heartbeat("gt_fairness_loop",
+                                     (float)(item + 1) / (float)num_items);
+                }
+
                 if (assignment[item] != j) continue;
                 if (valuations[i][item] <= 0.0f) continue;  // Only positive values
 
@@ -445,9 +613,19 @@ bool nimcp_fairness_is_proportional(const float* const* valuations,
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_fairness_heartbeat("gt_fairness_fairness_is_proporti", 0.0f);
+
+
     float proportion = 1.0f / (float)num_players;
 
     for (uint32_t p = 0; p < num_players; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && num_players > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(p + 1) / (float)num_players);
+        }
+
         float total_value = compute_total_value(valuations[p], num_items);
         float bundle_value = compute_bundle_value(valuations[p], assignment, p, num_items);
 
@@ -475,6 +653,10 @@ float nimcp_fairness_maximin_share(const float* const* valuations,
     }
 
     // Guard: limit items due to exponential complexity
+    /* Phase 8: Heartbeat at operation start */
+    gt_fairness_heartbeat("gt_fairness_fairness_maximin_sha", 0.0f);
+
+
     if (num_items > NIMCP_FAIRNESS_MAX_MMS_ITEMS) {
         return -1.0f;
     }
@@ -507,11 +689,21 @@ bool nimcp_fairness_has_mms_guarantee(const float* const* valuations,
     }
 
     // Guard: limit items due to exponential complexity
+    /* Phase 8: Heartbeat at operation start */
+    gt_fairness_heartbeat("gt_fairness_fairness_has_mms_gua", 0.0f);
+
+
     if (num_items > NIMCP_FAIRNESS_MAX_MMS_ITEMS) {
         return false;
     }
 
     for (uint32_t p = 0; p < num_players; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && num_players > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(p + 1) / (float)num_players);
+        }
+
         float mms = nimcp_fairness_maximin_share(valuations, p, num_players, num_items);
         if (mms < 0.0f) {
             return false;  // Error computing MMS
@@ -539,6 +731,10 @@ nimcp_error_t nimcp_fairness_compute_all(const float* values,
     if (!values || !result) {
         return NIMCP_GT_ERROR_FAIRNESS_NULL_POINTER;
     }
+    /* Phase 8: Heartbeat at operation start */
+    gt_fairness_heartbeat("gt_fairness_fairness_compute_all", 0.0f);
+
+
     if (num_values == 0) {
         return NIMCP_GT_ERROR_FAIRNESS_EMPTY_INPUT;
     }
@@ -565,6 +761,12 @@ nimcp_error_t nimcp_fairness_compute_all(const float* values,
     // Find worst-off player
     float min_value = FLT_MAX;
     for (uint32_t i = 0; i < num_values; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_values > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(i + 1) / (float)num_values);
+        }
+
         if (values[i] < min_value) {
             min_value = values[i];
             result->worst_off_player = (nimcp_player_id_t)i;
@@ -582,6 +784,10 @@ nimcp_error_t nimcp_fairness_analyze_allocation(const nimcp_allocation_t* alloca
     if (!allocation || !result) {
         return NIMCP_GT_ERROR_FAIRNESS_NULL_POINTER;
     }
+    /* Phase 8: Heartbeat at operation start */
+    gt_fairness_heartbeat("gt_fairness_fairness_analyze_all", 0.0f);
+
+
     if (allocation->num_players == 0 || allocation->num_items == 0) {
         return NIMCP_GT_ERROR_FAIRNESS_EMPTY_INPUT;
     }
@@ -611,6 +817,12 @@ nimcp_error_t nimcp_fairness_analyze_allocation(const nimcp_allocation_t* alloca
     }
 
     for (uint32_t p = 0; p < num_players; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && num_players > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(p + 1) / (float)num_players);
+        }
+
         bundle_values[p] = compute_bundle_value(allocation->valuations[p],
                                                  allocation->assignment,
                                                  p, num_items);
@@ -651,6 +863,12 @@ nimcp_error_t nimcp_fairness_analyze_allocation(const nimcp_allocation_t* alloca
         if (result->maximin_shares) {
             result->min_mms_ratio = FLT_MAX;
             for (uint32_t p = 0; p < num_players; p++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((p & 0xFF) == 0 && num_players > 256) {
+                    gt_fairness_heartbeat("gt_fairness_loop",
+                                     (float)(p + 1) / (float)num_players);
+                }
+
                 result->maximin_shares[p] = nimcp_fairness_maximin_share(
                     (const float* const*)allocation->valuations,
                     p, num_players, num_items);
@@ -671,7 +889,19 @@ nimcp_error_t nimcp_fairness_analyze_allocation(const nimcp_allocation_t* alloca
     result->total_envy = 0.0f;
 
     for (uint32_t i = 0; i < num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_players > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(i + 1) / (float)num_players);
+        }
+
         for (uint32_t j = 0; j < num_players; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && num_players > 256) {
+                gt_fairness_heartbeat("gt_fairness_loop",
+                                 (float)(j + 1) / (float)num_players);
+            }
+
             if (i == j) continue;
 
             float others_value = compute_bundle_value(allocation->valuations[i],
@@ -692,6 +922,12 @@ nimcp_error_t nimcp_fairness_analyze_allocation(const nimcp_allocation_t* alloca
     // Find worst-off player
     float min_value = FLT_MAX;
     for (uint32_t p = 0; p < num_players; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && num_players > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(p + 1) / (float)num_players);
+        }
+
         float total = compute_total_value(allocation->valuations[p], num_items);
         float share = (total > 0.0f) ? bundle_values[p] / total : 0.0f;
 
@@ -718,6 +954,10 @@ nimcp_error_t nimcp_fairness_find_envious_pairs(const float* const* valuations,
     if (!valuations || !assignment || !pairs || !num_found) {
         return NIMCP_GT_ERROR_FAIRNESS_NULL_POINTER;
     }
+    /* Phase 8: Heartbeat at operation start */
+    gt_fairness_heartbeat("gt_fairness_fairness_find_enviou", 0.0f);
+
+
     if (num_players == 0 || num_items == 0 || max_pairs == 0) {
         return NIMCP_GT_ERROR_FAIRNESS_INVALID_PARAM;
     }
@@ -727,6 +967,12 @@ nimcp_error_t nimcp_fairness_find_envious_pairs(const float* const* valuations,
     // Compute bundle values for each player
     float bundle_values[NIMCP_GT_MAX_PLAYERS];
     for (uint32_t p = 0; p < num_players; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && num_players > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(p + 1) / (float)num_players);
+        }
+
         bundle_values[p] = compute_bundle_value(valuations[p], assignment, p, num_items);
     }
 
@@ -747,6 +993,12 @@ nimcp_error_t nimcp_fairness_find_envious_pairs(const float* const* valuations,
 
                 // Find blocking item (for EF1)
                 for (uint32_t item = 0; item < num_items; item++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((item & 0xFF) == 0 && num_items > 256) {
+                        gt_fairness_heartbeat("gt_fairness_loop",
+                                         (float)(item + 1) / (float)num_items);
+                    }
+
                     if (assignment[item] != j) continue;
 
                     float reduced_value = others_value - valuations[i][item];
@@ -776,6 +1028,10 @@ nimcp_error_t nimcp_fairness_pareto_improve(const nimcp_allocation_t* allocation
         return NIMCP_GT_ERROR_FAIRNESS_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_fairness_heartbeat("gt_fairness_fairness_pareto_impr", 0.0f);
+
+
     uint32_t num_players = allocation->num_players;
     uint32_t num_items = allocation->num_items;
 
@@ -792,6 +1048,12 @@ nimcp_error_t nimcp_fairness_pareto_improve(const nimcp_allocation_t* allocation
     }
 
     for (uint32_t p = 0; p < num_players; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && num_players > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(p + 1) / (float)num_players);
+        }
+
         current_values[p] = compute_bundle_value(valuations[p], allocation->assignment,
                                                   p, num_items);
     }
@@ -846,6 +1108,10 @@ nimcp_error_t nimcp_fairness_reduce_envy(const nimcp_allocation_t* allocation,
         return NIMCP_GT_ERROR_FAIRNESS_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_fairness_heartbeat("gt_fairness_fairness_reduce_envy", 0.0f);
+
+
     uint32_t num_players = allocation->num_players;
     uint32_t num_items = allocation->num_items;
 
@@ -863,12 +1129,30 @@ nimcp_error_t nimcp_fairness_reduce_envy(const nimcp_allocation_t* allocation,
     }
 
     for (uint32_t p = 0; p < num_players; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && num_players > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(p + 1) / (float)num_players);
+        }
+
         bundle_values[p] = compute_bundle_value(valuations[p], allocation->assignment,
                                                  p, num_items);
     }
 
     for (uint32_t i = 0; i < num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_players > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(i + 1) / (float)num_players);
+        }
+
         for (uint32_t j = 0; j < num_players; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && num_players > 256) {
+                gt_fairness_heartbeat("gt_fairness_loop",
+                                 (float)(j + 1) / (float)num_players);
+            }
+
             if (i == j) continue;
             float others_value = compute_bundle_value(valuations[i], allocation->assignment,
                                                        j, num_items);
@@ -885,6 +1169,12 @@ nimcp_error_t nimcp_fairness_reduce_envy(const nimcp_allocation_t* allocation,
 
     // Try all possible swaps
     for (uint32_t item1 = 0; item1 < num_items; item1++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((item1 & 0xFF) == 0 && num_items > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(item1 + 1) / (float)num_items);
+        }
+
         for (uint32_t item2 = item1 + 1; item2 < num_items; item2++) {
             uint32_t owner1 = allocation->assignment[item1];
             uint32_t owner2 = allocation->assignment[item2];
@@ -904,8 +1194,20 @@ nimcp_error_t nimcp_fairness_reduce_envy(const nimcp_allocation_t* allocation,
             // Compute new total envy
             float new_total_envy = 0.0f;
             for (uint32_t i = 0; i < num_players; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && num_players > 256) {
+                    gt_fairness_heartbeat("gt_fairness_loop",
+                                     (float)(i + 1) / (float)num_players);
+                }
+
                 float my_value = compute_bundle_value(valuations[i], temp_assignment, i, num_items);
                 for (uint32_t j = 0; j < num_players; j++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((j & 0xFF) == 0 && num_players > 256) {
+                        gt_fairness_heartbeat("gt_fairness_loop",
+                                         (float)(j + 1) / (float)num_players);
+                    }
+
                     if (i == j) continue;
                     float others_value = compute_bundle_value(valuations[i], temp_assignment, j, num_items);
                     float envy = others_value - my_value;
@@ -948,6 +1250,10 @@ nimcp_error_t nimcp_fairness_reduce_envy(const nimcp_allocation_t* allocation,
 
 nimcp_allocation_t* nimcp_allocation_create(uint32_t num_players, uint32_t num_items) {
     // Guard: validate inputs
+    /* Phase 8: Heartbeat at operation start */
+    gt_fairness_heartbeat("gt_fairness_allocation_create", 0.0f);
+
+
     if (num_players == 0 || num_items == 0) {
         return NULL;
     }
@@ -981,10 +1287,22 @@ nimcp_allocation_t* nimcp_allocation_create(uint32_t num_players, uint32_t num_i
     }
 
     for (uint32_t p = 0; p < num_players; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && num_players > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(p + 1) / (float)num_players);
+        }
+
         alloc->valuations[p] = nimcp_calloc(num_items, sizeof(float));
         if (!alloc->valuations[p]) {
             // Cleanup on failure
             for (uint32_t q = 0; q < p; q++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((q & 0xFF) == 0 && p > 256) {
+                    gt_fairness_heartbeat("gt_fairness_loop",
+                                     (float)(q + 1) / (float)p);
+                }
+
                 nimcp_free(alloc->valuations[q]);
             }
             nimcp_free(alloc->valuations);
@@ -998,6 +1316,12 @@ nimcp_allocation_t* nimcp_allocation_create(uint32_t num_players, uint32_t num_i
     alloc->bundle_values = nimcp_calloc(num_players, sizeof(float));
     if (!alloc->bundle_values) {
         for (uint32_t p = 0; p < num_players; p++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((p & 0xFF) == 0 && num_players > 256) {
+                gt_fairness_heartbeat("gt_fairness_loop",
+                                 (float)(p + 1) / (float)num_players);
+            }
+
             nimcp_free(alloc->valuations[p]);
         }
         nimcp_free(alloc->valuations);
@@ -1014,12 +1338,22 @@ nimcp_allocation_t* nimcp_allocation_create(uint32_t num_players, uint32_t num_i
 void nimcp_allocation_destroy(nimcp_allocation_t* allocation) {
     if (!allocation) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_fairness_heartbeat("gt_fairness_allocation_destroy", 0.0f);
+
+
     if (allocation->bundle_values) {
         nimcp_free(allocation->bundle_values);
     }
 
     if (allocation->valuations) {
         for (uint32_t p = 0; p < allocation->num_players; p++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((p & 0xFF) == 0 && allocation->num_players > 256) {
+                gt_fairness_heartbeat("gt_fairness_loop",
+                                 (float)(p + 1) / (float)allocation->num_players);
+            }
+
             if (allocation->valuations[p]) {
                 nimcp_free(allocation->valuations[p]);
             }
@@ -1041,6 +1375,10 @@ nimcp_error_t nimcp_allocation_set_valuations(nimcp_allocation_t* allocation,
     if (!allocation || !valuations) {
         return NIMCP_GT_ERROR_FAIRNESS_NULL_POINTER;
     }
+    /* Phase 8: Heartbeat at operation start */
+    gt_fairness_heartbeat("gt_fairness_allocation_set_valua", 0.0f);
+
+
     if (player >= allocation->num_players) {
         return NIMCP_GT_ERROR_FAIRNESS_INVALID_PARAM;
     }
@@ -1059,6 +1397,10 @@ nimcp_error_t nimcp_allocation_assign_item(nimcp_allocation_t* allocation,
     if (!allocation) {
         return NIMCP_GT_ERROR_FAIRNESS_NULL_POINTER;
     }
+    /* Phase 8: Heartbeat at operation start */
+    gt_fairness_heartbeat("gt_fairness_allocation_assign_it", 0.0f);
+
+
     if (item >= allocation->num_items || player >= allocation->num_players) {
         return NIMCP_GT_ERROR_FAIRNESS_INVALID_PARAM;
     }
@@ -1075,7 +1417,17 @@ nimcp_error_t nimcp_allocation_compute_bundle_values(nimcp_allocation_t* allocat
         return NIMCP_GT_ERROR_FAIRNESS_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_fairness_heartbeat("gt_fairness_allocation_compute_b", 0.0f);
+
+
     for (uint32_t p = 0; p < allocation->num_players; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && allocation->num_players > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(p + 1) / (float)allocation->num_players);
+        }
+
         allocation->bundle_values[p] = compute_bundle_value(
             allocation->valuations[p],
             allocation->assignment,
@@ -1094,6 +1446,10 @@ nimcp_error_t nimcp_allocation_copy(const nimcp_allocation_t* src,
     if (!src || !dst) {
         return NIMCP_GT_ERROR_FAIRNESS_NULL_POINTER;
     }
+    /* Phase 8: Heartbeat at operation start */
+    gt_fairness_heartbeat("gt_fairness_allocation_copy", 0.0f);
+
+
     if (src->num_players != dst->num_players || src->num_items != dst->num_items) {
         return NIMCP_GT_ERROR_FAIRNESS_INVALID_PARAM;
     }
@@ -1103,6 +1459,12 @@ nimcp_error_t nimcp_allocation_copy(const nimcp_allocation_t* src,
 
     // Copy valuations
     for (uint32_t p = 0; p < src->num_players; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && src->num_players > 256) {
+            gt_fairness_heartbeat("gt_fairness_loop",
+                             (float)(p + 1) / (float)src->num_players);
+        }
+
         memcpy(dst->valuations[p], src->valuations[p], src->num_items * sizeof(float));
     }
 
@@ -1124,6 +1486,10 @@ nimcp_error_t nimcp_fairness_result_init(nimcp_fairness_result_t* result,
         return NIMCP_GT_ERROR_FAIRNESS_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_fairness_heartbeat("gt_fairness_fairness_result_init", 0.0f);
+
+
     memset(result, 0, sizeof(nimcp_fairness_result_t));
     result->worst_off_player = NIMCP_GT_INVALID_PLAYER;
     result->min_mms_ratio = 0.0f;
@@ -1140,6 +1506,10 @@ nimcp_error_t nimcp_fairness_result_init(nimcp_fairness_result_t* result,
 
 void nimcp_fairness_result_cleanup(nimcp_fairness_result_t* result) {
     if (!result) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_fairness_heartbeat("gt_fairness_fairness_result_clea", 0.0f);
+
 
     if (result->maximin_shares) {
         nimcp_free(result->maximin_shares);
@@ -1172,9 +1542,19 @@ const char* nimcp_allocation_property_name(nimcp_allocation_property_t property)
 int fairness_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_fairness_heartbeat("gt_fairness_fairness_query_self_", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Fairness_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                gt_fairness_heartbeat("gt_fairness_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG(LOG_MODULE, "Fairness self-knowledge: %s", self->observations[i]);
         }
     }

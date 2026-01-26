@@ -47,7 +47,7 @@ static nimcp_health_agent_t* g_working_memory_snn_bridge_health_agent = NULL;
  * @brief Set health agent for working_memory_snn_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void working_memory_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void working_memory_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_working_memory_snn_bridge_health_agent = agent;
 }
 
@@ -113,6 +113,10 @@ static inline float clamp_f(float v, float lo, float hi) {
 //=============================================================================
 
 wm_snn_config_t wm_snn_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_snn_bridge_heartbeat("working_memo_wm_snn_config_defaul", 0.0f);
+
+
     return (wm_snn_config_t) {
         .max_slots = 8,
         .neurons_per_slot = WM_SNN_NEURONS_PER_SLOT,
@@ -141,6 +145,10 @@ wm_snn_config_t wm_snn_config_default(void) {
 //=============================================================================
 
 wm_snn_bridge_t* wm_snn_create(const wm_snn_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_snn_bridge_heartbeat("working_memo_wm_snn_create", 0.0f);
+
+
     wm_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(wm_snn_bridge_t));
     if (!bridge) {
         NIMCP_LOG_ERROR(LOG_MODULE, "Failed to allocate bridge");
@@ -197,6 +205,12 @@ wm_snn_bridge_t* wm_snn_create(const wm_snn_config_t* config) {
     /* Create populations for each memory slot */
     char pop_name[64];
     for (uint32_t s = 0; s < bridge->config.max_slots; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && bridge->config.max_slots > 256) {
+            working_memory_snn_bridge_heartbeat("working_memo_loop",
+                             (float)(s + 1) / (float)bridge->config.max_slots);
+        }
+
         snprintf(pop_name, sizeof(pop_name), "wm_slot_%u", s);
         bridge->slot_pops[s] = snn_network_add_population(
             bridge->snn, bridge->config.neurons_per_slot,
@@ -215,6 +229,12 @@ wm_snn_bridge_t* wm_snn_create(const wm_snn_config_t* config) {
 
     /* Connect slot populations to hidden */
     for (uint32_t s = 0; s < bridge->config.max_slots; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && bridge->config.max_slots > 256) {
+            working_memory_snn_bridge_heartbeat("working_memo_loop",
+                             (float)(s + 1) / (float)bridge->config.max_slots);
+        }
+
         snn_network_connect_populations(bridge->snn,
             bridge->slot_pops[s], bridge->hidden_pop,
             SNN_TOPO_RANDOM, 0.3f, SYNAPSE_AMPA, 0.5f, 0.1f);
@@ -228,6 +248,12 @@ wm_snn_bridge_t* wm_snn_create(const wm_snn_config_t* config) {
     /* Recurrent connections for maintenance */
     if (bridge->config.enable_recurrence) {
         for (uint32_t s = 0; s < bridge->config.max_slots; s++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((s & 0xFF) == 0 && bridge->config.max_slots > 256) {
+                working_memory_snn_bridge_heartbeat("working_memo_loop",
+                                 (float)(s + 1) / (float)bridge->config.max_slots);
+            }
+
             snn_network_connect_populations(bridge->snn,
                 bridge->slot_pops[s], bridge->slot_pops[s],
                 SNN_TOPO_RANDOM, 0.5f, SYNAPSE_AMPA,
@@ -242,6 +268,12 @@ wm_snn_bridge_t* wm_snn_create(const wm_snn_config_t* config) {
             NEURON_GENERIC_LIF, "wm_inhibition");
 
         for (uint32_t s = 0; s < bridge->config.max_slots; s++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((s & 0xFF) == 0 && bridge->config.max_slots > 256) {
+                working_memory_snn_bridge_heartbeat("working_memo_loop",
+                                 (float)(s + 1) / (float)bridge->config.max_slots);
+            }
+
             /* Slot -> inhibition */
             snn_network_connect_populations(bridge->snn,
                 bridge->slot_pops[s], bridge->inhibition_pop,
@@ -249,6 +281,12 @@ wm_snn_bridge_t* wm_snn_create(const wm_snn_config_t* config) {
 
             /* Inhibition -> all other slots */
             for (uint32_t t = 0; t < bridge->config.max_slots; t++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((t & 0xFF) == 0 && bridge->config.max_slots > 256) {
+                    working_memory_snn_bridge_heartbeat("working_memo_loop",
+                                     (float)(t + 1) / (float)bridge->config.max_slots);
+                }
+
                 if (t != s) {
                     snn_network_connect_populations(bridge->snn,
                         bridge->inhibition_pop, bridge->slot_pops[t],
@@ -288,6 +326,10 @@ wm_snn_bridge_t* wm_snn_create(const wm_snn_config_t* config) {
 void wm_snn_destroy(wm_snn_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_snn_bridge_heartbeat("working_memo_wm_snn_destroy", 0.0f);
+
+
     if (bridge->snn && bridge->owns_snn) {
         snn_network_destroy(bridge->snn);
     }
@@ -311,6 +353,10 @@ int wm_snn_reset(wm_snn_bridge_t* bridge) {
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_snn_bridge_heartbeat("working_memo_wm_snn_reset", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -348,6 +394,10 @@ int wm_snn_encode_item(
 {
     if (!bridge || !features || slot >= bridge->config.max_slots) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_snn_bridge_heartbeat("working_memo_wm_snn_encode_item", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = WM_SNN_STATE_ENCODING;
@@ -359,6 +409,12 @@ int wm_snn_encode_item(
 
     /* Map features to neuron firing rates */
     for (uint32_t n = 0; n < neurons; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && neurons > 256) {
+            working_memory_snn_bridge_heartbeat("working_memo_loop",
+                             (float)(n + 1) / (float)neurons);
+        }
+
         float rate = 0.0f;
 
         /* Average features that map to this neuron */
@@ -418,12 +474,20 @@ int wm_snn_update_item(
     if (!bridge->slot_states[slot].occupied) return -1;
 
     /* Re-encode with existing salience */
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_snn_bridge_heartbeat("working_memo_wm_snn_update_item", 0.0f);
+
+
     return wm_snn_encode_item(bridge, slot, features, feature_count,
                               bridge->slot_states[slot].salience);
 }
 
 int wm_snn_clear_slot(wm_snn_bridge_t* bridge, uint32_t slot) {
     if (!bridge || slot >= bridge->config.max_slots) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_snn_bridge_heartbeat("working_memo_wm_snn_clear_slot", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -452,6 +516,10 @@ int wm_snn_simulate(wm_snn_bridge_t* bridge, float duration_ms) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_snn_bridge_heartbeat("working_memo_wm_snn_simulate", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = WM_SNN_STATE_SIMULATING;
@@ -465,6 +533,12 @@ int wm_snn_simulate(wm_snn_bridge_t* bridge, float duration_ms) {
 
         /* Update slot persistence */
         for (uint32_t s = 0; s < bridge->config.max_slots; s++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((s & 0xFF) == 0 && bridge->config.max_slots > 256) {
+                working_memory_snn_bridge_heartbeat("working_memo_loop",
+                                 (float)(s + 1) / (float)bridge->config.max_slots);
+            }
+
             if (bridge->slot_states[s].occupied) {
                 bridge->slot_states[s].persistence += duration_ms;
 
@@ -489,6 +563,10 @@ int wm_snn_step(wm_snn_bridge_t* bridge) {
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_snn_bridge_heartbeat("working_memo_wm_snn_step", 0.0f);
+
+
     return wm_snn_simulate(bridge, bridge->config.dt_ms);
 }
 
@@ -498,6 +576,10 @@ int wm_snn_forward(
     uint32_t input_count)
 {
     if (!bridge || !inputs) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_snn_bridge_heartbeat("working_memo_wm_snn_forward", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -536,6 +618,10 @@ int wm_snn_retrieve_item(
 {
     if (!bridge || !output || slot >= bridge->config.max_slots) return -1;
     if (!bridge->slot_states[slot].occupied) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_snn_bridge_heartbeat("working_memo_wm_snn_retrieve_item", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -577,12 +663,22 @@ int wm_snn_get_slot_activities(
 {
     if (!bridge || !activities) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_snn_bridge_heartbeat("working_memo_wm_snn_get_slot_acti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t n = (slot_count < bridge->config.max_slots) ?
                   slot_count : bridge->config.max_slots;
 
     for (uint32_t s = 0; s < n; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && n > 256) {
+            working_memory_snn_bridge_heartbeat("working_memo_loop",
+                             (float)(s + 1) / (float)n);
+        }
+
         activities[s] = bridge->slot_states[s].activity_level;
     }
 
@@ -602,12 +698,22 @@ int wm_snn_get_most_active_slot(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_snn_bridge_heartbeat("working_memo_wm_snn_get_most_acti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     int best_slot = -1;
     float best_activity = 0.0f;
 
     for (uint32_t s = 0; s < bridge->config.max_slots; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && bridge->config.max_slots > 256) {
+            working_memory_snn_bridge_heartbeat("working_memo_loop",
+                             (float)(s + 1) / (float)bridge->config.max_slots);
+        }
+
         if (bridge->slot_states[s].occupied &&
             bridge->slot_states[s].activity_level > best_activity) {
             best_activity = bridge->slot_states[s].activity_level;
@@ -634,6 +740,10 @@ int wm_snn_get_slot_state(
 {
     if (!bridge || !state || slot >= bridge->config.max_slots) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_snn_bridge_heartbeat("working_memo_wm_snn_get_slot_stat", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->slot_states[slot];
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -647,6 +757,10 @@ int wm_snn_get_state(
 {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_snn_bridge_heartbeat("working_memo_wm_snn_get_state", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
@@ -655,6 +769,12 @@ int wm_snn_get_state(
     state->mean_persistence = 0.0f;
 
     for (uint32_t s = 0; s < bridge->config.max_slots; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && bridge->config.max_slots > 256) {
+            working_memory_snn_bridge_heartbeat("working_memo_loop",
+                             (float)(s + 1) / (float)bridge->config.max_slots);
+        }
+
         if (bridge->slot_states[s].occupied) {
             state->active_slots++;
             state->total_activity += bridge->slot_states[s].activity_level;
@@ -675,6 +795,10 @@ int wm_snn_get_state(
 
 int wm_snn_get_stats(wm_snn_bridge_t* bridge, wm_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_snn_bridge_heartbeat("working_memo_wm_snn_get_stats", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -702,6 +826,10 @@ int wm_snn_reset_stats(wm_snn_bridge_t* bridge) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_snn_bridge_heartbeat("working_memo_wm_snn_reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(wm_snn_stats_t));
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -712,10 +840,20 @@ int wm_snn_reset_stats(wm_snn_bridge_t* bridge) {
 float wm_snn_get_capacity(wm_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_snn_bridge_heartbeat("working_memo_wm_snn_get_capacity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t active = 0;
     for (uint32_t s = 0; s < bridge->config.max_slots; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && bridge->config.max_slots > 256) {
+            working_memory_snn_bridge_heartbeat("working_memo_loop",
+                             (float)(s + 1) / (float)bridge->config.max_slots);
+        }
+
         if (bridge->slot_states[s].occupied) active++;
     }
 
@@ -728,10 +866,20 @@ float wm_snn_get_capacity(wm_snn_bridge_t* bridge) {
 float wm_snn_get_total_activity(wm_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_snn_bridge_heartbeat("working_memo_wm_snn_get_total_act", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float total = 0.0f;
     for (uint32_t s = 0; s < bridge->config.max_slots; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && bridge->config.max_slots > 256) {
+            working_memory_snn_bridge_heartbeat("working_memo_loop",
+                             (float)(s + 1) / (float)bridge->config.max_slots);
+        }
+
         total += bridge->slot_states[s].activity_level;
     }
 
@@ -756,6 +904,10 @@ int wm_snn_register_spike_callback(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_snn_bridge_heartbeat("working_memo_wm_snn_register_spik", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->spike_callback = callback;
     bridge->spike_user_data = user_data;
@@ -777,6 +929,10 @@ int wm_snn_register_encoding_callback(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_snn_bridge_heartbeat("working_memo_wm_snn_register_enco", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->encoding_callback = callback;
     bridge->encoding_user_data = user_data;
@@ -797,6 +953,10 @@ int wm_snn_register_retrieval_callback(
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_snn_bridge_heartbeat("working_memo_wm_snn_register_retr", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->retrieval_callback = callback;
@@ -820,6 +980,10 @@ int wm_snn_bio_async_connect(wm_snn_bridge_t* bridge) {
     }
     if (!bridge->config.enable_bio_async) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_snn_bridge_heartbeat("working_memo_wm_snn_bio_async_con", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = true;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -836,6 +1000,10 @@ int wm_snn_bio_async_disconnect(wm_snn_bridge_t* bridge) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_snn_bridge_heartbeat("working_memo_wm_snn_bio_async_dis", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -845,6 +1013,10 @@ int wm_snn_bio_async_disconnect(wm_snn_bridge_t* bridge) {
 
 bool wm_snn_is_bio_async_connected(wm_snn_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_snn_bridge_heartbeat("working_memo_wm_snn_is_bio_async_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;

@@ -85,7 +85,7 @@ static nimcp_health_agent_t* g_jepa_predictor_health_agent = NULL;
  * @brief Set health agent for jepa_predictor heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void jepa_predictor_set_health_agent(nimcp_health_agent_t* agent) {
+void jepa_predictor_set_health_agent(nimcp_health_agent_t* agent) {
     g_jepa_predictor_health_agent = agent;
 }
 
@@ -240,8 +240,20 @@ static void mlp_layer_forward(const jepa_mlp_layer_t* layer,
                                float* output) {
     /* output = activation(weights @ input + bias) */
     for (uint32_t i = 0; i < layer->out_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && layer->out_dim > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(i + 1) / (float)layer->out_dim);
+        }
+
         double sum = layer->bias[i];
         for (uint32_t j = 0; j < layer->in_dim; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && layer->in_dim > 256) {
+                jepa_predictor_heartbeat("jepa_predict_loop",
+                                 (float)(j + 1) / (float)layer->in_dim);
+            }
+
             sum += layer->weights[i * layer->in_dim + j] * input[j];
         }
         pre_act[i] = (float)sum;
@@ -254,6 +266,10 @@ static void mlp_layer_forward(const jepa_mlp_layer_t* layer,
  * ============================================================================ */
 
 int jepa_predictor_default_config(jepa_predictor_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     config->type = JEPA_PREDICTOR_MLP;
@@ -280,6 +296,10 @@ int jepa_predictor_default_config(jepa_predictor_config_t* config) {
  * ============================================================================ */
 
 jepa_predictor_t* jepa_predictor_create(const jepa_predictor_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_create", 0.0f);
+
+
     jepa_predictor_config_t default_config;
 
     if (!config) {
@@ -347,6 +367,12 @@ jepa_predictor_t* jepa_predictor_create(const jepa_predictor_config_t* config) {
 
         /* Create layers */
         for (uint32_t i = 0; i < actual_layers; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && actual_layers > 256) {
+                jepa_predictor_heartbeat("jepa_predict_loop",
+                                 (float)(i + 1) / (float)actual_layers);
+            }
+
             uint32_t in_d, out_d;
             jepa_activation_t act;
 
@@ -375,6 +401,12 @@ jepa_predictor_t* jepa_predictor_create(const jepa_predictor_config_t* config) {
             if (mlp_layer_create(&mlp->layers[i], in_d, out_d, act) != NIMCP_SUCCESS) {
                 /* Cleanup on failure */
                 for (uint32_t j = 0; j < i; j++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((j & 0xFF) == 0 && i > 256) {
+                        jepa_predictor_heartbeat("jepa_predict_loop",
+                                         (float)(j + 1) / (float)i);
+                    }
+
                     mlp_layer_destroy(&mlp->layers[j]);
                 }
                 nimcp_free(mlp->layers);
@@ -434,10 +466,20 @@ void jepa_predictor_destroy(jepa_predictor_t* predictor) {
     if (!predictor) return;
 
     /* Cleanup MLP */
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_destroy", 0.0f);
+
+
     if (predictor->type == JEPA_PREDICTOR_MLP || predictor->type == JEPA_PREDICTOR_LINEAR) {
         jepa_mlp_t* mlp = &predictor->network.mlp;
         if (mlp->layers) {
             for (uint32_t i = 0; i < mlp->num_layers; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && mlp->num_layers > 256) {
+                    jepa_predictor_heartbeat("jepa_predict_loop",
+                                     (float)(i + 1) / (float)mlp->num_layers);
+                }
+
                 mlp_layer_destroy(&mlp->layers[i]);
                 if (mlp->activations && mlp->activations[i]) {
                     nimcp_free(mlp->activations[i]);
@@ -463,12 +505,22 @@ void jepa_predictor_destroy(jepa_predictor_t* predictor) {
 }
 
 int jepa_predictor_reset(jepa_predictor_t* predictor) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_reset", 0.0f);
+
+
     NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
 
     /* Reinitialize weights */
     if (predictor->type == JEPA_PREDICTOR_MLP || predictor->type == JEPA_PREDICTOR_LINEAR) {
         jepa_mlp_t* mlp = &predictor->network.mlp;
         for (uint32_t i = 0; i < mlp->num_layers; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && mlp->num_layers > 256) {
+                jepa_predictor_heartbeat("jepa_predict_loop",
+                                 (float)(i + 1) / (float)mlp->num_layers);
+            }
+
             jepa_mlp_layer_t* layer = &mlp->layers[i];
             xavier_init(layer->weights, layer->in_dim, layer->out_dim);
             memset(layer->bias, 0, layer->out_dim * sizeof(float));
@@ -492,6 +544,10 @@ int jepa_predictor_reset(jepa_predictor_t* predictor) {
 int jepa_predictor_predict(jepa_predictor_t* predictor,
                             const jepa_latent_t* context,
                             jepa_latent_t* prediction) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_predict", 0.0f);
+
+
     NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
     NIMCP_CHECK_THROW(context, NIMCP_ERROR_NULL_POINTER, "context is NULL");
     NIMCP_CHECK_THROW(prediction, NIMCP_ERROR_NULL_POINTER, "prediction is NULL");
@@ -512,6 +568,12 @@ int jepa_predictor_predict(jepa_predictor_t* predictor,
                predictor->config.input_dim * sizeof(float));
 
         for (uint32_t i = 0; i < mlp->num_layers; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && mlp->num_layers > 256) {
+                jepa_predictor_heartbeat("jepa_predict_loop",
+                                 (float)(i + 1) / (float)mlp->num_layers);
+            }
+
             float* output = (i == mlp->num_layers - 1) ?
                            prediction->embedding : mlp->activations[i];
 
@@ -536,6 +598,10 @@ int jepa_predictor_predict_masked(jepa_predictor_t* predictor,
                                    const float* mask,
                                    jepa_latent_t* prediction) {
     /* For now, just do regular prediction - mask is used in loss computation */
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_predict_masked", 0.0f);
+
+
     return jepa_predictor_predict(predictor, context, prediction);
 }
 
@@ -547,6 +613,10 @@ int jepa_predictor_compute_error(jepa_predictor_t* predictor,
                                   const jepa_latent_t* prediction,
                                   const jepa_latent_t* target,
                                   jepa_prediction_error_t* error) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_compute_error", 0.0f);
+
+
     NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
     NIMCP_CHECK_THROW(prediction, NIMCP_ERROR_NULL_POINTER, "prediction is NULL");
     NIMCP_CHECK_THROW(target, NIMCP_ERROR_NULL_POINTER, "target is NULL");
@@ -559,6 +629,12 @@ int jepa_predictor_compute_error(jepa_predictor_t* predictor,
     /* Compute raw error */
     double sum_sq = 0.0;
     for (uint32_t i = 0; i < prediction->latent_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && prediction->latent_dim > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(i + 1) / (float)prediction->latent_dim);
+        }
+
         error->error[i] = prediction->embedding[i] - target->embedding[i];
         sum_sq += error->error[i] * error->error[i];
     }
@@ -567,6 +643,12 @@ int jepa_predictor_compute_error(jepa_predictor_t* predictor,
     if (predictor->config.enable_fep && error->weighted_error) {
         float prec = predictor->prediction_precision;
         for (uint32_t i = 0; i < prediction->latent_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && prediction->latent_dim > 256) {
+                jepa_predictor_heartbeat("jepa_predict_loop",
+                                 (float)(i + 1) / (float)prediction->latent_dim);
+            }
+
             error->weighted_error[i] = prec * error->error[i];
         }
         error->precision = prec;
@@ -588,6 +670,12 @@ int jepa_predictor_compute_error(jepa_predictor_t* predictor,
             /* Huber loss with delta = 1.0 */
             double loss = 0.0;
             for (uint32_t i = 0; i < prediction->latent_dim; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && prediction->latent_dim > 256) {
+                    jepa_predictor_heartbeat("jepa_predict_loop",
+                                     (float)(i + 1) / (float)prediction->latent_dim);
+                }
+
                 float abs_err = fabsf(error->error[i]);
                 if (abs_err < 1.0f) {
                     loss += 0.5f * error->error[i] * error->error[i];
@@ -632,8 +720,18 @@ float jepa_predictor_compute_loss(jepa_predictor_t* predictor,
     }
 
     /* Simple MSE for direct computation */
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_compute_loss", 0.0f);
+
+
     double sum_sq = 0.0;
     for (uint32_t i = 0; i < prediction->latent_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && prediction->latent_dim > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(i + 1) / (float)prediction->latent_dim);
+        }
+
         float diff = prediction->embedding[i] - target->embedding[i];
         sum_sq += diff * diff;
     }
@@ -646,6 +744,10 @@ float jepa_predictor_compute_loss(jepa_predictor_t* predictor,
  * ============================================================================ */
 
 int jepa_predictor_set_training(jepa_predictor_t* predictor, bool training) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_set_training", 0.0f);
+
+
     NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
     predictor->training_mode = training;
     return NIMCP_SUCCESS;
@@ -653,6 +755,10 @@ int jepa_predictor_set_training(jepa_predictor_t* predictor, bool training) {
 
 int jepa_predictor_backward(jepa_predictor_t* predictor,
                              const jepa_prediction_error_t* error) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_backward", 0.0f);
+
+
     NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
     NIMCP_CHECK_THROW(error, NIMCP_ERROR_NULL_POINTER, "error is NULL");
     NIMCP_CHECK_THROW(predictor->type == JEPA_PREDICTOR_MLP || predictor->type == JEPA_PREDICTOR_LINEAR,
@@ -667,6 +773,12 @@ int jepa_predictor_backward(jepa_predictor_t* predictor,
     /* For MSE: dL/dout = 2 * (pred - target) / dim = 2 * error / dim */
     float scale = 2.0f / error->dim;
     for (uint32_t i = 0; i < error->dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && error->dim > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(i + 1) / (float)error->dim);
+        }
+
         grad_out[i] = scale * error->error[i];
     }
 
@@ -687,6 +799,12 @@ int jepa_predictor_backward(jepa_predictor_t* predictor,
 
         /* Apply activation gradient */
         for (uint32_t i = 0; i < layer->out_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && layer->out_dim > 256) {
+                jepa_predictor_heartbeat("jepa_predict_loop",
+                                 (float)(i + 1) / (float)layer->out_dim);
+            }
+
             float act_grad = apply_activation_derivative(mlp->pre_activations[l][i],
                                                           layer->activation);
             grad_curr[i] *= act_grad;
@@ -694,12 +812,30 @@ int jepa_predictor_backward(jepa_predictor_t* predictor,
 
         /* Accumulate bias gradient */
         for (uint32_t i = 0; i < layer->out_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && layer->out_dim > 256) {
+                jepa_predictor_heartbeat("jepa_predict_loop",
+                                 (float)(i + 1) / (float)layer->out_dim);
+            }
+
             layer->grad_bias[i] += grad_curr[i];
         }
 
         /* Accumulate weight gradient: grad_W[i,j] = grad_out[i] * input[j] */
         for (uint32_t i = 0; i < layer->out_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && layer->out_dim > 256) {
+                jepa_predictor_heartbeat("jepa_predict_loop",
+                                 (float)(i + 1) / (float)layer->out_dim);
+            }
+
             for (uint32_t j = 0; j < layer->in_dim; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && layer->in_dim > 256) {
+                    jepa_predictor_heartbeat("jepa_predict_loop",
+                                     (float)(j + 1) / (float)layer->in_dim);
+                }
+
                 float input_val = layer_input ? layer_input[j] : 0.0f;
                 layer->grad_weights[i * layer->in_dim + j] += grad_curr[i] * input_val;
             }
@@ -716,7 +852,19 @@ int jepa_predictor_backward(jepa_predictor_t* predictor,
 
             /* grad_input[j] = sum_i(grad_out[i] * W[i,j]) */
             for (uint32_t j = 0; j < layer->in_dim; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && layer->in_dim > 256) {
+                    jepa_predictor_heartbeat("jepa_predict_loop",
+                                     (float)(j + 1) / (float)layer->in_dim);
+                }
+
                 for (uint32_t i = 0; i < layer->out_dim; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && layer->out_dim > 256) {
+                        jepa_predictor_heartbeat("jepa_predict_loop",
+                                         (float)(i + 1) / (float)layer->out_dim);
+                    }
+
                     grad_next[j] += grad_curr[i] * layer->weights[i * layer->in_dim + j];
                 }
             }
@@ -737,6 +885,10 @@ int jepa_predictor_backward(jepa_predictor_t* predictor,
 }
 
 int jepa_predictor_update_weights(jepa_predictor_t* predictor, float learning_rate) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_update_weights", 0.0f);
+
+
     NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
 
     if (learning_rate <= 0.0f) {
@@ -751,6 +903,12 @@ int jepa_predictor_update_weights(jepa_predictor_t* predictor, float learning_ra
     float wd = predictor->config.weight_decay;
 
     for (uint32_t l = 0; l < mlp->num_layers; l++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((l & 0xFF) == 0 && mlp->num_layers > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(l + 1) / (float)mlp->num_layers);
+        }
+
         jepa_mlp_layer_t* layer = &mlp->layers[l];
 
         /* Update weights with gradient descent and weight decay */
@@ -766,6 +924,12 @@ int jepa_predictor_update_weights(jepa_predictor_t* predictor, float learning_ra
 
         /* Update biases */
         for (uint32_t i = 0; i < layer->out_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && layer->out_dim > 256) {
+                jepa_predictor_heartbeat("jepa_predict_loop",
+                                 (float)(i + 1) / (float)layer->out_dim);
+            }
+
             float grad = layer->grad_bias[i];
             if (grad > JEPA_PREDICTOR_GRAD_CLIP) grad = JEPA_PREDICTOR_GRAD_CLIP;
             if (grad < -JEPA_PREDICTOR_GRAD_CLIP) grad = -JEPA_PREDICTOR_GRAD_CLIP;
@@ -787,6 +951,10 @@ int jepa_predictor_train_step(jepa_predictor_t* predictor,
                                const jepa_latent_t* context,
                                const jepa_latent_t* target,
                                float* loss) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_train_step", 0.0f);
+
+
     NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
     NIMCP_CHECK_THROW(context, NIMCP_ERROR_NULL_POINTER, "context is NULL");
     NIMCP_CHECK_THROW(target, NIMCP_ERROR_NULL_POINTER, "target is NULL");
@@ -840,6 +1008,10 @@ int jepa_predictor_train_step(jepa_predictor_t* predictor,
 
 int jepa_predictor_update_precision(jepa_predictor_t* predictor,
                                      const jepa_prediction_error_t* error) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_update_precision", 0.0f);
+
+
     NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
     NIMCP_CHECK_THROW(error, NIMCP_ERROR_NULL_POINTER, "error is NULL");
 
@@ -868,6 +1040,10 @@ int jepa_predictor_update_precision(jepa_predictor_t* predictor,
 int jepa_predictor_to_fep_error(jepa_predictor_t* predictor,
                                  const jepa_prediction_error_t* internal_error,
                                  fep_prediction_error_t* fep_error) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_to_fep_error", 0.0f);
+
+
     NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
     NIMCP_CHECK_THROW(internal_error, NIMCP_ERROR_NULL_POINTER, "internal_error is NULL");
     NIMCP_CHECK_THROW(fep_error, NIMCP_ERROR_NULL_POINTER, "fep_error is NULL");
@@ -881,6 +1057,12 @@ int jepa_predictor_to_fep_error(jepa_predictor_t* predictor,
     if (fep_error->weighted_error && fep_error->precision) {
         float prec = predictor->prediction_precision;
         for (uint32_t i = 0; i < internal_error->dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && internal_error->dim > 256) {
+                jepa_predictor_heartbeat("jepa_predict_loop",
+                                 (float)(i + 1) / (float)internal_error->dim);
+            }
+
             fep_error->precision[i] = prec;
             fep_error->weighted_error[i] = prec * internal_error->error[i];
         }
@@ -890,6 +1072,12 @@ int jepa_predictor_to_fep_error(jepa_predictor_t* predictor,
     double sum_sq = 0.0;
     double weighted_sum_sq = 0.0;
     for (uint32_t i = 0; i < internal_error->dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && internal_error->dim > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(i + 1) / (float)internal_error->dim);
+        }
+
         sum_sq += internal_error->error[i] * internal_error->error[i];
         if (fep_error->weighted_error) {
             weighted_sum_sq += fep_error->weighted_error[i] * fep_error->weighted_error[i];
@@ -908,6 +1096,10 @@ int jepa_predictor_to_fep_error(jepa_predictor_t* predictor,
 uint32_t jepa_predictor_num_params(const jepa_predictor_t* predictor) {
     if (!predictor) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_num_params", 0.0f);
+
+
     if (predictor->type != JEPA_PREDICTOR_MLP && predictor->type != JEPA_PREDICTOR_LINEAR) {
         return 0;
     }
@@ -916,6 +1108,12 @@ uint32_t jepa_predictor_num_params(const jepa_predictor_t* predictor) {
     const jepa_mlp_t* mlp = &predictor->network.mlp;
 
     for (uint32_t i = 0; i < mlp->num_layers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mlp->num_layers > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(i + 1) / (float)mlp->num_layers);
+        }
+
         const jepa_mlp_layer_t* layer = &mlp->layers[i];
         total += layer->in_dim * layer->out_dim;  /* Weights */
         total += layer->out_dim;                   /* Biases */
@@ -928,6 +1126,10 @@ int jepa_predictor_get_weights(const jepa_predictor_t* predictor,
                                 uint32_t layer_idx,
                                 float** weights,
                                 uint32_t dims[2]) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_get_weights", 0.0f);
+
+
     NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
     NIMCP_CHECK_THROW(weights, NIMCP_ERROR_NULL_POINTER, "weights is NULL");
     NIMCP_CHECK_THROW(dims, NIMCP_ERROR_NULL_POINTER, "dims is NULL");
@@ -951,6 +1153,10 @@ int jepa_predictor_set_weights(jepa_predictor_t* predictor,
                                 const float* weights,
                                 uint32_t in_dim,
                                 uint32_t out_dim) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_set_weights", 0.0f);
+
+
     NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
     NIMCP_CHECK_THROW(weights, NIMCP_ERROR_NULL_POINTER, "weights is NULL");
     NIMCP_CHECK_THROW(predictor->type == JEPA_PREDICTOR_MLP || predictor->type == JEPA_PREDICTOR_LINEAR,
@@ -974,6 +1180,10 @@ int jepa_predictor_set_weights(jepa_predictor_t* predictor,
 
 int jepa_predictor_get_stats(const jepa_predictor_t* predictor,
                               jepa_predictor_stats_t* stats) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
     NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
     *stats = predictor->stats;
@@ -981,6 +1191,10 @@ int jepa_predictor_get_stats(const jepa_predictor_t* predictor,
 }
 
 int jepa_predictor_reset_stats(jepa_predictor_t* predictor) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_reset_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
     memset(&predictor->stats, 0, sizeof(jepa_predictor_stats_t));
     predictor->stats.min_loss = FLT_MAX;
@@ -999,6 +1213,10 @@ BRIDGE_DEFINE_BIO_ASYNC_FUNCS(jepa_predictor)
 
 jepa_prediction_error_t* jepa_prediction_error_create(uint32_t dim) {
     if (dim == 0) return NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_jepa_prediction_erro", 0.0f);
+
 
     jepa_prediction_error_t* error = nimcp_malloc(sizeof(jepa_prediction_error_t));
     if (!error) {
@@ -1030,6 +1248,10 @@ jepa_prediction_error_t* jepa_prediction_error_create(uint32_t dim) {
 
 void jepa_prediction_error_destroy(jepa_prediction_error_t* error) {
     if (!error) return;
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_jepa_prediction_erro", 0.0f);
+
+
     nimcp_free(error->error);
     nimcp_free(error->weighted_error);
     nimcp_free(error);
@@ -1095,6 +1317,10 @@ int jepa_predictor_predict_with_uncertainty_mc(
     float* uncertainty,
     uint32_t num_samples
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_predict_with_uncerta", 0.0f);
+
+
     NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
     NIMCP_CHECK_THROW(context, NIMCP_ERROR_NULL_POINTER, "context is NULL");
     NIMCP_CHECK_THROW(prediction, NIMCP_ERROR_NULL_POINTER, "prediction is NULL");
@@ -1126,6 +1352,12 @@ int jepa_predictor_predict_with_uncertainty_mc(
 
     /* Collect samples with dropout noise */
     for (uint32_t s = 0; s < num_samples; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && num_samples > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(s + 1) / (float)num_samples);
+        }
+
         /* Forward pass */
         if (jepa_predictor_predict(predictor, context, temp) != NIMCP_SUCCESS) {
             continue;
@@ -1134,6 +1366,12 @@ int jepa_predictor_predict_with_uncertainty_mc(
         /* Add small noise for exploration */
         float noise_scale = 0.01f;
         for (uint32_t i = 0; i < dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && dim > 256) {
+                jepa_predictor_heartbeat("jepa_predict_loop",
+                                 (float)(i + 1) / (float)dim);
+            }
+
             float noise = mc_random_normal(&g_jepa_pred_mc_seed, 0.0f, noise_scale);
             temp->embedding[i] += noise;
             mean[i] += temp->embedding[i];
@@ -1142,6 +1380,12 @@ int jepa_predictor_predict_with_uncertainty_mc(
 
     /* Compute mean */
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         mean[i] /= (float)num_samples;
         prediction->embedding[i] = mean[i];
     }
@@ -1151,6 +1395,12 @@ int jepa_predictor_predict_with_uncertainty_mc(
     float precision = predictor->prediction_precision;
     float base_std = 1.0f / sqrtf(precision + 1e-6f);
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         uncertainty[i] = base_std * (1.0f + 0.1f * fabsf(mean[i]));
     }
 
@@ -1175,6 +1425,10 @@ int jepa_predictor_predict_with_uncertainty_mc(
 void jepa_predictor_apply_dropout_mc(float* activations, uint32_t size, float dropout_rate) {
     if (!activations || size == 0 || dropout_rate <= 0.0f) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_apply_dropout_mc", 0.0f);
+
+
     float scale = 1.0f / (1.0f - dropout_rate);  /* Inverted dropout scaling */
 
 #ifdef NIMCP_ENABLE_CUDA
@@ -1189,6 +1443,12 @@ void jepa_predictor_apply_dropout_mc(float* activations, uint32_t size, float dr
             if (h_samples) {
                 cudaMemcpy(h_samples, samples->data, size * sizeof(float), cudaMemcpyDeviceToHost);
                 for (uint32_t i = 0; i < size; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && size > 256) {
+                        jepa_predictor_heartbeat("jepa_predict_loop",
+                                         (float)(i + 1) / (float)size);
+                    }
+
                     if (h_samples[i] < dropout_rate) {
                         activations[i] = 0.0f;
                     } else {
@@ -1210,6 +1470,12 @@ void jepa_predictor_apply_dropout_mc(float* activations, uint32_t size, float dr
     }
 
     for (uint32_t i = 0; i < size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && size > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(i + 1) / (float)size);
+        }
+
         if (mc_random_uniform(&g_jepa_pred_mc_seed) < dropout_rate) {
             activations[i] = 0.0f;
         } else {
@@ -1237,6 +1503,10 @@ float jepa_predictor_estimate_confidence_mc(
 ) {
     if (!predictor || !context || num_samples == 0) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_estimate_confidence_", 0.0f);
+
+
     if (g_jepa_pred_mc_seed == 0) {
         g_jepa_pred_mc_seed = mc_seed_from_time();
     }
@@ -1256,12 +1526,24 @@ float jepa_predictor_estimate_confidence_mc(
 
     /* Welford's online algorithm for variance */
     for (uint32_t s = 0; s < num_samples; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && num_samples > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(s + 1) / (float)num_samples);
+        }
+
         if (jepa_predictor_predict(predictor, context, temp) != NIMCP_SUCCESS) {
             continue;
         }
 
         /* Add exploration noise */
         for (uint32_t i = 0; i < dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && dim > 256) {
+                jepa_predictor_heartbeat("jepa_predict_loop",
+                                 (float)(i + 1) / (float)dim);
+            }
+
             float val = temp->embedding[i] +
                         mc_random_normal(&g_jepa_pred_mc_seed, 0.0f, 0.01f);
             float delta = val - mean[i];
@@ -1274,6 +1556,12 @@ float jepa_predictor_estimate_confidence_mc(
     /* Compute average variance */
     float avg_variance = 0.0f;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         avg_variance += m2[i] / (num_samples - 1 + 1e-6f);
     }
     avg_variance /= dim;
@@ -1307,11 +1595,21 @@ uint32_t* jepa_predictor_get_mc_seed(void) {
 int jepa_predictor_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "JEPA_Predictor");
     if (self) {
         NIMCP_LOGGING_INFO(LOG_MODULE " Self-knowledge entity: %s (type: %s)",
                           self->name, self->entity_type);
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                jepa_predictor_heartbeat("jepa_predict_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG(LOG_MODULE " Observation[%u]: %s",
                                i, self->observations[i]);
         }
@@ -1340,6 +1638,10 @@ int jepa_predictor_query_self_knowledge(kg_reader_t* kg) {
  * @brief Initialize default QMC configuration
  */
 int jepa_qmc_config_init(jepa_qmc_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_jepa_qmc_config_init", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     config->num_samples = QMC_DEFAULT_AMPLITUDE_SAMPLES;
@@ -1394,6 +1696,12 @@ static float jepa_qmc_energy_fn(const float* state, uint32_t dim, void* user_dat
     }
 
     for (uint32_t i = 0; i < ctx->num_samples; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->num_samples > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(i + 1) / (float)ctx->num_samples);
+        }
+
         if (jepa_predictor_predict(ctx->predictor, ctx->contexts[i], pred) == NIMCP_SUCCESS) {
             total_loss += jepa_predictor_compute_loss(ctx->predictor, pred, ctx->targets[i]);
         }
@@ -1418,6 +1726,10 @@ int jepa_predictor_qmc_amplitude_estimate(
     float* amplitude,
     float* variance
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_qmc_amplitude_estima", 0.0f);
+
+
     NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
     NIMCP_CHECK_THROW(context, NIMCP_ERROR_NULL_POINTER, "context is NULL");
     NIMCP_CHECK_THROW(amplitude, NIMCP_ERROR_NULL_POINTER, "amplitude is NULL");
@@ -1447,6 +1759,12 @@ int jepa_predictor_qmc_amplitude_estimate(
 
     /* Collect amplitude samples */
     for (uint32_t s = 0; s < config->num_samples; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && config->num_samples > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(s + 1) / (float)config->num_samples);
+        }
+
         if (jepa_predictor_predict(predictor, context, pred) == NIMCP_SUCCESS) {
             /* Add exploration noise for sampling */
             float noise = mc_random_normal(&seed, 0.0f, 0.01f);
@@ -1475,6 +1793,12 @@ int jepa_predictor_qmc_amplitude_estimate(
         /* Fallback: compute directly */
         double sum = 0.0, sum_sq = 0.0;
         for (uint32_t i = 0; i < config->num_samples; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && config->num_samples > 256) {
+                jepa_predictor_heartbeat("jepa_predict_loop",
+                                 (float)(i + 1) / (float)config->num_samples);
+            }
+
             sum += amplitudes[i];
             sum_sq += amplitudes[i] * amplitudes[i];
         }
@@ -1499,6 +1823,10 @@ int jepa_predictor_qmc_adaptive_anneal(
     const jepa_qmc_config_t* config,
     jepa_qmc_stats_t* stats
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_qmc_adaptive_anneal", 0.0f);
+
+
     NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
     NIMCP_CHECK_THROW(contexts, NIMCP_ERROR_NULL_POINTER, "contexts is NULL");
     NIMCP_CHECK_THROW(targets, NIMCP_ERROR_NULL_POINTER, "targets is NULL");
@@ -1522,6 +1850,12 @@ int jepa_predictor_qmc_adaptive_anneal(
 
     /* Anneal each layer */
     for (uint32_t l = 0; l < mlp->num_layers; l++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((l & 0xFF) == 0 && mlp->num_layers > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(l + 1) / (float)mlp->num_layers);
+        }
+
         jepa_mlp_layer_t* layer = &mlp->layers[l];
         uint32_t dim = layer->in_dim * layer->out_dim;
 
@@ -1596,6 +1930,10 @@ int jepa_predictor_qmc_entropy(
     float* entropy,
     float* std_error
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_qmc_entropy", 0.0f);
+
+
     NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
     NIMCP_CHECK_THROW(context, NIMCP_ERROR_NULL_POINTER, "context is NULL");
     NIMCP_CHECK_THROW(entropy, NIMCP_ERROR_NULL_POINTER, "entropy is NULL");
@@ -1628,15 +1966,33 @@ int jepa_predictor_qmc_entropy(
     /* Apply softmax to get probability distribution */
     float max_val = -FLT_MAX;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         if (pred->embedding[i] > max_val) max_val = pred->embedding[i];
     }
 
     float sum = 0.0f;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         probs[i] = expf(pred->embedding[i] - max_val);
         sum += probs[i];
     }
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         probs[i] /= sum;
     }
 
@@ -1658,6 +2014,12 @@ int jepa_predictor_qmc_entropy(
         /* Fallback: compute directly */
         *entropy = 0.0f;
         for (uint32_t i = 0; i < dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && dim > 256) {
+                jepa_predictor_heartbeat("jepa_predict_loop",
+                                 (float)(i + 1) / (float)dim);
+            }
+
             if (probs[i] > 1e-10f) {
                 *entropy -= probs[i] * logf(probs[i]);
             }
@@ -1683,6 +2045,10 @@ float jepa_predictor_qmc_fidelity(
 
     if (latent1->latent_dim != latent2->latent_dim) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_qmc_fidelity", 0.0f);
+
+
     uint32_t dim = latent1->latent_dim;
 
     /* Normalize embeddings as amplitudes */
@@ -1697,6 +2063,12 @@ float jepa_predictor_qmc_fidelity(
     /* Compute L2 norms */
     float norm1 = 0.0f, norm2 = 0.0f;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         norm1 += latent1->embedding[i] * latent1->embedding[i];
         norm2 += latent2->embedding[i] * latent2->embedding[i];
     }
@@ -1705,6 +2077,12 @@ float jepa_predictor_qmc_fidelity(
 
     /* Normalize */
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         amp1[i] = latent1->embedding[i] / norm1;
         amp2[i] = latent2->embedding[i] / norm2;
     }
@@ -1728,6 +2106,10 @@ int jepa_predictor_qmc_sample_latent(
     uint32_t num_samples,
     const jepa_qmc_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_qmc_sample_latent", 0.0f);
+
+
     NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
     NIMCP_CHECK_THROW(context, NIMCP_ERROR_NULL_POINTER, "context is NULL");
     NIMCP_CHECK_THROW(samples, NIMCP_ERROR_NULL_POINTER, "samples is NULL");
@@ -1762,14 +2144,32 @@ int jepa_predictor_qmc_sample_latent(
     /* Softmax to get probabilities */
     float max_val = -FLT_MAX;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         if (base->embedding[i] > max_val) max_val = base->embedding[i];
     }
     float sum = 0.0f;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         probs[i] = expf(base->embedding[i] - max_val);
         sum += probs[i];
     }
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         probs[i] /= sum;
     }
 
@@ -1791,9 +2191,21 @@ int jepa_predictor_qmc_sample_latent(
 
     /* Generate samples based on measurement results */
     for (uint32_t s = 0; s < num_samples; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && num_samples > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(s + 1) / (float)num_samples);
+        }
+
         samples[s] = jepa_latent_create_dim(dim);
         if (!samples[s]) {
             for (uint32_t j = 0; j < s; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && s > 256) {
+                    jepa_predictor_heartbeat("jepa_predict_loop",
+                                     (float)(j + 1) / (float)s);
+                }
+
                 jepa_latent_destroy(samples[j]);
             }
             qmc_measurement_result_free(&meas_result);
@@ -1804,6 +2216,12 @@ int jepa_predictor_qmc_sample_latent(
 
         /* Initialize with base prediction and add noise based on uncertainty */
         for (uint32_t i = 0; i < dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && dim > 256) {
+                jepa_predictor_heartbeat("jepa_predict_loop",
+                                 (float)(i + 1) / (float)dim);
+            }
+
             float noise_scale = meas_result.uncertainties ? meas_result.uncertainties[i] : 0.1f;
             float noise = mc_random_normal(&seed, 0.0f, noise_scale);
             samples[s]->embedding[i] = base->embedding[i] + noise;
@@ -1830,6 +2248,10 @@ int jepa_predictor_qmc_free_energy(
     const jepa_qmc_config_t* config,
     float* free_energy
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_qmc_free_energy", 0.0f);
+
+
     NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
     NIMCP_CHECK_THROW(context, NIMCP_ERROR_NULL_POINTER, "context is NULL");
     NIMCP_CHECK_THROW(target, NIMCP_ERROR_NULL_POINTER, "target is NULL");
@@ -1886,6 +2308,10 @@ int jepa_predictor_predict_qmc(
     const jepa_qmc_config_t* config,
     jepa_qmc_stats_t* stats
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_predict_qmc", 0.0f);
+
+
     NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
     NIMCP_CHECK_THROW(context, NIMCP_ERROR_NULL_POINTER, "context is NULL");
     NIMCP_CHECK_THROW(prediction, NIMCP_ERROR_NULL_POINTER, "prediction is NULL");
@@ -1908,6 +2334,12 @@ int jepa_predictor_predict_qmc(
     /* Estimate uncertainty per dimension using QMC amplitude estimation */
     float total_variance = 0.0f;
     for (uint32_t d = 0; d < dim; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && dim > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(d + 1) / (float)dim);
+        }
+
         float amp, var;
         ret = jepa_predictor_qmc_amplitude_estimate(predictor, context, d, config, &amp, &var);
         if (ret == NIMCP_SUCCESS) {
@@ -1990,6 +2422,12 @@ static void jepa_mcts_node_destroy(jepa_mcts_node_t* node) {
     if (!node) return;
 
     for (uint32_t i = 0; i < node->num_children; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && node->num_children > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(i + 1) / (float)node->num_children);
+        }
+
         jepa_mcts_node_destroy(node->children[i]);
     }
 
@@ -2021,6 +2459,10 @@ int jepa_predictor_qmc_mcts_explore(
     jepa_latent_t* best_latent,
     float* value
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_predictor_heartbeat("jepa_predict_qmc_mcts_explore", 0.0f);
+
+
     NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
     NIMCP_CHECK_THROW(context, NIMCP_ERROR_NULL_POINTER, "context is NULL");
     NIMCP_CHECK_THROW(best_latent, NIMCP_ERROR_NULL_POINTER, "best_latent is NULL");
@@ -2064,6 +2506,12 @@ int jepa_predictor_qmc_mcts_explore(
 
     /* MCTS main loop */
     for (uint32_t iter = 0; iter < max_iterations; iter++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((iter & 0xFF) == 0 && max_iterations > 256) {
+            jepa_predictor_heartbeat("jepa_predict_loop",
+                             (float)(iter + 1) / (float)max_iterations);
+        }
+
         /* Selection: traverse tree using UCB1 */
         jepa_mcts_node_t* current = root;
         while (current->num_children > 0 && current->depth < max_depth) {
@@ -2071,6 +2519,12 @@ int jepa_predictor_qmc_mcts_explore(
             float best_ucb = -FLT_MAX;
             jepa_mcts_node_t* best_child = NULL;
             for (uint32_t c = 0; c < current->num_children; c++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((c & 0xFF) == 0 && current->num_children > 256) {
+                    jepa_predictor_heartbeat("jepa_predict_loop",
+                                     (float)(c + 1) / (float)current->num_children);
+                }
+
                 float ucb = jepa_mcts_ucb1(current->children[c], exploration_c);
                 if (ucb > best_ucb) {
                     best_ucb = ucb;

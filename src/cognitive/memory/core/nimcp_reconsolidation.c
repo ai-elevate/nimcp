@@ -42,7 +42,7 @@ static nimcp_health_agent_t* g_reconsolidation_health_agent = NULL;
  * @brief Set health agent for reconsolidation heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void reconsolidation_set_health_agent(nimcp_health_agent_t* agent) {
+void reconsolidation_set_health_agent(nimcp_health_agent_t* agent) {
     g_reconsolidation_health_agent = agent;
 }
 
@@ -303,6 +303,12 @@ NIMCP_EXPORT reconsolidation_system_t* reconsolidation_create(
 
     // Initialize free indices (all slots available)
     for (size_t i = 0; i < cfg.max_windows; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && cfg.max_windows > 256) {
+            reconsolidation_heartbeat("reconsolidat_loop",
+                             (float)(i + 1) / (float)cfg.max_windows);
+        }
+
         system->free_indices[i] = cfg.max_windows - 1 - i;
     }
     system->free_count = cfg.max_windows;
@@ -332,6 +338,12 @@ NIMCP_EXPORT reconsolidation_system_t* reconsolidation_create(
 
     // Allocate interference arrays for each window
     for (size_t i = 0; i < cfg.max_windows; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && cfg.max_windows > 256) {
+            reconsolidation_heartbeat("reconsolidat_loop",
+                             (float)(i + 1) / (float)cfg.max_windows);
+        }
+
         system->windows[i].max_interfering = cfg.max_interfering_per_window;
         if (cfg.max_interfering_per_window > 0) {
             system->windows[i].interfering_memories = (pr_memory_node_t**)calloc(
@@ -347,6 +359,12 @@ NIMCP_EXPORT reconsolidation_system_t* reconsolidation_create(
     if (system->mutex == NULL) {
         // Cleanup on mutex creation failure
         for (size_t i = 0; i < cfg.max_windows; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && cfg.max_windows > 256) {
+                reconsolidation_heartbeat("reconsolidat_loop",
+                                 (float)(i + 1) / (float)cfg.max_windows);
+            }
+
             if (system->windows[i].interfering_memories != NULL) {
                 free(system->windows[i].interfering_memories);
             }
@@ -391,6 +409,12 @@ NIMCP_EXPORT void reconsolidation_destroy(reconsolidation_system_t* system) {
 
     // Cleanup all active windows
     for (size_t i = 0; i < system->max_windows; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->max_windows > 256) {
+            reconsolidation_heartbeat("reconsolidat_loop",
+                             (float)(i + 1) / (float)system->max_windows);
+        }
+
         if (system->windows[i].memory != NULL) {
             cleanup_window(&system->windows[i]);
         }
@@ -899,6 +923,12 @@ NIMCP_EXPORT size_t reconsolidation_register_encoding(
 
     // Check against all labile memories
     for (size_t i = 0; i < system->max_windows; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->max_windows > 256) {
+            reconsolidation_heartbeat("reconsolidat_loop",
+                             (float)(i + 1) / (float)system->max_windows);
+        }
+
         reconsolidation_window_t* window = &system->windows[i];
 
         if (window->memory == NULL || window->state != RECON_LABILE) {
@@ -1146,6 +1176,12 @@ NIMCP_EXPORT size_t reconsolidation_force_close_all(
 
     size_t closed = 0;
     for (size_t i = 0; i < system->max_windows; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->max_windows > 256) {
+            reconsolidation_heartbeat("reconsolidat_loop",
+                             (float)(i + 1) / (float)system->max_windows);
+        }
+
         reconsolidation_window_t* window = &system->windows[i];
 
         if (window->memory == NULL) {
@@ -1422,6 +1458,12 @@ NIMCP_EXPORT bool reconsolidation_validate(reconsolidation_system_t* system) {
     // Check window count consistency
     size_t counted_windows = 0;
     for (size_t i = 0; i < system->max_windows; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->max_windows > 256) {
+            reconsolidation_heartbeat("reconsolidat_loop",
+                             (float)(i + 1) / (float)system->max_windows);
+        }
+
         if (system->windows[i].memory != NULL) {
             counted_windows++;
 

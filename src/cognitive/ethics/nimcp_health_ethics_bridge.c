@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_health_ethics_bridge_health_agent = NULL;
  * @brief Set health agent for health_ethics_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void health_ethics_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void health_ethics_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_health_ethics_bridge_health_agent = agent;
 }
 
@@ -126,6 +126,10 @@ static const char* action_names[] = {
 void health_ethics_default_psych_config(health_agent_psych_config_t* config) {
     if (!config) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    health_ethics_bridge_heartbeat("health_ethic_health_ethics_defaul", 0.0f);
+
+
     config->panic_threshold = DEFAULT_PANIC_THRESHOLD;
     config->stress_decay_rate = DEFAULT_STRESS_DECAY_RATE;
     config->crisis_escalation_ms = DEFAULT_CRISIS_ESCALATION_MS;
@@ -148,6 +152,10 @@ void health_action_context_init(
     float threat_severity
 ) {
     if (!context) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    health_ethics_bridge_heartbeat("health_ethic_health_action_contex", 0.0f);
+
 
     memset(context, 0, sizeof(health_action_context_t));
 
@@ -189,6 +197,10 @@ bool health_ethics_check_asimov(
     health_asimov_law_t* required_by_law
 ) {
     if (!context) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    health_ethics_bridge_heartbeat("health_ethic_health_ethics_check_", 0.0f);
+
 
     if (violated_law) *violated_law = ASIMOV_LAW_NONE;
     if (required_by_law) *required_by_law = ASIMOV_LAW_NONE;
@@ -306,6 +318,10 @@ int health_ethics_apply_mercy(
 ) {
     if (!context || !mercy_eval) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    health_ethics_bridge_heartbeat("health_ethic_health_ethics_apply_", 0.0f);
+
+
     memset(mercy_eval, 0, sizeof(health_mercy_evaluation_t));
 
     /* Determine mercy levels */
@@ -357,6 +373,10 @@ float health_ethics_check_proportionality(const health_action_context_t* context
     if (!context) return 0.0f;
 
     /* Action severity [0-1] */
+    /* Phase 8: Heartbeat at operation start */
+    health_ethics_bridge_heartbeat("health_ethic_health_ethics_check_", 0.0f);
+
+
     float action_severity_norm = (float)context->action_severity / 4.0f;
 
     /* Threat severity already in [0-1] */
@@ -430,6 +450,10 @@ int health_ethics_evaluate_action(
     const health_action_context_t* context,
     health_ethics_evaluation_t* evaluation
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    health_ethics_bridge_heartbeat("health_ethic_health_ethics_evalua", 0.0f);
+
+
     (void)engine;  /* May be used for more complex evaluation later */
 
     if (!context || !evaluation) return -1;
@@ -531,6 +555,10 @@ int health_ethics_evaluate_action(
  *============================================================================*/
 
 health_action_severity_t health_action_get_severity(health_recovery_action_type_t action) {
+    /* Phase 8: Heartbeat at operation start */
+    health_ethics_bridge_heartbeat("health_ethic_health_action_get_se", 0.0f);
+
+
     if (action >= HEALTH_RECOVERY_ACTION_COUNT) {
         return HEALTH_ACTION_SEVERITY_MODERATE;
     }
@@ -558,6 +586,10 @@ const char* health_recovery_action_name(health_recovery_action_type_t action) {
 void health_psych_state_init(health_agent_psych_state_t* state) {
     if (!state) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    health_ethics_bridge_heartbeat("health_ethic_health_psych_state_i", 0.0f);
+
+
     memset(state, 0, sizeof(health_agent_psych_state_t));
 
     state->stress_level = 0.0f;
@@ -581,6 +613,10 @@ void health_psych_state_update(
     const health_agent_psych_config_t* config
 ) {
     if (!state) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    health_ethics_bridge_heartbeat("health_ethic_health_psych_state_u", 0.0f);
+
 
     if (action_succeeded) {
         /* Success reduces stress */
@@ -632,6 +668,10 @@ void health_psych_apply_decay(
 ) {
     if (!state) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    health_ethics_bridge_heartbeat("health_ethic_health_psych_apply_d", 0.0f);
+
+
     float decay_rate = config ? config->stress_decay_rate : DEFAULT_STRESS_DECAY_RATE;
     float decay = decay_rate * ((float)elapsed_ms / 1000.0f);
 
@@ -660,6 +700,10 @@ int health_psych_self_calm(
     }
     if (config && !config->enable_self_calming) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    health_ethics_bridge_heartbeat("health_ethic_health_psych_self_ca", 0.0f);
+
+
     state->self_calming_active = true;
 
     /* Apply immediate stress reduction */
@@ -683,6 +727,10 @@ bool health_psych_needs_human_help(
     if (state->in_panic_mode) return true;
 
     /* Extended crisis requires help */
+    /* Phase 8: Heartbeat at operation start */
+    health_ethics_bridge_heartbeat("health_ethic_health_psych_needs_h", 0.0f);
+
+
     uint32_t crisis_threshold = config ? config->crisis_escalation_ms : DEFAULT_CRISIS_ESCALATION_MS;
     if (state->crisis_duration_ms > crisis_threshold) return true;
 
@@ -706,6 +754,10 @@ bool health_psych_permits_action(
     if (action_severity <= HEALTH_ACTION_SEVERITY_LOW) return true;
 
     /* Check confidence threshold */
+    /* Phase 8: Heartbeat at operation start */
+    health_ethics_bridge_heartbeat("health_ethic_health_psych_permits", 0.0f);
+
+
     float required_confidence = config ? config->confidence_threshold : DEFAULT_CONFIDENCE_THRESHOLD;
 
     /* Higher severity requires higher confidence */
@@ -732,6 +784,10 @@ float health_psych_get_confidence_threshold(
     const health_agent_psych_state_t* state,
     const health_agent_psych_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    health_ethics_bridge_heartbeat("health_ethic_health_psych_get_con", 0.0f);
+
+
     float base_threshold = config ? config->confidence_threshold : DEFAULT_CONFIDENCE_THRESHOLD;
 
     if (!state) return base_threshold;

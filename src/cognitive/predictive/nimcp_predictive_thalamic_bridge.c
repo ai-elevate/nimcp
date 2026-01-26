@@ -28,7 +28,7 @@ static nimcp_health_agent_t* g_predictive_thalamic_bridge_health_agent = NULL;
  * @brief Set health agent for predictive_thalamic_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void predictive_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void predictive_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_predictive_thalamic_bridge_health_agent = agent;
 }
 
@@ -50,6 +50,10 @@ struct predictive_thalamic_bridge {
 };
 
 predictive_thalamic_config_t predictive_thalamic_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_thalamic_bridge_heartbeat("predictive_t_predictive_thalamic_", 0.0f);
+
+
     predictive_thalamic_config_t cfg = {
         .enable_attention_gating = true,
         .enable_error_amplification = true,
@@ -60,6 +64,10 @@ predictive_thalamic_config_t predictive_thalamic_default_config(void) {
 }
 
 predictive_thalamic_bridge_t* predictive_thalamic_bridge_create(void* predictive, thalamic_router_t* router, const predictive_thalamic_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_thalamic_bridge_heartbeat("predictive_t_create", 0.0f);
+
+
     predictive_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(predictive_thalamic_bridge_t));
     if (!bridge) {
 
@@ -88,6 +96,10 @@ predictive_thalamic_bridge_t* predictive_thalamic_bridge_create(void* predictive
 
 void predictive_thalamic_bridge_destroy(predictive_thalamic_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    predictive_thalamic_bridge_heartbeat("predictive_t_destroy", 0.0f);
+
+
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
     }
@@ -96,6 +108,10 @@ void predictive_thalamic_bridge_destroy(predictive_thalamic_bridge_t* bridge) {
 
 int predictive_thalamic_bridge_reset(predictive_thalamic_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    predictive_thalamic_bridge_heartbeat("predictive_t_reset", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -105,6 +121,10 @@ int predictive_thalamic_bridge_reset(predictive_thalamic_bridge_t* bridge) {
 
 int predictive_thalamic_route_error(predictive_thalamic_bridge_t* bridge, const predictive_thalamic_signal_t* signal) {
     if (!bridge || !signal) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    predictive_thalamic_bridge_heartbeat("predictive_t_predictive_thalamic_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     if (bridge->config.enable_attention_gating && signal->error_magnitude < bridge->config.min_error_threshold) {
         nimcp_mutex_unlock(bridge->base.mutex);
@@ -122,6 +142,10 @@ int predictive_thalamic_route_error(predictive_thalamic_bridge_t* bridge, const 
 
 int predictive_thalamic_route_update(predictive_thalamic_bridge_t* bridge, const void* update, uint32_t level) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    predictive_thalamic_bridge_heartbeat("predictive_t_predictive_thalamic_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.updates_triggered++;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -130,6 +154,10 @@ int predictive_thalamic_route_update(predictive_thalamic_bridge_t* bridge, const
 
 int predictive_thalamic_set_attention(predictive_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    predictive_thalamic_bridge_heartbeat("predictive_t_predictive_thalamic_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -139,12 +167,20 @@ int predictive_thalamic_set_attention(predictive_thalamic_bridge_t* bridge, floa
 int predictive_thalamic_get_attention(const predictive_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) return -1;
     *attention = bridge->attention_weight;
+    /* Phase 8: Heartbeat at operation start */
+    predictive_thalamic_bridge_heartbeat("predictive_t_predictive_thalamic_", 0.0f);
+
+
     return 0;
 }
 
 int predictive_thalamic_bridge_get_stats(const predictive_thalamic_bridge_t* bridge, predictive_thalamic_stats_t* stats) {
     if (!bridge || !stats) return -1;
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    predictive_thalamic_bridge_heartbeat("predictive_t_get_stats", 0.0f);
+
+
     return 0;
 }
 
@@ -155,9 +191,19 @@ int predictive_thalamic_bridge_get_stats(const predictive_thalamic_bridge_t* bri
 int predictive_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_thalamic_bridge_heartbeat("predictive_t_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Predictive_Thalamic_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                predictive_thalamic_bridge_heartbeat("predictive_t_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

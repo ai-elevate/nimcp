@@ -81,7 +81,7 @@ static nimcp_health_agent_t* g_code_immune_health_agent = NULL;
  * @brief Set health agent for code_immune heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void code_immune_set_health_agent(nimcp_health_agent_t* agent) {
+void code_immune_set_health_agent(nimcp_health_agent_t* agent) {
     g_code_immune_health_agent = agent;
 }
 
@@ -179,6 +179,12 @@ static uint32_t compute_checksum(const void* data, size_t size) {
     uint32_t hash = 2166136261U;  /* FNV offset basis */
 
     for (size_t i = 0; i < size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && size > 256) {
+            code_immune_heartbeat("code_immune_loop",
+                             (float)(i + 1) / (float)size);
+        }
+
         hash ^= bytes[i];
         hash *= 16777619U;  /* FNV prime */
     }
@@ -213,6 +219,12 @@ static uint32_t compute_file_checksum(FILE* file, size_t header_size) {
 
     while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
         for (size_t i = 0; i < bytes_read; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bytes_read > 256) {
+                code_immune_heartbeat("code_immune_loop",
+                                 (float)(i + 1) / (float)bytes_read);
+            }
+
             hash ^= buffer[i];
             hash *= 16777619U;  /* FNV prime */
         }
@@ -250,6 +262,12 @@ static code_antigen_t* find_antigen_by_id(code_immune_system_t* system, uint64_t
 
     }
     for (size_t i = 0; i < system->antigen_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->antigen_count > 256) {
+            code_immune_heartbeat("code_immune_loop",
+                             (float)(i + 1) / (float)system->antigen_count);
+        }
+
         if (system->antigens[i].id == id) {
             return &system->antigens[i];
         }
@@ -269,6 +287,12 @@ static code_b_cell_t* find_b_cell_by_id(code_immune_system_t* system, uint64_t i
 
     }
     for (size_t i = 0; i < system->b_cell_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->b_cell_count > 256) {
+            code_immune_heartbeat("code_immune_loop",
+                             (float)(i + 1) / (float)system->b_cell_count);
+        }
+
         if (system->b_cells[i].id == id) {
             return &system->b_cells[i];
         }
@@ -288,6 +312,12 @@ static code_antibody_t* find_antibody_by_id(code_immune_system_t* system, uint64
 
     }
     for (size_t i = 0; i < system->antibody_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->antibody_count > 256) {
+            code_immune_heartbeat("code_immune_loop",
+                             (float)(i + 1) / (float)system->antibody_count);
+        }
+
         if (system->antibodies[i].id == id) {
             return &system->antibodies[i];
         }
@@ -304,6 +334,12 @@ static void process_pending_antigens(code_immune_system_t* system) {
     if (!system) return;
 
     for (size_t i = 0; i < system->antigen_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->antigen_count > 256) {
+            code_immune_heartbeat("code_immune_loop",
+                             (float)(i + 1) / (float)system->antigen_count);
+        }
+
         code_antigen_t* antigen = &system->antigens[i];
         if (antigen->neutralized || antigen->processed) continue;
 
@@ -314,6 +350,12 @@ static void process_pending_antigens(code_immune_system_t* system) {
             bool found = false;
 
             for (size_t j = 0; j < system->b_cell_count; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && system->b_cell_count > 256) {
+                    code_immune_heartbeat("code_immune_loop",
+                                     (float)(j + 1) / (float)system->b_cell_count);
+                }
+
                 code_b_cell_t* b_cell = &system->b_cells[j];
                 if (b_cell->state == CODE_B_CELL_APOPTOTIC) continue;
 
@@ -367,6 +409,12 @@ static void decay_antibodies(code_immune_system_t* system, uint64_t delta_ms) {
     }
 
     for (size_t i = 0; i < system->antibody_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->antibody_count > 256) {
+            code_immune_heartbeat("code_immune_loop",
+                             (float)(i + 1) / (float)system->antibody_count);
+        }
+
         code_antibody_t* ab = &system->antibodies[i];
         if (!ab->injected) continue;
 
@@ -391,6 +439,10 @@ static void decay_antibodies(code_immune_system_t* system, uint64_t delta_ms) {
  */
 int code_immune_default_config(code_immune_config_t* config) {
     if (!config) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_default_config", 0.0f);
+
 
     memset(config, 0, sizeof(*config));
 
@@ -429,6 +481,10 @@ int code_immune_default_config(code_immune_config_t* config) {
  * @brief Create code immune system
  */
 code_immune_system_t* code_immune_create(brain_immune_system_t* parent_immune) {
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_create", 0.0f);
+
+
     code_immune_config_t config;
     code_immune_default_config(&config);
     return code_immune_create_with_config(parent_immune, &config);
@@ -441,6 +497,10 @@ code_immune_system_t* code_immune_create_with_config(
     brain_immune_system_t* parent_immune,
     const code_immune_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_create_with_config", 0.0f);
+
+
     code_immune_system_t* system = nimcp_calloc(1, sizeof(code_immune_system_t));
     if (!system) {
 
@@ -502,10 +562,20 @@ cleanup:
 void code_immune_destroy(code_immune_system_t* system) {
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_destroy", 0.0f);
+
+
     code_immune_stop(system);
 
     /* Unload any injected patches */
     for (size_t i = 0; i < system->antibody_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->antibody_count > 256) {
+            code_immune_heartbeat("code_immune_loop",
+                             (float)(i + 1) / (float)system->antibody_count);
+        }
+
         code_antibody_t* ab = &system->antibodies[i];
         if (ab->patch_handle) {
             dlclose(ab->patch_handle);
@@ -530,6 +600,10 @@ int code_immune_start(code_immune_system_t* system) {
     if (!system) return -1;
 
     /* Check auto-load settings before starting */
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_start", 0.0f);
+
+
     bool should_auto_load = false;
     char load_path[CODE_IMMUNE_PERSIST_MAX_PATH];
     load_path[0] = '\0';
@@ -563,6 +637,10 @@ int code_immune_stop(code_immune_system_t* system) {
     if (!system) return -1;
 
     /* Disconnect from signal handler */
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_stop", 0.0f);
+
+
     code_immune_disconnect_signal_handler(system);
 
     nimcp_mutex_lock(system->mutex);
@@ -591,6 +669,10 @@ int code_immune_stop(code_immune_system_t* system) {
  */
 void code_immune_process_pending_crashes(code_immune_system_t* system) {
     if (!system) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_process_pending_cras", 0.0f);
+
 
     while (g_pending_crash_count > 0) {
         sig_atomic_t idx = g_pending_crash_head;
@@ -646,6 +728,10 @@ static void code_immune_signal_callback(int sig) {
 int code_immune_connect_signal_handler(code_immune_system_t* system) {
     if (!system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_connect_signal_handl", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     /* Store global reference for signal callback */
@@ -669,6 +755,10 @@ int code_immune_connect_signal_handler(code_immune_system_t* system) {
  */
 int code_immune_disconnect_signal_handler(code_immune_system_t* system) {
     if (!system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_disconnect_signal_ha", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -699,6 +789,10 @@ int code_immune_present_crash(
     if (!system) return -1;
 
     /* Try to get lock - if can't, we're likely in nested signal */
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_present_crash", 0.0f);
+
+
     if (nimcp_platform_mutex_trylock((nimcp_platform_mutex_t*)system->mutex) != 0) {
         return -1;
     }
@@ -790,6 +884,10 @@ int code_immune_present_crash_detailed(
     uint64_t* antigen_id
 ) {
     if (!system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_present_crash_detail", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -883,6 +981,10 @@ int code_immune_find_matching_b_cell(
 ) {
     if (!system || !b_cell_id) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_find_matching_b_cell", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     code_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
@@ -895,6 +997,12 @@ int code_immune_find_matching_b_cell(
     code_b_cell_t* best_match = NULL;
 
     for (size_t i = 0; i < system->b_cell_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->b_cell_count > 256) {
+            code_immune_heartbeat("code_immune_loop",
+                             (float)(i + 1) / (float)system->b_cell_count);
+        }
+
         code_b_cell_t* b_cell = &system->b_cells[i];
         if (b_cell->state == CODE_B_CELL_APOPTOTIC) continue;
 
@@ -927,6 +1035,10 @@ int code_immune_activate_b_cell(
     uint64_t antigen_id
 ) {
     if (!system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_activate_b_cell", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -970,6 +1082,10 @@ int code_immune_create_b_cell(
     uint64_t* b_cell_id
 ) {
     if (!system || !b_cell_id) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_create_b_cell", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -1023,6 +1139,10 @@ int code_immune_form_memory(
 ) {
     if (!system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_form_memory", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     code_b_cell_t* b_cell = find_b_cell_by_id(system, b_cell_id);
@@ -1074,6 +1194,10 @@ int code_immune_set_fix_template(
 ) {
     if (!system || !fix_template) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_set_fix_template", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     code_b_cell_t* b_cell = find_b_cell_by_id(system, b_cell_id);
@@ -1102,6 +1226,10 @@ int code_immune_produce_antibody(
     uint64_t* antibody_id
 ) {
     if (!system || !antibody_id) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_produce_antibody", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -1182,6 +1310,10 @@ int code_immune_validate_antibody(
 ) {
     if (!system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_validate_antibody", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     code_antibody_t* antibody = find_antibody_by_id(system, antibody_id);
@@ -1234,6 +1366,10 @@ int code_immune_apply_antibody(
     uint64_t antibody_id
 ) {
     if (!system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_apply_antibody", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -1314,6 +1450,10 @@ int code_immune_apoptosis(
 ) {
     if (!system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_apoptosis", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     code_antibody_t* antibody = find_antibody_by_id(system, antibody_id);
@@ -1352,6 +1492,10 @@ int code_immune_upgrade_antibody(
 ) {
     if (!system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_upgrade_antibody", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     code_antibody_t* antibody = find_antibody_by_id(system, antibody_id);
@@ -1385,6 +1529,10 @@ int code_immune_sync_to_brain(
     uint64_t antigen_id
 ) {
     if (!system || !system->parent_immune) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_sync_to_brain", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -1433,6 +1581,10 @@ int code_immune_request_cytokine(
 ) {
     if (!system || !system->parent_immune) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_request_cytokine", 0.0f);
+
+
     uint32_t cytokine_id = 0;
     return brain_immune_release_cytokine(
         system->parent_immune,
@@ -1454,6 +1606,10 @@ int code_immune_set_crash_callback(
     void* user_data
 ) {
     if (!system) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_set_crash_callback", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     system->on_crash = callback;
     system->callback_user_data = user_data;
@@ -1467,6 +1623,10 @@ int code_immune_set_patch_callback(
     void* user_data
 ) {
     if (!system) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_set_patch_callback", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     system->on_patch = callback;
     system->callback_user_data = user_data;
@@ -1480,6 +1640,10 @@ int code_immune_set_memory_callback(
     void* user_data
 ) {
     if (!system) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_set_memory_callback", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     system->on_memory = callback;
     system->callback_user_data = user_data;
@@ -1499,6 +1663,10 @@ int code_immune_update(
     uint64_t delta_ms
 ) {
     if (!system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_update", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -1541,6 +1709,10 @@ int code_immune_get_stats(
 ) {
     if (!system || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     *stats = system->stats;
     nimcp_mutex_unlock(system->mutex);
@@ -1562,6 +1734,10 @@ const code_antigen_t* code_immune_get_antigen(
         return NULL;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_get_antigen", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
     code_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
@@ -1585,6 +1761,10 @@ const code_b_cell_t* code_immune_get_b_cell(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_get_b_cell", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     code_b_cell_t* b_cell = find_b_cell_by_id(system, b_cell_id);
     nimcp_mutex_unlock(system->mutex);
@@ -1607,6 +1787,10 @@ const code_antibody_t* code_immune_get_antibody(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_get_antibody", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     code_antibody_t* antibody = find_antibody_by_id(system, antibody_id);
     nimcp_mutex_unlock(system->mutex);
@@ -1623,9 +1807,19 @@ bool code_immune_has_memory_for(
 ) {
     if (!system) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_has_memory_for", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     for (size_t i = 0; i < system->b_cell_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->b_cell_count > 256) {
+            code_immune_heartbeat("code_immune_loop",
+                             (float)(i + 1) / (float)system->b_cell_count);
+        }
+
         code_b_cell_t* b_cell = &system->b_cells[i];
         if (b_cell->state == CODE_B_CELL_MEMORY &&
             (b_cell->crash_types & crash_type)) {
@@ -1656,6 +1850,10 @@ int code_immune_compute_epitope(
     if (!epitope) return -1;
 
     /* Simple hash combining signal, addresses, and top backtrace frames */
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_compute_epitope", 0.0f);
+
+
     uint64_t hash = 0;
 
     /* Mix in signal */
@@ -1675,6 +1873,12 @@ int code_immune_compute_epitope(
     if (backtrace_frames && backtrace_depth > 0) {
         int depth = backtrace_depth > 4 ? 4 : backtrace_depth;
         for (int i = 0; i < depth; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && depth > 256) {
+                code_immune_heartbeat("code_immune_loop",
+                                 (float)(i + 1) / (float)depth);
+            }
+
             if (backtrace_frames[i]) {
                 hash = hash * 31 + (uint64_t)(uintptr_t)backtrace_frames[i];
             }
@@ -1697,6 +1901,10 @@ float code_immune_compute_affinity(
 ) {
     if (!pattern1 || !pattern2) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_compute_affinity", 0.0f);
+
+
     size_t len1 = strlen(pattern1);
     size_t len2 = strlen(pattern2);
 
@@ -1713,6 +1921,12 @@ float code_immune_compute_affinity(
     size_t min_len = len1 < len2 ? len1 : len2;
 
     for (size_t i = 0; i < min_len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && min_len > 256) {
+            code_immune_heartbeat("code_immune_loop",
+                             (float)(i + 1) / (float)min_len);
+        }
+
         if (pattern1[i] == pattern2[i]) {
             matches++;
         }
@@ -1750,6 +1964,12 @@ static uint32_t compute_persist_checksum(const uint8_t* data, size_t len) {
 
     uint32_t checksum = 0xFFFFFFFF;
     for (size_t i = 0; i < len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && len > 256) {
+            code_immune_heartbeat("code_immune_loop",
+                             (float)(i + 1) / (float)len);
+        }
+
         checksum ^= data[i];
         checksum = (checksum << 1) | (checksum >> 31);
     }
@@ -1860,6 +2080,12 @@ static code_b_cell_t* find_b_cell_by_receptor(
     if (!system || !receptor) return NULL;
 
     for (size_t i = 0; i < system->b_cell_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->b_cell_count > 256) {
+            code_immune_heartbeat("code_immune_loop",
+                             (float)(i + 1) / (float)system->b_cell_count);
+        }
+
         if (strcmp(system->b_cells[i].receptor, receptor) == 0) {
             return &system->b_cells[i];
         }
@@ -1876,6 +2102,10 @@ static code_b_cell_t* find_b_cell_by_receptor(
  */
 int code_immune_persist_default_config(code_immune_persist_config_t* config) {
     if (!config) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_persist_default_conf", 0.0f);
+
 
     memset(config, 0, sizeof(*config));
 
@@ -1925,6 +2155,10 @@ int code_immune_get_default_memory_path(char* path_out, bool create_dir) {
     if (!path_out) return -1;
 
     /* Get home directory */
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_get_default_memory_p", 0.0f);
+
+
     const char* home = getenv("HOME");
     if (!home) {
         home = "/tmp";  /* Fallback */
@@ -1984,6 +2218,10 @@ static int resolve_persist_path(
  */
 bool code_immune_is_version_compatible(uint32_t file_version) {
     /* For now, require exact match */
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_is_version_compatibl", 0.0f);
+
+
     return (file_version == CODE_IMMUNE_PERSIST_VERSION);
 }
 
@@ -1992,6 +2230,10 @@ bool code_immune_is_version_compatible(uint32_t file_version) {
  */
 int code_immune_validate_memory_file(const char* filepath, bool verify_checksum) {
     if (!filepath) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_validate_memory_file", 0.0f);
+
 
     FILE* file = fopen(filepath, "rb");
     if (!file) {
@@ -2047,6 +2289,10 @@ int code_immune_get_memory_file_info(
 ) {
     if (!filepath) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_get_memory_file_info", 0.0f);
+
+
     FILE* file = fopen(filepath, "rb");
     if (!file) return -1;
 
@@ -2081,6 +2327,10 @@ int code_immune_create_backup(const char* filepath, const char* backup_suffix) {
     if (!filepath) return -1;
 
     /* Check if source file exists */
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_create_backup", 0.0f);
+
+
     FILE* src = fopen(filepath, "rb");
     if (!src) return 0; /* No file to back up, not an error */
 
@@ -2133,6 +2383,10 @@ int code_immune_save_memory(
     if (!system) return -1;
 
     /* Use default config if not provided */
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_save_memory", 0.0f);
+
+
     code_immune_persist_config_t default_cfg;
     if (!config) {
         code_immune_persist_default_config(&default_cfg);
@@ -2170,6 +2424,12 @@ int code_immune_save_memory(
 
     if (config->save_b_cells) {
         for (size_t i = 0; i < system->b_cell_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && system->b_cell_count > 256) {
+                code_immune_heartbeat("code_immune_loop",
+                                 (float)(i + 1) / (float)system->b_cell_count);
+            }
+
             code_b_cell_t* b_cell = &system->b_cells[i];
 
             /* Skip if memory-only mode and not memory cell */
@@ -2190,6 +2450,12 @@ int code_immune_save_memory(
 
     if (config->save_antibodies) {
         for (size_t i = 0; i < system->antibody_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && system->antibody_count > 256) {
+                code_immune_heartbeat("code_immune_loop",
+                                 (float)(i + 1) / (float)system->antibody_count);
+            }
+
             code_antibody_t* ab = &system->antibodies[i];
 
             /* Skip unvalidated antibodies */
@@ -2239,6 +2505,12 @@ int code_immune_save_memory(
     /* Write B cells */
     if (config->save_b_cells) {
         for (size_t i = 0; i < system->b_cell_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && system->b_cell_count > 256) {
+                code_immune_heartbeat("code_immune_loop",
+                                 (float)(i + 1) / (float)system->b_cell_count);
+            }
+
             code_b_cell_t* b_cell = &system->b_cells[i];
 
             /* Apply same filters as counting */
@@ -2261,6 +2533,12 @@ int code_immune_save_memory(
     /* Write antibodies */
     if (config->save_antibodies) {
         for (size_t i = 0; i < system->antibody_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && system->antibody_count > 256) {
+                code_immune_heartbeat("code_immune_loop",
+                                 (float)(i + 1) / (float)system->antibody_count);
+            }
+
             code_antibody_t* ab = &system->antibodies[i];
 
             /* Apply same filters as counting */
@@ -2323,6 +2601,10 @@ int code_immune_save_memory_ex(
 ) {
     if (!result) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_save_memory_ex", 0.0f);
+
+
     memset(result, 0, sizeof(*result));
     uint64_t start_time = get_timestamp_ms();
 
@@ -2354,6 +2636,10 @@ int code_immune_load_memory(
     if (!system) return -1;
 
     /* Use default config if not provided */
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_load_memory", 0.0f);
+
+
     code_immune_persist_config_t default_cfg;
     if (!config) {
         code_immune_persist_default_config(&default_cfg);
@@ -2390,6 +2676,12 @@ int code_immune_load_memory(
     /* Load B cells (merge with existing) */
     uint32_t b_cells_loaded = 0;
     for (uint32_t i = 0; i < counts.b_cell_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && counts.b_cell_count > 256) {
+            code_immune_heartbeat("code_immune_loop",
+                             (float)(i + 1) / (float)counts.b_cell_count);
+        }
+
         code_b_cell_t loaded_cell;
         if (fread(&loaded_cell, sizeof(code_b_cell_t), 1, file) != 1) {
             LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME, "Failed to read B cell");
@@ -2427,6 +2719,12 @@ int code_immune_load_memory(
     /* Load antibodies (merge with existing) */
     uint32_t antibodies_loaded = 0;
     for (uint32_t i = 0; i < counts.antibody_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && counts.antibody_count > 256) {
+            code_immune_heartbeat("code_immune_loop",
+                             (float)(i + 1) / (float)counts.antibody_count);
+        }
+
         code_antibody_t loaded_ab;
         if (fread(&loaded_ab, sizeof(code_antibody_t), 1, file) != 1) {
             LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME, "Failed to read antibody");
@@ -2472,6 +2770,10 @@ int code_immune_load_memory_ex(
 ) {
     if (!result) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_load_memory_ex", 0.0f);
+
+
     memset(result, 0, sizeof(*result));
     uint64_t start_time = get_timestamp_ms();
 
@@ -2512,6 +2814,10 @@ int code_immune_consolidate_memory(
     if (!system) return -1;
 
     /* Use default config if not provided */
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_consolidate_memory", 0.0f);
+
+
     code_immune_persist_config_t default_cfg;
     if (!config) {
         code_immune_persist_default_config(&default_cfg);
@@ -2525,6 +2831,12 @@ int code_immune_consolidate_memory(
     /* Prune low-confidence B cells */
     size_t write_idx = 0;
     for (size_t read_idx = 0; read_idx < system->b_cell_count; read_idx++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((read_idx & 0xFF) == 0 && system->b_cell_count > 256) {
+            code_immune_heartbeat("code_immune_loop",
+                             (float)(read_idx + 1) / (float)system->b_cell_count);
+        }
+
         code_b_cell_t* b_cell = &system->b_cells[read_idx];
 
         /* Keep if above threshold or is memory cell with successful fixes */
@@ -2549,6 +2861,12 @@ int code_immune_consolidate_memory(
     /* Prune low-effectiveness antibodies */
     write_idx = 0;
     for (size_t read_idx = 0; read_idx < system->antibody_count; read_idx++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((read_idx & 0xFF) == 0 && system->antibody_count > 256) {
+            code_immune_heartbeat("code_immune_loop",
+                             (float)(read_idx + 1) / (float)system->antibody_count);
+        }
+
         code_antibody_t* ab = &system->antibodies[read_idx];
 
         /* Keep if validated and above threshold */
@@ -2598,6 +2916,10 @@ int code_immune_enable_auto_save(
 ) {
     if (!system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_enable_auto_save", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     system->auto_save_enabled = enable;
@@ -2627,6 +2949,10 @@ int code_immune_enable_auto_load(
     const char* filepath
 ) {
     if (!system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_enable_auto_load", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -2664,6 +2990,10 @@ int code_immune_connect_self_repair(
 ) {
     if (!system || !coordinator) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_connect_self_repair", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     system->self_repair = coordinator;
     system->last_repair_trigger_ms = 0;
@@ -2683,6 +3013,10 @@ int code_immune_connect_self_repair(
 int code_immune_disconnect_self_repair(code_immune_system_t* system) {
     if (!system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_disconnect_self_repa", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
     system->self_repair = NULL;
     nimcp_mutex_unlock(system->mutex);
@@ -2699,6 +3033,10 @@ int code_immune_disconnect_self_repair(code_immune_system_t* system) {
  */
 bool code_immune_is_self_repair_connected(const code_immune_system_t* system) {
     if (!system) return false;
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_is_self_repair_conne", 0.0f);
+
+
     return system->self_repair != NULL;
 }
 
@@ -2725,6 +3063,10 @@ int code_immune_get_antigen_diagnostic(
     diagnostic_result_t* diag
 ) {
     if (!system || !diag) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_get_antigen_diagnost", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -2775,6 +3117,12 @@ int code_immune_get_antigen_diagnostic(
         diag->stack_depth = MAX_STACK_DEPTH;
     }
     for (uint32_t i = 0; i < diag->stack_depth; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && diag->stack_depth > 256) {
+            code_immune_heartbeat("code_immune_loop",
+                             (float)(i + 1) / (float)diag->stack_depth);
+        }
+
         diag->stack_trace[i].address = antigen->backtrace[i];
         diag->stack_trace[i].is_symbolicated = false;
     }
@@ -2797,6 +3145,10 @@ bool code_immune_check_auto_repair_eligible(
     if (!system) return false;
     if (!system->config.auto_repair.enabled) return false;
     if (!system->self_repair) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_check_auto_repair_el", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -2889,6 +3241,10 @@ int code_immune_trigger_repair(
     if (!system || !system->self_repair) return -1;
 
     /* Convert antigen to diagnostic */
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_trigger_repair", 0.0f);
+
+
     diagnostic_result_t diag;
     if (code_immune_get_antigen_diagnostic(system, antigen_id, &diag) != 0) {
         return -1;
@@ -2985,6 +3341,12 @@ int code_immune_handle_repair_outcome(
 
         /* Update B cell effectiveness */
         for (size_t i = 0; i < system->b_cell_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && system->b_cell_count > 256) {
+                code_immune_heartbeat("code_immune_loop",
+                                 (float)(i + 1) / (float)system->b_cell_count);
+            }
+
             code_b_cell_t* b_cell = &system->b_cells[i];
             if (b_cell->bound_antigen_id == outcome->antigen_id) {
                 b_cell->successful_fixes++;
@@ -2998,6 +3360,12 @@ int code_immune_handle_repair_outcome(
 
         /* Update B cell failure count */
         for (size_t i = 0; i < system->b_cell_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && system->b_cell_count > 256) {
+                code_immune_heartbeat("code_immune_loop",
+                                 (float)(i + 1) / (float)system->b_cell_count);
+            }
+
             code_b_cell_t* b_cell = &system->b_cells[i];
             if (b_cell->bound_antigen_id == outcome->antigen_id) {
                 b_cell->failed_fixes++;
@@ -3031,6 +3399,10 @@ int code_immune_get_repair_stats(
 ) {
     if (!system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_get_repair_stats", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     if (triggered) *triggered = system->total_repairs_triggered;
@@ -3051,6 +3423,12 @@ static void check_auto_repairs(code_immune_system_t* system) {
 
     /* Check each unprocessed antigen for auto-repair eligibility */
     for (size_t i = 0; i < system->antigen_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->antigen_count > 256) {
+            code_immune_heartbeat("code_immune_loop",
+                             (float)(i + 1) / (float)system->antigen_count);
+        }
+
         code_antigen_t* antigen = &system->antigens[i];
 
         /* Skip already neutralized or processed */
@@ -3091,9 +3469,19 @@ static void check_auto_repairs(code_immune_system_t* system) {
  */
 int code_immune_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    code_immune_heartbeat("code_immune_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Code_Immune");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                code_immune_heartbeat("code_immune_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Code immune self-knowledge: %s", self->observations[i]);
         }
     }

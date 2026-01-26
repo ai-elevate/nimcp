@@ -44,7 +44,7 @@ static nimcp_health_agent_t* g_prime_signature_health_agent = NULL;
  * @brief Set health agent for prime_signature heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void prime_signature_set_health_agent(nimcp_health_agent_t* agent) {
+void prime_signature_set_health_agent(nimcp_health_agent_t* agent) {
     g_prime_signature_health_agent = agent;
 }
 
@@ -110,6 +110,12 @@ static uint64_t hash_with_seed(const void* data, size_t size, uint32_t seed) {
     const uint64_t* data64 = (const uint64_t*)bytes;
 
     for (size_t i = 0; i < blocks; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && blocks > 256) {
+            prime_signature_heartbeat("prime_signat_loop",
+                             (float)(i + 1) / (float)blocks);
+        }
+
         uint64_t k = data64[i];
         k = mix64(k);
         h ^= k;
@@ -121,6 +127,12 @@ static uint64_t hash_with_seed(const void* data, size_t size, uint32_t seed) {
     size_t remaining = size - (blocks * 8);
 
     for (size_t i = 0; i < remaining; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && remaining > 256) {
+            prime_signature_heartbeat("prime_signat_loop",
+                             (float)(i + 1) / (float)remaining);
+        }
+
         h ^= (uint64_t)tail[i];
         h *= FNV_PRIME;
     }
@@ -135,6 +147,12 @@ static uint64_t compute_signature_hash(const uint8_t* exponents) {
     uint64_t hash = FNV_OFFSET_BASIS;
 
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            prime_signature_heartbeat("prime_signat_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         hash ^= (uint64_t)exponents[i];
         hash *= FNV_PRIME;
     }
@@ -149,6 +167,12 @@ static uint32_t count_nonzero(const uint8_t* exponents) {
     uint32_t count = 0;
 
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            prime_signature_heartbeat("prime_signat_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         if (exponents[i] > 0) {
             count++;
         }
@@ -162,6 +186,12 @@ static uint32_t count_nonzero(const uint8_t* exponents) {
  */
 static void init_primes(prime_signature_t* sig) {
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            prime_signature_heartbeat("prime_signat_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         sig->primes[i] = PRIMES_64[i];
     }
 }
@@ -186,6 +216,10 @@ static inline uint8_t saturating_sub(uint8_t a, uint8_t b) {
 //=============================================================================
 
 prime_signature_t* prime_sig_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_create", 0.0f);
+
+
     prime_signature_t* sig = (prime_signature_t*)malloc(sizeof(prime_signature_t));
     if (!sig) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sig is NULL");
@@ -207,6 +241,10 @@ prime_signature_t* prime_sig_create(void) {
 }
 
 prime_signature_t* prime_sig_from_content(const void* data, size_t size) {
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_from_conte", 0.0f);
+
+
     prime_sig_config_t config = prime_sig_default_config();
     return prime_sig_from_content_config(data, size, &config);
 }
@@ -222,6 +260,10 @@ prime_signature_t* prime_sig_from_content_config(
     }
 
     // Create empty signature
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_from_conte", 0.0f);
+
+
     prime_signature_t* sig = prime_sig_create();
     if (!sig) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sig is NULL");
@@ -231,6 +273,12 @@ prime_signature_t* prime_sig_from_content_config(
 
     // Apply multiple hash rounds
     for (uint32_t round = 0; round < config->hash_rounds; round++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((round & 0xFF) == 0 && config->hash_rounds > 256) {
+            prime_signature_heartbeat("prime_signat_loop",
+                             (float)(round + 1) / (float)config->hash_rounds);
+        }
+
         // Generate hash with round-specific seed
         uint32_t seed = config->seed ^ (round * 0x9E3779B9);
         uint64_t hash = hash_with_seed(data, size, seed);
@@ -273,6 +321,10 @@ prime_signature_t* prime_sig_from_text(const char* text) {
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_from_text", 0.0f);
+
+
     size_t len = strlen(text);
 
     // Create empty signature
@@ -306,6 +358,12 @@ prime_signature_t* prime_sig_from_text(const char* text) {
 
     // Also process individual characters for short texts
     for (size_t i = 0; i < len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && len > 256) {
+            prime_signature_heartbeat("prime_signat_loop",
+                             (float)(i + 1) / (float)len);
+        }
+
         // Simple character-based hash
         uint64_t char_hash = mix64((uint64_t)text[i] ^ (i * 0x9E3779B9));
         size_t idx = char_hash % PRIME_SIG_DIM;
@@ -325,6 +383,10 @@ prime_signature_t* prime_sig_from_floats(const float* floats, size_t count) {
     }
 
     // Create empty signature
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_from_float", 0.0f);
+
+
     prime_signature_t* sig = prime_sig_create();
     if (!sig) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sig is NULL");
@@ -348,6 +410,12 @@ prime_signature_t* prime_sig_from_floats(const float* floats, size_t count) {
 
     // Quantize and map floats to prime indices
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            prime_signature_heartbeat("prime_signat_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         // Normalize to [0, 1]
         float normalized = (floats[i] - min_val) / range;
 
@@ -376,6 +444,10 @@ prime_signature_t* prime_sig_copy(const prime_signature_t* sig) {
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_copy", 0.0f);
+
+
     prime_signature_t* copy = (prime_signature_t*)malloc(sizeof(prime_signature_t));
     if (!copy) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "copy is NULL");
@@ -390,12 +462,20 @@ prime_signature_t* prime_sig_copy(const prime_signature_t* sig) {
 }
 
 void prime_sig_destroy(prime_signature_t* sig) {
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_destroy", 0.0f);
+
+
     if (sig) {
         free(sig);
     }
 }
 
 prime_sig_config_t prime_sig_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_default_co", 0.0f);
+
+
     prime_sig_config_t config;
     config.hash_rounds = DEFAULT_HASH_ROUNDS;
     config.seed = DEFAULT_SEED;
@@ -413,10 +493,20 @@ float prime_sig_jaccard(const prime_signature_t* s1, const prime_signature_t* s2
         return -1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_jaccard", 0.0f);
+
+
     uint32_t intersection_sum = 0;
     uint32_t union_sum = 0;
 
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            prime_signature_heartbeat("prime_signat_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         uint8_t e1 = s1->exponents[i];
         uint8_t e2 = s2->exponents[i];
 
@@ -440,11 +530,21 @@ float prime_sig_cosine(const prime_signature_t* s1, const prime_signature_t* s2)
         return -1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_cosine", 0.0f);
+
+
     uint64_t dot_product = 0;
     uint64_t norm1_sq = 0;
     uint64_t norm2_sq = 0;
 
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            prime_signature_heartbeat("prime_signat_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         uint32_t e1 = s1->exponents[i];
         uint32_t e2 = s2->exponents[i];
 
@@ -469,9 +569,19 @@ int prime_sig_hamming(const prime_signature_t* s1, const prime_signature_t* s2) 
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_hamming", 0.0f);
+
+
     int distance = 0;
 
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            prime_signature_heartbeat("prime_signat_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         // Count positions where one has non-zero and other has zero
         bool nz1 = (s1->exponents[i] > 0);
         bool nz2 = (s2->exponents[i] > 0);
@@ -490,6 +600,10 @@ float prime_sig_similarity(const prime_signature_t* s1,
     if (!s1 || !s2) {
         return -1.0f;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_similarity", 0.0f);
+
 
     switch (method) {
         case PRIME_SIG_SIMILARITY_JACCARD:
@@ -512,6 +626,12 @@ float prime_sig_similarity(const prime_signature_t* s1,
             uint32_t sum2 = 0;
 
             for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+                    prime_signature_heartbeat("prime_signat_loop",
+                                     (float)(i + 1) / (float)PRIME_SIG_DIM);
+                }
+
                 uint8_t e1 = s1->exponents[i];
                 uint8_t e2 = s2->exponents[i];
 
@@ -531,6 +651,12 @@ float prime_sig_similarity(const prime_signature_t* s1,
             uint32_t sum2 = 0;
 
             for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+                    prime_signature_heartbeat("prime_signat_loop",
+                                     (float)(i + 1) / (float)PRIME_SIG_DIM);
+                }
+
                 uint8_t e1 = s1->exponents[i];
                 uint8_t e2 = s2->exponents[i];
 
@@ -559,6 +685,10 @@ prime_signature_t* prime_sig_compose(const prime_signature_t* s1,
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_compose", 0.0f);
+
+
     prime_signature_t* result = prime_sig_create();
     if (!result) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
@@ -568,6 +698,12 @@ prime_signature_t* prime_sig_compose(const prime_signature_t* s1,
 
     // Take max of each exponent
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            prime_signature_heartbeat("prime_signat_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         result->exponents[i] = (s1->exponents[i] > s2->exponents[i])
                                ? s1->exponents[i]
                                : s2->exponents[i];
@@ -586,6 +722,10 @@ prime_signature_t* prime_sig_intersect(const prime_signature_t* s1,
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_intersect", 0.0f);
+
+
     prime_signature_t* result = prime_sig_create();
     if (!result) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
@@ -595,6 +735,12 @@ prime_signature_t* prime_sig_intersect(const prime_signature_t* s1,
 
     // Take min of each exponent
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            prime_signature_heartbeat("prime_signat_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         result->exponents[i] = (s1->exponents[i] < s2->exponents[i])
                                ? s1->exponents[i]
                                : s2->exponents[i];
@@ -613,6 +759,10 @@ prime_signature_t* prime_sig_difference(const prime_signature_t* s1,
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_difference", 0.0f);
+
+
     prime_signature_t* result = prime_sig_create();
     if (!result) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
@@ -622,6 +772,12 @@ prime_signature_t* prime_sig_difference(const prime_signature_t* s1,
 
     // Take absolute difference of each exponent
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            prime_signature_heartbeat("prime_signat_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         int16_t diff = (int16_t)s1->exponents[i] - (int16_t)s2->exponents[i];
         result->exponents[i] = (diff < 0) ? (uint8_t)(-diff) : (uint8_t)diff;
     }
@@ -639,6 +795,10 @@ prime_signature_t* prime_sig_subtract(const prime_signature_t* s1,
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_subtract", 0.0f);
+
+
     prime_signature_t* result = prime_sig_create();
     if (!result) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
@@ -648,6 +808,12 @@ prime_signature_t* prime_sig_subtract(const prime_signature_t* s1,
 
     // Subtract s2 from s1, clamping at 0
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            prime_signature_heartbeat("prime_signat_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         result->exponents[i] = saturating_sub(s1->exponents[i], s2->exponents[i]);
     }
 
@@ -667,6 +833,10 @@ uint64_t prime_sig_hash(const prime_signature_t* sig) {
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_hash", 0.0f);
+
+
     return compute_signature_hash(sig->exponents);
 }
 
@@ -674,6 +844,10 @@ bool prime_sig_hash_equal(const prime_signature_t* s1, const prime_signature_t* 
     if (!s1 || !s2) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_hash_equal", 0.0f);
+
 
     return s1->hash == s2->hash;
 }
@@ -684,6 +858,10 @@ bool prime_sig_equal(const prime_signature_t* s1, const prime_signature_t* s2) {
     }
 
     // Quick check: if hashes differ, signatures differ
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_equal", 0.0f);
+
+
     if (s1->hash != s2->hash) {
         return false;
     }
@@ -702,7 +880,17 @@ bool prime_sig_is_empty(const prime_signature_t* sig) {
     }
 
     // Early exit on first non-zero
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_is_empty", 0.0f);
+
+
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            prime_signature_heartbeat("prime_signat_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         if (sig->exponents[i] > 0) {
             return false;
         }
@@ -716,6 +904,10 @@ uint32_t prime_sig_count_factors(const prime_signature_t* sig) {
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_count_fact", 0.0f);
+
+
     return sig->num_factors;
 }
 
@@ -723,6 +915,10 @@ uint32_t prime_sig_recount_factors(prime_signature_t* sig) {
     if (!sig) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_recount_fa", 0.0f);
+
 
     sig->num_factors = count_nonzero(sig->exponents);
     return sig->num_factors;
@@ -737,6 +933,10 @@ size_t prime_sig_to_string(const prime_signature_t* sig, char* buf, size_t size)
     }
 
     // Calculate required size
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_to_string", 0.0f);
+
+
     size_t required = 0;
 
     // Header
@@ -744,6 +944,12 @@ size_t prime_sig_to_string(const prime_signature_t* sig, char* buf, size_t size)
 
     // Non-zero exponents
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            prime_signature_heartbeat("prime_signat_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         if (sig->exponents[i] > 0) {
             required += 20;  // "XXX^YYY, "
         }
@@ -774,6 +980,12 @@ size_t prime_sig_to_string(const prime_signature_t* sig, char* buf, size_t size)
     // Non-zero exponents
     bool first = true;
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            prime_signature_heartbeat("prime_signat_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         if (sig->exponents[i] > 0) {
             n = snprintf(buf + written, remaining, "%s%llu^%u",
                         first ? "" : ", ",
@@ -807,6 +1019,10 @@ void prime_sig_print(const prime_signature_t* sig) {
     }
 
     // Use a reasonably sized buffer
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_print", 0.0f);
+
+
     char buf[2048];
     prime_sig_to_string(sig, buf, sizeof(buf));
     printf("%s\n", buf);
@@ -817,6 +1033,10 @@ uint8_t prime_sig_get_exponent(const prime_signature_t* sig, size_t index) {
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_get_expone", 0.0f);
+
+
     return sig->exponents[index];
 }
 
@@ -826,6 +1046,10 @@ bool prime_sig_set_exponent(prime_signature_t* sig, size_t index, uint8_t value)
     }
 
     // Track if factor count changes
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_set_expone", 0.0f);
+
+
     bool was_nonzero = (sig->exponents[index] > 0);
     bool is_nonzero = (value > 0);
 
@@ -849,8 +1073,18 @@ uint32_t prime_sig_total_weight(const prime_signature_t* sig) {
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_total_weig", 0.0f);
+
+
     uint32_t total = 0;
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            prime_signature_heartbeat("prime_signat_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         total += sig->exponents[i];
     }
 
@@ -863,8 +1097,18 @@ bool prime_sig_normalize(prime_signature_t* sig) {
     }
 
     // Find max exponent
+    /* Phase 8: Heartbeat at operation start */
+    prime_signature_heartbeat("prime_signat_prime_sig_normalize", 0.0f);
+
+
     uint8_t max_exp = 0;
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            prime_signature_heartbeat("prime_signat_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         if (sig->exponents[i] > max_exp) {
             max_exp = sig->exponents[i];
         }
@@ -884,6 +1128,12 @@ bool prime_sig_normalize(prime_signature_t* sig) {
 
     // Apply scaling
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            prime_signature_heartbeat("prime_signat_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         if (sig->exponents[i] > 0) {
             float scaled = sig->exponents[i] * scale;
             // Round and clamp

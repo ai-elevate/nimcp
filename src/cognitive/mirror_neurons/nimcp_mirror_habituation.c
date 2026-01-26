@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_mirror_habituation_health_agent = NULL;
  * @brief Set health agent for mirror_habituation heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_habituation_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_habituation_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_habituation_health_agent = agent;
 }
 
@@ -93,6 +93,12 @@ static float compute_feature_similarity(
     float mag_b = 0.0f;
 
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            mirror_habituation_heartbeat("mirror_habit_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         dot += a[i] * b[i];
         mag_a += a[i] * a[i];
         mag_b += b[i] * b[i];
@@ -120,6 +126,12 @@ static habituation_record_t* find_best_match(
     float best_sim = 0.0f;
 
     for (uint32_t i = 0; i < system->pattern_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->pattern_count > 256) {
+            mirror_habituation_heartbeat("mirror_habit_loop",
+                             (float)(i + 1) / (float)system->pattern_count);
+        }
+
         habituation_record_t* rec = &system->patterns[i];
         if (!rec->active) continue;
 
@@ -152,6 +164,12 @@ static habituation_record_t* create_pattern(
         uint64_t oldest_time = UINT64_MAX;
 
         for (uint32_t i = 0; i < HABITUATION_MAX_PATTERNS; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && HABITUATION_MAX_PATTERNS > 256) {
+                mirror_habituation_heartbeat("mirror_habit_loop",
+                                 (float)(i + 1) / (float)HABITUATION_MAX_PATTERNS);
+            }
+
             if (!system->patterns[i].active) {
                 oldest_idx = i;
                 break;
@@ -215,6 +233,10 @@ static float compute_isi(habituation_record_t* rec, uint64_t current_us) {
 //=============================================================================
 
 habituation_config_t habituation_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_habituation_heartbeat("mirror_habit_habituation_config_d", 0.0f);
+
+
     habituation_config_t config = {
         .habituation_rate = 0.15f,
         .asymptote = 0.1f,              /* Never fully habituate */
@@ -241,6 +263,10 @@ habituation_config_t habituation_config_default(void) {
 }
 
 habituation_system_t* habituation_create(const habituation_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_habituation_heartbeat("mirror_habit_habituation_create", 0.0f);
+
+
     habituation_system_t* system = nimcp_calloc(1, sizeof(habituation_system_t));
     if (!system) {
         nimcp_log(LOG_LEVEL_ERROR, "Habituation: Failed to allocate system");
@@ -285,6 +311,10 @@ habituation_system_t* habituation_create(const habituation_config_t* config) {
 void habituation_destroy(habituation_system_t* system) {
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_habituation_heartbeat("mirror_habit_habituation_destroy", 0.0f);
+
+
     if (system->bio_async_registered) {
         habituation_unregister_bio_async(system);
     }
@@ -308,6 +338,10 @@ bool habituation_process(
     habituation_result_t* result
 ) {
     if (!system || !stimulus || !result) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_habituation_heartbeat("mirror_habit_habituation_process", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
 
@@ -434,6 +468,10 @@ float habituation_query(
 ) {
     if (!system || !stimulus) return 1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_habituation_heartbeat("mirror_habit_habituation_query", 0.0f);
+
+
     float similarity = 0.0f;
     habituation_record_t* rec = find_best_match(
         (habituation_system_t*)system, stimulus, &similarity);
@@ -454,8 +492,18 @@ uint32_t habituation_process_batch(
 ) {
     if (!system || !stimuli || !results || count == 0) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_habituation_heartbeat("mirror_habit_habituation_process_", 0.0f);
+
+
     uint32_t processed = 0;
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            mirror_habituation_heartbeat("mirror_habit_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         float intensity = intensities ? intensities[i] : 0.5f;
         if (habituation_process(system, &stimuli[i], intensity, &results[i])) {
             processed++;
@@ -482,6 +530,10 @@ void habituation_encode_action(
     stimulus_encoding_t* encoding
 ) {
     if (!encoding) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_habituation_heartbeat("mirror_habit_habituation_encode_a", 0.0f);
+
 
     memset(encoding, 0, sizeof(stimulus_encoding_t));
 
@@ -510,6 +562,10 @@ float habituation_stimulus_similarity(
 
     /* Category mismatch = no similarity */
     if (a->category != b->category) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_habituation_heartbeat("mirror_habit_habituation_stimulus", 0.0f);
+
 
     float similarity = 0.0f;
 
@@ -564,9 +620,19 @@ void habituation_trigger_dishabituation(
 ) {
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_habituation_heartbeat("mirror_habit_habituation_trigger_", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     for (uint32_t i = 0; i < system->pattern_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->pattern_count > 256) {
+            mirror_habituation_heartbeat("mirror_habit_loop",
+                             (float)(i + 1) / (float)system->pattern_count);
+        }
+
         if (!system->patterns[i].active) continue;
 
         system->patterns[i].habituation_level *= (1.0f - strength);
@@ -585,9 +651,19 @@ void habituation_dishabituate_category(
 ) {
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_habituation_heartbeat("mirror_habit_habituation_dishabit", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     for (uint32_t i = 0; i < system->pattern_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->pattern_count > 256) {
+            mirror_habituation_heartbeat("mirror_habit_loop",
+                             (float)(i + 1) / (float)system->pattern_count);
+        }
+
         if (!system->patterns[i].active) continue;
         if (system->patterns[i].stimulus.category != category) continue;
 
@@ -605,6 +681,10 @@ bool habituation_would_dishabituate(
 ) {
     if (!system || !stimulus) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_habituation_heartbeat("mirror_habit_habituation_would_di", 0.0f);
+
+
     return intensity > system->config.dishabituation_threshold;
 }
 
@@ -618,12 +698,22 @@ void habituation_update_recovery(
 ) {
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_habituation_heartbeat("mirror_habit_habituation_update_r", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     float recovery_factor = 1.0f - expf(-dt_ms / system->config.recovery_time_constant_ms);
     float recovery_amount = system->config.recovery_rate * recovery_factor;
 
     for (uint32_t i = 0; i < system->pattern_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->pattern_count > 256) {
+            mirror_habituation_heartbeat("mirror_habit_loop",
+                             (float)(i + 1) / (float)system->pattern_count);
+        }
+
         if (!system->patterns[i].active) continue;
 
         habituation_record_t* rec = &system->patterns[i];
@@ -661,7 +751,17 @@ const habituation_record_t* habituation_get_record(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_habituation_heartbeat("mirror_habit_habituation_get_reco", 0.0f);
+
+
     for (uint32_t i = 0; i < system->pattern_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->pattern_count > 256) {
+            mirror_habituation_heartbeat("mirror_habit_loop",
+                             (float)(i + 1) / (float)system->pattern_count);
+        }
+
         if (system->patterns[i].stimulus.stimulus_id == pattern_id) {
             return &system->patterns[i];
         }
@@ -675,9 +775,19 @@ void habituation_clear_pattern(
 ) {
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_habituation_heartbeat("mirror_habit_habituation_clear_pa", 0.0f);
+
+
     nimcp_mutex_lock(system->mutex);
 
     for (uint32_t i = 0; i < system->pattern_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->pattern_count > 256) {
+            mirror_habituation_heartbeat("mirror_habit_loop",
+                             (float)(i + 1) / (float)system->pattern_count);
+        }
+
         if (system->patterns[i].stimulus.stimulus_id == pattern_id) {
             system->patterns[i].active = false;
             system->patterns[i].habituation_level = 0.0f;
@@ -701,7 +811,17 @@ void habituation_simd_similarities(
     uint32_t feature_dim
 ) {
     /* Scalar implementation */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_habituation_heartbeat("mirror_habit_habituation_simd_sim", 0.0f);
+
+
     for (uint32_t p = 0; p < pattern_count; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && pattern_count > 256) {
+            mirror_habituation_heartbeat("mirror_habit_loop",
+                             (float)(p + 1) / (float)pattern_count);
+        }
+
         const float* pattern = pattern_features + p * feature_dim;
         similarities[p] = compute_feature_similarity(query_features, pattern, feature_dim);
     }
@@ -714,7 +834,17 @@ void habituation_simd_update(
     float asymptote,
     uint32_t count
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_habituation_heartbeat("mirror_habit_habituation_simd_upd", 0.0f);
+
+
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            mirror_habituation_heartbeat("mirror_habit_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         float rate = habituation_rate * intensities[i];
         habituation_levels[i] += rate * (1.0f - habituation_levels[i]);
         habituation_levels[i] = clamp_f(habituation_levels[i], 0.0f, 1.0f - asymptote);
@@ -728,6 +858,10 @@ void habituation_simd_update(
 bool habituation_register_bio_async(habituation_system_t* system) {
     if (!system) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_habituation_heartbeat("mirror_habit_habituation_register", 0.0f);
+
+
     system->bio_async_registered = true;
     nimcp_log(LOG_LEVEL_DEBUG, "Habituation: Registered with bio-async");
     return true;
@@ -735,6 +869,10 @@ bool habituation_register_bio_async(habituation_system_t* system) {
 
 void habituation_unregister_bio_async(habituation_system_t* system) {
     if (!system) return;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_habituation_heartbeat("mirror_habit_habituation_unregist", 0.0f);
+
+
     system->bio_async_registered = false;
     nimcp_log(LOG_LEVEL_DEBUG, "Habituation: Unregistered from bio-async");
 }
@@ -749,6 +887,10 @@ bool habituation_get_stats(
 ) {
     if (!system || !stats) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_habituation_heartbeat("mirror_habit_habituation_get_stat", 0.0f);
+
+
     nimcp_mutex_lock(((habituation_system_t*)system)->mutex);
     *stats = system->stats;
     nimcp_mutex_unlock(((habituation_system_t*)system)->mutex);
@@ -758,6 +900,10 @@ bool habituation_get_stats(
 
 void habituation_reset_stats(habituation_system_t* system) {
     if (!system) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_habituation_heartbeat("mirror_habit_habituation_reset_st", 0.0f);
+
 
     nimcp_mutex_lock(system->mutex);
     uint32_t capacity = system->stats.pattern_capacity;

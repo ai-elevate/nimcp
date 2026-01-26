@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_energy_consistency_health_agent = NULL;
  * @brief Set health agent for energy_consistency heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void energy_consistency_set_health_agent(nimcp_health_agent_t* agent) {
+void energy_consistency_set_health_agent(nimcp_health_agent_t* agent) {
     g_energy_consistency_health_agent = agent;
 }
 
@@ -525,6 +525,12 @@ NIMCP_API nimcp_error_t energy_consistency_check_proof(
     /* Report critical violations to immune system */
     if (checker->config.enable_immune_integration && result->invalid_steps > 0) {
         for (uint32_t i = 0; i < result->num_violations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && result->num_violations > 256) {
+                energy_consistency_heartbeat("energy_consi_loop",
+                                 (float)(i + 1) / (float)result->num_violations);
+            }
+
             if (result->violations[i].severity >= VIOLATION_SEVERITY_CRITICAL) {
                 energy_consistency_report_to_immune(checker, &result->violations[i]);
             }
@@ -872,6 +878,12 @@ NIMCP_API nimcp_error_t energy_consistency_request_recovery(
     /* Find most severe violation */
     const consistency_violation_t* worst = NULL;
     for (uint32_t i = 0; i < result->num_violations; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && result->num_violations > 256) {
+            energy_consistency_heartbeat("energy_consi_loop",
+                             (float)(i + 1) / (float)result->num_violations);
+        }
+
         if (!worst || result->violations[i].severity > worst->severity) {
             worst = &result->violations[i];
         }
@@ -1173,6 +1185,12 @@ static void update_stats_after_check(
 
         /* Update violation counts by type */
         for (uint32_t i = 0; i < result->num_violations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && result->num_violations > 256) {
+                energy_consistency_heartbeat("energy_consi_loop",
+                                 (float)(i + 1) / (float)result->num_violations);
+            }
+
             consistency_violation_type_t type = result->violations[i].type;
             if (type < CONSISTENCY_TYPE_COUNT) {
                 checker->stats.violation_counts[type]++;
@@ -1209,10 +1227,22 @@ static nimcp_error_t validate_proof_step(
 
     /* Validate premises exist */
     for (uint32_t i = 0; i < step->premise_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && step->premise_count > 256) {
+            energy_consistency_heartbeat("energy_consi_loop",
+                             (float)(i + 1) / (float)step->premise_count);
+        }
+
         uint32_t premise_id = step->premises[i];
         bool found = false;
 
         for (uint32_t j = 0; j < num_steps; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && num_steps > 256) {
+                energy_consistency_heartbeat("energy_consi_loop",
+                                 (float)(j + 1) / (float)num_steps);
+            }
+
             if (all_steps[j].step_id == premise_id) {
                 found = true;
                 break;
@@ -1278,10 +1308,22 @@ static bool check_circular_dependency(
     const proof_step_t* step = &steps[current_step];
 
     for (uint32_t i = 0; i < step->premise_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && step->premise_count > 256) {
+            energy_consistency_heartbeat("energy_consi_loop",
+                             (float)(i + 1) / (float)step->premise_count);
+        }
+
         uint32_t premise_id = step->premises[i];
 
         /* Find premise index */
         for (uint32_t j = 0; j < num_steps; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && num_steps > 256) {
+                energy_consistency_heartbeat("energy_consi_loop",
+                                 (float)(j + 1) / (float)num_steps);
+            }
+
             if (steps[j].step_id == premise_id) {
                 if (!visited[j]) {
                     if (check_circular_dependency(steps, num_steps, j,

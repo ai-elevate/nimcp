@@ -42,7 +42,7 @@ static nimcp_health_agent_t* g_kg_reader_health_agent = NULL;
  * @brief Set health agent for kg_reader heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void kg_reader_set_health_agent(nimcp_health_agent_t* agent) {
+void kg_reader_set_health_agent(nimcp_health_agent_t* agent) {
     g_kg_reader_health_agent = agent;
 }
 
@@ -246,6 +246,12 @@ static kg_entity_t* parse_entity(const char* json) {
     if (entity->name[0] == '\0') {
         /* Invalid entity - no name */
         for (uint32_t i = 0; i < entity->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && entity->num_observations > 256) {
+                kg_reader_heartbeat("kg_reader_loop",
+                                 (float)(i + 1) / (float)entity->num_observations);
+            }
+
             free(entity->observations[i]);
         }
         free(entity);
@@ -347,6 +353,10 @@ static const char* strcasestr_local(const char* haystack, const char* needle) {
  * ============================================================================ */
 
 kg_reader_t* kg_reader_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    kg_reader_heartbeat("kg_reader_create", 0.0f);
+
+
     kg_reader_t* reader = calloc(1, sizeof(kg_reader_t));
     NIMCP_API_CHECK_ALLOC(reader, "Failed to allocate KG reader");
     return reader;
@@ -356,7 +366,17 @@ void kg_reader_destroy(kg_reader_t* reader) {
     if (!reader) return;
 
     /* Free entities */
+    /* Phase 8: Heartbeat at operation start */
+    kg_reader_heartbeat("kg_reader_destroy", 0.0f);
+
+
     for (uint32_t i = 0; i < reader->num_entities; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && reader->num_entities > 256) {
+            kg_reader_heartbeat("kg_reader_loop",
+                             (float)(i + 1) / (float)reader->num_entities);
+        }
+
         if (reader->entities[i]) {
             for (uint32_t j = 0; j < reader->entities[i]->num_observations; j++) {
                 free(reader->entities[i]->observations[j]);
@@ -367,6 +387,12 @@ void kg_reader_destroy(kg_reader_t* reader) {
 
     /* Free relations */
     for (uint32_t i = 0; i < reader->num_relations; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && reader->num_relations > 256) {
+            kg_reader_heartbeat("kg_reader_loop",
+                             (float)(i + 1) / (float)reader->num_relations);
+        }
+
         free(reader->relations[i]);
     }
 
@@ -374,6 +400,10 @@ void kg_reader_destroy(kg_reader_t* reader) {
 }
 
 int kg_reader_load(kg_reader_t* reader, const char* file_path) {
+    /* Phase 8: Heartbeat at operation start */
+    kg_reader_heartbeat("kg_reader_load", 0.0f);
+
+
     NIMCP_API_CHECK_NULL(reader, -1, "NULL reader in kg_reader_load");
 
     const char* path = file_path ? file_path : KG_DEFAULT_PATH;
@@ -394,6 +424,12 @@ int kg_reader_load(kg_reader_t* reader, const char* file_path) {
 
     /* Clear existing data */
     for (uint32_t i = 0; i < reader->num_entities; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && reader->num_entities > 256) {
+            kg_reader_heartbeat("kg_reader_loop",
+                             (float)(i + 1) / (float)reader->num_entities);
+        }
+
         if (reader->entities[i]) {
             for (uint32_t j = 0; j < reader->entities[i]->num_observations; j++) {
                 free(reader->entities[i]->observations[j]);
@@ -403,6 +439,12 @@ int kg_reader_load(kg_reader_t* reader, const char* file_path) {
         }
     }
     for (uint32_t i = 0; i < reader->num_relations; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && reader->num_relations > 256) {
+            kg_reader_heartbeat("kg_reader_loop",
+                             (float)(i + 1) / (float)reader->num_relations);
+        }
+
         free(reader->relations[i]);
         reader->relations[i] = NULL;
     }
@@ -445,6 +487,10 @@ int kg_reader_load(kg_reader_t* reader, const char* file_path) {
 }
 
 int kg_reader_reload(kg_reader_t* reader) {
+    /* Phase 8: Heartbeat at operation start */
+    kg_reader_heartbeat("kg_reader_reload", 0.0f);
+
+
     NIMCP_API_CHECK_NULL(reader, -1, "NULL reader in kg_reader_reload");
     NIMCP_API_CHECK(reader->file_path[0] != '\0', -1, "No file loaded to reload");
     return kg_reader_load(reader, reader->file_path);
@@ -452,6 +498,10 @@ int kg_reader_reload(kg_reader_t* reader) {
 
 bool kg_reader_is_modified(const kg_reader_t* reader) {
     if (!reader || reader->file_path[0] == '\0') return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    kg_reader_heartbeat("kg_reader_is_modified", 0.0f);
+
 
     struct stat st;
     if (stat(reader->file_path, &st) != 0) return false;
@@ -466,7 +516,17 @@ bool kg_reader_is_modified(const kg_reader_t* reader) {
 const kg_entity_t* kg_reader_get_entity(const kg_reader_t* reader, const char* name) {
     if (!reader || !name) return NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    kg_reader_heartbeat("kg_reader_get_entity", 0.0f);
+
+
     for (uint32_t i = 0; i < reader->num_entities; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && reader->num_entities > 256) {
+            kg_reader_heartbeat("kg_reader_loop",
+                             (float)(i + 1) / (float)reader->num_entities);
+        }
+
         if (reader->entities[i] && strcmp(reader->entities[i]->name, name) == 0) {
             return reader->entities[i];
         }
@@ -476,6 +536,10 @@ const kg_entity_t* kg_reader_get_entity(const kg_reader_t* reader, const char* n
 
 kg_entity_list_t* kg_reader_get_entities_by_type(const kg_reader_t* reader, const char* entity_type) {
     if (!reader || !entity_type) return NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    kg_reader_heartbeat("kg_reader_get_entities_by_type", 0.0f);
+
 
     kg_entity_list_t* list = calloc(1, sizeof(kg_entity_list_t));
     if (!list) {
@@ -494,6 +558,12 @@ kg_entity_list_t* kg_reader_get_entities_by_type(const kg_reader_t* reader, cons
     }
 
     for (uint32_t i = 0; i < reader->num_entities; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && reader->num_entities > 256) {
+            kg_reader_heartbeat("kg_reader_loop",
+                             (float)(i + 1) / (float)reader->num_entities);
+        }
+
         if (reader->entities[i] && strcmp(reader->entities[i]->entity_type, entity_type) == 0) {
             if (list->count >= list->capacity) {
                 list->capacity *= 2;
@@ -517,6 +587,10 @@ kg_entity_list_t* kg_reader_get_all_entities(const kg_reader_t* reader) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    kg_reader_heartbeat("kg_reader_get_all_entities", 0.0f);
+
+
     kg_entity_list_t* list = calloc(1, sizeof(kg_entity_list_t));
     if (!list) {
 
@@ -534,6 +608,12 @@ kg_entity_list_t* kg_reader_get_all_entities(const kg_reader_t* reader) {
     }
 
     for (uint32_t i = 0; i < reader->num_entities; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && reader->num_entities > 256) {
+            kg_reader_heartbeat("kg_reader_loop",
+                             (float)(i + 1) / (float)reader->num_entities);
+        }
+
         if (reader->entities[i]) {
             list->entities[list->count++] = reader->entities[i];
         }
@@ -544,6 +624,10 @@ kg_entity_list_t* kg_reader_get_all_entities(const kg_reader_t* reader) {
 
 kg_entity_list_t* kg_reader_search_entities(const kg_reader_t* reader, const char* search_text) {
     if (!reader || !search_text) return NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    kg_reader_heartbeat("kg_reader_search_entities", 0.0f);
+
 
     kg_entity_list_t* list = calloc(1, sizeof(kg_entity_list_t));
     if (!list) {
@@ -562,6 +646,12 @@ kg_entity_list_t* kg_reader_search_entities(const kg_reader_t* reader, const cha
     }
 
     for (uint32_t i = 0; i < reader->num_entities; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && reader->num_entities > 256) {
+            kg_reader_heartbeat("kg_reader_loop",
+                             (float)(i + 1) / (float)reader->num_entities);
+        }
+
         kg_entity_t* e = reader->entities[i];
         if (!e) continue;
 
@@ -576,6 +666,12 @@ kg_entity_list_t* kg_reader_search_entities(const kg_reader_t* reader, const cha
         /* Search in observations */
         if (!found) {
             for (uint32_t j = 0; j < e->num_observations; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && e->num_observations > 256) {
+                    kg_reader_heartbeat("kg_reader_loop",
+                                     (float)(j + 1) / (float)e->num_observations);
+                }
+
                 if (e->observations[j] && strcasestr_local(e->observations[j], search_text)) {
                     found = true;
                     break;
@@ -599,6 +695,10 @@ kg_entity_list_t* kg_reader_search_entities(const kg_reader_t* reader, const cha
 
 void kg_entity_list_destroy(kg_entity_list_t* list) {
     if (!list) return;
+    /* Phase 8: Heartbeat at operation start */
+    kg_reader_heartbeat("kg_reader_kg_entity_list_destr", 0.0f);
+
+
     free(list->entities);
     free(list);
 }
@@ -609,6 +709,10 @@ void kg_entity_list_destroy(kg_entity_list_t* list) {
 
 kg_relation_list_t* kg_reader_get_relations_from(const kg_reader_t* reader, const char* from_entity) {
     if (!reader || !from_entity) return NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    kg_reader_heartbeat("kg_reader_get_relations_from", 0.0f);
+
 
     kg_relation_list_t* list = calloc(1, sizeof(kg_relation_list_t));
     if (!list) {
@@ -627,6 +731,12 @@ kg_relation_list_t* kg_reader_get_relations_from(const kg_reader_t* reader, cons
     }
 
     for (uint32_t i = 0; i < reader->num_relations; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && reader->num_relations > 256) {
+            kg_reader_heartbeat("kg_reader_loop",
+                             (float)(i + 1) / (float)reader->num_relations);
+        }
+
         if (reader->relations[i] && strcmp(reader->relations[i]->from, from_entity) == 0) {
             if (list->count >= list->capacity) {
                 list->capacity *= 2;
@@ -644,6 +754,10 @@ kg_relation_list_t* kg_reader_get_relations_from(const kg_reader_t* reader, cons
 kg_relation_list_t* kg_reader_get_relations_to(const kg_reader_t* reader, const char* to_entity) {
     if (!reader || !to_entity) return NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    kg_reader_heartbeat("kg_reader_get_relations_to", 0.0f);
+
+
     kg_relation_list_t* list = calloc(1, sizeof(kg_relation_list_t));
     if (!list) {
 
@@ -661,6 +775,12 @@ kg_relation_list_t* kg_reader_get_relations_to(const kg_reader_t* reader, const 
     }
 
     for (uint32_t i = 0; i < reader->num_relations; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && reader->num_relations > 256) {
+            kg_reader_heartbeat("kg_reader_loop",
+                             (float)(i + 1) / (float)reader->num_relations);
+        }
+
         if (reader->relations[i] && strcmp(reader->relations[i]->to, to_entity) == 0) {
             if (list->count >= list->capacity) {
                 list->capacity *= 2;
@@ -678,6 +798,10 @@ kg_relation_list_t* kg_reader_get_relations_to(const kg_reader_t* reader, const 
 kg_relation_list_t* kg_reader_get_relations_by_type(const kg_reader_t* reader, const char* relation_type) {
     if (!reader || !relation_type) return NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    kg_reader_heartbeat("kg_reader_get_relations_by_typ", 0.0f);
+
+
     kg_relation_list_t* list = calloc(1, sizeof(kg_relation_list_t));
     if (!list) {
 
@@ -695,6 +819,12 @@ kg_relation_list_t* kg_reader_get_relations_by_type(const kg_reader_t* reader, c
     }
 
     for (uint32_t i = 0; i < reader->num_relations; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && reader->num_relations > 256) {
+            kg_reader_heartbeat("kg_reader_loop",
+                             (float)(i + 1) / (float)reader->num_relations);
+        }
+
         if (reader->relations[i] && strcmp(reader->relations[i]->relation_type, relation_type) == 0) {
             if (list->count >= list->capacity) {
                 list->capacity *= 2;
@@ -713,6 +843,12 @@ const char* kg_reader_are_connected(const kg_reader_t* reader, const char* from_
     if (!reader || !from_entity || !to_entity) return NULL;
 
     for (uint32_t i = 0; i < reader->num_relations; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && reader->num_relations > 256) {
+            kg_reader_heartbeat("kg_reader_loop",
+                             (float)(i + 1) / (float)reader->num_relations);
+        }
+
         kg_relation_t* r = reader->relations[i];
         if (r && strcmp(r->from, from_entity) == 0 && strcmp(r->to, to_entity) == 0) {
             return r->relation_type;
@@ -723,6 +859,10 @@ const char* kg_reader_are_connected(const kg_reader_t* reader, const char* from_
 
 void kg_relation_list_destroy(kg_relation_list_t* list) {
     if (!list) return;
+    /* Phase 8: Heartbeat at operation start */
+    kg_reader_heartbeat("kg_reader_kg_relation_list_des", 0.0f);
+
+
     free(list->relations);
     free(list);
 }
@@ -736,6 +876,12 @@ const char* kg_reader_get_observation(const kg_reader_t* reader, const char* ent
     if (!entity || !keyword) return NULL;
 
     for (uint32_t i = 0; i < entity->num_observations; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && entity->num_observations > 256) {
+            kg_reader_heartbeat("kg_reader_loop",
+                             (float)(i + 1) / (float)entity->num_observations);
+        }
+
         if (entity->observations[i] && strcasestr_local(entity->observations[i], keyword)) {
             return entity->observations[i];
         }
@@ -773,6 +919,12 @@ const char** kg_reader_get_module_names(const kg_reader_t* reader, uint32_t* out
     }
 
     for (uint32_t i = 0; i < modules->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && modules->count > 256) {
+            kg_reader_heartbeat("kg_reader_loop",
+                             (float)(i + 1) / (float)modules->count);
+        }
+
         names[i] = modules->entities[i]->name;
     }
 
@@ -804,11 +956,19 @@ const char* kg_reader_get_module_location(const kg_reader_t* reader, const char*
 }
 
 kg_relation_list_t* kg_reader_get_module_integrations(const kg_reader_t* reader, const char* module_name) {
+    /* Phase 8: Heartbeat at operation start */
+    kg_reader_heartbeat("kg_reader_get_module_integrati", 0.0f);
+
+
     return kg_reader_get_relations_from(reader, module_name);
 }
 
 int kg_reader_generate_self_description(const kg_reader_t* reader, char* buffer, size_t buffer_size) {
     if (!reader || !buffer || buffer_size == 0) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    kg_reader_heartbeat("kg_reader_generate_self_descri", 0.0f);
+
 
     int written = 0;
     int n;
@@ -852,6 +1012,10 @@ int kg_reader_generate_self_description(const kg_reader_t* reader, char* buffer,
 int kg_reader_get_stats(const kg_reader_t* reader, kg_reader_stats_t* stats) {
     if (!reader || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    kg_reader_heartbeat("kg_reader_get_stats", 0.0f);
+
+
     memset(stats, 0, sizeof(kg_reader_stats_t));
     stats->total_entities = reader->num_entities;
     stats->total_relations = reader->num_relations;
@@ -861,6 +1025,12 @@ int kg_reader_get_stats(const kg_reader_t* reader, kg_reader_stats_t* stats) {
 
     /* Count total observations */
     for (uint32_t i = 0; i < reader->num_entities; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && reader->num_entities > 256) {
+            kg_reader_heartbeat("kg_reader_loop",
+                             (float)(i + 1) / (float)reader->num_entities);
+        }
+
         if (reader->entities[i]) {
             stats->total_observations += reader->entities[i]->num_observations;
         }

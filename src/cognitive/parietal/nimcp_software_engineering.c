@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_software_engineering_health_agent = NULL;
  * @brief Set health agent for software_engineering heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void software_engineering_set_health_agent(nimcp_health_agent_t* agent) {
+void software_engineering_set_health_agent(nimcp_health_agent_t* agent) {
     g_software_engineering_health_agent = agent;
 }
 
@@ -127,6 +127,10 @@ static float clamp01(float v) {
  * ============================================================================ */
 
 software_eng_config_t software_eng_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_default", 0.0f);
+
+
     software_eng_config_t config = {
         .complexity_threshold = 10.0f,
         .coupling_threshold = 0.7f,
@@ -145,6 +149,10 @@ bool software_eng_validate_config(const software_eng_config_t* config) {
         set_sweng_error("Null config");
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_validat", 0.0f);
+
+
     if (config->complexity_threshold <= 0.0f) {
         set_sweng_error("Invalid complexity threshold");
         return false;
@@ -157,10 +165,18 @@ bool software_eng_validate_config(const software_eng_config_t* config) {
 }
 
 software_eng_t* software_eng_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_create", 0.0f);
+
+
     return software_eng_create_custom(NULL);
 }
 
 software_eng_t* software_eng_create_custom(const software_eng_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_create_", 0.0f);
+
+
     software_eng_config_t cfg = config ? *config : software_eng_default_config();
 
     if (!software_eng_validate_config(&cfg)) {
@@ -191,6 +207,10 @@ software_eng_t* software_eng_create_custom(const software_eng_config_t* config) 
 void software_eng_destroy(software_eng_t* se) {
     if (!se) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_destroy", 0.0f);
+
+
     if (se->lock) {
         nimcp_mutex_free(se->lock);
     }
@@ -210,6 +230,10 @@ int software_eng_analyze_complexity(
         set_sweng_error("Null parameter");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_analyze", 0.0f);
+
 
     nimcp_mutex_lock(se->lock);
 
@@ -306,6 +330,10 @@ int software_eng_compare_complexity(complexity_class_t a, complexity_class_t b) 
     /* Lower enum value = better complexity */
     if ((int)a < (int)b) return -1;
     if ((int)a > (int)b) return 1;
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_compare", 0.0f);
+
+
     return 0;
 }
 
@@ -316,6 +344,10 @@ double software_eng_estimate_runtime(
     uint64_t input_size
 ) {
     if (!se) return 0.0;
+
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_estimat", 0.0f);
+
 
     double n = (double)input_size;
 
@@ -355,6 +387,10 @@ int software_eng_detect_pattern(
         set_sweng_error("Null parameter");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_detect_", 0.0f);
+
 
     nimcp_mutex_lock(se->lock);
 
@@ -510,6 +546,10 @@ float software_eng_pattern_applicability(
 ) {
     if (!se || !structure) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_pattern", 0.0f);
+
+
     switch (pattern) {
         case DESIGN_PATTERN_SINGLETON:
             return structure->has_single_instance ? 0.9f : 0.1f;
@@ -539,6 +579,10 @@ uint32_t software_eng_detect_smells(
     if (!se || !metrics || !results || max_results == 0) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_detect_", 0.0f);
+
 
     nimcp_mutex_lock(se->lock);
 
@@ -633,12 +677,20 @@ const char* software_eng_smell_to_string(code_smell_t smell) {
 
 void software_eng_init_graph(dep_graph_t* graph) {
     if (!graph) return;
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_init_gr", 0.0f);
+
+
     memset(graph, 0, sizeof(dep_graph_t));
 }
 
 int software_eng_add_node(dep_graph_t* graph, const char* name) {
     if (!graph || !name) return -1;
     if (graph->num_nodes >= SWENG_MAX_GRAPH_NODES) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_add_nod", 0.0f);
+
 
     uint32_t id = graph->num_nodes;
     graph->nodes[id].id = id;
@@ -653,6 +705,10 @@ int software_eng_add_node(dep_graph_t* graph, const char* name) {
 int software_eng_add_dependency(dep_graph_t* graph, uint32_t from_id, uint32_t to_id) {
     if (!graph) return -1;
     if (from_id >= graph->num_nodes || to_id >= graph->num_nodes) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_add_dep", 0.0f);
+
 
     dep_node_t* node = &graph->nodes[from_id];
     if (node->num_dependencies >= SWENG_MAX_GRAPH_NODES) return -1;
@@ -689,6 +745,12 @@ static bool detect_cycles_unlocked(dep_graph_t* graph) {
 
     graph->has_cycles = false;
     for (uint32_t i = 0; i < graph->num_nodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && graph->num_nodes > 256) {
+            software_engineering_heartbeat("software_eng_loop",
+                             (float)(i + 1) / (float)graph->num_nodes);
+        }
+
         if (!visited[i] && dfs_has_cycle(graph, i, visited, rec_stack)) {
             graph->has_cycles = true;
             break;
@@ -701,6 +763,10 @@ static bool detect_cycles_unlocked(dep_graph_t* graph) {
 bool software_eng_detect_cycles(software_eng_t* se, dep_graph_t* graph) {
     if (!se || !graph) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_detect_", 0.0f);
+
+
     nimcp_mutex_lock(se->lock);
     bool result = detect_cycles_unlocked(graph);
     nimcp_mutex_unlock(se->lock);
@@ -711,6 +777,10 @@ bool software_eng_detect_cycles(software_eng_t* se, dep_graph_t* graph) {
 int software_eng_analyze_dependencies(software_eng_t* se, dep_graph_t* graph) {
     if (!se || !graph) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_analyze", 0.0f);
+
+
     nimcp_mutex_lock(se->lock);
 
     /* Detect cycles (use unlocked version since we already have the lock) */
@@ -719,6 +789,12 @@ int software_eng_analyze_dependencies(software_eng_t* se, dep_graph_t* graph) {
     /* Calculate max depth (simplified BFS) */
     graph->max_depth = 0;
     for (uint32_t i = 0; i < graph->num_nodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && graph->num_nodes > 256) {
+            software_engineering_heartbeat("software_eng_loop",
+                             (float)(i + 1) / (float)graph->num_nodes);
+        }
+
         uint32_t depth = 0;
         uint8_t visited[SWENG_MAX_GRAPH_NODES] = {0};
         uint32_t queue[SWENG_MAX_GRAPH_NODES];
@@ -747,6 +823,12 @@ int software_eng_analyze_dependencies(software_eng_t* se, dep_graph_t* graph) {
     /* Calculate average stability */
     float total_stability = 0.0f;
     for (uint32_t i = 0; i < graph->num_nodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && graph->num_nodes > 256) {
+            software_engineering_heartbeat("software_eng_loop",
+                             (float)(i + 1) / (float)graph->num_nodes);
+        }
+
         dep_node_t* node = &graph->nodes[i];
         float ca = (float)node->dependents_count;
         float ce = (float)node->num_dependencies;
@@ -804,6 +886,12 @@ static uint32_t sweng_get_dep(uint32_t node_index, uint32_t dep_index, void* use
     /* Find nodes that have node_index in their dependencies array */
     uint32_t found = 0;
     for (uint32_t i = 0; i < graph->num_nodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && graph->num_nodes > 256) {
+            software_engineering_heartbeat("software_eng_loop",
+                             (float)(i + 1) / (float)graph->num_nodes);
+        }
+
         for (uint32_t j = 0; j < graph->nodes[i].num_dependencies; j++) {
             if (graph->nodes[i].dependencies[j] == node_index) {
                 if (found == dep_index) {
@@ -828,11 +916,21 @@ int software_eng_topological_sort(
     if (graph->has_cycles) return -1;
     if (graph->num_nodes == 0) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_topolog", 0.0f);
+
+
     nimcp_mutex_lock(se->lock);
 
     /* Precompute in-degrees (same as original algorithm) */
     uint32_t in_degrees[SWENG_MAX_GRAPH_NODES] = {0};
     for (uint32_t i = 0; i < graph->num_nodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && graph->num_nodes > 256) {
+            software_engineering_heartbeat("software_eng_loop",
+                             (float)(i + 1) / (float)graph->num_nodes);
+        }
+
         for (uint32_t j = 0; j < graph->nodes[i].num_dependencies; j++) {
             uint32_t dep = graph->nodes[i].dependencies[j];
             if (dep < graph->num_nodes) {
@@ -878,6 +976,10 @@ float software_eng_cyclomatic_complexity(
     uint32_t components
 ) {
     /* M = E - N + 2P */
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_cycloma", 0.0f);
+
+
     return (float)edges - (float)nodes + 2.0f * (float)components;
 }
 
@@ -889,6 +991,10 @@ float software_eng_maintainability_index(
     if (loc == 0 || halstead_volume < EPSILON) return 0.0f;
 
     /* MI = 171 - 5.2 * ln(V) - 0.23 * G - 16.2 * ln(LOC) */
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_maintai", 0.0f);
+
+
     float mi = 171.0f -
                5.2f * logf(halstead_volume + 1.0f) -
                0.23f * cyclomatic_complexity -
@@ -902,6 +1008,10 @@ float software_eng_maintainability_index(
 }
 
 float software_eng_instability(float afferent_coupling, float efferent_coupling) {
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_instabi", 0.0f);
+
+
     float total = afferent_coupling + efferent_coupling;
     if (total < EPSILON) return 0.0f;
     return efferent_coupling / total;
@@ -914,6 +1024,10 @@ float software_eng_instability(float afferent_coupling, float efferent_coupling)
 int software_eng_set_inflammation(software_eng_t* se, float level) {
     if (!se) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_set_inf", 0.0f);
+
+
     nimcp_mutex_lock(se->lock);
     se->inflammation_level = clamp01(level);
     nimcp_mutex_unlock(se->lock);
@@ -923,6 +1037,10 @@ int software_eng_set_inflammation(software_eng_t* se, float level) {
 
 int software_eng_set_sleep_deprivation(software_eng_t* se, float level) {
     if (!se) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_set_sle", 0.0f);
+
 
     nimcp_mutex_lock(se->lock);
     se->sleep_deprivation_level = clamp01(level);
@@ -937,6 +1055,10 @@ int software_eng_set_sleep_deprivation(software_eng_t* se, float level) {
 
 int software_eng_get_stats(const software_eng_t* se, software_eng_stats_t* stats) {
     if (!se || !stats) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_get_sta", 0.0f);
+
 
     nimcp_mutex_lock(((software_eng_t*)se)->lock);
 
@@ -961,6 +1083,10 @@ int software_eng_get_stats(const software_eng_t* se, software_eng_stats_t* stats
 void software_eng_reset_stats(software_eng_t* se) {
     if (!se) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_reset_s", 0.0f);
+
+
     nimcp_mutex_lock(se->lock);
     se->complexity_analyses = 0;
     se->pattern_detections = 0;
@@ -979,6 +1105,10 @@ const char* software_eng_get_last_error(void) {
  * ============================================================================ */
 
 se_intuition_config_t software_eng_intuition_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_intuiti", 0.0f);
+
+
     se_intuition_config_t config = {
         .hunch_threshold = 0.3f,
         .max_hunches = 100,
@@ -994,12 +1124,20 @@ se_intuition_config_t software_eng_intuition_default_config(void) {
 
 int software_eng_enable_intuition(software_eng_t* se, const se_intuition_config_t* config) {
     if (!se) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_enable_", 0.0f);
+
+
     (void)config;  /* TODO: Full implementation */
     return 0;
 }
 
 int software_eng_disable_intuition(software_eng_t* se) {
     if (!se) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_disable", 0.0f);
+
+
     return 0;
 }
 
@@ -1043,6 +1181,10 @@ const char* software_eng_trend_to_string(se_trend_t trend) {
 se_metric_series_t* software_eng_create_series(const char* metric_name, uint32_t initial_capacity) {
     if (!metric_name || initial_capacity == 0) return NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_create_", 0.0f);
+
+
     se_metric_series_t* series = calloc(1, sizeof(se_metric_series_t));
     if (!series) {
 
@@ -1065,6 +1207,10 @@ se_metric_series_t* software_eng_create_series(const char* metric_name, uint32_t
 
 void software_eng_destroy_series(se_metric_series_t* series) {
     if (!series) return;
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_destroy", 0.0f);
+
+
     free(series->points);
     free(series);
 }
@@ -1076,6 +1222,10 @@ int software_eng_add_data_point(
     float confidence
 ) {
     if (!series) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_add_dat", 0.0f);
+
 
     if (series->num_points >= series->capacity) {
         uint32_t new_cap = series->capacity * 2;
@@ -1094,8 +1244,18 @@ int software_eng_add_data_point(
 
 void software_eng_free_extrapolation(se_extrapolation_t* result) {
     if (!result) return;
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_free_ex", 0.0f);
+
+
     if (result->predicted) {
         for (uint32_t i = 0; i < result->num_predicted; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && result->num_predicted > 256) {
+                software_engineering_heartbeat("software_eng_loop",
+                                 (float)(i + 1) / (float)result->num_predicted);
+            }
+
             free(result->predicted[i]);
         }
         free(result->predicted);
@@ -1106,6 +1266,10 @@ void software_eng_free_extrapolation(se_extrapolation_t* result) {
 
 void software_eng_free_synthesis(se_synthesis_t* synthesis) {
     if (!synthesis) return;
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_software_eng_free_sy", 0.0f);
+
+
     free(synthesis->insights);
     free(synthesis->knowledge_gaps);
     free(synthesis->contradictions);
@@ -1120,9 +1284,19 @@ void software_eng_free_synthesis(se_synthesis_t* synthesis) {
 
 int software_engineering_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    software_engineering_heartbeat("software_eng_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Software_Engineering");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                software_engineering_heartbeat("software_eng_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Module self-knowledge logged */
         }
     }

@@ -75,7 +75,7 @@ static nimcp_health_agent_t* g_pr_optimizer_bridge_health_agent = NULL;
  * @brief Set health agent for pr_optimizer_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void pr_optimizer_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void pr_optimizer_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_pr_optimizer_bridge_health_agent = agent;
 }
 
@@ -136,6 +136,10 @@ static void update_stats_lr(
 //=============================================================================
 
 pr_optimizer_config_t pr_optimizer_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_config_", 0.0f);
+
+
     pr_optimizer_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -178,6 +182,10 @@ pr_optimizer_config_t pr_optimizer_config_default(void) {
 }
 
 pr_optimizer_config_t pr_optimizer_config_aggressive(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_config_", 0.0f);
+
+
     pr_optimizer_config_t config = pr_optimizer_config_default();
 
     config.base_lr = 0.01f;                    // Higher base LR
@@ -191,6 +199,10 @@ pr_optimizer_config_t pr_optimizer_config_aggressive(void) {
 }
 
 pr_optimizer_config_t pr_optimizer_config_conservative(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_config_", 0.0f);
+
+
     pr_optimizer_config_t config = pr_optimizer_config_default();
 
     config.base_lr = 0.0001f;                  // Very low base LR
@@ -213,6 +225,10 @@ bool pr_optimizer_config_validate(const pr_optimizer_config_t* config) {
     }
 
     // Check base learning rate
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_config_", 0.0f);
+
+
     if (config->base_lr <= 0.0f) {
         NIMCP_LOGGING_WARN("Invalid base_lr: %f (must be > 0)", config->base_lr);
         return false;
@@ -251,6 +267,12 @@ bool pr_optimizer_config_validate(const pr_optimizer_config_t* config) {
 
     // Check tier scales
     for (int i = 0; i < PR_OPT_NUM_TIERS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_OPT_NUM_TIERS > 256) {
+            pr_optimizer_bridge_heartbeat("pr_optimizer_loop",
+                             (float)(i + 1) / (float)PR_OPT_NUM_TIERS);
+        }
+
         if (config->tier_lr_scale[i] < 0.0f) {
             NIMCP_LOGGING_WARN("Invalid tier_lr_scale[%d]: %f (must be >= 0)",
                               i, config->tier_lr_scale[i]);
@@ -283,6 +305,10 @@ pr_optimizer_bridge_t pr_optimizer_bridge_create(
     const pr_optimizer_config_t* config
 ) {
     // Allocate bridge structure
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_create", 0.0f);
+
+
     pr_optimizer_bridge_t bridge = nimcp_malloc(sizeof(struct pr_optimizer_bridge_struct));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate optimizer bridge");
@@ -360,6 +386,10 @@ void pr_optimizer_bridge_destroy(pr_optimizer_bridge_t bridge) {
     }
 
     // Free optimizer state
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_destroy", 0.0f);
+
+
     free_optimizer_state(&bridge->state);
 
     // Cleanup base bridge
@@ -378,6 +408,10 @@ pr_optimizer_error_t pr_optimizer_bridge_connect(
     if (!bridge) {
         return PR_OPT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_connect", 0.0f);
+
 
     BRIDGE_LOCK(bridge);
 
@@ -399,6 +433,10 @@ pr_optimizer_error_t pr_optimizer_bridge_init_state(
     if (!bridge) {
         return PR_OPT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_init_state", 0.0f);
+
 
     if (type >= PR_OPT_TYPE_COUNT) {
         return PR_OPT_ERROR_INVALID_TYPE;
@@ -470,6 +508,10 @@ pr_optimizer_error_t pr_optimizer_resonance_adam_step(
         return PR_OPT_ERROR_NOT_INITIALIZED;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_resonan", 0.0f);
+
+
     if (count == 0) {
         return PR_OPT_SUCCESS;  // Nothing to do
     }
@@ -527,6 +569,12 @@ pr_optimizer_error_t pr_optimizer_resonance_adam_step(
 
     // Adam update for each parameter
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_optimizer_bridge_heartbeat("pr_optimizer_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         float g = gradients[i];
 
         // Update first moment (mean)
@@ -578,6 +626,10 @@ pr_optimizer_error_t pr_optimizer_quat_momentum_step(
     if (!bridge->initialized) {
         return PR_OPT_ERROR_NOT_INITIALIZED;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_quat_mo", 0.0f);
+
 
     uint64_t start_time = get_time_ns();
 
@@ -631,6 +683,10 @@ pr_optimizer_error_t pr_optimizer_quat_momentum_step_batch(
         return PR_OPT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_quat_mo", 0.0f);
+
+
     if (count == 0) {
         return PR_OPT_SUCCESS;
     }
@@ -646,6 +702,12 @@ pr_optimizer_error_t pr_optimizer_quat_momentum_step_batch(
     const pr_optimizer_config_t* cfg = &bridge->config;
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_optimizer_bridge_heartbeat("pr_optimizer_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         // Project gradient to tangent space
         nimcp_quaternion_t grad_proj = pr_optimizer_project_to_tangent(
             quats[i], grads[i]);
@@ -692,6 +754,10 @@ pr_optimizer_error_t pr_optimizer_consolidation_gated_step(
         return PR_OPT_ERROR_NOT_INITIALIZED;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_consoli", 0.0f);
+
+
     if (count == 0) {
         return PR_OPT_SUCCESS;
     }
@@ -705,6 +771,12 @@ pr_optimizer_error_t pr_optimizer_consolidation_gated_step(
     uint64_t allowed = 0;
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_optimizer_bridge_heartbeat("pr_optimizer_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (!nodes[i]) {
             // No node info, apply full update
             params[i] -= cfg->base_lr * gradients[i];
@@ -769,6 +841,10 @@ pr_optimizer_error_t pr_optimizer_tier_adaptive_step(
         return PR_OPT_ERROR_NOT_INITIALIZED;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_tier_ad", 0.0f);
+
+
     if (count == 0) {
         return PR_OPT_SUCCESS;
     }
@@ -781,6 +857,12 @@ pr_optimizer_error_t pr_optimizer_tier_adaptive_step(
     float total_lr = 0.0f;
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_optimizer_bridge_heartbeat("pr_optimizer_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         float effective_lr = cfg->base_lr;
 
         if (nodes[i] && cfg->enable_tier_adaptation) {
@@ -829,6 +911,10 @@ float pr_optimizer_compute_effective_lr(
         return base_lr;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_compute", 0.0f);
+
+
     const pr_optimizer_config_t* cfg = &bridge->config;
     float effective_lr = base_lr;
 
@@ -871,6 +957,10 @@ pr_optimizer_error_t pr_optimizer_set_lr(
         return PR_OPT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_set_lr", 0.0f);
+
+
     if (lr <= 0.0f) {
         return PR_OPT_ERROR_INVALID_CONFIG;
     }
@@ -890,6 +980,10 @@ float pr_optimizer_get_lr(pr_optimizer_bridge_t bridge) {
         return 0.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_get_lr", 0.0f);
+
+
     return bridge->config.base_lr;
 }
 
@@ -907,6 +1001,10 @@ float pr_optimizer_clip_by_entanglement(
         return 0.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_clip_by", 0.0f);
+
+
     const pr_optimizer_config_t* cfg = &bridge->config;
 
     // Compute original gradient norm
@@ -921,6 +1019,12 @@ float pr_optimizer_clip_by_entanglement(
     // Compute total entanglement
     uint64_t total_entanglement = 0;
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_optimizer_bridge_heartbeat("pr_optimizer_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         total_entanglement += entanglement_counts[i];
     }
 
@@ -950,6 +1054,10 @@ float pr_optimizer_clip_by_norm(
         return 0.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_clip_by", 0.0f);
+
+
     float original_norm = compute_grad_norm(gradients, count);
 
     if (original_norm > max_norm && original_norm > GRAD_NORM_MIN) {
@@ -967,6 +1075,10 @@ float pr_optimizer_clip_by_norm(
 }
 
 void pr_optimizer_zero_grad(float* gradients, size_t count) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_zero_gr", 0.0f);
+
+
     if (gradients && count > 0) {
         memset(gradients, 0, count * sizeof(float));
     }
@@ -976,6 +1088,10 @@ pr_optimizer_error_t pr_optimizer_zero_state(pr_optimizer_bridge_t bridge) {
     if (!bridge) {
         return PR_OPT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_zero_st", 0.0f);
+
 
     BRIDGE_LOCK(bridge);
 
@@ -1034,6 +1150,10 @@ const pr_optimizer_state_t* pr_optimizer_get_state(
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_get_sta", 0.0f);
+
+
     return &bridge->state;
 }
 
@@ -1042,6 +1162,10 @@ uint64_t pr_optimizer_get_step(pr_optimizer_bridge_t bridge) {
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_get_ste", 0.0f);
+
+
     return atomic_load(&bridge->stats.total_steps);
 }
 
@@ -1049,6 +1173,10 @@ pr_optimizer_type_t pr_optimizer_get_type(pr_optimizer_bridge_t bridge) {
     if (!bridge) {
         return PR_OPT_RESONANCE_ADAM;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_get_typ", 0.0f);
+
 
     return bridge->active_type;
 }
@@ -1060,6 +1188,10 @@ pr_optimizer_error_t pr_optimizer_set_type(
     if (!bridge) {
         return PR_OPT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_set_typ", 0.0f);
+
 
     if (type >= PR_OPT_TYPE_COUNT) {
         return PR_OPT_ERROR_INVALID_TYPE;
@@ -1092,6 +1224,10 @@ pr_optimizer_error_t pr_optimizer_get_stats(
     }
 
     // Copy atomic values
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_get_sta", 0.0f);
+
+
     stats->total_steps = atomic_load(&bridge->stats.total_steps);
     stats->resonance_adam_steps = atomic_load(&bridge->stats.resonance_adam_steps);
     stats->quat_momentum_steps = atomic_load(&bridge->stats.quat_momentum_steps);
@@ -1137,6 +1273,10 @@ pr_optimizer_error_t pr_optimizer_reset_stats(pr_optimizer_bridge_t bridge) {
     if (!bridge) {
         return PR_OPT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_reset_s", 0.0f);
+
 
     BRIDGE_LOCK(bridge);
 
@@ -1232,6 +1372,10 @@ pr_optimizer_error_t pr_optimizer_update_config(
         return PR_OPT_ERROR_INVALID_CONFIG;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_update_", 0.0f);
+
+
     BRIDGE_LOCK(bridge);
 
     bridge->config = *config;
@@ -1251,6 +1395,10 @@ const pr_optimizer_config_t* pr_optimizer_get_config(
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_get_con", 0.0f);
+
+
     return &bridge->config;
 }
 
@@ -1262,6 +1410,10 @@ pr_optimizer_error_t pr_optimizer_set_tier_scale(
     if (!bridge) {
         return PR_OPT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_set_tie", 0.0f);
+
 
     if (tier >= PR_OPT_NUM_TIERS) {
         return PR_OPT_ERROR_INVALID_TIER;
@@ -1288,6 +1440,10 @@ pr_optimizer_error_t pr_optimizer_set_resonance_scale(
         return PR_OPT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_set_res", 0.0f);
+
+
     if (scale < 0.0f || scale > 10.0f) {
         return PR_OPT_ERROR_INVALID_CONFIG;
     }
@@ -1308,6 +1464,10 @@ pr_optimizer_error_t pr_optimizer_set_consolidation_gate(
     if (!bridge) {
         return PR_OPT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_set_con", 0.0f);
+
 
     if (threshold < 0.0f || threshold > 1.0f) {
         return PR_OPT_ERROR_INVALID_CONFIG;
@@ -1333,6 +1493,10 @@ pr_optimizer_error_t pr_optimizer_connect_bio_async(
         return PR_OPT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_connect", 0.0f);
+
+
     int result = bridge_base_connect_bio_async(&bridge->base);
     return (result == 0) ? PR_OPT_SUCCESS : PR_OPT_ERROR_MUTEX_FAILED;
 }
@@ -1344,6 +1508,10 @@ pr_optimizer_error_t pr_optimizer_disconnect_bio_async(
         return PR_OPT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_disconn", 0.0f);
+
+
     int result = bridge_base_disconnect_bio_async(&bridge->base);
     return (result == 0) ? PR_OPT_SUCCESS : PR_OPT_ERROR_MUTEX_FAILED;
 }
@@ -1352,6 +1520,10 @@ bool pr_optimizer_is_bio_async_connected(pr_optimizer_bridge_t bridge) {
     if (!bridge) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_is_bio_", 0.0f);
+
 
     return bridge_base_is_bio_async_connected(&bridge->base);
 }
@@ -1366,6 +1538,10 @@ nimcp_quaternion_t pr_optimizer_project_to_tangent(
 ) {
     // Project gradient to tangent space at q
     // grad_proj = grad - (grad . q) * q
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_project", 0.0f);
+
 
     float dot = quat_dot(grad, q);
 
@@ -1388,6 +1564,10 @@ nimcp_quaternion_t pr_optimizer_exp_map(
     // First, compute exp(tangent_vec)
     // For small tangent vectors: exp(v) ≈ (1, v_xyz)
     // For general: exp(v) = (cos(|v|), v/|v| * sin(|v|))
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_exp_map", 0.0f);
+
 
     float norm = quat_magnitude(tangent_vec);
 
@@ -1421,6 +1601,10 @@ nimcp_quaternion_t pr_optimizer_parallel_transport(
     // Uses the quaternion parallel transport formula
 
     // Compute rotation from q_from to q_to
+    /* Phase 8: Heartbeat at operation start */
+    pr_optimizer_bridge_heartbeat("pr_optimizer_pr_optimizer_paralle", 0.0f);
+
+
     nimcp_quaternion_t q_from_inv = quat_conjugate(q_from);
     nimcp_quaternion_t rotation = quat_hamilton_product(q_to, q_from_inv);
 
@@ -1465,6 +1649,12 @@ static float compute_grad_norm(const float* gradients, size_t count) {
 
     double sum_sq = 0.0;
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_optimizer_bridge_heartbeat("pr_optimizer_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         sum_sq += (double)gradients[i] * (double)gradients[i];
     }
 
@@ -1480,6 +1670,12 @@ static void scale_gradients(float* gradients, size_t count, float scale) {
     }
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_optimizer_bridge_heartbeat("pr_optimizer_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         gradients[i] *= scale;
     }
 }
@@ -1546,6 +1742,12 @@ static pr_optimizer_error_t init_quat_momentum_state(
 
     // Initialize velocities to zero quaternion
     for (size_t i = 0; i < num_quats; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_quats > 256) {
+            pr_optimizer_bridge_heartbeat("pr_optimizer_loop",
+                             (float)(i + 1) / (float)num_quats);
+        }
+
         bridge->state.state.quat.velocities[i] = quat_create(0, 0, 0, 0);
     }
 

@@ -50,7 +50,7 @@ static nimcp_health_agent_t* g_imagination_reasoning_bridge_health_agent = NULL;
  * @brief Set health agent for imagination_reasoning_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void imagination_reasoning_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void imagination_reasoning_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_imagination_reasoning_bridge_health_agent = agent;
 }
 
@@ -160,6 +160,12 @@ static int find_free_scenario_slot_unlocked(imagination_reasoning_bridge_t* brid
     if (!bridge->active_scenarios) return -1;
 
     for (uint32_t i = 0; i < bridge->config.max_concurrent_scenarios; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.max_concurrent_scenarios > 256) {
+            imagination_reasoning_bridge_heartbeat("imagination__loop",
+                             (float)(i + 1) / (float)bridge->config.max_concurrent_scenarios);
+        }
+
         if (!bridge->active_scenarios[i].active) {
             return (int)i;
         }
@@ -175,6 +181,12 @@ static int find_scenario_by_id_unlocked(imagination_reasoning_bridge_t* bridge,
     if (!bridge->active_scenarios) return -1;
 
     for (uint32_t i = 0; i < bridge->config.max_concurrent_scenarios; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.max_concurrent_scenarios > 256) {
+            imagination_reasoning_bridge_heartbeat("imagination__loop",
+                             (float)(i + 1) / (float)bridge->config.max_concurrent_scenarios);
+        }
+
         if (bridge->active_scenarios[i].active &&
             bridge->active_scenarios[i].scenario_id == scenario_id) {
             return (int)i;
@@ -415,6 +427,10 @@ int imagination_reasoning_bridge_default_config(imagination_reasoning_config_t* 
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__default_config", 0.0f);
+
+
     config->module_id = IMAG_REASON_DEFAULT_MODULE_ID;
     config->max_concurrent_scenarios = DEFAULT_MAX_SCENARIOS;
     config->imagination_weight = 0.5f;
@@ -441,6 +457,10 @@ imagination_reasoning_bridge_t* imagination_reasoning_bridge_create(
     const imagination_reasoning_config_t* config
 ) {
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__create", 0.0f);
+
+
     imagination_reasoning_bridge_t* bridge = nimcp_calloc(
         1, sizeof(imagination_reasoning_bridge_t));
     if (!bridge) {
@@ -511,6 +531,10 @@ void imagination_reasoning_bridge_destroy(imagination_reasoning_bridge_t* bridge
     }
 
     /* Disconnect if still connected */
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__destroy", 0.0f);
+
+
     if (bridge->connected) {
         imagination_reasoning_bridge_disconnect(bridge);
     }
@@ -544,6 +568,10 @@ int imagination_reasoning_bridge_register_with_hub(
     if (!bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__register_with_hub", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -662,6 +690,10 @@ int imagination_reasoning_bridge_unregister_from_hub(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__unregister_from_hub", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
@@ -702,10 +734,18 @@ int imagination_reasoning_bridge_connect(
     imagination_reasoning_bridge_t* bridge,
     cognitive_integration_hub_t hub
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__connect", 0.0f);
+
+
     return imagination_reasoning_bridge_register_with_hub(bridge, hub);
 }
 
 int imagination_reasoning_bridge_disconnect(imagination_reasoning_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__disconnect", 0.0f);
+
+
     return imagination_reasoning_bridge_unregister_from_hub(bridge);
 }
 
@@ -715,6 +755,10 @@ bool imagination_reasoning_bridge_is_connected(
     if (!bridge) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__is_connected", 0.0f);
+
 
     nimcp_mutex_lock(((imagination_reasoning_bridge_t*)bridge)->base.mutex);
     bool connected = bridge->connected;
@@ -735,6 +779,10 @@ int imagination_reasoning_bridge_set_imagination(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__set_imagination", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->imagination = engine;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -749,6 +797,10 @@ int imagination_reasoning_bridge_set_reasoning(
     if (!bridge || !bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__set_reasoning", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->reasoning = engine;
@@ -768,6 +820,10 @@ int imagination_reasoning_request_counterfactual_analysis(
     if (!bridge || !scenario) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__imagination_reasonin", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -844,6 +900,10 @@ int imagination_reasoning_set_counterfactual_callback(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__imagination_reasonin", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->counterfactual_callback = callback;
     bridge->counterfactual_callback_data = user_data;
@@ -863,6 +923,10 @@ int imagination_reasoning_publish_simulation_result(
     if (!bridge || !result) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__imagination_reasonin", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -925,6 +989,10 @@ int imagination_reasoning_set_simulation_callback(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__imagination_reasonin", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->simulation_callback = callback;
     bridge->simulation_callback_data = user_data;
@@ -944,6 +1012,10 @@ int imagination_reasoning_request_creative_inference(
     if (!bridge || !request) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__imagination_reasonin", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1008,6 +1080,10 @@ int imagination_reasoning_set_creative_callback(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__imagination_reasonin", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->creative_callback = callback;
     bridge->creative_callback_data = user_data;
@@ -1027,6 +1103,10 @@ int imagination_reasoning_publish_insight(
     if (!bridge || !insight) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__imagination_reasonin", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1089,6 +1169,10 @@ int imagination_reasoning_set_insight_callback(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__imagination_reasonin", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->insight_callback = callback;
     bridge->insight_callback_data = user_data;
@@ -1110,6 +1194,10 @@ int imagination_reasoning_generate_scenario(
     if (!bridge || !scenario_out) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__imagination_reasonin", 0.0f);
+
 
     if (type >= IMAG_SCENARIO_COUNT) {
         return -1;
@@ -1162,6 +1250,10 @@ int imagination_reasoning_analyze_scenario(
     if (!bridge || !scenario || !result_out) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__imagination_reasonin", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1225,6 +1317,10 @@ int imagination_reasoning_publish_result(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__imagination_reasonin", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
@@ -1274,6 +1370,10 @@ int imagination_reasoning_on_event(
     const void* event_ptr,
     void* user_data
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__imagination_reasonin", 0.0f);
+
+
     const cognitive_event_data_t* event = (const cognitive_event_data_t*)event_ptr;
     imagination_reasoning_bridge_t* bridge = (imagination_reasoning_bridge_t*)user_data;
 
@@ -1365,6 +1465,10 @@ imagination_reasoning_state_t imagination_reasoning_bridge_get_state(
         return IMAG_REASON_STATE_ERROR;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__get_state", 0.0f);
+
+
     nimcp_mutex_lock(((imagination_reasoning_bridge_t*)bridge)->base.mutex);
     imagination_reasoning_state_t state = bridge->state;
     nimcp_mutex_unlock(((imagination_reasoning_bridge_t*)bridge)->base.mutex);
@@ -1379,6 +1483,10 @@ uint32_t imagination_reasoning_bridge_get_module_id(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__get_module_id", 0.0f);
+
+
     return bridge->config.module_id;
 }
 
@@ -1388,6 +1496,10 @@ uint32_t imagination_reasoning_bridge_get_active_scenarios(
     if (!bridge) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__get_active_scenarios", 0.0f);
+
 
     nimcp_mutex_lock(((imagination_reasoning_bridge_t*)bridge)->base.mutex);
     uint32_t count = bridge->active_scenario_count;
@@ -1412,6 +1524,10 @@ int imagination_reasoning_bridge_get_stats(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__get_stats", 0.0f);
+
+
     nimcp_mutex_lock(((imagination_reasoning_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(((imagination_reasoning_bridge_t*)bridge)->base.mutex);
@@ -1430,6 +1546,10 @@ int imagination_reasoning_bridge_reset_stats(imagination_reasoning_bridge_t* bri
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(imagination_reasoning_stats_t));
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1443,6 +1563,10 @@ int imagination_reasoning_bridge_force_update(imagination_reasoning_bridge_t* br
 
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_reasoning_bridge_heartbeat("imagination__force_update", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 

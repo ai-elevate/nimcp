@@ -51,7 +51,7 @@ static nimcp_health_agent_t* g_symbolic_logic_health_agent = NULL;
  * @brief Set health agent for symbolic_logic heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void symbolic_logic_set_health_agent(nimcp_health_agent_t* agent) {
+void symbolic_logic_set_health_agent(nimcp_health_agent_t* agent) {
     g_symbolic_logic_health_agent = agent;
 }
 
@@ -103,6 +103,10 @@ struct symbolic_logic {
 
 logical_term_t* logic_term_create(term_type_t type, const char* name)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_logic_term_create", 0.0f);
+
+
     LOG_DEBUG("Creating module");
     NIMCP_API_CHECK_NULL_RET_NULL(name, "NULL name in logic_term_create");
 
@@ -120,6 +124,10 @@ logical_term_t* logic_term_create(term_type_t type, const char* name)
 
 void logic_term_destroy(logical_term_t* term)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_logic_term_destroy", 0.0f);
+
+
     LOG_DEBUG("Destroying module");
     if (!term) return;
 
@@ -182,6 +190,10 @@ static bool terms_equal(const logical_term_t* t1, const logical_term_t* t2)
 
 atomic_formula_t* logic_atom_create(const char* name, logical_term_t** terms, uint8_t arity)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_logic_atom_create", 0.0f);
+
+
     LOG_DEBUG("Creating module");
     NIMCP_API_CHECK_NULL_RET_NULL(name, "NULL name in logic_atom_create");
 
@@ -220,6 +232,10 @@ atomic_formula_t* logic_atom_create(const char* name, logical_term_t** terms, ui
 
 void logic_atom_destroy(atomic_formula_t* atom)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_logic_atom_destroy", 0.0f);
+
+
     LOG_DEBUG("Destroying module");
     if (!atom) return;
 
@@ -242,6 +258,10 @@ logical_formula_t* logic_formula_create(
     logical_formula_t* left,
     logical_formula_t* right)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_logic_formula_create", 0.0f);
+
+
     LOG_DEBUG("Creating formula");
     logical_formula_t* formula = (logical_formula_t*)nimcp_calloc(1, sizeof(logical_formula_t));
     if (!formula) return NULL;
@@ -257,6 +277,10 @@ logical_formula_t* logic_formula_create(
 
 void logic_formula_destroy(logical_formula_t* formula)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_logic_formula_destro", 0.0f);
+
+
     LOG_DEBUG("Destroying formula");
     if (!formula) return;
 
@@ -278,6 +302,10 @@ void logic_formula_destroy(logical_formula_t* formula)
 
 logical_formula_t* symbolic_logic_parse(const char* str)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_parse", 0.0f);
+
+
     LOG_DEBUG("Parsing formula: %s", str ? str : "(null)");
     if (!str || strlen(str) == 0) return NULL;
 
@@ -326,6 +354,10 @@ bool symbolic_logic_to_cnf(
     logic_clause_t*** clauses,
     int* num_clauses)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_to_cnf", 0.0f);
+
+
     LOG_DEBUG("Converting to CNF");
     if (!formula || !clauses || !num_clauses) return false;
 
@@ -366,6 +398,10 @@ bool symbolic_logic_backward_chain(
     inference_rule_t*** proof_trace,
     int* num_steps)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_backward_chain", 0.0f);
+
+
     LOG_DEBUG("Backward chaining");
     if (!logic || !goal || !proof_trace || !num_steps) return false;
 
@@ -374,6 +410,12 @@ bool symbolic_logic_backward_chain(
     *num_steps = 0;
 
     for (uint32_t i = 0; i < logic->num_facts; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && logic->num_facts > 256) {
+            symbolic_logic_heartbeat("symbolic_log_loop",
+                             (float)(i + 1) / (float)logic->num_facts);
+        }
+
         kb_entry_t* entry = logic->kb[i];
         if (!entry || !entry->clause) continue;
 
@@ -398,6 +440,10 @@ bool symbolic_logic_resolve(
     logic_clause_t* negated_goal,
     bool* derived_empty)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_resolve", 0.0f);
+
+
     LOG_DEBUG("Resolution proving");
     if (!logic || !negated_goal || !derived_empty) return false;
 
@@ -413,6 +459,10 @@ bool symbolic_logic_evaluate(
     bool* result)
 {
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_evaluate", 0.0f);
+
+
     if (logic && logic->bio_ctx) {
         bio_router_process_inbox(logic->bio_ctx, 5);
     }
@@ -460,6 +510,12 @@ bool symbolic_logic_evaluate(
 
     // Classical evaluation: check if formula matches any fact in KB
     for (uint32_t i = 0; i < logic->num_facts; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && logic->num_facts > 256) {
+            symbolic_logic_heartbeat("symbolic_log_loop",
+                             (float)(i + 1) / (float)logic->num_facts);
+        }
+
         kb_entry_t* entry = logic->kb[i];
         if (!entry || !entry->clause || entry->clause->num_literals == 0) continue;
 
@@ -533,6 +589,12 @@ static void logic_clause_destroy(logic_clause_t* clause)
 
     if (clause->literals) {
         for (uint32_t i = 0; i < clause->num_literals; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && clause->num_literals > 256) {
+                symbolic_logic_heartbeat("symbolic_log_loop",
+                                 (float)(i + 1) / (float)clause->num_literals);
+            }
+
             logic_atom_destroy(clause->literals[i]);
         }
         nimcp_free(clause->literals);
@@ -551,6 +613,12 @@ static logic_clause_t* logic_clause_copy(const logic_clause_t* clause)
     copy->confidence = clause->confidence;
 
     for (uint32_t i = 0; i < clause->num_literals; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && clause->num_literals > 256) {
+            symbolic_logic_heartbeat("symbolic_log_loop",
+                             (float)(i + 1) / (float)clause->num_literals);
+        }
+
         copy->literals[i] = logic_atom_copy(clause->literals[i]);
         if (!copy->literals[i]) {
             logic_clause_destroy(copy);
@@ -567,6 +635,10 @@ static logic_clause_t* logic_clause_copy(const logic_clause_t* clause)
 
 symbolic_logic_t* symbolic_logic_create(const logic_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_create", 0.0f);
+
+
     LOG_DEBUG("Creating module");
     NIMCP_API_CHECK_NULL_RET_NULL(config, "NULL config in symbolic_logic_create");
 
@@ -651,12 +723,22 @@ symbolic_logic_t* symbolic_logic_create(const logic_config_t* config)
 
 void symbolic_logic_destroy(symbolic_logic_t* logic)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_destroy", 0.0f);
+
+
     LOG_DEBUG("Destroying module");
     if (!logic) return;
 
     // Free knowledge base
     if (logic->kb) {
         for (uint32_t i = 0; i < logic->num_facts; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && logic->num_facts > 256) {
+                symbolic_logic_heartbeat("symbolic_log_loop",
+                                 (float)(i + 1) / (float)logic->num_facts);
+            }
+
             if (logic->kb[i]) {
                 logic_clause_destroy(logic->kb[i]->clause);
                 nimcp_free(logic->kb[i]);
@@ -668,6 +750,12 @@ void symbolic_logic_destroy(symbolic_logic_t* logic)
     // Free rules
     if (logic->rules) {
         for (uint32_t i = 0; i < logic->num_rules; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && logic->num_rules > 256) {
+                symbolic_logic_heartbeat("symbolic_log_loop",
+                                 (float)(i + 1) / (float)logic->num_rules);
+            }
+
             if (logic->rules[i]) {
                 for (uint32_t j = 0; j < logic->rules[i]->num_premises; j++) {
                     logic_clause_destroy(logic->rules[i]->premises[j]);
@@ -683,6 +771,12 @@ void symbolic_logic_destroy(symbolic_logic_t* logic)
     // Free working memory
     if (logic->working_memory) {
         for (uint32_t i = 0; i < logic->working_memory_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && logic->working_memory_size > 256) {
+                symbolic_logic_heartbeat("symbolic_log_loop",
+                                 (float)(i + 1) / (float)logic->working_memory_size);
+            }
+
             logic_clause_destroy(logic->working_memory[i]);
         }
         nimcp_free(logic->working_memory);
@@ -706,6 +800,9 @@ void symbolic_logic_destroy(symbolic_logic_t* logic)
 
 bool symbolic_logic_get_stats(const symbolic_logic_t* logic, logic_stats_t* stats)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_get_stats", 0.0f);
+
     if (!nimcp_validate_pointer(logic, "logic") ||
         !nimcp_validate_pointer(stats, "stats")) {
         return false;
@@ -721,6 +818,9 @@ bool symbolic_logic_get_stats(const symbolic_logic_t* logic, logic_stats_t* stat
 
 bool symbolic_logic_add_fact(symbolic_logic_t* logic, logic_clause_t* clause, float salience)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_add_fact", 0.0f);
+
     if (!nimcp_validate_pointer(logic, "logic") ||
         !nimcp_validate_pointer(clause, "clause")) {
         return false;
@@ -759,6 +859,9 @@ bool symbolic_logic_add_fact(symbolic_logic_t* logic, logic_clause_t* clause, fl
 
 bool symbolic_logic_add_rule(symbolic_logic_t* logic, inference_rule_t* rule)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_add_rule", 0.0f);
+
     if (!nimcp_validate_pointer(logic, "logic") ||
         !nimcp_validate_pointer(rule, "rule")) {
         return false;
@@ -777,6 +880,9 @@ bool symbolic_logic_add_rule(symbolic_logic_t* logic, inference_rule_t* rule)
 bool symbolic_logic_query(symbolic_logic_t* logic, logic_clause_t* query,
                          kb_entry_t*** results, int* num_results)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_query", 0.0f);
+
     if (!nimcp_validate_pointer(logic, "logic") ||
         !nimcp_validate_pointer(query, "query") ||
         !nimcp_validate_pointer(results, "results") ||
@@ -790,6 +896,12 @@ bool symbolic_logic_query(symbolic_logic_t* logic, logic_clause_t* query,
     // Count matching facts
     uint32_t match_count = 0;
     for (uint32_t i = 0; i < logic->num_facts; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && logic->num_facts > 256) {
+            symbolic_logic_heartbeat("symbolic_log_loop",
+                             (float)(i + 1) / (float)logic->num_facts);
+        }
+
         kb_entry_t* entry = logic->kb[i];
 
         // Simple matching: check if query literals match fact literals
@@ -838,6 +950,10 @@ bool symbolic_logic_query(symbolic_logic_t* logic, logic_clause_t* query,
 
 unification_t* symbolic_logic_unify(logical_term_t* term1, logical_term_t* term2)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_unify", 0.0f);
+
+
     NIMCP_API_CHECK_NULL_RET_NULL(term1, "NULL term1 in symbolic_logic_unify");
     NIMCP_API_CHECK_NULL_RET_NULL(term2, "NULL term2 in symbolic_logic_unify");
 
@@ -928,6 +1044,10 @@ unification_t* symbolic_logic_unify(logical_term_t* term1, logical_term_t* term2
 
 logical_term_t* symbolic_logic_substitute(logical_term_t* term, const substitution_t* subst)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_substitute", 0.0f);
+
+
     NIMCP_API_CHECK_NULL_RET_NULL(term, "NULL term in symbolic_logic_substitute");
     NIMCP_API_CHECK_NULL_RET_NULL(subst, "NULL subst in symbolic_logic_substitute");
 
@@ -965,11 +1085,21 @@ logical_term_t* symbolic_logic_substitute(logical_term_t* term, const substituti
 
 void unification_destroy(unification_t* unif)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_unification_destroy", 0.0f);
+
+
     LOG_DEBUG("Destroying module");
     if (!unif) return;
 
     if (unif->bindings) {
         for (uint32_t i = 0; i < unif->num_bindings; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && unif->num_bindings > 256) {
+                symbolic_logic_heartbeat("symbolic_log_loop",
+                                 (float)(i + 1) / (float)unif->num_bindings);
+            }
+
             if (unif->bindings[i]) {
                 logic_term_destroy(unif->bindings[i]->variable);
                 logic_term_destroy(unif->bindings[i]->value);
@@ -989,6 +1119,9 @@ void unification_destroy(unification_t* unif)
 bool symbolic_logic_forward_chain(symbolic_logic_t* logic, uint32_t max_iterations,
                                   logic_clause_t*** new_facts, int* num_new_facts)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_forward_chain", 0.0f);
+
     if (!nimcp_validate_pointer(logic, "logic") ||
         !nimcp_validate_pointer(new_facts, "new_facts") ||
         !nimcp_validate_pointer(num_new_facts, "num_new_facts")) {
@@ -1018,14 +1151,32 @@ bool symbolic_logic_forward_chain(symbolic_logic_t* logic, uint32_t max_iteratio
 
         // Try to apply each rule
         for (uint32_t r = 0; r < logic->num_rules; r++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((r & 0xFF) == 0 && logic->num_rules > 256) {
+                symbolic_logic_heartbeat("symbolic_log_loop",
+                                 (float)(r + 1) / (float)logic->num_rules);
+            }
+
             inference_rule_t* rule = logic->rules[r];
 
             // Check if all premises are satisfied
             bool premises_satisfied = true;
             for (uint32_t p = 0; p < rule->num_premises; p++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((p & 0xFF) == 0 && rule->num_premises > 256) {
+                    symbolic_logic_heartbeat("symbolic_log_loop",
+                                     (float)(p + 1) / (float)rule->num_premises);
+                }
+
                 bool found = false;
 
                 for (uint32_t f = 0; f < logic->num_facts; f++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((f & 0xFF) == 0 && logic->num_facts > 256) {
+                        symbolic_logic_heartbeat("symbolic_log_loop",
+                                         (float)(f + 1) / (float)logic->num_facts);
+                    }
+
                     if (atoms_equal(rule->premises[p]->literals[0],
                                    logic->kb[f]->clause->literals[0])) {
                         found = true;
@@ -1044,6 +1195,12 @@ bool symbolic_logic_forward_chain(symbolic_logic_t* logic, uint32_t max_iteratio
                 // Check if conclusion is new
                 bool already_known = false;
                 for (uint32_t f = 0; f < logic->num_facts; f++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((f & 0xFF) == 0 && logic->num_facts > 256) {
+                        symbolic_logic_heartbeat("symbolic_log_loop",
+                                         (float)(f + 1) / (float)logic->num_facts);
+                    }
+
                     if (atoms_equal(rule->conclusion->literals[0],
                                    logic->kb[f]->clause->literals[0])) {
                         already_known = true;
@@ -1093,6 +1250,10 @@ float symbolic_logic_compute_novelty(symbolic_logic_t* logic, logic_clause_t* cl
         return 0.0F;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_compute_novelty", 0.0f);
+
+
     if (logic->num_facts == 0) {
         return 1.0F;  // Completely novel if no facts exist
     }
@@ -1101,6 +1262,12 @@ float symbolic_logic_compute_novelty(symbolic_logic_t* logic, logic_clause_t* cl
     float max_similarity = 0.0F;
 
     for (uint32_t i = 0; i < logic->num_facts; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && logic->num_facts > 256) {
+            symbolic_logic_heartbeat("symbolic_log_loop",
+                             (float)(i + 1) / (float)logic->num_facts);
+        }
+
         kb_entry_t* entry = logic->kb[i];
 
         // Simple similarity: do they share any predicates?
@@ -1126,6 +1293,9 @@ float symbolic_logic_compute_novelty(symbolic_logic_t* logic, logic_clause_t* cl
 bool symbolic_logic_get_salient_facts(symbolic_logic_t* logic, int top_k,
                                       kb_entry_t*** salient_facts, int* num_facts)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_get_salient_facts", 0.0f);
+
     if (!nimcp_validate_pointer(logic, "logic") ||
         !nimcp_validate_pointer(salient_facts, "salient_facts") ||
         !nimcp_validate_pointer(num_facts, "num_facts")) {
@@ -1149,6 +1319,12 @@ bool symbolic_logic_get_salient_facts(symbolic_logic_t* logic, int top_k,
 
     // Sort by salience (simple selection sort for top-k)
     for (uint32_t i = 0; i < k; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && k > 256) {
+            symbolic_logic_heartbeat("symbolic_log_loop",
+                             (float)(i + 1) / (float)k);
+        }
+
         uint32_t max_idx = i;
         float max_salience = (i < logic->num_facts) ? logic->kb[i]->salience : 0.0F;
 
@@ -1176,6 +1352,9 @@ bool symbolic_logic_get_salient_facts(symbolic_logic_t* logic, int top_k,
 bool symbolic_logic_consolidate_memory(symbolic_logic_t* logic, logic_clause_t* clause,
                                        float salience, const char* context)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_consolidate_memory", 0.0f);
+
     if (!nimcp_validate_pointer(logic, "logic") ||
         !nimcp_validate_pointer(clause, "clause")) {
         return false;
@@ -1203,6 +1382,9 @@ bool symbolic_logic_consolidate_memory(symbolic_logic_t* logic, logic_clause_t* 
 bool symbolic_logic_explore(symbolic_logic_t* logic, uint32_t exploration_depth,
                            logic_clause_t*** interesting_facts, int* num_facts)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_explore", 0.0f);
+
     if (!nimcp_validate_pointer(logic, "logic") ||
         !nimcp_validate_pointer(interesting_facts, "interesting_facts") ||
         !nimcp_validate_pointer(num_facts, "num_facts")) {
@@ -1223,6 +1405,10 @@ bool symbolic_logic_to_string(const logical_formula_t* formula, char* buffer, si
     if (!formula || !buffer || buffer_size == 0) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_to_string", 0.0f);
+
 
     if (formula->atom) {
         // Atomic formula
@@ -1276,10 +1462,20 @@ int symbolic_logic_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
     /* Query our own entity from the knowledge graph */
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_heartbeat("symbolic_log_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Symbolic_Logic_Module");
     if (self) {
         /* Module now knows its own capabilities from KG */
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                symbolic_logic_heartbeat("symbolic_log_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Symbolic logic self-knowledge: %s", self->observations[i]);
         }
     }

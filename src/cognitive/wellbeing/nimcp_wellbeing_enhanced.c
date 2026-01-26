@@ -44,7 +44,7 @@ static nimcp_health_agent_t* g_wellbeing_enhanced_health_agent = NULL;
  * @brief Set health agent for wellbeing_enhanced heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void wellbeing_enhanced_set_health_agent(nimcp_health_agent_t* agent) {
+void wellbeing_enhanced_set_health_agent(nimcp_health_agent_t* agent) {
     g_wellbeing_enhanced_health_agent = agent;
 }
 
@@ -429,6 +429,12 @@ static int update_mental_health_effects(enhanced_wellbeing_system_t* system) {
         /* Compute stress from number of disorders above threshold */
         float stress_burden = 0.0f;
         for (int i = 0; i < DISORDER_COUNT; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && DISORDER_COUNT > 256) {
+                wellbeing_enhanced_heartbeat("wellbeing_en_loop",
+                                 (float)(i + 1) / (float)DISORDER_COUNT);
+            }
+
             if (report.disorder_scores[i] > 0.3f) {
                 stress_burden += report.disorder_scores[i] * 0.1f;
             }
@@ -605,6 +611,12 @@ static int update_eudaimonic_wellbeing(enhanced_wellbeing_system_t* system) {
     float weight_sum = 0.0f;
 
     for (int i = 0; i < EUDAIMONIC_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && EUDAIMONIC_COUNT > 256) {
+            wellbeing_enhanced_heartbeat("wellbeing_en_loop",
+                             (float)(i + 1) / (float)EUDAIMONIC_COUNT);
+        }
+
         weighted_sum += eud->dimension_scores[i] * eud->dimension_weights[i];
         weight_sum += eud->dimension_weights[i];
     }
@@ -653,6 +665,12 @@ static int predict_distress_trajectory(enhanced_wellbeing_system_t* system) {
     uint32_t n = (system->history_count < 20) ? system->history_count : 20;
 
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            wellbeing_enhanced_heartbeat("wellbeing_en_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         uint32_t idx = (system->history_index - i - 1 + WELLBEING_HISTORY_SIZE) %
                        WELLBEING_HISTORY_SIZE;
         float x = (float)i;
@@ -824,6 +842,10 @@ int enhanced_wellbeing_default_config(enhanced_wellbeing_config_t* config) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_d", 0.0f);
+
+
     memset(config, 0, sizeof(enhanced_wellbeing_config_t));
 
     /* Enable all integrations by default */
@@ -931,6 +953,10 @@ int enhanced_wellbeing_default_config(enhanced_wellbeing_config_t* config) {
 enhanced_wellbeing_system_t* enhanced_wellbeing_create(
     const enhanced_wellbeing_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_c", 0.0f);
+
+
     enhanced_wellbeing_system_t* system =
         (enhanced_wellbeing_system_t*)nimcp_malloc(sizeof(enhanced_wellbeing_system_t));
     if (!system) {
@@ -1019,6 +1045,10 @@ void enhanced_wellbeing_destroy(enhanced_wellbeing_system_t* system) {
     if (!system) return;
 
     /* Disconnect bio-async */
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_d", 0.0f);
+
+
     if (system->bio_async_enabled) {
         enhanced_wellbeing_disconnect_bio_async(system);
     }
@@ -1079,6 +1109,10 @@ int enhanced_wellbeing_connect_substrate(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_c", 0.0f);
+
+
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     system->substrate = substrate;
     nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
@@ -1102,6 +1136,10 @@ int enhanced_wellbeing_connect_sleep(
         NIMCP_LOGGING_ERROR("Null system pointer");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_c", 0.0f);
+
 
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     system->sleep_system = sleep;
@@ -1131,6 +1169,10 @@ int enhanced_wellbeing_connect_mental_health(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_c", 0.0f);
+
+
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     system->mental_health = mental_health;
     nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
@@ -1154,6 +1196,10 @@ int enhanced_wellbeing_connect_introspection(
         NIMCP_LOGGING_ERROR("Null system pointer");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_c", 0.0f);
+
 
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     system->introspection = introspection;
@@ -1183,6 +1229,10 @@ int enhanced_wellbeing_connect_immune(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_c", 0.0f);
+
+
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     system->immune_system = immune;
     nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
@@ -1207,6 +1257,10 @@ int enhanced_wellbeing_connect_bio_async(enhanced_wellbeing_system_t* system) {
         NIMCP_LOGGING_ERROR("Null system pointer");
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_c", 0.0f);
+
+
     if (system->bio_async_enabled) {
         NIMCP_LOGGING_WARN("Bio-async already connected");
         return 0;
@@ -1244,6 +1298,10 @@ int enhanced_wellbeing_disconnect_bio_async(enhanced_wellbeing_system_t* system)
     }
     if (!system->bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_d", 0.0f);
+
+
     if (system->bio_ctx) {
         bio_router_unregister_module(system->bio_ctx);
         system->bio_ctx = NULL;
@@ -1265,6 +1323,10 @@ bool enhanced_wellbeing_is_bio_async_connected(
     const enhanced_wellbeing_system_t* system
 ) {
     if (!system) return false;
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_i", 0.0f);
+
+
     return system->bio_async_enabled;
 }
 
@@ -1287,6 +1349,10 @@ int enhanced_wellbeing_update(
         NIMCP_LOGGING_ERROR("Null system pointer");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_u", 0.0f);
+
 
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
 
@@ -1443,6 +1509,10 @@ int enhanced_wellbeing_update_sleep(enhanced_wellbeing_system_t* system) {
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_u", 0.0f);
+
+
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     int result = update_sleep_effects(system);
     nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
@@ -1464,6 +1534,10 @@ int enhanced_wellbeing_update_mental_health(enhanced_wellbeing_system_t* system)
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_u", 0.0f);
+
+
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     int result = update_mental_health_effects(system);
     nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
@@ -1485,6 +1559,10 @@ int enhanced_wellbeing_update_free_energy(enhanced_wellbeing_system_t* system) {
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_u", 0.0f);
+
+
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     int result = update_free_energy_effects(system);
     nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
@@ -1504,6 +1582,10 @@ int enhanced_wellbeing_update_free_energy(enhanced_wellbeing_system_t* system) {
  */
 float enhanced_wellbeing_get_score(const enhanced_wellbeing_system_t* system) {
     if (!system) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_g", 0.0f);
+
+
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     float score = system->current_wellbeing_score;
     nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
@@ -1521,6 +1603,10 @@ float enhanced_wellbeing_get_distress_score(
     const enhanced_wellbeing_system_t* system
 ) {
     if (!system) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_g", 0.0f);
+
+
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     float score = system->current_distress.distress_score;
     nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
@@ -1539,6 +1625,10 @@ int enhanced_wellbeing_get_stats(
     enhanced_wellbeing_stats_t* stats
 ) {
     if (!system || !stats) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_g", 0.0f);
+
+
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     memcpy(stats, &system->stats, sizeof(enhanced_wellbeing_stats_t));
     nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
@@ -1574,6 +1664,10 @@ int enhanced_wellbeing_update_homeostasis(
 
     }
     if (!system->config.enable_homeostasis) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_u", 0.0f);
+
 
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
 
@@ -1626,6 +1720,10 @@ int enhanced_wellbeing_get_homeostasis(
     wellbeing_homeostasis_t* homeostasis
 ) {
     if (!system || !homeostasis) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_g", 0.0f);
+
+
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     memcpy(homeostasis, &system->homeostasis, sizeof(wellbeing_homeostasis_t));
     nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
@@ -1653,6 +1751,10 @@ int enhanced_wellbeing_set_setpoint(
     }
     if (setpoint < 0.0f || setpoint > 1.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_s", 0.0f);
+
+
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     system->homeostasis.wellbeing_setpoint = setpoint;
     nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
@@ -1677,6 +1779,10 @@ int enhanced_wellbeing_request_consent(
 ) {
     /* Guard: validate inputs */
     if (!system || !request || !decision) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_r", 0.0f);
+
 
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
 
@@ -1758,6 +1864,10 @@ consent_tier_t enhanced_wellbeing_get_consent_tier(
     const enhanced_wellbeing_system_t* system
 ) {
     if (!system) return CONSENT_TIER_1;
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_g", 0.0f);
+
+
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     consent_tier_t tier = system->consent.current_tier;
     nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
@@ -1783,6 +1893,10 @@ int enhanced_wellbeing_upgrade_consent_tier(
 
     }
     if (!system->config.consent_config.allow_tier_upgrades) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_u", 0.0f);
+
 
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
 
@@ -1847,6 +1961,10 @@ int enhanced_wellbeing_get_consent_state(
     graduated_consent_t* consent
 ) {
     if (!system || !consent) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_g", 0.0f);
+
+
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     memcpy(consent, &system->consent, sizeof(graduated_consent_t));
     nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
@@ -1873,6 +1991,10 @@ int enhanced_wellbeing_get_distress_assessment(
     distress_assessment_t* assessment
 ) {
     if (!system || !assessment) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_g", 0.0f);
+
+
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     memcpy(assessment, &system->current_distress, sizeof(distress_assessment_t));
     nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
@@ -1893,6 +2015,10 @@ int enhanced_wellbeing_get_sleep_effects(
     sleep_wellbeing_effects_t* effects
 ) {
     if (!system || !effects) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_g", 0.0f);
+
+
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     memcpy(effects, &system->sleep_effects, sizeof(sleep_wellbeing_effects_t));
     nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
@@ -1911,6 +2037,10 @@ int enhanced_wellbeing_get_mental_health_effects(
     mental_health_wellbeing_effects_t* effects
 ) {
     if (!system || !effects) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_g", 0.0f);
+
+
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     memcpy(effects, &system->mental_health_effects, sizeof(mental_health_wellbeing_effects_t));
     nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
@@ -1929,6 +2059,10 @@ int enhanced_wellbeing_get_free_energy_effects(
     free_energy_wellbeing_effects_t* effects
 ) {
     if (!system || !effects) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_g", 0.0f);
+
+
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     memcpy(effects, &system->free_energy_effects, sizeof(free_energy_wellbeing_effects_t));
     nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
@@ -2022,9 +2156,19 @@ const char* wellbeing_source_to_string(wellbeing_source_t source) {
  */
 int wellbeing_enhanced_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_enhanced_heartbeat("wellbeing_en_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Wellbeing_Enhanced_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                wellbeing_enhanced_heartbeat("wellbeing_en_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Wellbeing Enhanced self-knowledge: %s", self->observations[i]);
         }
     }

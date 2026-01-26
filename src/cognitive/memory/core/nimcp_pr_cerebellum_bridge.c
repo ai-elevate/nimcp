@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_pr_cerebellum_bridge_health_agent = NULL;
  * @brief Set health agent for pr_cerebellum_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void pr_cerebellum_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void pr_cerebellum_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_pr_cerebellum_bridge_health_agent = agent;
 }
 
@@ -218,6 +218,12 @@ struct pr_cerebellum_bridge_struct {
 static pr_sequence_t* find_sequence_unlocked(pr_cerebellum_bridge_t bridge,
                                               uint64_t sequence_id) {
     for (size_t i = 0; i < bridge->num_sequences; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_sequences > 256) {
+            pr_cerebellum_bridge_heartbeat("pr_cerebellu_loop",
+                             (float)(i + 1) / (float)bridge->num_sequences);
+        }
+
         if (bridge->sequences[i].sequence_id == sequence_id) {
             return &bridge->sequences[i];
         }
@@ -395,6 +401,12 @@ NIMCP_EXPORT void pr_cerebellum_bridge_destroy(pr_cerebellum_bridge_t bridge) {
     /* Free sequence elements */
     if (bridge->sequences) {
         for (size_t i = 0; i < bridge->num_sequences; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->num_sequences > 256) {
+                pr_cerebellum_bridge_heartbeat("pr_cerebellu_loop",
+                                 (float)(i + 1) / (float)bridge->num_sequences);
+            }
+
             free_sequence_elements(&bridge->sequences[i]);
         }
         free(bridge->sequences);
@@ -437,6 +449,12 @@ NIMCP_EXPORT pr_cerebellum_error_t pr_cerebellum_bridge_reset(
     /* Clear all sequences */
     PR_CEREB_MUTEX_LOCK(bridge->sequence_mutex);
     for (size_t i = 0; i < bridge->num_sequences; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_sequences > 256) {
+            pr_cerebellum_bridge_heartbeat("pr_cerebellu_loop",
+                             (float)(i + 1) / (float)bridge->num_sequences);
+        }
+
         free_sequence_elements(&bridge->sequences[i]);
     }
     bridge->num_sequences = 0;
@@ -622,6 +640,12 @@ NIMCP_EXPORT pr_cerebellum_error_t pr_cerebellum_bridge_delete_sequence(
     /* Find sequence index */
     size_t found_idx = bridge->num_sequences;
     for (size_t i = 0; i < bridge->num_sequences; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_sequences > 256) {
+            pr_cerebellum_bridge_heartbeat("pr_cerebellu_loop",
+                             (float)(i + 1) / (float)bridge->num_sequences);
+        }
+
         if (bridge->sequences[i].sequence_id == sequence_id) {
             found_idx = i;
             break;
@@ -677,8 +701,20 @@ NIMCP_EXPORT pr_cerebellum_error_t pr_cerebellum_bridge_sync_procedural(
     PR_CEREB_MUTEX_LOCK(bridge->sequence_mutex);
 
     for (size_t i = 0; i < bridge->num_sequences; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_sequences > 256) {
+            pr_cerebellum_bridge_heartbeat("pr_cerebellu_loop",
+                             (float)(i + 1) / (float)bridge->num_sequences);
+        }
+
         pr_sequence_t* seq = &bridge->sequences[i];
         for (size_t j = 0; j < seq->length; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && seq->length > 256) {
+                pr_cerebellum_bridge_heartbeat("pr_cerebellu_loop",
+                                 (float)(j + 1) / (float)seq->length);
+            }
+
             if (seq->elements[j].memory_id == node->node_id) {
                 total_consolidation += seq->consolidation;
                 total_accuracy += seq->elements[j].timing.timing_accuracy;
@@ -758,6 +794,12 @@ NIMCP_EXPORT pr_automatization_level_t pr_cerebellum_bridge_get_automatization(
     /* Calculate average timing accuracy */
     float total_accuracy = 0.0f;
     for (size_t i = 0; i < seq->length; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && seq->length > 256) {
+            pr_cerebellum_bridge_heartbeat("pr_cerebellu_loop",
+                             (float)(i + 1) / (float)seq->length);
+        }
+
         total_accuracy += seq->elements[i].timing.timing_accuracy;
     }
     float avg_accuracy = seq->length > 0 ? total_accuracy / (float)seq->length : 0.0f;
@@ -838,6 +880,12 @@ NIMCP_EXPORT float pr_cerebellum_bridge_timing_in_sequence(
     /* Find element */
     pr_sequence_element_t* elem = NULL;
     for (size_t i = 0; i < seq->length; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && seq->length > 256) {
+            pr_cerebellum_bridge_heartbeat("pr_cerebellu_loop",
+                             (float)(i + 1) / (float)seq->length);
+        }
+
         if (seq->elements[i].memory_id == memory_id) {
             elem = &seq->elements[i];
             break;
@@ -1047,8 +1095,20 @@ NIMCP_EXPORT float pr_cerebellum_bridge_apply_ltd(
 
     /* Find sequences containing this memory and apply LTD */
     for (size_t i = 0; i < bridge->num_sequences; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_sequences > 256) {
+            pr_cerebellum_bridge_heartbeat("pr_cerebellu_loop",
+                             (float)(i + 1) / (float)bridge->num_sequences);
+        }
+
         pr_sequence_t* seq = &bridge->sequences[i];
         for (size_t j = 0; j < seq->length; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && seq->length > 256) {
+                pr_cerebellum_bridge_heartbeat("pr_cerebellu_loop",
+                                 (float)(j + 1) / (float)seq->length);
+            }
+
             if (seq->elements[j].memory_id == memory_id) {
                 /* Apply LTD to sequence consolidation */
                 float ltd_effect = ltd_amount * bridge->config.ltd_factor;
@@ -1087,8 +1147,20 @@ NIMCP_EXPORT float pr_cerebellum_bridge_apply_ltp(
 
     /* Find sequences containing this memory and apply LTP */
     for (size_t i = 0; i < bridge->num_sequences; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_sequences > 256) {
+            pr_cerebellum_bridge_heartbeat("pr_cerebellu_loop",
+                             (float)(i + 1) / (float)bridge->num_sequences);
+        }
+
         pr_sequence_t* seq = &bridge->sequences[i];
         for (size_t j = 0; j < seq->length; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && seq->length > 256) {
+                pr_cerebellum_bridge_heartbeat("pr_cerebellu_loop",
+                                 (float)(j + 1) / (float)seq->length);
+            }
+
             if (seq->elements[j].memory_id == memory_id) {
                 /* Apply LTP to sequence consolidation */
                 float ltp_effect = ltp_amount * bridge->config.ltp_factor;
@@ -1233,6 +1305,12 @@ NIMCP_EXPORT pr_cerebellum_error_t pr_cerebellum_bridge_complete_sequence(
     /* Update automatization */
     float avg_accuracy = 0.0f;
     for (size_t i = 0; i < seq->length; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && seq->length > 256) {
+            pr_cerebellum_bridge_heartbeat("pr_cerebellu_loop",
+                             (float)(i + 1) / (float)seq->length);
+        }
+
         avg_accuracy += seq->elements[i].timing.timing_accuracy;
     }
     avg_accuracy = seq->length > 0 ? avg_accuracy / (float)seq->length : 0.0f;
@@ -1412,6 +1490,12 @@ NIMCP_EXPORT pr_cerebellum_error_t pr_cerebellum_bridge_get_timing_history(
         }
 
         for (size_t i = 0; i < to_copy; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && to_copy > 256) {
+                pr_cerebellum_bridge_heartbeat("pr_cerebellu_loop",
+                                 (float)(i + 1) / (float)to_copy);
+            }
+
             size_t src_idx = (start_idx + (available - to_copy) + i)
                              % bridge->timing_history_capacity;
             entries[i] = bridge->timing_history[src_idx];
@@ -1573,6 +1657,12 @@ NIMCP_EXPORT bool pr_cerebellum_bridge_validate(const pr_cerebellum_bridge_t bri
 
     /* Verify sequence integrity */
     for (size_t i = 0; i < bridge->num_sequences; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_sequences > 256) {
+            pr_cerebellum_bridge_heartbeat("pr_cerebellu_loop",
+                             (float)(i + 1) / (float)bridge->num_sequences);
+        }
+
         if (bridge->sequences[i].length > bridge->sequences[i].capacity) {
             return false;
         }

@@ -29,7 +29,7 @@ static nimcp_health_agent_t* g_jepa_bidirectional_health_agent = NULL;
  * @brief Set health agent for jepa_bidirectional heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void jepa_bidirectional_set_health_agent(nimcp_health_agent_t* agent) {
+void jepa_bidirectional_set_health_agent(nimcp_health_agent_t* agent) {
     g_jepa_bidirectional_health_agent = agent;
 }
 
@@ -124,6 +124,10 @@ static inline bool should_use_gpu(const jepa_bidirectional_t* bidir) {
  * ============================================================================ */
 
 int jepa_bidir_default_config(jepa_bidir_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_jepa_bidir_default_c", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     memset(config, 0, sizeof(*config));
@@ -157,6 +161,10 @@ int jepa_bidir_default_config(jepa_bidir_config_t* config) {
 }
 
 int jepa_bidir_validate_config(const jepa_bidir_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_jepa_bidir_validate_", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
     if (config->embedding_dim == 0 || config->embedding_dim > 4096) {
         return NIMCP_ERROR_INVALID_PARAM;
@@ -178,6 +186,10 @@ int jepa_bidir_validate_config(const jepa_bidir_config_t* config) {
  * ============================================================================ */
 
 jepa_bidirectional_t* jepa_bidirectional_create(const jepa_bidir_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_create", 0.0f);
+
+
     jepa_bidir_config_t default_config;
     if (!config) {
         jepa_bidir_default_config(&default_config);
@@ -309,7 +321,17 @@ void jepa_bidirectional_destroy(jepa_bidirectional_t* bidir) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_destroy", 0.0f);
+
+
     for (int i = 0; i < JEPA_DIR_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && JEPA_DIR_COUNT > 256) {
+            jepa_bidirectional_heartbeat("jepa_bidirec_loop",
+                             (float)(i + 1) / (float)JEPA_DIR_COUNT);
+        }
+
         destroy_direction_predictor(&bidir->directions[i]);
     }
 
@@ -328,11 +350,21 @@ void jepa_bidirectional_destroy(jepa_bidirectional_t* bidir) {
 }
 
 int jepa_bidirectional_reset(jepa_bidirectional_t* bidir) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_reset", 0.0f);
+
+
     NIMCP_CHECK_THROW(bidir, NIMCP_ERROR_INVALID_PARAM, "bidir is NULL");
 
     nimcp_mutex_lock(bidir->mutex);
 
     for (int i = 0; i < JEPA_DIR_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && JEPA_DIR_COUNT > 256) {
+            jepa_bidirectional_heartbeat("jepa_bidirec_loop",
+                             (float)(i + 1) / (float)JEPA_DIR_COUNT);
+        }
+
         if (bidir->directions[i].predictor) {
             jepa_predictor_reset(bidir->directions[i].predictor);
             bidir->directions[i].precision = bidir->config.initial_precision;
@@ -359,6 +391,10 @@ int jepa_bidirectional_predict(jepa_bidirectional_t* bidir,
                                 jepa_direction_t direction,
                                 const jepa_latent_t* input,
                                 jepa_bidir_result_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_predict", 0.0f);
+
+
     NIMCP_CHECK_THROW(bidir && input && result && direction < JEPA_DIR_COUNT, NIMCP_ERROR_INVALID_PARAM, "invalid parameters");
 
     nimcp_mutex_lock(bidir->mutex);
@@ -421,6 +457,10 @@ int jepa_bidirectional_predict(jepa_bidirectional_t* bidir,
 int jepa_bidirectional_predict_multi(jepa_bidirectional_t* bidir,
                                       const jepa_bidir_multi_request_t* request,
                                       jepa_bidir_multi_result_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_predict_multi", 0.0f);
+
+
     NIMCP_CHECK_THROW(bidir && request && result, NIMCP_ERROR_INVALID_PARAM, "bidir, request, or result is NULL");
     NIMCP_CHECK_THROW(request->num_directions > 0 && request->directions && request->inputs, NIMCP_ERROR_INVALID_PARAM, "invalid request parameters");
 
@@ -432,6 +472,12 @@ int jepa_bidirectional_predict_multi(jepa_bidirectional_t* bidir,
     float total_confidence = 0.0f;
 
     for (uint32_t i = 0; i < request->num_directions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && request->num_directions > 256) {
+            jepa_bidirectional_heartbeat("jepa_bidirec_loop",
+                             (float)(i + 1) / (float)request->num_directions);
+        }
+
         jepa_direction_t dir = request->directions[i];
         if (dir >= JEPA_DIR_COUNT) {
             continue;
@@ -466,6 +512,10 @@ int jepa_bidirectional_predict_multi(jepa_bidirectional_t* bidir,
 int jepa_bidirectional_predict_forward(jepa_bidirectional_t* bidir,
                                         const jepa_latent_t* input,
                                         jepa_latent_t* prediction) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_predict_forward", 0.0f);
+
+
     jepa_bidir_result_t result = {.prediction = prediction};
     return jepa_bidirectional_predict(bidir, JEPA_DIR_FORWARD, input, &result);
 }
@@ -473,6 +523,10 @@ int jepa_bidirectional_predict_forward(jepa_bidirectional_t* bidir,
 int jepa_bidirectional_predict_backward(jepa_bidirectional_t* bidir,
                                          const jepa_latent_t* input,
                                          jepa_latent_t* prediction) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_predict_backward", 0.0f);
+
+
     jepa_bidir_result_t result = {.prediction = prediction};
     return jepa_bidirectional_predict(bidir, JEPA_DIR_BACKWARD, input, &result);
 }
@@ -480,6 +534,10 @@ int jepa_bidirectional_predict_backward(jepa_bidirectional_t* bidir,
 int jepa_bidirectional_predict_lateral(jepa_bidirectional_t* bidir,
                                         const jepa_latent_t* input,
                                         jepa_latent_t* prediction) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_predict_lateral", 0.0f);
+
+
     jepa_bidir_result_t result = {.prediction = prediction};
     return jepa_bidirectional_predict(bidir, JEPA_DIR_LATERAL, input, &result);
 }
@@ -488,6 +546,10 @@ int jepa_bidirectional_predict_hierarchical(jepa_bidirectional_t* bidir,
                                              const jepa_latent_t* input,
                                              bool up,
                                              jepa_latent_t* prediction) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_predict_hierarchical", 0.0f);
+
+
     jepa_direction_t dir = up ? JEPA_DIR_HIERARCHICAL_UP : JEPA_DIR_HIERARCHICAL_DOWN;
     jepa_bidir_result_t result = {.prediction = prediction};
     return jepa_bidirectional_predict(bidir, dir, input, &result);
@@ -502,12 +564,22 @@ float jepa_bidirectional_compute_free_energy(jepa_bidirectional_t* bidir) {
         return NAN;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_compute_free_energy", 0.0f);
+
+
     nimcp_mutex_lock(bidir->mutex);
 
     float total_fe = 0.0f;
     uint32_t active_count = 0;
 
     for (int i = 0; i < JEPA_DIR_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && JEPA_DIR_COUNT > 256) {
+            jepa_bidirectional_heartbeat("jepa_bidirec_loop",
+                             (float)(i + 1) / (float)JEPA_DIR_COUNT);
+        }
+
         jepa_direction_state_t* dir_state = &bidir->directions[i];
         if (dir_state->enabled && dir_state->predictor) {
             float avg_error = 0.0f;
@@ -560,6 +632,10 @@ static int update_precision_unlocked(jepa_bidirectional_t* bidir,
 int jepa_bidirectional_update_precision(jepa_bidirectional_t* bidir,
                                          jepa_direction_t direction,
                                          float error) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_update_precision", 0.0f);
+
+
     NIMCP_CHECK_THROW(bidir && direction < JEPA_DIR_COUNT, NIMCP_ERROR_INVALID_PARAM, "bidir is NULL or invalid direction");
 
     nimcp_mutex_lock(bidir->mutex);
@@ -574,12 +650,20 @@ float jepa_bidirectional_get_precision(const jepa_bidirectional_t* bidir,
     if (!bidir || direction >= JEPA_DIR_COUNT) {
         return NAN;
     }
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_get_precision", 0.0f);
+
+
     return bidir->directions[direction].precision;
 }
 
 int jepa_bidirectional_set_precision(jepa_bidirectional_t* bidir,
                                       jepa_direction_t direction,
                                       float precision) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_set_precision", 0.0f);
+
+
     NIMCP_CHECK_THROW(bidir && direction < JEPA_DIR_COUNT, NIMCP_ERROR_INVALID_PARAM, "bidir is NULL or invalid direction");
     NIMCP_CHECK_THROW(precision >= JEPA_BIDIR_MIN_PRECISION && precision <= JEPA_BIDIR_MAX_PRECISION, NIMCP_ERROR_INVALID_PARAM, "precision out of range");
 
@@ -596,6 +680,10 @@ int jepa_bidirectional_set_precision(jepa_bidirectional_t* bidir,
  * ============================================================================ */
 
 int jepa_bidirectional_set_training(jepa_bidirectional_t* bidir, bool training) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_set_training", 0.0f);
+
+
     NIMCP_CHECK_THROW(bidir, NIMCP_ERROR_INVALID_PARAM, "bidir is NULL");
 
     nimcp_mutex_lock(bidir->mutex);
@@ -604,6 +692,12 @@ int jepa_bidirectional_set_training(jepa_bidirectional_t* bidir, bool training) 
     bidir->state = training ? JEPA_BIDIR_STATE_TRAINING : JEPA_BIDIR_STATE_IDLE;
 
     for (int i = 0; i < JEPA_DIR_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && JEPA_DIR_COUNT > 256) {
+            jepa_bidirectional_heartbeat("jepa_bidirec_loop",
+                             (float)(i + 1) / (float)JEPA_DIR_COUNT);
+        }
+
         if (bidir->directions[i].predictor) {
             jepa_predictor_set_training(bidir->directions[i].predictor, training);
         }
@@ -618,6 +712,10 @@ int jepa_bidirectional_train_step(jepa_bidirectional_t* bidir,
                                    const jepa_latent_t* input,
                                    const jepa_latent_t* target,
                                    float* loss) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_train_step", 0.0f);
+
+
     NIMCP_CHECK_THROW(bidir && input && target && direction < JEPA_DIR_COUNT, NIMCP_ERROR_INVALID_PARAM, "invalid parameters");
 
     nimcp_mutex_lock(bidir->mutex);
@@ -647,6 +745,10 @@ int jepa_bidirectional_train_step(jepa_bidirectional_t* bidir,
 int jepa_bidirectional_set_direction_enabled(jepa_bidirectional_t* bidir,
                                               jepa_direction_t direction,
                                               bool enabled) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_set_direction_enable", 0.0f);
+
+
     NIMCP_CHECK_THROW(bidir && direction < JEPA_DIR_COUNT, NIMCP_ERROR_INVALID_PARAM, "bidir is NULL or invalid direction");
 
     nimcp_mutex_lock(bidir->mutex);
@@ -672,6 +774,10 @@ bool jepa_bidirectional_is_direction_enabled(const jepa_bidirectional_t* bidir,
     if (!bidir || direction >= JEPA_DIR_COUNT) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_is_direction_enabled", 0.0f);
+
+
     return bidir->directions[direction].enabled;
 }
 
@@ -682,6 +788,10 @@ bool jepa_bidirectional_is_direction_enabled(const jepa_bidirectional_t* bidir,
 #ifdef NIMCP_ENABLE_CUDA
 int jepa_bidirectional_init_gpu(jepa_bidirectional_t* bidir,
                                  struct nimcp_gpu_context_s* gpu_ctx) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_init_gpu", 0.0f);
+
+
     NIMCP_CHECK_THROW(bidir, NIMCP_ERROR_INVALID_PARAM, "bidir is NULL");
 
     if (gpu_ctx) {
@@ -699,6 +809,10 @@ int jepa_bidirectional_init_gpu(jepa_bidirectional_t* bidir,
 }
 
 bool jepa_bidirectional_has_gpu(const jepa_bidirectional_t* bidir) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_has_gpu", 0.0f);
+
+
     return bidir && bidir->gpu_initialized;
 }
 
@@ -714,12 +828,20 @@ struct nimcp_gpu_context_s* jepa_bidirectional_get_gpu_ctx(
 
 int jepa_bidirectional_get_stats(const jepa_bidirectional_t* bidir,
                                   jepa_bidir_stats_t* stats) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bidir && stats, NIMCP_ERROR_INVALID_PARAM, "bidir or stats is NULL");
     memcpy(stats, &bidir->stats, sizeof(jepa_bidir_stats_t));
     return NIMCP_SUCCESS;
 }
 
 int jepa_bidirectional_reset_stats(jepa_bidirectional_t* bidir) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_reset_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bidir, NIMCP_ERROR_INVALID_PARAM, "bidir is NULL");
 
     nimcp_mutex_lock(bidir->mutex);
@@ -734,12 +856,20 @@ int jepa_bidirectional_reset_stats(jepa_bidirectional_t* bidir) {
  * ============================================================================ */
 
 int jepa_bidirectional_connect_bio_async(jepa_bidirectional_t* bidir) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_connect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bidir, NIMCP_ERROR_INVALID_PARAM, "bidir is NULL");
     NIMCP_LOG_INFO("Bio-async connection (stub)");
     return NIMCP_SUCCESS;
 }
 
 int jepa_bidirectional_disconnect_bio_async(jepa_bidirectional_t* bidir) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_disconnect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bidir, NIMCP_ERROR_INVALID_PARAM, "bidir is NULL");
     return NIMCP_SUCCESS;
 }
@@ -776,6 +906,10 @@ const char* jepa_bidir_state_to_string(jepa_bidir_state_t state) {
  * ============================================================================ */
 
 jepa_bidir_result_t* jepa_bidir_result_create(uint32_t dim) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_jepa_bidir_result_cr", 0.0f);
+
+
     jepa_bidir_result_t* result = nimcp_calloc(1, sizeof(jepa_bidir_result_t));
     if (!result) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
@@ -796,6 +930,10 @@ void jepa_bidir_result_destroy(jepa_bidir_result_t* result) {
     if (!result) {
         return;
     }
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_jepa_bidir_result_de", 0.0f);
+
+
     if (result->prediction) {
         jepa_latent_destroy(result->prediction);
     }
@@ -804,6 +942,10 @@ void jepa_bidir_result_destroy(jepa_bidir_result_t* result) {
 
 jepa_bidir_multi_result_t* jepa_bidir_multi_result_create(uint32_t num_directions,
                                                            uint32_t dim) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_jepa_bidir_multi_res", 0.0f);
+
+
     jepa_bidir_multi_result_t* result = nimcp_calloc(1, sizeof(jepa_bidir_multi_result_t));
     if (!result) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
@@ -818,9 +960,21 @@ jepa_bidir_multi_result_t* jepa_bidir_multi_result_create(uint32_t num_direction
     }
 
     for (uint32_t i = 0; i < num_directions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_directions > 256) {
+            jepa_bidirectional_heartbeat("jepa_bidirec_loop",
+                             (float)(i + 1) / (float)num_directions);
+        }
+
         result->results[i].prediction = jepa_latent_create_dim(dim);
         if (!result->results[i].prediction) {
             for (uint32_t j = 0; j < i; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && i > 256) {
+                    jepa_bidirectional_heartbeat("jepa_bidirec_loop",
+                                     (float)(j + 1) / (float)i);
+                }
+
                 jepa_latent_destroy(result->results[j].prediction);
             }
             nimcp_free(result->results);
@@ -837,8 +991,18 @@ void jepa_bidir_multi_result_destroy(jepa_bidir_multi_result_t* result) {
     if (!result) {
         return;
     }
+    /* Phase 8: Heartbeat at operation start */
+    jepa_bidirectional_heartbeat("jepa_bidirec_jepa_bidir_multi_res", 0.0f);
+
+
     if (result->results) {
         for (uint32_t i = 0; i < result->num_results; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && result->num_results > 256) {
+                jepa_bidirectional_heartbeat("jepa_bidirec_loop",
+                                 (float)(i + 1) / (float)result->num_results);
+            }
+
             if (result->results[i].prediction) {
                 jepa_latent_destroy(result->results[i].prediction);
             }

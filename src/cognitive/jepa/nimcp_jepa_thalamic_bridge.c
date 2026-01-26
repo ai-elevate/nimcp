@@ -27,7 +27,7 @@ static nimcp_health_agent_t* g_jepa_thalamic_bridge_health_agent = NULL;
  * @brief Set health agent for jepa_thalamic_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void jepa_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void jepa_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_jepa_thalamic_bridge_health_agent = agent;
 }
 
@@ -49,6 +49,10 @@ struct jepa_thalamic_bridge {
 };
 
 jepa_thalamic_config_t jepa_thalamic_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_thalamic_bridge_heartbeat("jepa_thalami_jepa_thalamic_defaul", 0.0f);
+
+
     jepa_thalamic_config_t cfg = {
         .enable_attention_gating = true,
         .enable_error_amplification = true,
@@ -59,6 +63,10 @@ jepa_thalamic_config_t jepa_thalamic_default_config(void) {
 }
 
 jepa_thalamic_bridge_t* jepa_thalamic_bridge_create(void* jepa, thalamic_router_t* router, const jepa_thalamic_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_thalamic_bridge_heartbeat("jepa_thalami_create", 0.0f);
+
+
     jepa_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(jepa_thalamic_bridge_t));
     if (!bridge) {
 
@@ -76,10 +84,18 @@ jepa_thalamic_bridge_t* jepa_thalamic_bridge_create(void* jepa, thalamic_router_
 }
 
 void jepa_thalamic_bridge_destroy(jepa_thalamic_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_thalamic_bridge_heartbeat("jepa_thalami_destroy", 0.0f);
+
+
     if (bridge) nimcp_free(bridge);
 }
 
 int jepa_thalamic_bridge_reset(jepa_thalamic_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_thalamic_bridge_heartbeat("jepa_thalami_reset", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -87,6 +103,10 @@ int jepa_thalamic_bridge_reset(jepa_thalamic_bridge_t* bridge) {
 }
 
 int jepa_thalamic_route_prediction(jepa_thalamic_bridge_t* bridge, const jepa_thalamic_signal_t* signal) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_thalamic_bridge_heartbeat("jepa_thalami_jepa_thalamic_route_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && signal, -1, "bridge or signal is NULL");
     if (bridge->config.enable_attention_gating && signal->prediction_confidence < bridge->config.min_prediction_confidence) {
         return 0;
@@ -104,24 +124,40 @@ int jepa_thalamic_route_prediction(jepa_thalamic_bridge_t* bridge, const jepa_th
 }
 
 int jepa_thalamic_route_error(jepa_thalamic_bridge_t* bridge, const void* error, float magnitude) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_thalamic_bridge_heartbeat("jepa_thalami_jepa_thalamic_route_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
     bridge->stats.errors_propagated++;
     return 0;
 }
 
 int jepa_thalamic_set_attention(jepa_thalamic_bridge_t* bridge, float attention) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_thalamic_bridge_heartbeat("jepa_thalami_jepa_thalamic_set_at", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
     return 0;
 }
 
 int jepa_thalamic_get_attention(const jepa_thalamic_bridge_t* bridge, float* attention) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_thalamic_bridge_heartbeat("jepa_thalami_jepa_thalamic_get_at", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && attention, -1, "bridge or attention is NULL");
     *attention = bridge->attention_weight;
     return 0;
 }
 
 int jepa_thalamic_bridge_get_stats(const jepa_thalamic_bridge_t* bridge, jepa_thalamic_stats_t* stats) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_thalamic_bridge_heartbeat("jepa_thalami_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, -1, "bridge or stats is NULL");
     *stats = bridge->stats;
     return 0;
@@ -134,9 +170,19 @@ int jepa_thalamic_bridge_get_stats(const jepa_thalamic_bridge_t* bridge, jepa_th
 int jepa_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_thalamic_bridge_heartbeat("jepa_thalami_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "JEPA_Thalamic_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                jepa_thalamic_bridge_heartbeat("jepa_thalami_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

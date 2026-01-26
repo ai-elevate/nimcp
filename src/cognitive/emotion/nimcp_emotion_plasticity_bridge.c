@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_emotion_plasticity_bridge_health_agent = NULL;
  * @brief Set health agent for emotion_plasticity_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void emotion_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void emotion_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_emotion_plasticity_bridge_health_agent = agent;
 }
 
@@ -98,6 +98,12 @@ static emotion_plasticity_synapse_t* find_synapse(
     uint32_t synapse_id)
 {
     for (uint32_t i = 0; i < bridge->n_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->n_synapses > 256) {
+            emotion_plasticity_bridge_heartbeat("emotion_plas_loop",
+                             (float)(i + 1) / (float)bridge->n_synapses);
+        }
+
         if (bridge->synapses[i].synapse_id == synapse_id) {
             return &bridge->synapses[i];
         }
@@ -166,6 +172,12 @@ static void apply_reward_modulated_plasticity_unlocked(
     if (fabsf(bridge->pending_reward) < 0.001f) return;
 
     for (uint32_t i = 0; i < bridge->n_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->n_synapses > 256) {
+            emotion_plasticity_bridge_heartbeat("emotion_plas_loop",
+                             (float)(i + 1) / (float)bridge->n_synapses);
+        }
+
         emotion_plasticity_synapse_t* syn = &bridge->synapses[i];
 
         if (syn->eligibility_trace > 0.001f) {
@@ -216,6 +228,10 @@ static void apply_reward_modulated_plasticity_unlocked(
 //=============================================================================
 
 emotion_plasticity_config_t emotion_plasticity_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_c", 0.0f);
+
+
     emotion_plasticity_config_t config = {
         /* STDP parameters */
         .stdp_ltp_window_ms = 20.0f,
@@ -271,6 +287,10 @@ emotion_plasticity_config_t emotion_plasticity_config_default(void) {
 emotion_plasticity_bridge_t* emotion_plasticity_create(
     const emotion_plasticity_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_c", 0.0f);
+
+
     emotion_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(emotion_plasticity_bridge_t));
     if (!bridge) {
 
@@ -305,6 +325,12 @@ emotion_plasticity_bridge_t* emotion_plasticity_create(
 
     /* Initialize per-emotion tracking */
     for (uint32_t i = 0; i < EMOTION_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && EMOTION_COUNT > 256) {
+            emotion_plasticity_bridge_heartbeat("emotion_plas_loop",
+                             (float)(i + 1) / (float)EMOTION_COUNT);
+        }
+
         bridge->emotion_sensitivity[i] = 1.0f;
         bridge->emotion_extinction[i] = 0.0f;
         bridge->emotion_last_stimulus[i] = 0;
@@ -316,6 +342,10 @@ emotion_plasticity_bridge_t* emotion_plasticity_create(
 
 void emotion_plasticity_destroy(emotion_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_d", 0.0f);
+
 
     if (bridge->bio_async_connected) {
         emotion_plasticity_disconnect_bio_async(bridge);
@@ -330,10 +360,20 @@ void emotion_plasticity_destroy(emotion_plasticity_bridge_t* bridge) {
 int emotion_plasticity_reset(emotion_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_r", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset synapses to initial state */
     for (uint32_t i = 0; i < bridge->n_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->n_synapses > 256) {
+            emotion_plasticity_bridge_heartbeat("emotion_plas_loop",
+                             (float)(i + 1) / (float)bridge->n_synapses);
+        }
+
         bridge->synapses[i].weight = bridge->synapses[i].initial_weight;
         bridge->synapses[i].eligibility_trace = 0.0f;
         bridge->synapses[i].extinction_level = 0.0f;
@@ -350,6 +390,12 @@ int emotion_plasticity_reset(emotion_plasticity_bridge_t* bridge) {
 
     /* Reset per-emotion tracking */
     for (uint32_t i = 0; i < EMOTION_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && EMOTION_COUNT > 256) {
+            emotion_plasticity_bridge_heartbeat("emotion_plas_loop",
+                             (float)(i + 1) / (float)EMOTION_COUNT);
+        }
+
         bridge->emotion_sensitivity[i] = 1.0f;
         bridge->emotion_extinction[i] = 0.0f;
     }
@@ -372,6 +418,10 @@ int emotion_plasticity_register_synapse(
 {
     if (!bridge) return -1;
     if (associated_emotion >= EMOTION_COUNT) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_r", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -415,9 +465,19 @@ int emotion_plasticity_unregister_synapse(
 {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_u", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->n_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->n_synapses > 256) {
+            emotion_plasticity_bridge_heartbeat("emotion_plas_loop",
+                             (float)(i + 1) / (float)bridge->n_synapses);
+        }
+
         if (bridge->synapses[i].synapse_id == synapse_id) {
             /* Shift remaining synapses */
             for (uint32_t j = i; j < bridge->n_synapses - 1; j++) {
@@ -439,6 +499,10 @@ int emotion_plasticity_get_synapse(
     emotion_plasticity_synapse_t* synapse)
 {
     if (!bridge || !synapse) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_g", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -466,12 +530,22 @@ int emotion_plasticity_stimulus(
     if (!bridge) return -1;
     if (emotion >= EMOTION_COUNT) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_s", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = EMOTION_PLASTICITY_STATE_OBSERVING;
 
     /* Record pre-synaptic spike timing for associated synapses */
     for (uint32_t i = 0; i < bridge->n_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->n_synapses > 256) {
+            emotion_plasticity_bridge_heartbeat("emotion_plas_loop",
+                             (float)(i + 1) / (float)bridge->n_synapses);
+        }
+
         emotion_plasticity_synapse_t* syn = &bridge->synapses[i];
         if (syn->associated_emotion == emotion) {
             /* Calculate time since last post-spike for STDP */
@@ -529,12 +603,22 @@ int emotion_plasticity_response(
     if (!bridge) return -1;
     if (emotion >= EMOTION_COUNT) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_r", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = EMOTION_PLASTICITY_STATE_RESPONDING;
 
     /* Record post-synaptic spike timing */
     for (uint32_t i = 0; i < bridge->n_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->n_synapses > 256) {
+            emotion_plasticity_bridge_heartbeat("emotion_plas_loop",
+                             (float)(i + 1) / (float)bridge->n_synapses);
+        }
+
         emotion_plasticity_synapse_t* syn = &bridge->synapses[i];
         if (syn->associated_emotion == emotion) {
             /* Calculate time since last pre-spike for STDP */
@@ -591,6 +675,10 @@ int emotion_plasticity_reward(
 {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_r", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->pending_reward = reward;
@@ -613,10 +701,20 @@ int emotion_plasticity_extinction_trial(
     if (emotion >= EMOTION_COUNT) return -1;
     if (!bridge->config.enable_extinction) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_e", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Apply extinction to all synapses associated with this emotion */
     for (uint32_t i = 0; i < bridge->n_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->n_synapses > 256) {
+            emotion_plasticity_bridge_heartbeat("emotion_plas_loop",
+                             (float)(i + 1) / (float)bridge->n_synapses);
+        }
+
         emotion_plasticity_synapse_t* syn = &bridge->synapses[i];
         if (syn->associated_emotion == emotion) {
             float old_weight = syn->weight;
@@ -666,12 +764,22 @@ int emotion_plasticity_update(
 {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_u", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = EMOTION_PLASTICITY_STATE_UPDATING;
 
     /* Update eligibility traces */
     for (uint32_t i = 0; i < bridge->n_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->n_synapses > 256) {
+            emotion_plasticity_bridge_heartbeat("emotion_plas_loop",
+                             (float)(i + 1) / (float)bridge->n_synapses);
+        }
+
         update_eligibility_trace_unlocked(bridge, &bridge->synapses[i], dt_ms);
     }
 
@@ -679,6 +787,12 @@ int emotion_plasticity_update(
     if (bridge->config.enable_bcm) {
         float alpha = dt_ms / bridge->config.bcm_threshold_tau;
         for (uint32_t i = 0; i < bridge->n_synapses; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->n_synapses > 256) {
+                emotion_plasticity_bridge_heartbeat("emotion_plas_loop",
+                                 (float)(i + 1) / (float)bridge->n_synapses);
+            }
+
             emotion_plasticity_synapse_t* syn = &bridge->synapses[i];
             syn->bcm_threshold = (1.0f - alpha) * syn->bcm_threshold +
                                 alpha * syn->avg_activity;
@@ -689,6 +803,12 @@ int emotion_plasticity_update(
     if (bridge->config.enable_homeostatic) {
         float alpha = dt_ms / bridge->config.homeostatic_tau_ms;
         for (uint32_t i = 0; i < bridge->n_synapses; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->n_synapses > 256) {
+                emotion_plasticity_bridge_heartbeat("emotion_plas_loop",
+                                 (float)(i + 1) / (float)bridge->n_synapses);
+            }
+
             emotion_plasticity_synapse_t* syn = &bridge->synapses[i];
             float error = bridge->config.target_response_rate - syn->avg_activity;
             syn->weight = clamp_f(syn->weight + alpha * error * 0.01f,
@@ -699,9 +819,21 @@ int emotion_plasticity_update(
 
     /* Update emotion sensitivities based on average synapse weights */
     for (uint32_t e = 0; e < EMOTION_COUNT; e++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((e & 0xFF) == 0 && EMOTION_COUNT > 256) {
+            emotion_plasticity_bridge_heartbeat("emotion_plas_loop",
+                             (float)(e + 1) / (float)EMOTION_COUNT);
+        }
+
         float total_weight = 0.0f;
         uint32_t count = 0;
         for (uint32_t i = 0; i < bridge->n_synapses; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->n_synapses > 256) {
+                emotion_plasticity_bridge_heartbeat("emotion_plas_loop",
+                                 (float)(i + 1) / (float)bridge->n_synapses);
+            }
+
             if (bridge->synapses[i].associated_emotion == (emotion_category_t)e) {
                 total_weight += bridge->synapses[i].weight;
                 count++;
@@ -722,12 +854,22 @@ int emotion_plasticity_update(
 int emotion_plasticity_consolidate(emotion_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_c", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = EMOTION_PLASTICITY_STATE_CONSOLIDATING;
 
     /* Consolidation strengthens strong weights, weakens weak ones */
     for (uint32_t i = 0; i < bridge->n_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->n_synapses > 256) {
+            emotion_plasticity_bridge_heartbeat("emotion_plas_loop",
+                             (float)(i + 1) / (float)bridge->n_synapses);
+        }
+
         emotion_plasticity_synapse_t* syn = &bridge->synapses[i];
 
         float mid = (bridge->config.weight_min + bridge->config.weight_max) / 2.0f;
@@ -766,6 +908,10 @@ int emotion_plasticity_get_response_modulation(
     if (!bridge || !modulation) return -1;
     if (emotion >= EMOTION_COUNT) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_g", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Modulation based on learned sensitivity and extinction */
@@ -784,6 +930,10 @@ float emotion_plasticity_get_extinction_level(
     if (!bridge) return 0.0f;
     if (emotion >= EMOTION_COUNT) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_g", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->emotion_extinction[emotion];
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -797,6 +947,10 @@ float emotion_plasticity_get_sensitivity(
 {
     if (!bridge) return 1.0f;
     if (emotion >= EMOTION_COUNT) return 1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_g", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     float sens = bridge->emotion_sensitivity[emotion];
@@ -814,6 +968,10 @@ int emotion_plasticity_get_state(
     emotion_plasticity_bridge_state_t* state)
 {
     if (!bridge || !state) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_g", 0.0f);
+
 
     nimcp_mutex_lock(((emotion_plasticity_bridge_t*)bridge)->base.mutex);
 
@@ -835,6 +993,10 @@ int emotion_plasticity_get_stats(
 {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_g", 0.0f);
+
+
     nimcp_mutex_lock(((emotion_plasticity_bridge_t*)bridge)->base.mutex);
 
     *stats = bridge->stats;
@@ -855,6 +1017,10 @@ int emotion_plasticity_get_stats(
 void emotion_plasticity_reset_stats(emotion_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_r", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -870,6 +1036,10 @@ int emotion_plasticity_set_weight_callback(
     void* user_data)
 {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_s", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->weight_callback = callback;
@@ -889,6 +1059,10 @@ int emotion_plasticity_set_valence_modulation(
 {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_s", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->current_valence_mod = clamp_f(valence, -1.0f, 1.0f);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -901,6 +1075,10 @@ int emotion_plasticity_set_arousal_modulation(
     float arousal)
 {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_s", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->current_arousal_mod = clamp_f(arousal, 0.0f, 1.0f);
@@ -920,6 +1098,10 @@ int emotion_plasticity_connect_bio_async(emotion_plasticity_bridge_t* bridge) {
     }
     if (!bridge->config.enable_bio_async) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_c", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = true;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -933,6 +1115,10 @@ int emotion_plasticity_disconnect_bio_async(emotion_plasticity_bridge_t* bridge)
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_d", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -942,5 +1128,9 @@ int emotion_plasticity_disconnect_bio_async(emotion_plasticity_bridge_t* bridge)
 
 bool emotion_plasticity_is_bio_async_connected(const emotion_plasticity_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_i", 0.0f);
+
+
     return bridge->bio_async_connected;
 }

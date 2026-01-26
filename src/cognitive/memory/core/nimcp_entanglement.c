@@ -73,7 +73,7 @@ static nimcp_health_agent_t* g_entanglement_health_agent = NULL;
  * @brief Set health agent for entanglement heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void entanglement_set_health_agent(nimcp_health_agent_t* agent) {
+void entanglement_set_health_agent(nimcp_health_agent_t* agent) {
     g_entanglement_health_agent = agent;
 }
 
@@ -460,6 +460,12 @@ static bool build_node_index_map(
 static ssize_t find_node_index(const uint64_t* node_ids, size_t num_nodes, uint64_t target) {
     /* Linear search - could use hash map for large graphs */
     for (size_t i = 0; i < num_nodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_nodes > 256) {
+            entanglement_heartbeat("entanglement_loop",
+                             (float)(i + 1) / (float)num_nodes);
+        }
+
         if (node_ids[i] == target) {
             return (ssize_t)i;
         }
@@ -472,6 +478,10 @@ static ssize_t find_node_index(const uint64_t* node_ids, size_t num_nodes, uint6
 //=============================================================================
 
 entangle_config_t entangle_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_config_defa", 0.0f);
+
+
     entangle_config_t config = {
         .initial_node_capacity = ENTANGLE_DEFAULT_NODE_CAPACITY,
         .initial_edge_capacity = ENTANGLE_DEFAULT_EDGE_CAPACITY,
@@ -489,6 +499,10 @@ bool entangle_config_validate(const entangle_config_t* config) {
         set_error("NULL config pointer");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_config_vali", 0.0f);
+
 
     if (config->initial_node_capacity == 0) {
         set_error("initial_node_capacity must be > 0");
@@ -525,6 +539,10 @@ bool entangle_config_validate(const entangle_config_t* config) {
 
 entangle_graph_t entangle_graph_create(const entangle_config_t* config) {
     /* Use defaults if no config provided */
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_graph_creat", 0.0f);
+
+
     entangle_config_t cfg = config ? *config : entangle_config_default();
 
     if (!entangle_config_validate(&cfg)) {
@@ -588,8 +606,18 @@ void entangle_graph_destroy(entangle_graph_t graph) {
     /* No need to lock - we're destroying */
 
     /* Free all edge entries */
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_graph_destr", 0.0f);
+
+
     if (graph->edge_table) {
         for (size_t i = 0; i < graph->edge_table_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && graph->edge_table_size > 256) {
+                entanglement_heartbeat("entanglement_loop",
+                                 (float)(i + 1) / (float)graph->edge_table_size);
+            }
+
             edge_entry_t* entry = graph->edge_table[i];
             while (entry) {
                 edge_entry_t* next = entry->hash_next;
@@ -603,6 +631,12 @@ void entangle_graph_destroy(entangle_graph_t graph) {
     /* Free all node entries (including edge lists) */
     if (graph->node_table) {
         for (size_t i = 0; i < graph->node_table_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && graph->node_table_size > 256) {
+                entanglement_heartbeat("entanglement_loop",
+                                 (float)(i + 1) / (float)graph->node_table_size);
+            }
+
             node_entry_t* entry = graph->node_table[i];
             while (entry) {
                 node_entry_t* next = entry->hash_next;
@@ -629,10 +663,20 @@ bool entangle_graph_clear(entangle_graph_t graph) {
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_graph_clear", 0.0f);
+
+
     write_lock(graph);
 
     /* Free all edge entries */
     for (size_t i = 0; i < graph->edge_table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && graph->edge_table_size > 256) {
+            entanglement_heartbeat("entanglement_loop",
+                             (float)(i + 1) / (float)graph->edge_table_size);
+        }
+
         edge_entry_t* entry = graph->edge_table[i];
         while (entry) {
             edge_entry_t* next = entry->hash_next;
@@ -644,6 +688,12 @@ bool entangle_graph_clear(entangle_graph_t graph) {
 
     /* Free node edge lists and reset nodes */
     for (size_t i = 0; i < graph->node_table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && graph->node_table_size > 256) {
+            entanglement_heartbeat("entanglement_loop",
+                             (float)(i + 1) / (float)graph->node_table_size);
+        }
+
         node_entry_t* entry = graph->node_table[i];
         while (entry) {
             node_entry_t* next = entry->hash_next;
@@ -673,6 +723,10 @@ bool entangle_graph_clear(entangle_graph_t graph) {
 bool entangle_node_exists(entangle_graph_t graph, uint64_t node_id) {
     if (!graph) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_node_exists", 0.0f);
+
+
     read_lock(graph);
     bool exists = (find_node_unlocked(graph, node_id) != NULL);
     read_unlock(graph);
@@ -689,6 +743,10 @@ bool entangle_add_edge(entangle_graph_t graph, const entangle_edge_t* edge) {
         set_error("NULL graph or edge");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_add_edge", 0.0f);
+
 
     if (edge->from_id == edge->to_id) {
         set_error("Self-loops not allowed");
@@ -820,6 +878,10 @@ bool entangle_remove_edge(entangle_graph_t graph, uint64_t from_id, uint64_t to_
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_remove_edge", 0.0f);
+
+
     write_lock(graph);
 
     /* Find edge in hash table */
@@ -879,6 +941,10 @@ bool entangle_update_edge(entangle_graph_t graph, const entangle_edge_t* edge) {
         set_error("NULL graph or edge");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_update_edge", 0.0f);
+
 
     write_lock(graph);
 
@@ -952,6 +1018,10 @@ bool entangle_get_edge(entangle_graph_t graph, uint64_t from_id, uint64_t to_id,
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_get_edge", 0.0f);
+
+
     read_lock(graph);
 
     edge_entry_t* entry = find_edge_unlocked(graph, from_id, to_id);
@@ -971,6 +1041,10 @@ bool entangle_get_edge(entangle_graph_t graph, uint64_t from_id, uint64_t to_id,
 bool entangle_has_edge(entangle_graph_t graph, uint64_t from_id, uint64_t to_id) {
     if (!graph) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_has_edge", 0.0f);
+
+
     read_lock(graph);
     bool exists = (find_edge_unlocked(graph, from_id, to_id) != NULL);
     ((struct entangle_graph_struct*)graph)->stats.total_lookups++;
@@ -984,6 +1058,10 @@ float entangle_strengthen_edge(entangle_graph_t graph, uint64_t from_id, uint64_
         set_error("NULL graph");
         return -1.0f;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_strengthen_", 0.0f);
+
 
     write_lock(graph);
 
@@ -1017,6 +1095,10 @@ float entangle_weaken_edge(entangle_graph_t graph, uint64_t from_id, uint64_t to
         set_error("NULL graph");
         return -1.0f;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_weaken_edge", 0.0f);
+
 
     write_lock(graph);
 
@@ -1062,6 +1144,10 @@ bool entangle_get_neighbors(
     }
 
     *count = 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_get_neighbo", 0.0f);
+
 
     read_lock(graph);
 
@@ -1122,6 +1208,10 @@ bool entangle_get_outgoing(
 
     *count = 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_get_outgoin", 0.0f);
+
+
     read_lock(graph);
 
     node_entry_t* node = find_node_unlocked(graph, node_id);
@@ -1159,6 +1249,10 @@ bool entangle_get_incoming(
 
     *count = 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_get_incomin", 0.0f);
+
+
     read_lock(graph);
 
     node_entry_t* node = find_node_unlocked(graph, node_id);
@@ -1195,6 +1289,10 @@ bool entangle_get_strongest(
     }
 
     *count = 0;
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_get_stronge", 0.0f);
+
+
     if (k == 0) {
         clear_error();
         return true;
@@ -1248,6 +1346,10 @@ bool entangle_get_neighbors_by_type(
     }
 
     *count = 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_get_neighbo", 0.0f);
+
 
     read_lock(graph);
 
@@ -1311,6 +1413,10 @@ bool entangle_compute_resonance(
     }
 
     /* Use graph's resonance config */
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_compute_res", 0.0f);
+
+
     read_lock(graph);
     resonance_config_t cfg = graph->config.resonance_cfg;
     read_unlock(graph);
@@ -1331,6 +1437,10 @@ bool entangle_auto_link(
         set_error("NULL parameter");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_auto_link", 0.0f);
+
 
     if (from_id == to_id) {
         set_error("Self-loops not allowed");
@@ -1401,9 +1511,19 @@ size_t entangle_auto_link_batch(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_auto_link_b", 0.0f);
+
+
     size_t linked = 0;
 
     for (size_t i = 0; i < num_targets; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_targets > 256) {
+            entanglement_heartbeat("entanglement_loop",
+                             (float)(i + 1) / (float)num_targets);
+        }
+
         if (target_ids[i] != from_id) {
             if (entangle_auto_link(graph, from_id, target_ids[i], query, &targets[i], type, NULL)) {
                 linked++;
@@ -1420,6 +1540,10 @@ size_t entangle_prune_weak(entangle_graph_t graph, float threshold) {
         set_error("NULL graph");
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_prune_weak", 0.0f);
+
 
     if (threshold <= 0.0f) {
         read_lock(graph);
@@ -1441,6 +1565,12 @@ size_t entangle_prune_weak(entangle_graph_t graph, float threshold) {
     read_lock(graph);
 
     for (size_t i = 0; i < graph->edge_table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && graph->edge_table_size > 256) {
+            entanglement_heartbeat("entanglement_loop",
+                             (float)(i + 1) / (float)graph->edge_table_size);
+        }
+
         edge_entry_t* entry = graph->edge_table[i];
         while (entry) {
             if (entry->edge.weight < threshold) {
@@ -1469,6 +1599,12 @@ size_t entangle_prune_weak(entangle_graph_t graph, float threshold) {
     /* Remove collected edges */
     size_t removed = 0;
     for (size_t i = 0; i < to_remove_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && to_remove_count > 256) {
+            entanglement_heartbeat("entanglement_loop",
+                             (float)(i + 1) / (float)to_remove_count);
+        }
+
         if (entangle_remove_edge(graph, to_remove[i].from, to_remove[i].to)) {
             removed++;
         }
@@ -1485,6 +1621,10 @@ size_t entangle_decay_all(entangle_graph_t graph, float decay_factor) {
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_decay_all", 0.0f);
+
+
     if (decay_factor <= 0.0f || decay_factor > 1.0f) {
         set_error("Decay factor must be in (0, 1]");
         return 0;
@@ -1498,6 +1638,12 @@ size_t entangle_decay_all(entangle_graph_t graph, float decay_factor) {
     float max_w = 0.0f;
 
     for (size_t i = 0; i < graph->edge_table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && graph->edge_table_size > 256) {
+            entanglement_heartbeat("entanglement_loop",
+                             (float)(i + 1) / (float)graph->edge_table_size);
+        }
+
         edge_entry_t* entry = graph->edge_table[i];
         while (entry) {
             entry->edge.weight *= decay_factor;
@@ -1536,6 +1682,10 @@ quantum_walk_state_t* quantum_walk_init(
 
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_quantum_walk_init", 0.0f);
+
 
     read_lock(graph);
 
@@ -1610,6 +1760,10 @@ bool entangle_quantum_walk_step(entangle_graph_t graph, quantum_walk_state_t* st
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_quantum_wal", 0.0f);
+
+
     if (state->is_collapsed) {
         set_error("Walk state already collapsed");
         return false;
@@ -1631,6 +1785,12 @@ bool entangle_quantum_walk_step(entangle_graph_t graph, quantum_walk_state_t* st
 
     /* Evolve amplitudes: spread through graph */
     for (size_t i = 0; i < state->num_nodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && state->num_nodes > 256) {
+            entanglement_heartbeat("entanglement_loop",
+                             (float)(i + 1) / (float)state->num_nodes);
+        }
+
         float amp = state->amplitudes[i];
 
         /* Skip nodes with negligible amplitude */
@@ -1682,12 +1842,24 @@ bool entangle_quantum_walk_step(entangle_graph_t graph, quantum_walk_state_t* st
     /* Normalize amplitudes */
     float sum_sq = 0.0f;
     for (size_t i = 0; i < state->num_nodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && state->num_nodes > 256) {
+            entanglement_heartbeat("entanglement_loop",
+                             (float)(i + 1) / (float)state->num_nodes);
+        }
+
         sum_sq += new_amplitudes[i] * new_amplitudes[i];
     }
 
     if (sum_sq > ENTANGLE_EPSILON) {
         float norm = sqrtf(sum_sq);
         for (size_t i = 0; i < state->num_nodes; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && state->num_nodes > 256) {
+                entanglement_heartbeat("entanglement_loop",
+                                 (float)(i + 1) / (float)state->num_nodes);
+            }
+
             new_amplitudes[i] /= norm;
         }
         state->total_amplitude = 1.0f;
@@ -1710,8 +1882,18 @@ uint32_t quantum_walk_run(entangle_graph_t graph, quantum_walk_state_t* state, u
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_quantum_walk_run", 0.0f);
+
+
     uint32_t taken = 0;
     for (uint32_t i = 0; i < steps; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && steps > 256) {
+            entanglement_heartbeat("entanglement_loop",
+                             (float)(i + 1) / (float)steps);
+        }
+
         if (!entangle_quantum_walk_step(graph, state)) {
             break;
         }
@@ -1726,6 +1908,10 @@ bool quantum_walk_collapse(quantum_walk_state_t* state, quantum_walk_result_t* r
         set_error("NULL state or result");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_quantum_walk_collaps", 0.0f);
+
 
     if (state->is_collapsed) {
         set_error("Walk state already collapsed");
@@ -1746,6 +1932,12 @@ bool quantum_walk_collapse(quantum_walk_state_t* state, quantum_walk_result_t* r
 
     float total_prob = 0.0f;
     for (size_t i = 0; i < state->num_nodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && state->num_nodes > 256) {
+            entanglement_heartbeat("entanglement_loop",
+                             (float)(i + 1) / (float)state->num_nodes);
+        }
+
         probs[i] = state->amplitudes[i] * state->amplitudes[i];
         total_prob += probs[i];
     }
@@ -1753,12 +1945,24 @@ bool quantum_walk_collapse(quantum_walk_state_t* state, quantum_walk_result_t* r
     /* Normalize if needed */
     if (total_prob > ENTANGLE_EPSILON) {
         for (size_t i = 0; i < state->num_nodes; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && state->num_nodes > 256) {
+                entanglement_heartbeat("entanglement_loop",
+                                 (float)(i + 1) / (float)state->num_nodes);
+            }
+
             probs[i] /= total_prob;
         }
     } else {
         /* Uniform distribution if no amplitude */
         float uniform = 1.0f / (float)state->num_nodes;
         for (size_t i = 0; i < state->num_nodes; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && state->num_nodes > 256) {
+                entanglement_heartbeat("entanglement_loop",
+                                 (float)(i + 1) / (float)state->num_nodes);
+            }
+
             probs[i] = uniform;
         }
     }
@@ -1769,6 +1973,12 @@ bool quantum_walk_collapse(quantum_walk_state_t* state, quantum_walk_result_t* r
     size_t selected = 0;
 
     for (size_t i = 0; i < state->num_nodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && state->num_nodes > 256) {
+            entanglement_heartbeat("entanglement_loop",
+                             (float)(i + 1) / (float)state->num_nodes);
+        }
+
         cumulative += probs[i];
         if (r <= cumulative) {
             selected = i;
@@ -1803,6 +2013,10 @@ bool quantum_walk_get_top_k(
 
     *count = 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_quantum_walk_get_top", 0.0f);
+
+
     if (state->num_nodes == 0 || k == 0) {
         clear_error();
         return true;
@@ -1816,6 +2030,12 @@ bool quantum_walk_get_top_k(
     }
 
     for (size_t i = 0; i < state->num_nodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && state->num_nodes > 256) {
+            entanglement_heartbeat("entanglement_loop",
+                             (float)(i + 1) / (float)state->num_nodes);
+        }
+
         all[i].node_id = state->node_ids[i];
         all[i].probability = state->amplitudes[i] * state->amplitudes[i];
         all[i].steps_taken = state->current_step;
@@ -1839,6 +2059,10 @@ float quantum_walk_get_probability(quantum_walk_state_t* state, uint64_t node_id
         return -1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_quantum_walk_get_pro", 0.0f);
+
+
     ssize_t idx = find_node_index(state->node_ids, state->num_nodes, node_id);
     if (idx < 0) {
         return -1.0f;  /* Not found */
@@ -1849,6 +2073,10 @@ float quantum_walk_get_probability(quantum_walk_state_t* state, uint64_t node_id
 
 void entangle_quantum_walk_destroy(quantum_walk_state_t* state) {
     if (!state) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_quantum_wal", 0.0f);
+
 
     free(state->amplitudes);
     free(state->node_ids);
@@ -1877,6 +2105,10 @@ bool entangle_spread_activation(
     }
 
     *result_count = 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_spread_acti", 0.0f);
+
 
     if (num_starts == 0 || max_hops == 0 || max_results == 0) {
         clear_error();
@@ -1922,6 +2154,12 @@ bool entangle_spread_activation(
 
     /* Initialize starting activations */
     for (size_t i = 0; i < num_starts; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_starts > 256) {
+            entanglement_heartbeat("entanglement_loop",
+                             (float)(i + 1) / (float)num_starts);
+        }
+
         ssize_t idx = find_node_index(node_ids, num_nodes, start_nodes[i]);
         if (idx >= 0) {
             activations[idx] = start_activations ? start_activations[i] : 1.0f;
@@ -1930,9 +2168,21 @@ bool entangle_spread_activation(
 
     /* Spread activation for max_hops iterations */
     for (uint32_t hop = 0; hop < max_hops; hop++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((hop & 0xFF) == 0 && max_hops > 256) {
+            entanglement_heartbeat("entanglement_loop",
+                             (float)(hop + 1) / (float)max_hops);
+        }
+
         memset(new_activations, 0, num_nodes * sizeof(float));
 
         for (size_t i = 0; i < num_nodes; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_nodes > 256) {
+                entanglement_heartbeat("entanglement_loop",
+                                 (float)(i + 1) / (float)num_nodes);
+            }
+
             float act = activations[i];
             if (act < threshold) continue;
 
@@ -1979,6 +2229,12 @@ bool entangle_spread_activation(
 
     size_t entry_count = 0;
     for (size_t i = 0; i < num_nodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_nodes > 256) {
+            entanglement_heartbeat("entanglement_loop",
+                             (float)(i + 1) / (float)num_nodes);
+        }
+
         if (activations[i] >= threshold) {
             entries[entry_count].idx = i;
             entries[entry_count].activation = activations[i];
@@ -1988,6 +2244,12 @@ bool entangle_spread_activation(
 
     /* Sort by activation descending */
     for (size_t i = 0; i < entry_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && entry_count > 256) {
+            entanglement_heartbeat("entanglement_loop",
+                             (float)(i + 1) / (float)entry_count);
+        }
+
         for (size_t j = i + 1; j < entry_count; j++) {
             if (entries[j].activation > entries[i].activation) {
                 act_entry_t tmp = entries[i];
@@ -2038,6 +2300,10 @@ bool entangle_cascade(
 
     *result_count = 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_cascade", 0.0f);
+
+
     if (cascade_depth == 0 || top_k == 0 || max_results == 0) {
         clear_error();
         return true;
@@ -2070,6 +2336,12 @@ bool entangle_cascade(
 
     /* Cascade iterations */
     for (uint32_t pass = 0; pass < cascade_depth; pass++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((pass & 0xFF) == 0 && cascade_depth > 256) {
+            entanglement_heartbeat("entanglement_loop",
+                             (float)(pass + 1) / (float)cascade_depth);
+        }
+
         size_t spread_count = 0;
 
         if (!entangle_spread_activation(graph, current_nodes, current_activations,
@@ -2086,6 +2358,12 @@ bool entangle_cascade(
         /* Keep top-k for next iteration */
         current_count = (spread_count < top_k) ? spread_count : top_k;
         for (size_t i = 0; i < current_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && current_count > 256) {
+                entanglement_heartbeat("entanglement_loop",
+                                 (float)(i + 1) / (float)current_count);
+            }
+
             current_nodes[i] = temp_results[i].neighbor_id;
             current_activations[i] = temp_results[i].edge.weight;
         }
@@ -2119,6 +2397,10 @@ bool entangle_get_stats(entangle_graph_t graph, entangle_stats_t* stats) {
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_get_stats", 0.0f);
+
+
     read_lock(graph);
 
     /* Copy base stats */
@@ -2137,6 +2419,12 @@ bool entangle_get_stats(entangle_graph_t graph, entangle_stats_t* stats) {
     /* Find max degree */
     stats->max_degree = 0;
     for (size_t i = 0; i < graph->node_table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && graph->node_table_size > 256) {
+            entanglement_heartbeat("entanglement_loop",
+                             (float)(i + 1) / (float)graph->node_table_size);
+        }
+
         node_entry_t* entry = graph->node_table[i];
         while (entry) {
             size_t degree = entry->in_degree + entry->out_degree;
@@ -2160,6 +2448,10 @@ size_t entangle_node_degree(
 {
     if (!graph) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_node_degree", 0.0f);
+
+
     read_lock(graph);
 
     node_entry_t* node = find_node_unlocked(graph, node_id);
@@ -2180,6 +2472,10 @@ size_t entangle_node_degree(
 
 void entangle_reset_stats(entangle_graph_t graph) {
     if (!graph) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_reset_stats", 0.0f);
+
 
     write_lock(graph);
 
@@ -2221,6 +2517,10 @@ void entangle_edge_print(const entangle_edge_t* edge) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_edge_print", 0.0f);
+
+
     printf("Edge: %lu -> %lu\n", (unsigned long)edge->from_id, (unsigned long)edge->to_id);
     printf("  Type: %s\n", entangle_edge_type_name(edge->type));
     printf("  Weight: %.3f\n", edge->weight);
@@ -2237,6 +2537,10 @@ void entangle_graph_print_summary(entangle_graph_t graph) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_graph_print", 0.0f);
+
+
     entangle_stats_t stats;
     entangle_get_stats(graph, &stats);
 
@@ -2250,6 +2554,12 @@ void entangle_graph_print_summary(entangle_graph_t graph) {
     printf("Memory: %zu bytes\n", stats.memory_bytes);
     printf("Edge types:\n");
     for (int i = 0; i < ENTANGLE_EDGE_TYPE_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ENTANGLE_EDGE_TYPE_COUNT > 256) {
+            entanglement_heartbeat("entanglement_loop",
+                             (float)(i + 1) / (float)ENTANGLE_EDGE_TYPE_COUNT);
+        }
+
         if (stats.edges_by_type[i] > 0) {
             printf("  %s: %lu\n", entangle_edge_type_name(i),
                    (unsigned long)stats.edges_by_type[i]);
@@ -2268,6 +2578,10 @@ bool entangle_graph_validate(entangle_graph_t graph) {
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_graph_valid", 0.0f);
+
+
     read_lock(graph);
 
     bool valid = true;
@@ -2276,6 +2590,12 @@ bool entangle_graph_validate(entangle_graph_t graph) {
 
     /* Count and validate nodes */
     for (size_t i = 0; i < graph->node_table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && graph->node_table_size > 256) {
+            entanglement_heartbeat("entanglement_loop",
+                             (float)(i + 1) / (float)graph->node_table_size);
+        }
+
         node_entry_t* entry = graph->node_table[i];
         while (entry) {
             counted_nodes++;
@@ -2313,6 +2633,12 @@ bool entangle_graph_validate(entangle_graph_t graph) {
 
     /* Count and validate edges */
     for (size_t i = 0; i < graph->edge_table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && graph->edge_table_size > 256) {
+            entanglement_heartbeat("entanglement_loop",
+                             (float)(i + 1) / (float)graph->edge_table_size);
+        }
+
         edge_entry_t* entry = graph->edge_table[i];
         while (entry) {
             counted_edges++;
@@ -2370,11 +2696,19 @@ size_t entangle_graph_compact(entangle_graph_t graph) {
      *
      * This is a complex operation that's optional for now.
      */
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_graph_compa", 0.0f);
+
+
     clear_error();
     return 0;
 }
 
 uint64_t entangle_current_time_ms(void) {
+    /* Phase 8: Heartbeat at operation start */
+    entanglement_heartbeat("entanglement_entangle_current_tim", 0.0f);
+
+
     struct timespec ts;
     if (clock_gettime(CLOCK_REALTIME, &ts) == 0) {
         return (uint64_t)ts.tv_sec * 1000ULL + (uint64_t)ts.tv_nsec / 1000000ULL;

@@ -51,7 +51,7 @@ static nimcp_health_agent_t* g_attention_substrate_bridge_health_agent = NULL;
  * @brief Set health agent for attention_substrate_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void attention_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void attention_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_attention_substrate_bridge_health_agent = agent;
 }
 
@@ -100,6 +100,10 @@ void attention_substrate_default_config(attention_substrate_config_t* config)
     }
 
     /* Enable all modulations by default */
+    /* Phase 8: Heartbeat at operation start */
+    attention_substrate_bridge_heartbeat("attention_su_attention_substrate_", 0.0f);
+
+
     config->enable_focus_modulation = true;
     config->enable_shifting_modulation = true;
     config->enable_filter_modulation = true;
@@ -126,6 +130,10 @@ attention_substrate_bridge_t* attention_substrate_bridge_create(
     }
 
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    attention_substrate_bridge_heartbeat("attention_su_create", 0.0f);
+
+
     attention_substrate_bridge_t* bridge =
         (attention_substrate_bridge_t*)nimcp_malloc(sizeof(attention_substrate_bridge_t));
     if (!bridge) {
@@ -185,6 +193,10 @@ void attention_substrate_bridge_destroy(attention_substrate_bridge_t* bridge)
     }
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    attention_substrate_bridge_heartbeat("attention_su_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         attention_substrate_disconnect_bio_async(bridge);
     }
@@ -210,6 +222,10 @@ int attention_substrate_connect_bio_async(attention_substrate_bridge_t* bridge)
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_substrate_connect_bio_async: bridge is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_substrate_bridge_heartbeat("attention_su_attention_substrate_", 0.0f);
+
 
     if (bridge->base.bio_async_enabled) {
         return 0;  /* Already connected */
@@ -240,6 +256,10 @@ int attention_substrate_disconnect_bio_async(attention_substrate_bridge_t* bridg
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_substrate_bridge_heartbeat("attention_su_attention_substrate_", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -256,6 +276,10 @@ bool attention_substrate_is_bio_async_connected(const attention_substrate_bridge
     if (!bridge) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    attention_substrate_bridge_heartbeat("attention_su_attention_substrate_", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -269,6 +293,10 @@ int attention_substrate_update(attention_substrate_bridge_t* bridge)
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_substrate_update: bridge is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_substrate_bridge_heartbeat("attention_su_attention_substrate_", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -455,6 +483,10 @@ float attention_substrate_get_focus_capacity(const attention_substrate_bridge_t*
     if (!bridge) {
         return -1.0f;
     }
+    /* Phase 8: Heartbeat at operation start */
+    attention_substrate_bridge_heartbeat("attention_su_attention_substrate_", 0.0f);
+
+
     return bridge->effects.focus_capacity;
 }
 
@@ -463,6 +495,10 @@ float attention_substrate_get_shifting_efficiency(const attention_substrate_brid
     if (!bridge) {
         return -1.0f;
     }
+    /* Phase 8: Heartbeat at operation start */
+    attention_substrate_bridge_heartbeat("attention_su_attention_substrate_", 0.0f);
+
+
     return bridge->effects.shifting_efficiency;
 }
 
@@ -471,6 +507,10 @@ float attention_substrate_get_filter_strength(const attention_substrate_bridge_t
     if (!bridge) {
         return -1.0f;
     }
+    /* Phase 8: Heartbeat at operation start */
+    attention_substrate_bridge_heartbeat("attention_su_attention_substrate_", 0.0f);
+
+
     return bridge->effects.filter_strength;
 }
 
@@ -479,6 +519,10 @@ float attention_substrate_get_vigilance(const attention_substrate_bridge_t* brid
     if (!bridge) {
         return -1.0f;
     }
+    /* Phase 8: Heartbeat at operation start */
+    attention_substrate_bridge_heartbeat("attention_su_attention_substrate_", 0.0f);
+
+
     return bridge->effects.vigilance_factor;
 }
 
@@ -492,6 +536,10 @@ int attention_substrate_get_effects(
     }
 
     *effects = bridge->effects;
+    /* Phase 8: Heartbeat at operation start */
+    attention_substrate_bridge_heartbeat("attention_su_attention_substrate_", 0.0f);
+
+
     return 0;
 }
 
@@ -500,6 +548,10 @@ bool attention_substrate_is_impaired(const attention_substrate_bridge_t* bridge)
     if (!bridge) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    attention_substrate_bridge_heartbeat("attention_su_attention_substrate_", 0.0f);
+
+
     return bridge->effects.is_impaired;
 }
 
@@ -513,6 +565,10 @@ int attention_substrate_get_stats(
     }
 
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    attention_substrate_bridge_heartbeat("attention_su_attention_substrate_", 0.0f);
+
+
     return 0;
 }
 
@@ -527,9 +583,19 @@ int attention_substrate_get_stats(
  */
 int attention_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    attention_substrate_bridge_heartbeat("attention_su_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Attention_Substrate_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                attention_substrate_bridge_heartbeat("attention_su_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Attention Substrate Bridge self-knowledge: %s", self->observations[i]);
         }
     }

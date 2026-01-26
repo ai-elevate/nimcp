@@ -76,7 +76,7 @@ static nimcp_health_agent_t* g_ethics_hyperbolic_health_agent = NULL;
  * @brief Set health agent for ethics_hyperbolic heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void ethics_hyperbolic_set_health_agent(nimcp_health_agent_t* agent) {
+void ethics_hyperbolic_set_health_agent(nimcp_health_agent_t* agent) {
     g_ethics_hyperbolic_health_agent = agent;
 }
 
@@ -124,6 +124,10 @@ float ethics_hyperbolic_weight(const knowledge_item_t *principle,
     }
 
     // Compute hyperbolic distance
+    /* Phase 8: Heartbeat at operation start */
+    ethics_hyperbolic_heartbeat("ethics_hyper_weight", 0.0f);
+
+
     float distance = knowledge_hyperbolic_distance(principle, situation);
     if (distance < 0.0F) {
         return 0.0F;
@@ -166,6 +170,10 @@ uint32_t ethics_find_relevant_principles_hyperbolic(knowledge_system_t system,
     }
 
     // Find k-NN in hyperbolic space
+    /* Phase 8: Heartbeat at operation start */
+    ethics_hyperbolic_heartbeat("ethics_hyper_ethics_find_relevant", 0.0f);
+
+
     knowledge_item_t **neighbors = nimcp_malloc(k * sizeof(knowledge_item_t*));
     float *distances = nimcp_malloc(k * sizeof(float));
 
@@ -186,6 +194,12 @@ uint32_t ethics_find_relevant_principles_hyperbolic(knowledge_system_t system,
 
     // Compute weights for each principle
     for (uint32_t i = 0; i < num_neighbors; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_neighbors > 256) {
+            ethics_hyperbolic_heartbeat("ethics_hyper_loop",
+                             (float)(i + 1) / (float)num_neighbors);
+        }
+
         float base_weight = ethics_hyperbolic_weight(neighbors[i], situation, 1.5F);
 
         // Boost weight for fundamental principles (near origin)
@@ -233,6 +247,9 @@ float ethics_resolve_conflict_hyperbolic(const knowledge_item_t *principle1,
         *resolution_out = 0;
         return 0.0F;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_hyperbolic_heartbeat("ethics_hyper_ethics_resolve_confl", 0.0f);
 
     // Check all have hyperbolic embeddings
     if (!principle1->hyperbolic_embedding ||
@@ -305,6 +322,10 @@ bool ethics_map_situation_to_hyperbolic(knowledge_system_t system,
 
     // Determine specificity from description length
     // (longer descriptions → more specific → higher radius)
+    /* Phase 8: Heartbeat at operation start */
+    ethics_hyperbolic_heartbeat("ethics_hyper_ethics_map_situation", 0.0f);
+
+
     size_t desc_len = strlen(situation_description);
     float specificity = tanhf(desc_len / 200.0F);  // 0 to ~1
 
@@ -336,6 +357,10 @@ void ethics_visualize_hyperbolic_hierarchy(knowledge_system_t system, uint32_t m
     }
 
     // Get all ethics knowledge items
+    /* Phase 8: Heartbeat at operation start */
+    ethics_hyperbolic_heartbeat("ethics_hyper_ethics_visualize_hyp", 0.0f);
+
+
     knowledge_item_t *all_items = NULL;
     uint32_t num_items = knowledge_get_all_ordered_by_confidence(system, &all_items);
 
@@ -390,9 +415,19 @@ void ethics_visualize_hyperbolic_hierarchy(knowledge_system_t system, uint32_t m
  */
 int ethics_hyperbolic_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    ethics_hyperbolic_heartbeat("ethics_hyper_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Ethics_Hyperbolic_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                ethics_hyperbolic_heartbeat("ethics_hyper_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Ethics hyperbolic self-knowledge: %s", self->observations[i]);
         }
     }

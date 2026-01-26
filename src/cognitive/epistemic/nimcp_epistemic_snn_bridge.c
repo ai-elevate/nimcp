@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_epistemic_snn_bridge_health_agent = NULL;
  * @brief Set health agent for epistemic_snn_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void epistemic_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void epistemic_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_epistemic_snn_bridge_health_agent = agent;
 }
 
@@ -165,6 +165,12 @@ static float compute_population_rate(epistemic_neuron_t* neurons, uint32_t count
 
     uint32_t total_spikes = 0;
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         total_spikes += neurons[i].spike_count;
     }
 
@@ -176,6 +182,10 @@ static float compute_population_rate(epistemic_neuron_t* neurons, uint32_t count
 //=============================================================================
 
 epistemic_snn_config_t epistemic_snn_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_config", 0.0f);
+
+
     epistemic_snn_config_t config = {
         .max_sources = EPISTEMIC_SNN_MAX_SOURCES,
         .neurons_per_dim = EPISTEMIC_SNN_NEURONS_PER_DIM,
@@ -199,6 +209,10 @@ epistemic_snn_bridge_t* epistemic_snn_create(const epistemic_snn_config_t* confi
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_snn_create: config is NULL");
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_create", 0.0f);
+
 
     epistemic_snn_bridge_t* bridge = calloc(1, sizeof(epistemic_snn_bridge_t));
     if (!bridge) {
@@ -229,15 +243,39 @@ epistemic_snn_bridge_t* epistemic_snn_create(const epistemic_snn_config_t* confi
 
     // Initialize neurons
     for (uint32_t i = 0; i < bridge->num_evidence_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_evidence_neurons > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(i + 1) / (float)bridge->num_evidence_neurons);
+        }
+
         reset_neuron(&bridge->evidence_neurons[i]);
     }
     for (uint32_t i = 0; i < bridge->num_reliability_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_reliability_neurons > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(i + 1) / (float)bridge->num_reliability_neurons);
+        }
+
         reset_neuron(&bridge->reliability_neurons[i]);
     }
     for (uint32_t i = 0; i < bridge->num_bias_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_bias_neurons > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(i + 1) / (float)bridge->num_bias_neurons);
+        }
+
         reset_neuron(&bridge->bias_neurons[i]);
     }
     for (uint32_t i = 0; i < bridge->num_output_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_output_neurons > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(i + 1) / (float)bridge->num_output_neurons);
+        }
+
         reset_neuron(&bridge->output_neurons[i]);
     }
 
@@ -265,6 +303,10 @@ epistemic_snn_bridge_t* epistemic_snn_create(const epistemic_snn_config_t* confi
 void epistemic_snn_destroy(epistemic_snn_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_destro", 0.0f);
+
+
     free(bridge->evidence_neurons);
     free(bridge->reliability_neurons);
     free(bridge->bias_neurons);
@@ -277,20 +319,48 @@ void epistemic_snn_destroy(epistemic_snn_bridge_t* bridge) {
 int epistemic_snn_reset(epistemic_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_reset", 0.0f);
+
+
     bridge->state = EPISTEMIC_SNN_STATE_IDLE;
     bridge->sim_time_us = 0;
 
     // Reset neurons
     for (uint32_t i = 0; i < bridge->num_evidence_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_evidence_neurons > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(i + 1) / (float)bridge->num_evidence_neurons);
+        }
+
         reset_neuron(&bridge->evidence_neurons[i]);
     }
     for (uint32_t i = 0; i < bridge->num_reliability_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_reliability_neurons > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(i + 1) / (float)bridge->num_reliability_neurons);
+        }
+
         reset_neuron(&bridge->reliability_neurons[i]);
     }
     for (uint32_t i = 0; i < bridge->num_bias_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_bias_neurons > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(i + 1) / (float)bridge->num_bias_neurons);
+        }
+
         reset_neuron(&bridge->bias_neurons[i]);
     }
     for (uint32_t i = 0; i < bridge->num_output_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_output_neurons > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(i + 1) / (float)bridge->num_output_neurons);
+        }
+
         reset_neuron(&bridge->output_neurons[i]);
     }
 
@@ -321,6 +391,10 @@ int epistemic_snn_encode_evidence(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_encode", 0.0f);
+
+
     bridge->state = EPISTEMIC_SNN_STATE_ENCODING;
 
     bridge->current_evidence_quality = clamp(evidence_quality, 0.0f, 1.0f);
@@ -330,6 +404,12 @@ int epistemic_snn_encode_evidence(
     // Encode into evidence neurons using rate coding
     float evidence_input = bridge->current_evidence_quality * bridge->config.evidence_gain;
     for (uint32_t i = 0; i < bridge->num_evidence_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_evidence_neurons > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(i + 1) / (float)bridge->num_evidence_neurons);
+        }
+
         // Population coding: each neuron tuned to different evidence level
         float tuning = (float)i / (float)(bridge->num_evidence_neurons - 1);
         float activation = expf(-powf(evidence_quality - tuning, 2.0f) / 0.1f);
@@ -338,6 +418,12 @@ int epistemic_snn_encode_evidence(
 
     // Encode into reliability neurons
     for (uint32_t i = 0; i < bridge->num_reliability_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_reliability_neurons > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(i + 1) / (float)bridge->num_reliability_neurons);
+        }
+
         float tuning = (float)i / (float)(bridge->num_reliability_neurons - 1);
         float activation = expf(-powf(source_reliability - tuning, 2.0f) / 0.1f);
         bridge->reliability_neurons[i].reliability_input = source_reliability * activation;
@@ -356,6 +442,10 @@ int epistemic_snn_encode_claim(
 ) {
     if (!bridge || !features) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_encode", 0.0f);
+
+
     bridge->state = EPISTEMIC_SNN_STATE_ENCODING;
 
     // Distribute features across evidence neurons
@@ -363,6 +453,12 @@ int epistemic_snn_encode_claim(
                                     bridge->num_evidence_neurons;
 
     for (uint32_t i = 0; i < bridge->num_evidence_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_evidence_neurons > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(i + 1) / (float)bridge->num_evidence_neurons);
+        }
+
         float sum = 0.0f;
         uint32_t start = i * features_per_neuron;
         uint32_t end = start + features_per_neuron;
@@ -388,6 +484,10 @@ int epistemic_snn_encode_bias_signals(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_encode", 0.0f);
+
+
     if (bias_magnitudes && num_biases > 0) {
         uint32_t copy_count = num_biases < 16 ? num_biases : 16;
         memcpy(bridge->bias_magnitudes, bias_magnitudes, copy_count * sizeof(float));
@@ -409,12 +509,22 @@ int epistemic_snn_encode_bias_signals(
 int epistemic_snn_simulate(epistemic_snn_bridge_t* bridge, float duration_ms) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_simula", 0.0f);
+
+
     bridge->state = EPISTEMIC_SNN_STATE_SIMULATING;
 
     float dt = bridge->config.dt_ms;
     int steps = (int)(duration_ms / dt);
 
     for (int step = 0; step < steps; step++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((step & 0xFF) == 0 && steps > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(step + 1) / (float)steps);
+        }
+
         epistemic_snn_step(bridge);
     }
 
@@ -425,11 +535,21 @@ int epistemic_snn_simulate(epistemic_snn_bridge_t* bridge, float duration_ms) {
 int epistemic_snn_step(epistemic_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_step", 0.0f);
+
+
     float dt = bridge->config.dt_ms;
 
     // Step evidence neurons
     float evidence_activity = 0.0f;
     for (uint32_t i = 0; i < bridge->num_evidence_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_evidence_neurons > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(i + 1) / (float)bridge->num_evidence_neurons);
+        }
+
         if (neuron_step(&bridge->evidence_neurons[i], dt,
                        bridge->evidence_neurons[i].evidence_input)) {
             evidence_activity += 1.0f;
@@ -441,6 +561,12 @@ int epistemic_snn_step(epistemic_snn_bridge_t* bridge) {
     // Step reliability neurons
     float reliability_activity = 0.0f;
     for (uint32_t i = 0; i < bridge->num_reliability_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_reliability_neurons > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(i + 1) / (float)bridge->num_reliability_neurons);
+        }
+
         if (neuron_step(&bridge->reliability_neurons[i], dt,
                        bridge->reliability_neurons[i].reliability_input)) {
             reliability_activity += 1.0f;
@@ -452,6 +578,12 @@ int epistemic_snn_step(epistemic_snn_bridge_t* bridge) {
     // Step bias neurons
     float bias_activity = 0.0f;
     for (uint32_t i = 0; i < bridge->num_bias_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_bias_neurons > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(i + 1) / (float)bridge->num_bias_neurons);
+        }
+
         if (neuron_step(&bridge->bias_neurons[i], dt,
                        bridge->bias_neurons[i].bias_input)) {
             bias_activity += 1.0f;
@@ -472,6 +604,12 @@ int epistemic_snn_step(epistemic_snn_bridge_t* bridge) {
 
     // Step output neurons - integrate evidence and reliability
     for (uint32_t i = 0; i < bridge->num_output_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_output_neurons > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(i + 1) / (float)bridge->num_output_neurons);
+        }
+
         float input = evidence_activity * reliability_activity - bias_activity * 0.5f;
         if (neuron_step(&bridge->output_neurons[i], dt, input)) {
             bridge->stats.total_spikes++;
@@ -491,6 +629,10 @@ int epistemic_snn_forward(
     if (!bridge || !inputs) return -1;
 
     // Encode inputs directly into evidence neurons
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_forwar", 0.0f);
+
+
     for (uint32_t i = 0; i < bridge->num_evidence_neurons && i < input_count; i++) {
         bridge->evidence_neurons[i].evidence_input = inputs[i] * bridge->config.evidence_gain;
     }
@@ -510,8 +652,18 @@ int epistemic_snn_decode_assessment(
     if (!bridge || !output) return -1;
 
     // Compute average membrane potential activity (more responsive than spike rates)
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_decode", 0.0f);
+
+
     float evidence_activity = 0.0f;
     for (uint32_t i = 0; i < bridge->num_evidence_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_evidence_neurons > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(i + 1) / (float)bridge->num_evidence_neurons);
+        }
+
         evidence_activity += bridge->evidence_neurons[i].membrane_potential;
         evidence_activity += bridge->evidence_neurons[i].evidence_input * 0.5f;
     }
@@ -519,6 +671,12 @@ int epistemic_snn_decode_assessment(
 
     float reliability_activity = 0.0f;
     for (uint32_t i = 0; i < bridge->num_reliability_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_reliability_neurons > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(i + 1) / (float)bridge->num_reliability_neurons);
+        }
+
         reliability_activity += bridge->reliability_neurons[i].membrane_potential;
         reliability_activity += bridge->reliability_neurons[i].reliability_input * 0.5f;
     }
@@ -526,6 +684,12 @@ int epistemic_snn_decode_assessment(
 
     float bias_activity = 0.0f;
     for (uint32_t i = 0; i < bridge->num_bias_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_bias_neurons > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(i + 1) / (float)bridge->num_bias_neurons);
+        }
+
         bias_activity += bridge->bias_neurons[i].membrane_potential;
         bias_activity += bridge->bias_neurons[i].bias_input * 0.5f;
     }
@@ -544,12 +708,24 @@ int epistemic_snn_decode_assessment(
     // Compute uncertainty from variance in output membrane potentials
     float mean_potential = 0.0f;
     for (uint32_t i = 0; i < bridge->num_output_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_output_neurons > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(i + 1) / (float)bridge->num_output_neurons);
+        }
+
         mean_potential += bridge->output_neurons[i].membrane_potential;
     }
     mean_potential /= bridge->num_output_neurons;
 
     float variance = 0.0f;
     for (uint32_t i = 0; i < bridge->num_output_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_output_neurons > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(i + 1) / (float)bridge->num_output_neurons);
+        }
+
         float diff = bridge->output_neurons[i].membrane_potential - mean_potential;
         variance += diff * diff;
     }
@@ -567,6 +743,12 @@ int epistemic_snn_decode_assessment(
     if (bridge->config.enable_conspiracy_detection) {
         int high_bias_count = 0;
         for (uint32_t i = 0; i < bridge->num_biases; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->num_biases > 256) {
+                epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                                 (float)(i + 1) / (float)bridge->num_biases);
+            }
+
             if (bridge->bias_magnitudes[i] > 0.6f) {
                 high_bias_count++;
             }
@@ -594,21 +776,37 @@ int epistemic_snn_decode_assessment(
 
 float epistemic_snn_get_epistemic_quality(epistemic_snn_bridge_t* bridge) {
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_get_ep", 0.0f);
+
+
     return bridge->last_output.epistemic_quality;
 }
 
 float epistemic_snn_get_uncertainty(epistemic_snn_bridge_t* bridge) {
     if (!bridge) return 1.0f;
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_get_un", 0.0f);
+
+
     return bridge->last_output.uncertainty;
 }
 
 float epistemic_snn_get_bias_level(epistemic_snn_bridge_t* bridge) {
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_get_bi", 0.0f);
+
+
     return bridge->last_output.bias_magnitude;
 }
 
 float epistemic_snn_get_conspiracy_score(epistemic_snn_bridge_t* bridge) {
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_get_co", 0.0f);
+
+
     return bridge->last_output.conspiracy_likelihood;
 }
 
@@ -625,7 +823,17 @@ int epistemic_snn_register_source(
     if (bridge->num_sources >= bridge->config.max_sources) return -1;
 
     // Check if source already exists
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_regist", 0.0f);
+
+
     for (uint32_t i = 0; i < bridge->config.max_sources; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.max_sources > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(i + 1) / (float)bridge->config.max_sources);
+        }
+
         if (bridge->sources[i].active && bridge->sources[i].source_id == source_id) {
             return -1;  // Already registered
         }
@@ -633,6 +841,12 @@ int epistemic_snn_register_source(
 
     // Find empty slot
     for (uint32_t i = 0; i < bridge->config.max_sources; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.max_sources > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(i + 1) / (float)bridge->config.max_sources);
+        }
+
         if (!bridge->sources[i].active) {
             bridge->sources[i].source_id = source_id;
             bridge->sources[i].reliability = clamp(initial_reliability, 0.0f, 1.0f);
@@ -656,7 +870,17 @@ int epistemic_snn_update_source_reliability(
 ) {
     if (!bridge || !bridge->sources) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_update", 0.0f);
+
+
     for (uint32_t i = 0; i < bridge->config.max_sources; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.max_sources > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(i + 1) / (float)bridge->config.max_sources);
+        }
+
         if (bridge->sources[i].active && bridge->sources[i].source_id == source_id) {
             bridge->sources[i].evaluation_count++;
             if (was_correct) {
@@ -687,7 +911,17 @@ float epistemic_snn_get_source_reliability(
 ) {
     if (!bridge || !bridge->sources) return 0.5f;
 
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_get_so", 0.0f);
+
+
     for (uint32_t i = 0; i < bridge->config.max_sources; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.max_sources > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(i + 1) / (float)bridge->config.max_sources);
+        }
+
         if (bridge->sources[i].active && bridge->sources[i].source_id == source_id) {
             return bridge->sources[i].reliability;
         }
@@ -708,6 +942,10 @@ int epistemic_snn_get_dimension_state(
     if (!bridge || !state) return -1;
     if (dim >= bridge->num_evidence_neurons) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_get_di", 0.0f);
+
+
     state->evidence_quality = bridge->evidence_neurons[dim].evidence_input;
     state->source_reliability = bridge->reliability_neurons[dim % bridge->num_reliability_neurons].reliability_input;
     state->bias_level = bridge->bias_neurons[dim % bridge->num_bias_neurons].bias_input;
@@ -724,11 +962,21 @@ int epistemic_snn_get_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_get_st", 0.0f);
+
+
     state->state = bridge->state;
 
     // Compute total activity
     float total = 0.0f;
     for (uint32_t i = 0; i < bridge->num_output_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_output_neurons > 256) {
+            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                             (float)(i + 1) / (float)bridge->num_output_neurons);
+        }
+
         total += bridge->output_neurons[i].membrane_potential;
     }
     state->total_activity = total / bridge->num_output_neurons;
@@ -744,11 +992,19 @@ int epistemic_snn_get_state(
 int epistemic_snn_get_stats(epistemic_snn_bridge_t* bridge, epistemic_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_get_st", 0.0f);
+
+
     return 0;
 }
 
 int epistemic_snn_reset_stats(epistemic_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_reset_", 0.0f);
+
+
     memset(&bridge->stats, 0, sizeof(epistemic_snn_stats_t));
     return 0;
 }
@@ -763,6 +1019,10 @@ int epistemic_snn_register_spike_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_regist", 0.0f);
+
+
     bridge->spike_callback = callback;
     bridge->spike_callback_data = user_data;
     return 0;
@@ -774,6 +1034,10 @@ int epistemic_snn_register_bias_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_regist", 0.0f);
+
+
     bridge->bias_callback = callback;
     bridge->bias_callback_data = user_data;
     return 0;
@@ -787,6 +1051,10 @@ int epistemic_snn_bio_async_connect(epistemic_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_bio_as", 0.0f);
+
+
     bridge->bio_async_connected = true;
     return 0;
 }
@@ -794,11 +1062,19 @@ int epistemic_snn_bio_async_connect(epistemic_snn_bridge_t* bridge) {
 int epistemic_snn_bio_async_disconnect(epistemic_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_bio_as", 0.0f);
+
+
     bridge->bio_async_connected = false;
     return 0;
 }
 
 bool epistemic_snn_is_bio_async_connected(epistemic_snn_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_is_bio", 0.0f);
+
+
     return bridge->bio_async_connected;
 }

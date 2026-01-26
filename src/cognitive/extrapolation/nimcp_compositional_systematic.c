@@ -31,7 +31,7 @@ static nimcp_health_agent_t* g_compositional_systematic_health_agent = NULL;
  * @brief Set health agent for compositional_systematic heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void compositional_systematic_set_health_agent(nimcp_health_agent_t* agent) {
+void compositional_systematic_set_health_agent(nimcp_health_agent_t* agent) {
     g_compositional_systematic_health_agent = agent;
 }
 
@@ -57,6 +57,12 @@ static void free_comp_node(cs_comp_node_t* node) {
 
     /* Recursively free children */
     for (uint32_t i = 0; i < node->num_children; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && node->num_children > 256) {
+            compositional_systematic_heartbeat("compositiona_loop",
+                             (float)(i + 1) / (float)node->num_children);
+        }
+
         free_comp_node(node->children[i]);
     }
 
@@ -90,6 +96,12 @@ static cs_comp_node_t* copy_comp_node(const cs_comp_node_t* src) {
 
     /* Recursively copy children */
     for (uint32_t i = 0; i < src->num_children; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && src->num_children > 256) {
+            compositional_systematic_heartbeat("compositiona_loop",
+                             (float)(i + 1) / (float)src->num_children);
+        }
+
         dst->children[i] = copy_comp_node(src->children[i]);
     }
 
@@ -105,6 +117,12 @@ static cs_primitive_t* find_primitive_by_id(
     uint32_t id)
 {
     for (uint32_t i = 0; i < cs->num_primitives; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && cs->num_primitives > 256) {
+            compositional_systematic_heartbeat("compositiona_loop",
+                             (float)(i + 1) / (float)cs->num_primitives);
+        }
+
         if (cs->primitives[i].id == id) {
             return &cs->primitives[i];
         }
@@ -117,6 +135,12 @@ static cs_primitive_t* find_primitive_by_name(
     const char* name)
 {
     for (uint32_t i = 0; i < cs->num_primitives; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && cs->num_primitives > 256) {
+            compositional_systematic_heartbeat("compositiona_loop",
+                             (float)(i + 1) / (float)cs->num_primitives);
+        }
+
         if (strcmp(cs->primitives[i].name, name) == 0) {
             return &cs->primitives[i];
         }
@@ -129,6 +153,12 @@ static cs_rule_t* find_rule_by_id(
     uint32_t id)
 {
     for (uint32_t i = 0; i < cs->num_rules; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && cs->num_rules > 256) {
+            compositional_systematic_heartbeat("compositiona_loop",
+                             (float)(i + 1) / (float)cs->num_rules);
+        }
+
         if (cs->rules[i].id == id) {
             return &cs->rules[i];
         }
@@ -149,6 +179,12 @@ static void combine_embeddings(
     uint32_t dim)
 {
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            compositional_systematic_heartbeat("compositiona_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         output[i] = weight1 * emb1[i] + weight2 * emb2[i];
     }
 }
@@ -163,6 +199,12 @@ static float embedding_similarity(
     float norm2 = 0.0f;
 
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            compositional_systematic_heartbeat("compositiona_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         dot += emb1[i] * emb2[i];
         norm1 += emb1[i] * emb1[i];
         norm2 += emb2[i] * emb2[i];
@@ -177,12 +219,24 @@ static float embedding_similarity(
 static void normalize_embedding(float* emb, uint32_t dim) {
     float norm = 0.0f;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            compositional_systematic_heartbeat("compositiona_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         norm += emb[i] * emb[i];
     }
     norm = sqrtf(norm);
 
     if (norm > 1e-8f) {
         for (uint32_t i = 0; i < dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && dim > 256) {
+                compositional_systematic_heartbeat("compositiona_loop",
+                                 (float)(i + 1) / (float)dim);
+            }
+
             emb[i] /= norm;
         }
     }
@@ -236,6 +290,12 @@ static uint32_t count_tree_primitives(const cs_comp_node_t* node) {
 
     /* Add bound primitives */
     for (uint32_t i = 0; i < node->num_bindings; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && node->num_bindings > 256) {
+            compositional_systematic_heartbeat("compositiona_loop",
+                             (float)(i + 1) / (float)node->num_bindings);
+        }
+
         if (!node->bindings[i].is_variable) {
             count++;
         }
@@ -243,6 +303,12 @@ static uint32_t count_tree_primitives(const cs_comp_node_t* node) {
 
     /* Add children recursively */
     for (uint32_t i = 0; i < node->num_children; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && node->num_children > 256) {
+            compositional_systematic_heartbeat("compositiona_loop",
+                             (float)(i + 1) / (float)node->num_children);
+        }
+
         count += count_tree_primitives(node->children[i]);
     }
 
@@ -254,6 +320,12 @@ static uint32_t compute_tree_depth(const cs_comp_node_t* node) {
 
     uint32_t max_child_depth = 0;
     for (uint32_t i = 0; i < node->num_children; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && node->num_children > 256) {
+            compositional_systematic_heartbeat("compositiona_loop",
+                             (float)(i + 1) / (float)node->num_children);
+        }
+
         uint32_t child_depth = compute_tree_depth(node->children[i]);
         if (child_depth > max_child_depth) {
             max_child_depth = child_depth;
@@ -427,6 +499,10 @@ static void init_base_rules(nimcp_compositional_t* cs) {
  *===========================================================================*/
 
 cs_config_t cs_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    compositional_systematic_heartbeat("compositiona_cs_default_config", 0.0f);
+
+
     cs_config_t config = {
         .max_primitives = CS_MAX_PRIMITIVES,
         .max_compositions = CS_MAX_COMPOSITIONS,
@@ -445,6 +521,10 @@ cs_config_t cs_default_config(void) {
 }
 
 nimcp_compositional_t* cs_create(const cs_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    compositional_systematic_heartbeat("compositiona_cs_create", 0.0f);
+
+
     nimcp_compositional_t* cs = calloc(1, sizeof(nimcp_compositional_t));
     if (!cs) {
 
@@ -510,6 +590,10 @@ cs_error_t cs_init(nimcp_compositional_t* cs) {
     if (!cs) return CS_ERR_NULL_PTR;
 
     /* Initialize statistics */
+    /* Phase 8: Heartbeat at operation start */
+    compositional_systematic_heartbeat("compositiona_cs_init", 0.0f);
+
+
     memset(&cs->stats, 0, sizeof(cs_stats_t));
 
     /* Initialize base grammar rules */
@@ -523,7 +607,17 @@ cs_error_t cs_reset(nimcp_compositional_t* cs) {
     if (!cs) return CS_ERR_NULL_PTR;
 
     /* Free all composition trees */
+    /* Phase 8: Heartbeat at operation start */
+    compositional_systematic_heartbeat("compositiona_cs_reset", 0.0f);
+
+
     for (uint32_t i = 0; i < cs->num_compositions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && cs->num_compositions > 256) {
+            compositional_systematic_heartbeat("compositiona_loop",
+                             (float)(i + 1) / (float)cs->num_compositions);
+        }
+
         free_comp_node(cs->compositions[i].root);
         cs->compositions[i].root = NULL;
     }
@@ -548,7 +642,17 @@ void cs_destroy(nimcp_compositional_t* cs) {
     if (!cs) return;
 
     /* Free all composition trees */
+    /* Phase 8: Heartbeat at operation start */
+    compositional_systematic_heartbeat("compositiona_cs_destroy", 0.0f);
+
+
     for (uint32_t i = 0; i < cs->num_compositions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && cs->num_compositions > 256) {
+            compositional_systematic_heartbeat("compositiona_loop",
+                             (float)(i + 1) / (float)cs->num_compositions);
+        }
+
         free_comp_node(cs->compositions[i].root);
     }
 
@@ -577,6 +681,10 @@ cs_error_t cs_register_primitive(
     if (cs->num_primitives >= cs->primitive_capacity) return CS_ERR_CAPACITY_EXCEEDED;
 
     /* Copy primitive data */
+    /* Phase 8: Heartbeat at operation start */
+    compositional_systematic_heartbeat("compositiona_cs_register_primitiv", 0.0f);
+
+
     cs_primitive_t* new_prim = &cs->primitives[cs->num_primitives];
     *new_prim = *primitive;
     new_prim->id = cs->next_primitive_id++;
@@ -598,6 +706,10 @@ cs_error_t cs_get_primitive(
 {
     if (!cs || !primitive_out) return CS_ERR_NULL_PTR;
 
+    /* Phase 8: Heartbeat at operation start */
+    compositional_systematic_heartbeat("compositiona_cs_get_primitive", 0.0f);
+
+
     cs_primitive_t* found = find_primitive_by_id(cs, id);
     if (!found) return CS_ERR_PRIMITIVE_NOT_FOUND;
 
@@ -612,6 +724,10 @@ cs_error_t cs_get_primitive_by_name(
 {
     if (!cs || !name || !primitive_out) return CS_ERR_NULL_PTR;
 
+    /* Phase 8: Heartbeat at operation start */
+    compositional_systematic_heartbeat("compositiona_cs_get_primitive_by_", 0.0f);
+
+
     cs_primitive_t* found = find_primitive_by_name(cs, name);
     if (!found) return CS_ERR_PRIMITIVE_NOT_FOUND;
 
@@ -625,7 +741,17 @@ cs_error_t cs_remove_primitive(
 {
     if (!cs) return CS_ERR_NULL_PTR;
 
+    /* Phase 8: Heartbeat at operation start */
+    compositional_systematic_heartbeat("compositiona_cs_remove_primitive", 0.0f);
+
+
     for (uint32_t i = 0; i < cs->num_primitives; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && cs->num_primitives > 256) {
+            compositional_systematic_heartbeat("compositiona_loop",
+                             (float)(i + 1) / (float)cs->num_primitives);
+        }
+
         if (cs->primitives[i].id == id) {
             /* Shift remaining primitives */
             for (uint32_t j = i; j < cs->num_primitives - 1; j++) {
@@ -648,6 +774,10 @@ cs_error_t cs_find_primitives_by_type(
     uint32_t max_count)
 {
     if (!cs || !primitives_out || !count_out) return CS_ERR_NULL_PTR;
+
+    /* Phase 8: Heartbeat at operation start */
+    compositional_systematic_heartbeat("compositiona_cs_find_primitives_b", 0.0f);
+
 
     uint32_t found = 0;
     for (uint32_t i = 0; i < cs->num_primitives && found < max_count; i++) {
@@ -677,6 +807,10 @@ cs_error_t cs_compose(
     if (cs->num_compositions >= cs->composition_capacity) return CS_ERR_CAPACITY_EXCEEDED;
 
     /* Validate head primitive */
+    /* Phase 8: Heartbeat at operation start */
+    compositional_systematic_heartbeat("compositiona_cs_compose", 0.0f);
+
+
     cs_primitive_t* head = find_primitive_by_id(cs, head_id);
     if (!head) return CS_ERR_PRIMITIVE_NOT_FOUND;
 
@@ -738,6 +872,12 @@ cs_error_t cs_compose(
     /* Compute novelty */
     float novelty = 1.0f;
     for (uint32_t i = 0; i < cs->num_compositions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && cs->num_compositions > 256) {
+            compositional_systematic_heartbeat("compositiona_loop",
+                             (float)(i + 1) / (float)cs->num_compositions);
+        }
+
         float sim = embedding_similarity(
             comp->combined_embedding,
             cs->compositions[i].combined_embedding,
@@ -782,6 +922,10 @@ cs_error_t cs_compose_hierarchical(
     if (num_children > CS_MAX_CHILDREN) return CS_ERR_CAPACITY_EXCEEDED;
 
     /* Validate head primitive */
+    /* Phase 8: Heartbeat at operation start */
+    compositional_systematic_heartbeat("compositiona_cs_compose_hierarchi", 0.0f);
+
+
     cs_primitive_t* head = find_primitive_by_id(cs, head_id);
     if (!head) return CS_ERR_PRIMITIVE_NOT_FOUND;
 
@@ -802,9 +946,21 @@ cs_error_t cs_compose_hierarchical(
     /* Attach children compositions */
     uint32_t max_child_depth = 0;
     for (uint32_t i = 0; i < num_children; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_children > 256) {
+            compositional_systematic_heartbeat("compositiona_loop",
+                             (float)(i + 1) / (float)num_children);
+        }
+
         /* Find child composition */
         cs_composition_t* child_comp = NULL;
         for (uint32_t j = 0; j < cs->num_compositions; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && cs->num_compositions > 256) {
+                compositional_systematic_heartbeat("compositiona_loop",
+                                 (float)(j + 1) / (float)cs->num_compositions);
+            }
+
             if (cs->compositions[j].id == children[i]) {
                 child_comp = &cs->compositions[j];
                 break;
@@ -864,6 +1020,12 @@ cs_error_t cs_compose_hierarchical(
     /* Compute novelty */
     float novelty = 1.0f;
     for (uint32_t i = 0; i < cs->num_compositions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && cs->num_compositions > 256) {
+            compositional_systematic_heartbeat("compositiona_loop",
+                             (float)(i + 1) / (float)cs->num_compositions);
+        }
+
         float sim = embedding_similarity(
             comp->combined_embedding,
             cs->compositions[i].combined_embedding,
@@ -898,6 +1060,9 @@ cs_error_t cs_decompose(
         !num_primitives_out || !num_bindings_out) {
         return CS_ERR_NULL_PTR;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    compositional_systematic_heartbeat("compositiona_cs_decompose", 0.0f);
 
     if (!composition->root) return CS_ERR_INVALID_COMPOSITION;
 
@@ -941,6 +1106,10 @@ cs_error_t cs_validate_composition(
 {
     if (!cs || !composition || !grammaticality_out) return CS_ERR_NULL_PTR;
 
+    /* Phase 8: Heartbeat at operation start */
+    compositional_systematic_heartbeat("compositiona_cs_validate_composit", 0.0f);
+
+
     cs->status = CS_STATUS_VALIDATING;
 
     float gram = compute_grammaticality(cs, composition);
@@ -963,7 +1132,17 @@ cs_error_t cs_get_composition(
 {
     if (!cs || !composition_out) return CS_ERR_NULL_PTR;
 
+    /* Phase 8: Heartbeat at operation start */
+    compositional_systematic_heartbeat("compositiona_cs_get_composition", 0.0f);
+
+
     for (uint32_t i = 0; i < cs->num_compositions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && cs->num_compositions > 256) {
+            compositional_systematic_heartbeat("compositiona_loop",
+                             (float)(i + 1) / (float)cs->num_compositions);
+        }
+
         if (cs->compositions[i].id == id) {
             *composition_out = cs->compositions[i];
             composition_out->root = copy_comp_node(cs->compositions[i].root);
@@ -981,10 +1160,20 @@ cs_error_t cs_compute_novelty(
 {
     if (!cs || !composition || !novelty_out) return CS_ERR_NULL_PTR;
 
+    /* Phase 8: Heartbeat at operation start */
+    compositional_systematic_heartbeat("compositiona_cs_compute_novelty", 0.0f);
+
+
     float novelty = 1.0f;
 
     /* Compare to all existing compositions */
     for (uint32_t i = 0; i < cs->num_compositions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && cs->num_compositions > 256) {
+            compositional_systematic_heartbeat("compositiona_loop",
+                             (float)(i + 1) / (float)cs->num_compositions);
+        }
+
         if (cs->compositions[i].id == composition->id) continue;
 
         float sim = embedding_similarity(
@@ -1017,12 +1206,22 @@ cs_error_t cs_apply_rule(
     if (num_primitives == 0) return CS_ERR_INVALID_PRIMITIVE;
 
     /* Find rule */
+    /* Phase 8: Heartbeat at operation start */
+    compositional_systematic_heartbeat("compositiona_cs_apply_rule", 0.0f);
+
+
     cs_rule_t* rule = find_rule_by_id(cs, rule_id);
     if (!rule) return CS_ERR_INVALID_RULE;
 
     /* Find head primitive (first primitive matching rule's head type) */
     const cs_primitive_t* head = NULL;
     for (uint32_t i = 0; i < num_primitives; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_primitives > 256) {
+            compositional_systematic_heartbeat("compositiona_loop",
+                             (float)(i + 1) / (float)num_primitives);
+        }
+
         if (primitives[i].type == rule->head_type) {
             head = &primitives[i];
             break;
@@ -1080,6 +1279,10 @@ cs_error_t cs_infer_rule(
     if (!cs || !composition || !rule_out) return CS_ERR_NULL_PTR;
     if (!composition->root) return CS_ERR_INVALID_COMPOSITION;
 
+    /* Phase 8: Heartbeat at operation start */
+    compositional_systematic_heartbeat("compositiona_cs_infer_rule", 0.0f);
+
+
     cs->status = CS_STATUS_LEARNING;
 
     /* Extract pattern from composition */
@@ -1133,6 +1336,10 @@ cs_error_t cs_add_rule(
     if (!cs || !rule || !id_out) return CS_ERR_NULL_PTR;
     if (cs->num_rules >= cs->rule_capacity) return CS_ERR_CAPACITY_EXCEEDED;
 
+    /* Phase 8: Heartbeat at operation start */
+    compositional_systematic_heartbeat("compositiona_cs_add_rule", 0.0f);
+
+
     cs_rule_t* new_rule = &cs->rules[cs->num_rules];
     *new_rule = *rule;
     new_rule->id = cs->next_rule_id++;
@@ -1151,6 +1358,10 @@ cs_error_t cs_get_rule(
 {
     if (!cs || !rule_out) return CS_ERR_NULL_PTR;
 
+    /* Phase 8: Heartbeat at operation start */
+    compositional_systematic_heartbeat("compositiona_cs_get_rule", 0.0f);
+
+
     cs_rule_t* found = find_rule_by_id(cs, id);
     if (!found) return CS_ERR_INVALID_RULE;
 
@@ -1168,6 +1379,10 @@ cs_error_t cs_find_applicable_rules(
 {
     if (!cs || !primitives || !rules_out || !count_out) return CS_ERR_NULL_PTR;
 
+    /* Phase 8: Heartbeat at operation start */
+    compositional_systematic_heartbeat("compositiona_cs_find_applicable_r", 0.0f);
+
+
     uint32_t found = 0;
 
     for (uint32_t r = 0; r < cs->num_rules && found < max_count; r++) {
@@ -1176,6 +1391,12 @@ cs_error_t cs_find_applicable_rules(
         /* Check if we have a matching head primitive */
         bool has_head = false;
         for (uint32_t p = 0; p < num_primitives; p++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((p & 0xFF) == 0 && num_primitives > 256) {
+                compositional_systematic_heartbeat("compositiona_loop",
+                                 (float)(p + 1) / (float)num_primitives);
+            }
+
             if (primitives[p].type == rule->head_type) {
                 has_head = true;
                 break;
@@ -1186,7 +1407,19 @@ cs_error_t cs_find_applicable_rules(
         /* Check if we have enough matching argument primitives */
         uint32_t matched_args = 0;
         for (uint32_t a = 0; a < rule->num_args; a++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((a & 0xFF) == 0 && rule->num_args > 256) {
+                compositional_systematic_heartbeat("compositiona_loop",
+                                 (float)(a + 1) / (float)rule->num_args);
+            }
+
             for (uint32_t p = 0; p < num_primitives; p++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((p & 0xFF) == 0 && num_primitives > 256) {
+                    compositional_systematic_heartbeat("compositiona_loop",
+                                     (float)(p + 1) / (float)num_primitives);
+                }
+
                 if (primitives[p].type == rule->arg_types[a]) {
                     matched_args++;
                     break;
@@ -1214,10 +1447,20 @@ cs_error_t cs_update(
     if (!cs) return CS_ERR_NULL_PTR;
     if (!cs->initialized) return CS_ERR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    compositional_systematic_heartbeat("compositiona_cs_update", 0.0f);
+
+
     float decay_factor = expf(-cs->config.binding_decay * dt_ms);
 
     /* Decay binding strengths in compositions */
     for (uint32_t i = 0; i < cs->num_compositions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && cs->num_compositions > 256) {
+            compositional_systematic_heartbeat("compositiona_loop",
+                             (float)(i + 1) / (float)cs->num_compositions);
+        }
+
         cs_composition_t* comp = &cs->compositions[i];
         if (comp->root) {
             for (uint32_t j = 0; j < comp->root->num_bindings; j++) {
@@ -1229,6 +1472,12 @@ cs_error_t cs_update(
 
     /* Decay primitive activations */
     for (uint32_t i = 0; i < cs->num_primitives; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && cs->num_primitives > 256) {
+            compositional_systematic_heartbeat("compositiona_loop",
+                             (float)(i + 1) / (float)cs->num_primitives);
+        }
+
         cs->primitives[i].activation *= decay_factor;
     }
 
@@ -1242,6 +1491,10 @@ cs_error_t cs_get_stats(
     if (!cs || !stats_out) return CS_ERR_NULL_PTR;
 
     *stats_out = cs->stats;
+    /* Phase 8: Heartbeat at operation start */
+    compositional_systematic_heartbeat("compositiona_cs_get_stats", 0.0f);
+
+
     return CS_OK;
 }
 
@@ -1249,6 +1502,10 @@ cs_error_t cs_reset_stats(nimcp_compositional_t* cs) {
     if (!cs) return CS_ERR_NULL_PTR;
 
     /* Preserve active counts */
+    /* Phase 8: Heartbeat at operation start */
+    compositional_systematic_heartbeat("compositiona_cs_reset_stats", 0.0f);
+
+
     uint32_t active_prims = cs->stats.active_primitives;
     uint32_t active_comps = cs->stats.active_compositions;
     uint32_t active_rules = cs->stats.active_rules;
@@ -1267,10 +1524,18 @@ cs_error_t cs_reset_stats(nimcp_compositional_t* cs) {
  *===========================================================================*/
 
 cs_status_t cs_get_status(nimcp_compositional_t* cs) {
+    /* Phase 8: Heartbeat at operation start */
+    compositional_systematic_heartbeat("compositiona_cs_get_status", 0.0f);
+
+
     return cs ? cs->status : CS_STATUS_ERROR;
 }
 
 cs_error_t cs_get_last_error(nimcp_compositional_t* cs) {
+    /* Phase 8: Heartbeat at operation start */
+    compositional_systematic_heartbeat("compositiona_cs_get_last_error", 0.0f);
+
+
     return cs ? cs->last_error : CS_ERR_NULL_PTR;
 }
 

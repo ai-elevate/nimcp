@@ -78,7 +78,7 @@ static nimcp_health_agent_t* g_global_workspace_fep_bridge_health_agent = NULL;
  * @brief Set health agent for global_workspace_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void global_workspace_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void global_workspace_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_global_workspace_fep_bridge_health_agent = agent;
 }
 
@@ -158,6 +158,10 @@ int global_workspace_fep_bridge_default_config(global_workspace_fep_config_t* co
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_fep_bridge_heartbeat("global_works_default_config", 0.0f);
+
+
     config->belief_evidence_threshold = BELIEF_EVIDENCE_THRESHOLD;
     config->broadcast_prior_weight = BROADCAST_PRIOR_UPDATE_RATE;
     config->model_evidence_sensitivity = 1.0f;
@@ -178,6 +182,10 @@ int global_workspace_fep_bridge_default_config(global_workspace_fep_config_t* co
 global_workspace_fep_bridge_t* global_workspace_fep_bridge_create(
     const global_workspace_fep_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_fep_bridge_heartbeat("global_works_create", 0.0f);
+
+
     global_workspace_fep_bridge_t* bridge = (global_workspace_fep_bridge_t*)nimcp_calloc(
         1, sizeof(global_workspace_fep_bridge_t));
     if (!bridge) {
@@ -225,6 +233,10 @@ global_workspace_fep_bridge_t* global_workspace_fep_bridge_create(
 void global_workspace_fep_bridge_destroy(global_workspace_fep_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_fep_bridge_heartbeat("global_works_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         global_workspace_fep_bridge_disconnect_bio_async(bridge);
     }
@@ -259,6 +271,10 @@ int global_workspace_fep_bridge_connect_fep(
     }
     /* Allow NULL fep to disconnect/reset FEP connection */
 
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_fep_bridge_heartbeat("global_works_connect_fep", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -277,6 +293,10 @@ int global_workspace_fep_bridge_connect_workspace(
     global_workspace_t* workspace
 ) {
     if (!bridge || !workspace) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_fep_bridge_heartbeat("global_works_connect_workspace", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->workspace = workspace;
@@ -313,6 +333,10 @@ int global_workspace_fep_compete_with_beliefs(global_workspace_fep_bridge_t* bri
     if (!bridge || !bridge->fep_system || !bridge->workspace) return -1;
     if (!bridge->config.enable_evidence_competition) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_fep_bridge_heartbeat("global_works_global_workspace_fep", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     fep_system_t* fep = bridge->fep_system;
@@ -326,8 +350,20 @@ int global_workspace_fep_compete_with_beliefs(global_workspace_fep_bridge_t* bri
     float avg_precision = 0.0f;
     uint32_t precision_count = 0;
     for (uint32_t l = 0; l < fep->num_levels; l++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((l & 0xFF) == 0 && fep->num_levels > 256) {
+            global_workspace_fep_bridge_heartbeat("global_works_loop",
+                             (float)(l + 1) / (float)fep->num_levels);
+        }
+
         fep_hierarchy_level_t* level = &fep->levels[l];
         for (uint32_t i = 0; i < level->beliefs.dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && level->beliefs.dim > 256) {
+                global_workspace_fep_bridge_heartbeat("global_works_loop",
+                                 (float)(i + 1) / (float)level->beliefs.dim);
+            }
+
             avg_precision += level->beliefs.precision[i];
             precision_count++;
         }
@@ -401,6 +437,10 @@ int global_workspace_fep_broadcast_winning_belief(global_workspace_fep_bridge_t*
     if (!bridge->config.enable_belief_broadcasting) return 0;
 
     /* Compete with beliefs (includes broadcast if win) */
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_fep_bridge_heartbeat("global_works_global_workspace_fep", 0.0f);
+
+
     int result = global_workspace_fep_compete_with_beliefs(bridge);
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -457,6 +497,10 @@ int global_workspace_fep_update_priors_from_broadcast(
     }
 
     /* Read broadcast */
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_fep_bridge_heartbeat("global_works_global_workspace_fep", 0.0f);
+
+
     float broadcast_content[256];
     uint32_t broadcast_dim;
     cognitive_module_t source;
@@ -494,6 +538,12 @@ int global_workspace_fep_update_priors_from_broadcast(
 
         /* Blend broadcast into current beliefs (weighted prior update) */
         for (uint32_t i = 0; i < update_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && update_dim > 256) {
+                global_workspace_fep_bridge_heartbeat("global_works_loop",
+                                 (float)(i + 1) / (float)update_dim);
+            }
+
             float current = top_level->beliefs.mean[i];
             float prior = broadcast_content[i];
             top_level->beliefs.mean[i] = (1.0f - prior_weight) * current +
@@ -503,6 +553,12 @@ int global_workspace_fep_update_priors_from_broadcast(
         /* Boost precision for broadcast-aligned beliefs (attention effect) */
         float precision_boost = 1.0f + bridge->config.broadcast_prior_weight;
         for (uint32_t i = 0; i < update_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && update_dim > 256) {
+                global_workspace_fep_bridge_heartbeat("global_works_loop",
+                                 (float)(i + 1) / (float)update_dim);
+            }
+
             top_level->beliefs.precision[i] *= precision_boost;
             /* Clamp to prevent runaway precision */
             top_level->beliefs.precision[i] = clamp_f(
@@ -556,6 +612,10 @@ int global_workspace_fep_bridge_update(
     }
 
     /* FEP → Workspace: Compete with current beliefs */
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_fep_bridge_heartbeat("global_works_update", 0.0f);
+
+
     global_workspace_fep_compete_with_beliefs(bridge);
 
     /* Workspace → FEP: Update priors from broadcast */
@@ -579,6 +639,10 @@ int global_workspace_fep_bridge_get_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_fep_bridge_heartbeat("global_works_get_state", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -596,6 +660,10 @@ int global_workspace_fep_bridge_get_stats(
     global_workspace_fep_stats_t* stats
 ) {
     if (!bridge || !stats) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_fep_bridge_heartbeat("global_works_get_stats", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -624,6 +692,10 @@ int global_workspace_fep_bridge_connect_bio_async(
 
     }
     if (bridge->base.bio_async_enabled) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_fep_bridge_heartbeat("global_works_connect_bio_async", 0.0f);
+
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_GLOBAL_WORKSPACE_BRIDGE,
@@ -660,6 +732,10 @@ int global_workspace_fep_bridge_disconnect_bio_async(
     }
     if (!bridge->base.bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_fep_bridge_heartbeat("global_works_disconnect_bio_async", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -679,6 +755,10 @@ int global_workspace_fep_bridge_disconnect_bio_async(
 bool global_workspace_fep_bridge_is_bio_async_connected(
     const global_workspace_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_fep_bridge_heartbeat("global_works_is_bio_async_connect", 0.0f);
+
+
     return bridge && bridge->base.bio_async_enabled;
 }
 
@@ -689,9 +769,19 @@ bool global_workspace_fep_bridge_is_bio_async_connected(
 int global_workspace_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_fep_bridge_heartbeat("global_works_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Global_Workspace_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                global_workspace_fep_bridge_heartbeat("global_works_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

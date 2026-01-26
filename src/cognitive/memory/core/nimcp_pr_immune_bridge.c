@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_pr_immune_bridge_health_agent = NULL;
  * @brief Set health agent for pr_immune_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void pr_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void pr_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_pr_immune_bridge_health_agent = agent;
 }
 
@@ -158,6 +158,12 @@ static pr_cleanup_tag_t* find_cleanup_tag_unlocked(
     }
 
     for (uint32_t i = 0; i < bridge->cleanup_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->cleanup_count > 256) {
+            pr_immune_bridge_heartbeat("pr_immune_br_loop",
+                             (float)(i + 1) / (float)bridge->cleanup_count);
+        }
+
         uint32_t idx = (bridge->cleanup_read_idx + i) % bridge->cleanup_capacity;
         if (bridge->cleanup_queue[idx].node_id == node_id) {
             return &bridge->cleanup_queue[idx];
@@ -319,6 +325,10 @@ static void update_sim_coordination(pr_immune_bridge_t bridge) {
 //=============================================================================
 
 pr_immune_bridge_config_t pr_immune_bridge_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_config_default", 0.0f);
+
+
     pr_immune_bridge_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -359,6 +369,10 @@ bool pr_immune_bridge_config_validate(const pr_immune_bridge_config_t* config) {
     if (!config) return false;
 
     /* Check sensitivity ranges */
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_config_validate", 0.0f);
+
+
     if (config->cytokine_sensitivity < 0.0f || config->cytokine_sensitivity > 10.0f) {
         return false;
     }
@@ -387,6 +401,10 @@ pr_immune_bridge_t pr_immune_bridge_create(
     brain_immune_system_t* immune_system,
     sleep_system_t sleep_system)
 {
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_create", 0.0f);
+
+
     pr_immune_bridge_config_t actual_config;
     if (config) {
         if (!pr_immune_bridge_config_validate(config)) {
@@ -444,6 +462,10 @@ pr_immune_bridge_t pr_immune_bridge_create(
 void pr_immune_bridge_destroy(pr_immune_bridge_t bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_destroy", 0.0f);
+
+
     if (bridge->cleanup_queue) {
         nimcp_free(bridge->cleanup_queue);
     }
@@ -456,6 +478,10 @@ void pr_immune_bridge_destroy(pr_immune_bridge_t bridge) {
 
 int pr_immune_bridge_reset(pr_immune_bridge_t bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_reset", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -483,6 +509,10 @@ int pr_immune_bridge_connect_immune(
 {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_connect_immune", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->immune_system = immune_system;
     update_cytokine_effects(bridge);
@@ -496,6 +526,10 @@ int pr_immune_bridge_connect_sleep(
     sleep_system_t sleep_system)
 {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_connect_sleep", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->sleep_system = sleep_system;
@@ -514,6 +548,10 @@ nimcp_quaternion_t pr_immune_bridge_modulate_consolidation(
     const pr_memory_node_t* node)
 {
     /* Return identity quaternion on error */
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_modulate_consolidati", 0.0f);
+
+
     nimcp_quaternion_t result = quat_identity();
     if (!bridge || !node) return result;
 
@@ -557,6 +595,10 @@ int pr_immune_bridge_apply_inflammation(
 {
     if (!bridge || !node || !quat_out) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_apply_inflammation", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     *quat_out = node->state;
@@ -589,6 +631,10 @@ int pr_immune_bridge_apply_inflammation(
 float pr_immune_bridge_get_consolidation_modifier(pr_immune_bridge_t bridge) {
     if (!bridge) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_get_consolidation_mo", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float modifier = bridge->cytokine_effects.net_consolidation_modifier;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -598,6 +644,10 @@ float pr_immune_bridge_get_consolidation_modifier(pr_immune_bridge_t bridge) {
 
 float pr_immune_bridge_get_accessibility_modifier(pr_immune_bridge_t bridge) {
     if (!bridge) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_get_accessibility_mo", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     float modifier = bridge->cytokine_effects.net_accessibility_modifier;
@@ -618,6 +668,10 @@ int pr_immune_bridge_tag_for_cleanup(
 {
     if (!bridge) return -1;
     if (!bridge->config.enable_cleanup_tagging) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_tag_for_cleanup", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -649,6 +703,10 @@ bool pr_immune_bridge_is_tagged(
 {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_is_tagged", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bool tagged = (find_cleanup_tag_unlocked(bridge, node_id) != NULL);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -662,6 +720,10 @@ int pr_immune_bridge_get_tag(
     pr_cleanup_tag_t* tag_out)
 {
     if (!bridge || !tag_out) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_get_tag", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -683,6 +745,10 @@ int pr_immune_bridge_untag(
 {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_untag", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     pr_cleanup_tag_t* tag = find_cleanup_tag_unlocked(bridge, node_id);
@@ -703,6 +769,10 @@ int pr_immune_bridge_get_next_cleanup(
     pr_cleanup_tag_t* tag_out)
 {
     if (!bridge || !tag_out) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_get_next_cleanup", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -731,6 +801,10 @@ int pr_immune_bridge_cleanup_complete(
 {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_cleanup_complete", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     pr_cleanup_tag_t* tag = find_cleanup_tag_unlocked(bridge, node_id);
@@ -750,6 +824,10 @@ int pr_immune_bridge_cleanup_complete(
 
 int pr_immune_bridge_process_inflammation(pr_immune_bridge_t bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_process_inflammation", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -792,6 +870,10 @@ pr_inflammation_impact_t pr_immune_bridge_get_inflammation_impact(
 {
     if (!bridge) return PR_INFLAMMATION_NONE;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_get_inflammation_imp", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     pr_inflammation_impact_t impact = bridge->cytokine_effects.impact_level;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -802,6 +884,10 @@ pr_inflammation_impact_t pr_immune_bridge_get_inflammation_impact(
 bool pr_immune_bridge_is_chronic_inflammation(pr_immune_bridge_t bridge) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_is_chronic_inflammat", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bool chronic = bridge->chronic_inflammation;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -811,6 +897,10 @@ bool pr_immune_bridge_is_chronic_inflammation(pr_immune_bridge_t bridge) {
 
 float pr_immune_bridge_get_decay_multiplier(pr_immune_bridge_t bridge) {
     if (!bridge) return 1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_get_decay_multiplier", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     float mult = bridge->cytokine_effects.decay_rate_multiplier;
@@ -829,6 +919,10 @@ int pr_immune_bridge_cytokine_to_quaternion(
     nimcp_quaternion_t* modulated_out)
 {
     if (!bridge || !modulated_out) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_cytokine_to_quaterni", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -866,6 +960,10 @@ int pr_immune_bridge_get_cytokine_effects(
 {
     if (!bridge || !effects_out) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_get_cytokine_effects", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *effects_out = bridge->cytokine_effects;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -883,6 +981,10 @@ int pr_immune_bridge_apply_cytokine(
     if (!bridge || !result_out) return -1;
 
     *result_out = base_quat;
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_apply_cytokine", 0.0f);
+
+
     concentration = clamp_f(concentration, 0.0f, 1.0f);
 
     switch (cytokine) {
@@ -935,6 +1037,10 @@ int pr_immune_bridge_sleep_consolidation(
     nimcp_quaternion_t* quat_out)
 {
     if (!bridge || !node || !quat_out) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_sleep_consolidation", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -997,6 +1103,10 @@ int pr_immune_bridge_sleep_consolidation(
 pr_sim_phase_t pr_immune_bridge_get_sim_phase(pr_immune_bridge_t bridge) {
     if (!bridge) return PR_SIM_PHASE_AWAKE;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_get_sim_phase", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     pr_sim_phase_t phase = bridge->sim_coordination.current_phase;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1010,6 +1120,10 @@ int pr_immune_bridge_get_sim_coordination(
 {
     if (!bridge || !coordination_out) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_get_sim_coordination", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *coordination_out = bridge->sim_coordination;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1019,6 +1133,10 @@ int pr_immune_bridge_get_sim_coordination(
 
 int pr_immune_bridge_sync_sleep_phase(pr_immune_bridge_t bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_sync_sleep_phase", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     update_sim_coordination(bridge);
@@ -1030,6 +1148,10 @@ int pr_immune_bridge_sync_sleep_phase(pr_immune_bridge_t bridge) {
 bool pr_immune_bridge_is_deep_sleep_consolidation(pr_immune_bridge_t bridge) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_is_deep_sleep_consol", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bool active = (bridge->sim_coordination.current_phase == PR_SIM_PHASE_DEEP_SLEEP) &&
                   bridge->sim_coordination.immune_consolidation_active;
@@ -1040,6 +1162,10 @@ bool pr_immune_bridge_is_deep_sleep_consolidation(pr_immune_bridge_t bridge) {
 
 bool pr_immune_bridge_is_rem_cleanup_active(pr_immune_bridge_t bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_is_rem_cleanup_activ", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool active = (bridge->sim_coordination.current_phase == PR_SIM_PHASE_REM_SLEEP);
@@ -1065,6 +1191,10 @@ bool pr_immune_bridge_detect_corruption(
     }
 
     /* Check for NaN in strength */
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_detect_corruption", 0.0f);
+
+
     if (isnan(node->current_strength) || isinf(node->current_strength)) {
         return true;
     }
@@ -1086,6 +1216,10 @@ bool pr_immune_bridge_validate_quaternion(
     pr_immune_bridge_t bridge,
     nimcp_quaternion_t quat)
 {
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_validate_quaternion", 0.0f);
+
+
     (void)bridge;  /* Unused but kept for API consistency */
 
     /* Check for NaN/Inf */
@@ -1129,6 +1263,10 @@ int pr_immune_bridge_update(
     float dt_ms)
 {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_update", 0.0f);
+
 
     uint64_t start_time = nimcp_time_get_us();
 
@@ -1207,6 +1345,10 @@ int pr_immune_bridge_get_stats(
 {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1217,6 +1359,10 @@ int pr_immune_bridge_get_stats(
 uint32_t pr_immune_bridge_get_cleanup_queue_size(pr_immune_bridge_t bridge) {
     if (!bridge) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_get_cleanup_queue_si", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     uint32_t size = bridge->cleanup_count;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1226,11 +1372,19 @@ uint32_t pr_immune_bridge_get_cleanup_queue_size(pr_immune_bridge_t bridge) {
 
 bool pr_immune_bridge_is_immune_connected(pr_immune_bridge_t bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_is_immune_connected", 0.0f);
+
+
     return bridge->immune_system != NULL;
 }
 
 bool pr_immune_bridge_is_sleep_connected(pr_immune_bridge_t bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_is_sleep_connected", 0.0f);
+
+
     return bridge->sleep_system != NULL;
 }
 
@@ -1241,18 +1395,30 @@ bool pr_immune_bridge_is_sleep_connected(pr_immune_bridge_t bridge) {
 int pr_immune_bridge_connect_bio_async(pr_immune_bridge_t bridge) {
     if (!bridge) return -1;
     /* Bio-async integration would be implemented here */
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_connect_bio_async", 0.0f);
+
+
     bridge->bio_async_connected = true;
     return 0;
 }
 
 int pr_immune_bridge_disconnect_bio_async(pr_immune_bridge_t bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_disconnect_bio_async", 0.0f);
+
+
     bridge->bio_async_connected = false;
     return 0;
 }
 
 bool pr_immune_bridge_is_bio_async_connected(pr_immune_bridge_t bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_is_bio_async_connect", 0.0f);
+
+
     return bridge->bio_async_connected;
 }
 
@@ -1300,6 +1466,10 @@ void pr_immune_bridge_print_stats(pr_immune_bridge_t bridge) {
         printf("PR Immune Bridge: NULL\n");
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_immune_bridge_heartbeat("pr_immune_br_print_stats", 0.0f);
+
 
     pr_immune_bridge_stats_t stats;
     pr_immune_bridge_get_stats(bridge, &stats);

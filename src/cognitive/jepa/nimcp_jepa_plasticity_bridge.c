@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_jepa_plasticity_bridge_health_agent = NULL;
  * @brief Set health agent for jepa_plasticity_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void jepa_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void jepa_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_jepa_plasticity_bridge_health_agent = agent;
 }
 
@@ -99,6 +99,12 @@ static inline float clamp_f(float x, float min_val, float max_val) {
 
 static synapse_entry_t* find_synapse(jepa_plasticity_bridge_t* bridge, uint32_t synapse_id) {
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            jepa_plasticity_bridge_heartbeat("jepa_plastic_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use &&
             bridge->synapses[i].synapse.synapse_id == synapse_id) {
             return &bridge->synapses[i];
@@ -109,6 +115,12 @@ static synapse_entry_t* find_synapse(jepa_plasticity_bridge_t* bridge, uint32_t 
 
 static synapse_entry_t* find_free_slot(jepa_plasticity_bridge_t* bridge) {
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            jepa_plasticity_bridge_heartbeat("jepa_plastic_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (!bridge->synapses[i].in_use) {
             return &bridge->synapses[i];
         }
@@ -131,6 +143,10 @@ static bool is_protected_type(jepa_synapse_type_t type, const jepa_plasticity_co
 //=============================================================================
 
 jepa_plasticity_config_t jepa_plasticity_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_conf", 0.0f);
+
+
     jepa_plasticity_config_t config = {
         .base_learning_rate = JEPA_PLASTICITY_DEFAULT_LR,
         .stdp_tau_plus_ms = 20.0f,
@@ -165,6 +181,10 @@ jepa_plasticity_config_t jepa_plasticity_config_default(void) {
 jepa_plasticity_bridge_t* jepa_plasticity_create(
     const jepa_plasticity_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_crea", 0.0f);
+
+
     jepa_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(jepa_plasticity_bridge_t));
     if (!bridge) {
 
@@ -219,6 +239,10 @@ jepa_plasticity_bridge_t* jepa_plasticity_create(
 void jepa_plasticity_destroy(jepa_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_dest", 0.0f);
+
+
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge->synapses);
@@ -226,12 +250,22 @@ void jepa_plasticity_destroy(jepa_plasticity_bridge_t* bridge) {
 }
 
 int jepa_plasticity_reset(jepa_plasticity_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_rese", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset all synapses to initial weights */
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            jepa_plasticity_bridge_heartbeat("jepa_plastic_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             bridge->synapses[i].synapse.weight = bridge->synapses[i].synapse.initial_weight;
             bridge->synapses[i].synapse.eligibility_trace = 0.0f;
@@ -265,6 +299,10 @@ int jepa_plasticity_register_synapse(
     jepa_synapse_type_t type,
     float initial_weight
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_regi", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -307,6 +345,10 @@ int jepa_plasticity_unregister_synapse(
     jepa_plasticity_bridge_t* bridge,
     uint32_t synapse_id
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_unre", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -329,6 +371,10 @@ int jepa_plasticity_get_synapse(
     uint32_t synapse_id,
     jepa_plasticity_synapse_t* synapse
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_get_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && synapse, -1, "bridge or synapse is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -350,6 +396,10 @@ int jepa_plasticity_protect_synapse(
     uint32_t synapse_id,
     bool protect
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_prot", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -377,6 +427,10 @@ int jepa_plasticity_learn(
     uint32_t synapse_id,
     float context
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_lear", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -492,6 +546,10 @@ float jepa_plasticity_apply_stdp(
 ) {
     if (!bridge) return NAN;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_appl", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
@@ -543,6 +601,10 @@ int jepa_plasticity_apply_precision(
     jepa_plasticity_bridge_t* bridge,
     float precision
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_appl", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -551,6 +613,12 @@ int jepa_plasticity_apply_precision(
 
     /* Apply precision modulation to all eligible synapses */
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            jepa_plasticity_bridge_heartbeat("jepa_plastic_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use && !bridge->synapses[i].synapse.is_protected) {
             float trace = bridge->synapses[i].synapse.eligibility_trace;
             if (fabsf(trace) > 0.001f) {
@@ -573,6 +641,10 @@ int jepa_plasticity_update_bcm(
     jepa_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_upda", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
     NIMCP_CHECK_THROW(dt_ms > 0.0f, -1, "dt_ms must be positive");
 
@@ -582,6 +654,12 @@ int jepa_plasticity_update_bcm(
     float decay = expf(-dt_ms / bridge->config.bcm_tau_ms);
 
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            jepa_plasticity_bridge_heartbeat("jepa_plastic_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             /* Update sliding threshold towards average activity */
             float target = bridge->synapses[i].synapse.avg_activity;
@@ -600,6 +678,10 @@ int jepa_plasticity_homeostatic_update(
     jepa_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_home", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -611,6 +693,12 @@ int jepa_plasticity_homeostatic_update(
     float mean_prediction = 0.0f;
     uint32_t prediction_count = 0;
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            jepa_plasticity_bridge_heartbeat("jepa_plastic_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use &&
             bridge->synapses[i].synapse.type == JEPA_SYNAPSE_PREDICTION) {
             mean_prediction += bridge->synapses[i].synapse.weight;
@@ -630,6 +718,12 @@ int jepa_plasticity_homeostatic_update(
     }
 
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            jepa_plasticity_bridge_heartbeat("jepa_plastic_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use && !bridge->synapses[i].synapse.is_protected) {
             float scaled = bridge->synapses[i].synapse.weight * (1.0f + (scale_factor - 1.0f) * (1.0f - decay));
             bridge->synapses[i].synapse.weight = clamp_f(
@@ -649,6 +743,10 @@ int jepa_plasticity_update_traces(
     jepa_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_upda", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -656,6 +754,12 @@ int jepa_plasticity_update_traces(
     float decay = expf(-dt_ms / bridge->config.stdp_tau_plus_ms);
 
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            jepa_plasticity_bridge_heartbeat("jepa_plastic_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             bridge->synapses[i].synapse.eligibility_trace *= decay;
         }
@@ -666,6 +770,10 @@ int jepa_plasticity_update_traces(
 }
 
 int jepa_plasticity_consolidate(jepa_plasticity_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_cons", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -673,6 +781,12 @@ int jepa_plasticity_consolidate(jepa_plasticity_bridge_t* bridge) {
 
     /* Clear eligibility traces */
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            jepa_plasticity_bridge_heartbeat("jepa_plastic_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             bridge->synapses[i].synapse.eligibility_trace = 0.0f;
         }
@@ -685,6 +799,12 @@ int jepa_plasticity_consolidate(jepa_plasticity_bridge_t* bridge) {
     float multimodal_sum = 0.0f, multimodal_count = 0;
 
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            jepa_plasticity_bridge_heartbeat("jepa_plastic_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             switch (bridge->synapses[i].synapse.type) {
                 case JEPA_SYNAPSE_PREDICTION:
@@ -737,6 +857,10 @@ int jepa_plasticity_get_prediction_state(
     jepa_plasticity_bridge_t* bridge,
     jepa_prediction_state_t* state
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_get_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, -1, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -750,6 +874,10 @@ int jepa_plasticity_get_state(
     jepa_plasticity_bridge_t* bridge,
     jepa_plasticity_bridge_state_t* state
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_get_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, -1, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -762,6 +890,12 @@ int jepa_plasticity_get_state(
     float sum = 0.0f;
     float sum_sq = 0.0f;
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+            jepa_plasticity_bridge_heartbeat("jepa_plastic_loop",
+                             (float)(i + 1) / (float)bridge->max_synapses);
+        }
+
         if (bridge->synapses[i].in_use) {
             float w = bridge->synapses[i].synapse.weight;
             sum += w;
@@ -786,6 +920,10 @@ int jepa_plasticity_get_stats(
     jepa_plasticity_bridge_t* bridge,
     jepa_plasticity_stats_t* stats
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_get_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, -1, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -796,6 +934,10 @@ int jepa_plasticity_get_stats(
 }
 
 int jepa_plasticity_reset_stats(jepa_plasticity_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_rese", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -814,6 +956,10 @@ int jepa_plasticity_register_learn_callback(
     jepa_plasticity_learn_callback_t callback,
     void* user_data
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_regi", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -829,6 +975,10 @@ int jepa_plasticity_register_prediction_callback(
     jepa_plasticity_prediction_callback_t callback,
     void* user_data
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_regi", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -844,6 +994,10 @@ int jepa_plasticity_register_prediction_callback(
 //=============================================================================
 
 int jepa_plasticity_bio_async_connect(jepa_plasticity_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_bio_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
     NIMCP_CHECK_THROW(bridge->config.enable_bio_async, -1, "bio_async not enabled");
 
@@ -856,6 +1010,10 @@ int jepa_plasticity_bio_async_connect(jepa_plasticity_bridge_t* bridge) {
 }
 
 int jepa_plasticity_bio_async_disconnect(jepa_plasticity_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_bio_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -867,6 +1025,10 @@ int jepa_plasticity_bio_async_disconnect(jepa_plasticity_bridge_t* bridge) {
 
 bool jepa_plasticity_is_bio_async_connected(jepa_plasticity_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_is_b", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;

@@ -31,7 +31,7 @@ static nimcp_health_agent_t* g_theory_of_mind_sleep_bridge_health_agent = NULL;
  * @brief Set health agent for theory_of_mind_sleep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void theory_of_mind_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void theory_of_mind_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_theory_of_mind_sleep_bridge_health_agent = agent;
 }
 
@@ -116,6 +116,10 @@ static void tom_on_sleep_state_change(sleep_state_t new_state, void* user_data)
 
 int tom_sleep_default_config(tom_sleep_config_t* config) {
     if (!config) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_sleep_bridge_heartbeat("theory_of_mi_tom_sleep_default_co", 0.0f);
+
+
     config->enable_mentalizing_modulation = true;
     config->enable_empathy_modulation = true;
     config->modulation_strength = 1.0f;
@@ -133,6 +137,10 @@ tom_sleep_bridge_t tom_sleep_bridge_create(
         return NULL;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_sleep_bridge_heartbeat("theory_of_mi_tom_sleep_bridge_cre", 0.0f);
+
 
     struct tom_sleep_bridge_struct* bridge =
         (struct tom_sleep_bridge_struct*)nimcp_malloc(sizeof(struct tom_sleep_bridge_struct));
@@ -183,6 +191,10 @@ void tom_sleep_bridge_destroy(tom_sleep_bridge_t bridge) {
     if (!bridge) return;
 
     /* Unregister callback if it was registered */
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_sleep_bridge_heartbeat("theory_of_mi_tom_sleep_bridge_des", 0.0f);
+
+
     if (bridge->callback_registered && bridge->sleep_system) {
         bool unregistered = sleep_unregister_state_callback(
             bridge->sleep_system,
@@ -200,6 +212,10 @@ void tom_sleep_bridge_destroy(tom_sleep_bridge_t bridge) {
 
 int tom_sleep_update(tom_sleep_bridge_t bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_sleep_bridge_heartbeat("theory_of_mi_tom_sleep_update", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -248,6 +264,10 @@ int tom_sleep_update(tom_sleep_bridge_t bridge) {
 
 int tom_sleep_get_effects(const tom_sleep_bridge_t bridge, tom_sleep_effects_t* effects) {
     if (!bridge || !effects) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_sleep_bridge_heartbeat("theory_of_mi_tom_sleep_get_effect", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -256,6 +276,10 @@ int tom_sleep_get_effects(const tom_sleep_bridge_t bridge, tom_sleep_effects_t* 
 
 float tom_sleep_get_mentalizing_accuracy(const tom_sleep_bridge_t bridge) {
     if (!bridge) return 1.0f;
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_sleep_bridge_heartbeat("theory_of_mi_tom_sleep_get_mental", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.mentalizing_accuracy_factor;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -264,6 +288,10 @@ float tom_sleep_get_mentalizing_accuracy(const tom_sleep_bridge_t bridge) {
 
 bool tom_sleep_is_offline(const tom_sleep_bridge_t bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_sleep_bridge_heartbeat("theory_of_mi_tom_sleep_is_offline", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.social_cognition_offline;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -271,6 +299,10 @@ bool tom_sleep_is_offline(const tom_sleep_bridge_t bridge) {
 }
 
 float tom_sleep_mentalizing_for_state(sleep_state_t state) {
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_sleep_bridge_heartbeat("theory_of_mi_tom_sleep_mentalizin", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return TOM_SLEEP_MENTALIZING_AWAKE;
         case SLEEP_STATE_DROWSY:     return TOM_SLEEP_MENTALIZING_DROWSY;
@@ -282,6 +314,10 @@ float tom_sleep_mentalizing_for_state(sleep_state_t state) {
 }
 
 float tom_sleep_empathy_for_state(sleep_state_t state) {
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_sleep_bridge_heartbeat("theory_of_mi_tom_sleep_empathy_fo", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return TOM_SLEEP_EMPATHY_AWAKE;
         case SLEEP_STATE_DROWSY:     return TOM_SLEEP_EMPATHY_DROWSY;
@@ -299,9 +335,19 @@ float tom_sleep_empathy_for_state(sleep_state_t state) {
 int tom_sleep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    theory_of_mind_sleep_bridge_heartbeat("theory_of_mi_tom_sleep_bridge_que", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Theory_Of_Mind_Sleep_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                theory_of_mind_sleep_bridge_heartbeat("theory_of_mi_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

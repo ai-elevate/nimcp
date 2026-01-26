@@ -42,7 +42,7 @@ static nimcp_health_agent_t* g_joy_euphoria_health_agent = NULL;
  * @brief Set health agent for joy_euphoria heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void joy_euphoria_set_health_agent(nimcp_health_agent_t* agent) {
+void joy_euphoria_set_health_agent(nimcp_health_agent_t* agent) {
     g_joy_euphoria_health_agent = agent;
 }
 
@@ -110,6 +110,12 @@ static int joy_wiring_handler_callback(
         message_count);
 
     for (uint32_t i = 0; i < message_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && message_count > 256) {
+            joy_euphoria_heartbeat("joy_euphoria_loop",
+                             (float)(i + 1) / (float)message_count);
+        }
+
         switch (message_types[i]) {
             case BIO_MSG_CURIOSITY_SIGNAL:
                 bio_router_register_handler(ctx, message_types[i], handle_curiosity_signal);
@@ -171,6 +177,10 @@ joy_system_t* joy_system_create(void) {
     // WHY:  Central system for positive emotions and value reinforcement
     // HOW:  Zero-initialize all state, set up default parameters
 
+    /* Phase 8: Heartbeat at operation start */
+    joy_euphoria_heartbeat("joy_euphoria_joy_system_create", 0.0f);
+
+
     joy_system_t* system = (joy_system_t*)nimcp_calloc(1, sizeof(joy_system_t));
     if (!system) {
 
@@ -182,11 +192,23 @@ joy_system_t* joy_system_create(void) {
 
     // Initialize all values as inactive
     for (int i = 0; i < JOY_MAX_VALUES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && JOY_MAX_VALUES > 256) {
+            joy_euphoria_heartbeat("joy_euphoria_loop",
+                             (float)(i + 1) / (float)JOY_MAX_VALUES);
+        }
+
         system->values[i].active = false;
     }
 
     // Initialize all success records as inactive
     for (int i = 0; i < JOY_MAX_RECENT_SUCCESSES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && JOY_MAX_RECENT_SUCCESSES > 256) {
+            joy_euphoria_heartbeat("joy_euphoria_loop",
+                             (float)(i + 1) / (float)JOY_MAX_RECENT_SUCCESSES);
+        }
+
         system->recent_successes[i].active = false;
     }
 
@@ -247,6 +269,10 @@ void joy_system_destroy(joy_system_t* system) {
 
     if (!system) return;
     // Unregister from bio-router
+    /* Phase 8: Heartbeat at operation start */
+    joy_euphoria_heartbeat("joy_euphoria_joy_system_destroy", 0.0f);
+
+
     if (system->bio_async_enabled && system->bio_ctx_ptr) {
         bio_router_unregister_module(system->bio_ctx_ptr);
         system->bio_ctx_ptr = NULL;
@@ -264,6 +290,10 @@ void joy_system_reset(joy_system_t* system) {
     if (!system) return;
 
     // Preserve values and configuration
+    /* Phase 8: Heartbeat at operation start */
+    joy_euphoria_heartbeat("joy_euphoria_joy_system_reset", 0.0f);
+
+
     value_t preserved_values[JOY_MAX_VALUES];
     memcpy(preserved_values, system->values, sizeof(preserved_values));
 
@@ -282,6 +312,12 @@ void joy_system_reset(joy_system_t* system) {
 
     // Re-count active values
     for (int i = 0; i < JOY_MAX_VALUES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && JOY_MAX_VALUES > 256) {
+            joy_euphoria_heartbeat("joy_euphoria_loop",
+                             (float)(i + 1) / (float)JOY_MAX_VALUES);
+        }
+
         if (system->values[i].active) {
             system->active_value_count++;
         }
@@ -307,11 +343,21 @@ uint32_t joy_add_value(joy_system_t* system,
     if (!system) return 0;
 
     // Clamp inputs
+    /* Phase 8: Heartbeat at operation start */
+    joy_euphoria_heartbeat("joy_euphoria_joy_add_value", 0.0f);
+
+
     importance = clamp(importance, 0.0F, 1.0F);
     weight = clamp(weight, 0.0F, 1.0F);
 
     // Find empty slot
     for (int i = 0; i < JOY_MAX_VALUES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && JOY_MAX_VALUES > 256) {
+            joy_euphoria_heartbeat("joy_euphoria_loop",
+                             (float)(i + 1) / (float)JOY_MAX_VALUES);
+        }
+
         if (!system->values[i].active) {
             system->values[i].active = true;
             system->values[i].value_id = (uint32_t)(i + 1);  // 1-indexed IDs
@@ -339,7 +385,17 @@ void joy_update_value_satisfaction(joy_system_t* system,
 
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    joy_euphoria_heartbeat("joy_euphoria_joy_update_value_sat", 0.0f);
+
+
     for (int i = 0; i < JOY_MAX_VALUES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && JOY_MAX_VALUES > 256) {
+            joy_euphoria_heartbeat("joy_euphoria_loop",
+                             (float)(i + 1) / (float)JOY_MAX_VALUES);
+        }
+
         if (system->values[i].active && system->values[i].value_id == value_id) {
             system->values[i].satisfaction += satisfaction_delta;
             system->values[i].satisfaction = clamp(system->values[i].satisfaction, 0.0F, 1.0F);
@@ -366,6 +422,10 @@ void joy_process_success(joy_system_t* system,
     if (!system) return;
 
     // Clamp inputs
+    /* Phase 8: Heartbeat at operation start */
+    joy_euphoria_heartbeat("joy_euphoria_joy_process_success", 0.0f);
+
+
     difficulty = clamp(difficulty, 0.0F, 1.0F);
     novelty = clamp(novelty, 0.0F, 1.0F);
     num_values = (num_values > JOY_MAX_VALUES) ? JOY_MAX_VALUES : num_values;
@@ -376,10 +436,22 @@ void joy_process_success(joy_system_t* system,
     float max_importance = 0.0F;
 
     for (uint32_t i = 0; i < num_values; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_values > 256) {
+            joy_euphoria_heartbeat("joy_euphoria_loop",
+                             (float)(i + 1) / (float)num_values);
+        }
+
         uint32_t value_id = aligned_values[i];
 
         // Find this value
         for (int j = 0; j < JOY_MAX_VALUES; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && JOY_MAX_VALUES > 256) {
+                joy_euphoria_heartbeat("joy_euphoria_loop",
+                                 (float)(j + 1) / (float)JOY_MAX_VALUES);
+            }
+
             if (system->values[j].active && system->values[j].value_id == value_id) {
                 value_t* value = &system->values[j];
 
@@ -513,6 +585,12 @@ void joy_process_success(joy_system_t* system,
     float total_satisfaction = 0.0F;
     uint32_t active_values = 0;
     for (int i = 0; i < JOY_MAX_VALUES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && JOY_MAX_VALUES > 256) {
+            joy_euphoria_heartbeat("joy_euphoria_loop",
+                             (float)(i + 1) / (float)JOY_MAX_VALUES);
+        }
+
         if (system->values[i].active) {
             total_satisfaction += system->values[i].satisfaction * system->values[i].weight;
             active_values++;
@@ -533,6 +611,10 @@ void joy_process_success(joy_system_t* system,
 
 void joy_update(joy_system_t* system, float dt, uint64_t current_time_us) {
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    joy_euphoria_heartbeat("joy_euphoria_joy_update", 0.0f);
+
+
     if (system && system->bio_async_enabled && system->bio_ctx_ptr) {
         bio_router_process_inbox(system->bio_ctx_ptr, 5);
     }
@@ -664,26 +746,46 @@ void joy_update(joy_system_t* system, float dt, uint64_t current_time_us) {
 
 bool joy_is_joyful(const joy_system_t* system) {
     if (!system) return false;
+    /* Phase 8: Heartbeat at operation start */
+    joy_euphoria_heartbeat("joy_euphoria_joy_is_joyful", 0.0f);
+
+
     return (system->emotion.joy_intensity >= JOY_THRESHOLD);
 }
 
 bool joy_is_euphoric(const joy_system_t* system) {
     if (!system) return false;
+    /* Phase 8: Heartbeat at operation start */
+    joy_euphoria_heartbeat("joy_euphoria_joy_is_euphoric", 0.0f);
+
+
     return system->emotion.experiencing_euphoria;
 }
 
 float joy_get_valence(const joy_system_t* system) {
     if (!system) return 0.0F;
+    /* Phase 8: Heartbeat at operation start */
+    joy_euphoria_heartbeat("joy_euphoria_joy_get_valence", 0.0f);
+
+
     return system->emotion.positive_valence;
 }
 
 float joy_get_arousal(const joy_system_t* system) {
     if (!system) return 0.0F;
+    /* Phase 8: Heartbeat at operation start */
+    joy_euphoria_heartbeat("joy_euphoria_joy_get_arousal", 0.0f);
+
+
     return system->emotion.arousal;
 }
 
 joy_emotion_state_t joy_get_state(const joy_system_t* system) {
     if (!system) return JOY_EMOTION_STATE_NEUTRAL;
+    /* Phase 8: Heartbeat at operation start */
+    joy_euphoria_heartbeat("joy_euphoria_joy_get_state", 0.0f);
+
+
     return system->emotion.state;
 }
 
@@ -705,6 +807,10 @@ void joy_get_neuromodulator_effects(const joy_system_t* system,
     // Dopamine boost (reward, motivation)
     // Euphoria: +50-100% dopamine
     // Joy: +20-50% dopamine
+    /* Phase 8: Heartbeat at operation start */
+    joy_euphoria_heartbeat("joy_euphoria_joy_get_neuromodulat", 0.0f);
+
+
     if (system->emotion.experiencing_euphoria) {
         *dopamine_factor = 1.5F + (system->emotion.euphoria_intensity * 0.5F);
     } else if (system->emotion.joy_intensity >= JOY_THRESHOLD) {
@@ -736,6 +842,10 @@ emotional_tag_t joy_get_emotion(const joy_system_t* system) {
         return emotional_tag_neutral();
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    joy_euphoria_heartbeat("joy_euphoria_joy_get_emotion", 0.0f);
+
+
     const joy_emotional_state_t* emotion = &system->emotion;
 
     // If no significant positive emotion, return neutral
@@ -761,9 +871,19 @@ emotional_tag_t joy_get_emotion(const joy_system_t* system) {
 int joy_euphoria_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    joy_euphoria_heartbeat("joy_euphoria_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Joy_Euphoria");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                joy_euphoria_heartbeat("joy_euphoria_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

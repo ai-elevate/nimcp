@@ -39,7 +39,7 @@ static nimcp_health_agent_t* g_self_awareness_feedback_health_agent = NULL;
  * @brief Set health agent for self_awareness_feedback heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void self_awareness_feedback_set_health_agent(nimcp_health_agent_t* agent) {
+void self_awareness_feedback_set_health_agent(nimcp_health_agent_t* agent) {
     g_self_awareness_feedback_health_agent = agent;
 }
 
@@ -61,6 +61,10 @@ int feedback_default_policy(feedback_policy_t* policy) {
 
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_feedback_heartbeat("self_awarene_feedback_default_pol", 0.0f);
+
 
     policy->transfer_func = TRANSFER_LINEAR;
     policy->learning_rate = FEEDBACK_DEFAULT_LEARNING_RATE;
@@ -89,6 +93,10 @@ int feedback_conservative_policy(feedback_policy_t* policy) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_feedback_heartbeat("self_awarene_feedback_conservativ", 0.0f);
+
+
     policy->transfer_func = TRANSFER_SIGMOID;
     policy->learning_rate = 0.01f;
     policy->momentum = 0.95f;
@@ -115,6 +123,10 @@ int feedback_aggressive_policy(feedback_policy_t* policy) {
 
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_feedback_heartbeat("self_awarene_feedback_aggressive_", 0.0f);
+
 
     policy->transfer_func = TRANSFER_LINEAR;
     policy->learning_rate = 0.5f;
@@ -143,6 +155,10 @@ int feedback_gated_policy(feedback_policy_t* policy, float gate_threshold) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_feedback_heartbeat("self_awarene_feedback_gated_polic", 0.0f);
+
+
     feedback_default_policy(policy);
     policy->transfer_func = TRANSFER_GATED;
     policy->gate_threshold = gate_threshold;
@@ -168,6 +184,10 @@ float feedback_apply_transfer(
     float gate_threshold,
     bool gate_open
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_feedback_heartbeat("self_awarene_feedback_apply_trans", 0.0f);
+
+
     switch (func) {
         case TRANSFER_LINEAR:
             return value;
@@ -206,10 +226,20 @@ int feedback_system_init(feedback_system_t* system) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_feedback_heartbeat("self_awarene_feedback_system_init", 0.0f);
+
+
     memset(system, 0, sizeof(feedback_system_t));
 
     /* Initialize each loop manager */
     for (int i = 0; i < FEEDBACK_LOOP_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && FEEDBACK_LOOP_COUNT > 256) {
+            self_awareness_feedback_heartbeat("self_awarene_loop",
+                             (float)(i + 1) / (float)FEEDBACK_LOOP_COUNT);
+        }
+
         feedback_loop_manager_t* mgr = &system->loops[i];
 
         mgr->type = (feedback_loop_type_t)i;
@@ -250,6 +280,10 @@ void feedback_system_cleanup(feedback_system_t* system) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_feedback_heartbeat("self_awarene_feedback_system_clea", 0.0f);
+
+
     memset(system, 0, sizeof(feedback_system_t));
     system->initialized = false;
 }
@@ -262,6 +296,10 @@ int feedback_set_policy(
     if (!system || !policy || !system->initialized) {
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_feedback_heartbeat("self_awarene_feedback_set_policy", 0.0f);
+
+
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
         return -1;
     }
@@ -281,6 +319,10 @@ int feedback_get_policy(
     if (!system || !policy || !system->initialized) {
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_feedback_heartbeat("self_awarene_feedback_get_policy", 0.0f);
+
+
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
         return -1;
     }
@@ -306,6 +348,10 @@ int feedback_record_transfer(
     if (!system || !system->initialized) {
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_feedback_heartbeat("self_awarene_feedback_record_tran", 0.0f);
+
+
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
         return -1;
     }
@@ -381,6 +427,10 @@ int feedback_compute_value(
     if (!system || !output || !system->initialized) {
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_feedback_heartbeat("self_awarene_feedback_compute_val", 0.0f);
+
+
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
         return -1;
     }
@@ -440,6 +490,10 @@ int feedback_analyze_loop(
     if (!system || !analysis || !system->initialized) {
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_feedback_heartbeat("self_awarene_feedback_analyze_loo", 0.0f);
+
+
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
         return -1;
     }
@@ -470,6 +524,12 @@ int feedback_analyze_loop(
 
     uint32_t idx = (hist->head + hist->capacity - hist->count) % hist->capacity;
     for (uint32_t i = 0; i < hist->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hist->count > 256) {
+            self_awareness_feedback_heartbeat("self_awarene_loop",
+                             (float)(i + 1) / (float)hist->count);
+        }
+
         const feedback_transfer_record_t* rec = &hist->records[idx];
 
         float val = rec->transferred_value;
@@ -506,6 +566,12 @@ int feedback_analyze_loop(
     if (trend_count >= 3) {
         float sum_x = 0.0f, sum_y = 0.0f, sum_xy = 0.0f, sum_xx = 0.0f;
         for (uint32_t i = 0; i < trend_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && trend_count > 256) {
+                self_awareness_feedback_heartbeat("self_awarene_loop",
+                                 (float)(i + 1) / (float)trend_count);
+            }
+
             float x = (float)i;
             float y = trend_samples[i];
             sum_x += x;
@@ -522,6 +588,12 @@ int feedback_analyze_loop(
             float y_mean = sum_y / tn;
             float ss_tot = 0.0f, ss_res = 0.0f;
             for (uint32_t i = 0; i < trend_count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && trend_count > 256) {
+                    self_awareness_feedback_heartbeat("self_awarene_loop",
+                                     (float)(i + 1) / (float)trend_count);
+                }
+
                 float pred = analysis->trend_slope * (float)i + (sum_y - analysis->trend_slope * sum_x) / tn;
                 ss_res += (trend_samples[i] - pred) * (trend_samples[i] - pred);
                 ss_tot += (trend_samples[i] - y_mean) * (trend_samples[i] - y_mean);
@@ -579,8 +651,18 @@ int feedback_analyze_all(feedback_system_t* system) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_feedback_heartbeat("self_awarene_feedback_analyze_all", 0.0f);
+
+
     feedback_analysis_t analysis;
     for (int i = 0; i < FEEDBACK_LOOP_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && FEEDBACK_LOOP_COUNT > 256) {
+            self_awareness_feedback_heartbeat("self_awarene_loop",
+                             (float)(i + 1) / (float)FEEDBACK_LOOP_COUNT);
+        }
+
         feedback_analyze_loop(system, (feedback_loop_type_t)i, &analysis);
     }
 
@@ -595,6 +677,10 @@ feedback_health_t feedback_get_health(
     if (!system || !system->initialized) {
         return FEEDBACK_HEALTH_DEAD;
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_feedback_heartbeat("self_awarene_feedback_get_health", 0.0f);
+
+
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
         return FEEDBACK_HEALTH_DEAD;
     }
@@ -609,6 +695,10 @@ feedback_trend_t feedback_get_trend(
     if (!system || !system->initialized) {
         return TREND_STABLE;
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_feedback_heartbeat("self_awarene_feedback_get_trend", 0.0f);
+
+
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
         return TREND_STABLE;
     }
@@ -621,7 +711,17 @@ bool feedback_has_unhealthy_loops(const feedback_system_t* system) {
         return true;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_feedback_heartbeat("self_awarene_feedback_has_unhealt", 0.0f);
+
+
     for (int i = 0; i < FEEDBACK_LOOP_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && FEEDBACK_LOOP_COUNT > 256) {
+            self_awareness_feedback_heartbeat("self_awarene_loop",
+                             (float)(i + 1) / (float)FEEDBACK_LOOP_COUNT);
+        }
+
         feedback_health_t h = system->loops[i].analysis.health;
         if (h == FEEDBACK_HEALTH_FAILING || h == FEEDBACK_HEALTH_DEAD) {
             return true;
@@ -645,6 +745,10 @@ int feedback_get_history(
     if (!system || !records || !count || !system->initialized) {
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_feedback_heartbeat("self_awarene_feedback_get_history", 0.0f);
+
+
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
         return -1;
     }
@@ -655,6 +759,12 @@ int feedback_get_history(
 
     /* Copy from ring buffer, most recent first */
     for (uint32_t i = 0; i < to_copy; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && to_copy > 256) {
+            self_awareness_feedback_heartbeat("self_awarene_loop",
+                             (float)(i + 1) / (float)to_copy);
+        }
+
         uint32_t idx = (hist->head + hist->capacity - 1 - i) % hist->capacity;
         memcpy(&records[i], &hist->records[idx], sizeof(feedback_transfer_record_t));
     }
@@ -671,9 +781,19 @@ int feedback_clear_history(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_feedback_heartbeat("self_awarene_feedback_clear_histo", 0.0f);
+
+
     if (loop_type >= FEEDBACK_LOOP_COUNT) {
         /* Clear all */
         for (int i = 0; i < FEEDBACK_LOOP_COUNT; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && FEEDBACK_LOOP_COUNT > 256) {
+                self_awareness_feedback_heartbeat("self_awarene_loop",
+                                 (float)(i + 1) / (float)FEEDBACK_LOOP_COUNT);
+            }
+
             system->loops[i].history.head = 0;
             system->loops[i].history.count = 0;
         }
@@ -696,6 +816,10 @@ int feedback_open_gate(
     if (!system || !system->initialized) {
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_feedback_heartbeat("self_awarene_feedback_open_gate", 0.0f);
+
+
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
         return -1;
     }
@@ -711,6 +835,10 @@ int feedback_close_gate(
     if (!system || !system->initialized) {
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_feedback_heartbeat("self_awarene_feedback_close_gate", 0.0f);
+
+
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
         return -1;
     }
@@ -726,6 +854,10 @@ bool feedback_is_gate_open(
     if (!system || !system->initialized) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_feedback_heartbeat("self_awarene_feedback_is_gate_ope", 0.0f);
+
+
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
         return false;
     }
@@ -746,6 +878,10 @@ int feedback_enable_adaptive_rate(
     if (!system || !system->initialized) {
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_feedback_heartbeat("self_awarene_feedback_enable_adap", 0.0f);
+
+
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
         return -1;
     }
@@ -765,6 +901,10 @@ int feedback_disable_adaptive_rate(
     if (!system || !system->initialized) {
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_feedback_heartbeat("self_awarene_feedback_disable_ada", 0.0f);
+
+
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
         return -1;
     }
@@ -783,6 +923,10 @@ float feedback_get_current_rate(
     if (!system || !system->initialized) {
         return 0.0f;
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_feedback_heartbeat("self_awarene_feedback_get_current", 0.0f);
+
+
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
         return 0.0f;
     }
@@ -835,9 +979,19 @@ const char* feedback_health_name(feedback_health_t health) {
 int self_awareness_feedback_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    self_awareness_feedback_heartbeat("self_awarene_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Self_Awareness_Feedback");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                self_awareness_feedback_heartbeat("self_awarene_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

@@ -36,7 +36,7 @@ static nimcp_health_agent_t* g_wellbeing_prediction_health_agent = NULL;
  * @brief Set health agent for wellbeing_prediction heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void wellbeing_prediction_set_health_agent(nimcp_health_agent_t* agent) {
+void wellbeing_prediction_set_health_agent(nimcp_health_agent_t* agent) {
     g_wellbeing_prediction_health_agent = agent;
 }
 
@@ -90,6 +90,12 @@ static float compute_trajectory_slope(const distress_sample_t* history, uint32_t
     double sum_time = 0.0;
     double sum_distress = 0.0;
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            wellbeing_prediction_heartbeat("wellbeing_pr_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         sum_time += (double)history[i].timestamp;
         sum_distress += (double)history[i].distress_score;
     }
@@ -100,6 +106,12 @@ static float compute_trajectory_slope(const distress_sample_t* history, uint32_t
     double covariance = 0.0;
     double variance = 0.0;
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            wellbeing_prediction_heartbeat("wellbeing_pr_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         double dt = (double)history[i].timestamp - mean_time;
         double dd = (double)history[i].distress_score - mean_distress;
         covariance += dt * dd;
@@ -336,6 +348,12 @@ static distress_type_t predict_distress_type(const distress_sample_t* sample)
     wellbeing_source_t max_source = WELLBEING_SOURCE_INTRINSIC;
 
     for (int i = 0; i < WELLBEING_SOURCE_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && WELLBEING_SOURCE_COUNT > 256) {
+            wellbeing_prediction_heartbeat("wellbeing_pr_loop",
+                             (float)(i + 1) / (float)WELLBEING_SOURCE_COUNT);
+        }
+
         if (sample->source_contributions[i] > max_contribution) {
             max_contribution = sample->source_contributions[i];
             max_source = (wellbeing_source_t)i;
@@ -380,6 +398,10 @@ int enhanced_wellbeing_predict_distress(
     }
 
     /* Initialize prediction */
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_prediction_heartbeat("wellbeing_pr_enhanced_wellbeing_p", 0.0f);
+
+
     memset(prediction, 0, sizeof(distress_prediction_t));
 
     /* Thread safety - acquire mutex */
@@ -482,6 +504,10 @@ float enhanced_wellbeing_get_intervention_urgency(
     }
 
     /* Thread safety */
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_prediction_heartbeat("wellbeing_pr_enhanced_wellbeing_g", 0.0f);
+
+
     if (system->mutex) {
         nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)system->mutex);
     }
@@ -513,6 +539,10 @@ bool enhanced_wellbeing_is_critical_imminent(
     }
 
     /* Thread safety */
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_prediction_heartbeat("wellbeing_pr_enhanced_wellbeing_i", 0.0f);
+
+
     if (system->mutex) {
         nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)system->mutex);
     }
@@ -537,9 +567,19 @@ bool enhanced_wellbeing_is_critical_imminent(
  */
 int wellbeing_prediction_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_prediction_heartbeat("wellbeing_pr_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Wellbeing_Prediction_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                wellbeing_prediction_heartbeat("wellbeing_pr_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Wellbeing Prediction self-knowledge: %s", self->observations[i]);
         }
     }

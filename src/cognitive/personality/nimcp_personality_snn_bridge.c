@@ -38,7 +38,7 @@ static nimcp_health_agent_t* g_personality_snn_bridge_health_agent = NULL;
  * @brief Set health agent for personality_snn_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void personality_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void personality_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_personality_snn_bridge_health_agent = agent;
 }
 
@@ -112,12 +112,24 @@ static void softmax(float* values, uint32_t n) {
 
     float sum = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            personality_snn_bridge_heartbeat("personality__loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         values[i] = expf(values[i] - max_val);
         sum += values[i];
     }
 
     if (sum > 0.0f) {
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                personality_snn_bridge_heartbeat("personality__loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             values[i] /= sum;
         }
     }
@@ -128,6 +140,10 @@ static void softmax(float* values, uint32_t n) {
 //=============================================================================
 
 personality_snn_config_t personality_snn_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_conf", 0.0f);
+
+
     personality_snn_config_t config = {
         .num_dimensions = PERSONALITY_DIM_COUNT,
         .neurons_per_dim = PERSONALITY_SNN_NEURONS_PER_DIM,
@@ -163,6 +179,10 @@ personality_snn_config_t personality_snn_config_default(void) {
 }
 
 personality_snn_bridge_t* personality_snn_create(const personality_snn_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_crea", 0.0f);
+
+
     personality_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(personality_snn_bridge_t));
     if (!bridge) {
 
@@ -222,6 +242,12 @@ personality_snn_bridge_t* personality_snn_create(const personality_snn_config_t*
 
     /* Initialize dimension states */
     for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            personality_snn_bridge_heartbeat("personality__loop",
+                             (float)(i + 1) / (float)bridge->config.num_dimensions);
+        }
+
         bridge->dim_states[i].activation = 0.0f;
         bridge->dim_states[i].accumulated_evidence = 0.0f;
         bridge->dim_states[i].spike_count = 0;
@@ -255,6 +281,10 @@ personality_snn_bridge_t* personality_snn_create(const personality_snn_config_t*
 void personality_snn_destroy(personality_snn_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_dest", 0.0f);
+
+
     if (bridge->snn) {
         snn_network_destroy(bridge->snn);
     }
@@ -271,6 +301,10 @@ void personality_snn_destroy(personality_snn_bridge_t* bridge) {
 int personality_snn_reset(personality_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_rese", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset SNN network */
@@ -280,6 +314,12 @@ int personality_snn_reset(personality_snn_bridge_t* bridge) {
 
     /* Reset dimension states */
     for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            personality_snn_bridge_heartbeat("personality__loop",
+                             (float)(i + 1) / (float)bridge->config.num_dimensions);
+        }
+
         bridge->dim_states[i].activation = 0.0f;
         bridge->dim_states[i].accumulated_evidence = 0.0f;
         bridge->dim_states[i].spike_count = 0;
@@ -324,6 +364,10 @@ int personality_snn_encode_state(
     if (!bridge || !dimensions) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_enco", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = PERSONALITY_SNN_STATE_ENCODING;
 
@@ -332,6 +376,12 @@ int personality_snn_encode_state(
 
     /* Population encoding for each dimension */
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            personality_snn_bridge_heartbeat("personality__loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         float value = clamp_f(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
@@ -342,6 +392,12 @@ int personality_snn_encode_state(
 
         /* Population encode */
         for (uint32_t n = 0; n < neurons_per_dim; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && neurons_per_dim > 256) {
+                personality_snn_bridge_heartbeat("personality__loop",
+                                 (float)(n + 1) / (float)neurons_per_dim);
+            }
+
             float preferred = (float)n / (neurons_per_dim - 1);
             float diff = value - preferred;
             float tuning = expf(-diff * diff / 0.1f);
@@ -357,6 +413,12 @@ int personality_snn_encode_state(
     /* Detect state change */
     float change_magnitude = 0.0f;
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            personality_snn_bridge_heartbeat("personality__loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         float diff = dimensions[d] - bridge->prev_state[d];
         change_magnitude += diff * diff;
         bridge->prev_state[d] = dimensions[d];
@@ -383,6 +445,10 @@ int personality_snn_encode_ocean(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_enco", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[PERSONALITY_DIM_COUNT] = {0};
@@ -408,6 +474,10 @@ int personality_snn_encode_temperament(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_enco", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[PERSONALITY_DIM_COUNT] = {0};
@@ -426,6 +496,10 @@ int personality_snn_encode_behavioral(
     float emotionality
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_enco", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -458,6 +532,10 @@ int personality_snn_simulate(personality_snn_bridge_t* bridge, float duration_ms
     if (!bridge) return -1;
     if (duration_ms <= 0.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_simu", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = PERSONALITY_SNN_STATE_SIMULATING;
 
@@ -471,6 +549,12 @@ int personality_snn_simulate(personality_snn_bridge_t* bridge, float duration_ms
     }
 
     for (uint32_t s = 0; s < steps; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && steps > 256) {
+            personality_snn_bridge_heartbeat("personality__loop",
+                             (float)(s + 1) / (float)steps);
+        }
+
         if (bridge->snn) {
             snn_network_step(bridge->snn, dt);
         }
@@ -478,6 +562,12 @@ int personality_snn_simulate(personality_snn_bridge_t* bridge, float duration_ms
         /* Update evidence integration */
         float decay = expf(-dt / bridge->config.integration_tau_ms);
         for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+                personality_snn_bridge_heartbeat("personality__loop",
+                                 (float)(d + 1) / (float)bridge->config.num_dimensions);
+            }
+
             bridge->dim_states[d].accumulated_evidence *= decay;
             bridge->dim_states[d].accumulated_evidence +=
                 bridge->dim_states[d].activation * dt / bridge->config.integration_tau_ms;
@@ -505,10 +595,22 @@ int personality_snn_simulate(personality_snn_bridge_t* bridge, float duration_ms
     float variance = 0.0f;
     float mean = 0.0f;
     for (uint32_t i = 0; i < 5; i++) { /* OCEAN only */
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 5 > 256) {
+            personality_snn_bridge_heartbeat("personality__loop",
+                             (float)(i + 1) / (float)5);
+        }
+
         mean += bridge->output_buffer[i];
     }
     mean /= 5.0f;
     for (uint32_t i = 0; i < 5; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 5 > 256) {
+            personality_snn_bridge_heartbeat("personality__loop",
+                             (float)(i + 1) / (float)5);
+        }
+
         float diff = bridge->output_buffer[i] - mean;
         variance += diff * diff;
     }
@@ -557,6 +659,10 @@ int personality_snn_simulate(personality_snn_bridge_t* bridge, float duration_ms
 
 int personality_snn_step(personality_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_step", 0.0f);
+
+
     return personality_snn_simulate(bridge, bridge->config.dt_ms);
 }
 
@@ -566,6 +672,10 @@ int personality_snn_forward(
     uint32_t input_count
 ) {
     if (!bridge || !inputs) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_forw", 0.0f);
+
 
     int spike_count = personality_snn_encode_state(bridge, inputs, input_count);
     if (spike_count < 0) return -1;
@@ -587,6 +697,10 @@ int personality_snn_get_tendency(
 ) {
     if (!bridge || !tendency) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *tendency = bridge->last_tendency;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -602,8 +716,18 @@ int personality_snn_get_activations(
     if (!bridge || !activations) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            personality_snn_bridge_heartbeat("personality__loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         activations[d] = bridge->dim_states[d].activation;
     }
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -616,6 +740,10 @@ bool personality_snn_check_stability(
     float* stability_level
 ) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_chec", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->stability_signal;
@@ -634,6 +762,10 @@ bool personality_snn_check_fluctuation(
 ) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_chec", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_tendency.fluctuation_magnitude;
     if (fluctuation_level) {
@@ -651,10 +783,20 @@ bool personality_snn_check_state_change(
 ) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_chec", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     /* Calculate magnitude from prev_state differences */
     float mag = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            personality_snn_bridge_heartbeat("personality__loop",
+                             (float)(d + 1) / (float)bridge->config.num_dimensions);
+        }
+
         float diff = bridge->dim_states[d].activation - bridge->prev_state[d];
         mag += diff * diff;
     }
@@ -681,6 +823,10 @@ int personality_snn_get_dim_state(
     if (!bridge || !state) return -1;
     if (dim >= bridge->config.num_dimensions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->dim_states[dim];
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -693,6 +839,10 @@ int personality_snn_get_state(
     personality_snn_bridge_state_t* state
 ) {
     if (!bridge || !state) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_get_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -709,6 +859,12 @@ int personality_snn_get_state(
     state->active_dimensions = 0;
     state->total_activity = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            personality_snn_bridge_heartbeat("personality__loop",
+                             (float)(d + 1) / (float)bridge->config.num_dimensions);
+        }
+
         if (bridge->dim_states[d].activation > 0.1f) {
             state->active_dimensions++;
         }
@@ -722,6 +878,10 @@ int personality_snn_get_state(
 int personality_snn_get_stats(personality_snn_bridge_t* bridge, personality_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -731,6 +891,10 @@ int personality_snn_get_stats(personality_snn_bridge_t* bridge, personality_snn_
 
 int personality_snn_reset_stats(personality_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_rese", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(personality_snn_stats_t));
@@ -742,6 +906,10 @@ int personality_snn_reset_stats(personality_snn_bridge_t* bridge) {
 float personality_snn_get_stability(personality_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float stability = bridge->stability_signal;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -752,9 +920,19 @@ float personality_snn_get_stability(personality_snn_bridge_t* bridge) {
 float personality_snn_get_total_activity(personality_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float total = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            personality_snn_bridge_heartbeat("personality__loop",
+                             (float)(d + 1) / (float)bridge->config.num_dimensions);
+        }
+
         total += bridge->dim_states[d].activation;
     }
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -773,6 +951,10 @@ int personality_snn_register_stability_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_regi", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->stability_callback = callback;
     bridge->stability_callback_data = user_data;
@@ -788,6 +970,10 @@ int personality_snn_register_tendency_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_regi", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->tendency_callback = callback;
     bridge->tendency_callback_data = user_data;
@@ -802,6 +988,10 @@ int personality_snn_register_fluctuation_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_regi", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fluctuation_callback = callback;
@@ -819,6 +1009,10 @@ int personality_snn_bio_async_connect(personality_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_bio_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
@@ -830,6 +1024,10 @@ int personality_snn_bio_async_connect(personality_snn_bridge_t* bridge) {
 int personality_snn_bio_async_disconnect(personality_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_bio_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -839,6 +1037,10 @@ int personality_snn_bio_async_disconnect(personality_snn_bridge_t* bridge) {
 
 bool personality_snn_is_bio_async_connected(personality_snn_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    personality_snn_bridge_heartbeat("personality__personality_snn_is_b", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;

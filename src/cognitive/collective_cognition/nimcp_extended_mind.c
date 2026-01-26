@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_extended_mind_health_agent = NULL;
  * @brief Set health agent for extended_mind heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void extended_mind_set_health_agent(nimcp_health_agent_t* agent) {
+void extended_mind_set_health_agent(nimcp_health_agent_t* agent) {
     g_extended_mind_health_agent = agent;
 }
 
@@ -127,6 +127,12 @@ static cognitive_extension_t* find_extension(
     uint32_t extension_id
 ) {
     for (uint32_t i = 0; i < COLLECTIVE_MAX_EXTENSIONS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_EXTENSIONS > 256) {
+            extended_mind_heartbeat("extended_min_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_EXTENSIONS);
+        }
+
         if (em->extensions[i].extension_id == extension_id) {
             return &em->extensions[i];
         }
@@ -136,6 +142,12 @@ static cognitive_extension_t* find_extension(
 
 static cognitive_extension_t* find_free_extension_slot(extended_mind_t* em) {
     for (uint32_t i = 0; i < COLLECTIVE_MAX_EXTENSIONS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_EXTENSIONS > 256) {
+            extended_mind_heartbeat("extended_min_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_EXTENSIONS);
+        }
+
         if (em->extensions[i].extension_id == 0) {
             return &em->extensions[i];
         }
@@ -151,6 +163,12 @@ static cognitive_extension_t* find_best_extension_of_type(
     float best_score = -1.0f;
 
     for (uint32_t i = 0; i < COLLECTIVE_MAX_EXTENSIONS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_EXTENSIONS > 256) {
+            extended_mind_heartbeat("extended_min_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_EXTENSIONS);
+        }
+
         cognitive_extension_t* ext = (cognitive_extension_t*)&em->extensions[i];
         if (ext->extension_id == 0) continue;
         if (ext->type != type) continue;
@@ -183,6 +201,12 @@ static pending_query_t* find_query(
     uint32_t query_id
 ) {
     for (uint32_t i = 0; i < 64; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 64 > 256) {
+            extended_mind_heartbeat("extended_min_loop",
+                             (float)(i + 1) / (float)64);
+        }
+
         if (em->queries[i].active && em->queries[i].query_id == query_id) {
             return &em->queries[i];
         }
@@ -192,6 +216,12 @@ static pending_query_t* find_query(
 
 static pending_query_t* find_free_query_slot(extended_mind_t* em) {
     for (uint32_t i = 0; i < 64; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 64 > 256) {
+            extended_mind_heartbeat("extended_min_loop",
+                             (float)(i + 1) / (float)64);
+        }
+
         if (!em->queries[i].active) {
             return &em->queries[i];
         }
@@ -208,6 +238,12 @@ static pending_offload_t* find_offload(
     uint32_t offload_id
 ) {
     for (uint32_t i = 0; i < 32; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 32 > 256) {
+            extended_mind_heartbeat("extended_min_loop",
+                             (float)(i + 1) / (float)32);
+        }
+
         if (em->offloads[i].active && em->offloads[i].offload_id == offload_id) {
             return &em->offloads[i];
         }
@@ -217,6 +253,12 @@ static pending_offload_t* find_offload(
 
 static pending_offload_t* find_free_offload_slot(extended_mind_t* em) {
     for (uint32_t i = 0; i < 32; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 32 > 256) {
+            extended_mind_heartbeat("extended_min_loop",
+                             (float)(i + 1) / (float)32);
+        }
+
         if (!em->offloads[i].active) {
             return &em->offloads[i];
         }
@@ -239,6 +281,12 @@ static void update_state(extended_mind_t* em) {
     float total_integration = 0.0f;
 
     for (uint32_t i = 0; i < COLLECTIVE_MAX_EXTENSIONS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_EXTENSIONS > 256) {
+            extended_mind_heartbeat("extended_min_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_EXTENSIONS);
+        }
+
         cognitive_extension_t* ext = &em->extensions[i];
         if (ext->extension_id == 0) continue;
 
@@ -273,6 +321,10 @@ static void update_state(extended_mind_t* em) {
  *===========================================================================*/
 
 extended_mind_t* extended_mind_create(const extended_mind_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    extended_mind_heartbeat("extended_min_create", 0.0f);
+
+
     extended_mind_t* em = nimcp_malloc(sizeof(extended_mind_t));
     if (!em) {
 
@@ -304,6 +356,10 @@ extended_mind_t* extended_mind_create(const extended_mind_config_t* config) {
 
 void extended_mind_destroy(extended_mind_t* em) {
     if (!em) return;
+    /* Phase 8: Heartbeat at operation start */
+    extended_mind_heartbeat("extended_min_destroy", 0.0f);
+
+
     nimcp_free(em);
 }
 
@@ -311,6 +367,10 @@ int extended_mind_reset(extended_mind_t* em) {
     if (!em) return -1;
 
     /* Clear extensions */
+    /* Phase 8: Heartbeat at operation start */
+    extended_mind_heartbeat("extended_min_reset", 0.0f);
+
+
     memset(em->extensions, 0, sizeof(em->extensions));
     em->extension_count = 0;
 
@@ -341,6 +401,10 @@ uint32_t extended_mind_register_extension(
     if (!em || !ext) return 0;
     if (em->extension_count >= em->config.max_extensions) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    extended_mind_heartbeat("extended_min_register_extension", 0.0f);
+
+
     cognitive_extension_t* slot = find_free_extension_slot(em);
     if (!slot) return 0;
 
@@ -364,6 +428,10 @@ int extended_mind_unregister_extension(
 ) {
     if (!em) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    extended_mind_heartbeat("extended_min_unregister_extension", 0.0f);
+
+
     cognitive_extension_t* ext = find_extension(em, extension_id);
     if (!ext) return -1;
 
@@ -381,6 +449,10 @@ int extended_mind_get_extension(
 ) {
     if (!em || !ext) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    extended_mind_heartbeat("extended_min_get_extension", 0.0f);
+
+
     cognitive_extension_t* found = find_extension((extended_mind_t*)em, extension_id);
     if (!found) return -1;
 
@@ -395,6 +467,10 @@ int extended_mind_update_extension_stats(
     float latency_ms
 ) {
     if (!em) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    extended_mind_heartbeat("extended_min_update_extension_sta", 0.0f);
+
 
     cognitive_extension_t* ext = find_extension(em, extension_id);
     if (!ext) return -1;
@@ -437,6 +513,10 @@ int extended_mind_update_extension_stats(
 }
 
 uint32_t extended_mind_extension_count(const extended_mind_t* em) {
+    /* Phase 8: Heartbeat at operation start */
+    extended_mind_heartbeat("extended_min_extension_count", 0.0f);
+
+
     return em ? em->extension_count : 0;
 }
 
@@ -446,8 +526,18 @@ uint32_t extended_mind_count_by_type(
 ) {
     if (!em) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    extended_mind_heartbeat("extended_min_count_by_type", 0.0f);
+
+
     uint32_t count = 0;
     for (uint32_t i = 0; i < COLLECTIVE_MAX_EXTENSIONS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_EXTENSIONS > 256) {
+            extended_mind_heartbeat("extended_min_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_EXTENSIONS);
+        }
+
         if (em->extensions[i].extension_id != 0 &&
             em->extensions[i].type == type) {
             count++;
@@ -468,6 +558,10 @@ uint32_t extended_mind_query(
 ) {
     if (!em || !request || !query) return 0;
     if (query_size > EXT_QUERY_MAX_SIZE) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    extended_mind_heartbeat("extended_min_query", 0.0f);
+
 
     pending_query_t* slot = find_free_query_slot(em);
     if (!slot) return 0;
@@ -498,6 +592,10 @@ int extended_mind_query_sync(
     if (!em || !query || !response || !response_size) return -1;
 
     /* Find best extension of type */
+    /* Phase 8: Heartbeat at operation start */
+    extended_mind_heartbeat("extended_min_query_sync", 0.0f);
+
+
     cognitive_extension_t* ext = find_best_extension_of_type(em, type);
     if (!ext || !ext->query_fn) return -1;
 
@@ -531,6 +629,10 @@ int extended_mind_cancel_query(
 ) {
     if (!em) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    extended_mind_heartbeat("extended_min_cancel_query", 0.0f);
+
+
     pending_query_t* q = find_query(em, query_id);
     if (!q) return -1;
 
@@ -546,6 +648,10 @@ ext_query_status_t extended_mind_get_query_status(
     uint32_t query_id
 ) {
     if (!em) return EXT_QUERY_FAILED;
+
+    /* Phase 8: Heartbeat at operation start */
+    extended_mind_heartbeat("extended_min_get_query_status", 0.0f);
+
 
     pending_query_t* q = find_query((extended_mind_t*)em, query_id);
     if (!q) return EXT_QUERY_FAILED;
@@ -564,6 +670,10 @@ uint32_t extended_mind_offload(
     size_t task_size
 ) {
     if (!em || !request || !task) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    extended_mind_heartbeat("extended_min_offload", 0.0f);
+
 
     pending_offload_t* slot = find_free_offload_slot(em);
     if (!slot) return 0;
@@ -592,6 +702,10 @@ int extended_mind_check_offload(
     size_t* result_size
 ) {
     if (!em) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    extended_mind_heartbeat("extended_min_check_offload", 0.0f);
+
 
     pending_offload_t* o = find_offload(em, offload_id);
     if (!o) return -1;
@@ -623,6 +737,10 @@ int extended_mind_get_state(
     if (!em || !state) return -1;
 
     *state = em->state;
+    /* Phase 8: Heartbeat at operation start */
+    extended_mind_heartbeat("extended_min_get_state", 0.0f);
+
+
     return 0;
 }
 
@@ -632,6 +750,10 @@ float extended_mind_get_capacity(
 ) {
     if (!em) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    extended_mind_heartbeat("extended_min_get_capacity", 0.0f);
+
+
     if ((int)type < 0) {
         /* All types */
         return em->state.total_cognitive_capacity;
@@ -640,6 +762,12 @@ float extended_mind_get_capacity(
     /* Specific type */
     float capacity = 0.0f;
     for (uint32_t i = 0; i < COLLECTIVE_MAX_EXTENSIONS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_EXTENSIONS > 256) {
+            extended_mind_heartbeat("extended_min_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_EXTENSIONS);
+        }
+
         cognitive_extension_t* ext = (cognitive_extension_t*)&em->extensions[i];
         if (ext->extension_id == 0) continue;
         if (ext->type != type) continue;
@@ -660,6 +788,10 @@ uint32_t extended_mind_best_extension(
 ) {
     if (!em) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    extended_mind_heartbeat("extended_min_best_extension", 0.0f);
+
+
     cognitive_extension_t* best = find_best_extension_of_type(em, type);
     return best ? best->extension_id : 0;
 }
@@ -671,10 +803,20 @@ uint32_t extended_mind_best_extension(
 int extended_mind_update(extended_mind_t* em) {
     if (!em || !em->initialized) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    extended_mind_heartbeat("extended_min_update", 0.0f);
+
+
     uint64_t now = get_timestamp_us();
 
     /* Check extension health */
     for (uint32_t i = 0; i < COLLECTIVE_MAX_EXTENSIONS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_EXTENSIONS > 256) {
+            extended_mind_heartbeat("extended_min_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_EXTENSIONS);
+        }
+
         cognitive_extension_t* ext = &em->extensions[i];
         if (ext->extension_id == 0) continue;
 
@@ -692,6 +834,12 @@ int extended_mind_update(extended_mind_t* em) {
 
     /* Process pending queries */
     for (uint32_t i = 0; i < 64; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 64 > 256) {
+            extended_mind_heartbeat("extended_min_loop",
+                             (float)(i + 1) / (float)64);
+        }
+
         pending_query_t* q = &em->queries[i];
         if (!q->active) continue;
 
@@ -777,6 +925,12 @@ int extended_mind_update(extended_mind_t* em) {
     float total_reliability = 0.0f;
     uint32_t count = 0;
     for (uint32_t i = 0; i < COLLECTIVE_MAX_EXTENSIONS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_EXTENSIONS > 256) {
+            extended_mind_heartbeat("extended_min_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_EXTENSIONS);
+        }
+
         if (em->extensions[i].extension_id != 0) {
             total_reliability += em->extensions[i].reliability;
             count++;
@@ -803,11 +957,19 @@ int extended_mind_get_stats(
     if (!em || !stats) return -1;
 
     *stats = em->stats;
+    /* Phase 8: Heartbeat at operation start */
+    extended_mind_heartbeat("extended_min_get_stats", 0.0f);
+
+
     return 0;
 }
 
 void extended_mind_reset_stats(extended_mind_t* em) {
     if (!em) return;
+    /* Phase 8: Heartbeat at operation start */
+    extended_mind_heartbeat("extended_min_reset_stats", 0.0f);
+
+
     memset(&em->stats, 0, sizeof(em->stats));
 }
 
@@ -820,6 +982,10 @@ void extended_mind_dump(const extended_mind_t* em) {
         printf("Extended Mind: NULL\n");
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    extended_mind_heartbeat("extended_min_dump", 0.0f);
+
 
     printf("=== Extended Mind State ===\n");
     printf("Initialized: %s\n", em->initialized ? "yes" : "no");
@@ -836,6 +1002,12 @@ void extended_mind_dump(const extended_mind_t* em) {
 
     printf("\nRegistered Extensions:\n");
     for (uint32_t i = 0; i < COLLECTIVE_MAX_EXTENSIONS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_EXTENSIONS > 256) {
+            extended_mind_heartbeat("extended_min_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_EXTENSIONS);
+        }
+
         const cognitive_extension_t* ext = &em->extensions[i];
         if (ext->extension_id == 0) continue;
 
@@ -876,9 +1048,19 @@ void extended_mind_dump(const extended_mind_t* em) {
  */
 int extended_mind_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    extended_mind_heartbeat("extended_min_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Extended_Mind");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                extended_mind_heartbeat("extended_min_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             printf("Extended Mind self-knowledge: %s\n", self->observations[i]);
         }
     }

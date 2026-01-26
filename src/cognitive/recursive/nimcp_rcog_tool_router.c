@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_rcog_tool_router_health_agent = NULL;
  * @brief Set health agent for rcog_tool_router heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void rcog_tool_router_set_health_agent(nimcp_health_agent_t* agent) {
+void rcog_tool_router_set_health_agent(nimcp_health_agent_t* agent) {
     g_rcog_tool_router_health_agent = agent;
 }
 
@@ -157,6 +157,12 @@ static int find_tool_index(const rcog_tool_router_t* router, const char* name) {
     if (!router || !name) return -1;
 
     for (size_t i = 0; i < RCOG_ROUTER_MAX_TOOLS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && RCOG_ROUTER_MAX_TOOLS > 256) {
+            rcog_tool_router_heartbeat("rcog_tool_ro_loop",
+                             (float)(i + 1) / (float)RCOG_ROUTER_MAX_TOOLS);
+        }
+
         if (router->tools[i].in_use &&
             strncmp(router->tools[i].def.name, name, RCOG_ROUTER_MAX_TOOL_NAME) == 0) {
             return (int)i;
@@ -169,6 +175,12 @@ static int find_category_index(const rcog_tool_router_t* router, const char* nam
     if (!router || !name) return -1;
 
     for (size_t i = 0; i < RCOG_ROUTER_MAX_CATEGORIES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && RCOG_ROUTER_MAX_CATEGORIES > 256) {
+            rcog_tool_router_heartbeat("rcog_tool_ro_loop",
+                             (float)(i + 1) / (float)RCOG_ROUTER_MAX_CATEGORIES);
+        }
+
         if (router->categories[i].in_use &&
             strncmp(router->categories[i].name, name, RCOG_ROUTER_MAX_CATEGORY_NAME) == 0) {
             return (int)i;
@@ -238,6 +250,10 @@ static void update_tool_stats(rcog_tool_entry_t* tool, bool success, uint64_t du
  *===========================================================================*/
 
 rcog_tool_router_config_t rcog_tool_router_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_default_config", 0.0f);
+
+
     rcog_tool_router_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -271,6 +287,10 @@ rcog_tool_router_config_t rcog_tool_router_default_config(void) {
 rcog_tool_router_t* rcog_tool_router_create(
     const rcog_tool_router_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_create", 0.0f);
+
+
     rcog_tool_router_t* router = nimcp_calloc(1, sizeof(rcog_tool_router_t));
     if (!router) {
 
@@ -303,6 +323,10 @@ rcog_tool_router_t* rcog_tool_router_create(
 }
 
 rcog_tool_router_t* rcog_tool_router_create_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_create_default", 0.0f);
+
+
     return rcog_tool_router_create(NULL);
 }
 
@@ -310,7 +334,17 @@ void rcog_tool_router_destroy(rcog_tool_router_t* router) {
     if (!router) return;
 
     /* Free async handles */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_destroy", 0.0f);
+
+
     for (size_t i = 0; i < router->num_async_handles; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && router->num_async_handles > 256) {
+            rcog_tool_router_heartbeat("rcog_tool_ro_loop",
+                             (float)(i + 1) / (float)router->num_async_handles);
+        }
+
         if (router->async_handles[i]) {
             nimcp_free(router->async_handles[i]);
         }
@@ -318,6 +352,12 @@ void rcog_tool_router_destroy(rcog_tool_router_t* router) {
 
     /* Free tool parameters */
     for (size_t i = 0; i < RCOG_ROUTER_MAX_TOOLS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && RCOG_ROUTER_MAX_TOOLS > 256) {
+            rcog_tool_router_heartbeat("rcog_tool_ro_loop",
+                             (float)(i + 1) / (float)RCOG_ROUTER_MAX_TOOLS);
+        }
+
         if (router->tools[i].in_use && router->tools[i].def.params) {
             nimcp_free(router->tools[i].def.params);
         }
@@ -340,6 +380,10 @@ int rcog_tool_router_connect_context_store(
 ) {
     if (!router) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_connect_context_stor", 0.0f);
+
+
     nimcp_mutex_lock(router->mutex);
     router->context_store = store;
     nimcp_mutex_unlock(router->mutex);
@@ -353,6 +397,10 @@ int rcog_tool_router_connect_bio_async(
 ) {
     if (!router) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_connect_bio_async", 0.0f);
+
+
     nimcp_mutex_lock(router->mutex);
     router->bio_async = bio_async;
     nimcp_mutex_unlock(router->mutex);
@@ -365,6 +413,10 @@ int rcog_tool_router_connect_immune(
     struct rcog_immune_bridge* immune
 ) {
     if (!router) return RCOG_ERROR_NULL_POINTER;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_connect_immune", 0.0f);
+
 
     nimcp_mutex_lock(router->mutex);
     router->immune = immune;
@@ -385,6 +437,10 @@ int rcog_tool_router_register(
     if (strlen(def->name) == 0) return RCOG_ERROR_INVALID_CONFIG;
     if (!def->handler) return RCOG_ERROR_INVALID_CONFIG;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_register", 0.0f);
+
+
     nimcp_mutex_lock(router->mutex);
 
     /* Check if already registered */
@@ -397,6 +453,12 @@ int rcog_tool_router_register(
     /* Find free slot */
     int slot = -1;
     for (size_t i = 0; i < RCOG_ROUTER_MAX_TOOLS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && RCOG_ROUTER_MAX_TOOLS > 256) {
+            rcog_tool_router_heartbeat("rcog_tool_ro_loop",
+                             (float)(i + 1) / (float)RCOG_ROUTER_MAX_TOOLS);
+        }
+
         if (!router->tools[i].in_use) {
             slot = (int)i;
             break;
@@ -455,8 +517,18 @@ size_t rcog_tool_router_register_batch(
 ) {
     if (!router || !defs) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_register_batch", 0.0f);
+
+
     size_t registered = 0;
     for (size_t i = 0; i < num_tools; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_tools > 256) {
+            rcog_tool_router_heartbeat("rcog_tool_ro_loop",
+                             (float)(i + 1) / (float)num_tools);
+        }
+
         if (rcog_tool_router_register(router, &defs[i]) == RCOG_OK) {
             registered++;
         }
@@ -470,6 +542,10 @@ int rcog_tool_router_unregister(
     const char* tool_name
 ) {
     if (!router || !tool_name) return RCOG_ERROR_NULL_POINTER;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_unregister", 0.0f);
+
 
     nimcp_mutex_lock(router->mutex);
 
@@ -493,6 +569,12 @@ int rcog_tool_router_unregister(
         if (cat_idx >= 0) {
             rcog_category_entry_t* cat = &router->categories[cat_idx];
             for (size_t i = 0; i < cat->num_tools; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && cat->num_tools > 256) {
+                    rcog_tool_router_heartbeat("rcog_tool_ro_loop",
+                                     (float)(i + 1) / (float)cat->num_tools);
+                }
+
                 if (strncmp(cat->tools[i], tool_name, RCOG_ROUTER_MAX_TOOL_NAME) == 0) {
                     /* Shift remaining */
                     for (size_t j = i; j < cat->num_tools - 1; j++) {
@@ -523,6 +605,10 @@ bool rcog_tool_router_has_tool(
     const char* tool_name
 ) {
     if (!router || !tool_name) return false;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_has_tool", 0.0f);
+
+
     return find_tool_index(router, tool_name) >= 0;
 }
 
@@ -532,6 +618,10 @@ int rcog_tool_router_get_tool(
     rcog_tool_def_t* def
 ) {
     if (!router || !tool_name || !def) return RCOG_ERROR_NULL_POINTER;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_get_tool", 0.0f);
+
 
     int idx = find_tool_index(router, tool_name);
     if (idx < 0) return RCOG_ERROR_TOOL_NOT_FOUND;
@@ -552,6 +642,10 @@ int rcog_tool_router_register_category(
 ) {
     if (!router || !category) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_register_category", 0.0f);
+
+
     nimcp_mutex_lock(router->mutex);
 
     /* Check if exists */
@@ -563,6 +657,12 @@ int rcog_tool_router_register_category(
     /* Find free slot */
     int slot = -1;
     for (size_t i = 0; i < RCOG_ROUTER_MAX_CATEGORIES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && RCOG_ROUTER_MAX_CATEGORIES > 256) {
+            rcog_tool_router_heartbeat("rcog_tool_ro_loop",
+                             (float)(i + 1) / (float)RCOG_ROUTER_MAX_CATEGORIES);
+        }
+
         if (!router->categories[i].in_use) {
             slot = (int)i;
             break;
@@ -601,6 +701,10 @@ int rcog_tool_router_get_category_tools(
 
     *num_tools = 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_get_category_tools", 0.0f);
+
+
     int idx = find_category_index(router, category);
     if (idx < 0) return RCOG_ERROR_CONTEXT_NOT_FOUND;
 
@@ -624,6 +728,10 @@ int rcog_tool_router_list_categories(
 
     *num_categories = 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_list_categories", 0.0f);
+
+
     for (size_t i = 0; i < RCOG_ROUTER_MAX_CATEGORIES && *num_categories < max_categories; i++) {
         if (router->categories[i].in_use) {
             strncpy(categories[*num_categories], router->categories[i].name,
@@ -646,6 +754,10 @@ int rcog_tool_router_invoke(
 ) {
     if (!router || !request || !result) return RCOG_ERROR_NULL_POINTER;
     if (!request->tool_name) return RCOG_ERROR_INVALID_CONFIG;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_invoke", 0.0f);
+
 
     memset(result, 0, sizeof(*result));
     result->tool_name = request->tool_name;
@@ -784,6 +896,10 @@ int rcog_tool_router_invoke_async(
     /* For now, just do sync and call callback */
     /* Full async would require thread pool integration */
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_invoke_async", 0.0f);
+
+
     rcog_tool_result_t result;
     int err = rcog_tool_router_invoke(router, request, &result);
 
@@ -806,6 +922,10 @@ int rcog_tool_router_invoke_streaming(
     }
 
     /* For now, invoke sync and send as single chunk */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_invoke_streaming", 0.0f);
+
+
     rcog_tool_result_t result;
     int err = rcog_tool_router_invoke(router, request, &result);
 
@@ -825,12 +945,20 @@ int rcog_tool_router_cancel(
 ) {
     if (!router || !handle) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_cancel", 0.0f);
+
+
     handle->cancelled = true;
     return RCOG_OK;
 }
 
 void rcog_tool_router_free_result(rcog_tool_result_t* result) {
     if (!result) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_free_result", 0.0f);
+
 
     if (result->output) {
         nimcp_free(result->output);
@@ -850,6 +978,10 @@ bool rcog_tool_router_can_access(
 ) {
     if (!router || !tool_name) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_can_access", 0.0f);
+
+
     int idx = find_tool_index(router, tool_name);
     if (idx < 0) return false;
 
@@ -866,6 +998,10 @@ int rcog_tool_router_get_accessible_tools(
     if (!router || !tools || !num_tools) return RCOG_ERROR_NULL_POINTER;
 
     *num_tools = 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_get_accessible_tools", 0.0f);
+
 
     for (size_t i = 0; i < RCOG_ROUTER_MAX_TOOLS && *num_tools < max_tools; i++) {
         if (router->tools[i].in_use &&
@@ -886,6 +1022,10 @@ int rcog_tool_router_get_min_tier(
 ) {
     if (!router || !tool_name || !tier) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_get_min_tier", 0.0f);
+
+
     int idx = find_tool_index(router, tool_name);
     if (idx < 0) return RCOG_ERROR_TOOL_NOT_FOUND;
 
@@ -898,6 +1038,10 @@ int rcog_tool_router_set_access_policy(
     const rcog_access_policy_t* policy
 ) {
     if (!router || !policy) return RCOG_ERROR_NULL_POINTER;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_set_access_policy", 0.0f);
+
 
     nimcp_mutex_lock(router->mutex);
     router->config.access_policy = *policy;
@@ -919,6 +1063,10 @@ int rcog_tool_router_list_tools(
     if (!router || !tools || !num_tools) return RCOG_ERROR_NULL_POINTER;
 
     *num_tools = 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_list_tools", 0.0f);
+
 
     for (size_t i = 0; i < RCOG_ROUTER_MAX_TOOLS && *num_tools < max_tools; i++) {
         if (router->tools[i].in_use) {
@@ -942,6 +1090,10 @@ int rcog_tool_router_list_tools_by_tier(
 
     *num_tools = 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_list_tools_by_tier", 0.0f);
+
+
     for (size_t i = 0; i < RCOG_ROUTER_MAX_TOOLS && *num_tools < max_tools; i++) {
         if (router->tools[i].in_use && router->tools[i].def.min_tier == tier) {
             strncpy(tools[*num_tools], router->tools[i].def.name,
@@ -964,6 +1116,10 @@ int rcog_tool_router_search_tools(
 
     *num_tools = 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_search_tools", 0.0f);
+
+
     for (size_t i = 0; i < RCOG_ROUTER_MAX_TOOLS && *num_tools < max_tools; i++) {
         if (router->tools[i].in_use) {
             /* Simple substring match (could be enhanced with glob pattern) */
@@ -980,6 +1136,10 @@ int rcog_tool_router_search_tools(
 
 size_t rcog_tool_router_get_tool_count(const rcog_tool_router_t* router) {
     if (!router) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_get_tool_count", 0.0f);
+
+
     return router->num_tools;
 }
 
@@ -1111,6 +1271,10 @@ static rcog_error_t builtin_output_text(
 size_t rcog_tool_router_register_l1_builtins(rcog_tool_router_t* router) {
     if (!router) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_register_l1_builtins", 0.0f);
+
+
     size_t registered = 0;
 
     /* Register L1 reasoning category */
@@ -1151,6 +1315,10 @@ size_t rcog_tool_router_register_l1_builtins(rcog_tool_router_t* router) {
 size_t rcog_tool_router_register_l2_builtins(rcog_tool_router_t* router) {
     if (!router) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_register_l2_builtins", 0.0f);
+
+
     size_t registered = 0;
 
     /* Register L2 perception category */
@@ -1181,6 +1349,10 @@ size_t rcog_tool_router_register_l2_builtins(rcog_tool_router_t* router) {
 size_t rcog_tool_router_register_l3_builtins(rcog_tool_router_t* router) {
     if (!router) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_register_l3_builtins", 0.0f);
+
+
     size_t registered = 0;
 
     /* Register L3 action category */
@@ -1201,6 +1373,10 @@ size_t rcog_tool_router_register_l3_builtins(rcog_tool_router_t* router) {
 }
 
 size_t rcog_tool_router_register_all_builtins(rcog_tool_router_t* router) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_register_all_builtin", 0.0f);
+
+
     size_t total = 0;
     total += rcog_tool_router_register_l1_builtins(router);
     total += rcog_tool_router_register_l2_builtins(router);
@@ -1218,6 +1394,10 @@ int rcog_tool_router_get_stats(
 ) {
     if (!router || !stats) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(((rcog_tool_router_t*)router)->mutex);
     *stats = router->stats;
     nimcp_mutex_unlock(((rcog_tool_router_t*)router)->mutex);
@@ -1232,6 +1412,10 @@ int rcog_tool_router_get_tool_stats(
 ) {
     if (!router || !tool_name || !stats) return RCOG_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_get_tool_stats", 0.0f);
+
+
     int idx = find_tool_index(router, tool_name);
     if (idx < 0) return RCOG_ERROR_TOOL_NOT_FOUND;
 
@@ -1242,6 +1426,10 @@ int rcog_tool_router_get_tool_stats(
 void rcog_tool_router_reset_stats(rcog_tool_router_t* router) {
     if (!router) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(router->mutex);
 
     memset(&router->stats, 0, sizeof(router->stats));
@@ -1249,6 +1437,12 @@ void rcog_tool_router_reset_stats(rcog_tool_router_t* router) {
     router->stats.categories_registered = router->num_categories;
 
     for (size_t i = 0; i < RCOG_ROUTER_MAX_TOOLS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && RCOG_ROUTER_MAX_TOOLS > 256) {
+            rcog_tool_router_heartbeat("rcog_tool_ro_loop",
+                             (float)(i + 1) / (float)RCOG_ROUTER_MAX_TOOLS);
+        }
+
         if (router->tools[i].in_use) {
             memset(&router->tools[i].stats, 0, sizeof(rcog_tool_stats_t));
             strncpy(router->tools[i].stats.tool_name, router->tools[i].def.name,
@@ -1268,6 +1462,10 @@ rcog_tool_def_t rcog_tool_def_create(
     rcog_tool_fn handler,
     rcog_capability_tier_t tier
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_rcog_tool_def_create", 0.0f);
+
+
     rcog_tool_def_t def;
     memset(&def, 0, sizeof(def));
 
@@ -1289,6 +1487,10 @@ rcog_tool_request_t rcog_tool_request_create(
     size_t input_size,
     rcog_capability_tier_t tier
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_rcog_tool_request_cr", 0.0f);
+
+
     rcog_tool_request_t req;
     memset(&req, 0, sizeof(req));
 
@@ -1331,9 +1533,19 @@ const char* rcog_tool_io_type_name(rcog_tool_io_type_t type) {
 
 int rcog_tool_router_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_tool_router_heartbeat("rcog_tool_ro_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Recursive_Cognition_Tool_Router_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                rcog_tool_router_heartbeat("rcog_tool_ro_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Log self-knowledge observations */
         }
     }

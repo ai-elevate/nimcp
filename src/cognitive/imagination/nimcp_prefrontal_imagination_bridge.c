@@ -36,7 +36,7 @@ static nimcp_health_agent_t* g_prefrontal_imagination_bridge_health_agent = NULL
  * @brief Set health agent for prefrontal_imagination_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void prefrontal_imagination_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void prefrontal_imagination_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_prefrontal_imagination_bridge_health_agent = agent;
 }
 
@@ -60,6 +60,10 @@ int prefrontal_imagination_default_config(prefrontal_imagination_config_t* confi
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
 
     config->goal_relevance_threshold = PFC_IMAG_DEFAULT_GOAL_RELEVANCE;
     config->goal_constraint_weight = 0.6f;
@@ -94,6 +98,10 @@ int prefrontal_imagination_validate_config(const prefrontal_imagination_config_t
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
 
     if (config->goal_relevance_threshold < 0.0f || config->goal_relevance_threshold > 1.0f) {
         return -1;
@@ -133,6 +141,10 @@ int prefrontal_imagination_validate_config(const prefrontal_imagination_config_t
 prefrontal_imagination_bridge_t* prefrontal_imagination_bridge_create(
     const prefrontal_imagination_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_create", 0.0f);
+
+
     prefrontal_imagination_bridge_t* bridge = nimcp_calloc(
         1, sizeof(prefrontal_imagination_bridge_t));
     if (!bridge) {
@@ -201,6 +213,10 @@ void prefrontal_imagination_bridge_destroy(prefrontal_imagination_bridge_t* brid
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         prefrontal_imagination_disconnect_bio_async(bridge);
     }
@@ -239,6 +255,10 @@ int prefrontal_imagination_reset(prefrontal_imagination_bridge_t* bridge) {
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -295,6 +315,10 @@ int prefrontal_imagination_connect_prefrontal(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->prefrontal = prefrontal;
@@ -322,6 +346,10 @@ int prefrontal_imagination_connect_imagination(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->imagination = imagination;
@@ -340,12 +368,20 @@ int prefrontal_imagination_connect_imagination(
 int prefrontal_imagination_disconnect_prefrontal(
     prefrontal_imagination_bridge_t* bridge)
 {
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
+
     return prefrontal_imagination_connect_prefrontal(bridge, NULL);
 }
 
 int prefrontal_imagination_disconnect_imagination(
     prefrontal_imagination_bridge_t* bridge)
 {
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
+
     return prefrontal_imagination_connect_imagination(bridge, NULL);
 }
 
@@ -353,6 +389,10 @@ bool prefrontal_imagination_is_connected(
     const prefrontal_imagination_bridge_t* bridge)
 {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
+
     return bridge->base.bridge_active;
 }
 
@@ -372,6 +412,10 @@ int prefrontal_imagination_update(
 
     }
     if (!bridge->base.bridge_active) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -417,6 +461,10 @@ int prefrontal_imagination_compute_pfc_effects(
     /* In full implementation, would call prefrontal adapter APIs */
 
     /* Set inhibition based on mode */
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
+
     if (bridge->current_mode == PFC_IMAG_MODE_INHIBITED) {
         bridge->pfc_to_imag.inhibition_strength = 1.0f;
     } else {
@@ -452,6 +500,10 @@ int prefrontal_imagination_compute_imag_effects(
     }
 
     /* Default WM and goal suggestions */
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
+
     bridge->imag_to_pfc.wm_update_suggested = false;
     bridge->imag_to_pfc.new_goal_suggested = false;
     bridge->imag_to_pfc.confidence = 0.0f;
@@ -469,6 +521,10 @@ int prefrontal_imagination_apply_effects(prefrontal_imagination_bridge_t* bridge
     }
 
     /* Apply PFC effects to imagination */
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
+
     if (bridge->imagination && bridge->pfc_to_imag.options_requested) {
         /* Would call imagination APIs to generate options */
         bridge->stats.option_requests++;
@@ -515,6 +571,10 @@ int prefrontal_imagination_set_mode(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->current_mode != mode) {
@@ -534,6 +594,10 @@ pfc_imagination_mode_t prefrontal_imagination_get_mode(
     const prefrontal_imagination_bridge_t* bridge)
 {
     if (!bridge) return PFC_IMAG_MODE_INHIBITED;
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
+
     return bridge->current_mode;
 }
 
@@ -549,6 +613,10 @@ int prefrontal_imagination_set_inhibition(
 
     }
     if (strength < 0.0f || strength > 1.0f) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->pfc_to_imag.inhibition_strength = strength;
@@ -569,6 +637,10 @@ int prefrontal_imagination_update_goals(
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
+
     if (num_goals > PFC_IMAG_MAX_TRACKED_GOALS) {
         num_goals = PFC_IMAG_MAX_TRACKED_GOALS;
     }
@@ -577,6 +649,12 @@ int prefrontal_imagination_update_goals(
 
     bridge->pfc_to_imag.num_active_goals = num_goals;
     for (uint32_t i = 0; i < num_goals; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_goals > 256) {
+            prefrontal_imagination_bridge_heartbeat("prefrontal_i_loop",
+                             (float)(i + 1) / (float)num_goals);
+        }
+
         bridge->pfc_to_imag.active_goal_ids[i] = goal_ids[i];
     }
 
@@ -603,6 +681,10 @@ int prefrontal_imagination_request_options(
 
     }
     if (!bridge->base.bridge_active) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
+
     if (num_options == 0 || num_options > PFC_IMAG_MAX_OPTIONS) {
         num_options = bridge->config.default_num_options;
     }
@@ -638,12 +720,22 @@ int prefrontal_imagination_get_options(
 {
     if (!bridge || !num_options) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
+
     uint32_t count = bridge->imag_to_pfc.num_options_generated;
     if (count > *num_options) {
         count = *num_options;
     }
 
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            prefrontal_imagination_bridge_heartbeat("prefrontal_i_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (scenario_ids) scenario_ids[i] = bridge->imag_to_pfc.option_scenario_ids[i];
         if (values) values[i] = bridge->imag_to_pfc.option_values[i];
         if (risks) risks[i] = bridge->imag_to_pfc.option_risks[i];
@@ -666,6 +758,10 @@ int prefrontal_imagination_get_best_option(
 
     }
     if (bridge->imag_to_pfc.num_options_generated == 0) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
 
     uint32_t best_idx = bridge->imag_to_pfc.best_option_idx;
     if (scenario_id) {
@@ -694,6 +790,10 @@ int prefrontal_imagination_update_wm_context(
 
     }
     if (!bridge->config.enable_wm_context) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -726,6 +826,10 @@ int prefrontal_imagination_get_wm_suggestion(
     }
     if (!bridge->imag_to_pfc.wm_update_suggested) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
+
     if (content) {
         *content = bridge->imag_to_pfc.wm_update_content;
     }
@@ -747,6 +851,10 @@ int prefrontal_imagination_accept_wm_update(
 
     }
     if (!bridge->imag_to_pfc.wm_update_suggested) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -772,6 +880,10 @@ int prefrontal_imagination_get_stats(
     *stats = bridge->stats;
 
     /* Compute derived stats */
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
+
     if (stats->option_requests > 0) {
         stats->avg_options_per_request =
             (float)stats->options_generated / (float)stats->option_requests;
@@ -789,6 +901,10 @@ int prefrontal_imagination_reset_stats(prefrontal_imagination_bridge_t* bridge) 
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -803,6 +919,10 @@ int prefrontal_imagination_get_pfc_effects(
     if (!bridge || !effects) return -1;
 
     *effects = bridge->pfc_to_imag;
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
+
     return 0;
 }
 
@@ -813,6 +933,10 @@ int prefrontal_imagination_get_imag_effects(
     if (!bridge || !effects) return -1;
 
     *effects = bridge->imag_to_pfc;
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
+
     return 0;
 }
 
@@ -831,6 +955,10 @@ int prefrontal_imagination_connect_bio_async(
 
     }
     if (bridge->base.bio_async_enabled) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
 
     int result = bridge_base_connect_bio_async(&bridge->base);
     if (result == 0) {
@@ -852,6 +980,10 @@ int prefrontal_imagination_disconnect_bio_async(
     }
     if (!bridge->base.bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
+
     int result = bridge_base_disconnect_bio_async(&bridge->base);
     if (result == 0) {
         LOG_INFO("Prefrontal-imagination bridge disconnected from bio-async");
@@ -864,6 +996,10 @@ bool prefrontal_imagination_is_bio_async_connected(
     const prefrontal_imagination_bridge_t* bridge)
 {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -888,6 +1024,10 @@ int prefrontal_imagination_process_messages(
      * - BIO_MSG_WM_UPDATE_REQUEST
      */
 
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
+
+
     return 0;
 }
 
@@ -902,9 +1042,19 @@ int prefrontal_imagination_process_messages(
  */
 int prefrontal_imagination_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    prefrontal_imagination_bridge_heartbeat("prefrontal_i_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Prefrontal_Imagination_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                prefrontal_imagination_bridge_heartbeat("prefrontal_i_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Prefrontal Imagination Bridge self-knowledge: %s", self->observations[i]);
         }
     }

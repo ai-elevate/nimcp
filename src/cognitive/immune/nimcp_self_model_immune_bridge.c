@@ -38,7 +38,7 @@ static nimcp_health_agent_t* g_self_model_immune_bridge_health_agent = NULL;
  * @brief Set health agent for self_model_immune_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void self_model_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void self_model_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_self_model_immune_bridge_health_agent = agent;
 }
 
@@ -83,6 +83,12 @@ static brain_inflammation_level_t get_max_inflammation_level(
     brain_inflammation_level_t max_level = INFLAMMATION_NONE;
 
     for (size_t i = 0; i < immune->inflammation_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && immune->inflammation_count > 256) {
+            self_model_immune_bridge_heartbeat("self_model_i_loop",
+                             (float)(i + 1) / (float)immune->inflammation_count);
+        }
+
         if (immune->inflammation_sites[i].level > max_level) {
             max_level = immune->inflammation_sites[i].level;
         }
@@ -143,6 +149,12 @@ static float get_inflammation_duration_days(const brain_immune_system_t* immune)
     uint64_t oldest_time = current_time;
 
     for (size_t i = 0; i < immune->inflammation_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && immune->inflammation_count > 256) {
+            self_model_immune_bridge_heartbeat("self_model_i_loop",
+                             (float)(i + 1) / (float)immune->inflammation_count);
+        }
+
         if (immune->inflammation_sites[i].start_time < oldest_time) {
             oldest_time = immune->inflammation_sites[i].start_time;
         }
@@ -167,6 +179,10 @@ int self_model_immune_default_config(self_model_immune_config_t* config) {
     }
 
     /* All features enabled by default */
+    /* Phase 8: Heartbeat at operation start */
+    self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_de", 0.0f);
+
+
     config->enable_interoceptive_signaling = true;
     config->enable_self_model_health_update = true;
     config->enable_capability_modulation = true;
@@ -198,6 +214,10 @@ self_model_immune_bridge_t* self_model_immune_bridge_create(
     }
 
     /* Allocate bridge */
+    /* Phase 8: Heartbeat at operation start */
+    self_model_immune_bridge_heartbeat("self_model_i_create", 0.0f);
+
+
     self_model_immune_bridge_t* bridge = (self_model_immune_bridge_t*)
         nimcp_malloc(sizeof(self_model_immune_bridge_t));
     if (!bridge) {
@@ -246,6 +266,10 @@ void self_model_immune_bridge_destroy(self_model_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
+    /* Phase 8: Heartbeat at operation start */
+    self_model_immune_bridge_heartbeat("self_model_i_destroy", 0.0f);
+
+
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
     }
@@ -272,6 +296,10 @@ int self_model_immune_generate_interoceptive_signals(
     }
     if (!bridge->enable_interoceptive_signaling) return 0;
     if (!bridge->immune_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_ge", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -325,6 +353,10 @@ int self_model_immune_update_health_status(
     }
     if (!bridge->enable_self_model_health_update) return 0;
     if (!bridge->immune_system || !bridge->self_model) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_up", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -392,6 +424,10 @@ int self_model_immune_modulate_capabilities(
     if (!bridge->enable_capability_modulation) return 0;
     if (!bridge->immune_system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_mo", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     self_model_immune_modulation_t* updates = &bridge->self_model_updates;
@@ -434,6 +470,10 @@ int self_model_immune_integrate_chronic_illness(
     }
     if (!bridge->enable_identity_integration) return 0;
     if (!bridge->immune_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_in", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -489,6 +529,10 @@ int self_model_immune_trigger_adaptive_behavior(
     }
     if (!bridge->self_model) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_tr", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     self_awareness_immune_effects_t* effects = &bridge->self_awareness_effects;
@@ -525,6 +569,10 @@ int self_model_immune_boost_from_health_beliefs(
     }
     if (!bridge->enable_health_belief_immune_effects) return 0;
     if (!bridge->immune_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_bo", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -573,6 +621,10 @@ int self_model_immune_suppress_from_health_anxiety(
     }
     if (!bridge->immune_system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_su", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     self_awareness_immune_effects_t* effects = &bridge->self_awareness_effects;
@@ -607,6 +659,10 @@ int self_model_immune_accelerate_from_acceptance(
 
     }
     if (!bridge->immune_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_ac", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -647,6 +703,10 @@ int self_model_immune_bridge_update(
     /* Apply all bidirectional effects */
 
     /* Immune → Self-Model */
+    /* Phase 8: Heartbeat at operation start */
+    self_model_immune_bridge_heartbeat("self_model_i_update", 0.0f);
+
+
     self_model_immune_generate_interoceptive_signals(bridge);
     self_model_immune_update_health_status(bridge);
     self_model_immune_modulate_capabilities(bridge);
@@ -672,6 +732,10 @@ int self_model_immune_get_interoceptive_signals(
 ) {
     if (!bridge || !signals) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_ge", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(signals, &bridge->interoceptive_signals, sizeof(interoceptive_immune_signals_t));
     pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
@@ -685,6 +749,10 @@ int self_model_immune_get_self_model_updates(
 ) {
     if (!bridge || !updates) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_ge", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(updates, &bridge->self_model_updates, sizeof(self_model_immune_modulation_t));
     pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
@@ -696,6 +764,10 @@ self_health_status_t self_model_immune_get_health_status(
     const self_model_immune_bridge_t* bridge
 ) {
     if (!bridge) return HEALTH_STATUS_EXCELLENT;
+    /* Phase 8: Heartbeat at operation start */
+    self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_ge", 0.0f);
+
+
     return bridge->self_model_updates.perceived_health_status;
 }
 
@@ -703,6 +775,10 @@ bool self_model_immune_is_aware_of_sickness(
     const self_model_immune_bridge_t* bridge
 ) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_is", 0.0f);
+
+
     return bridge->interoceptive_signals.consciously_aware_of_illness;
 }
 
@@ -712,6 +788,10 @@ float self_model_immune_get_interoceptive_accuracy(
     if (!bridge || !bridge->immune_system) return 0.0f;
 
     /* Compute actual health state */
+    /* Phase 8: Heartbeat at operation start */
+    self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_ge", 0.0f);
+
+
     float actual_health = compute_health_score(bridge->immune_system);
 
     /* Compute perceived health state */
@@ -749,6 +829,10 @@ int self_model_immune_connect_bio_async(self_model_immune_bridge_t* bridge) {
     }
     if (bridge->base.bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_co", 0.0f);
+
+
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_SELF_MODEL,
         .module_name = SELF_MODEL_IMMUNE_MODULE_NAME,
@@ -780,6 +864,10 @@ int self_model_immune_disconnect_bio_async(self_model_immune_bridge_t* bridge) {
     }
     if (!bridge->base.bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_di", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -795,6 +883,10 @@ int self_model_immune_disconnect_bio_async(self_model_immune_bridge_t* bridge) {
  */
 bool self_model_immune_is_bio_async_connected(const self_model_immune_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_is", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -814,9 +906,19 @@ bool self_model_immune_is_bio_async_connected(const self_model_immune_bridge_t* 
  */
 int self_model_immune_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_qu", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Self_Model_Immune_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                self_model_immune_bridge_heartbeat("self_model_i_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Self model immune bridge self-knowledge: %s", self->observations[i]);
         }
     }

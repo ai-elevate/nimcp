@@ -41,7 +41,7 @@ static nimcp_health_agent_t* g_mirror_snn_bridge_health_agent = NULL;
  * @brief Set health agent for mirror_snn_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_snn_bridge_health_agent = agent;
 }
 
@@ -200,6 +200,12 @@ static int handle_population_activity(
     if (pop->population_id == bridge->output_pop) {
         /* Find or create action entry */
         for (uint32_t i = 0; i < bridge->num_actions; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->num_actions > 256) {
+                mirror_snn_bridge_heartbeat("mirror_snn_b_loop",
+                                 (float)(i + 1) / (float)bridge->num_actions);
+            }
+
             if (bridge->actions[i].action_id == pop->population_id) {
                 bridge->actions[i].spike_count = pop->n_active;
                 bridge->actions[i].last_spike_us = get_time_us();
@@ -216,6 +222,10 @@ static int handle_population_activity(
 //=============================================================================
 
 mirror_snn_config_t mirror_snn_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_config_de", 0.0f);
+
+
     mirror_snn_config_t config = {
         .input_dim = MIRROR_SNN_INPUT_DIM,
         .hidden_dim = 256,
@@ -248,6 +258,10 @@ mirror_snn_config_t mirror_snn_config_default(void) {
 }
 
 mirror_snn_bridge_t* mirror_snn_create(const mirror_snn_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_create", 0.0f);
+
+
     mirror_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(mirror_snn_bridge_t));
     if (!bridge) {
         NIMCP_LOG_ERROR(LOG_MODULE, "Failed to allocate bridge");
@@ -318,6 +332,12 @@ mirror_snn_bridge_t* mirror_snn_create(const mirror_snn_config_t* config) {
 
     /* Initialize action states */
     for (uint32_t i = 0; i < MIRROR_SNN_MAX_ACTIONS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MIRROR_SNN_MAX_ACTIONS > 256) {
+            mirror_snn_bridge_heartbeat("mirror_snn_b_loop",
+                             (float)(i + 1) / (float)MIRROR_SNN_MAX_ACTIONS);
+        }
+
         init_action_state(&bridge->actions[i], i);
     }
 
@@ -337,6 +357,10 @@ mirror_snn_bridge_t* mirror_snn_create_with_network(
 
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_create_wi", 0.0f);
+
 
     mirror_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(mirror_snn_bridge_t));
     if (!bridge) {
@@ -361,6 +385,12 @@ mirror_snn_bridge_t* mirror_snn_create_with_network(
     bridge->last_update_us = get_time_us();
 
     for (uint32_t i = 0; i < MIRROR_SNN_MAX_ACTIONS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MIRROR_SNN_MAX_ACTIONS > 256) {
+            mirror_snn_bridge_heartbeat("mirror_snn_b_loop",
+                             (float)(i + 1) / (float)MIRROR_SNN_MAX_ACTIONS);
+        }
+
         init_action_state(&bridge->actions[i], i);
     }
 
@@ -371,6 +401,10 @@ void mirror_snn_destroy(mirror_snn_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect integrations */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_destroy", 0.0f);
+
+
     mirror_snn_disconnect_bio_async(bridge);
     mirror_snn_disconnect_immune(bridge);
 
@@ -400,6 +434,10 @@ int mirror_snn_connect_bio_async(mirror_snn_bridge_t* bridge) {
     }
     if (bridge->bio_async_connected) return 0;  /* Already connected */
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_connect_b", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Connect SNN to bio-async */
@@ -428,6 +466,10 @@ int mirror_snn_connect_bio_async(mirror_snn_bridge_t* bridge) {
 int mirror_snn_disconnect_bio_async(mirror_snn_bridge_t* bridge) {
     if (!bridge || !bridge->bio_async_connected) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_disconnec", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     snn_network_disconnect_bio_async(bridge->snn);
     bridge->bio_async_connected = false;
@@ -438,11 +480,19 @@ int mirror_snn_disconnect_bio_async(mirror_snn_bridge_t* bridge) {
 }
 
 bool mirror_snn_is_bio_async_connected(const mirror_snn_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_is_bio_as", 0.0f);
+
+
     return bridge && bridge->bio_async_connected;
 }
 
 int mirror_snn_process_messages(mirror_snn_bridge_t* bridge, int timeout_ms) {
     if (!bridge || !bridge->bio_async_connected) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_process_m", 0.0f);
+
+
     return snn_bio_async_process(bridge->snn, timeout_ms);
 }
 
@@ -452,6 +502,10 @@ int mirror_snn_process_messages(mirror_snn_bridge_t* bridge, int timeout_ms) {
 
 int mirror_snn_connect_immune(mirror_snn_bridge_t* bridge, void* immune_system) {
     if (!bridge || !immune_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_connect_i", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -468,6 +522,10 @@ int mirror_snn_connect_immune(mirror_snn_bridge_t* bridge, void* immune_system) 
 int mirror_snn_disconnect_immune(mirror_snn_bridge_t* bridge) {
     if (!bridge || !bridge->immune_connected) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_disconnec", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->immune_system = NULL;
     bridge->immune_connected = false;
@@ -478,6 +536,10 @@ int mirror_snn_disconnect_immune(mirror_snn_bridge_t* bridge) {
 
 int mirror_snn_apply_immune_modulation(mirror_snn_bridge_t* bridge) {
     if (!bridge || !bridge->immune_connected) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_apply_imm", 0.0f);
+
+
     return snn_network_apply_immune_modulation(bridge->snn);
 }
 
@@ -494,6 +556,10 @@ int mirror_snn_encode_observation(
 ) {
     if (!bridge || !features || feature_dim == 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_encode_ob", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = MIRROR_SNN_STATE_ENCODING;
 
@@ -502,6 +568,12 @@ int mirror_snn_encode_observation(
                    feature_dim : bridge->config.input_dim;
     float scaled[MIRROR_SNN_INPUT_DIM];
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            mirror_snn_bridge_heartbeat("mirror_snn_b_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         scaled[i] = features[i] * observation_strength * bridge->config.encoding_gain;
     }
     for (uint32_t i = dim; i < bridge->config.input_dim; i++) {
@@ -538,6 +610,10 @@ int mirror_snn_encode_execution(
 ) {
     if (!bridge || !motor_command || command_dim == 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_encode_ex", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = MIRROR_SNN_STATE_ENCODING;
 
@@ -546,6 +622,12 @@ int mirror_snn_encode_execution(
                    command_dim : bridge->config.input_dim;
     float scaled[MIRROR_SNN_INPUT_DIM];
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            mirror_snn_bridge_heartbeat("mirror_snn_b_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         scaled[i] = motor_command[i] * execution_strength * bridge->config.encoding_gain;
     }
     for (uint32_t i = dim; i < bridge->config.input_dim; i++) {
@@ -569,6 +651,10 @@ int mirror_snn_set_input_tensor(
     const nimcp_tensor_t* input
 ) {
     if (!bridge || !input) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_set_input", 0.0f);
+
+
     return snn_network_set_input_tensor(bridge->snn, input);
 }
 
@@ -584,6 +670,10 @@ int mirror_snn_simulate(mirror_snn_bridge_t* bridge, float duration_ms) {
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_simulate", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = MIRROR_SNN_STATE_SIMULATING;
@@ -610,6 +700,10 @@ int mirror_snn_get_recognized_action(
     float* confidence
 ) {
     if (!bridge || !action_id || !confidence) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_get_recog", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -669,6 +763,10 @@ int mirror_snn_get_action_confidences(
 ) {
     if (!bridge || !confidences) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_get_actio", 0.0f);
+
+
     uint32_t n = num_actions < bridge->config.output_dim ?
                  num_actions : bridge->config.output_dim;
 
@@ -683,6 +781,12 @@ int mirror_snn_get_action_confidences(
     /* Count confident actions and normalize */
     int count = 0;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            mirror_snn_bridge_heartbeat("mirror_snn_b_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         /* Normalize: rate/max_rate then apply gain and clamp */
         float normalized = confidences[i] / max_rate;
         normalized = clamp_f(normalized * bridge->config.confidence_gain, 0.0f, 1.0f);
@@ -699,6 +803,10 @@ float mirror_snn_get_population_rate(
     float window_ms
 ) {
     if (!bridge) return -1.0f;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_get_popul", 0.0f);
+
+
     return snn_network_get_population_rate(bridge->snn, action_id, window_ms);
 }
 
@@ -707,6 +815,10 @@ int mirror_snn_get_output_tensor(
     nimcp_tensor_t* output
 ) {
     if (!bridge || !output) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_get_outpu", 0.0f);
+
+
     return snn_network_get_output_tensor(bridge->snn, output);
 }
 
@@ -726,6 +838,10 @@ int mirror_snn_forward(
     if (!bridge || !features) return -1;
 
     /* Encode observation */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_forward", 0.0f);
+
+
     int spikes = mirror_snn_encode_observation(
         bridge, action_id, features, feature_dim, observation_strength);
     if (spikes < 0) return spikes;
@@ -751,6 +867,10 @@ int mirror_snn_set_training(mirror_snn_bridge_t* bridge, bool enable) {
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_set_train", 0.0f);
+
+
     return snn_network_set_training(bridge->snn, enable);
 }
 
@@ -762,6 +882,10 @@ int mirror_snn_apply_stdp(mirror_snn_bridge_t* bridge) {
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_apply_std", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = MIRROR_SNN_STATE_TRAINING;
@@ -784,6 +908,10 @@ int mirror_snn_apply_reward(mirror_snn_bridge_t* bridge, float reward) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_apply_rew", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = MIRROR_SNN_STATE_TRAINING;
 
@@ -805,6 +933,10 @@ float mirror_snn_train_step(
     if (!bridge || !features) return -1.0f;
 
     /* Create target tensor */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_train_ste", 0.0f);
+
+
     float targets[MIRROR_SNN_OUTPUT_DIM] = {0};
     if (target_action < bridge->config.output_dim) {
         targets[target_action] = 1.0f;
@@ -834,6 +966,10 @@ int mirror_snn_register_spike_callback(
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_register_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->spike_callback = callback;
     bridge->spike_callback_data = user_data;
@@ -853,6 +989,10 @@ int mirror_snn_register_recognition_callback(
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_register_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->recognition_callback = callback;
     bridge->recognition_callback_data = user_data;
@@ -872,6 +1012,10 @@ int mirror_snn_register_training_callback(
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_register_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->training_callback = callback;
     bridge->training_callback_data = user_data;
@@ -891,6 +1035,10 @@ int mirror_snn_register_health_callback(
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_register_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->health_callback = callback;
     bridge->health_callback_data = user_data;
@@ -908,6 +1056,10 @@ int mirror_snn_get_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_get_state", 0.0f);
+
+
     nimcp_mutex_lock(((mirror_snn_bridge_t*)bridge)->base.mutex);
 
     state->state = bridge->state;
@@ -923,6 +1075,12 @@ int mirror_snn_get_state(
     state->active_observations = 0;
     state->recognized_actions = 0;
     for (uint32_t i = 0; i < MIRROR_SNN_MAX_ACTIONS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MIRROR_SNN_MAX_ACTIONS > 256) {
+            mirror_snn_bridge_heartbeat("mirror_snn_b_loop",
+                             (float)(i + 1) / (float)MIRROR_SNN_MAX_ACTIONS);
+        }
+
         if (bridge->actions[i].status == MIRROR_SNN_ACTION_OBSERVED) {
             state->active_observations++;
         } else if (bridge->actions[i].status == MIRROR_SNN_ACTION_RECOGNIZED) {
@@ -944,6 +1102,10 @@ int mirror_snn_get_action_state(
 ) {
     if (!bridge || !state || action_id >= MIRROR_SNN_MAX_ACTIONS) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_get_actio", 0.0f);
+
+
     nimcp_mutex_lock(((mirror_snn_bridge_t*)bridge)->base.mutex);
     *state = bridge->actions[action_id];
     nimcp_mutex_unlock(((mirror_snn_bridge_t*)bridge)->base.mutex);
@@ -956,6 +1118,10 @@ int mirror_snn_get_stats(
     mirror_snn_stats_t* stats
 ) {
     if (!bridge || !stats) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_get_stats", 0.0f);
+
 
     nimcp_mutex_lock(((mirror_snn_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
@@ -976,6 +1142,10 @@ int mirror_snn_get_stats(
 
 void mirror_snn_reset_stats(mirror_snn_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_reset_sta", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -983,6 +1153,10 @@ void mirror_snn_reset_stats(mirror_snn_bridge_t* bridge) {
 
 snn_state_health_t mirror_snn_check_health(const mirror_snn_bridge_t* bridge) {
     if (!bridge) return SNN_STATE_NAN_DETECTED;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_check_hea", 0.0f);
+
+
     return snn_network_check_health(bridge->snn);
 }
 
@@ -998,6 +1172,10 @@ int mirror_snn_update(mirror_snn_bridge_t* bridge, float dt_ms) {
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_update", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1030,6 +1208,12 @@ int mirror_snn_update(mirror_snn_bridge_t* bridge, float dt_ms) {
 
     /* Update firing rates for tracked actions */
     for (uint32_t i = 0; i < bridge->num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_actions > 256) {
+            mirror_snn_bridge_heartbeat("mirror_snn_b_loop",
+                             (float)(i + 1) / (float)bridge->num_actions);
+        }
+
         if (bridge->actions[i].status != MIRROR_SNN_ACTION_INACTIVE) {
             bridge->actions[i].firing_rate =
                 snn_network_get_population_rate(bridge->snn, i, 100.0f);
@@ -1051,11 +1235,21 @@ int mirror_snn_reset(mirror_snn_bridge_t* bridge) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_reset", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     snn_network_reset(bridge->snn);
 
     for (uint32_t i = 0; i < MIRROR_SNN_MAX_ACTIONS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MIRROR_SNN_MAX_ACTIONS > 256) {
+            mirror_snn_bridge_heartbeat("mirror_snn_b_loop",
+                             (float)(i + 1) / (float)MIRROR_SNN_MAX_ACTIONS);
+        }
+
         init_action_state(&bridge->actions[i], i);
     }
 
@@ -1070,6 +1264,10 @@ int mirror_snn_reset(mirror_snn_bridge_t* bridge) {
 //=============================================================================
 
 snn_network_t* mirror_snn_get_network(mirror_snn_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_get_netwo", 0.0f);
+
+
     return bridge ? bridge->snn : NULL;
 }
 
@@ -1078,5 +1276,9 @@ int mirror_snn_get_snn_stats(
     snn_stats_t* stats
 ) {
     if (!bridge || !stats) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_get_snn_s", 0.0f);
+
+
     return snn_network_get_stats(bridge->snn, stats);
 }

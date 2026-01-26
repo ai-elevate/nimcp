@@ -44,7 +44,7 @@ static nimcp_health_agent_t* g_attention_wm_bridge_health_agent = NULL;
  * @brief Set health agent for attention_wm_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void attention_wm_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void attention_wm_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_attention_wm_bridge_health_agent = agent;
 }
 
@@ -108,6 +108,12 @@ static int find_item_unlocked(const attention_wm_bridge_t* bridge, uint64_t item
     }
 
     for (size_t i = 0; i < bridge->item_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->item_capacity > 256) {
+            attention_wm_bridge_heartbeat("attention_wm_loop",
+                             (float)(i + 1) / (float)bridge->item_capacity);
+        }
+
         if (bridge->items[i].valid && bridge->items[i].item_id == item_id) {
             return (int)i;
         }
@@ -127,6 +133,12 @@ static int find_lowest_priority_unlocked(const attention_wm_bridge_t* bridge) {
     float lowest_priority = 2.0f;  // Higher than max priority
 
     for (size_t i = 0; i < bridge->item_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->item_capacity > 256) {
+            attention_wm_bridge_heartbeat("attention_wm_loop",
+                             (float)(i + 1) / (float)bridge->item_capacity);
+        }
+
         if (bridge->items[i].valid && bridge->items[i].priority < lowest_priority) {
             lowest_priority = bridge->items[i].priority;
             lowest_idx = (int)i;
@@ -144,6 +156,12 @@ static int find_free_slot_unlocked(const attention_wm_bridge_t* bridge) {
     }
 
     for (size_t i = 0; i < bridge->item_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->item_capacity > 256) {
+            attention_wm_bridge_heartbeat("attention_wm_loop",
+                             (float)(i + 1) / (float)bridge->item_capacity);
+        }
+
         if (!bridge->items[i].valid) {
             return (int)i;
         }
@@ -174,6 +192,12 @@ static float compute_avg_priority_unlocked(const attention_wm_bridge_t* bridge) 
 
     float sum = 0.0f;
     for (size_t i = 0; i < bridge->item_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->item_capacity > 256) {
+            attention_wm_bridge_heartbeat("attention_wm_loop",
+                             (float)(i + 1) / (float)bridge->item_capacity);
+        }
+
         if (bridge->items[i].valid) {
             sum += bridge->items[i].priority;
         }
@@ -192,6 +216,10 @@ int attention_wm_bridge_default_config(attention_wm_config_t* config) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_wm_bridge_heartbeat("attention_wm_default_config", 0.0f);
+
+
     config->capacity_limit = DEFAULT_CAPACITY_LIMIT;
     config->attention_threshold = DEFAULT_ATTENTION_THRESHOLD;
     config->decay_rate = DEFAULT_DECAY_RATE;
@@ -203,6 +231,10 @@ attention_wm_bridge_t* attention_wm_bridge_create(
     const attention_wm_config_t* config
 ) {
     // Allocate bridge structure
+    /* Phase 8: Heartbeat at operation start */
+    attention_wm_bridge_heartbeat("attention_wm_create", 0.0f);
+
+
     attention_wm_bridge_t* bridge = nimcp_calloc(1, sizeof(attention_wm_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -236,6 +268,12 @@ attention_wm_bridge_t* attention_wm_bridge_create(
 
     // Initialize all items as invalid
     for (size_t i = 0; i < bridge->item_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->item_capacity > 256) {
+            attention_wm_bridge_heartbeat("attention_wm_loop",
+                             (float)(i + 1) / (float)bridge->item_capacity);
+        }
+
         bridge->items[i].valid = false;
     }
 
@@ -265,6 +303,10 @@ void attention_wm_bridge_destroy(attention_wm_bridge_t* bridge) {
     }
 
     // Free items array
+    /* Phase 8: Heartbeat at operation start */
+    attention_wm_bridge_heartbeat("attention_wm_destroy", 0.0f);
+
+
     if (bridge->items) {
         nimcp_free(bridge->items);
         bridge->items = NULL;
@@ -294,6 +336,10 @@ int attention_wm_gate_entry(
     if (!bridge || !bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_wm_bridge_heartbeat("attention_wm_attention_wm_gate_en", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -356,6 +402,10 @@ int attention_wm_on_focus_shift(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_wm_bridge_heartbeat("attention_wm_attention_wm_on_focu", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     // Apply decay to old focus item (if it exists and is not 0)
@@ -397,6 +447,10 @@ int attention_wm_update_priority(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_wm_bridge_heartbeat("attention_wm_attention_wm_update_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     int idx = find_item_unlocked(bridge, item_id);
@@ -425,6 +479,10 @@ int attention_wm_get_attended_items(
     if (!bridge || !bridge->initialized || !items || max_count == 0) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_wm_bridge_heartbeat("attention_wm_attention_wm_get_att", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -459,6 +517,10 @@ int attention_wm_bridge_get_stats(
     }
 
     // Cast away const to acquire mutex (thread-safe read)
+    /* Phase 8: Heartbeat at operation start */
+    attention_wm_bridge_heartbeat("attention_wm_get_stats", 0.0f);
+
+
     attention_wm_bridge_t* mutable_bridge = (attention_wm_bridge_t*)bridge;
 
     nimcp_mutex_lock(mutable_bridge->base.mutex);

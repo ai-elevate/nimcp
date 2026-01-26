@@ -38,7 +38,7 @@ static nimcp_health_agent_t* g_game_theory_snn_bridge_health_agent = NULL;
  * @brief Set health agent for game_theory_snn_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void game_theory_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void game_theory_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_game_theory_snn_bridge_health_agent = agent;
 }
 
@@ -112,12 +112,24 @@ static void softmax(float* values, uint32_t n) {
 
     float sum = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            game_theory_snn_bridge_heartbeat("game_theory__loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         values[i] = expf(values[i] - max_val);
         sum += values[i];
     }
 
     if (sum > 0.0f) {
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                game_theory_snn_bridge_heartbeat("game_theory__loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             values[i] /= sum;
         }
     }
@@ -128,6 +140,10 @@ static void softmax(float* values, uint32_t n) {
 //=============================================================================
 
 game_theory_snn_config_t game_theory_snn_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_conf", 0.0f);
+
+
     game_theory_snn_config_t config = {
         .num_dimensions = GT_DIM_COUNT,
         .neurons_per_dim = GAME_THEORY_SNN_NEURONS_PER_DIM,
@@ -163,6 +179,10 @@ game_theory_snn_config_t game_theory_snn_config_default(void) {
 }
 
 game_theory_snn_bridge_t* game_theory_snn_create(const game_theory_snn_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_crea", 0.0f);
+
+
     game_theory_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(game_theory_snn_bridge_t));
     if (!bridge) {
 
@@ -222,6 +242,12 @@ game_theory_snn_bridge_t* game_theory_snn_create(const game_theory_snn_config_t*
 
     /* Initialize dimension states */
     for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            game_theory_snn_bridge_heartbeat("game_theory__loop",
+                             (float)(i + 1) / (float)bridge->config.num_dimensions);
+        }
+
         bridge->dim_states[i].activation = 0.0f;
         bridge->dim_states[i].accumulated_evidence = 0.0f;
         bridge->dim_states[i].spike_count = 0;
@@ -253,6 +279,10 @@ game_theory_snn_bridge_t* game_theory_snn_create(const game_theory_snn_config_t*
 void game_theory_snn_destroy(game_theory_snn_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_dest", 0.0f);
+
+
     if (bridge->snn) {
         snn_network_destroy(bridge->snn);
     }
@@ -269,6 +299,10 @@ void game_theory_snn_destroy(game_theory_snn_bridge_t* bridge) {
 int game_theory_snn_reset(game_theory_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_rese", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset SNN network */
@@ -278,6 +312,12 @@ int game_theory_snn_reset(game_theory_snn_bridge_t* bridge) {
 
     /* Reset dimension states */
     for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            game_theory_snn_bridge_heartbeat("game_theory__loop",
+                             (float)(i + 1) / (float)bridge->config.num_dimensions);
+        }
+
         bridge->dim_states[i].activation = 0.0f;
         bridge->dim_states[i].accumulated_evidence = 0.0f;
         bridge->dim_states[i].spike_count = 0;
@@ -318,6 +358,10 @@ int game_theory_snn_encode_state(
     if (!bridge || !dimensions) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_enco", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = GT_SNN_STATE_ENCODING;
 
@@ -326,6 +370,12 @@ int game_theory_snn_encode_state(
 
     /* Population encoding for each dimension */
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            game_theory_snn_bridge_heartbeat("game_theory__loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         float value = clamp_f(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
@@ -336,6 +386,12 @@ int game_theory_snn_encode_state(
 
         /* Population encode */
         for (uint32_t n = 0; n < neurons_per_dim; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && neurons_per_dim > 256) {
+                game_theory_snn_bridge_heartbeat("game_theory__loop",
+                                 (float)(n + 1) / (float)neurons_per_dim);
+            }
+
             float preferred = (float)n / (neurons_per_dim - 1);
             float diff = value - preferred;
             float tuning = expf(-diff * diff / 0.1f);
@@ -351,6 +407,12 @@ int game_theory_snn_encode_state(
     /* Detect state change */
     float change_magnitude = 0.0f;
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            game_theory_snn_bridge_heartbeat("game_theory__loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         float diff = dimensions[d] - bridge->prev_state[d];
         change_magnitude += diff * diff;
         bridge->prev_state[d] = dimensions[d];
@@ -373,6 +435,10 @@ int game_theory_snn_encode_payoff(
     uint32_t num_actions
 ) {
     if (!bridge || !payoffs) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_enco", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -404,6 +470,10 @@ int game_theory_snn_encode_opponent(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_enco", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[GT_DIM_COUNT] = {0};
@@ -421,6 +491,10 @@ int game_theory_snn_encode_cooperation(
     float defection
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_enco", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -442,6 +516,10 @@ int game_theory_snn_simulate(game_theory_snn_bridge_t* bridge, float duration_ms
     if (!bridge) return -1;
     if (duration_ms <= 0.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_simu", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = GT_SNN_STATE_SIMULATING;
 
@@ -455,6 +533,12 @@ int game_theory_snn_simulate(game_theory_snn_bridge_t* bridge, float duration_ms
     }
 
     for (uint32_t s = 0; s < steps; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && steps > 256) {
+            game_theory_snn_bridge_heartbeat("game_theory__loop",
+                             (float)(s + 1) / (float)steps);
+        }
+
         if (bridge->snn) {
             snn_network_step(bridge->snn, dt);
         }
@@ -462,6 +546,12 @@ int game_theory_snn_simulate(game_theory_snn_bridge_t* bridge, float duration_ms
         /* Update evidence integration */
         float decay = expf(-dt / bridge->config.integration_tau_ms);
         for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+                game_theory_snn_bridge_heartbeat("game_theory__loop",
+                                 (float)(d + 1) / (float)bridge->config.num_dimensions);
+            }
+
             bridge->dim_states[d].accumulated_evidence *= decay;
             bridge->dim_states[d].accumulated_evidence +=
                 bridge->dim_states[d].activation * dt / bridge->config.integration_tau_ms;
@@ -524,6 +614,10 @@ int game_theory_snn_simulate(game_theory_snn_bridge_t* bridge, float duration_ms
 
 int game_theory_snn_step(game_theory_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_step", 0.0f);
+
+
     return game_theory_snn_simulate(bridge, bridge->config.dt_ms);
 }
 
@@ -533,6 +627,10 @@ int game_theory_snn_forward(
     uint32_t input_count
 ) {
     if (!bridge || !inputs) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_forw", 0.0f);
+
 
     int spike_count = game_theory_snn_encode_state(bridge, inputs, input_count);
     if (spike_count < 0) return -1;
@@ -554,6 +652,10 @@ int game_theory_snn_get_decision(
 ) {
     if (!bridge || !decision) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *decision = bridge->last_decision;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -569,8 +671,18 @@ int game_theory_snn_get_activations(
     if (!bridge || !activations) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            game_theory_snn_bridge_heartbeat("game_theory__loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         activations[d] = bridge->dim_states[d].activation;
     }
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -583,6 +695,10 @@ bool game_theory_snn_check_equilibrium(
     float* distance
 ) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_chec", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     float dist = bridge->last_decision.equilibrium_distance;
@@ -601,6 +717,10 @@ bool game_theory_snn_check_cooperation(
 ) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_chec", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_decision.cooperation_level;
     if (cooperation_level) {
@@ -618,10 +738,20 @@ bool game_theory_snn_check_state_change(
 ) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_chec", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     /* Calculate magnitude from prev_state differences */
     float mag = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            game_theory_snn_bridge_heartbeat("game_theory__loop",
+                             (float)(d + 1) / (float)bridge->config.num_dimensions);
+        }
+
         float diff = bridge->dim_states[d].activation - bridge->prev_state[d];
         mag += diff * diff;
     }
@@ -648,6 +778,10 @@ int game_theory_snn_get_dim_state(
     if (!bridge || !state) return -1;
     if (dim >= bridge->config.num_dimensions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->dim_states[dim];
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -661,6 +795,10 @@ int game_theory_snn_get_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
@@ -672,6 +810,12 @@ int game_theory_snn_get_state(
     state->active_dimensions = 0;
     state->total_activity = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            game_theory_snn_bridge_heartbeat("game_theory__loop",
+                             (float)(d + 1) / (float)bridge->config.num_dimensions);
+        }
+
         if (bridge->dim_states[d].activation > 0.1f) {
             state->active_dimensions++;
         }
@@ -685,6 +829,10 @@ int game_theory_snn_get_state(
 int game_theory_snn_get_stats(game_theory_snn_bridge_t* bridge, game_theory_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -694,6 +842,10 @@ int game_theory_snn_get_stats(game_theory_snn_bridge_t* bridge, game_theory_snn_
 
 int game_theory_snn_reset_stats(game_theory_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_rese", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(game_theory_snn_stats_t));
@@ -705,6 +857,10 @@ int game_theory_snn_reset_stats(game_theory_snn_bridge_t* bridge) {
 float game_theory_snn_get_cooperation(game_theory_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float cooperation = bridge->last_decision.cooperation_level;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -715,9 +871,19 @@ float game_theory_snn_get_cooperation(game_theory_snn_bridge_t* bridge) {
 float game_theory_snn_get_total_activity(game_theory_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float total = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            game_theory_snn_bridge_heartbeat("game_theory__loop",
+                             (float)(d + 1) / (float)bridge->config.num_dimensions);
+        }
+
         total += bridge->dim_states[d].activation;
     }
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -736,6 +902,10 @@ int game_theory_snn_register_equilibrium_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_regi", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->equilibrium_callback = callback;
     bridge->equilibrium_callback_data = user_data;
@@ -751,6 +921,10 @@ int game_theory_snn_register_decision_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_regi", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->decision_callback = callback;
     bridge->decision_callback_data = user_data;
@@ -765,6 +939,10 @@ int game_theory_snn_register_cooperation_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_regi", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->cooperation_callback = callback;
@@ -782,6 +960,10 @@ int game_theory_snn_bio_async_connect(game_theory_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_bio_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
@@ -793,6 +975,10 @@ int game_theory_snn_bio_async_connect(game_theory_snn_bridge_t* bridge) {
 int game_theory_snn_bio_async_disconnect(game_theory_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_bio_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -802,6 +988,10 @@ int game_theory_snn_bio_async_disconnect(game_theory_snn_bridge_t* bridge) {
 
 bool game_theory_snn_is_bio_async_connected(game_theory_snn_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_is_b", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;

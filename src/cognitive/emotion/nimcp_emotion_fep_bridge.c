@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_emotion_fep_bridge_health_agent = NULL;
  * @brief Set health agent for emotion_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void emotion_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void emotion_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_emotion_fep_bridge_health_agent = agent;
 }
 
@@ -45,6 +45,10 @@ static inline void emotion_fep_bridge_heartbeat(const char* operation, float pro
 
 
 int emotion_fep_bridge_default_config(emotion_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_fep_bridge_heartbeat("emotion_fep__default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->pe_valence_scaling = 1.0f;
     config->pe_arousal_scaling = EMOTION_FEP_AROUSAL_PE_SCALING;
@@ -62,6 +66,10 @@ int emotion_fep_bridge_default_config(emotion_fep_config_t* config) {
 }
 
 emotion_fep_bridge_t* emotion_fep_bridge_create(const emotion_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_fep_bridge_heartbeat("emotion_fep__create", 0.0f);
+
+
     emotion_fep_bridge_t* bridge = nimcp_malloc(sizeof(emotion_fep_bridge_t));
     if (!bridge) {
 
@@ -80,6 +88,10 @@ emotion_fep_bridge_t* emotion_fep_bridge_create(const emotion_fep_config_t* conf
 
 void emotion_fep_bridge_destroy(emotion_fep_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    emotion_fep_bridge_heartbeat("emotion_fep__destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) emotion_fep_bridge_disconnect_bio_async(bridge);
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
@@ -88,6 +100,10 @@ void emotion_fep_bridge_destroy(emotion_fep_bridge_t* bridge) {
 }
 
 int emotion_fep_bridge_connect_fep(emotion_fep_bridge_t* bridge, fep_system_t* fep) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_fep_bridge_heartbeat("emotion_fep__connect_fep", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -96,6 +112,10 @@ int emotion_fep_bridge_connect_fep(emotion_fep_bridge_t* bridge, fep_system_t* f
 }
 
 int emotion_fep_bridge_connect_emotion(emotion_fep_bridge_t* bridge, emotion_recognition_system_t* emotion) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_fep_bridge_heartbeat("emotion_fep__connect_emotion", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && emotion, NIMCP_ERROR_NULL_POINTER, "bridge or emotion is NULL");
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->emotion_system = emotion;
@@ -104,6 +124,10 @@ int emotion_fep_bridge_connect_emotion(emotion_fep_bridge_t* bridge, emotion_rec
 }
 
 int emotion_fep_bridge_disconnect(emotion_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_fep_bridge_heartbeat("emotion_fep__disconnect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -113,6 +137,10 @@ int emotion_fep_bridge_disconnect(emotion_fep_bridge_t* bridge) {
 }
 
 int emotion_fep_generate_valenced_pe(emotion_fep_bridge_t* bridge, float pe_magnitude) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_fep_bridge_heartbeat("emotion_fep__emotion_fep_generate", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_pe_emotion_generation) return 0;
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -126,6 +154,10 @@ int emotion_fep_generate_valenced_pe(emotion_fep_bridge_t* bridge, float pe_magn
 }
 
 int emotion_fep_modulate_precision_by_intensity(emotion_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_fep_bridge_heartbeat("emotion_fep__emotion_fep_modulate", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_precision_intensity) return 0;
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -135,6 +167,10 @@ int emotion_fep_modulate_precision_by_intensity(emotion_fep_bridge_t* bridge) {
 }
 
 int emotion_fep_apply_emotion_precision_modulation(emotion_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_fep_bridge_heartbeat("emotion_fep__emotion_fep_apply_em", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_emotion_precision) return 0;
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -145,6 +181,10 @@ int emotion_fep_apply_emotion_precision_modulation(emotion_fep_bridge_t* bridge)
 }
 
 int emotion_fep_apply_emotion_learning_modulation(emotion_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_fep_bridge_heartbeat("emotion_fep__emotion_fep_apply_em", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_emotion_learning) return 0;
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -154,6 +194,10 @@ int emotion_fep_apply_emotion_learning_modulation(emotion_fep_bridge_t* bridge) 
 }
 
 int emotion_fep_bridge_update(emotion_fep_bridge_t* bridge, uint64_t delta_ms) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_fep_bridge_heartbeat("emotion_fep__update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     emotion_fep_modulate_precision_by_intensity(bridge);
     emotion_fep_apply_emotion_precision_modulation(bridge);
@@ -162,6 +206,10 @@ int emotion_fep_bridge_update(emotion_fep_bridge_t* bridge, uint64_t delta_ms) {
 }
 
 int emotion_fep_bridge_get_state(const emotion_fep_bridge_t* bridge, emotion_fep_state_t* state) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_fep_bridge_heartbeat("emotion_fep__get_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -170,6 +218,10 @@ int emotion_fep_bridge_get_state(const emotion_fep_bridge_t* bridge, emotion_fep
 }
 
 int emotion_fep_bridge_get_stats(const emotion_fep_bridge_t* bridge, emotion_fep_stats_t* stats) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_fep_bridge_heartbeat("emotion_fep__get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -178,6 +230,10 @@ int emotion_fep_bridge_get_stats(const emotion_fep_bridge_t* bridge, emotion_fep
 }
 
 int emotion_fep_bridge_connect_bio_async(emotion_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_fep_bridge_heartbeat("emotion_fep__connect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
@@ -193,6 +249,10 @@ int emotion_fep_bridge_connect_bio_async(emotion_fep_bridge_t* bridge) {
 
 int emotion_fep_bridge_disconnect_bio_async(emotion_fep_bridge_t* bridge) {
     if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    emotion_fep_bridge_heartbeat("emotion_fep__disconnect_bio_async", 0.0f);
+
+
     if (bridge->base.bio_ctx) bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_ctx = NULL;
     bridge->base.bio_async_enabled = false;
@@ -200,6 +260,10 @@ int emotion_fep_bridge_disconnect_bio_async(emotion_fep_bridge_t* bridge) {
 }
 
 bool emotion_fep_bridge_is_bio_async_connected(const emotion_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_fep_bridge_heartbeat("emotion_fep__is_bio_async_connect", 0.0f);
+
+
     return bridge ? bridge->base.bio_async_enabled : false;
 }
 
@@ -214,9 +278,19 @@ bool emotion_fep_bridge_is_bio_async_connected(const emotion_fep_bridge_t* bridg
  */
 int emotion_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    emotion_fep_bridge_heartbeat("emotion_fep__query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Emotion_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                emotion_fep_bridge_heartbeat("emotion_fep__loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Emotion FEP Bridge self-knowledge: %s", self->observations[i]);
         }
     }

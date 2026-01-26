@@ -91,13 +91,12 @@ typedef struct nimcp_world_model world_model_multimodal_t;
 /** Default KG write interval in milliseconds */
 #define BRAIN_CYCLE_DEFAULT_KG_WRITE_MS      5000
 
-/** Bio-async message types for coordinator events */
-#define BIO_MSG_CYCLE_REGISTERED          0x0C01
-#define BIO_MSG_CYCLE_UNREGISTERED        0x0C02
-#define BIO_MSG_CYCLE_HEALTH_CHANGED      0x0C03
-#define BIO_MSG_CYCLE_STALL_DETECTED      0x0C04
-#define BIO_MSG_CYCLE_DEPENDENCY_VIOLATED 0x0C05
-#define BIO_MSG_CYCLE_COORDINATOR_STATS   0x0C06
+/*
+ * Bio-async message types for coordinator events.
+ * See bio_message_type_t enum in nimcp_bio_messages.h (range 0x6F00 - 0x6F0F):
+ *   BIO_MSG_CYCLE_HEALTH_CHANGED, BIO_MSG_CYCLE_STALL_DETECTED,
+ *   BIO_MSG_CYCLE_DEPENDENCY_VIOLATED, BIO_MSG_CYCLE_COORDINATOR_STATS
+ */
 
 //=============================================================================
 // Enumerations

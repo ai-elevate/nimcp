@@ -41,7 +41,7 @@ static nimcp_health_agent_t* g_salience_attention_fep_bridge_health_agent = NULL
  * @brief Set health agent for salience_attention_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void salience_attention_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void salience_attention_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_salience_attention_fep_bridge_health_agent = agent;
 }
 
@@ -300,6 +300,10 @@ static void store_previous_state(sa_fep_bridge_t* bridge) {
  *===========================================================================*/
 
 sa_fep_config_t sa_fep_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_config_defaul", 0.0f);
+
+
     sa_fep_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -327,6 +331,10 @@ sa_fep_config_t sa_fep_config_default(void) {
 }
 
 sa_fep_bridge_t* sa_fep_bridge_create(const sa_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_create", 0.0f);
+
+
     sa_fep_bridge_t* bridge = nimcp_calloc(1, sizeof(sa_fep_bridge_t));
     if (!bridge) {
 
@@ -381,6 +389,10 @@ void sa_fep_bridge_destroy(sa_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Unregister if still registered */
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_destro", 0.0f);
+
+
     if (bridge->registered) {
         sa_fep_bridge_unregister(bridge);
     }
@@ -393,6 +405,10 @@ void sa_fep_bridge_destroy(sa_fep_bridge_t* bridge) {
 
 int sa_fep_bridge_reset(sa_fep_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_reset", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -434,6 +450,10 @@ int sa_fep_bridge_register(
     uint32_t* bridge_id_out
 ) {
     if (!bridge || !orchestrator) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_regist", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -488,6 +508,10 @@ int sa_fep_bridge_register(
 int sa_fep_bridge_unregister(sa_fep_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_unregi", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->registered) {
@@ -513,6 +537,10 @@ int sa_fep_bridge_unregister(sa_fep_bridge_t* bridge) {
 bool sa_fep_bridge_is_registered(const sa_fep_bridge_t* bridge) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_is_reg", 0.0f);
+
+
     nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->base.mutex);
     bool registered = bridge->registered;
     nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->base.mutex);
@@ -522,6 +550,10 @@ bool sa_fep_bridge_is_registered(const sa_fep_bridge_t* bridge) {
 
 uint32_t sa_fep_bridge_get_id(const sa_fep_bridge_t* bridge) {
     if (!bridge) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_get_id", 0.0f);
+
 
     nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->base.mutex);
     uint32_t id = bridge->registered ? bridge->bridge_id : 0;
@@ -535,6 +567,10 @@ uint32_t sa_fep_bridge_get_id(const sa_fep_bridge_t* bridge) {
  *===========================================================================*/
 
 int sa_fep_update_callback(void* handle) {
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_update_callba", 0.0f);
+
+
     sa_fep_bridge_t* bridge = (sa_fep_bridge_t*)handle;
     if (!bridge) return -1;
 
@@ -633,6 +669,10 @@ int sa_fep_update_callback(void* handle) {
 
 void sa_fep_destroy_callback(void* handle) {
     /* No-op: Bridge is destroyed separately via sa_fep_bridge_destroy() */
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_destroy_callb", 0.0f);
+
+
     (void)handle;
 }
 
@@ -642,6 +682,10 @@ void sa_fep_destroy_callback(void* handle) {
 
 int sa_fep_bridge_force_update(sa_fep_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_force_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -673,6 +717,10 @@ int sa_fep_bridge_update_salience_error(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_update", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.salience_prediction_error = clamp_f(error, 0.0f, 1.0f);
     bridge->stats.salience_computations++;
@@ -686,6 +734,10 @@ int sa_fep_bridge_update_attention_error(
     float error
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_update", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.attention_allocation_error = clamp_f(error, 0.0f, 1.0f);
@@ -701,6 +753,10 @@ int sa_fep_bridge_update_priority_error(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_update", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.priority_estimation_error = clamp_f(error, 0.0f, 1.0f);
     bridge->stats.priority_computations++;
@@ -714,6 +770,10 @@ int sa_fep_bridge_update_attention_efficiency(
     float efficiency
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_update", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.attention_efficiency = clamp_f(efficiency, 0.0f, 1.0f);
@@ -732,6 +792,10 @@ int sa_fep_bridge_get_metrics(
 ) {
     if (!bridge || !metrics_out) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_get_me", 0.0f);
+
+
     nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->base.mutex);
     *metrics_out = bridge->metrics;
     nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->base.mutex);
@@ -745,6 +809,10 @@ int sa_fep_bridge_get_stats(
 ) {
     if (!bridge || !stats_out) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_get_st", 0.0f);
+
+
     nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->base.mutex);
     *stats_out = bridge->stats;
     nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->base.mutex);
@@ -754,6 +822,10 @@ int sa_fep_bridge_get_stats(
 
 int sa_fep_bridge_reset_stats(sa_fep_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_reset_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(sa_fep_stats_t));
@@ -767,6 +839,10 @@ int sa_fep_bridge_reset_stats(sa_fep_bridge_t* bridge) {
 float sa_fep_bridge_get_free_energy(const sa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_get_fr", 0.0f);
+
+
     nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->base.mutex);
     float fe = bridge->metrics.free_energy;
     nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->base.mutex);
@@ -776,6 +852,10 @@ float sa_fep_bridge_get_free_energy(const sa_fep_bridge_t* bridge) {
 
 float sa_fep_bridge_get_salience_error(const sa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_get_sa", 0.0f);
+
 
     nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->base.mutex);
     float se = bridge->metrics.salience_prediction_error;
@@ -787,6 +867,10 @@ float sa_fep_bridge_get_salience_error(const sa_fep_bridge_t* bridge) {
 float sa_fep_bridge_get_prediction_error(const sa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_get_pr", 0.0f);
+
+
     nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->base.mutex);
     float pe = bridge->metrics.prediction_error;
     nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->base.mutex);
@@ -796,6 +880,10 @@ float sa_fep_bridge_get_prediction_error(const sa_fep_bridge_t* bridge) {
 
 float sa_fep_bridge_get_attention_efficiency(const sa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_get_at", 0.0f);
+
 
     nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->base.mutex);
     float eff = bridge->metrics.attention_efficiency;
@@ -811,6 +899,10 @@ float sa_fep_bridge_get_attention_efficiency(const sa_fep_bridge_t* bridge) {
 sa_fep_state_t sa_fep_bridge_get_state(const sa_fep_bridge_t* bridge) {
     if (!bridge) return SA_FEP_STATE_ERROR;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_get_st", 0.0f);
+
+
     nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->base.mutex);
     sa_fep_state_t state = bridge->state;
     nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->base.mutex);
@@ -821,6 +913,10 @@ sa_fep_state_t sa_fep_bridge_get_state(const sa_fep_bridge_t* bridge) {
 bool sa_fep_bridge_is_degraded(const sa_fep_bridge_t* bridge) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_is_deg", 0.0f);
+
+
     nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->base.mutex);
     bool degraded = (bridge->state == SA_FEP_STATE_DEGRADED);
     nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->base.mutex);
@@ -830,6 +926,10 @@ bool sa_fep_bridge_is_degraded(const sa_fep_bridge_t* bridge) {
 
 bool sa_fep_bridge_is_efficient(const sa_fep_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_is_eff", 0.0f);
+
 
     nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->base.mutex);
     bool efficient = (bridge->metrics.attention_efficiency >=
@@ -861,6 +961,10 @@ int sa_fep_bridge_set_high_fe_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_set_hi", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->high_fe_callback = callback;
     bridge->high_fe_user_data = user_data;
@@ -876,6 +980,10 @@ int sa_fep_bridge_set_surprise_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_set_su", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->surprise_callback = callback;
     bridge->surprise_user_data = user_data;
@@ -890,6 +998,10 @@ int sa_fep_bridge_set_metrics_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_set_me", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics_callback = callback;
@@ -909,6 +1021,10 @@ int sa_fep_bridge_set_config(
 ) {
     if (!bridge || !config) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_set_co", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->config = *config;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -921,6 +1037,10 @@ int sa_fep_bridge_get_config(
     sa_fep_config_t* config_out
 ) {
     if (!bridge || !config_out) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_get_co", 0.0f);
+
 
     nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->base.mutex);
     *config_out = bridge->config;

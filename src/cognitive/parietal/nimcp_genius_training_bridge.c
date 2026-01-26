@@ -36,7 +36,7 @@ static nimcp_health_agent_t* g_genius_training_bridge_health_agent = NULL;
  * @brief Set health agent for genius_training_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void genius_training_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void genius_training_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_genius_training_bridge_health_agent = agent;
 }
 
@@ -111,6 +111,12 @@ static inline float clamp_f(float x, float min_val, float max_val) {
 
 static genius_training_task_t* find_task(genius_training_bridge_t* bridge, uint32_t task_id) {
     for (uint32_t i = 0; i < bridge->task_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->task_count > 256) {
+            genius_training_bridge_heartbeat("genius_train_loop",
+                             (float)(i + 1) / (float)bridge->task_count);
+        }
+
         if (bridge->tasks[i].task_id == task_id) {
             return &bridge->tasks[i];
         }
@@ -168,6 +174,10 @@ static void update_curriculum_state(genius_training_bridge_t* bridge, float scor
 //=============================================================================
 
 genius_training_config_t genius_training_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_conf", 0.0f);
+
+
     genius_training_config_t config = {
         .base_learning_rate = 0.001f,
         .learning_rate_decay = 0.95f,
@@ -212,6 +222,10 @@ genius_training_config_t genius_training_config_default(void) {
 }
 
 genius_training_bridge_t* genius_training_create(const genius_training_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_crea", 0.0f);
+
+
     genius_training_bridge_t* bridge = nimcp_calloc(1, sizeof(genius_training_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge allocation failed");
@@ -249,6 +263,12 @@ genius_training_bridge_t* genius_training_create(const genius_training_config_t*
     bridge->curriculum.examples_in_stage = 0;
     bridge->curriculum.stage_score = 0.5f;
     for (int i = 0; i < GENIUS_TRAIN_DOMAIN_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && GENIUS_TRAIN_DOMAIN_COUNT > 256) {
+            genius_training_bridge_heartbeat("genius_train_loop",
+                             (float)(i + 1) / (float)GENIUS_TRAIN_DOMAIN_COUNT);
+        }
+
         bridge->curriculum.domain_scores[i] = 0.0f;
     }
 
@@ -280,6 +300,10 @@ genius_training_bridge_t* genius_training_create(const genius_training_config_t*
 void genius_training_destroy(genius_training_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_dest", 0.0f);
+
+
     if (bridge->tasks) nimcp_free(bridge->tasks);
 
     /* Destroy KG wiring */
@@ -294,6 +318,10 @@ void genius_training_destroy(genius_training_bridge_t* bridge) {
 
 int genius_training_reset(genius_training_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_rese", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -326,6 +354,10 @@ int genius_training_reset(genius_training_bridge_t* bridge) {
 int genius_training_link_genius(genius_training_bridge_t* bridge, struct mathematical_genius* genius) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_link", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->genius = genius;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -335,6 +367,10 @@ int genius_training_link_genius(genius_training_bridge_t* bridge, struct mathema
 int genius_training_link_brain_training(genius_training_bridge_t* bridge,
                                         struct nimcp_brain_training_ctx* ctx) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_link", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->brain_training = ctx;
@@ -349,6 +385,10 @@ int genius_training_link_brain_training(genius_training_bridge_t* bridge,
 int genius_training_register_task(genius_training_bridge_t* bridge,
                                   const genius_training_task_t* task) {
     if (!bridge || !task) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_regi", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -370,9 +410,19 @@ int genius_training_register_task(genius_training_bridge_t* bridge,
 int genius_training_unregister_task(genius_training_bridge_t* bridge, uint32_t task_id) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_unre", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->task_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->task_count > 256) {
+            genius_training_bridge_heartbeat("genius_train_loop",
+                             (float)(i + 1) / (float)bridge->task_count);
+        }
+
         if (bridge->tasks[i].task_id == task_id) {
             /* Swap with last and decrement */
             bridge->tasks[i] = bridge->tasks[--bridge->task_count];
@@ -389,6 +439,10 @@ int genius_training_get_task(genius_training_bridge_t* bridge,
                              uint32_t task_id,
                              genius_training_task_t* task) {
     if (!bridge || !task) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_get_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -410,6 +464,10 @@ int genius_training_get_task(genius_training_bridge_t* bridge,
 int genius_training_start(genius_training_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_star", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = GENIUS_TRAINING_STATE_TRAINING;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -419,6 +477,10 @@ int genius_training_start(genius_training_bridge_t* bridge) {
 int genius_training_pause(genius_training_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_paus", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = GENIUS_TRAINING_STATE_PAUSED;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -427,6 +489,10 @@ int genius_training_pause(genius_training_bridge_t* bridge) {
 
 int genius_training_resume(genius_training_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_resu", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     if (bridge->state == GENIUS_TRAINING_STATE_PAUSED) {
@@ -438,6 +504,10 @@ int genius_training_resume(genius_training_bridge_t* bridge) {
 
 int genius_training_stop(genius_training_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_stop", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = GENIUS_TRAINING_STATE_IDLE;
@@ -459,6 +529,10 @@ float genius_training_train_batch(genius_training_bridge_t* bridge,
             "genius_training_train_batch: inputs or targets is NULL");
         return -1.0f;
     }
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_trai", 0.0f);
+
+
     if (batch_size == 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
             "genius_training_train_batch: batch_size is 0");
@@ -475,6 +549,12 @@ float genius_training_train_batch(genius_training_bridge_t* bridge,
     /* In a real implementation, this would forward through the genius module
      * and compute gradients. For now, simulate training dynamics. */
     for (uint32_t i = 0; i < batch_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && batch_size > 256) {
+            genius_training_bridge_heartbeat("genius_train_loop",
+                             (float)(i + 1) / (float)batch_size);
+        }
+
         /* Simulated loss computation */
         float sample_loss = 0.5f * (1.0f - bridge->mode_state.gauss_skill) +
                            0.3f * (1.0f - bridge->mode_state.newton_skill) +
@@ -526,6 +606,10 @@ float genius_training_train_batch(genius_training_bridge_t* bridge,
 float genius_training_train_epoch(genius_training_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_trai", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = GENIUS_TRAINING_STATE_TRAINING;
 
@@ -534,6 +618,12 @@ float genius_training_train_epoch(genius_training_bridge_t* bridge) {
     uint32_t num_batches = 100; /* Simulated */
 
     for (uint32_t b = 0; b < num_batches; b++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((b & 0xFF) == 0 && num_batches > 256) {
+            genius_training_bridge_heartbeat("genius_train_loop",
+                             (float)(b + 1) / (float)num_batches);
+        }
+
         /* Simulated batch */
         float batch_loss = 0.5f * expf(-0.01f * (float)bridge->progress.total_batches);
         epoch_loss += batch_loss;
@@ -575,6 +665,10 @@ float genius_training_train_epoch(genius_training_bridge_t* bridge) {
 float genius_training_validate(genius_training_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_vali", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = GENIUS_TRAINING_STATE_VALIDATING;
 
@@ -608,6 +702,10 @@ float genius_training_validate(genius_training_bridge_t* bridge) {
 int genius_training_consolidate(genius_training_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_cons", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = GENIUS_TRAINING_STATE_CONSOLIDATING;
 
@@ -639,6 +737,10 @@ int genius_training_get_curriculum_state(genius_training_bridge_t* bridge,
                                          genius_curriculum_state_t* state) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->curriculum;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -647,6 +749,10 @@ int genius_training_get_curriculum_state(genius_training_bridge_t* bridge,
 
 int genius_training_advance_curriculum(genius_training_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_adva", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -675,6 +781,10 @@ int genius_training_set_curriculum_stage(genius_training_bridge_t* bridge,
                                          genius_curriculum_stage_t stage) {
     if (!bridge || stage > GENIUS_STAGE_RESEARCH) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_set_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->curriculum.current_stage = stage;
     bridge->curriculum.examples_in_stage = 0;
@@ -689,6 +799,10 @@ int genius_training_set_domain(genius_training_bridge_t* bridge,
             "genius_training_set_domain: bridge is NULL");
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_set_", 0.0f);
+
+
     if (domain >= GENIUS_TRAIN_DOMAIN_COUNT) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
             "genius_training_set_domain: invalid domain %d (max: %d)",
@@ -709,6 +823,10 @@ int genius_training_set_domain(genius_training_bridge_t* bridge,
 float genius_training_get_learning_rate(genius_training_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float lr = bridge->current_learning_rate;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -721,6 +839,10 @@ int genius_training_set_learning_rate(genius_training_bridge_t* bridge, float lr
             "genius_training_set_learning_rate: bridge is NULL");
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_set_", 0.0f);
+
+
     if (lr <= 0.0f) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
             "genius_training_set_learning_rate: learning rate must be positive, got %f", lr);
@@ -736,6 +858,10 @@ int genius_training_set_learning_rate(genius_training_bridge_t* bridge, float lr
 
 float genius_training_lr_step(genius_training_bridge_t* bridge) {
     if (!bridge) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_lr_s", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -756,6 +882,10 @@ int genius_training_get_progress(genius_training_bridge_t* bridge,
                                  genius_training_progress_t* progress) {
     if (!bridge || !progress) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *progress = bridge->progress;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -765,6 +895,10 @@ int genius_training_get_progress(genius_training_bridge_t* bridge,
 int genius_training_get_mode_state(genius_training_bridge_t* bridge,
                                    genius_mode_training_state_t* state) {
     if (!bridge || !state) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_get_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->mode_state;
@@ -788,6 +922,10 @@ int genius_training_get_state(genius_training_bridge_t* bridge,
                               genius_training_bridge_state_t* state) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
@@ -806,6 +944,10 @@ int genius_training_get_stats(genius_training_bridge_t* bridge,
                               genius_training_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     stats->curriculum_efficiency = (bridge->curriculum.advancements > 0) ?
@@ -817,6 +959,10 @@ int genius_training_get_stats(genius_training_bridge_t* bridge,
 
 int genius_training_reset_stats(genius_training_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_rese", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(genius_training_stats_t));
@@ -833,6 +979,10 @@ int genius_training_save_checkpoint(genius_training_bridge_t* bridge, const char
 
     /* In a full implementation, this would serialize the bridge state to disk */
     /* For now, just log the action */
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_save", 0.0f);
+
+
     NIMCP_LOG_INFO("Saving genius training checkpoint to: %s", path);
     return 0;
 }
@@ -841,6 +991,10 @@ int genius_training_load_checkpoint(genius_training_bridge_t* bridge, const char
     if (!bridge || !path) return -1;
 
     /* In a full implementation, this would deserialize the bridge state from disk */
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_load", 0.0f);
+
+
     NIMCP_LOG_INFO("Loading genius training checkpoint from: %s", path);
     return 0;
 }
@@ -854,6 +1008,10 @@ int genius_training_register_epoch_callback(genius_training_bridge_t* bridge,
                                             void* user_data) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_regi", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->epoch_callback = callback;
     bridge->epoch_callback_data = user_data;
@@ -866,6 +1024,10 @@ int genius_training_register_curriculum_callback(genius_training_bridge_t* bridg
                                                  void* user_data) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_regi", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->curriculum_callback = callback;
     bridge->curriculum_callback_data = user_data;
@@ -877,6 +1039,10 @@ int genius_training_register_checkpoint_callback(genius_training_bridge_t* bridg
                                                  genius_training_checkpoint_callback_t callback,
                                                  void* user_data) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_regi", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->checkpoint_callback = callback;
@@ -892,6 +1058,10 @@ int genius_training_register_checkpoint_callback(genius_training_bridge_t* bridg
 int genius_training_bio_async_connect(genius_training_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_bio_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = true;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -901,6 +1071,10 @@ int genius_training_bio_async_connect(genius_training_bridge_t* bridge) {
 int genius_training_bio_async_disconnect(genius_training_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_bio_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -909,6 +1083,10 @@ int genius_training_bio_async_disconnect(genius_training_bridge_t* bridge) {
 
 bool genius_training_is_bio_async_connected(genius_training_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_is_b", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;
@@ -964,6 +1142,10 @@ int genius_training_serialize_state(genius_training_bridge_t* bridge,
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_seri", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     memset(serialized, 0, sizeof(*serialized));
@@ -1000,6 +1182,10 @@ int genius_training_deserialize_state(genius_training_bridge_t* bridge,
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_dese", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Restore state */
@@ -1019,11 +1205,21 @@ uint32_t genius_training_compute_checksum(const genius_training_serialized_t* se
     if (!serialized) return 0;
 
     /* FNV-1a hash over relevant fields */
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_comp", 0.0f);
+
+
     uint32_t hash = 2166136261u;
     const uint8_t* data = (const uint8_t*)serialized;
     size_t len = offsetof(genius_training_serialized_t, checksum);
 
     for (size_t i = 0; i < len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && len > 256) {
+            genius_training_bridge_heartbeat("genius_train_loop",
+                             (float)(i + 1) / (float)len);
+        }
+
         hash ^= data[i];
         hash *= 16777619u;
     }
@@ -1034,6 +1230,10 @@ uint32_t genius_training_compute_checksum(const genius_training_serialized_t* se
 bool genius_training_verify_checksum(const genius_training_serialized_t* serialized) {
     if (!serialized) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_veri", 0.0f);
+
+
     uint32_t computed = genius_training_compute_checksum(serialized);
     return computed == serialized->checksum;
 }
@@ -1043,6 +1243,10 @@ bool genius_training_verify_checksum(const genius_training_serialized_t* seriali
 //=============================================================================
 
 kg_module_wiring_t* genius_training_create_kg_wiring(void) {
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_crea", 0.0f);
+
+
     kg_module_wiring_t* wiring = kg_module_wiring_create(
         KG_GENIUS_TRAINING_MODULE_NAME,
         KG_GENIUS_TRAINING_MODULE_TYPE
@@ -1094,5 +1298,9 @@ kg_module_wiring_t* genius_training_create_kg_wiring(void) {
 
 kg_module_wiring_t* genius_training_get_kg_wiring(genius_training_bridge_t* bridge) {
     if (!bridge) return NULL;
+    /* Phase 8: Heartbeat at operation start */
+    genius_training_bridge_heartbeat("genius_train_genius_training_get_", 0.0f);
+
+
     return bridge->kg_wiring;
 }

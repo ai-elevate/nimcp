@@ -49,7 +49,7 @@ static nimcp_health_agent_t* g_global_workspace_immune_health_agent = NULL;
  * @brief Set health agent for global_workspace_immune heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void global_workspace_immune_set_health_agent(nimcp_health_agent_t* agent) {
+void global_workspace_immune_set_health_agent(nimcp_health_agent_t* agent) {
     g_global_workspace_immune_health_agent = agent;
 }
 
@@ -144,6 +144,12 @@ static brain_inflammation_level_t get_max_inflammation_level(
     brain_inflammation_level_t max_level = INFLAMMATION_NONE;
 
     for (size_t i = 0; i < immune->inflammation_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && immune->inflammation_count > 256) {
+            global_workspace_immune_heartbeat("global_works_loop",
+                             (float)(i + 1) / (float)immune->inflammation_count);
+        }
+
         if (immune->inflammation_sites[i].level > max_level) {
             max_level = immune->inflammation_sites[i].level;
         }
@@ -172,6 +178,12 @@ static bool check_content_corruption(
     uint32_t extreme_count = 0;
 
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            global_workspace_immune_heartbeat("global_works_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         if (isnan(content[i]) || isinf(content[i])) {
             nan_count++;
         }
@@ -254,6 +266,10 @@ gw_immune_context_t* global_workspace_connect_immune(
     }
 
     // Allocate context
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_immune_heartbeat("global_works_global_workspace_con", 0.0f);
+
+
     gw_immune_context_t* ctx = (gw_immune_context_t*)nimcp_calloc(1, sizeof(gw_immune_context_t));
     if (!ctx) {
         NIMCP_LOGGING_ERROR("Failed to allocate gw_immune_context");
@@ -296,6 +312,10 @@ void global_workspace_disconnect_immune(gw_immune_context_t* context) {
     if (!context) return;
 
     // Restore baseline threshold
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_immune_heartbeat("global_works_global_workspace_dis", 0.0f);
+
+
     if (context->workspace) {
         global_workspace_set_ignition_threshold(context->workspace, context->baseline_threshold);
     }
@@ -310,6 +330,10 @@ void global_workspace_disconnect_immune(gw_immune_context_t* context) {
 }
 
 gw_immune_anomaly_config_t gw_immune_default_anomaly_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_immune_heartbeat("global_works_gw_immune_default_an", 0.0f);
+
+
     gw_immune_anomaly_config_t config;
 
     // Rapid switching (half of refractory period)
@@ -348,6 +372,10 @@ int gw_immune_update_inflammation_modulation(gw_immune_context_t* context) {
     }
 
     // Get max inflammation level from immune system
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_immune_heartbeat("global_works_gw_immune_update_inf", 0.0f);
+
+
     brain_inflammation_level_t level = get_max_inflammation_level(context->immune);
 
     // Compute modulation factors
@@ -380,6 +408,10 @@ int gw_immune_get_modulation(
     }
 
     *modulation = context->modulation;
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_immune_heartbeat("global_works_gw_immune_get_modula", 0.0f);
+
+
     return 0;
 }
 
@@ -395,6 +427,10 @@ int gw_immune_set_manual_inflammation(
     }
 
     // Compute modulation factors
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_immune_heartbeat("global_works_gw_immune_set_manual", 0.0f);
+
+
     float threshold_mult, capacity_mult;
     compute_inflammation_multipliers(level, &threshold_mult, &capacity_mult);
 
@@ -437,6 +473,10 @@ int gw_immune_detect_anomalies(
     if (!global_workspace_has_broadcast(context->workspace)) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_immune_heartbeat("global_works_gw_immune_detect_ano", 0.0f);
+
 
     cognitive_module_t source = global_workspace_get_broadcast_source(context->workspace);
     float strength = global_workspace_get_broadcast_strength(context->workspace);
@@ -525,6 +565,10 @@ int gw_immune_trigger_response(
     }
 
     // Create epitope from anomaly
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_immune_heartbeat("global_works_gw_immune_trigger_re", 0.0f);
+
+
     uint8_t epitope[BRAIN_IMMUNE_EPITOPE_SIZE];
     size_t epitope_len;
     create_anomaly_epitope(anomaly, epitope, &epitope_len);
@@ -624,6 +668,10 @@ uint32_t gw_immune_check_broadcast(gw_immune_context_t* context) {
     }
 
     // Update broadcast counter
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_immune_heartbeat("global_works_gw_immune_check_broa", 0.0f);
+
+
     context->total_broadcasts_checked++;
 
     // Detect anomalies
@@ -636,6 +684,12 @@ uint32_t gw_immune_check_broadcast(gw_immune_context_t* context) {
 
     // Add to history and trigger immune if configured
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            global_workspace_immune_heartbeat("global_works_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         // Add to anomaly history
         uint32_t hist_idx = context->anomaly_head;
         context->anomaly_history[hist_idx] = anomalies[i];
@@ -673,10 +727,20 @@ int gw_immune_get_anomaly_history(
     }
 
     // Copy history (most recent first)
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_immune_heartbeat("global_works_gw_immune_get_anomal", 0.0f);
+
+
     uint32_t count = (context->anomaly_count < max_history) ? context->anomaly_count : max_history;
     *actual_count = count;
 
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            global_workspace_immune_heartbeat("global_works_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         // Calculate circular buffer index (most recent first)
         uint32_t idx = (context->anomaly_head + GW_IMMUNE_MAX_ANOMALY_HISTORY - 1 - i) %
                        GW_IMMUNE_MAX_ANOMALY_HISTORY;
@@ -699,6 +763,10 @@ int gw_immune_get_stats(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_immune_heartbeat("global_works_gw_immune_get_stats", 0.0f);
+
+
     if (total_broadcasts) {
         *total_broadcasts = context->total_broadcasts_checked;
     }
@@ -718,6 +786,10 @@ void gw_immune_print_state(gw_immune_context_t* context, bool verbose) {
         fprintf(stderr, "Context is NULL\n");
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_immune_heartbeat("global_works_gw_immune_print_stat", 0.0f);
+
 
     fprintf(stderr, "=== Global Workspace ↔ Immune Integration ===\n");
 
@@ -747,6 +819,12 @@ void gw_immune_print_state(gw_immune_context_t* context, bool verbose) {
         fprintf(stderr, "\nRecent Anomalies:\n");
         uint32_t display_count = (context->anomaly_count < 10) ? context->anomaly_count : 10;
         for (uint32_t i = 0; i < display_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && display_count > 256) {
+                global_workspace_immune_heartbeat("global_works_loop",
+                                 (float)(i + 1) / (float)display_count);
+            }
+
             uint32_t idx = (context->anomaly_head + GW_IMMUNE_MAX_ANOMALY_HISTORY - 1 - i) %
                            GW_IMMUNE_MAX_ANOMALY_HISTORY;
             gw_broadcast_anomaly_t* a = &context->anomaly_history[idx];
@@ -796,9 +874,19 @@ const char* gw_anomaly_severity_to_string(gw_anomaly_severity_t severity) {
 int global_workspace_immune_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_immune_heartbeat("global_works_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Global_Workspace_Immune");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                global_workspace_immune_heartbeat("global_works_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

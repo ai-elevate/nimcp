@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_executive_fep_bridge_health_agent = NULL;
  * @brief Set health agent for executive_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void executive_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void executive_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_executive_fep_bridge_health_agent = agent;
 }
 
@@ -46,6 +46,10 @@ static inline void executive_fep_bridge_heartbeat(const char* operation, float p
 
 
 int executive_fep_bridge_default_config(executive_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    executive_fep_bridge_heartbeat("executive_fe_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->efe_temperature = EXECUTIVE_FEP_DEFAULT_TEMPERATURE;
     config->precision_exploration_threshold = EXECUTIVE_FEP_PRECISION_THRESHOLD;
@@ -65,6 +69,10 @@ int executive_fep_bridge_default_config(executive_fep_config_t* config) {
 }
 
 executive_fep_bridge_t* executive_fep_bridge_create(const executive_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    executive_fep_bridge_heartbeat("executive_fe_create", 0.0f);
+
+
     executive_fep_bridge_t* bridge = nimcp_malloc(sizeof(executive_fep_bridge_t));
     if (!bridge) {
 
@@ -83,6 +91,10 @@ executive_fep_bridge_t* executive_fep_bridge_create(const executive_fep_config_t
 
 void executive_fep_bridge_destroy(executive_fep_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    executive_fep_bridge_heartbeat("executive_fe_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) executive_fep_bridge_disconnect_bio_async(bridge);
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
@@ -91,6 +103,10 @@ void executive_fep_bridge_destroy(executive_fep_bridge_t* bridge) {
 }
 
 int executive_fep_bridge_connect_fep(executive_fep_bridge_t* bridge, fep_system_t* fep) {
+    /* Phase 8: Heartbeat at operation start */
+    executive_fep_bridge_heartbeat("executive_fe_connect_fep", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -99,6 +115,10 @@ int executive_fep_bridge_connect_fep(executive_fep_bridge_t* bridge, fep_system_
 }
 
 int executive_fep_bridge_connect_executive(executive_fep_bridge_t* bridge, executive_controller_t* executive) {
+    /* Phase 8: Heartbeat at operation start */
+    executive_fep_bridge_heartbeat("executive_fe_connect_executive", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && executive, NIMCP_ERROR_NULL_POINTER, "bridge or executive is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->executive_system = executive;
@@ -107,6 +127,10 @@ int executive_fep_bridge_connect_executive(executive_fep_bridge_t* bridge, execu
 }
 
 int executive_fep_bridge_disconnect(executive_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    executive_fep_bridge_heartbeat("executive_fe_disconnect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -116,6 +140,10 @@ int executive_fep_bridge_disconnect(executive_fep_bridge_t* bridge) {
 }
 
 int executive_fep_select_policy_by_efe(executive_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    executive_fep_bridge_heartbeat("executive_fe_executive_fep_select", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_efe_policy_selection) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -126,6 +154,10 @@ int executive_fep_select_policy_by_efe(executive_fep_bridge_t* bridge) {
 }
 
 int executive_fep_modulate_exploration(executive_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    executive_fep_bridge_heartbeat("executive_fe_executive_fep_modula", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_precision_exploration) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -144,6 +176,10 @@ int executive_fep_modulate_exploration(executive_fep_bridge_t* bridge) {
 }
 
 int executive_fep_trigger_cognitive_control(executive_fep_bridge_t* bridge, float pe_magnitude) {
+    /* Phase 8: Heartbeat at operation start */
+    executive_fep_bridge_heartbeat("executive_fe_executive_fep_trigge", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_pe_cognitive_control) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -161,6 +197,10 @@ int executive_fep_trigger_cognitive_control(executive_fep_bridge_t* bridge, floa
 }
 
 int executive_fep_apply_goal_priors(executive_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    executive_fep_bridge_heartbeat("executive_fe_executive_fep_apply_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_goal_priors) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -172,6 +212,10 @@ int executive_fep_apply_goal_priors(executive_fep_bridge_t* bridge) {
 }
 
 int executive_fep_maintain_wm_beliefs(executive_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    executive_fep_bridge_heartbeat("executive_fe_executive_fep_mainta", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_wm_belief_maintenance) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -183,6 +227,10 @@ int executive_fep_maintain_wm_beliefs(executive_fep_bridge_t* bridge) {
 }
 
 int executive_fep_apply_inhibition_precision(executive_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    executive_fep_bridge_heartbeat("executive_fe_executive_fep_apply_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_inhibition_precision) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -193,6 +241,10 @@ int executive_fep_apply_inhibition_precision(executive_fep_bridge_t* bridge) {
 }
 
 int executive_fep_bridge_update(executive_fep_bridge_t* bridge, uint64_t delta_ms) {
+    /* Phase 8: Heartbeat at operation start */
+    executive_fep_bridge_heartbeat("executive_fe_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     executive_fep_select_policy_by_efe(bridge);
     executive_fep_modulate_exploration(bridge);
@@ -203,6 +255,10 @@ int executive_fep_bridge_update(executive_fep_bridge_t* bridge, uint64_t delta_m
 }
 
 int executive_fep_bridge_get_state(const executive_fep_bridge_t* bridge, executive_fep_state_t* state) {
+    /* Phase 8: Heartbeat at operation start */
+    executive_fep_bridge_heartbeat("executive_fe_get_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -211,6 +267,10 @@ int executive_fep_bridge_get_state(const executive_fep_bridge_t* bridge, executi
 }
 
 int executive_fep_bridge_get_stats(const executive_fep_bridge_t* bridge, executive_fep_stats_t* stats) {
+    /* Phase 8: Heartbeat at operation start */
+    executive_fep_bridge_heartbeat("executive_fe_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -219,6 +279,10 @@ int executive_fep_bridge_get_stats(const executive_fep_bridge_t* bridge, executi
 }
 
 int executive_fep_bridge_connect_bio_async(executive_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    executive_fep_bridge_heartbeat("executive_fe_connect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
@@ -234,6 +298,10 @@ int executive_fep_bridge_connect_bio_async(executive_fep_bridge_t* bridge) {
 
 int executive_fep_bridge_disconnect_bio_async(executive_fep_bridge_t* bridge) {
     if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    executive_fep_bridge_heartbeat("executive_fe_disconnect_bio_async", 0.0f);
+
+
     if (bridge->base.bio_ctx) bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_ctx = NULL;
     bridge->base.bio_async_enabled = false;
@@ -241,6 +309,10 @@ int executive_fep_bridge_disconnect_bio_async(executive_fep_bridge_t* bridge) {
 }
 
 bool executive_fep_bridge_is_bio_async_connected(const executive_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    executive_fep_bridge_heartbeat("executive_fe_is_bio_async_connect", 0.0f);
+
+
     return bridge ? bridge->base.bio_async_enabled : false;
 }
 
@@ -255,9 +327,19 @@ bool executive_fep_bridge_is_bio_async_connected(const executive_fep_bridge_t* b
  */
 int executive_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    executive_fep_bridge_heartbeat("executive_fe_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Executive_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                executive_fep_bridge_heartbeat("executive_fe_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Executive FEP Bridge self-knowledge: %s", self->observations[i]);
         }
     }

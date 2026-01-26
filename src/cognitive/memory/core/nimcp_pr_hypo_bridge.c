@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_pr_hypo_bridge_health_agent = NULL;
  * @brief Set health agent for pr_hypo_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void pr_hypo_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void pr_hypo_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_pr_hypo_bridge_health_agent = agent;
 }
 
@@ -292,6 +292,12 @@ NIMCP_EXPORT pr_hypo_config_t pr_hypo_config_default(void) {
 
     /* Baseline levels */
     for (int i = 0; i < PR_HYPO_NEUROMOD_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_HYPO_NEUROMOD_COUNT > 256) {
+            pr_hypo_bridge_heartbeat("pr_hypo_brid_loop",
+                             (float)(i + 1) / (float)PR_HYPO_NEUROMOD_COUNT);
+        }
+
         config.baseline_levels[i] = PR_HYPO_BASELINE_LEVEL;
         config.decay_rates[i] = PR_HYPO_STRESS_DECAY_RATE;
     }
@@ -309,6 +315,12 @@ NIMCP_EXPORT pr_hypo_config_t pr_hypo_config_default(void) {
     /* Default mappings */
     config.use_default_mappings = true;
     for (int i = 0; i < PR_HYPO_NEUROMOD_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_HYPO_NEUROMOD_COUNT > 256) {
+            pr_hypo_bridge_heartbeat("pr_hypo_brid_loop",
+                             (float)(i + 1) / (float)PR_HYPO_NEUROMOD_COUNT);
+        }
+
         config.mappings[i] = get_default_mapping((pr_neuromod_type_t)i);
     }
 
@@ -365,6 +377,12 @@ NIMCP_EXPORT pr_hypo_bridge_t pr_hypo_bridge_create(const pr_hypo_config_t* conf
 
     /* Initialize neuromodulator states */
     for (int i = 0; i < PR_HYPO_NEUROMOD_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_HYPO_NEUROMOD_COUNT > 256) {
+            pr_hypo_bridge_heartbeat("pr_hypo_brid_loop",
+                             (float)(i + 1) / (float)PR_HYPO_NEUROMOD_COUNT);
+        }
+
         bridge->neuromod_states[i].type = (pr_neuromod_type_t)i;
         bridge->neuromod_states[i].concentration = cfg.baseline_levels[i];
         bridge->neuromod_states[i].baseline = cfg.baseline_levels[i];
@@ -458,6 +476,12 @@ NIMCP_EXPORT pr_hypo_error_t pr_hypo_bridge_reset(pr_hypo_bridge_t bridge) {
     /* Reset neuromodulator states */
     PR_HYPO_MUTEX_LOCK(bridge->neuromod_mutex);
     for (int i = 0; i < PR_HYPO_NEUROMOD_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_HYPO_NEUROMOD_COUNT > 256) {
+            pr_hypo_bridge_heartbeat("pr_hypo_brid_loop",
+                             (float)(i + 1) / (float)PR_HYPO_NEUROMOD_COUNT);
+        }
+
         bridge->neuromod_states[i].concentration = bridge->config.baseline_levels[i];
         bridge->neuromod_states[i].velocity = 0.0f;
         bridge->neuromod_states[i].last_update_ms = now;
@@ -632,6 +656,12 @@ NIMCP_EXPORT pr_hypo_error_t pr_hypo_bridge_update(
     /* Update all neuromodulators */
     PR_HYPO_MUTEX_LOCK(bridge->neuromod_mutex);
     for (int i = 0; i < PR_HYPO_NEUROMOD_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_HYPO_NEUROMOD_COUNT > 256) {
+            pr_hypo_bridge_heartbeat("pr_hypo_brid_loop",
+                             (float)(i + 1) / (float)PR_HYPO_NEUROMOD_COUNT);
+        }
+
         pr_neuromod_state_t* state = &bridge->neuromod_states[i];
 
         /* Apply velocity */
@@ -698,6 +728,12 @@ NIMCP_EXPORT pr_hypo_error_t pr_hypo_bridge_update(
         size_t idx = bridge->history_write_idx;
         bridge->history[idx].timestamp_ms = now;
         for (int i = 0; i < PR_HYPO_NEUROMOD_COUNT; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && PR_HYPO_NEUROMOD_COUNT > 256) {
+                pr_hypo_bridge_heartbeat("pr_hypo_brid_loop",
+                                 (float)(i + 1) / (float)PR_HYPO_NEUROMOD_COUNT);
+            }
+
             bridge->history[idx].concentrations[i] =
                 bridge->neuromod_states[i].concentration;
         }
@@ -732,6 +768,12 @@ NIMCP_EXPORT nimcp_quaternion_t pr_hypo_bridge_apply_neuromodulator(
     PR_HYPO_MUTEX_LOCK(bridge->neuromod_mutex);
 
     for (int i = 0; i < PR_NEUROMOD_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_NEUROMOD_COUNT > 256) {
+            pr_hypo_bridge_heartbeat("pr_hypo_brid_loop",
+                             (float)(i + 1) / (float)PR_NEUROMOD_COUNT);
+        }
+
         pr_neuromod_type_t type = (pr_neuromod_type_t)i;
         float concentration = bridge->neuromod_states[i].concentration;
         float baseline = bridge->neuromod_states[i].baseline;
@@ -910,6 +952,12 @@ NIMCP_EXPORT nimcp_quaternion_t pr_hypo_bridge_get_effect_delta(
     PR_HYPO_MUTEX_LOCK(((pr_hypo_bridge_t)bridge)->neuromod_mutex);
 
     for (int i = 0; i < PR_NEUROMOD_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_NEUROMOD_COUNT > 256) {
+            pr_hypo_bridge_heartbeat("pr_hypo_brid_loop",
+                             (float)(i + 1) / (float)PR_NEUROMOD_COUNT);
+        }
+
         float concentration = bridge->neuromod_states[i].concentration;
         float baseline = bridge->neuromod_states[i].baseline;
         float deviation = concentration - baseline;
@@ -1363,6 +1411,12 @@ NIMCP_EXPORT pr_hypo_error_t pr_hypo_bridge_get_history(
         }
 
         for (size_t i = 0; i < to_copy; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && to_copy > 256) {
+                pr_hypo_bridge_heartbeat("pr_hypo_brid_loop",
+                                 (float)(i + 1) / (float)to_copy);
+            }
+
             size_t src_idx = (start_idx + (available - to_copy) + i) % bridge->history_capacity;
             entries[i] = bridge->history[src_idx];
         }
@@ -1438,6 +1492,12 @@ NIMCP_EXPORT void pr_hypo_bridge_print_summary(const pr_hypo_bridge_t bridge) {
 
     printf("\nNeuromodulator Levels:\n");
     for (int i = 0; i < PR_NEUROMOD_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_NEUROMOD_COUNT > 256) {
+            pr_hypo_bridge_heartbeat("pr_hypo_brid_loop",
+                             (float)(i + 1) / (float)PR_NEUROMOD_COUNT);
+        }
+
         float level = pr_hypo_bridge_get_neuromod(bridge, (pr_neuromod_type_t)i);
         float baseline = bridge->config.baseline_levels[i];
         printf("  %s: %.3f (baseline: %.3f)\n",
@@ -1486,6 +1546,12 @@ NIMCP_EXPORT bool pr_hypo_bridge_validate(const pr_hypo_bridge_t bridge) {
 
     /* Verify neuromodulator states are in valid range */
     for (int i = 0; i < PR_HYPO_NEUROMOD_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_HYPO_NEUROMOD_COUNT > 256) {
+            pr_hypo_bridge_heartbeat("pr_hypo_brid_loop",
+                             (float)(i + 1) / (float)PR_HYPO_NEUROMOD_COUNT);
+        }
+
         if (bridge->neuromod_states[i].concentration < 0.0f ||
             bridge->neuromod_states[i].concentration > 1.0f) {
             return false;

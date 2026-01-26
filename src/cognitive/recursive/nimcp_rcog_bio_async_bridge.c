@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_rcog_bio_async_bridge_health_agent = NULL;
  * @brief Set health agent for rcog_bio_async_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void rcog_bio_async_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void rcog_bio_async_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_rcog_bio_async_bridge_health_agent = agent;
 }
 
@@ -88,6 +88,10 @@ struct rcog_bio_async_bridge {
  *===========================================================================*/
 
 rcog_bio_async_bridge_config_t rcog_bio_async_bridge_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_bio_async_bridge_heartbeat("rcog_bio_asy_default_config", 0.0f);
+
+
     rcog_bio_async_bridge_config_t config = {0};
 
     config.dopamine_sensitivity = 1.0f;
@@ -111,6 +115,10 @@ rcog_bio_async_bridge_config_t rcog_bio_async_bridge_default_config(void) {
 rcog_bio_async_bridge_t* rcog_bio_async_bridge_create(
     const rcog_bio_async_bridge_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_bio_async_bridge_heartbeat("rcog_bio_asy_create", 0.0f);
+
+
     rcog_bio_async_bridge_t* bridge = nimcp_calloc(1, sizeof(rcog_bio_async_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -142,6 +150,10 @@ rcog_bio_async_bridge_t* rcog_bio_async_bridge_create(
 }
 
 rcog_bio_async_bridge_t* rcog_bio_async_bridge_create_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_bio_async_bridge_heartbeat("rcog_bio_asy_create_default", 0.0f);
+
+
     return rcog_bio_async_bridge_create(NULL);
 }
 
@@ -151,6 +163,10 @@ void rcog_bio_async_bridge_destroy(rcog_bio_async_bridge_t* bridge) {
     }
 
     /* Disconnect first */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_bio_async_bridge_heartbeat("rcog_bio_asy_destroy", 0.0f);
+
+
     if (bridge->connected) {
         rcog_bio_async_bridge_disconnect(bridge);
     }
@@ -173,6 +189,10 @@ int rcog_bio_async_bridge_connect(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_bio_async_bridge_heartbeat("rcog_bio_asy_connect", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async = bio_async;
 
@@ -192,6 +212,10 @@ int rcog_bio_async_bridge_connect_engine(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_bio_async_bridge_heartbeat("rcog_bio_asy_connect_engine", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->engine = engine;
 
@@ -208,6 +232,10 @@ int rcog_bio_async_bridge_disconnect(rcog_bio_async_bridge_t* bridge) {
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_bio_async_bridge_heartbeat("rcog_bio_asy_disconnect", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->bio_async = NULL;
@@ -222,6 +250,10 @@ bool rcog_bio_async_bridge_is_connected(const rcog_bio_async_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    rcog_bio_async_bridge_heartbeat("rcog_bio_asy_is_connected", 0.0f);
+
+
     return bridge->connected;
 }
 
@@ -236,6 +268,10 @@ int rcog_bio_async_bridge_update(
     if (!bridge) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_bio_async_bridge_heartbeat("rcog_bio_asy_update", 0.0f);
+
 
     uint64_t start_time = nimcp_platform_time_monotonic_us();
 
@@ -282,6 +318,10 @@ int rcog_bio_async_bridge_send_message(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_bio_async_bridge_heartbeat("rcog_bio_asy_send_message", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
@@ -310,6 +350,10 @@ int rcog_bio_async_bridge_register_handler(
     if (!bridge || !handler) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_bio_async_bridge_heartbeat("rcog_bio_asy_register_handler", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -341,6 +385,10 @@ int rcog_bio_async_bridge_create_future(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_bio_async_bridge_heartbeat("rcog_bio_asy_create_future", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
@@ -369,6 +417,10 @@ int rcog_bio_async_bridge_await_future(
     }
 
     /* In a full implementation, this would wait on the bio-async future */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_bio_async_bridge_heartbeat("rcog_bio_asy_await_future", 0.0f);
+
+
     (void)timeout_ms;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -392,6 +444,10 @@ int rcog_bio_async_bridge_create_phase_sync(
     if (!bridge || !subtask_ids || !sync) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_bio_async_bridge_heartbeat("rcog_bio_asy_create_phase_sync", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -423,6 +479,10 @@ int rcog_bio_async_bridge_wait_coherent(
     }
 
     /* In a full implementation, this would wait for phase coherence */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_bio_async_bridge_heartbeat("rcog_bio_asy_wait_coherent", 0.0f);
+
+
     (void)coherence_threshold;
     (void)timeout_ms;
 
@@ -446,6 +506,10 @@ int rcog_bio_async_bridge_initiate_glial_wave(
     if (!bridge || !wave) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_bio_async_bridge_heartbeat("rcog_bio_asy_initiate_glial_wave", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -481,6 +545,10 @@ int rcog_bio_async_bridge_release_dopamine(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_bio_async_bridge_heartbeat("rcog_bio_asy_release_dopamine", 0.0f);
+
+
     if (amount < 0.0f || amount > 1.0f) {
         return RCOG_ERROR_INVALID_CONFIG;
     }
@@ -508,6 +576,10 @@ int rcog_bio_async_bridge_signal_priority(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_bio_async_bridge_heartbeat("rcog_bio_asy_signal_priority", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->outgoing_effects.norepinephrine_level = priority;
@@ -528,6 +600,10 @@ int rcog_bio_async_bridge_modulate_attention(
     if (!bridge) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_bio_async_bridge_heartbeat("rcog_bio_asy_modulate_attention", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -552,6 +628,10 @@ int rcog_bio_async_bridge_get_outgoing_effects(
     }
 
     /* Cast away const for mutex lock - safe since we only read */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_bio_async_bridge_heartbeat("rcog_bio_asy_get_outgoing_effects", 0.0f);
+
+
     nimcp_mutex_lock(((rcog_bio_async_bridge_t*)bridge)->base.mutex);
     *effects = bridge->outgoing_effects;
     nimcp_mutex_unlock(((rcog_bio_async_bridge_t*)bridge)->base.mutex);
@@ -566,6 +646,10 @@ int rcog_bio_async_bridge_get_incoming_effects(
     if (!bridge || !effects) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_bio_async_bridge_heartbeat("rcog_bio_asy_get_incoming_effects", 0.0f);
+
 
     nimcp_mutex_lock(((rcog_bio_async_bridge_t*)bridge)->base.mutex);
     *effects = bridge->incoming_effects;
@@ -586,6 +670,10 @@ int rcog_bio_async_bridge_get_stats(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_bio_async_bridge_heartbeat("rcog_bio_asy_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(((rcog_bio_async_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(((rcog_bio_async_bridge_t*)bridge)->base.mutex);
@@ -598,6 +686,10 @@ void rcog_bio_async_bridge_reset_stats(rcog_bio_async_bridge_t* bridge) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_bio_async_bridge_heartbeat("rcog_bio_asy_reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(rcog_bio_async_bridge_stats_t));
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -609,9 +701,19 @@ void rcog_bio_async_bridge_reset_stats(rcog_bio_async_bridge_t* bridge) {
 
 int rcog_bio_async_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_bio_async_bridge_heartbeat("rcog_bio_asy_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Recursive_Cognition_Bio_Async_Bridge_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                rcog_bio_async_bridge_heartbeat("rcog_bio_asy_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Log self-knowledge observations */
         }
     }

@@ -42,7 +42,7 @@ static nimcp_health_agent_t* g_immune_metrics_health_agent = NULL;
  * @brief Set health agent for immune_metrics heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void immune_metrics_set_health_agent(nimcp_health_agent_t* agent) {
+void immune_metrics_set_health_agent(nimcp_health_agent_t* agent) {
     g_immune_metrics_health_agent = agent;
 }
 
@@ -106,6 +106,12 @@ static void init_latency_histogram(histogram_data_t* hist)
     hist->n_buckets = N_DEFAULT_LATENCY_BUCKETS;
 
     for (size_t i = 0; i < N_DEFAULT_LATENCY_BUCKETS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && N_DEFAULT_LATENCY_BUCKETS > 256) {
+            immune_metrics_heartbeat("immune_metri_loop",
+                             (float)(i + 1) / (float)N_DEFAULT_LATENCY_BUCKETS);
+        }
+
         hist->buckets[i].upper_bound = DEFAULT_LATENCY_BUCKETS[i];
         hist->buckets[i].count = 0;
     }
@@ -120,6 +126,12 @@ static void histogram_observe(histogram_data_t* hist, double value)
 
     /* Update all buckets where value <= upper_bound */
     for (size_t i = 0; i < hist->n_buckets; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hist->n_buckets > 256) {
+            immune_metrics_heartbeat("immune_metri_loop",
+                             (float)(i + 1) / (float)hist->n_buckets);
+        }
+
         if (value <= hist->buckets[i].upper_bound) {
             hist->buckets[i].count++;
         }
@@ -246,6 +258,12 @@ static int write_histogram(
 
     /* Write buckets */
     for (size_t i = 0; i < hist->n_buckets; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hist->n_buckets > 256) {
+            immune_metrics_heartbeat("immune_metri_loop",
+                             (float)(i + 1) / (float)hist->n_buckets);
+        }
+
         if (hist->buckets[i].upper_bound == INFINITY) {
             written = snprintf(buffer + *offset, buffer_size - *offset,
                 "%s_bucket{le=\"+Inf\"} %lu\n",
@@ -304,6 +322,10 @@ int immune_metrics_default_config(immune_metrics_config_t* config)
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_metrics_heartbeat("immune_metri_default_config", 0.0f);
+
+
     memset(config, 0, sizeof(immune_metrics_config_t));
 
     config->enable_histogram = true;
@@ -326,6 +348,10 @@ int immune_metrics_default_config(immune_metrics_config_t* config)
 
 immune_metrics_t* immune_metrics_create(const immune_metrics_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    immune_metrics_heartbeat("immune_metri_create", 0.0f);
+
+
     immune_metrics_t* metrics = nimcp_calloc(1, sizeof(immune_metrics_t));
     if (metrics == NULL) {
         LOG_MODULE_ERROR(LOG_TAG, "Failed to allocate metrics");
@@ -365,6 +391,10 @@ void immune_metrics_destroy(immune_metrics_t* metrics)
     if (metrics == NULL) return;
 
     /* Stop HTTP server if running */
+    /* Phase 8: Heartbeat at operation start */
+    immune_metrics_heartbeat("immune_metri_destroy", 0.0f);
+
+
     if (metrics->http_running) {
         immune_metrics_stop_http_server(metrics);
     }
@@ -388,6 +418,10 @@ int immune_metrics_record_crash(
             "immune_metrics_record_crash: invalid parameter");
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    immune_metrics_heartbeat("immune_metri_record_crash", 0.0f);
+
+
     if (signal_type < 0 || signal_type >= CRASH_SIGNAL_COUNT) {
         signal_type = CRASH_SIGNAL_OTHER;
     }
@@ -415,6 +449,10 @@ int immune_metrics_record_fix(
             "immune_metrics_record_fix: invalid parameter");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_metrics_heartbeat("immune_metri_record_fix", 0.0f);
+
 
     nimcp_mutex_lock(metrics->mutex);
 
@@ -461,6 +499,10 @@ int immune_metrics_record_latency(
     }
     if (!metrics->config.enable_histogram) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_metrics_heartbeat("immune_metri_record_latency", 0.0f);
+
+
     nimcp_mutex_lock(metrics->mutex);
     histogram_observe(&metrics->fix_latency, (double)latency_us);
     nimcp_mutex_unlock(metrics->mutex);
@@ -477,6 +519,10 @@ int immune_metrics_record_pattern_use(
             "immune_metrics_record_pattern_use: invalid parameter");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_metrics_heartbeat("immune_metri_record_pattern_use", 0.0f);
+
 
     nimcp_mutex_lock(metrics->mutex);
 
@@ -532,6 +578,10 @@ int immune_metrics_update_b_cells(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_metrics_heartbeat("immune_metri_update_b_cells", 0.0f);
+
+
     nimcp_mutex_lock(metrics->mutex);
     metrics->b_cells = *bcell_metrics;
     nimcp_mutex_unlock(metrics->mutex);
@@ -554,6 +604,10 @@ int immune_metrics_update_antibodies(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_metrics_heartbeat("immune_metri_update_antibodies", 0.0f);
+
+
     nimcp_mutex_lock(metrics->mutex);
     metrics->antibodies = *antibody_metrics;
     nimcp_mutex_unlock(metrics->mutex);
@@ -575,6 +629,10 @@ int immune_metrics_update_memory(
             "immune_metrics_update_memory: invalid parameter");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_metrics_heartbeat("immune_metri_update_memory", 0.0f);
+
 
     nimcp_mutex_lock(metrics->mutex);
 
@@ -606,6 +664,10 @@ int immune_metrics_export_prometheus(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_metrics_heartbeat("immune_metri_export_prometheus", 0.0f);
+
+
     nimcp_mutex_lock(metrics->mutex);
 
     size_t offset = 0;
@@ -620,6 +682,12 @@ int immune_metrics_export_prometheus(
     }
 
     for (int i = 0; i < CRASH_SIGNAL_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && CRASH_SIGNAL_COUNT > 256) {
+            immune_metrics_heartbeat("immune_metri_loop",
+                             (float)(i + 1) / (float)CRASH_SIGNAL_COUNT);
+        }
+
         snprintf(label_buf, sizeof(label_buf), "signal=\"%s\"",
                  immune_metrics_signal_to_string((crash_signal_type_t)i));
         if (write_counter(buffer, buffer_size, &offset,
@@ -918,6 +986,10 @@ int immune_metrics_export_json(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_metrics_heartbeat("immune_metri_export_json", 0.0f);
+
+
     nimcp_mutex_lock(metrics->mutex);
 
     int written = snprintf(buffer, buffer_size,
@@ -1069,6 +1141,10 @@ int immune_metrics_get_snapshot(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_metrics_heartbeat("immune_metri_get_snapshot", 0.0f);
+
+
     nimcp_mutex_lock(metrics->mutex);
 
     memset(snapshot, 0, sizeof(immune_metrics_snapshot_t));
@@ -1114,6 +1190,10 @@ int immune_metrics_start_http_server(immune_metrics_t* metrics)
      * 3. Serve Prometheus format on /metrics endpoint
      */
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_metrics_heartbeat("immune_metri_start_http_server", 0.0f);
+
+
     LOG_MODULE_WARN(LOG_TAG,
         "HTTP server not fully implemented - use export functions directly");
 
@@ -1131,6 +1211,10 @@ int immune_metrics_stop_http_server(immune_metrics_t* metrics)
     if (!metrics->http_running) return 0;
 
     /* Stop HTTP server thread and close socket */
+    /* Phase 8: Heartbeat at operation start */
+    immune_metrics_heartbeat("immune_metri_stop_http_server", 0.0f);
+
+
     metrics->http_running = false;
 
     return 0;
@@ -1143,6 +1227,10 @@ bool immune_metrics_http_is_running(immune_metrics_t* metrics)
             "immune_metrics_http_is_running: invalid parameter");
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    immune_metrics_heartbeat("immune_metri_http_is_running", 0.0f);
+
+
     return metrics->http_running;
 }
 
@@ -1160,6 +1248,10 @@ int immune_metrics_set_alert_callback(
             "immune_metrics_set_alert_callback: invalid parameter");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_metrics_heartbeat("immune_metri_set_alert_callback", 0.0f);
+
 
     nimcp_mutex_lock(metrics->mutex);
     metrics->alert_callback = callback;
@@ -1179,6 +1271,10 @@ int immune_metrics_configure_alerts(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_metrics_heartbeat("immune_metri_configure_alerts", 0.0f);
+
+
     nimcp_mutex_lock(metrics->mutex);
     metrics->config.alert_config = *config;
     nimcp_mutex_unlock(metrics->mutex);
@@ -1195,6 +1291,10 @@ int immune_metrics_check_alerts(immune_metrics_t* metrics)
     }
     if (!metrics->config.enable_alerting) return 0;
     if (metrics->alert_callback == NULL) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    immune_metrics_heartbeat("immune_metri_check_alerts", 0.0f);
+
 
     nimcp_mutex_lock(metrics->mutex);
 
@@ -1307,6 +1407,10 @@ int immune_metrics_reset(immune_metrics_t* metrics)
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    immune_metrics_heartbeat("immune_metri_reset", 0.0f);
+
+
     nimcp_mutex_lock(metrics->mutex);
 
     memset(&metrics->crashes, 0, sizeof(crash_stats_t));
@@ -1371,6 +1475,10 @@ const char* immune_metrics_severity_to_string(alert_severity_t severity)
 uint64_t immune_metrics_get_uptime(immune_metrics_t* metrics)
 {
     if (metrics == NULL || !metrics->initialized) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    immune_metrics_heartbeat("immune_metri_get_uptime", 0.0f);
+
+
     return get_time_ms() - metrics->start_time;
 }
 
@@ -1390,9 +1498,19 @@ uint64_t immune_metrics_get_uptime(immune_metrics_t* metrics)
  */
 int immune_metrics_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    immune_metrics_heartbeat("immune_metri_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Immune_Metrics");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                immune_metrics_heartbeat("immune_metri_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Immune metrics self-knowledge: %s", self->observations[i]);
         }
     }

@@ -31,7 +31,7 @@ static nimcp_health_agent_t* g_civil_engineering_health_agent = NULL;
  * @brief Set health agent for civil_engineering heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void civil_engineering_set_health_agent(nimcp_health_agent_t* agent) {
+void civil_engineering_set_health_agent(nimcp_health_agent_t* agent) {
     g_civil_engineering_health_agent = agent;
 }
 
@@ -67,6 +67,10 @@ static void set_error(const char* msg) {
  * ============================================================================ */
 
 ce_config_t civil_eng_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_civil_eng_default_co", 0.0f);
+
+
     ce_config_t config = {0};
     config.code = CE_CODE_ACI_318;
     config.safety_factor_dead = 1.4f;
@@ -82,10 +86,18 @@ ce_config_t civil_eng_default_config(void) {
 }
 
 civil_eng_t* civil_eng_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_civil_eng_create", 0.0f);
+
+
     return civil_eng_create_custom(NULL);
 }
 
 civil_eng_t* civil_eng_create_custom(const ce_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_civil_eng_create_cus", 0.0f);
+
+
     civil_eng_t* ce = calloc(1, sizeof(civil_eng_t));
     if (!ce) {
         set_error("Failed to allocate civil_eng");
@@ -98,6 +110,10 @@ civil_eng_t* civil_eng_create_custom(const ce_config_t* config) {
 }
 
 void civil_eng_destroy(civil_eng_t* ce) {
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_civil_eng_destroy", 0.0f);
+
+
     if (ce) {
         free(ce);
     }
@@ -115,6 +131,10 @@ int civil_eng_get_material(ce_material_type_t type, ce_material_t* material) {
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_civil_eng_get_materi", 0.0f);
+
+
     memset(material, 0, sizeof(*material));
     material->type = type;
 
@@ -162,6 +182,10 @@ int civil_eng_create_concrete(float fc_mpa, ce_material_t* material) {
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_civil_eng_create_con", 0.0f);
+
+
     memset(material, 0, sizeof(*material));
     material->type = CE_MATERIAL_CONCRETE;
     snprintf(material->name, sizeof(material->name), "Concrete f'c=%.0fMPa", fc_mpa);
@@ -184,6 +208,10 @@ int civil_eng_create_steel(float fy_mpa, ce_material_t* material) {
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_civil_eng_create_ste", 0.0f);
+
+
     memset(material, 0, sizeof(*material));
     material->type = CE_MATERIAL_STEEL;
     snprintf(material->name, sizeof(material->name), "Steel fy=%.0fMPa", fy_mpa);
@@ -209,6 +237,10 @@ int civil_eng_analyze_frame(
     uint32_t num_loads,
     ce_structural_result_t* result
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_civil_eng_analyze_fr", 0.0f);
+
+
     (void)ce; (void)nodes; (void)num_nodes; (void)members; (void)num_members;
     (void)loads; (void)num_loads;
     if (result) {
@@ -229,6 +261,10 @@ int civil_eng_analyze_truss(
     uint32_t num_loads,
     ce_structural_result_t* result
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_civil_eng_analyze_tr", 0.0f);
+
+
     (void)ce; (void)nodes; (void)num_nodes; (void)members; (void)num_members;
     (void)loads; (void)num_loads;
     if (result) {
@@ -250,6 +286,10 @@ int civil_eng_design_beam(
     float* as_mm2,
     float* av_s_mm2_m
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_civil_eng_design_bea", 0.0f);
+
+
     (void)ce; (void)moment_kn_m; (void)shear_kn; (void)fc_mpa; (void)fy_mpa; (void)width_m;
     if (depth_m) *depth_m = 0.5f;
     if (as_mm2) *as_mm2 = 1000.0f;
@@ -268,6 +308,10 @@ int civil_eng_design_column(
     float* depth_m,
     float* as_mm2
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_civil_eng_design_col", 0.0f);
+
+
     (void)ce; (void)axial_kn; (void)moment_y_kn_m; (void)moment_z_kn_m;
     (void)fc_mpa; (void)fy_mpa;
     if (width_m) *width_m = 0.4f;
@@ -285,12 +329,20 @@ int civil_eng_topology_optimization(
     float volume_fraction,
     float* optimized_density
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_civil_eng_topology_o", 0.0f);
+
+
     (void)ce; (void)domain; (void)nx; (void)ny; (void)nz;
     (void)loads; (void)num_loads; (void)volume_fraction; (void)optimized_density;
     return 0;
 }
 
 void civil_eng_free_structural_result(ce_structural_result_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_civil_eng_free_struc", 0.0f);
+
+
     if (result) {
         free(result->displacements);
         free(result->rotations);
@@ -317,6 +369,10 @@ int civil_eng_bearing_capacity(
     float applied_load,
     ce_foundation_result_t* result
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_civil_eng_bearing_ca", 0.0f);
+
+
     (void)ce; (void)soil; (void)foundation_width; (void)foundation_length;
     (void)foundation_depth; (void)applied_load;
     if (result) {
@@ -340,6 +396,10 @@ int civil_eng_design_pile(
     uint32_t* num_piles_required,
     ce_foundation_result_t* result
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_civil_eng_design_pil", 0.0f);
+
+
     (void)ce; (void)soil; (void)pile_diameter; (void)pile_length; (void)applied_load;
     if (num_piles_required) *num_piles_required = 4;
     if (result) {
@@ -358,6 +418,10 @@ int civil_eng_settlement(
     float* immediate_mm,
     float* consolidation_mm
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_civil_eng_settlement", 0.0f);
+
+
     (void)ce; (void)soil; (void)foundation_width; (void)applied_pressure;
     if (immediate_mm) *immediate_mm = 5.0f;
     if (consolidation_mm) *consolidation_mm = 10.0f;
@@ -371,6 +435,10 @@ int civil_eng_slope_stability(
     float slope_angle,
     float* factor_of_safety
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_civil_eng_slope_stab", 0.0f);
+
+
     (void)ce; (void)soil; (void)slope_height; (void)slope_angle;
     if (factor_of_safety) *factor_of_safety = 1.5f;
     return 0;
@@ -384,6 +452,10 @@ int civil_eng_earth_pressure(
     float* passive_pressure,
     float* at_rest_pressure
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_civil_eng_earth_pres", 0.0f);
+
+
     (void)ce; (void)soil; (void)wall_height;
     if (active_pressure) *active_pressure = 10.0f;
     if (passive_pressure) *passive_pressure = 50.0f;
@@ -406,6 +478,10 @@ int civil_eng_pipe_network(
     const uint32_t* pipe_connectivity,
     ce_hydraulic_result_t* result
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_civil_eng_pipe_netwo", 0.0f);
+
+
     (void)ce; (void)node_demands; (void)pipe_diameters; (void)pipe_lengths;
     (void)pipe_roughness; (void)num_nodes; (void)num_pipes; (void)pipe_connectivity;
     if (result) {
@@ -423,6 +499,10 @@ int civil_eng_channel_flow(
     float* flow_rate,
     float* velocity
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_civil_eng_channel_fl", 0.0f);
+
+
     (void)ce;
     /* Manning's equation: Q = (1/n) * A * R^(2/3) * S^(1/2) */
     float area = width * depth;
@@ -447,6 +527,10 @@ int civil_eng_rational_runoff(
     float rainfall_intensity_mm_hr,
     float* peak_flow_m3_s
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_civil_eng_rational_r", 0.0f);
+
+
     (void)ce;
     /* Rational method: Q = C * I * A (metric) */
     /* Convert: ha to km^2 -> /100, mm/hr to m/s -> /3.6e6 */
@@ -458,6 +542,10 @@ int civil_eng_rational_runoff(
 }
 
 void civil_eng_free_hydraulic_result(ce_hydraulic_result_t* result) {
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_civil_eng_free_hydra", 0.0f);
+
+
     if (result) {
         free(result->flow_rates);
         free(result->pressures);
@@ -479,6 +567,10 @@ int civil_eng_set_inflammation(civil_eng_t* ce, float level) {
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_civil_eng_set_inflam", 0.0f);
+
+
     ce->inflammation_level = level < 0.0f ? 0.0f : (level > 1.0f ? 1.0f : level);
     return 0;
 }
@@ -491,6 +583,10 @@ int civil_eng_set_fatigue(civil_eng_t* ce, float level) {
         return -1;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_civil_eng_set_fatigu", 0.0f);
+
+
     ce->fatigue_level = level < 0.0f ? 0.0f : (level > 1.0f ? 1.0f : level);
     return 0;
 }
@@ -502,10 +598,18 @@ int civil_eng_set_fatigue(civil_eng_t* ce, float level) {
 int civil_eng_get_stats(const civil_eng_t* ce, ce_stats_t* stats) {
     if (!ce || !stats) return -1;
     *stats = ce->stats;
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_civil_eng_get_stats", 0.0f);
+
+
     return 0;
 }
 
 void civil_eng_reset_stats(civil_eng_t* ce) {
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_civil_eng_reset_stat", 0.0f);
+
+
     if (ce) {
         memset(&ce->stats, 0, sizeof(ce->stats));
     }
@@ -521,9 +625,19 @@ const char* civil_eng_get_last_error(void) {
 
 int civil_engineering_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    civil_engineering_heartbeat("civil_engine_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Civil_Engineering");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                civil_engineering_heartbeat("civil_engine_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Module self-knowledge logged */
         }
     }

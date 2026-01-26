@@ -43,7 +43,7 @@ static nimcp_health_agent_t* g_symbolic_logic_plasticity_bridge_health_agent = N
  * @brief Set health agent for symbolic_logic_plasticity_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void symbolic_logic_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void symbolic_logic_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_symbolic_logic_plasticity_bridge_health_agent = agent;
 }
 
@@ -353,6 +353,12 @@ static int invoke_callbacks(
     safety_neuromod_response_t* response)
 {
     for (uint32_t i = 0; i < bridge->num_callbacks; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_callbacks > 256) {
+            symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_loop",
+                             (float)(i + 1) / (float)bridge->num_callbacks);
+        }
+
         callback_entry_t* cb = &bridge->callbacks[i];
         if (!cb->active) continue;
 
@@ -486,6 +492,10 @@ int safety_plasticity_bridge_default_config(safety_plasticity_config_t* config) 
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_safety_plasticity_br", 0.0f);
+
+
     memset(config, 0, sizeof(safety_plasticity_config_t));
 
     /* Response gains */
@@ -520,6 +530,10 @@ int safety_plasticity_bridge_default_config(safety_plasticity_config_t* config) 
 safety_plasticity_bridge_t* safety_plasticity_bridge_create(
     const safety_plasticity_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_safety_plasticity_br", 0.0f);
+
+
     safety_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(safety_plasticity_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("[SAFETY-PLASTICITY] Failed to allocate bridge");
@@ -557,6 +571,10 @@ void safety_plasticity_bridge_destroy(safety_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect */
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_safety_plasticity_br", 0.0f);
+
+
     safety_plasticity_bridge_disconnect(bridge);
 
     /* Cleanup */
@@ -581,6 +599,10 @@ int safety_plasticity_bridge_connect_orchestrator(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_safety_plasticity_br", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->orchestrator = orchestrator;
     bridge->base.system_a = orchestrator;
@@ -599,6 +621,10 @@ int safety_plasticity_bridge_connect_neuromod(
     if (!bridge_valid(bridge) || !neuromod) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_safety_plasticity_br", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->neuromod = neuromod;
@@ -619,6 +645,10 @@ int safety_plasticity_bridge_connect_logic(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_safety_plasticity_br", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->logic = logic;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -631,6 +661,10 @@ int safety_plasticity_bridge_disconnect(safety_plasticity_bridge_t* bridge) {
     if (!bridge_valid(bridge)) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_safety_plasticity_br", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->orchestrator = NULL;
@@ -651,6 +685,10 @@ bool safety_plasticity_bridge_is_connected(const safety_plasticity_bridge_t* bri
     if (!bridge_valid(bridge)) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_safety_plasticity_br", 0.0f);
+
+
     return bridge->state.connected;
 }
 
@@ -664,6 +702,10 @@ int safety_plasticity_map_event(
     if (!bridge_valid(bridge) || !event || !response) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_safety_plasticity_ma", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -704,6 +746,10 @@ int safety_plasticity_apply_response(
     if (!bridge_valid(bridge) || !response) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_safety_plasticity_ap", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -773,6 +819,10 @@ int safety_plasticity_process_event(
     safety_plasticity_bridge_t* bridge,
     const safety_event_t* event)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_safety_plasticity_pr", 0.0f);
+
+
     safety_neuromod_response_t response;
 
     int map_result = safety_plasticity_map_event(bridge, event, &response);
@@ -795,11 +845,21 @@ int safety_plasticity_register_callback(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_safety_plasticity_re", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Find free slot */
     int slot = -1;
     for (uint32_t i = 0; i < SAFETY_MAX_CALLBACKS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && SAFETY_MAX_CALLBACKS > 256) {
+            symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_loop",
+                             (float)(i + 1) / (float)SAFETY_MAX_CALLBACKS);
+        }
+
         if (!bridge->callbacks[i].active) {
             slot = (int)i;
             break;
@@ -831,6 +891,9 @@ int safety_plasticity_unregister_callback(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_safety_plasticity_un", 0.0f);
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->callbacks[callback_id].active) {
@@ -856,6 +919,10 @@ int safety_plasticity_bridge_update(
     if (!bridge_valid(bridge)) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_safety_plasticity_br", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -897,6 +964,10 @@ int safety_plasticity_get_state(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_safety_plasticity_ge", 0.0f);
+
+
     nimcp_mutex_lock(((safety_plasticity_bridge_t*)bridge)->mutex);
     memcpy(state, &bridge->state, sizeof(safety_plasticity_state_t));
     nimcp_mutex_unlock(((safety_plasticity_bridge_t*)bridge)->mutex);
@@ -911,6 +982,10 @@ int safety_plasticity_get_stats(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_safety_plasticity_ge", 0.0f);
+
+
     nimcp_mutex_lock(((safety_plasticity_bridge_t*)bridge)->mutex);
     memcpy(stats, &bridge->stats, sizeof(safety_plasticity_stats_t));
     nimcp_mutex_unlock(((safety_plasticity_bridge_t*)bridge)->mutex);
@@ -921,6 +996,10 @@ int safety_plasticity_reset_stats(safety_plasticity_bridge_t* bridge) {
     if (!bridge_valid(bridge)) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_safety_plasticity_re", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(safety_plasticity_stats_t));
@@ -935,6 +1014,10 @@ bool safety_plasticity_is_halted(const safety_plasticity_bridge_t* bridge) {
     if (!bridge_valid(bridge)) {
         return true;  /* Assume halted if invalid */
     }
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_safety_plasticity_is", 0.0f);
+
+
     return bridge->state.system_halted;
 }
 
@@ -948,6 +1031,10 @@ int safety_plasticity_clear_halt(
 
     /* Simple authorization check - in production, this would be more sophisticated */
     /* The authorization code must be non-zero and match a specific pattern */
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_safety_plasticity_cl", 0.0f);
+
+
     if (authorization_code == 0) {
         NIMCP_LOGGING_ERROR("[SAFETY-PLASTICITY] Invalid authorization code for halt clear");
         return -2;
@@ -987,6 +1074,10 @@ void safety_plasticity_print_summary(const safety_plasticity_bridge_t* bridge) {
         NIMCP_LOGGING_INFO("[SAFETY-PLASTICITY] Bridge: NULL or invalid");
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_safety_plasticity_pr", 0.0f);
+
 
     NIMCP_LOGGING_INFO("=== Safety-Plasticity Bridge Summary ===");
     NIMCP_LOGGING_INFO("Connected: %s", bridge->state.connected ? "yes" : "no");
@@ -1030,6 +1121,10 @@ int safety_plasticity_bridge_connect_bio_async(safety_plasticity_bridge_t* bridg
     if (!bridge_valid(bridge)) {
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_safety_plasticity_br", 0.0f);
+
+
     return bridge_base_connect_bio_async(&bridge->base);
 }
 
@@ -1037,6 +1132,10 @@ int safety_plasticity_bridge_disconnect_bio_async(safety_plasticity_bridge_t* br
     if (!bridge_valid(bridge)) {
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_safety_plasticity_br", 0.0f);
+
+
     return bridge_base_disconnect_bio_async(&bridge->base);
 }
 
@@ -1046,6 +1145,10 @@ bool safety_plasticity_bridge_is_bio_async_connected(
     if (!bridge_valid(bridge)) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_safety_plasticity_br", 0.0f);
+
+
     return bridge_base_is_bio_async_connected(&bridge->base);
 }
 
@@ -1057,6 +1160,10 @@ safety_event_t safety_event_create(
     const char* rule_name,
     const char* source_module)
 {
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_safety_event_create", 0.0f);
+
+
     safety_event_t event;
     memset(&event, 0, sizeof(event));
 
@@ -1085,6 +1192,10 @@ safety_event_t safety_event_create(
 
 void safety_neuromod_response_init(safety_neuromod_response_t* response) {
     if (!response) return;
+    /* Phase 8: Heartbeat at operation start */
+    symbolic_logic_plasticity_bridge_heartbeat("symbolic_log_safety_neuromod_resp", 0.0f);
+
+
     memset(response, 0, sizeof(safety_neuromod_response_t));
     response->learning_rate_modifier = 1.0f;
 }

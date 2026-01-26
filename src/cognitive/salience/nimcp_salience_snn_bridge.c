@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_salience_snn_bridge_health_agent = NULL;
  * @brief Set health agent for salience_snn_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void salience_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void salience_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_salience_snn_bridge_health_agent = agent;
 }
 
@@ -152,6 +152,12 @@ static bool neuron_step(salience_neuron_t* neuron, float dt_ms, float input) {
 static float compute_distance(const float* a, const float* b, uint32_t count) {
     float sum = 0.0f;
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            salience_snn_bridge_heartbeat("salience_snn_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         float diff = a[i] - b[i];
         sum += diff * diff;
     }
@@ -163,6 +169,10 @@ static float compute_distance(const float* a, const float* b, uint32_t count) {
 //=============================================================================
 
 salience_snn_config_t salience_snn_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_config_", 0.0f);
+
+
     salience_snn_config_t config = {
         .max_features = SALIENCE_SNN_MAX_FEATURES,
         .neurons_per_dim = SALIENCE_SNN_NEURONS_PER_DIM,
@@ -192,6 +202,10 @@ salience_snn_bridge_t* salience_snn_create(const salience_snn_config_t* config) 
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_create", 0.0f);
+
+
     salience_snn_bridge_t* bridge = calloc(1, sizeof(salience_snn_bridge_t));
     if (!bridge) {
 
@@ -213,12 +227,24 @@ salience_snn_bridge_t* salience_snn_create(const salience_snn_config_t* config) 
     }
 
     for (uint32_t c = 0; c < bridge->num_channels; c++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((c & 0xFF) == 0 && bridge->num_channels > 256) {
+            salience_snn_bridge_heartbeat("salience_snn_loop",
+                             (float)(c + 1) / (float)bridge->num_channels);
+        }
+
         bridge->channel_neurons[c] = calloc(config->neurons_per_dim, sizeof(salience_neuron_t));
         if (!bridge->channel_neurons[c]) {
             salience_snn_destroy(bridge);
             return NULL;
         }
         for (uint32_t n = 0; n < config->neurons_per_dim; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && config->neurons_per_dim > 256) {
+                salience_snn_bridge_heartbeat("salience_snn_loop",
+                                 (float)(n + 1) / (float)config->neurons_per_dim);
+            }
+
             reset_neuron(&bridge->channel_neurons[c][n]);
         }
     }
@@ -231,6 +257,12 @@ salience_snn_bridge_t* salience_snn_create(const salience_snn_config_t* config) 
         return NULL;
     }
     for (uint32_t n = 0; n < bridge->num_output_neurons; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && bridge->num_output_neurons > 256) {
+            salience_snn_bridge_heartbeat("salience_snn_loop",
+                             (float)(n + 1) / (float)bridge->num_output_neurons);
+        }
+
         reset_neuron(&bridge->output_neurons[n]);
     }
 
@@ -242,6 +274,12 @@ salience_snn_bridge_t* salience_snn_create(const salience_snn_config_t* config) 
             return NULL;
         }
         for (uint32_t i = 0; i < config->history_depth; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && config->history_depth > 256) {
+                salience_snn_bridge_heartbeat("salience_snn_loop",
+                                 (float)(i + 1) / (float)config->history_depth);
+            }
+
             bridge->history[i].features = calloc(config->max_features, sizeof(float));
             if (!bridge->history[i].features) {
                 salience_snn_destroy(bridge);
@@ -265,8 +303,18 @@ salience_snn_bridge_t* salience_snn_create(const salience_snn_config_t* config) 
 void salience_snn_destroy(salience_snn_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_destroy", 0.0f);
+
+
     if (bridge->channel_neurons) {
         for (uint32_t c = 0; c < bridge->num_channels; c++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((c & 0xFF) == 0 && bridge->num_channels > 256) {
+                salience_snn_bridge_heartbeat("salience_snn_loop",
+                                 (float)(c + 1) / (float)bridge->num_channels);
+            }
+
             free(bridge->channel_neurons[c]);
         }
         free(bridge->channel_neurons);
@@ -275,6 +323,12 @@ void salience_snn_destroy(salience_snn_bridge_t* bridge) {
 
     if (bridge->history) {
         for (uint32_t i = 0; i < bridge->config.history_depth; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->config.history_depth > 256) {
+                salience_snn_bridge_heartbeat("salience_snn_loop",
+                                 (float)(i + 1) / (float)bridge->config.history_depth);
+            }
+
             free(bridge->history[i].features);
         }
         free(bridge->history);
@@ -287,16 +341,38 @@ void salience_snn_destroy(salience_snn_bridge_t* bridge) {
 int salience_snn_reset(salience_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_reset", 0.0f);
+
+
     bridge->state = SALIENCE_SNN_STATE_IDLE;
     bridge->sim_time_us = 0;
 
     // Reset neurons
     for (uint32_t c = 0; c < bridge->num_channels; c++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((c & 0xFF) == 0 && bridge->num_channels > 256) {
+            salience_snn_bridge_heartbeat("salience_snn_loop",
+                             (float)(c + 1) / (float)bridge->num_channels);
+        }
+
         for (uint32_t n = 0; n < bridge->config.neurons_per_dim; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && bridge->config.neurons_per_dim > 256) {
+                salience_snn_bridge_heartbeat("salience_snn_loop",
+                                 (float)(n + 1) / (float)bridge->config.neurons_per_dim);
+            }
+
             reset_neuron(&bridge->channel_neurons[c][n]);
         }
     }
     for (uint32_t n = 0; n < bridge->num_output_neurons; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && bridge->num_output_neurons > 256) {
+            salience_snn_bridge_heartbeat("salience_snn_loop",
+                             (float)(n + 1) / (float)bridge->num_output_neurons);
+        }
+
         reset_neuron(&bridge->output_neurons[n]);
     }
 
@@ -324,6 +400,10 @@ int salience_snn_encode_features(
 ) {
     if (!bridge || !features) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_encode_", 0.0f);
+
+
     bridge->state = SALIENCE_SNN_STATE_ENCODING;
 
     // Compute novelty from history (first stimulus = maximum novelty)
@@ -335,12 +415,24 @@ int salience_snn_encode_features(
     // Compute intensity from feature magnitude
     float intensity = 0.0f;
     for (uint32_t i = 0; i < feature_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && feature_count > 256) {
+            salience_snn_bridge_heartbeat("salience_snn_loop",
+                             (float)(i + 1) / (float)feature_count);
+        }
+
         intensity += fabsf(features[i]);
     }
     intensity /= feature_count;
 
     // Encode into channel neurons
     for (uint32_t n = 0; n < bridge->config.neurons_per_dim; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && bridge->config.neurons_per_dim > 256) {
+            salience_snn_bridge_heartbeat("salience_snn_loop",
+                             (float)(n + 1) / (float)bridge->config.neurons_per_dim);
+        }
+
         bridge->channel_neurons[SALIENCE_SNN_CHANNEL_NOVELTY][n].input_current = novelty * 2.0f;
         bridge->channel_neurons[SALIENCE_SNN_CHANNEL_INTENSITY][n].input_current = intensity * 2.0f;
     }
@@ -364,6 +456,10 @@ int salience_snn_encode_with_prediction(
     if (!bridge || !features) return -1;
 
     // First encode features
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_encode_", 0.0f);
+
+
     salience_snn_encode_features(bridge, features, feature_count);
 
     // Compute surprise from prediction error
@@ -373,6 +469,12 @@ int salience_snn_encode_with_prediction(
         surprise = clamp(surprise, 0.0f, 1.0f);
 
         for (uint32_t n = 0; n < bridge->config.neurons_per_dim; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && bridge->config.neurons_per_dim > 256) {
+                salience_snn_bridge_heartbeat("salience_snn_loop",
+                                 (float)(n + 1) / (float)bridge->config.neurons_per_dim);
+            }
+
             bridge->channel_neurons[SALIENCE_SNN_CHANNEL_SURPRISE][n].input_current = surprise * 2.0f;
         }
 
@@ -395,6 +497,10 @@ int salience_snn_encode_temporal(
     if (!bridge || !features) return -1;
 
     // Encode features
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_encode_", 0.0f);
+
+
     salience_snn_encode_features(bridge, features, feature_count);
 
     // Compute urgency from temporal dynamics
@@ -414,6 +520,12 @@ int salience_snn_encode_temporal(
     }
 
     for (uint32_t n = 0; n < bridge->config.neurons_per_dim; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && bridge->config.neurons_per_dim > 256) {
+            salience_snn_bridge_heartbeat("salience_snn_loop",
+                             (float)(n + 1) / (float)bridge->config.neurons_per_dim);
+        }
+
         bridge->channel_neurons[SALIENCE_SNN_CHANNEL_URGENCY][n].input_current = urgency * 2.0f;
     }
 
@@ -427,12 +539,22 @@ int salience_snn_encode_temporal(
 int salience_snn_simulate(salience_snn_bridge_t* bridge, float duration_ms) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_simulat", 0.0f);
+
+
     bridge->state = SALIENCE_SNN_STATE_SIMULATING;
 
     float dt = bridge->config.dt_ms;
     int steps = (int)(duration_ms / dt);
 
     for (int step = 0; step < steps; step++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((step & 0xFF) == 0 && steps > 256) {
+            salience_snn_bridge_heartbeat("salience_snn_loop",
+                             (float)(step + 1) / (float)steps);
+        }
+
         salience_snn_step(bridge);
     }
 
@@ -443,13 +565,29 @@ int salience_snn_simulate(salience_snn_bridge_t* bridge, float duration_ms) {
 int salience_snn_step(salience_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_step", 0.0f);
+
+
     float dt = bridge->config.dt_ms;
 
     // Step all channel neurons
     for (uint32_t c = 0; c < bridge->num_channels; c++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((c & 0xFF) == 0 && bridge->num_channels > 256) {
+            salience_snn_bridge_heartbeat("salience_snn_loop",
+                             (float)(c + 1) / (float)bridge->num_channels);
+        }
+
         float channel_activity = 0.0f;
         float membrane_activity = 0.0f;
         for (uint32_t n = 0; n < bridge->config.neurons_per_dim; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && bridge->config.neurons_per_dim > 256) {
+                salience_snn_bridge_heartbeat("salience_snn_loop",
+                                 (float)(n + 1) / (float)bridge->config.neurons_per_dim);
+            }
+
             float input = bridge->channel_neurons[c][n].input_current;
             if (neuron_step(&bridge->channel_neurons[c][n], dt, input)) {
                 channel_activity += 1.0f;
@@ -473,6 +611,12 @@ int salience_snn_step(salience_snn_bridge_t* bridge) {
         bridge->channel_activations[SALIENCE_SNN_CHANNEL_INTENSITY] * 0.2f;
 
     for (uint32_t n = 0; n < bridge->num_output_neurons; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && bridge->num_output_neurons > 256) {
+            salience_snn_bridge_heartbeat("salience_snn_loop",
+                             (float)(n + 1) / (float)bridge->num_output_neurons);
+        }
+
         if (neuron_step(&bridge->output_neurons[n], dt, weighted_input)) {
             bridge->stats.total_spikes++;
         }
@@ -490,6 +634,10 @@ int salience_snn_forward(
     if (!bridge || !inputs) return -1;
 
     // Distribute inputs across channels
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_forward", 0.0f);
+
+
     uint32_t per_channel = input_count / bridge->num_channels;
     for (uint32_t c = 0; c < bridge->num_channels && c * per_channel < input_count; c++) {
         float sum = 0.0f;
@@ -499,6 +647,12 @@ int salience_snn_forward(
         sum /= per_channel;
 
         for (uint32_t n = 0; n < bridge->config.neurons_per_dim; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && bridge->config.neurons_per_dim > 256) {
+                salience_snn_bridge_heartbeat("salience_snn_loop",
+                                 (float)(n + 1) / (float)bridge->config.neurons_per_dim);
+            }
+
             bridge->channel_neurons[c][n].input_current = sum;
         }
     }
@@ -515,6 +669,10 @@ int salience_snn_decode_salience(
     salience_snn_output_t* output
 ) {
     if (!bridge || !output) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_decode_", 0.0f);
+
 
     bridge->state = SALIENCE_SNN_STATE_EVALUATING;
 
@@ -534,6 +692,12 @@ int salience_snn_decode_salience(
     float max_activation = 0.0f;
     output->dominant_channel = SALIENCE_SNN_CHANNEL_NOVELTY;
     for (uint32_t c = 0; c < SALIENCE_SNN_CHANNEL_COUNT; c++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((c & 0xFF) == 0 && SALIENCE_SNN_CHANNEL_COUNT > 256) {
+            salience_snn_bridge_heartbeat("salience_snn_loop",
+                             (float)(c + 1) / (float)SALIENCE_SNN_CHANNEL_COUNT);
+        }
+
         if (bridge->channel_activations[c] > max_activation) {
             max_activation = bridge->channel_activations[c];
             output->dominant_channel = (salience_snn_channel_t)c;
@@ -544,11 +708,23 @@ int salience_snn_decode_salience(
     float output_activity = 0.0f;
     float output_variance = 0.0f;
     for (uint32_t n = 0; n < bridge->num_output_neurons; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && bridge->num_output_neurons > 256) {
+            salience_snn_bridge_heartbeat("salience_snn_loop",
+                             (float)(n + 1) / (float)bridge->num_output_neurons);
+        }
+
         output_activity += bridge->output_neurons[n].membrane_potential;
     }
     output_activity /= bridge->num_output_neurons;
 
     for (uint32_t n = 0; n < bridge->num_output_neurons; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && bridge->num_output_neurons > 256) {
+            salience_snn_bridge_heartbeat("salience_snn_loop",
+                             (float)(n + 1) / (float)bridge->num_output_neurons);
+        }
+
         float diff = bridge->output_neurons[n].membrane_potential - output_activity;
         output_variance += diff * diff;
     }
@@ -594,6 +770,10 @@ int salience_snn_decode_salience(
 float salience_snn_get_combined_salience(salience_snn_bridge_t* bridge) {
     if (!bridge) return 0.0f;
     // Compute from channel activations for immediate access
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_get_com", 0.0f);
+
+
     return bridge->channel_activations[SALIENCE_SNN_CHANNEL_NOVELTY] * bridge->config.novelty_weight +
            bridge->channel_activations[SALIENCE_SNN_CHANNEL_SURPRISE] * bridge->config.surprise_weight +
            bridge->channel_activations[SALIENCE_SNN_CHANNEL_URGENCY] * bridge->config.urgency_weight +
@@ -602,21 +782,37 @@ float salience_snn_get_combined_salience(salience_snn_bridge_t* bridge) {
 
 float salience_snn_get_novelty(salience_snn_bridge_t* bridge) {
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_get_nov", 0.0f);
+
+
     return bridge->channel_activations[SALIENCE_SNN_CHANNEL_NOVELTY];
 }
 
 float salience_snn_get_surprise(salience_snn_bridge_t* bridge) {
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_get_sur", 0.0f);
+
+
     return bridge->channel_activations[SALIENCE_SNN_CHANNEL_SURPRISE];
 }
 
 float salience_snn_get_urgency(salience_snn_bridge_t* bridge) {
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_get_urg", 0.0f);
+
+
     return bridge->channel_activations[SALIENCE_SNN_CHANNEL_URGENCY];
 }
 
 salience_snn_channel_t salience_snn_get_dominant_channel(salience_snn_bridge_t* bridge) {
     if (!bridge) return SALIENCE_SNN_CHANNEL_NOVELTY;
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_get_dom", 0.0f);
+
+
     return bridge->last_output.dominant_channel;
 }
 
@@ -630,6 +826,10 @@ int salience_snn_add_to_history(
     uint32_t feature_count
 ) {
     if (!bridge || !features || !bridge->history) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_add_to_", 0.0f);
+
 
     uint32_t copy_count = feature_count < bridge->config.max_features ?
                           feature_count : bridge->config.max_features;
@@ -649,6 +849,10 @@ int salience_snn_add_to_history(
 int salience_snn_clear_history(salience_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_clear_h", 0.0f);
+
+
     bridge->history_count = 0;
     bridge->history_head = 0;
 
@@ -664,9 +868,19 @@ float salience_snn_compute_novelty(
         return 1.0f;  // No history = maximum novelty
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_compute", 0.0f);
+
+
     float min_distance = 1000.0f;
 
     for (uint32_t i = 0; i < bridge->history_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->history_count > 256) {
+            salience_snn_bridge_heartbeat("salience_snn_loop",
+                             (float)(i + 1) / (float)bridge->history_count);
+        }
+
         uint32_t compare_count = feature_count < bridge->history[i].feature_count ?
                                  feature_count : bridge->history[i].feature_count;
         float distance = compute_distance(features, bridge->history[i].features, compare_count);
@@ -691,11 +905,21 @@ int salience_snn_get_channel_state(
 ) {
     if (!bridge || !state || channel >= SALIENCE_SNN_CHANNEL_COUNT) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_get_cha", 0.0f);
+
+
     state->channel = channel;
     state->activation = bridge->channel_activations[channel];
 
     uint32_t total_spikes = 0;
     for (uint32_t n = 0; n < bridge->config.neurons_per_dim; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && bridge->config.neurons_per_dim > 256) {
+            salience_snn_bridge_heartbeat("salience_snn_loop",
+                             (float)(n + 1) / (float)bridge->config.neurons_per_dim);
+        }
+
         total_spikes += bridge->channel_neurons[channel][n].spike_count;
     }
     state->spike_count = total_spikes;
@@ -711,10 +935,20 @@ int salience_snn_get_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_get_sta", 0.0f);
+
+
     state->state = bridge->state;
 
     float total = 0.0f;
     for (uint32_t c = 0; c < bridge->num_channels; c++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((c & 0xFF) == 0 && bridge->num_channels > 256) {
+            salience_snn_bridge_heartbeat("salience_snn_loop",
+                             (float)(c + 1) / (float)bridge->num_channels);
+        }
+
         total += bridge->channel_activations[c];
     }
     state->total_activity = total;
@@ -734,11 +968,19 @@ int salience_snn_get_state(
 int salience_snn_get_stats(salience_snn_bridge_t* bridge, salience_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_get_sta", 0.0f);
+
+
     return 0;
 }
 
 int salience_snn_reset_stats(salience_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_reset_s", 0.0f);
+
+
     memset(&bridge->stats, 0, sizeof(salience_snn_stats_t));
     return 0;
 }
@@ -753,6 +995,10 @@ int salience_snn_register_spike_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_registe", 0.0f);
+
+
     bridge->spike_callback = callback;
     bridge->spike_callback_data = user_data;
     return 0;
@@ -764,6 +1010,10 @@ int salience_snn_register_threshold_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_registe", 0.0f);
+
+
     bridge->threshold_callback = callback;
     bridge->threshold_callback_data = user_data;
     return 0;
@@ -776,18 +1026,30 @@ int salience_snn_register_threshold_callback(
 int salience_snn_bio_async_connect(salience_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_bio_asy", 0.0f);
+
+
     bridge->bio_async_connected = true;
     return 0;
 }
 
 int salience_snn_bio_async_disconnect(salience_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_bio_asy", 0.0f);
+
+
     bridge->bio_async_connected = false;
     return 0;
 }
 
 bool salience_snn_is_bio_async_connected(salience_snn_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_is_bio_", 0.0f);
+
+
     return bridge->bio_async_connected;
 }
 
@@ -804,6 +1066,10 @@ int salience_snn_set_weights(
     if (!bridge) return -1;
 
     // Normalize weights
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_set_wei", 0.0f);
+
+
     float total = novelty_weight + surprise_weight + urgency_weight;
     if (total > 0.0f) {
         bridge->config.novelty_weight = novelty_weight / total;
@@ -821,6 +1087,10 @@ int salience_snn_set_thresholds(
     float urgency_threshold
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_snn_bridge_heartbeat("salience_snn_salience_snn_set_thr", 0.0f);
+
 
     bridge->config.novelty_threshold = clamp(novelty_threshold, 0.0f, 1.0f);
     bridge->config.surprise_threshold = clamp(surprise_threshold, 0.0f, 1.0f);

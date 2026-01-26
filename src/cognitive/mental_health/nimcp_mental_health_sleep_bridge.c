@@ -31,7 +31,7 @@ static nimcp_health_agent_t* g_mental_health_sleep_bridge_health_agent = NULL;
  * @brief Set health agent for mental_health_sleep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mental_health_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void mental_health_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_mental_health_sleep_bridge_health_agent = agent;
 }
 
@@ -117,6 +117,10 @@ static void mental_health_on_sleep_state_change(sleep_state_t new_state, void* u
 
 int mental_health_sleep_default_config(mental_health_sleep_config_t* config) {
     if (!config) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_sleep_bridge_heartbeat("mental_healt_mental_health_sleep_", 0.0f);
+
+
     config->enable_stability_modulation = true;
     config->enable_risk_modulation = true;
     config->modulation_strength = 1.0f;
@@ -134,6 +138,10 @@ mental_health_sleep_bridge_t mental_health_sleep_bridge_create(
         return NULL;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_sleep_bridge_heartbeat("mental_healt_create", 0.0f);
+
 
     struct mental_health_sleep_bridge_struct* bridge =
         (struct mental_health_sleep_bridge_struct*)nimcp_malloc(sizeof(struct mental_health_sleep_bridge_struct));
@@ -184,6 +192,10 @@ void mental_health_sleep_bridge_destroy(mental_health_sleep_bridge_t bridge) {
     if (!bridge) return;
 
     /* Unregister callback if it was registered */
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_sleep_bridge_heartbeat("mental_healt_destroy", 0.0f);
+
+
     if (bridge->callback_registered && bridge->sleep_system) {
         bool unregistered = sleep_unregister_state_callback(
             bridge->sleep_system,
@@ -201,6 +213,10 @@ void mental_health_sleep_bridge_destroy(mental_health_sleep_bridge_t bridge) {
 
 int mental_health_sleep_update(mental_health_sleep_bridge_t bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_sleep_bridge_heartbeat("mental_healt_mental_health_sleep_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -251,6 +267,10 @@ int mental_health_sleep_update(mental_health_sleep_bridge_t bridge) {
 
 int mental_health_sleep_get_effects(const mental_health_sleep_bridge_t bridge, mental_health_sleep_effects_t* effects) {
     if (!bridge || !effects) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_sleep_bridge_heartbeat("mental_healt_mental_health_sleep_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -259,6 +279,10 @@ int mental_health_sleep_get_effects(const mental_health_sleep_bridge_t bridge, m
 
 float mental_health_sleep_get_stability(const mental_health_sleep_bridge_t bridge) {
     if (!bridge) return 1.0f;
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_sleep_bridge_heartbeat("mental_healt_mental_health_sleep_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.psychiatric_stability_factor;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -267,6 +291,10 @@ float mental_health_sleep_get_stability(const mental_health_sleep_bridge_t bridg
 
 bool mental_health_sleep_is_restoration_active(const mental_health_sleep_bridge_t bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_sleep_bridge_heartbeat("mental_healt_mental_health_sleep_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.restoration_active;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -274,6 +302,10 @@ bool mental_health_sleep_is_restoration_active(const mental_health_sleep_bridge_
 }
 
 float mental_health_sleep_stability_for_state(sleep_state_t state) {
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_sleep_bridge_heartbeat("mental_healt_mental_health_sleep_", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return MENTAL_HEALTH_SLEEP_STABILITY_AWAKE;
         case SLEEP_STATE_DROWSY:     return MENTAL_HEALTH_SLEEP_STABILITY_DROWSY;
@@ -285,6 +317,10 @@ float mental_health_sleep_stability_for_state(sleep_state_t state) {
 }
 
 float mental_health_sleep_disorder_risk_for_state(sleep_state_t state) {
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_sleep_bridge_heartbeat("mental_healt_mental_health_sleep_", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return MENTAL_HEALTH_SLEEP_DISORDER_RISK_AWAKE;
         case SLEEP_STATE_DROWSY:     return MENTAL_HEALTH_SLEEP_DISORDER_RISK_DROWSY;
@@ -302,9 +338,19 @@ float mental_health_sleep_disorder_risk_for_state(sleep_state_t state) {
 int mental_health_sleep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_sleep_bridge_heartbeat("mental_healt_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Mental_Health_Sleep_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                mental_health_sleep_bridge_heartbeat("mental_healt_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

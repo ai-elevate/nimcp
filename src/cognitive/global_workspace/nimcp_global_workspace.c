@@ -73,7 +73,7 @@ static nimcp_health_agent_t* g_global_workspace_health_agent = NULL;
  * @brief Set health agent for global_workspace heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void global_workspace_set_health_agent(nimcp_health_agent_t* agent) {
+void global_workspace_set_health_agent(nimcp_health_agent_t* agent) {
     g_global_workspace_health_agent = agent;
 }
 
@@ -166,6 +166,12 @@ static int global_workspace_wiring_handler_callback(
 
     int registered = 0;
     for (uint32_t i = 0; i < message_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && message_count > 256) {
+            global_workspace_heartbeat("global_works_loop",
+                             (float)(i + 1) / (float)message_count);
+        }
+
         switch (message_types[i]) {
             case BIO_MSG_ATTENTION_SHIFT:
                 bio_router_register_handler(ctx, message_types[i], handle_attention_shift);
@@ -298,6 +304,12 @@ static bool resolve_winner_take_all(
 
     // Find strongest competitor (with decay applied)
     for (uint32_t i = 0; i < GLOBAL_WORKSPACE_MAX_COMPETITORS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && GLOBAL_WORKSPACE_MAX_COMPETITORS > 256) {
+            global_workspace_heartbeat("global_works_loop",
+                             (float)(i + 1) / (float)GLOBAL_WORKSPACE_MAX_COMPETITORS);
+        }
+
         if (!workspace->competitors[i].is_active) continue;
 
         // Apply decay
@@ -357,6 +369,12 @@ static bool resolve_priority_based(
     uint64_t current_time = get_time_ms();
 
     for (uint32_t i = 0; i < GLOBAL_WORKSPACE_MAX_COMPETITORS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && GLOBAL_WORKSPACE_MAX_COMPETITORS > 256) {
+            global_workspace_heartbeat("global_works_loop",
+                             (float)(i + 1) / (float)GLOBAL_WORKSPACE_MAX_COMPETITORS);
+        }
+
         if (!workspace->competitors[i].is_active) continue;
 
         // Apply decay
@@ -422,6 +440,12 @@ static bool resolve_round_robin(
 
     // Find next active competitor after last winner
     for (uint32_t offset = 0; offset < GLOBAL_WORKSPACE_MAX_COMPETITORS; offset++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((offset & 0xFF) == 0 && GLOBAL_WORKSPACE_MAX_COMPETITORS > 256) {
+            global_workspace_heartbeat("global_works_loop",
+                             (float)(offset + 1) / (float)GLOBAL_WORKSPACE_MAX_COMPETITORS);
+        }
+
         uint32_t idx = (start_idx + offset) % GLOBAL_WORKSPACE_MAX_COMPETITORS;
         if (!workspace->competitors[idx].is_active) continue;
 
@@ -484,6 +508,12 @@ static void broadcast_winner(
     // Find runner-up strength (for statistics)
     float runner_up = 0.0F;
     for (uint32_t i = 0; i < GLOBAL_WORKSPACE_MAX_COMPETITORS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && GLOBAL_WORKSPACE_MAX_COMPETITORS > 256) {
+            global_workspace_heartbeat("global_works_loop",
+                             (float)(i + 1) / (float)GLOBAL_WORKSPACE_MAX_COMPETITORS);
+        }
+
         if (i == winner_idx || !workspace->competitors[i].is_active) continue;
         if (workspace->competitors[i].strength > runner_up) {
             runner_up = workspace->competitors[i].strength;
@@ -531,6 +561,10 @@ static void broadcast_winner(
 //=============================================================================
 
 global_workspace_t* global_workspace_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_create", 0.0f);
+
+
     global_workspace_config_t config = global_workspace_default_config();
     return global_workspace_create_custom(&config);
 }
@@ -548,6 +582,10 @@ global_workspace_t* global_workspace_create_custom(
     }
 
     // Use defaults if NULL config
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_create_custom", 0.0f);
+
+
     global_workspace_config_t actual_config;
     if (config != NULL) {
         actual_config = *config;
@@ -606,12 +644,24 @@ global_workspace_t* global_workspace_create_custom(
         }
 
         for (uint32_t i = 0; i < actual_config.history_depth; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && actual_config.history_depth > 256) {
+                global_workspace_heartbeat("global_works_loop",
+                                 (float)(i + 1) / (float)actual_config.history_depth);
+            }
+
             workspace->history_content[i] = (float*)nimcp_calloc(
                 actual_config.capacity_dim, sizeof(float));
             if (workspace->history_content[i] == NULL) {
                 fprintf(stderr, "Failed to allocate history content buffer %u\n", i);
                 // Clean up previously allocated
                 for (uint32_t j = 0; j < i; j++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((j & 0xFF) == 0 && i > 256) {
+                        global_workspace_heartbeat("global_works_loop",
+                                         (float)(j + 1) / (float)i);
+                    }
+
                     nimcp_free(workspace->history_content[j]);
                 }
                 nimcp_free(workspace->history_content);
@@ -625,6 +675,12 @@ global_workspace_t* global_workspace_create_custom(
 
     // Initialize competitor pool
     for (uint32_t i = 0; i < GLOBAL_WORKSPACE_MAX_COMPETITORS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && GLOBAL_WORKSPACE_MAX_COMPETITORS > 256) {
+            global_workspace_heartbeat("global_works_loop",
+                             (float)(i + 1) / (float)GLOBAL_WORKSPACE_MAX_COMPETITORS);
+        }
+
         workspace->competitors[i].is_active = false;
     }
     workspace->num_active_competitors = 0;
@@ -741,6 +797,10 @@ global_workspace_t* global_workspace_create_custom(
 void global_workspace_destroy(global_workspace_t* workspace) {
     if (workspace == NULL) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_destroy", 0.0f);
+
+
     struct global_workspace_struct* ws = (struct global_workspace_struct*)workspace;
 
     // Lock before destroying to ensure no concurrent operations
@@ -770,6 +830,12 @@ void global_workspace_destroy(global_workspace_t* workspace) {
     // Free history content buffers
     if (ws->history_content != NULL) {
         for (uint32_t i = 0; i < ws->config.history_depth; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && ws->config.history_depth > 256) {
+                global_workspace_heartbeat("global_works_loop",
+                                 (float)(i + 1) / (float)ws->config.history_depth);
+            }
+
             nimcp_free(ws->history_content[i]);
         }
         nimcp_free(ws->history_content);
@@ -791,6 +857,12 @@ void global_workspace_destroy(global_workspace_t* workspace) {
 
     // Free competitor content buffers that we own
     for (uint32_t i = 0; i < GLOBAL_WORKSPACE_MAX_COMPETITORS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && GLOBAL_WORKSPACE_MAX_COMPETITORS > 256) {
+            global_workspace_heartbeat("global_works_loop",
+                             (float)(i + 1) / (float)GLOBAL_WORKSPACE_MAX_COMPETITORS);
+        }
+
         if (ws->competitors[i].is_active && ws->competitors[i].content) {
             nimcp_free(ws->competitors[i].content);
             ws->competitors[i].content = NULL;
@@ -824,6 +896,10 @@ bool global_workspace_compete(
     if (workspace == NULL || content == NULL) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_compete", 0.0f);
+
 
     struct global_workspace_struct* ws = (struct global_workspace_struct*)workspace;
 
@@ -866,6 +942,12 @@ bool global_workspace_compete(
 
     // Check if module already in pool (update case)
     for (uint32_t i = 0; i < GLOBAL_WORKSPACE_MAX_COMPETITORS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && GLOBAL_WORKSPACE_MAX_COMPETITORS > 256) {
+            global_workspace_heartbeat("global_works_loop",
+                             (float)(i + 1) / (float)GLOBAL_WORKSPACE_MAX_COMPETITORS);
+        }
+
         if (ws->competitors[i].is_active && ws->competitors[i].module == module) {
             slot_idx = i;
             // Free old content buffer
@@ -879,6 +961,12 @@ bool global_workspace_compete(
     // If not found, find empty slot
     if (slot_idx == GLOBAL_WORKSPACE_MAX_COMPETITORS) {
         for (uint32_t i = 0; i < GLOBAL_WORKSPACE_MAX_COMPETITORS; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && GLOBAL_WORKSPACE_MAX_COMPETITORS > 256) {
+                global_workspace_heartbeat("global_works_loop",
+                                 (float)(i + 1) / (float)GLOBAL_WORKSPACE_MAX_COMPETITORS);
+            }
+
             if (!ws->competitors[i].is_active) {
                 slot_idx = i;
                 break;
@@ -972,6 +1060,12 @@ bool global_workspace_compete(
 
             // Clear the entire competition pool after broadcasting
             for (uint32_t i = 0; i < GLOBAL_WORKSPACE_MAX_COMPETITORS; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && GLOBAL_WORKSPACE_MAX_COMPETITORS > 256) {
+                    global_workspace_heartbeat("global_works_loop",
+                                     (float)(i + 1) / (float)GLOBAL_WORKSPACE_MAX_COMPETITORS);
+                }
+
                 if (ws->competitors[i].is_active) {
                     if (ws->competitors[i].content) {
                         nimcp_free(ws->competitors[i].content);
@@ -1011,6 +1105,10 @@ bool global_workspace_submit(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_submit", 0.0f);
+
+
     struct global_workspace_struct* ws = (struct global_workspace_struct*)workspace;
 
     // Thread safety
@@ -1045,6 +1143,12 @@ bool global_workspace_submit(
 
     // Check if module already in pool (update case)
     for (uint32_t i = 0; i < GLOBAL_WORKSPACE_MAX_COMPETITORS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && GLOBAL_WORKSPACE_MAX_COMPETITORS > 256) {
+            global_workspace_heartbeat("global_works_loop",
+                             (float)(i + 1) / (float)GLOBAL_WORKSPACE_MAX_COMPETITORS);
+        }
+
         if (ws->competitors[i].is_active && ws->competitors[i].module == module) {
             slot_idx = i;
             // Free old content buffer before replacing
@@ -1059,6 +1163,12 @@ bool global_workspace_submit(
     // If not found, find empty slot
     if (slot_idx == GLOBAL_WORKSPACE_MAX_COMPETITORS) {
         for (uint32_t i = 0; i < GLOBAL_WORKSPACE_MAX_COMPETITORS; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && GLOBAL_WORKSPACE_MAX_COMPETITORS > 256) {
+                global_workspace_heartbeat("global_works_loop",
+                                 (float)(i + 1) / (float)GLOBAL_WORKSPACE_MAX_COMPETITORS);
+            }
+
             if (!ws->competitors[i].is_active) {
                 slot_idx = i;
                 break;
@@ -1118,6 +1228,10 @@ bool global_workspace_resolve(
         fprintf(stderr, "NULL workspace in global_workspace_resolve\n");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_resolve", 0.0f);
+
 
     struct global_workspace_struct* ws = (struct global_workspace_struct*)workspace;
 
@@ -1190,6 +1304,12 @@ bool global_workspace_resolve(
     if (!found_winner) {
         // Clear pool (all below threshold or pruned by decay)
         for (uint32_t i = 0; i < GLOBAL_WORKSPACE_MAX_COMPETITORS; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && GLOBAL_WORKSPACE_MAX_COMPETITORS > 256) {
+                global_workspace_heartbeat("global_works_loop",
+                                 (float)(i + 1) / (float)GLOBAL_WORKSPACE_MAX_COMPETITORS);
+            }
+
             if (ws->competitors[i].is_active) {
                 // Free content buffer we own
                 if (ws->competitors[i].content) {
@@ -1233,6 +1353,12 @@ bool global_workspace_resolve(
 
         // Clear the entire competition pool after broadcasting
         for (uint32_t i = 0; i < GLOBAL_WORKSPACE_MAX_COMPETITORS; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && GLOBAL_WORKSPACE_MAX_COMPETITORS > 256) {
+                global_workspace_heartbeat("global_works_loop",
+                                 (float)(i + 1) / (float)GLOBAL_WORKSPACE_MAX_COMPETITORS);
+            }
+
             if (ws->competitors[i].is_active) {
                 // Free content buffer we own
                 if (ws->competitors[i].content) {
@@ -1263,6 +1389,10 @@ bool global_workspace_read_broadcast(
     cognitive_module_t* source)
 {
     if (workspace == NULL || content == NULL) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_read_broadcast", 0.0f);
+
 
     struct global_workspace_struct* ws = (struct global_workspace_struct*)workspace;
 
@@ -1305,6 +1435,10 @@ bool global_workspace_subscribe(
 {
     if (workspace == NULL) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_subscribe", 0.0f);
+
+
     struct global_workspace_struct* ws = (struct global_workspace_struct*)workspace;
 
     // Thread safety
@@ -1312,6 +1446,12 @@ bool global_workspace_subscribe(
 
     // Check if already subscribed
     for (uint32_t i = 0; i < ws->num_subscribers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ws->num_subscribers > 256) {
+            global_workspace_heartbeat("global_works_loop",
+                             (float)(i + 1) / (float)ws->num_subscribers);
+        }
+
         if (ws->subscribers[i] == module) {
             nimcp_platform_mutex_unlock(&ws->mutex);
             return true;  // Already subscribed (idempotent)
@@ -1343,6 +1483,10 @@ bool global_workspace_unsubscribe(
 {
     if (workspace == NULL) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_unsubscribe", 0.0f);
+
+
     struct global_workspace_struct* ws = (struct global_workspace_struct*)workspace;
 
     // Thread safety
@@ -1350,6 +1494,12 @@ bool global_workspace_unsubscribe(
 
     // Find module in subscriber list
     for (uint32_t i = 0; i < ws->num_subscribers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ws->num_subscribers > 256) {
+            global_workspace_heartbeat("global_works_loop",
+                             (float)(i + 1) / (float)ws->num_subscribers);
+        }
+
         if (ws->subscribers[i] == module) {
             // Remove by shifting remaining elements
             for (uint32_t j = i; j < ws->num_subscribers - 1; j++) {
@@ -1377,6 +1527,10 @@ bool global_workspace_unsubscribe(
 
 bool global_workspace_has_broadcast(const global_workspace_t* workspace) {
     if (workspace == NULL) return false;
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_has_broadcast", 0.0f);
+
+
     struct global_workspace_struct* ws =
         (struct global_workspace_struct*)workspace;
 
@@ -1391,6 +1545,10 @@ cognitive_module_t global_workspace_get_broadcast_source(
     const global_workspace_t* workspace)
 {
     if (workspace == NULL) return MODULE_NONE;
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_get_broadcast_source", 0.0f);
+
+
     struct global_workspace_struct* ws =
         (struct global_workspace_struct*)workspace;
 
@@ -1408,6 +1566,10 @@ float global_workspace_get_broadcast_strength(
     const global_workspace_t* workspace)
 {
     if (workspace == NULL) return 0.0F;
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_get_broadcast_streng", 0.0f);
+
+
     struct global_workspace_struct* ws =
         (struct global_workspace_struct*)workspace;
 
@@ -1423,6 +1585,10 @@ float global_workspace_get_broadcast_strength(
 
 uint32_t global_workspace_get_subscriber_count(const global_workspace_t* workspace) {
     if (workspace == NULL) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_get_subscriber_count", 0.0f);
+
+
     struct global_workspace_struct* ws =
         (struct global_workspace_struct*)workspace;
 
@@ -1435,6 +1601,10 @@ uint32_t global_workspace_get_subscriber_count(const global_workspace_t* workspa
 
 uint32_t global_workspace_get_competitor_count(const global_workspace_t* workspace) {
     if (workspace == NULL) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_get_competitor_count", 0.0f);
+
+
     struct global_workspace_struct* ws =
         (struct global_workspace_struct*)workspace;
 
@@ -1450,6 +1620,10 @@ bool global_workspace_is_competing(
     cognitive_module_t module)
 {
     if (workspace == NULL) return false;
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_is_competing", 0.0f);
+
+
     struct global_workspace_struct* ws =
         (struct global_workspace_struct*)workspace;
 
@@ -1457,6 +1631,12 @@ bool global_workspace_is_competing(
     nimcp_platform_mutex_lock(&ws->mutex);
     bool result = false;
     for (uint32_t i = 0; i < GLOBAL_WORKSPACE_MAX_COMPETITORS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && GLOBAL_WORKSPACE_MAX_COMPETITORS > 256) {
+            global_workspace_heartbeat("global_works_loop",
+                             (float)(i + 1) / (float)GLOBAL_WORKSPACE_MAX_COMPETITORS);
+        }
+
         if (ws->competitors[i].is_active && ws->competitors[i].module == module) {
             result = true;
             break;
@@ -1478,6 +1658,10 @@ bool global_workspace_get_history(
 {
     if (workspace == NULL || history == NULL || actual_count == NULL) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_get_history", 0.0f);
+
+
     const struct global_workspace_struct* ws =
         (const struct global_workspace_struct*)workspace;
 
@@ -1491,6 +1675,12 @@ bool global_workspace_get_history(
     *actual_count = count;
 
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            global_workspace_heartbeat("global_works_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         // Calculate circular buffer index (most recent first)
         uint32_t idx = (ws->history_head + ws->config.history_depth - 1 - i) %
                        ws->config.history_depth;
@@ -1505,6 +1695,10 @@ uint64_t global_workspace_time_since_broadcast(
     uint64_t current_time_ms)
 {
     if (workspace == NULL) return UINT64_MAX;
+
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_time_since_broadcast", 0.0f);
+
 
     const struct global_workspace_struct* ws =
         (const struct global_workspace_struct*)workspace;
@@ -1530,6 +1724,10 @@ bool global_workspace_get_statistics(
 {
     if (workspace == NULL || stats == NULL) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_get_statistics", 0.0f);
+
+
     const struct global_workspace_struct* ws =
         (const struct global_workspace_struct*)workspace;
 
@@ -1543,6 +1741,10 @@ bool global_workspace_get_statistics(
 
 void global_workspace_reset_statistics(global_workspace_t* workspace) {
     if (workspace == NULL) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_reset_statistics", 0.0f);
+
 
     struct global_workspace_struct* ws = (struct global_workspace_struct*)workspace;
     memset(&ws->stats, 0, sizeof(workspace_statistics_t));
@@ -1560,6 +1762,10 @@ void global_workspace_print_state(
         fprintf(stderr, "Workspace is NULL\n");
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_print_state", 0.0f);
+
 
     const struct global_workspace_struct* ws =
         (const struct global_workspace_struct*)workspace;
@@ -1584,6 +1790,12 @@ void global_workspace_print_state(
             uint32_t print_count = (ws->current_broadcast.content_dim < 10) ?
                                     ws->current_broadcast.content_dim : 10;
             for (uint32_t i = 0; i < print_count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && print_count > 256) {
+                    global_workspace_heartbeat("global_works_loop",
+                                     (float)(i + 1) / (float)print_count);
+                }
+
                 fprintf(stderr, "%.3f ", ws->current_broadcast.content[i]);
             }
             fprintf(stderr, "...\n");
@@ -1595,6 +1807,12 @@ void global_workspace_print_state(
     // Competitors
     fprintf(stderr, "Competitors (%u active):\n", ws->num_active_competitors);
     for (uint32_t i = 0; i < GLOBAL_WORKSPACE_MAX_COMPETITORS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && GLOBAL_WORKSPACE_MAX_COMPETITORS > 256) {
+            global_workspace_heartbeat("global_works_loop",
+                             (float)(i + 1) / (float)GLOBAL_WORKSPACE_MAX_COMPETITORS);
+        }
+
         if (ws->competitors[i].is_active) {
             uint64_t age = get_time_ms() - ws->competitors[i].timestamp_ms;
             fprintf(stderr, "  %s (strength=%.2f, age=%lu ms)\n",
@@ -1607,6 +1825,12 @@ void global_workspace_print_state(
     // Subscribers
     fprintf(stderr, "Subscribers (%u):\n", ws->num_subscribers);
     for (uint32_t i = 0; i < ws->num_subscribers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ws->num_subscribers > 256) {
+            global_workspace_heartbeat("global_works_loop",
+                             (float)(i + 1) / (float)ws->num_subscribers);
+        }
+
         fprintf(stderr, "  %s\n", cognitive_module_to_string(ws->subscribers[i]));
     }
 
@@ -1650,6 +1874,10 @@ void global_workspace_print_state(
 //=============================================================================
 
 global_workspace_config_t global_workspace_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_default_config", 0.0f);
+
+
     global_workspace_config_t config;
 
     config.capacity_dim = GLOBAL_WORKSPACE_DEFAULT_DIM;
@@ -1663,6 +1891,12 @@ global_workspace_config_t global_workspace_default_config(void) {
 
     // Initialize all module priorities to 0.5 (normal)
     for (uint32_t i = 0; i < MODULE_CUSTOM_START; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MODULE_CUSTOM_START > 256) {
+            global_workspace_heartbeat("global_works_loop",
+                             (float)(i + 1) / (float)MODULE_CUSTOM_START);
+        }
+
         config.module_priorities[i] = 0.5F;
     }
 
@@ -1674,6 +1908,10 @@ bool global_workspace_set_ignition_threshold(
     float new_threshold)
 {
     if (workspace == NULL) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_set_ignition_thresho", 0.0f);
+
 
     struct global_workspace_struct* ws = (struct global_workspace_struct*)workspace;
 
@@ -1688,6 +1926,10 @@ bool global_workspace_set_ignition_threshold(
 
 float global_workspace_get_ignition_threshold(const global_workspace_t* workspace) {
     if (workspace == NULL) return 0.0F;
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_get_ignition_thresho", 0.0f);
+
+
     const struct global_workspace_struct* ws =
         (const struct global_workspace_struct*)workspace;
     return ws->config.ignition_threshold;
@@ -1700,6 +1942,10 @@ bool global_workspace_set_module_priority(
 {
     if (workspace == NULL) return false;
     if (module >= MODULE_CUSTOM_START) return false;  // Only for standard modules
+
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_set_module_priority", 0.0f);
+
 
     struct global_workspace_struct* ws = (struct global_workspace_struct*)workspace;
 
@@ -1770,6 +2016,10 @@ bool global_workspace_validate_config(
     }
 
     // Check capacity_dim
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_validate_config", 0.0f);
+
+
     if (config->capacity_dim == 0) {
         if (error_msg != NULL && error_msg_len > 0) {
             snprintf(error_msg, error_msg_len, "capacity_dim must be > 0");
@@ -1847,6 +2097,10 @@ int global_workspace_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
     // Query for our own module entity
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Global_Workspace");
     if (self) {
         // Global workspace module now has access to its documented structure
@@ -1887,6 +2141,10 @@ int global_workspace_query_broadcast_targets(kg_reader_t* kg) {
     if (!kg) return 0;
 
     // GW should know all cognitive modules it can broadcast to
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_query_broadcast_targ", 0.0f);
+
+
     kg_entity_list_t* cognitive = kg_reader_get_entities_by_type(kg, "cognitive_subsystem");
     if (cognitive) {
         NIMCP_LOGGING_DEBUG("global_workspace: Found %u cognitive subsystems as broadcast targets",
@@ -1947,6 +2205,10 @@ kg_relation_list_t* global_workspace_get_integrations(kg_reader_t* kg) {
         return NULL;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_get_integrations", 0.0f);
+
+
     return kg_reader_get_module_integrations(kg, "Global_Workspace");
 }
 
@@ -1962,6 +2224,10 @@ kg_relation_list_t* global_workspace_get_integrations(kg_reader_t* kg) {
  */
 int global_workspace_query_competition_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_heartbeat("global_works_query_competition_kn", 0.0f);
+
 
     int count = 0;
 

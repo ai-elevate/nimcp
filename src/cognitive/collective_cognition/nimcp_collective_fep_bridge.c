@@ -62,7 +62,7 @@ static nimcp_health_agent_t* g_collective_fep_bridge_health_agent = NULL;
  * @brief Set health agent for collective_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void collective_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void collective_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_collective_fep_bridge_health_agent = agent;
 }
 
@@ -193,6 +193,12 @@ static void update_history(collective_fep_bridge_t* bridge, float free_energy) {
         float max_val = bridge->free_energy_history[0];
 
         for (uint32_t i = 0; i < bridge->history_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->history_count > 256) {
+                collective_fep_bridge_heartbeat("collective_f_loop",
+                                 (float)(i + 1) / (float)bridge->history_count);
+            }
+
             float val = bridge->free_energy_history[i];
             sum += val;
             if (val < min_val) min_val = val;
@@ -206,6 +212,12 @@ static void update_history(collective_fep_bridge_t* bridge, float free_energy) {
         /* Compute variance */
         float variance_sum = 0.0f;
         for (uint32_t i = 0; i < bridge->history_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->history_count > 256) {
+                collective_fep_bridge_heartbeat("collective_f_loop",
+                                 (float)(i + 1) / (float)bridge->history_count);
+            }
+
             float diff = bridge->free_energy_history[i] - bridge->stats.avg_free_energy;
             variance_sum += diff * diff;
         }
@@ -317,6 +329,10 @@ static float compute_surprise(
  * ============================================================================ */
 
 collective_fep_config_t collective_fep_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    collective_fep_bridge_heartbeat("collective_f_collective_fep_confi", 0.0f);
+
+
     collective_fep_config_t config = {
         /* Free energy weights - emphasize phi and coherence */
         .phi_weight = 0.35f,
@@ -350,6 +366,10 @@ collective_fep_config_t collective_fep_config_default(void) {
 collective_fep_bridge_t* collective_fep_bridge_create(
     const collective_fep_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    collective_fep_bridge_heartbeat("collective_f_create", 0.0f);
+
+
     collective_fep_bridge_t* bridge = nimcp_malloc(sizeof(collective_fep_bridge_t));
     if (!bridge) {
 
@@ -396,6 +416,10 @@ void collective_fep_bridge_destroy(collective_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Unregister if registered */
+    /* Phase 8: Heartbeat at operation start */
+    collective_fep_bridge_heartbeat("collective_f_destroy", 0.0f);
+
+
     if (g_collective_fep_state.registered &&
         g_collective_fep_state.bridge == bridge) {
         collective_cognition_fep_bridge_unregister(g_collective_fep_state.bridge->orchestrator);
@@ -408,6 +432,10 @@ void collective_fep_bridge_destroy(collective_fep_bridge_t* bridge) {
 
 int collective_fep_bridge_reset(collective_fep_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_fep_bridge_heartbeat("collective_f_reset", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -456,6 +484,10 @@ int collective_cognition_fep_bridge_register(
     if (!orchestrator || !collective) return -1;
 
     if (ensure_initialized() != 0) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_fep_bridge_heartbeat("collective_f_collective_cognition", 0.0f);
+
 
     nimcp_mutex_lock(g_collective_fep_state.mutex);
 
@@ -515,6 +547,10 @@ int collective_cognition_fep_bridge_unregister(fep_orchestrator_t* orchestrator)
 
     if (!g_collective_fep_state.initialized) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_fep_bridge_heartbeat("collective_f_collective_cognition", 0.0f);
+
+
     nimcp_mutex_lock(g_collective_fep_state.mutex);
 
     if (!g_collective_fep_state.registered) {
@@ -543,6 +579,10 @@ int collective_cognition_fep_bridge_unregister(fep_orchestrator_t* orchestrator)
 
 bool collective_cognition_fep_is_registered(void) {
     if (!g_collective_fep_state.initialized) return false;
+    /* Phase 8: Heartbeat at operation start */
+    collective_fep_bridge_heartbeat("collective_f_collective_cognition", 0.0f);
+
+
     return g_collective_fep_state.registered;
 }
 
@@ -550,6 +590,10 @@ uint32_t collective_cognition_fep_get_bridge_id(void) {
     if (!g_collective_fep_state.initialized || !g_collective_fep_state.registered) {
         return 0;
     }
+    /* Phase 8: Heartbeat at operation start */
+    collective_fep_bridge_heartbeat("collective_f_collective_cognition", 0.0f);
+
+
     return g_collective_fep_state.bridge_id;
 }
 
@@ -558,6 +602,10 @@ uint32_t collective_cognition_fep_get_bridge_id(void) {
  * ============================================================================ */
 
 int collective_cognition_fep_update_callback(void* handle) {
+    /* Phase 8: Heartbeat at operation start */
+    collective_fep_bridge_heartbeat("collective_f_collective_cognition", 0.0f);
+
+
     collective_fep_bridge_t* bridge = (collective_fep_bridge_t*)handle;
     if (!bridge || !bridge->collective) return -1;
 
@@ -663,6 +711,10 @@ void collective_cognition_fep_destroy_callback(void* handle) {
     /* Note: This is called by the FEP orchestrator when destroying bridges.
      * We don't destroy the global singleton here - that's done explicitly
      * via collective_fep_bridge_destroy() */
+    /* Phase 8: Heartbeat at operation start */
+    collective_fep_bridge_heartbeat("collective_f_collective_cognition", 0.0f);
+
+
     (void)handle;
 }
 
@@ -679,6 +731,10 @@ int collective_cognition_fep_get_metrics(collective_fep_metrics_t* metrics_out) 
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_fep_bridge_heartbeat("collective_f_collective_cognition", 0.0f);
+
+
     nimcp_mutex_lock(g_collective_fep_state.bridge->base.mutex);
     *metrics_out = g_collective_fep_state.bridge->metrics;
     nimcp_mutex_unlock(g_collective_fep_state.bridge->base.mutex);
@@ -688,6 +744,10 @@ int collective_cognition_fep_get_metrics(collective_fep_metrics_t* metrics_out) 
 
 int collective_cognition_fep_get_stats(collective_fep_stats_t* stats_out) {
     if (!stats_out) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_fep_bridge_heartbeat("collective_f_collective_cognition", 0.0f);
+
 
     memset(stats_out, 0, sizeof(collective_fep_stats_t));
 
@@ -707,6 +767,10 @@ int collective_cognition_fep_reset_metrics(void) {
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_fep_bridge_heartbeat("collective_f_collective_cognition", 0.0f);
+
+
     return collective_fep_bridge_reset(g_collective_fep_state.bridge);
 }
 
@@ -720,6 +784,10 @@ int collective_cognition_fep_set_config(const collective_fep_config_t* config) {
     if (!g_collective_fep_state.initialized || !g_collective_fep_state.bridge) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_fep_bridge_heartbeat("collective_f_collective_cognition", 0.0f);
+
 
     nimcp_mutex_lock(g_collective_fep_state.bridge->base.mutex);
     g_collective_fep_state.bridge->config = *config;
@@ -736,6 +804,10 @@ int collective_cognition_fep_get_config(collective_fep_config_t* config_out) {
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_fep_bridge_heartbeat("collective_f_collective_cognition", 0.0f);
+
+
     nimcp_mutex_lock(g_collective_fep_state.bridge->base.mutex);
     *config_out = g_collective_fep_state.bridge->config;
     nimcp_mutex_unlock(g_collective_fep_state.bridge->base.mutex);
@@ -749,6 +821,10 @@ int collective_cognition_fep_get_config(collective_fep_config_t* config_out) {
 
 collective_fep_bridge_t* collective_cognition_fep_get_bridge(void) {
     if (!g_collective_fep_state.initialized) return NULL;
+    /* Phase 8: Heartbeat at operation start */
+    collective_fep_bridge_heartbeat("collective_f_collective_cognition", 0.0f);
+
+
     return g_collective_fep_state.bridge;
 }
 
@@ -756,6 +832,10 @@ int collective_cognition_fep_force_update(void) {
     if (!g_collective_fep_state.initialized || !g_collective_fep_state.bridge) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_fep_bridge_heartbeat("collective_f_collective_cognition", 0.0f);
+
 
     return collective_cognition_fep_update_callback(g_collective_fep_state.bridge);
 }
@@ -773,6 +853,10 @@ int collective_cognition_fep_get_contributions(
         if (consensus_contrib) *consensus_contrib = 0.0f;
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_fep_bridge_heartbeat("collective_f_collective_cognition", 0.0f);
+
 
     nimcp_mutex_lock(g_collective_fep_state.bridge->base.mutex);
 

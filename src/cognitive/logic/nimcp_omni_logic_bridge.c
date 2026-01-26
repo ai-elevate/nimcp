@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_omni_logic_bridge_health_agent = NULL;
  * @brief Set health agent for omni_logic_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void omni_logic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void omni_logic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_omni_logic_bridge_health_agent = agent;
 }
 
@@ -105,6 +105,10 @@ static omni_logic_type_t compute_suggested_logic_type(
  * ============================================================================ */
 
 int omni_logic_default_config(omni_logic_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_default_c", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     memset(config, 0, sizeof(omni_logic_config_t));
@@ -134,6 +138,10 @@ int omni_logic_default_config(omni_logic_config_t* config) {
  * ============================================================================ */
 
 omni_logic_bridge_t* omni_logic_bridge_create(const omni_logic_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_logic_bridge_heartbeat("omni_logic_b_create", 0.0f);
+
+
     omni_logic_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_logic_bridge_t));
     if (!bridge) {
 
@@ -188,6 +196,10 @@ omni_logic_bridge_t* omni_logic_bridge_create(const omni_logic_config_t* config)
 void omni_logic_bridge_destroy(omni_logic_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_logic_bridge_heartbeat("omni_logic_b_destroy", 0.0f);
+
+
     if (bridge->rules) {
         nimcp_free(bridge->rules);
     }
@@ -205,6 +217,10 @@ void omni_logic_bridge_destroy(omni_logic_bridge_t* bridge) {
 
 int omni_logic_connect_jepa(omni_logic_bridge_t* bridge,
                              jepa_bidirectional_t* jepa) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_connect_j", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->jepa = jepa;
@@ -214,6 +230,10 @@ int omni_logic_connect_jepa(omni_logic_bridge_t* bridge,
 
 int omni_logic_connect_pred_hier(omni_logic_bridge_t* bridge,
                                   predictive_hierarchy_t* pred_hier) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_connect_p", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->pred_hier = pred_hier;
@@ -223,6 +243,10 @@ int omni_logic_connect_pred_hier(omni_logic_bridge_t* bridge,
 
 int omni_logic_connect_logic_network(omni_logic_bridge_t* bridge,
                                       neural_logic_network_t* logic_net) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_connect_l", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->logic_net = logic_net;
@@ -235,6 +259,10 @@ int omni_logic_connect_logic_network(omni_logic_bridge_t* bridge,
  * ============================================================================ */
 
 int omni_logic_update(omni_logic_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -284,6 +312,10 @@ int omni_logic_update(omni_logic_bridge_t* bridge) {
 }
 
 int omni_logic_apply_to_logic(omni_logic_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_apply_to_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.gate_evaluations++;
@@ -292,6 +324,10 @@ int omni_logic_apply_to_logic(omni_logic_bridge_t* bridge) {
 }
 
 int omni_logic_apply_to_omni(omni_logic_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_apply_to_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     return NIMCP_SUCCESS;
 }
@@ -302,6 +338,10 @@ int omni_logic_apply_to_omni(omni_logic_bridge_t* bridge) {
 
 int omni_logic_get_direction(const omni_logic_bridge_t* bridge,
                               omni_infer_direction_t* direction) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_get_direc", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && direction, NIMCP_ERROR_INVALID_PARAM, "bridge or direction is NULL");
     nimcp_mutex_lock(((omni_logic_bridge_t*)bridge)->mutex);
     *direction = bridge->logic_effects.direction;
@@ -313,6 +353,10 @@ int omni_logic_get_direction(const omni_logic_bridge_t* bridge,
 int omni_logic_set_condition(omni_logic_bridge_t* bridge,
                               omni_logic_condition_t condition,
                               bool value) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_set_condi", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -351,6 +395,10 @@ int omni_logic_set_condition(omni_logic_bridge_t* bridge,
 
 int omni_logic_get_conditions(const omni_logic_bridge_t* bridge,
                                omni_logic_conditions_t* conditions) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_get_condi", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && conditions, NIMCP_ERROR_INVALID_PARAM, "bridge or conditions is NULL");
     nimcp_mutex_lock(((omni_logic_bridge_t*)bridge)->mutex);
     memcpy(conditions, &bridge->conditions, sizeof(omni_logic_conditions_t));
@@ -360,6 +408,10 @@ int omni_logic_get_conditions(const omni_logic_bridge_t* bridge,
 
 bool omni_logic_should_forward_chain(omni_logic_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_should_fo", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bool result = (bridge->conditions.causes_known && !bridge->conditions.goal_specified);
     bridge->stats.forward_selected += result ? 1 : 0;
@@ -369,6 +421,10 @@ bool omni_logic_should_forward_chain(omni_logic_bridge_t* bridge) {
 
 bool omni_logic_should_backward_chain(omni_logic_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_should_ba", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bool result = (bridge->conditions.goal_specified && !bridge->conditions.causes_known);
     bridge->stats.backward_selected += result ? 1 : 0;
@@ -378,6 +434,10 @@ bool omni_logic_should_backward_chain(omni_logic_bridge_t* bridge) {
 
 bool omni_logic_should_switch_direction(omni_logic_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_should_sw", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->conditions.conflicting_evidence;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -393,6 +453,10 @@ int omni_logic_add_rule(omni_logic_bridge_t* bridge,
                          omni_logic_type_t type,
                          uint32_t gate_id,
                          uint32_t* rule_id) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_add_rule", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && name, NIMCP_ERROR_INVALID_PARAM, "bridge or name is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -421,11 +485,21 @@ int omni_logic_add_rule(omni_logic_bridge_t* bridge,
 
 int omni_logic_remove_rule(omni_logic_bridge_t* bridge,
                             uint32_t rule_id) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_remove_ru", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && rule_id != 0, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL or rule_id is 0");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->num_rules; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_rules > 256) {
+            omni_logic_bridge_heartbeat("omni_logic_b_loop",
+                             (float)(i + 1) / (float)bridge->num_rules);
+        }
+
         if (bridge->rules[i].rule_id == rule_id) {
             bridge->rules[i].active = false;
             nimcp_mutex_unlock(bridge->base.mutex);
@@ -441,11 +515,21 @@ int omni_logic_remove_rule(omni_logic_bridge_t* bridge,
 int omni_logic_evaluate_rule(omni_logic_bridge_t* bridge,
                               uint32_t rule_id,
                               bool* result) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_evaluate_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && result && rule_id != 0, NIMCP_ERROR_INVALID_PARAM, "bridge/result is NULL or rule_id is 0");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->num_rules; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_rules > 256) {
+            omni_logic_bridge_heartbeat("omni_logic_b_loop",
+                             (float)(i + 1) / (float)bridge->num_rules);
+        }
+
         if (bridge->rules[i].rule_id == rule_id && bridge->rules[i].active) {
             /* Simple evaluation based on rule type and current state */
             float confidence = 0.0f;
@@ -481,6 +565,10 @@ int omni_logic_evaluate_rule(omni_logic_bridge_t* bridge,
 
 int omni_logic_get_omni_effects(const omni_logic_bridge_t* bridge,
                                  omni_to_logic_effects_t* effects) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_get_omni_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_INVALID_PARAM, "bridge or effects is NULL");
     nimcp_mutex_lock(((omni_logic_bridge_t*)bridge)->mutex);
     memcpy(effects, &bridge->omni_effects, sizeof(omni_to_logic_effects_t));
@@ -490,6 +578,10 @@ int omni_logic_get_omni_effects(const omni_logic_bridge_t* bridge,
 
 int omni_logic_get_logic_effects(const omni_logic_bridge_t* bridge,
                                   logic_to_omni_effects_t* effects) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_get_logic", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_INVALID_PARAM, "bridge or effects is NULL");
     nimcp_mutex_lock(((omni_logic_bridge_t*)bridge)->mutex);
     memcpy(effects, &bridge->logic_effects, sizeof(logic_to_omni_effects_t));
@@ -499,6 +591,10 @@ int omni_logic_get_logic_effects(const omni_logic_bridge_t* bridge,
 
 int omni_logic_get_stats(const omni_logic_bridge_t* bridge,
                           omni_logic_stats_t* stats) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_INVALID_PARAM, "bridge or stats is NULL");
     nimcp_mutex_lock(((omni_logic_bridge_t*)bridge)->mutex);
     memcpy(stats, &bridge->stats, sizeof(omni_logic_stats_t));
@@ -507,6 +603,10 @@ int omni_logic_get_stats(const omni_logic_bridge_t* bridge,
 }
 
 int omni_logic_reset_stats(omni_logic_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_reset_sta", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(omni_logic_stats_t));
@@ -556,6 +656,10 @@ static nimcp_error_t handle_logic_gate_result(
  * ============================================================================ */
 
 int omni_logic_connect_bio_async(omni_logic_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_connect_b", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     if (bridge->bio_async_connected) return NIMCP_SUCCESS;
 
@@ -584,6 +688,10 @@ int omni_logic_connect_bio_async(omni_logic_bridge_t* bridge) {
 }
 
 int omni_logic_disconnect_bio_async(omni_logic_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_disconnec", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     if (!bridge->bio_async_connected) return NIMCP_SUCCESS;
 
@@ -598,6 +706,10 @@ int omni_logic_disconnect_bio_async(omni_logic_bridge_t* bridge) {
 
 bool omni_logic_is_bio_async_connected(const omni_logic_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_is_bio_as", 0.0f);
+
+
     return bridge->bio_async_connected;
 }
 

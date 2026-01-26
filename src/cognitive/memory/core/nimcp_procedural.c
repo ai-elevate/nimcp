@@ -39,7 +39,7 @@ static nimcp_health_agent_t* g_procedural_health_agent = NULL;
  * @brief Set health agent for procedural heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void procedural_set_health_agent(nimcp_health_agent_t* agent) {
+void procedural_set_health_agent(nimcp_health_agent_t* agent) {
     g_procedural_health_agent = agent;
 }
 
@@ -150,6 +150,12 @@ static procedural_skill_t* find_skill(procedural_memory_t pm, uint64_t id) {
     }
 
     for (size_t i = 0; i < pm->num_skills; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pm->num_skills > 256) {
+            procedural_heartbeat("procedural_loop",
+                             (float)(i + 1) / (float)pm->num_skills);
+        }
+
         if (pm->skills[i].skill_id == id) {
             return &pm->skills[i];
         }
@@ -170,6 +176,12 @@ static procedural_habit_t* find_habit(procedural_memory_t pm, uint64_t id) {
     }
 
     for (size_t i = 0; i < pm->num_habits; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pm->num_habits > 256) {
+            procedural_heartbeat("procedural_loop",
+                             (float)(i + 1) / (float)pm->num_habits);
+        }
+
         if (pm->habits[i].habit_id == id) {
             return &pm->habits[i];
         }
@@ -191,6 +203,12 @@ static procedural_skill_t* find_free_skill_slot(procedural_memory_t pm) {
 
     // Look for empty slot
     for (size_t i = 0; i < pm->num_skills; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pm->num_skills > 256) {
+            procedural_heartbeat("procedural_loop",
+                             (float)(i + 1) / (float)pm->num_skills);
+        }
+
         if (pm->skills[i].skill_id == PROC_INVALID_ID) {
             return &pm->skills[i];
         }
@@ -218,6 +236,12 @@ static procedural_habit_t* find_free_habit_slot(procedural_memory_t pm) {
 
     // Look for empty slot
     for (size_t i = 0; i < pm->num_habits; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pm->num_habits > 256) {
+            procedural_heartbeat("procedural_loop",
+                             (float)(i + 1) / (float)pm->num_habits);
+        }
+
         if (pm->habits[i].habit_id == PROC_INVALID_ID) {
             return &pm->habits[i];
         }
@@ -278,6 +302,12 @@ static void free_skill(procedural_skill_t* skill) {
 
     if (skill->steps) {
         for (size_t i = 0; i < skill->num_steps; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && skill->num_steps > 256) {
+                procedural_heartbeat("procedural_loop",
+                                 (float)(i + 1) / (float)skill->num_steps);
+            }
+
             if (skill->steps[i].action_description) {
                 free(skill->steps[i].action_description);
             }
@@ -465,6 +495,12 @@ static void update_skill_stats(procedural_memory_t pm) {
     float total_automaticity = 0.0f;
 
     for (size_t i = 0; i < pm->num_skills; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pm->num_skills > 256) {
+            procedural_heartbeat("procedural_loop",
+                             (float)(i + 1) / (float)pm->num_skills);
+        }
+
         procedural_skill_t* skill = &pm->skills[i];
         if (skill->skill_id == PROC_INVALID_ID) continue;
 
@@ -506,6 +542,12 @@ static void update_habit_stats(procedural_memory_t pm) {
     float total_reward = 0.0f;
 
     for (size_t i = 0; i < pm->num_habits; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pm->num_habits > 256) {
+            procedural_heartbeat("procedural_loop",
+                             (float)(i + 1) / (float)pm->num_habits);
+        }
+
         procedural_habit_t* habit = &pm->habits[i];
         if (habit->habit_id == PROC_INVALID_ID) continue;
 
@@ -619,6 +661,12 @@ NIMCP_EXPORT procedural_memory_t procedural_create(
 
     // Initialize all skill slots
     for (size_t i = 0; i < cfg.max_skills; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && cfg.max_skills > 256) {
+            procedural_heartbeat("procedural_loop",
+                             (float)(i + 1) / (float)cfg.max_skills);
+        }
+
         init_skill(&pm->skills[i]);
     }
 
@@ -636,6 +684,12 @@ NIMCP_EXPORT procedural_memory_t procedural_create(
 
     // Initialize all habit slots
     for (size_t i = 0; i < cfg.max_habits; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && cfg.max_habits > 256) {
+            procedural_heartbeat("procedural_loop",
+                             (float)(i + 1) / (float)cfg.max_habits);
+        }
+
         init_habit(&pm->habits[i]);
     }
 
@@ -669,6 +723,12 @@ NIMCP_EXPORT void procedural_destroy(procedural_memory_t pm) {
     // Free skills
     if (pm->skills) {
         for (size_t i = 0; i < pm->max_skills; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && pm->max_skills > 256) {
+                procedural_heartbeat("procedural_loop",
+                                 (float)(i + 1) / (float)pm->max_skills);
+            }
+
             free_skill(&pm->skills[i]);
         }
         free(pm->skills);
@@ -677,6 +737,12 @@ NIMCP_EXPORT void procedural_destroy(procedural_memory_t pm) {
     // Free habits
     if (pm->habits) {
         for (size_t i = 0; i < pm->max_habits; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && pm->max_habits > 256) {
+                procedural_heartbeat("procedural_loop",
+                                 (float)(i + 1) / (float)pm->max_habits);
+            }
+
             free_habit(&pm->habits[i]);
         }
         free(pm->habits);
@@ -693,6 +759,12 @@ NIMCP_EXPORT procedural_error_t procedural_reset(procedural_memory_t pm) {
 
     // Reset all skills
     for (size_t i = 0; i < pm->max_skills; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pm->max_skills > 256) {
+            procedural_heartbeat("procedural_loop",
+                             (float)(i + 1) / (float)pm->max_skills);
+        }
+
         free_skill(&pm->skills[i]);
         init_skill(&pm->skills[i]);
     }
@@ -700,6 +772,12 @@ NIMCP_EXPORT procedural_error_t procedural_reset(procedural_memory_t pm) {
 
     // Reset all habits
     for (size_t i = 0; i < pm->max_habits; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pm->max_habits > 256) {
+            procedural_heartbeat("procedural_loop",
+                             (float)(i + 1) / (float)pm->max_habits);
+        }
+
         free_habit(&pm->habits[i]);
         init_habit(&pm->habits[i]);
     }
@@ -842,6 +920,12 @@ NIMCP_EXPORT procedural_error_t procedural_create_skill_with_steps(
 
     // Add steps
     for (size_t i = 0; i < num_steps; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_steps > 256) {
+            procedural_heartbeat("procedural_loop",
+                             (float)(i + 1) / (float)num_steps);
+        }
+
         uint64_t step_id;
         err = procedural_add_step(pm, skill_id, step_descriptions[i],
                                   step_durations[i], 0.5f, &step_id);
@@ -1188,6 +1272,12 @@ NIMCP_EXPORT procedural_error_t procedural_practice_detailed(
     float total_duration = 0.0f;
 
     for (size_t i = 0; i < num_steps; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_steps > 256) {
+            procedural_heartbeat("procedural_loop",
+                             (float)(i + 1) / (float)num_steps);
+        }
+
         procedural_step_t* step = &skill->steps[i];
         float acc = clamp_float(step_accuracies[i], 0.0f, 1.0f);
 
@@ -1243,6 +1333,12 @@ NIMCP_EXPORT procedural_error_t procedural_advance_stage(
         if (advanced) {
             // Mark steps as requiring less attention
             for (size_t i = 0; i < skill->num_steps; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && skill->num_steps > 256) {
+                    procedural_heartbeat("procedural_loop",
+                                     (float)(i + 1) / (float)skill->num_steps);
+                }
+
                 if (skill->stage == SKILL_STAGE_AUTONOMOUS) {
                     skill->steps[i].requires_attention = false;
                 }
@@ -1322,6 +1418,12 @@ NIMCP_EXPORT float procedural_compute_automaticity(
         size_t count = skill->practice_count < skill->history_len ?
                        skill->practice_count : skill->history_len;
         for (size_t i = 0; i < count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && count > 256) {
+                procedural_heartbeat("procedural_loop",
+                                 (float)(i + 1) / (float)count);
+            }
+
             float diff = skill->accuracy_history[i] - mean;
             accuracy_variance += diff * diff;
         }
@@ -1375,6 +1477,12 @@ NIMCP_EXPORT procedural_error_t procedural_execute(
     float total_accuracy = 0.0f;
 
     for (size_t i = 0; i < skill->num_steps; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && skill->num_steps > 256) {
+            procedural_heartbeat("procedural_loop",
+                             (float)(i + 1) / (float)skill->num_steps);
+        }
+
         procedural_step_t* step = &skill->steps[i];
 
         // Simulate step execution with accuracy based on skill level
@@ -1800,6 +1908,12 @@ NIMCP_EXPORT float procedural_reinforce_habit(
     // Update mean reward
     float sum = 0.0f;
     for (size_t i = 0; i < habit->history_len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && habit->history_len > 256) {
+            procedural_heartbeat("procedural_loop",
+                             (float)(i + 1) / (float)habit->history_len);
+        }
+
         sum += habit->reward_history[i];
     }
     habit->mean_reward = habit->history_len > 0 ? sum / habit->history_len : 0.0f;
@@ -1894,6 +2008,12 @@ NIMCP_EXPORT procedural_error_t procedural_chunk_skills(
 
     // Verify all sub-skills exist and check for circular reference
     for (size_t i = 0; i < num_sub_skills; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_sub_skills > 256) {
+            procedural_heartbeat("procedural_loop",
+                             (float)(i + 1) / (float)num_sub_skills);
+        }
+
         procedural_skill_t* sub_skill = find_skill(pm, sub_skill_ids[i]);
         if (!sub_skill) {
             set_error("Sub-skill not found");
@@ -1903,7 +2023,19 @@ NIMCP_EXPORT procedural_error_t procedural_chunk_skills(
         // Check for self-reference (prevent circular)
         if (sub_skill->is_chunk) {
             for (size_t j = 0; j < sub_skill->num_sub_skills; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && sub_skill->num_sub_skills > 256) {
+                    procedural_heartbeat("procedural_loop",
+                                     (float)(j + 1) / (float)sub_skill->num_sub_skills);
+                }
+
                 for (size_t k = 0; k < num_sub_skills; k++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((k & 0xFF) == 0 && num_sub_skills > 256) {
+                        procedural_heartbeat("procedural_loop",
+                                         (float)(k + 1) / (float)num_sub_skills);
+                    }
+
                     if (sub_skill->sub_skills[j] == sub_skill_ids[k]) {
                         set_error("Circular chunk reference detected");
                         return PROC_ERROR_CIRCULAR_CHUNK;
@@ -1943,6 +2075,12 @@ NIMCP_EXPORT procedural_error_t procedural_chunk_skills(
 
     // Set parent reference in sub-skills
     for (size_t i = 0; i < num_sub_skills; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_sub_skills > 256) {
+            procedural_heartbeat("procedural_loop",
+                             (float)(i + 1) / (float)num_sub_skills);
+        }
+
         procedural_skill_t* sub_skill = find_skill(pm, sub_skill_ids[i]);
         if (sub_skill) {
             sub_skill->parent_skill_id = chunk_id;
@@ -1955,6 +2093,12 @@ NIMCP_EXPORT procedural_error_t procedural_chunk_skills(
     size_t total_practice = 0;
 
     for (size_t i = 0; i < num_sub_skills; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_sub_skills > 256) {
+            procedural_heartbeat("procedural_loop",
+                             (float)(i + 1) / (float)num_sub_skills);
+        }
+
         procedural_skill_t* sub_skill = find_skill(pm, sub_skill_ids[i]);
         if (sub_skill) {
             total_accuracy += sub_skill->accuracy;
@@ -1980,6 +2124,12 @@ NIMCP_EXPORT procedural_error_t procedural_chunk_skills(
 
     // Compose signature from sub-skills
     for (size_t i = 0; i < num_sub_skills; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_sub_skills > 256) {
+            procedural_heartbeat("procedural_loop",
+                             (float)(i + 1) / (float)num_sub_skills);
+        }
+
         procedural_skill_t* sub_skill = find_skill(pm, sub_skill_ids[i]);
         if (sub_skill) {
             prime_signature_t* composed = prime_sig_compose(&chunk->skill_signature,
@@ -2065,6 +2215,12 @@ NIMCP_EXPORT size_t procedural_decay(
     size_t affected = 0;
 
     for (size_t i = 0; i < pm->num_skills; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pm->num_skills > 256) {
+            procedural_heartbeat("procedural_loop",
+                             (float)(i + 1) / (float)pm->num_skills);
+        }
+
         procedural_skill_t* skill = &pm->skills[i];
         if (skill->skill_id == PROC_INVALID_ID) continue;
 
@@ -2125,6 +2281,12 @@ NIMCP_EXPORT size_t procedural_decay_habits(
     size_t affected = 0;
 
     for (size_t i = 0; i < pm->num_habits; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pm->num_habits > 256) {
+            procedural_heartbeat("procedural_loop",
+                             (float)(i + 1) / (float)pm->num_habits);
+        }
+
         procedural_habit_t* habit = &pm->habits[i];
         if (habit->habit_id == PROC_INVALID_ID) continue;
 
@@ -2298,6 +2460,12 @@ NIMCP_EXPORT procedural_error_t procedural_get_strongest_skills(
 
     size_t num_entries = 0;
     for (size_t i = 0; i < pm->num_skills; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pm->num_skills > 256) {
+            procedural_heartbeat("procedural_loop",
+                             (float)(i + 1) / (float)pm->num_skills);
+        }
+
         procedural_skill_t* skill = &pm->skills[i];
         if (skill->skill_id == PROC_INVALID_ID) continue;
 
@@ -2325,6 +2493,12 @@ NIMCP_EXPORT procedural_error_t procedural_get_strongest_skills(
     size_t count = (num_entries < k) ? num_entries : k;
     if (skill_ids_out) {
         for (size_t i = 0; i < count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && count > 256) {
+                procedural_heartbeat("procedural_loop",
+                                 (float)(i + 1) / (float)count);
+            }
+
             skill_ids_out[i] = entries[i].id;
         }
     }
@@ -2353,6 +2527,12 @@ NIMCP_EXPORT procedural_error_t procedural_remove_skill(
     // Clear parent reference from sub-skills if this is a chunk
     if (skill->is_chunk && skill->sub_skills) {
         for (size_t i = 0; i < skill->num_sub_skills; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && skill->num_sub_skills > 256) {
+                procedural_heartbeat("procedural_loop",
+                                 (float)(i + 1) / (float)skill->num_sub_skills);
+            }
+
             procedural_skill_t* sub = find_skill(pm, skill->sub_skills[i]);
             if (sub && sub->parent_skill_id == skill_id) {
                 sub->parent_skill_id = PROC_INVALID_ID;
@@ -2362,6 +2542,12 @@ NIMCP_EXPORT procedural_error_t procedural_remove_skill(
 
     // Clear linked habit references
     for (size_t i = 0; i < pm->num_habits; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && pm->num_habits > 256) {
+            procedural_heartbeat("procedural_loop",
+                             (float)(i + 1) / (float)pm->num_habits);
+        }
+
         if (pm->habits[i].linked_skill_id == skill_id) {
             pm->habits[i].linked_skill_id = PROC_INVALID_ID;
             pm->habits[i].has_linked_skill = false;
@@ -2497,6 +2683,12 @@ NIMCP_EXPORT void procedural_print_skill(const procedural_skill_t* skill) {
     if (skill->num_steps > 0 && skill->num_steps <= 5) {
         printf("  Steps:\n");
         for (size_t i = 0; i < skill->num_steps; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && skill->num_steps > 256) {
+                procedural_heartbeat("procedural_loop",
+                                 (float)(i + 1) / (float)skill->num_steps);
+            }
+
             printf("    %zu. %s (%.0f ms)\n", i + 1,
                    skill->steps[i].action_description ?
                    skill->steps[i].action_description : "(unnamed)",

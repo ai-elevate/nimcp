@@ -42,7 +42,7 @@ static nimcp_health_agent_t* g_quaternion_health_agent = NULL;
  * @brief Set health agent for quaternion heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void quaternion_set_health_agent(nimcp_health_agent_t* agent) {
+void quaternion_set_health_agent(nimcp_health_agent_t* agent) {
     g_quaternion_health_agent = agent;
 }
 
@@ -87,6 +87,10 @@ static inline float fast_inv_sqrt(float x) {
 //=============================================================================
 
 nimcp_quaternion_t quat_create(float w, float x, float y, float z) {
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_create", 0.0f);
+
+
     nimcp_quaternion_t q;
     q.w = w;
     q.x = x;
@@ -97,6 +101,10 @@ nimcp_quaternion_t quat_create(float w, float x, float y, float z) {
 
 nimcp_quaternion_t quat_from_axis_angle(nimcp_vec3_t axis, float angle) {
     // Normalize axis first
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_from_axis_angle", 0.0f);
+
+
     float mag = quat_vec3_magnitude(axis);
     if (mag < QUAT_EPSILON) {
         // Zero axis: return identity
@@ -123,6 +131,10 @@ nimcp_quaternion_t quat_from_axis_angle(nimcp_vec3_t axis, float angle) {
 
 nimcp_quaternion_t quat_from_euler(float roll, float pitch, float yaw) {
     // Compute half angles
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_from_euler", 0.0f);
+
+
     float hr = roll * 0.5f;
     float hp = pitch * 0.5f;
     float hy = yaw * 0.5f;
@@ -146,6 +158,10 @@ nimcp_quaternion_t quat_from_euler(float roll, float pitch, float yaw) {
 }
 
 nimcp_quaternion_t quat_identity(void) {
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_identity", 0.0f);
+
+
     nimcp_quaternion_t q;
     q.w = 1.0f;
     q.x = 0.0f;
@@ -159,6 +175,10 @@ nimcp_quaternion_t quat_identity(void) {
 //=============================================================================
 
 nimcp_quaternion_t quat_normalize(nimcp_quaternion_t q) {
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_normalize", 0.0f);
+
+
     float mag_sq = q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z;
 
     if (mag_sq < QUAT_EPSILON * QUAT_EPSILON) {
@@ -178,6 +198,10 @@ nimcp_quaternion_t quat_normalize(nimcp_quaternion_t q) {
 }
 
 nimcp_quaternion_t quat_conjugate(nimcp_quaternion_t q) {
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_conjugate", 0.0f);
+
+
     nimcp_quaternion_t result;
     result.w = q.w;
     result.x = -q.x;
@@ -187,6 +211,10 @@ nimcp_quaternion_t quat_conjugate(nimcp_quaternion_t q) {
 }
 
 nimcp_quaternion_t quat_inverse(nimcp_quaternion_t q) {
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_inverse", 0.0f);
+
+
     float mag_sq = q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z;
 
     if (mag_sq < QUAT_EPSILON * QUAT_EPSILON) {
@@ -213,6 +241,10 @@ nimcp_quaternion_t quat_hamilton_product(nimcp_quaternion_t q1, nimcp_quaternion
     //    a1*c2 - b1*d2 + c1*a2 + d1*b2,
     //    a1*d2 + b1*c2 - c1*b2 + d1*a2)
 
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_hamilton_produc", 0.0f);
+
+
     nimcp_quaternion_t result;
 
     result.w = q1.w * q2.w - q1.x * q2.x - q1.y * q2.y - q1.z * q2.z;
@@ -224,14 +256,26 @@ nimcp_quaternion_t quat_hamilton_product(nimcp_quaternion_t q1, nimcp_quaternion
 }
 
 float quat_dot(nimcp_quaternion_t q1, nimcp_quaternion_t q2) {
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_dot", 0.0f);
+
+
     return q1.w * q2.w + q1.x * q2.x + q1.y * q2.y + q1.z * q2.z;
 }
 
 float quat_magnitude(nimcp_quaternion_t q) {
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_magnitude", 0.0f);
+
+
     return sqrtf(q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z);
 }
 
 float quat_magnitude_squared(nimcp_quaternion_t q) {
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_magnitude_squar", 0.0f);
+
+
     return q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z;
 }
 
@@ -241,6 +285,10 @@ float quat_magnitude_squared(nimcp_quaternion_t q) {
 
 nimcp_quaternion_t quat_slerp(nimcp_quaternion_t q1, nimcp_quaternion_t q2, float t) {
     // Clamp t to [0, 1]
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_slerp", 0.0f);
+
+
     t = clampf(t, 0.0f, 1.0f);
 
     // Compute dot product (cosine of angle)
@@ -282,6 +330,10 @@ nimcp_quaternion_t quat_slerp(nimcp_quaternion_t q1, nimcp_quaternion_t q2, floa
 
 nimcp_quaternion_t quat_nlerp(nimcp_quaternion_t q1, nimcp_quaternion_t q2, float t) {
     // Clamp t to [0, 1]
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_nlerp", 0.0f);
+
+
     t = clampf(t, 0.0f, 1.0f);
 
     // Handle antipodal quaternions
@@ -305,6 +357,10 @@ nimcp_quaternion_t quat_nlerp(nimcp_quaternion_t q1, nimcp_quaternion_t q2, floa
 
 float quat_geodesic_distance(nimcp_quaternion_t q1, nimcp_quaternion_t q2) {
     // Normalize inputs
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_geodesic_distan", 0.0f);
+
+
     nimcp_quaternion_t q1n = quat_normalize(q1);
     nimcp_quaternion_t q2n = quat_normalize(q2);
 
@@ -327,6 +383,10 @@ float quat_geodesic_distance(nimcp_quaternion_t q1, nimcp_quaternion_t q2) {
 nimcp_quaternion_t quat_exp(nimcp_quaternion_t q) {
     // For q = (w, v) where v = (x, y, z):
     // exp(q) = exp(w) * (cos|v|, v/|v| * sin|v|)
+
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_exp", 0.0f);
+
 
     float v_mag_sq = q.x * q.x + q.y * q.y + q.z * q.z;
     float exp_w = expf(q.w);
@@ -358,6 +418,10 @@ nimcp_quaternion_t quat_exp(nimcp_quaternion_t q) {
 nimcp_quaternion_t quat_log(nimcp_quaternion_t q) {
     // For general q = (w, v):
     // log(q) = (log|q|, v/|v| * arccos(w/|q|))
+
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_log", 0.0f);
+
 
     float q_mag = quat_magnitude(q);
 
@@ -396,6 +460,10 @@ nimcp_quaternion_t quat_power(nimcp_quaternion_t q, float t) {
     // q^t = exp(t * log(q))
 
     // Handle special cases
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_power", 0.0f);
+
+
     if (fabsf(t) < QUAT_EPSILON) {
         // q^0 = identity
         return quat_identity();
@@ -461,6 +529,10 @@ nimcp_quaternion_t quat_power(nimcp_quaternion_t q, float t) {
 
 void quat_to_rotation_matrix(nimcp_quaternion_t q, float out[9]) {
     // Normalize first
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_to_rotation_mat", 0.0f);
+
+
     nimcp_quaternion_t qn = quat_normalize(q);
 
     float w = qn.w, x = qn.x, y = qn.y, z = qn.z;
@@ -488,6 +560,10 @@ void quat_to_euler(nimcp_quaternion_t q, float* roll, float* pitch, float* yaw) 
     if (!roll || !pitch || !yaw) return;
 
     // Normalize first
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_to_euler", 0.0f);
+
+
     nimcp_quaternion_t qn = quat_normalize(q);
 
     float w = qn.w, x = qn.x, y = qn.y, z = qn.z;
@@ -547,6 +623,10 @@ nimcp_quaternion_t quat_blend_memories(const nimcp_quaternion_t* quats,
         return quat_identity();
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_blend_memories", 0.0f);
+
+
     if (count == 1) {
         return quat_normalize(quats[0]);
     }
@@ -554,6 +634,12 @@ nimcp_quaternion_t quat_blend_memories(const nimcp_quaternion_t* quats,
     // Compute total weight
     float total_weight = 0.0f;
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            quaternion_heartbeat("quaternion_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         total_weight += weights[i];
     }
 
@@ -590,6 +676,12 @@ nimcp_quaternion_t quat_blend_memories(const nimcp_quaternion_t* quats,
     nimcp_quaternion_t sum_log = quat_create(0.0f, 0.0f, 0.0f, 0.0f);
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            quaternion_heartbeat("quaternion_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         nimcp_quaternion_t qi = quat_normalize(quats[i]);
 
         // Handle antipodal: ensure same hemisphere as reference
@@ -622,11 +714,21 @@ bool quat_interpolate_path(nimcp_quaternion_t q_start,
     }
 
     // Normalize inputs
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_interpolate_pat", 0.0f);
+
+
     nimcp_quaternion_t qs = quat_normalize(q_start);
     nimcp_quaternion_t qe = quat_normalize(q_end);
 
     // Generate interpolated path
     for (size_t i = 0; i < steps; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && steps > 256) {
+            quaternion_heartbeat("quaternion_loop",
+                             (float)(i + 1) / (float)steps);
+        }
+
         float t = (float)i / (float)(steps - 1);
         out[i] = quat_slerp(qs, qe, t);
     }
@@ -641,6 +743,10 @@ float quat_semantic_distance(nimcp_quaternion_t q1,
                               float y_weight,
                               float z_weight) {
     // Weighted Euclidean distance in quaternion space
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_semantic_distan", 0.0f);
+
+
     float dw = q1.w - q2.w;
     float dx = q1.x - q2.x;
     float dy = q1.y - q2.y;
@@ -653,6 +759,10 @@ float quat_semantic_distance(nimcp_quaternion_t q1,
 }
 
 float quat_semantic_distance_default(nimcp_quaternion_t q1, nimcp_quaternion_t q2) {
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_semantic_distan", 0.0f);
+
+
     return quat_semantic_distance(q1, q2, 1.0f, 1.0f, 1.0f, 1.0f);
 }
 
@@ -661,17 +771,29 @@ float quat_semantic_distance_default(nimcp_quaternion_t q1, nimcp_quaternion_t q
 //=============================================================================
 
 bool quat_is_unit(nimcp_quaternion_t q, float epsilon) {
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_is_unit", 0.0f);
+
+
     float mag_sq = q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z;
     return fabsf(mag_sq - 1.0f) < epsilon;
 }
 
 bool quat_is_zero(nimcp_quaternion_t q, float epsilon) {
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_is_zero", 0.0f);
+
+
     float mag_sq = q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z;
     return mag_sq < epsilon * epsilon;
 }
 
 bool quat_approx_equal(nimcp_quaternion_t q1, nimcp_quaternion_t q2, float epsilon) {
     // Check both q1 ≈ q2 and q1 ≈ -q2 (same rotation)
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_approx_equal", 0.0f);
+
+
     bool direct = (fabsf(q1.w - q2.w) < epsilon &&
                    fabsf(q1.x - q2.x) < epsilon &&
                    fabsf(q1.y - q2.y) < epsilon &&
@@ -688,6 +810,10 @@ bool quat_approx_equal(nimcp_quaternion_t q1, nimcp_quaternion_t q2, float epsil
 }
 
 nimcp_quaternion_t quat_negate(nimcp_quaternion_t q) {
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_negate", 0.0f);
+
+
     nimcp_quaternion_t result;
     result.w = -q.w;
     result.x = -q.x;
@@ -697,6 +823,10 @@ nimcp_quaternion_t quat_negate(nimcp_quaternion_t q) {
 }
 
 nimcp_quaternion_t quat_add(nimcp_quaternion_t q1, nimcp_quaternion_t q2) {
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_add", 0.0f);
+
+
     nimcp_quaternion_t result;
     result.w = q1.w + q2.w;
     result.x = q1.x + q2.x;
@@ -706,6 +836,10 @@ nimcp_quaternion_t quat_add(nimcp_quaternion_t q1, nimcp_quaternion_t q2) {
 }
 
 nimcp_quaternion_t quat_sub(nimcp_quaternion_t q1, nimcp_quaternion_t q2) {
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_sub", 0.0f);
+
+
     nimcp_quaternion_t result;
     result.w = q1.w - q2.w;
     result.x = q1.x - q2.x;
@@ -715,6 +849,10 @@ nimcp_quaternion_t quat_sub(nimcp_quaternion_t q1, nimcp_quaternion_t q2) {
 }
 
 nimcp_quaternion_t quat_scale(nimcp_quaternion_t q, float s) {
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_scale", 0.0f);
+
+
     nimcp_quaternion_t result;
     result.w = q.w * s;
     result.x = q.x * s;
@@ -724,6 +862,10 @@ nimcp_quaternion_t quat_scale(nimcp_quaternion_t q, float s) {
 }
 
 nimcp_quat_config_t quat_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_default_config", 0.0f);
+
+
     nimcp_quat_config_t config;
     config.normalize_threshold = 0.001f;
     config.slerp_threshold = QUAT_SLERP_THRESHOLD;
@@ -762,9 +904,17 @@ nimcp_vec3_t quat_vec3_normalize(nimcp_vec3_t v) {
 }
 
 float quat_vec3_magnitude(nimcp_vec3_t v) {
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_vec3_magnitude", 0.0f);
+
+
     return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
 }
 
 float quat_vec3_dot(nimcp_vec3_t v1, nimcp_vec3_t v2) {
+    /* Phase 8: Heartbeat at operation start */
+    quaternion_heartbeat("quaternion_quat_vec3_dot", 0.0f);
+
+
     return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
 }

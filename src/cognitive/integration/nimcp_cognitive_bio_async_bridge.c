@@ -36,7 +36,7 @@ static nimcp_health_agent_t* g_cognitive_bio_async_bridge_health_agent = NULL;
  * @brief Set health agent for cognitive_bio_async_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void cognitive_bio_async_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void cognitive_bio_async_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_cognitive_bio_async_bridge_health_agent = agent;
 }
 
@@ -149,6 +149,12 @@ static void dispatch_message_unlocked(
     size_t payload_size
 ) {
     for (size_t i = 0; i < bridge->num_handlers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_handlers > 256) {
+            cognitive_bio_async_bridge_heartbeat("cognitive_bi_loop",
+                             (float)(i + 1) / (float)bridge->num_handlers);
+        }
+
         if (bridge->handlers[i].active &&
             bridge->handlers[i].type == type &&
             bridge->handlers[i].handler) {
@@ -171,6 +177,12 @@ static void notify_state_change_unlocked(
     uint32_t source_module
 ) {
     for (size_t i = 0; i < bridge->num_state_callbacks; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_state_callbacks > 256) {
+            cognitive_bio_async_bridge_heartbeat("cognitive_bi_loop",
+                             (float)(i + 1) / (float)bridge->num_state_callbacks);
+        }
+
         if (bridge->state_callbacks[i].active &&
             bridge->state_callbacks[i].handler) {
             bridge->state_callbacks[i].handler(
@@ -243,6 +255,10 @@ static void update_neuromodulator_decay(
  *===========================================================================*/
 
 cognitive_bio_bridge_config_t cognitive_bio_bridge_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
+
     cognitive_bio_bridge_config_t config = {0};
 
     /* Neuromodulator sensitivity */
@@ -281,6 +297,10 @@ cognitive_bio_bridge_config_t cognitive_bio_bridge_default_config(void) {
 cognitive_bio_bridge_t* cognitive_bio_bridge_create(
     const cognitive_bio_bridge_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
+
     cognitive_bio_bridge_t* bridge = nimcp_calloc(1, sizeof(cognitive_bio_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -312,6 +332,12 @@ cognitive_bio_bridge_t* cognitive_bio_bridge_create(
 
     /* Initialize module slots */
     for (int i = 0; i < COG_BIO_MAX_MODULES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COG_BIO_MAX_MODULES > 256) {
+            cognitive_bio_async_bridge_heartbeat("cognitive_bi_loop",
+                             (float)(i + 1) / (float)COG_BIO_MAX_MODULES);
+        }
+
         bridge->modules[i].active = false;
         bridge->modules[i].type = (cog_module_type_t)i;
         bridge->modules[i].module_id = COG_BIO_MODULE_ROOT + (uint32_t)i + 1;
@@ -324,6 +350,10 @@ cognitive_bio_bridge_t* cognitive_bio_bridge_create(
 }
 
 cognitive_bio_bridge_t* cognitive_bio_bridge_create_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
+
     return cognitive_bio_bridge_create(NULL);
 }
 
@@ -333,6 +363,10 @@ void cognitive_bio_bridge_destroy(cognitive_bio_bridge_t* bridge) {
     }
 
     /* Disconnect first */
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
+
     if (bridge->connected) {
         cognitive_bio_bridge_disconnect(bridge);
     }
@@ -357,6 +391,10 @@ int cognitive_bio_bridge_connect(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async = bio_async;
     bridge->connected = (bridge->bio_async != NULL);
@@ -373,6 +411,10 @@ int cognitive_bio_bridge_connect_brain(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->brain = brain;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -384,6 +426,10 @@ int cognitive_bio_bridge_disconnect(cognitive_bio_bridge_t* bridge) {
     if (!bridge) {
         return COG_BIO_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async = NULL;
@@ -397,6 +443,10 @@ bool cognitive_bio_bridge_is_connected(const cognitive_bio_bridge_t* bridge) {
     if (!bridge) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
+
     return bridge->connected;
 }
 
@@ -412,6 +462,10 @@ int cognitive_bio_bridge_register_module(
     if (!bridge || !module_ptr) {
         return COG_BIO_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
 
     int idx = get_module_index(type);
     if (idx < 0) {
@@ -452,6 +506,10 @@ int cognitive_bio_bridge_unregister_module(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
+
     int idx = get_module_index(type);
     if (idx < 0) {
         return COG_BIO_ERROR_INVALID_CONFIG;
@@ -487,6 +545,10 @@ const cog_module_registration_t* cognitive_bio_bridge_get_module(
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
+
     int idx = get_module_index(type);
     if (idx < 0) {
         return NULL;
@@ -507,6 +569,10 @@ bool cognitive_bio_bridge_module_registered(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
+
     int idx = get_module_index(type);
     if (idx < 0) {
         return false;
@@ -519,6 +585,10 @@ uint32_t cognitive_bio_bridge_module_count(const cognitive_bio_bridge_t* bridge)
     if (!bridge) {
         return 0;
     }
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
+
     return bridge->num_modules;
 }
 
@@ -533,6 +603,10 @@ int cognitive_bio_bridge_update(
     if (!bridge) {
         return COG_BIO_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
 
     uint64_t start_time = nimcp_platform_time_monotonic_us();
 
@@ -569,6 +643,12 @@ int cognitive_bio_bridge_update(
     /* Update module timestamps */
     uint64_t current_ms = nimcp_platform_time_monotonic_us() / 1000;
     for (int i = 0; i < COG_BIO_MAX_MODULES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COG_BIO_MAX_MODULES > 256) {
+            cognitive_bio_async_bridge_heartbeat("cognitive_bi_loop",
+                             (float)(i + 1) / (float)COG_BIO_MAX_MODULES);
+        }
+
         if (bridge->modules[i].active) {
             bridge->modules[i].last_update_ms = current_ms;
         }
@@ -609,6 +689,10 @@ int cognitive_bio_bridge_send_message(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
@@ -636,6 +720,10 @@ int cognitive_bio_bridge_send_to_module(
     if (!bridge) {
         return COG_BIO_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
 
     int idx = get_module_index(target_module);
     if (idx < 0) {
@@ -670,6 +758,10 @@ int cognitive_bio_bridge_register_handler(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->num_handlers >= HANDLER_TABLE_SIZE) {
@@ -680,6 +772,12 @@ int cognitive_bio_bridge_register_handler(
     /* Find empty slot */
     size_t slot = bridge->num_handlers;
     for (size_t i = 0; i < bridge->num_handlers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_handlers > 256) {
+            cognitive_bio_async_bridge_heartbeat("cognitive_bi_loop",
+                             (float)(i + 1) / (float)bridge->num_handlers);
+        }
+
         if (!bridge->handlers[i].active) {
             slot = i;
             break;
@@ -711,10 +809,20 @@ int cognitive_bio_bridge_unregister_handler(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bool found = false;
     for (size_t i = 0; i < bridge->num_handlers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_handlers > 256) {
+            cognitive_bio_async_bridge_heartbeat("cognitive_bi_loop",
+                             (float)(i + 1) / (float)bridge->num_handlers);
+        }
+
         if (bridge->handlers[i].active &&
             bridge->handlers[i].type == message_type &&
             bridge->handlers[i].handler == handler) {
@@ -752,6 +860,10 @@ int cognitive_bio_bridge_broadcast_attention_shift(
     if (!bridge) {
         return COG_BIO_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -795,6 +907,10 @@ int cognitive_bio_bridge_broadcast_emotion_update(
     if (!bridge) {
         return COG_BIO_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -844,6 +960,10 @@ int cognitive_bio_bridge_broadcast_goal_change(
     if (!bridge) {
         return COG_BIO_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -909,6 +1029,10 @@ int cognitive_bio_bridge_broadcast_salience_spike(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Threat increases norepinephrine */
@@ -962,6 +1086,10 @@ int cognitive_bio_bridge_broadcast_load_warning(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->outgoing_effects.cognitive_load = current_load;
@@ -999,6 +1127,10 @@ int cognitive_bio_bridge_request_state_sync(
     if (!bridge || !modules || count == 0) {
         return COG_BIO_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1044,6 +1176,10 @@ int cognitive_bio_bridge_on_state_change(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->num_state_callbacks >= MAX_STATE_CALLBACKS) {
@@ -1053,6 +1189,12 @@ int cognitive_bio_bridge_on_state_change(
 
     size_t slot = bridge->num_state_callbacks;
     for (size_t i = 0; i < bridge->num_state_callbacks; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_state_callbacks > 256) {
+            cognitive_bio_async_bridge_heartbeat("cognitive_bi_loop",
+                             (float)(i + 1) / (float)bridge->num_state_callbacks);
+        }
+
         if (!bridge->state_callbacks[i].active) {
             slot = i;
             break;
@@ -1080,6 +1222,10 @@ int cognitive_bio_bridge_trigger_transition(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->current_transition = transition;
@@ -1106,6 +1252,10 @@ int cognitive_bio_bridge_release_dopamine(
     if (!bridge) {
         return COG_BIO_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
 
     if (amount < 0.0f || amount > 1.0f) {
         return COG_BIO_ERROR_INVALID_CONFIG;
@@ -1135,6 +1285,10 @@ int cognitive_bio_bridge_signal_urgency(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
+
     if (urgency < 0.0f || urgency > 1.0f) {
         return COG_BIO_ERROR_INVALID_CONFIG;
     }
@@ -1163,6 +1317,10 @@ int cognitive_bio_bridge_modulate_attention(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
+
     if (attention < 0.0f || attention > 1.0f) {
         return COG_BIO_ERROR_INVALID_CONFIG;
     }
@@ -1187,6 +1345,10 @@ int cognitive_bio_bridge_set_mood_level(
     if (!bridge) {
         return COG_BIO_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
 
     if (level < 0.0f || level > 1.0f) {
         return COG_BIO_ERROR_INVALID_CONFIG;
@@ -1219,6 +1381,10 @@ int cognitive_bio_bridge_create_phase_sync(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
@@ -1248,6 +1414,10 @@ int cognitive_bio_bridge_wait_coherent(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
+
     (void)coherence_threshold;
     (void)timeout_ms;
 
@@ -1272,6 +1442,10 @@ int cognitive_bio_bridge_initiate_glial_wave(
     if (!bridge || !wave) {
         return COG_BIO_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1307,6 +1481,10 @@ int cognitive_bio_bridge_get_outgoing_effects(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
+
     nimcp_mutex_lock(((cognitive_bio_bridge_t*)bridge)->mutex);
     *effects = bridge->outgoing_effects;
     nimcp_mutex_unlock(((cognitive_bio_bridge_t*)bridge)->mutex);
@@ -1321,6 +1499,10 @@ int cognitive_bio_bridge_get_incoming_effects(
     if (!bridge || !effects) {
         return COG_BIO_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
 
     nimcp_mutex_lock(((cognitive_bio_bridge_t*)bridge)->mutex);
     *effects = bridge->incoming_effects;
@@ -1341,6 +1523,10 @@ int cognitive_bio_bridge_get_stats(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
+
     nimcp_mutex_lock(((cognitive_bio_bridge_t*)bridge)->mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(((cognitive_bio_bridge_t*)bridge)->mutex);
@@ -1352,6 +1538,10 @@ void cognitive_bio_bridge_reset_stats(cognitive_bio_bridge_t* bridge) {
     if (!bridge) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1457,6 +1647,10 @@ const char* cognitive_bio_priority_name(cog_priority_t priority) {
 }
 
 uint32_t cognitive_bio_module_id(cog_module_type_t type) {
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_module", 0.0f);
+
+
     switch (type) {
         case COG_MODULE_TYPE_ATTENTION:      return COG_BIO_MODULE_ATTENTION;
         case COG_MODULE_TYPE_EMOTION:        return COG_BIO_MODULE_EMOTION;

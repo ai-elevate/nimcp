@@ -38,7 +38,7 @@ static nimcp_health_agent_t* g_ethics_policies_health_agent = NULL;
  * @brief Set health agent for ethics_policies heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void ethics_policies_set_health_agent(nimcp_health_agent_t* agent) {
+void ethics_policies_set_health_agent(nimcp_health_agent_t* agent) {
     g_ethics_policies_health_agent = agent;
 }
 
@@ -63,6 +63,10 @@ static inline void ethics_policies_heartbeat(const char* operation, float progre
  */
 float ethics_evaluate_harm_policy(const action_context_t* action)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_policies_heartbeat("ethics_polic_ethics_evaluate_harm", 0.0f);
+
+
     return action ? action->predicted_harm : 0.0F;
 }
 
@@ -75,6 +79,10 @@ float ethics_evaluate_harm_policy(const action_context_t* action)
  */
 float ethics_evaluate_unfairness_policy(const action_context_t* action)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_policies_heartbeat("ethics_polic_ethics_evaluate_unfa", 0.0f);
+
+
     return action ? action->fairness_violation : 0.0F;
 }
 
@@ -85,6 +93,10 @@ float ethics_evaluate_unfairness_policy(const action_context_t* action)
  */
 float ethics_evaluate_deception_policy(const action_context_t* action)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_policies_heartbeat("ethics_polic_ethics_evaluate_dece", 0.0f);
+
+
     return action ? action->deception_level : 0.0F;
 }
 
@@ -95,6 +107,10 @@ float ethics_evaluate_deception_policy(const action_context_t* action)
  */
 float ethics_evaluate_autonomy_policy(const action_context_t* action)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_policies_heartbeat("ethics_polic_ethics_evaluate_auto", 0.0f);
+
+
     return action ? action->autonomy_violation : 0.0F;
 }
 
@@ -105,6 +121,10 @@ float ethics_evaluate_autonomy_policy(const action_context_t* action)
  */
 float ethics_evaluate_privacy_policy(const action_context_t* action)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_policies_heartbeat("ethics_polic_ethics_evaluate_priv", 0.0f);
+
+
     return action ? action->privacy_violation : 0.0F;
 }
 
@@ -115,6 +135,10 @@ float ethics_evaluate_privacy_policy(const action_context_t* action)
  */
 float ethics_evaluate_consent_policy(const action_context_t* action)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_policies_heartbeat("ethics_polic_ethics_evaluate_cons", 0.0f);
+
+
     return action ? action->consent_violation : 0.0F;
 }
 
@@ -131,6 +155,10 @@ void ethics_init_strategy_table(policy_strategy_table_t* table)
 {
     // Guard clause: Validate input
     if (!table)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_policies_heartbeat("ethics_polic_ethics_init_strategy", 0.0f);
+
+
         return;
 
     memset(table->evaluators, 0, sizeof(table->evaluators));
@@ -159,6 +187,10 @@ float ethics_evaluate_policy_strategy(const policy_strategy_table_t* table,
 {
     // Guard clause: Validate inputs
     if (!table || !policy || !action)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_policies_heartbeat("ethics_polic_ethics_evaluate_poli", 0.0f);
+
+
         return 0.0F;
 
     // Guard clause: Check bounds
@@ -198,6 +230,10 @@ float ethics_evaluate_all_policies(ethics_engine_t engine, const action_context_
         return 1.0F;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_policies_heartbeat("ethics_polic_ethics_evaluate_all_", 0.0f);
+
+
     float policy_score = 1.0F;
     *worst_violation = ETHICS_VIOLATION_TYPE_NONE;
     *worst_severity = 0.0F;
@@ -207,6 +243,12 @@ float ethics_evaluate_all_policies(ethics_engine_t engine, const action_context_
 
     // Single pass through policies - O(n)
     for (uint32_t i = 0; i < num_policies; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_policies > 256) {
+            ethics_policies_heartbeat("ethics_polic_loop",
+                             (float)(i + 1) / (float)num_policies);
+        }
+
         const ethics_policy_t* policy = ethics_engine_get_policy(engine, i);
 
         // Guard clause: Skip disabled policies
@@ -250,6 +292,10 @@ bool ethics_add_policy(ethics_engine_t engine, const ethics_policy_t* policy)
 {
     // Guard clause: Validate inputs
     if (!engine || !policy)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_policies_heartbeat("ethics_polic_ethics_add_policy", 0.0f);
+
+
         return false;
 
     // Add to internal storage
@@ -270,6 +316,10 @@ bool ethics_remove_policy(ethics_engine_t engine, uint32_t policy_id)
 {
     // Guard clause: Validate input
     if (!engine)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_policies_heartbeat("ethics_polic_ethics_remove_policy", 0.0f);
+
+
         {
 
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
@@ -297,12 +347,22 @@ uint32_t ethics_get_policies(ethics_engine_t engine, ethics_policy_t* policies,
 {
     // Guard clause: Validate inputs
     if (!engine || !policies)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_policies_heartbeat("ethics_polic_ethics_get_policies", 0.0f);
+
+
         return 0;
 
     uint32_t num_policies = ethics_engine_get_num_policies(engine);
     uint32_t count = (num_policies < max_policies) ? num_policies : max_policies;
 
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            ethics_policies_heartbeat("ethics_polic_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         const ethics_policy_t* policy = ethics_engine_get_policy(engine, i);
         if (policy) {
             policies[i] = *policy;
@@ -327,6 +387,10 @@ uint32_t ethics_get_policies(ethics_engine_t engine, ethics_policy_t* policies,
  */
 bool ethics_engine_add_policy(ethics_engine_t engine, const ethics_policy_t* policy)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_policies_heartbeat("ethics_polic_ethics_engine_add_po", 0.0f);
+
+
     return ethics_add_policy(engine, policy);
 }
 
@@ -345,6 +409,10 @@ bool ethics_engine_add_policy(ethics_engine_t engine, const ethics_policy_t* pol
  */
 bool ethics_engine_remove_policy(ethics_engine_t engine, uint32_t policy_id)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_policies_heartbeat("ethics_polic_ethics_engine_remove", 0.0f);
+
+
     return ethics_remove_policy(engine, policy_id);
 }
 
@@ -391,9 +459,19 @@ const char* ethics_violation_type_name(ethics_violation_type_t type)
  */
 int ethics_policies_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    ethics_policies_heartbeat("ethics_polic_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Ethics_Policies_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                ethics_policies_heartbeat("ethics_polic_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Ethics policies self-knowledge: %s", self->observations[i]);
         }
     }

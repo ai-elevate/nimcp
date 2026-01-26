@@ -55,7 +55,7 @@ static nimcp_health_agent_t* g_bias_detection_health_agent = NULL;
  * @brief Set health agent for bias_detection heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void bias_detection_set_health_agent(nimcp_health_agent_t* agent) {
+void bias_detection_set_health_agent(nimcp_health_agent_t* agent) {
     g_bias_detection_health_agent = agent;
 }
 
@@ -93,6 +93,12 @@ static bool contains_substring_ci(const char* text, const char* substring) {
     for (size_t i = 0; i <= text_len - sub_len; i++) {
         bool match = true;
         for (size_t j = 0; j < sub_len; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && sub_len > 256) {
+                bias_detection_heartbeat("bias_detecti_loop",
+                                 (float)(j + 1) / (float)sub_len);
+            }
+
             if (tolower(text[i + j]) != tolower(substring[j])) {
                 match = false;
                 break;
@@ -107,6 +113,12 @@ static int find_group_index(bias_detection_system_t* system, const social_group_
     if (!system || !group) return -1;
 
     for (uint32_t i = 0; i < system->implicit_bias_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->implicit_bias_count > 256) {
+            bias_detection_heartbeat("bias_detecti_loop",
+                             (float)(i + 1) / (float)system->implicit_bias_count);
+        }
+
         if (system->implicit_biases[i].target_group.group_id == group->group_id) {
             return (int)i;
         }
@@ -120,6 +132,10 @@ static int find_group_index(bias_detection_system_t* system, const social_group_
 //=============================================================================
 
 bias_detection_system_t* bias_system_create(uint32_t max_others_tracked) {
+    /* Phase 8: Heartbeat at operation start */
+    bias_detection_heartbeat("bias_detecti_bias_system_create", 0.0f);
+
+
     LOG_DEBUG("Creating bias detection system with max_others_tracked=%u", max_others_tracked);
 
     bias_detection_system_t* system = (bias_detection_system_t*)nimcp_calloc(1, sizeof(bias_detection_system_t));
@@ -191,6 +207,10 @@ bias_detection_system_t* bias_system_create(uint32_t max_others_tracked) {
 void bias_system_destroy(bias_detection_system_t* system) {
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_detection_heartbeat("bias_detecti_bias_system_destroy", 0.0f);
+
+
     nimcp_free(system->detected_in_others);
     // Unregister from bio-router
     if (system->bio_async_enabled && system->bio_ctx) {
@@ -215,6 +235,10 @@ void bias_system_destroy(bias_detection_system_t* system) {
 
 void bias_system_reset(bias_detection_system_t* system) {
     if (!system) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    bias_detection_heartbeat("bias_detecti_bias_system_reset", 0.0f);
+
 
     memset(system->implicit_biases, 0, sizeof(system->implicit_biases));
     memset(system->explicit_biases, 0, sizeof(system->explicit_biases));
@@ -259,6 +283,10 @@ void bias_register_implicit(bias_detection_system_t* system,
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_detection_heartbeat("bias_detecti_bias_register_implic", 0.0f);
+
+
     LOG_DEBUG("Registering implicit bias for group_id=%u (pos=%.2f, comp=%.2f, warmth=%.2f)",
               group->group_id, positive_association, competence, warmth);
 
@@ -300,6 +328,12 @@ void bias_register_implicit(bias_detection_system_t* system,
     // Recalculate total implicit bias
     float total = 0.0F;
     for (uint32_t i = 0; i < system->implicit_bias_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->implicit_bias_count > 256) {
+            bias_detection_heartbeat("bias_detecti_loop",
+                             (float)(i + 1) / (float)system->implicit_bias_count);
+        }
+
         total += system->implicit_biases[i].negative_association;
     }
     system->total_implicit_bias = total / (float)system->implicit_bias_count;
@@ -320,6 +354,10 @@ void bias_activate_stereotype(bias_detection_system_t* system,
                               float activation_strength,
                               uint64_t current_time) {
     if (!system || !group) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    bias_detection_heartbeat("bias_detecti_bias_activate_stereo", 0.0f);
+
 
     int index = find_group_index(system, group);
     if (index < 0) return;
@@ -342,8 +380,18 @@ void bias_register_explicit(bias_detection_system_t* system,
     if (!system || !group) return;
 
     // Find or create entry
+    /* Phase 8: Heartbeat at operation start */
+    bias_detection_heartbeat("bias_detecti_bias_register_explic", 0.0f);
+
+
     int index = -1;
     for (uint32_t i = 0; i < system->explicit_bias_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->explicit_bias_count > 256) {
+            bias_detection_heartbeat("bias_detecti_loop",
+                             (float)(i + 1) / (float)system->explicit_bias_count);
+        }
+
         if (system->explicit_biases[i].target_group.group_id == group->group_id) {
             index = i;
             break;
@@ -373,6 +421,12 @@ void bias_register_explicit(bias_detection_system_t* system,
     // Recalculate total explicit bias
     float total = 0.0F;
     for (uint32_t i = 0; i < system->explicit_bias_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->explicit_bias_count > 256) {
+            bias_detection_heartbeat("bias_detecti_loop",
+                             (float)(i + 1) / (float)system->explicit_bias_count);
+        }
+
         total += system->explicit_biases[i].prejudice_level;
     }
     system->total_explicit_bias = total / (float)system->explicit_bias_count;
@@ -393,6 +447,10 @@ void bias_record_decision(bias_detection_system_t* system,
                          float objective_merit,
                          uint64_t current_time) {
     if (!system || !group) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    bias_detection_heartbeat("bias_detecti_bias_record_decision", 0.0f);
+
 
     uint32_t idx = system->decision_history_index % BIAS_MAX_DECISIONS;
     decision_record_t* record = &system->decision_history[idx];
@@ -417,8 +475,18 @@ statistical_disparity_t* bias_analyze_disparity(bias_detection_system_t* system,
     }
 
     // Find or create disparity entry
+    /* Phase 8: Heartbeat at operation start */
+    bias_detection_heartbeat("bias_detecti_bias_analyze_dispari", 0.0f);
+
+
     statistical_disparity_t* disparity = NULL;
     for (uint32_t i = 0; i < system->disparity_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->disparity_count > 256) {
+            bias_detection_heartbeat("bias_detecti_loop",
+                             (float)(i + 1) / (float)system->disparity_count);
+        }
+
         if (system->disparities[i].group_a.group_id == group_a->group_id &&
             system->disparities[i].group_b.group_id == group_b->group_id) {
             disparity = &system->disparities[i];
@@ -447,6 +515,12 @@ statistical_disparity_t* bias_analyze_disparity(bias_detection_system_t* system,
                            ? system->decision_history_index : BIAS_MAX_DECISIONS;
 
     for (uint32_t i = 0; i < history_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && history_size > 256) {
+            bias_detection_heartbeat("bias_detecti_loop",
+                             (float)(i + 1) / (float)history_size);
+        }
+
         const decision_record_t* rec = &system->decision_history[i];
 
         if (rec->target_group.group_id == group_a->group_id) {
@@ -503,6 +577,10 @@ language_pattern_t bias_analyze_language(bias_detection_system_t* system,
                                         const char* text,
                                         const social_group_t* group,
                                         uint64_t current_time) {
+    /* Phase 8: Heartbeat at operation start */
+    bias_detection_heartbeat("bias_detecti_bias_analyze_languag", 0.0f);
+
+
     language_pattern_t pattern = {0};
 
     if (!system || !text || !group) {
@@ -631,8 +709,18 @@ void bias_analyze_other(bias_detection_system_t* system,
     if (!system || !text || !target_group) return;
 
     // Find or create entry
+    /* Phase 8: Heartbeat at operation start */
+    bias_detection_heartbeat("bias_detecti_bias_analyze_other", 0.0f);
+
+
     bias_detection_other_t* other = NULL;
     for (uint32_t i = 0; i < system->max_others_tracked; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->max_others_tracked > 256) {
+            bias_detection_heartbeat("bias_detecti_loop",
+                             (float)(i + 1) / (float)system->max_others_tracked);
+        }
+
         if (system->detected_in_others[i].person_id == person_id) {
             other = &system->detected_in_others[i];
             break;
@@ -661,6 +749,12 @@ void bias_analyze_other(bias_detection_system_t* system,
     bool overt = false, dangerous = false;
 
     for (uint32_t i = 0; i < history_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && history_size > 256) {
+            bias_detection_heartbeat("bias_detecti_loop",
+                             (float)(i + 1) / (float)history_size);
+        }
+
         language_pattern_t* p = &other->language_history[i];
 
         if (p->contains_slur) {
@@ -722,7 +816,17 @@ bool bias_get_detected_in_other(const bias_detection_system_t* system,
                                float* out_misogyny) {
     if (!system) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_detection_heartbeat("bias_detecti_bias_get_detected_in", 0.0f);
+
+
     for (uint32_t i = 0; i < system->max_others_tracked; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->max_others_tracked > 256) {
+            bias_detection_heartbeat("bias_detecti_loop",
+                             (float)(i + 1) / (float)system->max_others_tracked);
+        }
+
         if (system->detected_in_others[i].person_id == person_id) {
             const bias_detection_other_t* other = &system->detected_in_others[i];
 
@@ -741,7 +845,17 @@ bool bias_get_detected_in_other(const bias_detection_system_t* system,
 bool bias_should_educate(const bias_detection_system_t* system, uint32_t person_id) {
     if (!system) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_detection_heartbeat("bias_detecti_bias_should_educate", 0.0f);
+
+
     for (uint32_t i = 0; i < system->max_others_tracked; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->max_others_tracked > 256) {
+            bias_detection_heartbeat("bias_detecti_loop",
+                             (float)(i + 1) / (float)system->max_others_tracked);
+        }
+
         if (system->detected_in_others[i].person_id == person_id) {
             return system->detected_in_others[i].educate_mode;
         }
@@ -753,7 +867,17 @@ bool bias_should_educate(const bias_detection_system_t* system, uint32_t person_
 bool bias_should_disengage(const bias_detection_system_t* system, uint32_t person_id) {
     if (!system) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_detection_heartbeat("bias_detecti_bias_should_disengag", 0.0f);
+
+
     for (uint32_t i = 0; i < system->max_others_tracked; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->max_others_tracked > 256) {
+            bias_detection_heartbeat("bias_detecti_loop",
+                             (float)(i + 1) / (float)system->max_others_tracked);
+        }
+
         if (system->detected_in_others[i].person_id == person_id) {
             return system->detected_in_others[i].disengage_mode;
         }
@@ -772,6 +896,10 @@ bool bias_apply_intervention(bias_detection_system_t* system,
                              const social_group_t* group,
                              uint64_t current_time) {
     if (!system || !group) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    bias_detection_heartbeat("bias_detecti_bias_apply_intervent", 0.0f);
+
 
     (void)bias_type;  // Unused for now
     (void)current_time;  // Unused for now
@@ -850,10 +978,20 @@ bool bias_auto_debias(bias_detection_system_t* system, uint64_t current_time) {
     if (!system || !system->bias_detected) return false;
 
     // Find highest bias
+    /* Phase 8: Heartbeat at operation start */
+    bias_detection_heartbeat("bias_detecti_bias_auto_debias", 0.0f);
+
+
     float max_bias = 0.0F;
     int max_idx = -1;
 
     for (uint32_t i = 0; i < system->implicit_bias_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->implicit_bias_count > 256) {
+            bias_detection_heartbeat("bias_detecti_loop",
+                             (float)(i + 1) / (float)system->implicit_bias_count);
+        }
+
         if (system->implicit_biases[i].negative_association > max_bias) {
             max_bias = system->implicit_biases[i].negative_association;
             max_idx = i;
@@ -874,6 +1012,10 @@ bool bias_auto_debias(bias_detection_system_t* system, uint64_t current_time) {
 
 void bias_update(bias_detection_system_t* system, float dt, uint64_t current_time) {
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    bias_detection_heartbeat("bias_detecti_bias_update", 0.0f);
+
+
     if (system && system->bio_async_enabled && system->bio_ctx) {
         bio_router_process_inbox(system->bio_ctx, 5);
     }
@@ -885,6 +1027,12 @@ void bias_update(bias_detection_system_t* system, float dt, uint64_t current_tim
 
     // Decay implicit biases (slow)
     for (uint32_t i = 0; i < system->implicit_bias_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->implicit_bias_count > 256) {
+            bias_detection_heartbeat("bias_detecti_loop",
+                             (float)(i + 1) / (float)system->implicit_bias_count);
+        }
+
         implicit_bias_t* bias = &system->implicit_biases[i];
         bias->stereotype_activation = exponential_decay(bias->stereotype_activation, 0.01F, dt);
     }
@@ -892,6 +1040,12 @@ void bias_update(bias_detection_system_t* system, float dt, uint64_t current_tim
     // Update overall metrics
     float total_implicit = 0.0F;
     for (uint32_t i = 0; i < system->implicit_bias_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->implicit_bias_count > 256) {
+            bias_detection_heartbeat("bias_detecti_loop",
+                             (float)(i + 1) / (float)system->implicit_bias_count);
+        }
+
         total_implicit += system->implicit_biases[i].negative_association;
     }
 
@@ -910,11 +1064,19 @@ void bias_update(bias_detection_system_t* system, float dt, uint64_t current_tim
 }
 
 bool bias_is_detected(const bias_detection_system_t* system, bias_type_t bias_type) {
+    /* Phase 8: Heartbeat at operation start */
+    bias_detection_heartbeat("bias_detecti_bias_is_detected", 0.0f);
+
+
     (void)bias_type;  // Unused for now
     return system ? system->bias_detected : false;
 }
 
 float bias_get_fairness_score(const bias_detection_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    bias_detection_heartbeat("bias_detecti_bias_get_fairness_sc", 0.0f);
+
+
     return system ? system->fairness_score : 0.0F;
 }
 
@@ -925,9 +1087,19 @@ float bias_get_fairness_score(const bias_detection_system_t* system) {
 int bias_detection_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_detection_heartbeat("bias_detecti_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Bias_Detection_System");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                bias_detection_heartbeat("bias_detecti_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

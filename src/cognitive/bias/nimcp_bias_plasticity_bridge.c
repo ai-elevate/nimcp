@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_bias_plasticity_bridge_health_agent = NULL;
  * @brief Set health agent for bias_plasticity_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void bias_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void bias_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_bias_plasticity_bridge_health_agent = agent;
 }
 
@@ -100,6 +100,12 @@ static bias_plasticity_synapse_t* find_synapse(
     uint32_t synapse_id
 ) {
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            bias_plasticity_bridge_heartbeat("bias_plastic_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (bridge->synapses[i].synapse_id == synapse_id) {
             return &bridge->synapses[i];
         }
@@ -112,6 +118,12 @@ static bias_type_learning_t* find_type_learning(
     uint32_t bias_type
 ) {
     for (uint32_t i = 0; i < bridge->num_types; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_types > 256) {
+            bias_plasticity_bridge_heartbeat("bias_plastic_loop",
+                             (float)(i + 1) / (float)bridge->num_types);
+        }
+
         if (bridge->type_learning[i].bias_type == bias_type) {
             return &bridge->type_learning[i];
         }
@@ -131,6 +143,10 @@ static void apply_weight_bounds(
 //=============================================================================
 
 bias_plasticity_config_t bias_plasticity_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_conf", 0.0f);
+
+
     bias_plasticity_config_t config = {
         .stdp_ltp_window_ms = BIAS_PLASTICITY_STDP_WINDOW,
         .stdp_ltd_window_ms = BIAS_PLASTICITY_STDP_WINDOW,
@@ -183,6 +199,10 @@ bias_plasticity_bridge_t* bias_plasticity_create(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_crea", 0.0f);
+
+
     bias_plasticity_bridge_t* bridge = calloc(1, sizeof(bias_plasticity_bridge_t));
     if (!bridge) {
 
@@ -222,6 +242,10 @@ bias_plasticity_bridge_t* bias_plasticity_create(
 void bias_plasticity_destroy(bias_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_dest", 0.0f);
+
+
     free(bridge->synapses);
     free(bridge->type_learning);
     free(bridge);
@@ -229,6 +253,10 @@ void bias_plasticity_destroy(bias_plasticity_bridge_t* bridge) {
 
 int bias_plasticity_reset(bias_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_rese", 0.0f);
+
 
     bridge->state = BIAS_PLASTICITY_STATE_IDLE;
     bridge->num_synapses = 0;
@@ -262,6 +290,10 @@ int bias_plasticity_register_synapse(
     // Check for duplicate
     if (find_synapse(bridge, synapse_id)) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_regi", 0.0f);
+
+
     bias_plasticity_synapse_t* synapse = &bridge->synapses[bridge->num_synapses];
     synapse->synapse_id = synapse_id;
     synapse->type = type;
@@ -288,7 +320,17 @@ int bias_plasticity_unregister_synapse(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_unre", 0.0f);
+
+
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            bias_plasticity_bridge_heartbeat("bias_plastic_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (bridge->synapses[i].synapse_id == synapse_id) {
             if (i < bridge->num_synapses - 1) {
                 bridge->synapses[i] = bridge->synapses[bridge->num_synapses - 1];
@@ -308,6 +350,10 @@ int bias_plasticity_get_synapse(
 ) {
     if (!bridge || !synapse) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_get_", 0.0f);
+
+
     bias_plasticity_synapse_t* found = find_synapse(bridge, synapse_id);
     if (!found) return -1;
 
@@ -326,6 +372,10 @@ int bias_plasticity_bias_detected(
     uint64_t timestamp_us
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_bias", 0.0f);
+
 
     bridge->state = BIAS_PLASTICITY_STATE_DETECTING;
 
@@ -348,6 +398,12 @@ int bias_plasticity_bias_detected(
 
     // Update eligibility traces for detection synapses
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            bias_plasticity_bridge_heartbeat("bias_plastic_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (bridge->synapses[i].bias_type == bias_type &&
             bridge->synapses[i].type == BIAS_SYNAPSE_DETECTION) {
             bridge->synapses[i].last_pre_spike_us = timestamp_us;
@@ -376,6 +432,10 @@ int bias_plasticity_detection_feedback(
 
     if (!bridge->config.enable_detection_learning) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_dete", 0.0f);
+
+
     bridge->state = BIAS_PLASTICITY_STATE_UPDATING;
 
     // Update type learning state
@@ -392,6 +452,12 @@ int bias_plasticity_detection_feedback(
 
     // Update detection synapses
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            bias_plasticity_bridge_heartbeat("bias_plastic_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (bridge->synapses[i].bias_type == bias_type &&
             bridge->synapses[i].type == BIAS_SYNAPSE_DETECTION) {
 
@@ -445,10 +511,20 @@ int bias_plasticity_conflict_resolved(
 
     if (!bridge->config.enable_conflict_learning) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_conf", 0.0f);
+
+
     bridge->state = BIAS_PLASTICITY_STATE_UPDATING;
 
     // Update conflict monitor synapses
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            bias_plasticity_bridge_heartbeat("bias_plastic_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (bridge->synapses[i].type == BIAS_SYNAPSE_CONFLICT_MONITOR) {
             float old_weight = bridge->synapses[i].weight;
             float dw;
@@ -489,6 +565,10 @@ int bias_plasticity_metacognitive_insight(
 
     if (!bridge->config.enable_metacognitive_learning) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_meta", 0.0f);
+
+
     bridge->state = BIAS_PLASTICITY_STATE_UPDATING;
 
     // Update type metacognitive awareness - create if not exists
@@ -518,6 +598,12 @@ int bias_plasticity_metacognitive_insight(
 
     // Update metacognitive synapses
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            bias_plasticity_bridge_heartbeat("bias_plastic_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (bridge->synapses[i].type == BIAS_SYNAPSE_METACOGNITIVE) {
             float old_weight = bridge->synapses[i].weight;
             float dw = bridge->config.metacognitive_insight_gain *
@@ -541,6 +627,12 @@ int bias_plasticity_metacognitive_insight(
     // Update overall metacognitive awareness
     float total_awareness = 0.0f;
     for (uint32_t i = 0; i < bridge->num_types; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_types > 256) {
+            bias_plasticity_bridge_heartbeat("bias_plastic_loop",
+                             (float)(i + 1) / (float)bridge->num_types);
+        }
+
         total_awareness += bridge->type_learning[i].metacognitive_awareness;
     }
     if (bridge->num_types > 0) {
@@ -560,10 +652,20 @@ int bias_plasticity_reward(
 
     if (!bridge->config.enable_eligibility) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_rewa", 0.0f);
+
+
     bridge->state = BIAS_PLASTICITY_STATE_UPDATING;
 
     // Apply reward-modulated plasticity to all synapses with eligibility
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            bias_plasticity_bridge_heartbeat("bias_plastic_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (bridge->synapses[i].eligibility_trace > 0.01f) {
             float old_weight = bridge->synapses[i].weight;
             float dw = reward * bridge->synapses[i].eligibility_trace *
@@ -606,9 +708,19 @@ int bias_plasticity_update(
     if (!bridge) return -1;
 
     // Decay eligibility traces
+    /* Phase 8: Heartbeat at operation start */
+    bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_upda", 0.0f);
+
+
     if (bridge->config.enable_eligibility) {
         float decay = powf(bridge->config.eligibility_decay, dt_ms);
         for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+                bias_plasticity_bridge_heartbeat("bias_plastic_loop",
+                                 (float)(i + 1) / (float)bridge->num_synapses);
+            }
+
             bridge->synapses[i].eligibility_trace *= decay;
         }
     }
@@ -619,6 +731,12 @@ int bias_plasticity_update(
         float activity_decay = expf(-dt_ms / bridge->config.bcm_activity_tau);
 
         for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+                bias_plasticity_bridge_heartbeat("bias_plastic_loop",
+                                 (float)(i + 1) / (float)bridge->num_synapses);
+            }
+
             bridge->synapses[i].avg_activity =
                 bridge->synapses[i].avg_activity * activity_decay +
                 bridge->synapses[i].weight * (1.0f - activity_decay);
@@ -657,9 +775,19 @@ int bias_plasticity_update(
 int bias_plasticity_consolidate(bias_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_cons", 0.0f);
+
+
     bridge->state = BIAS_PLASTICITY_STATE_CONSOLIDATING;
 
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            bias_plasticity_bridge_heartbeat("bias_plastic_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         // Consolidation based on detection accuracy
         uint32_t total = bridge->synapses[i].correct_detections +
                         bridge->synapses[i].false_positives +
@@ -690,6 +818,10 @@ float bias_plasticity_get_detection_sensitivity(
 ) {
     if (!bridge) return 0.5f;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_get_", 0.0f);
+
+
     bias_type_learning_t* type_learn = find_type_learning(bridge, bias_type);
     if (!type_learn) return 0.5f;
 
@@ -701,6 +833,10 @@ float bias_plasticity_get_correction_efficiency(
     uint32_t bias_type
 ) {
     if (!bridge) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_get_", 0.0f);
+
 
     bias_type_learning_t* type_learn = find_type_learning(bridge, bias_type);
     if (!type_learn) return 0.0f;
@@ -715,6 +851,10 @@ float bias_plasticity_get_metacognitive_awareness(
 ) {
     if (!bridge) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_get_", 0.0f);
+
+
     bias_type_learning_t* type_learn = find_type_learning(bridge, bias_type);
     if (!type_learn) return 0.0f;
 
@@ -727,6 +867,10 @@ int bias_plasticity_get_type_learning(
     bias_type_learning_t* learning
 ) {
     if (!bridge || !learning) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_get_", 0.0f);
+
 
     bias_type_learning_t* type_learn = find_type_learning(bridge, bias_type);
     if (!type_learn) return -1;
@@ -745,6 +889,10 @@ int bias_plasticity_get_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_get_", 0.0f);
+
+
     state->state = bridge->state;
     state->registered_synapses = bridge->num_synapses;
     state->tracked_bias_types = bridge->num_types;
@@ -762,11 +910,19 @@ int bias_plasticity_get_stats(
     if (!bridge || !stats) return -1;
 
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_get_", 0.0f);
+
+
     return 0;
 }
 
 void bias_plasticity_reset_stats(bias_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_rese", 0.0f);
+
+
     memset(&bridge->stats, 0, sizeof(bias_plasticity_stats_t));
 }
 
@@ -781,6 +937,10 @@ int bias_plasticity_set_weight_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_set_", 0.0f);
+
+
     bridge->weight_callback = callback;
     bridge->weight_callback_data = user_data;
     return 0;
@@ -792,6 +952,10 @@ int bias_plasticity_set_metacognitive_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_set_", 0.0f);
+
 
     bridge->metacognitive_callback = callback;
     bridge->metacognitive_callback_data = user_data;
@@ -806,6 +970,10 @@ int bias_plasticity_connect_bio_async(bias_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_conn", 0.0f);
+
+
     bridge->bio_async_connected = true;
     return 0;
 }
@@ -813,11 +981,19 @@ int bias_plasticity_connect_bio_async(bias_plasticity_bridge_t* bridge) {
 int bias_plasticity_disconnect_bio_async(bias_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_disc", 0.0f);
+
+
     bridge->bio_async_connected = false;
     return 0;
 }
 
 bool bias_plasticity_is_bio_async_connected(const bias_plasticity_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_is_b", 0.0f);
+
+
     return bridge->bio_async_connected;
 }

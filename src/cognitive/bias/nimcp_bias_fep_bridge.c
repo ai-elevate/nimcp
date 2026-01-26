@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_bias_fep_bridge_health_agent = NULL;
  * @brief Set health agent for bias_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void bias_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void bias_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_bias_fep_bridge_health_agent = agent;
 }
 
@@ -46,6 +46,10 @@ static inline void bias_fep_bridge_heartbeat(const char* operation, float progre
 
 
 int bias_fep_bridge_default_config(bias_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    bias_fep_bridge_heartbeat("bias_fep_bri_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->systematic_pe_threshold = BIAS_FEP_SYSTEMATIC_PE_THRESHOLD;
     config->confirmation_threshold = BIAS_FEP_CONFIRMATION_THRESHOLD;
@@ -57,6 +61,10 @@ int bias_fep_bridge_default_config(bias_fep_config_t* config) {
 }
 
 bias_fep_bridge_t* bias_fep_bridge_create(const bias_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    bias_fep_bridge_heartbeat("bias_fep_bri_create", 0.0f);
+
+
     bias_fep_bridge_t* bridge = (bias_fep_bridge_t*)nimcp_malloc(sizeof(bias_fep_bridge_t));
     if (!bridge) {
 
@@ -76,6 +84,10 @@ bias_fep_bridge_t* bias_fep_bridge_create(const bias_fep_config_t* config) {
 
 void bias_fep_bridge_destroy(bias_fep_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    bias_fep_bridge_heartbeat("bias_fep_bri_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) bias_fep_bridge_disconnect_bio_async(bridge);
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
@@ -84,6 +96,10 @@ void bias_fep_bridge_destroy(bias_fep_bridge_t* bridge) {
 }
 
 int bias_fep_bridge_connect_fep(bias_fep_bridge_t* bridge, fep_system_t* fep) {
+    /* Phase 8: Heartbeat at operation start */
+    bias_fep_bridge_heartbeat("bias_fep_bri_connect_fep", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -92,6 +108,10 @@ int bias_fep_bridge_connect_fep(bias_fep_bridge_t* bridge, fep_system_t* fep) {
 }
 
 int bias_fep_detect_bias(bias_fep_bridge_t* bridge, float prediction_error) {
+    /* Phase 8: Heartbeat at operation start */
+    bias_fep_bridge_heartbeat("bias_fep_bri_bias_fep_detect_bias", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_bias_detection) return NIMCP_SUCCESS;
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -112,6 +132,10 @@ int bias_fep_detect_bias(bias_fep_bridge_t* bridge, float prediction_error) {
 }
 
 int bias_fep_correct_prior(bias_fep_bridge_t* bridge, cognitive_bias_type_t bias) {
+    /* Phase 8: Heartbeat at operation start */
+    bias_fep_bridge_heartbeat("bias_fep_bri_bias_fep_correct_pri", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_prior_correction) return NIMCP_SUCCESS;
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -123,6 +147,10 @@ int bias_fep_correct_prior(bias_fep_bridge_t* bridge, cognitive_bias_type_t bias
 }
 
 int bias_fep_bridge_update(bias_fep_bridge_t* bridge, uint64_t delta_ms) {
+    /* Phase 8: Heartbeat at operation start */
+    bias_fep_bridge_heartbeat("bias_fep_bri_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->effects.bias_active) {
@@ -136,6 +164,10 @@ int bias_fep_bridge_update(bias_fep_bridge_t* bridge, uint64_t delta_ms) {
 }
 
 int bias_fep_bridge_get_state(const bias_fep_bridge_t* bridge, bias_fep_state_t* state) {
+    /* Phase 8: Heartbeat at operation start */
+    bias_fep_bridge_heartbeat("bias_fep_bri_get_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -144,6 +176,10 @@ int bias_fep_bridge_get_state(const bias_fep_bridge_t* bridge, bias_fep_state_t*
 }
 
 int bias_fep_bridge_get_stats(const bias_fep_bridge_t* bridge, bias_fep_stats_t* stats) {
+    /* Phase 8: Heartbeat at operation start */
+    bias_fep_bridge_heartbeat("bias_fep_bri_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -152,6 +188,10 @@ int bias_fep_bridge_get_stats(const bias_fep_bridge_t* bridge, bias_fep_stats_t*
 }
 
 int bias_fep_bridge_connect_bio_async(bias_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    bias_fep_bridge_heartbeat("bias_fep_bri_connect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
     bio_module_info_t info = {
@@ -170,12 +210,20 @@ int bias_fep_bridge_connect_bio_async(bias_fep_bridge_t* bridge) {
 
 int bias_fep_bridge_disconnect_bio_async(bias_fep_bridge_t* bridge) {
     if (!bridge || !bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
+    /* Phase 8: Heartbeat at operation start */
+    bias_fep_bridge_heartbeat("bias_fep_bri_disconnect_bio_async", 0.0f);
+
+
     if (bridge->base.bio_ctx) bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_async_enabled = false;
     return NIMCP_SUCCESS;
 }
 
 bool bias_fep_bridge_is_bio_async_connected(const bias_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    bias_fep_bridge_heartbeat("bias_fep_bri_is_bio_async_connect", 0.0f);
+
+
     return bridge ? bridge->base.bio_async_enabled : false;
 }
 
@@ -186,9 +234,19 @@ bool bias_fep_bridge_is_bio_async_connected(const bias_fep_bridge_t* bridge) {
 int bias_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_fep_bridge_heartbeat("bias_fep_bri_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Bias_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                bias_fep_bridge_heartbeat("bias_fep_bri_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

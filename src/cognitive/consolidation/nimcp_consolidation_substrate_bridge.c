@@ -36,7 +36,7 @@ static nimcp_health_agent_t* g_consolidation_substrate_bridge_health_agent = NUL
  * @brief Set health agent for consolidation_substrate_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void consolidation_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void consolidation_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_consolidation_substrate_bridge_health_agent = agent;
 }
 
@@ -62,6 +62,10 @@ struct consolidation_substrate_bridge {
 };
 
 consolidation_substrate_config_t consolidation_substrate_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_substrate_bridge_heartbeat("consolidatio_consolidation_substr", 0.0f);
+
+
     consolidation_substrate_config_t cfg = {
         .enable_atp_modulation = true,
         .enable_fatigue_modulation = true,
@@ -81,6 +85,10 @@ consolidation_substrate_bridge_t* consolidation_substrate_bridge_create(void* co
         return NULL;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_substrate_bridge_heartbeat("consolidatio_create", 0.0f);
+
 
     consolidation_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(consolidation_substrate_bridge_t));
     if (!bridge) {
@@ -122,6 +130,10 @@ void consolidation_substrate_bridge_destroy(consolidation_substrate_bridge_t* br
     if (!bridge) return;
 
     /* Destroy mutex */
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_substrate_bridge_heartbeat("consolidatio_destroy", 0.0f);
+
+
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
@@ -131,6 +143,10 @@ void consolidation_substrate_bridge_destroy(consolidation_substrate_bridge_t* br
 
 int consolidation_substrate_bridge_update(consolidation_substrate_bridge_t* bridge) {
     if (!bridge || !bridge->substrate) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_substrate_bridge_heartbeat("consolidatio_update", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -171,6 +187,10 @@ int consolidation_substrate_bridge_update(consolidation_substrate_bridge_t* brid
 int consolidation_substrate_bridge_get_effects(const consolidation_substrate_bridge_t* bridge, consolidation_substrate_effects_t* effects) {
     if (!bridge || !effects) return -1;
     *effects = bridge->effects;
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_substrate_bridge_heartbeat("consolidatio_get_effects", 0.0f);
+
+
     return 0;
 }
 
@@ -180,6 +200,10 @@ int consolidation_substrate_bridge_apply_effects(consolidation_substrate_bridge_
     if (!bridge->bio_async_connected || !bridge->ctx) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_substrate_bridge_heartbeat("consolidatio_apply_effects", 0.0f);
+
 
     substrate_metabolic_state_t metabolic;
     float atp_level = 1.0f, fatigue_level = 0.0f;
@@ -242,6 +266,10 @@ int consolidation_substrate_bridge_apply_effects(consolidation_substrate_bridge_
 int consolidation_substrate_bridge_register_bio_async(consolidation_substrate_bridge_t* bridge, bio_router_t* router) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_substrate_bridge_heartbeat("consolidatio_register_bio_async", 0.0f);
+
+
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
         bridge->ctx = NULL;
@@ -275,9 +303,19 @@ int consolidation_substrate_bridge_register_bio_async(consolidation_substrate_br
 int consolidation_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_substrate_bridge_heartbeat("consolidatio_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Consolidation_Substrate_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                consolidation_substrate_bridge_heartbeat("consolidatio_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

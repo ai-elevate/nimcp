@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_omni_metacognition_health_agent = NULL;
  * @brief Set health agent for omni_metacognition heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void omni_metacognition_set_health_agent(nimcp_health_agent_t* agent) {
+void omni_metacognition_set_health_agent(nimcp_health_agent_t* agent) {
     g_omni_metacognition_health_agent = agent;
 }
 
@@ -88,12 +88,24 @@ static void softmax(const float* input, float* output, uint32_t n) {
 
     float sum = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            omni_metacognition_heartbeat("omni_metacog_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         output[i] = expf(input[i] - max_val);
         sum += output[i];
     }
 
     if (sum > 0.0f) {
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                omni_metacognition_heartbeat("omni_metacog_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             output[i] /= sum;
         }
     }
@@ -113,6 +125,12 @@ static uint32_t simple_hash(const void* data, size_t len) {
     const uint8_t* bytes = (const uint8_t*)data;
     uint32_t hash = 5381;
     for (size_t i = 0; i < len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && len > 256) {
+            omni_metacognition_heartbeat("omni_metacog_loop",
+                             (float)(i + 1) / (float)len);
+        }
+
         hash = ((hash << 5) + hash) + bytes[i];
     }
     return hash;
@@ -123,6 +141,10 @@ static uint32_t simple_hash(const void* data, size_t len) {
  * ============================================================================ */
 
 nimcp_error_t omni_metacog_get_default_config(omni_metacog_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_get_def", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAMETER, "config is NULL");
 
     memset(config, 0, sizeof(*config));
@@ -151,6 +173,10 @@ nimcp_error_t omni_metacog_get_default_config(omni_metacog_config_t* config) {
 }
 
 omni_metacog_ctx_t* omni_metacog_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_create", 0.0f);
+
+
     omni_metacog_config_t config;
     omni_metacog_get_default_config(&config);
     return omni_metacog_create_with_config(&config);
@@ -165,6 +191,10 @@ omni_metacog_ctx_t* omni_metacog_create_with_config(
 
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_create_", 0.0f);
+
 
     omni_metacog_ctx_t* ctx = (omni_metacog_ctx_t*)nimcp_malloc(
         sizeof(omni_metacog_ctx_t));
@@ -215,6 +245,10 @@ void omni_metacog_destroy(omni_metacog_ctx_t* ctx) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_destroy", 0.0f);
+
+
     if (ctx->mutex) {
         nimcp_mutex_free(ctx->mutex);
     }
@@ -227,6 +261,10 @@ void omni_metacog_destroy(omni_metacog_ctx_t* ctx) {
 }
 
 nimcp_error_t omni_metacog_reset(omni_metacog_ctx_t* ctx) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_reset", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
@@ -257,6 +295,10 @@ nimcp_error_t omni_metacog_reset(omni_metacog_ctx_t* ctx) {
  * ============================================================================ */
 
 nimcp_error_t omni_metacog_init_self_model(omni_metacog_ctx_t* ctx) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_init_se", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
     NIMCP_CHECK_THROW(ctx->self_model, NIMCP_ERROR_INVALID_PARAMETER, "self_model is NULL");
 
@@ -265,6 +307,12 @@ nimcp_error_t omni_metacog_init_self_model(omni_metacog_ctx_t* ctx) {
 
     /* Initialize capabilities for each mode */
     for (int i = 0; i < OMNI_METACOG_MODE_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && OMNI_METACOG_MODE_COUNT > 256) {
+            omni_metacognition_heartbeat("omni_metacog_loop",
+                             (float)(i + 1) / (float)OMNI_METACOG_MODE_COUNT);
+        }
+
         model->capabilities[i].mode = (omni_metacog_mode_t)i;
         model->capabilities[i].proficiency = 0.5f;  /* Start neutral */
         model->capabilities[i].typical_cost = 0.5f;
@@ -278,11 +326,23 @@ nimcp_error_t omni_metacog_init_self_model(omni_metacog_ctx_t* ctx) {
     /* Initialize modalities */
     model->num_modalities = 0;
     for (int i = 0; i < OMNI_METACOG_MAX_MODALITIES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && OMNI_METACOG_MAX_MODALITIES > 256) {
+            omni_metacognition_heartbeat("omni_metacog_loop",
+                             (float)(i + 1) / (float)OMNI_METACOG_MAX_MODALITIES);
+        }
+
         model->modality_proficiency[i] = 0.5f;
     }
 
     /* Initialize resources */
     for (int i = 0; i < OMNI_RESOURCE_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && OMNI_RESOURCE_COUNT > 256) {
+            omni_metacognition_heartbeat("omni_metacog_loop",
+                             (float)(i + 1) / (float)OMNI_RESOURCE_COUNT);
+        }
+
         model->resources.available[i] = 1.0f;
         model->resources.allocated[i] = 0.0f;
         model->resources.budget[i] = OMNI_METACOG_DEFAULT_RESOURCE_BUDGET;
@@ -314,6 +374,10 @@ nimcp_error_t omni_metacog_update_self_model(
     float cost,
     float latency,
     bool success) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_update_", 0.0f);
+
 
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
     NIMCP_CHECK_THROW(ctx->self_model, NIMCP_ERROR_INVALID_PARAMETER, "self_model is NULL");
@@ -383,6 +447,10 @@ nimcp_error_t omni_metacog_get_capability(
     omni_metacog_mode_t mode,
     omni_capability_t* capability) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_get_cap", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
     NIMCP_CHECK_THROW(ctx->self_model, NIMCP_ERROR_INVALID_PARAMETER, "self_model is NULL");
     NIMCP_CHECK_THROW(capability, NIMCP_ERROR_INVALID_PARAMETER, "capability is NULL");
@@ -399,6 +467,10 @@ nimcp_error_t omni_metacog_get_resources(
     omni_metacog_ctx_t* ctx,
     omni_resource_state_t* resources) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_get_res", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
     NIMCP_CHECK_THROW(ctx->self_model, NIMCP_ERROR_INVALID_PARAMETER, "self_model is NULL");
     NIMCP_CHECK_THROW(resources, NIMCP_ERROR_INVALID_PARAMETER, "resources is NULL");
@@ -414,6 +486,10 @@ nimcp_error_t omni_metacog_set_resource_budget(
     omni_metacog_ctx_t* ctx,
     omni_resource_type_t resource,
     float budget) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_set_res", 0.0f);
+
 
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
     NIMCP_CHECK_THROW(ctx->self_model, NIMCP_ERROR_INVALID_PARAMETER, "self_model is NULL");
@@ -433,6 +509,10 @@ nimcp_error_t omni_metacog_set_resource_budget(
 nimcp_error_t omni_metacog_monitor(
     omni_metacog_ctx_t* ctx,
     omni_monitoring_snapshot_t* snapshot) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_monitor", 0.0f);
+
 
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
     NIMCP_CHECK_THROW(snapshot, NIMCP_ERROR_INVALID_PARAMETER, "snapshot is NULL");
@@ -454,6 +534,12 @@ nimcp_error_t omni_metacog_monitor(
 
         /* Resource usage */
         for (int i = 0; i < OMNI_RESOURCE_COUNT; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && OMNI_RESOURCE_COUNT > 256) {
+                omni_metacognition_heartbeat("omni_metacog_loop",
+                                 (float)(i + 1) / (float)OMNI_RESOURCE_COUNT);
+            }
+
             snapshot->resource_usage[i] = ctx->self_model->resources.allocated[i];
         }
 
@@ -482,6 +568,10 @@ nimcp_error_t omni_metacog_check_coherence(
     const void* inferences,
     uint32_t num_inferences,
     omni_coherence_result_t* result) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_check_c", 0.0f);
+
 
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
     NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAMETER, "result is NULL");
@@ -515,6 +605,12 @@ nimcp_error_t omni_metacog_check_coherence(
                                ctx->self_model->history_count : 10;
 
         for (uint32_t i = 0; i < check_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && check_count > 256) {
+                omni_metacognition_heartbeat("omni_metacog_loop",
+                                 (float)(i + 1) / (float)check_count);
+            }
+
             uint32_t idx = (ctx->self_model->history_head + OMNI_METACOG_MAX_HISTORY - 1 - i) %
                            OMNI_METACOG_MAX_HISTORY;
             if (!ctx->self_model->history[idx].success) {
@@ -549,6 +645,10 @@ nimcp_error_t omni_metacog_detect_anomaly(
     float* anomaly_score,
     char* description) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_detect_", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
     NIMCP_CHECK_THROW(snapshot, NIMCP_ERROR_INVALID_PARAMETER, "snapshot is NULL");
     NIMCP_CHECK_THROW(anomaly_score, NIMCP_ERROR_INVALID_PARAMETER, "anomaly_score is NULL");
@@ -571,6 +671,12 @@ nimcp_error_t omni_metacog_detect_anomaly(
 
         /* Anomaly: resource usage exceeding budget */
         for (int i = 0; i < OMNI_RESOURCE_COUNT; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && OMNI_RESOURCE_COUNT > 256) {
+                omni_metacognition_heartbeat("omni_metacog_loop",
+                                 (float)(i + 1) / (float)OMNI_RESOURCE_COUNT);
+            }
+
             if (snapshot->resource_usage[i] > ctx->self_model->resources.budget[i]) {
                 float excess = snapshot->resource_usage[i] - ctx->self_model->resources.budget[i];
                 *anomaly_score = fmaxf(*anomaly_score, excess);
@@ -612,6 +718,10 @@ nimcp_error_t omni_metacog_evaluate_performance(
     float* accuracy,
     float* confidence) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_evaluat", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
     NIMCP_CHECK_THROW(accuracy, NIMCP_ERROR_INVALID_PARAMETER, "accuracy is NULL");
     NIMCP_CHECK_THROW(confidence, NIMCP_ERROR_INVALID_PARAMETER, "confidence is NULL");
@@ -643,6 +753,10 @@ nimcp_error_t omni_metacog_predict_performance(
     uint32_t context_hash,
     float* expected_accuracy,
     float* expected_cost) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_predict", 0.0f);
+
 
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
     NIMCP_CHECK_THROW(expected_accuracy, NIMCP_ERROR_INVALID_PARAMETER, "expected_accuracy is NULL");
@@ -691,6 +805,10 @@ float omni_metacog_get_confidence(omni_metacog_ctx_t* ctx) {
         return -1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_get_con", 0.0f);
+
+
     nimcp_mutex_lock(ctx->mutex);
     float conf = ctx->self_model->capabilities[ctx->current_mode].proficiency;
     nimcp_mutex_unlock(ctx->mutex);
@@ -707,6 +825,10 @@ nimcp_error_t omni_metacog_select_mode(
     uint32_t context_hash,
     omni_mode_recommendation_t* recommendation) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_select_", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
     NIMCP_CHECK_THROW(recommendation, NIMCP_ERROR_INVALID_PARAMETER, "recommendation is NULL");
 
@@ -719,6 +841,12 @@ nimcp_error_t omni_metacog_select_mode(
     float mode_probs[OMNI_METACOG_MODE_COUNT];
 
     for (int i = 0; i < OMNI_METACOG_MODE_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && OMNI_METACOG_MODE_COUNT > 256) {
+            omni_metacognition_heartbeat("omni_metacog_loop",
+                             (float)(i + 1) / (float)OMNI_METACOG_MODE_COUNT);
+        }
+
         float expected_accuracy, expected_cost;
         nimcp_mutex_unlock(ctx->mutex);
         omni_metacog_predict_performance(ctx, (omni_metacog_mode_t)i,
@@ -768,6 +896,12 @@ nimcp_error_t omni_metacog_select_mode(
     int sorted_indices[OMNI_METACOG_MODE_COUNT];
     memcpy(sorted_values, mode_values, sizeof(sorted_values));
     for (int i = 0; i < OMNI_METACOG_MODE_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && OMNI_METACOG_MODE_COUNT > 256) {
+            omni_metacognition_heartbeat("omni_metacog_loop",
+                             (float)(i + 1) / (float)OMNI_METACOG_MODE_COUNT);
+        }
+
         sorted_indices[i] = i;
     }
 
@@ -805,6 +939,10 @@ nimcp_error_t omni_metacog_plan_resources(
     float accuracy_target,
     omni_resource_plan_t* plan) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_plan_re", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
     NIMCP_CHECK_THROW(plan, NIMCP_ERROR_INVALID_PARAMETER, "plan is NULL");
     NIMCP_CHECK_THROW(mode < OMNI_METACOG_MODE_COUNT, NIMCP_ERROR_INVALID_PARAMETER, "mode out of range");
@@ -822,6 +960,12 @@ nimcp_error_t omni_metacog_plan_resources(
 
         /* Resources scale with accuracy demand */
         for (int i = 0; i < OMNI_RESOURCE_COUNT; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && OMNI_RESOURCE_COUNT > 256) {
+                omni_metacognition_heartbeat("omni_metacog_loop",
+                                 (float)(i + 1) / (float)OMNI_RESOURCE_COUNT);
+            }
+
             plan->allocations[i] = clamp01(base_cost * accuracy_ratio);
             plan->total_budget += plan->allocations[i];
 
@@ -853,6 +997,10 @@ nimcp_error_t omni_metacog_decide_intervention(
     omni_metacog_ctx_t* ctx,
     const omni_monitoring_snapshot_t* snapshot,
     omni_intervention_t* intervention) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_decide_", 0.0f);
+
 
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
     NIMCP_CHECK_THROW(snapshot, NIMCP_ERROR_INVALID_PARAMETER, "snapshot is NULL");
@@ -886,6 +1034,12 @@ nimcp_error_t omni_metacog_decide_intervention(
 
     /* 3. Resource exhaustion */
     for (int i = 0; i < OMNI_RESOURCE_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && OMNI_RESOURCE_COUNT > 256) {
+            omni_metacognition_heartbeat("omni_metacog_loop",
+                             (float)(i + 1) / (float)OMNI_RESOURCE_COUNT);
+        }
+
         if (ctx->self_model &&
             snapshot->resource_usage[i] > ctx->self_model->resources.budget[i]) {
             intervention->should_intervene = true;
@@ -924,6 +1078,10 @@ nimcp_error_t omni_metacog_execute_intervention(
     omni_metacog_ctx_t* ctx,
     const omni_intervention_t* intervention) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_execute", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
     NIMCP_CHECK_THROW(intervention, NIMCP_ERROR_INVALID_PARAMETER, "intervention is NULL");
 
@@ -948,6 +1106,12 @@ nimcp_error_t omni_metacog_execute_intervention(
     /* Apply resource plan */
     if (intervention->resource_plan.total_budget > 0.0f && ctx->self_model) {
         for (int i = 0; i < OMNI_RESOURCE_COUNT; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && OMNI_RESOURCE_COUNT > 256) {
+                omni_metacognition_heartbeat("omni_metacog_loop",
+                                 (float)(i + 1) / (float)OMNI_RESOURCE_COUNT);
+            }
+
             ctx->self_model->resources.allocated[i] = intervention->resource_plan.allocations[i];
         }
     }
@@ -963,6 +1127,10 @@ nimcp_error_t omni_metacog_execute_intervention(
 nimcp_error_t omni_metacog_switch_mode(
     omni_metacog_ctx_t* ctx,
     omni_metacog_mode_t new_mode) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_switch_", 0.0f);
+
 
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
     NIMCP_CHECK_THROW(new_mode < OMNI_METACOG_MODE_COUNT, NIMCP_ERROR_INVALID_PARAMETER, "new_mode out of range");
@@ -983,6 +1151,10 @@ nimcp_error_t omni_metacog_adjust_precision(
     omni_metacog_ctx_t* ctx,
     float adjustment) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_adjust_", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
 
     /* Clamp adjustment */
@@ -994,6 +1166,12 @@ nimcp_error_t omni_metacog_adjust_precision(
     /* Adjust precision budget for all resources proportionally */
     if (ctx->self_model) {
         for (int i = 0; i < OMNI_RESOURCE_COUNT; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && OMNI_RESOURCE_COUNT > 256) {
+                omni_metacognition_heartbeat("omni_metacog_loop",
+                                 (float)(i + 1) / (float)OMNI_RESOURCE_COUNT);
+            }
+
             float new_budget = ctx->self_model->resources.budget[i] + adjustment * 0.1f;
             ctx->self_model->resources.budget[i] = clamp01(new_budget);
         }
@@ -1011,6 +1189,10 @@ nimcp_error_t omni_metacog_adjust_precision(
 nimcp_error_t omni_metacog_learn(
     omni_metacog_ctx_t* ctx,
     uint32_t num_entries) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_learn", 0.0f);
+
 
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
     NIMCP_CHECK_THROW(ctx->self_model, NIMCP_ERROR_INVALID_PARAMETER, "self_model is NULL");
@@ -1032,6 +1214,12 @@ nimcp_error_t omni_metacog_learn(
     float discount = ctx->self_model->discount_factor;
 
     for (uint32_t i = 0; i < num_entries; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_entries > 256) {
+            omni_metacognition_heartbeat("omni_metacog_loop",
+                             (float)(i + 1) / (float)num_entries);
+        }
+
         /* Get entry from ring buffer (most recent first) */
         uint32_t idx = (ctx->self_model->history_head + OMNI_METACOG_MAX_HISTORY - 1 - i) %
                        OMNI_METACOG_MAX_HISTORY;
@@ -1066,6 +1254,10 @@ nimcp_error_t omni_metacog_learn(
 nimcp_error_t omni_metacog_update_policy(
     omni_metacog_ctx_t* ctx,
     float reward) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_update_", 0.0f);
+
 
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
 
@@ -1105,6 +1297,10 @@ nimcp_error_t omni_metacog_get_learning_stats(
     float* improvement,
     float* convergence) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_get_lea", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
     NIMCP_CHECK_THROW(ctx->self_model, NIMCP_ERROR_INVALID_PARAMETER, "self_model is NULL");
     NIMCP_CHECK_THROW(improvement, NIMCP_ERROR_INVALID_PARAMETER, "improvement is NULL");
@@ -1122,6 +1318,12 @@ nimcp_error_t omni_metacog_get_learning_stats(
         uint32_t half = ctx->self_model->history_count / 2;
 
         for (uint32_t i = 0; i < half; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && half > 256) {
+                omni_metacognition_heartbeat("omni_metacog_loop",
+                                 (float)(i + 1) / (float)half);
+            }
+
             first_half_acc += ctx->self_model->history[i].accuracy;
         }
         for (uint32_t i = half; i < ctx->self_model->history_count; i++) {
@@ -1143,6 +1345,12 @@ nimcp_error_t omni_metacog_get_learning_stats(
         uint32_t n = 10;
 
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                omni_metacognition_heartbeat("omni_metacog_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             uint32_t idx = (ctx->self_model->history_head + OMNI_METACOG_MAX_HISTORY - 1 - i) %
                            OMNI_METACOG_MAX_HISTORY;
             mean += ctx->self_model->history[idx].accuracy;
@@ -1150,6 +1358,12 @@ nimcp_error_t omni_metacog_get_learning_stats(
         mean /= n;
 
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                omni_metacognition_heartbeat("omni_metacog_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             uint32_t idx = (ctx->self_model->history_head + OMNI_METACOG_MAX_HISTORY - 1 - i) %
                            OMNI_METACOG_MAX_HISTORY;
             float diff = ctx->self_model->history[idx].accuracy - mean;
@@ -1174,6 +1388,10 @@ nimcp_error_t omni_metacog_connect_world_model(
     omni_metacog_ctx_t* ctx,
     void* world_model) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_connect", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
@@ -1186,6 +1404,10 @@ nimcp_error_t omni_metacog_connect_world_model(
 nimcp_error_t omni_metacog_connect_active_inference(
     omni_metacog_ctx_t* ctx,
     void* active_inference) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_connect", 0.0f);
+
 
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
 
@@ -1200,6 +1422,10 @@ nimcp_error_t omni_metacog_connect_precision(
     omni_metacog_ctx_t* ctx,
     void* precision_system) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_connect", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
@@ -1210,6 +1436,10 @@ nimcp_error_t omni_metacog_connect_precision(
 }
 
 nimcp_error_t omni_metacog_step(omni_metacog_ctx_t* ctx) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_step", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
@@ -1253,6 +1483,12 @@ nimcp_error_t omni_metacog_step(omni_metacog_ctx_t* ctx) {
     /* Update resource availability (replenishment) */
     if (ctx->self_model) {
         for (int i = 0; i < OMNI_RESOURCE_COUNT; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && OMNI_RESOURCE_COUNT > 256) {
+                omni_metacognition_heartbeat("omni_metacog_loop",
+                                 (float)(i + 1) / (float)OMNI_RESOURCE_COUNT);
+            }
+
             float replenish = ctx->self_model->resources.replenishment_rate[i];
             ctx->self_model->resources.available[i] = clamp01(
                 ctx->self_model->resources.available[i] + replenish);
@@ -1275,6 +1511,10 @@ nimcp_error_t omni_metacog_get_statistics(
     uint64_t* total_inferences,
     float* success_rate,
     float* avg_efficiency) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_metacognition_heartbeat("omni_metacog_omni_metacog_get_sta", 0.0f);
+
 
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
     NIMCP_CHECK_THROW(total_inferences, NIMCP_ERROR_INVALID_PARAMETER, "total_inferences is NULL");

@@ -31,7 +31,7 @@ static nimcp_health_agent_t* g_memory_sleep_bridge_health_agent = NULL;
  * @brief Set health agent for memory_sleep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void memory_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void memory_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_memory_sleep_bridge_health_agent = agent;
 }
 
@@ -148,6 +148,10 @@ int memory_sleep_default_config(memory_sleep_config_t* config)
 {
     if (!config) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    memory_sleep_bridge_heartbeat("memory_sleep_memory_sleep_default", 0.0f);
+
+
     config->enable_replay_modulation = true;
     config->enable_transfer_modulation = true;
     config->enable_consolidation_modulation = true;
@@ -186,6 +190,10 @@ memory_sleep_bridge_t memory_sleep_bridge_create(
         return NULL;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    memory_sleep_bridge_heartbeat("memory_sleep_create", 0.0f);
+
 
     struct memory_sleep_bridge_struct* bridge =
         (struct memory_sleep_bridge_struct*)nimcp_malloc(
@@ -265,6 +273,10 @@ void memory_sleep_bridge_destroy(memory_sleep_bridge_t bridge)
     if (!bridge) return;
 
     /* Unregister callback if it was registered */
+    /* Phase 8: Heartbeat at operation start */
+    memory_sleep_bridge_heartbeat("memory_sleep_destroy", 0.0f);
+
+
     if (bridge->callback_registered && bridge->sleep_system) {
         bool unregistered = sleep_unregister_state_callback(
             bridge->sleep_system,
@@ -309,6 +321,10 @@ void memory_sleep_bridge_destroy(memory_sleep_bridge_t bridge)
 int memory_sleep_update(memory_sleep_bridge_t bridge)
 {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    memory_sleep_bridge_heartbeat("memory_sleep_memory_sleep_update", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -374,6 +390,10 @@ int memory_sleep_get_effects(
 {
     if (!bridge || !effects) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    memory_sleep_bridge_heartbeat("memory_sleep_memory_sleep_get_eff", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -395,6 +415,10 @@ int memory_sleep_get_effects(
 float memory_sleep_get_replay_frequency(const memory_sleep_bridge_t bridge)
 {
     if (!bridge) return 1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    memory_sleep_bridge_heartbeat("memory_sleep_memory_sleep_get_rep", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.replay_frequency_factor;
@@ -424,6 +448,10 @@ bool memory_sleep_is_replay_active(const memory_sleep_bridge_t bridge)
 {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    memory_sleep_bridge_heartbeat("memory_sleep_memory_sleep_is_repl", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.replay_active;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -447,6 +475,10 @@ bool memory_sleep_is_replay_active(const memory_sleep_bridge_t bridge)
  */
 float memory_sleep_replay_for_state(sleep_state_t state)
 {
+    /* Phase 8: Heartbeat at operation start */
+    memory_sleep_bridge_heartbeat("memory_sleep_memory_sleep_replay_", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return MEMORY_SLEEP_REPLAY_AWAKE;
         case SLEEP_STATE_DROWSY:     return MEMORY_SLEEP_REPLAY_DROWSY;
@@ -475,6 +507,10 @@ float memory_sleep_replay_for_state(sleep_state_t state)
  */
 float memory_sleep_transfer_for_state(sleep_state_t state)
 {
+    /* Phase 8: Heartbeat at operation start */
+    memory_sleep_bridge_heartbeat("memory_sleep_memory_sleep_transfe", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return MEMORY_SLEEP_TRANSFER_AWAKE;
         case SLEEP_STATE_DROWSY:     return MEMORY_SLEEP_TRANSFER_DROWSY;
@@ -503,6 +539,10 @@ float memory_sleep_transfer_for_state(sleep_state_t state)
  */
 float memory_sleep_consolidation_for_state(sleep_state_t state)
 {
+    /* Phase 8: Heartbeat at operation start */
+    memory_sleep_bridge_heartbeat("memory_sleep_memory_sleep_consoli", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return MEMORY_SLEEP_CONSOLIDATION_AWAKE;
         case SLEEP_STATE_DROWSY:     return MEMORY_SLEEP_CONSOLIDATION_DROWSY;
@@ -537,6 +577,10 @@ float memory_sleep_consolidation_for_state(sleep_state_t state)
  */
 float memory_sleep_semantic_for_state(sleep_state_t state)
 {
+    /* Phase 8: Heartbeat at operation start */
+    memory_sleep_bridge_heartbeat("memory_sleep_memory_sleep_semanti", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return MEMORY_SLEEP_SEMANTIC_AWAKE;
         case SLEEP_STATE_DROWSY:     return MEMORY_SLEEP_SEMANTIC_DROWSY;
@@ -564,6 +608,10 @@ int memory_sleep_connect_bio_async(memory_sleep_bridge_t bridge)
     if (bridge->base.bio_async_enabled) return 0;  /* Already connected */
 
     /* Register with bio-async router */
+    /* Phase 8: Heartbeat at operation start */
+    memory_sleep_bridge_heartbeat("memory_sleep_memory_sleep_connect", 0.0f);
+
+
     bio_module_info_t info = {
         .module_id = BIO_MODULE_MEMORY_SLEEP,
         .module_name = "memory_sleep_bridge",
@@ -599,6 +647,10 @@ int memory_sleep_disconnect_bio_async(memory_sleep_bridge_t bridge)
     if (!bridge->base.bio_async_enabled) return 0;  /* Not connected */
 
     /* Unregister from bio-async router */
+    /* Phase 8: Heartbeat at operation start */
+    memory_sleep_bridge_heartbeat("memory_sleep_memory_sleep_disconn", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -626,6 +678,10 @@ bool memory_sleep_is_bio_async_connected(const memory_sleep_bridge_t bridge)
     /* Guard clause */
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    memory_sleep_bridge_heartbeat("memory_sleep_memory_sleep_is_bio_", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -641,9 +697,19 @@ bool memory_sleep_is_bio_async_connected(const memory_sleep_bridge_t bridge)
 int memory_sleep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    memory_sleep_bridge_heartbeat("memory_sleep_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Memory_Sleep_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                memory_sleep_bridge_heartbeat("memory_sleep_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Memory sleep bridge self-knowledge: %s", self->observations[i]);
         }
     }

@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_interventions_health_agent = NULL;
  * @brief Set health agent for interventions heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void interventions_set_health_agent(nimcp_health_agent_t* agent) {
+void interventions_set_health_agent(nimcp_health_agent_t* agent) {
     g_interventions_health_agent = agent;
 }
 
@@ -104,10 +104,20 @@ bool mental_health_intervene(mental_health_monitor_t* monitor, brain_t brain)
     // SELECTION: Find worst disorder and select intervention
     // =========================================================================
 
+    /* Phase 8: Heartbeat at operation start */
+    interventions_heartbeat("intervention_mental_health_interv", 0.0f);
+
+
     disorder_type_t worst_disorder = DISORDER_SOCIOPATHY;
     disorder_severity_t worst_severity = DISORDER_SEVERITY_NONE;
 
     for (uint32_t i = 0; i < DISORDER_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && DISORDER_COUNT > 256) {
+            interventions_heartbeat("intervention_loop",
+                             (float)(i + 1) / (float)DISORDER_COUNT);
+        }
+
         if (monitor->disorder_severities[i] > worst_severity) {
             worst_severity = monitor->disorder_severities[i];
             worst_disorder = (disorder_type_t)i;
@@ -179,6 +189,10 @@ void mental_health_clear_quarantine(mental_health_monitor_t* monitor, brain_t br
     // =========================================================================
     // RESTORATION: Re-enable normal operations
     // =========================================================================
+
+    /* Phase 8: Heartbeat at operation start */
+    interventions_heartbeat("intervention_mental_health_clear_", 0.0f);
+
 
     monitor->quarantine_mode = false;
 
@@ -937,6 +951,10 @@ disorder_severity_t mental_health_classify_severity(float score,
                                                     const mental_health_config_t* config)
 {
     // Use defaults if no config provided
+    /* Phase 8: Heartbeat at operation start */
+    interventions_heartbeat("intervention_mental_health_classi", 0.0f);
+
+
     float mild_threshold = config ? config->mild_threshold : DEFAULT_MILD_THRESHOLD;
     float moderate_threshold = config ? config->moderate_threshold : DEFAULT_MODERATE_THRESHOLD;
     float severe_threshold = config ? config->severe_threshold : DEFAULT_SEVERE_THRESHOLD;

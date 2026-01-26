@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_personality_fep_bridge_health_agent = NULL;
  * @brief Set health agent for personality_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void personality_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void personality_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_personality_fep_bridge_health_agent = agent;
 }
 
@@ -47,6 +47,10 @@ static inline void personality_fep_bridge_heartbeat(const char* operation, float
 
 
 int personality_fep_bridge_default_config(personality_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    personality_fep_bridge_heartbeat("personality__default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->enable_openness_exploration = true;
     config->enable_neuroticism_precision = true;
@@ -57,6 +61,10 @@ int personality_fep_bridge_default_config(personality_fep_config_t* config) {
 }
 
 personality_fep_bridge_t* personality_fep_bridge_create(const personality_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    personality_fep_bridge_heartbeat("personality__create", 0.0f);
+
+
     personality_fep_bridge_t* bridge = nimcp_malloc(sizeof(personality_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate personality FEP bridge");
@@ -82,6 +90,10 @@ personality_fep_bridge_t* personality_fep_bridge_create(const personality_fep_co
 
 void personality_fep_bridge_destroy(personality_fep_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    personality_fep_bridge_heartbeat("personality__destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         personality_fep_bridge_disconnect_bio_async(bridge);
     }
@@ -93,6 +105,10 @@ void personality_fep_bridge_destroy(personality_fep_bridge_t* bridge) {
 }
 
 int personality_fep_bridge_connect_fep(personality_fep_bridge_t* bridge, fep_system_t* fep) {
+    /* Phase 8: Heartbeat at operation start */
+    personality_fep_bridge_heartbeat("personality__connect_fep", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -103,6 +119,10 @@ int personality_fep_bridge_connect_fep(personality_fep_bridge_t* bridge, fep_sys
 
 int personality_fep_bridge_connect_personality(personality_fep_bridge_t* bridge,
                                                 personality_profile_t* personality) {
+    /* Phase 8: Heartbeat at operation start */
+    personality_fep_bridge_heartbeat("personality__connect_personality", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && personality, NIMCP_ERROR_NULL_POINTER, "bridge or personality is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->personality = personality;
@@ -112,6 +132,10 @@ int personality_fep_bridge_connect_personality(personality_fep_bridge_t* bridge,
 }
 
 int personality_fep_bridge_disconnect(personality_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    personality_fep_bridge_heartbeat("personality__disconnect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -122,6 +146,10 @@ int personality_fep_bridge_disconnect(personality_fep_bridge_t* bridge) {
 }
 
 int personality_fep_bridge_update(personality_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    personality_fep_bridge_heartbeat("personality__update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system && bridge->personality, NIMCP_ERROR_INVALID_STATE, "bridge, fep_system, or personality is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state.current_free_energy = fep_get_free_energy(bridge->fep_system);
@@ -144,6 +172,10 @@ int personality_fep_bridge_update(personality_fep_bridge_t* bridge) {
 
 int personality_fep_bridge_get_state(const personality_fep_bridge_t* bridge,
                                       personality_fep_state_t* state) {
+    /* Phase 8: Heartbeat at operation start */
+    personality_fep_bridge_heartbeat("personality__get_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -153,6 +185,10 @@ int personality_fep_bridge_get_state(const personality_fep_bridge_t* bridge,
 
 int personality_fep_bridge_get_stats(const personality_fep_bridge_t* bridge,
                                       personality_fep_stats_t* stats) {
+    /* Phase 8: Heartbeat at operation start */
+    personality_fep_bridge_heartbeat("personality__get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -161,6 +197,10 @@ int personality_fep_bridge_get_stats(const personality_fep_bridge_t* bridge,
 }
 
 int personality_fep_bridge_connect_bio_async(personality_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    personality_fep_bridge_heartbeat("personality__connect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
@@ -179,6 +219,10 @@ int personality_fep_bridge_connect_bio_async(personality_fep_bridge_t* bridge) {
 
 int personality_fep_bridge_disconnect_bio_async(personality_fep_bridge_t* bridge) {
     if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    personality_fep_bridge_heartbeat("personality__disconnect_bio_async", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -190,6 +234,10 @@ int personality_fep_bridge_disconnect_bio_async(personality_fep_bridge_t* bridge
 
 bool personality_fep_bridge_is_bio_async_connected(const personality_fep_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    personality_fep_bridge_heartbeat("personality__is_bio_async_connect", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -200,9 +248,19 @@ bool personality_fep_bridge_is_bio_async_connected(const personality_fep_bridge_
 int personality_fep_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    personality_fep_bridge_heartbeat("personality__personality_fep_quer", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Personality_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                personality_fep_bridge_heartbeat("personality__loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

@@ -31,7 +31,7 @@ static nimcp_health_agent_t* g_curiosity_sleep_bridge_health_agent = NULL;
  * @brief Set health agent for curiosity_sleep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void curiosity_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void curiosity_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_curiosity_sleep_bridge_health_agent = agent;
 }
 
@@ -112,6 +112,10 @@ static void curiosity_on_sleep_state_change(sleep_state_t new_state, void* user_
 
 int curiosity_sleep_default_config(curiosity_sleep_config_t* config) {
     if (!config) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_sleep_bridge_heartbeat("curiosity_sl_curiosity_sleep_defa", 0.0f);
+
+
     config->enable_drive_modulation = true;
     config->enable_threshold_modulation = true;
     config->modulation_strength = 1.0f;
@@ -129,6 +133,10 @@ curiosity_sleep_bridge_t curiosity_sleep_bridge_create(
         return NULL;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_sleep_bridge_heartbeat("curiosity_sl_create", 0.0f);
+
 
     struct curiosity_sleep_bridge_struct* bridge =
         (struct curiosity_sleep_bridge_struct*)nimcp_malloc(sizeof(struct curiosity_sleep_bridge_struct));
@@ -178,6 +186,10 @@ void curiosity_sleep_bridge_destroy(curiosity_sleep_bridge_t bridge) {
     if (!bridge) return;
 
     /* Unregister callback if it was registered */
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_sleep_bridge_heartbeat("curiosity_sl_destroy", 0.0f);
+
+
     if (bridge->callback_registered && bridge->sleep_system) {
         bool unregistered = sleep_unregister_state_callback(
             bridge->sleep_system,
@@ -195,6 +207,10 @@ void curiosity_sleep_bridge_destroy(curiosity_sleep_bridge_t bridge) {
 
 int curiosity_sleep_update(curiosity_sleep_bridge_t bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_sleep_bridge_heartbeat("curiosity_sl_curiosity_sleep_upda", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -232,6 +248,10 @@ int curiosity_sleep_update(curiosity_sleep_bridge_t bridge) {
 
 int curiosity_sleep_get_effects(const curiosity_sleep_bridge_t bridge, curiosity_sleep_effects_t* effects) {
     if (!bridge || !effects) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_sleep_bridge_heartbeat("curiosity_sl_curiosity_sleep_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -240,6 +260,10 @@ int curiosity_sleep_get_effects(const curiosity_sleep_bridge_t bridge, curiosity
 
 float curiosity_sleep_get_drive(const curiosity_sleep_bridge_t bridge) {
     if (!bridge) return 1.0f;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_sleep_bridge_heartbeat("curiosity_sl_curiosity_sleep_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.curiosity_drive_factor;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -248,6 +272,10 @@ float curiosity_sleep_get_drive(const curiosity_sleep_bridge_t bridge) {
 
 bool curiosity_sleep_is_offline(const curiosity_sleep_bridge_t bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_sleep_bridge_heartbeat("curiosity_sl_curiosity_sleep_is_o", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.exploration_offline;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -255,6 +283,10 @@ bool curiosity_sleep_is_offline(const curiosity_sleep_bridge_t bridge) {
 }
 
 float curiosity_sleep_drive_for_state(sleep_state_t state) {
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_sleep_bridge_heartbeat("curiosity_sl_curiosity_sleep_driv", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return CURIOSITY_SLEEP_DRIVE_AWAKE;
         case SLEEP_STATE_DROWSY:     return CURIOSITY_SLEEP_DRIVE_DROWSY;
@@ -266,6 +298,10 @@ float curiosity_sleep_drive_for_state(sleep_state_t state) {
 }
 
 float curiosity_sleep_threshold_for_state(sleep_state_t state) {
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_sleep_bridge_heartbeat("curiosity_sl_curiosity_sleep_thre", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return CURIOSITY_SLEEP_THRESHOLD_AWAKE;
         case SLEEP_STATE_DROWSY:     return CURIOSITY_SLEEP_THRESHOLD_DROWSY;
@@ -283,9 +319,19 @@ float curiosity_sleep_threshold_for_state(sleep_state_t state) {
 int curiosity_sleep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_sleep_bridge_heartbeat("curiosity_sl_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Curiosity_Sleep_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                curiosity_sleep_bridge_heartbeat("curiosity_sl_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

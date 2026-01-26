@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_gw_plasticity_bridge_health_agent = NULL;
  * @brief Set health agent for gw_plasticity_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void gw_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void gw_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_gw_plasticity_bridge_health_agent = agent;
 }
 
@@ -96,6 +96,12 @@ static gw_plasticity_synapse_t* find_synapse(
     uint32_t synapse_id
 ) {
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            gw_plasticity_bridge_heartbeat("gw_plasticit_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (bridge->synapses[i].synapse_id == synapse_id) {
             return &bridge->synapses[i];
         }
@@ -108,6 +114,10 @@ static gw_plasticity_synapse_t* find_synapse(
 //=============================================================================
 
 gw_plasticity_config_t gw_plasticity_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    gw_plasticity_bridge_heartbeat("gw_plasticit_gw_plasticity_config", 0.0f);
+
+
     gw_plasticity_config_t config = {
         .base_learning_rate = GW_PLASTICITY_DEFAULT_LR,
         .stdp_tau_plus_ms = 20.0f,
@@ -142,6 +152,10 @@ gw_plasticity_config_t gw_plasticity_config_default(void) {
 gw_plasticity_bridge_t* gw_plasticity_create(
     const gw_plasticity_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gw_plasticity_bridge_heartbeat("gw_plasticit_gw_plasticity_create", 0.0f);
+
+
     gw_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(gw_plasticity_bridge_t));
     if (!bridge) {
 
@@ -195,6 +209,10 @@ void gw_plasticity_destroy(gw_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Cleanup base bridge infrastructure */
+    /* Phase 8: Heartbeat at operation start */
+    gw_plasticity_bridge_heartbeat("gw_plasticit_gw_plasticity_destro", 0.0f);
+
+
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge->synapses);
@@ -204,10 +222,20 @@ void gw_plasticity_destroy(gw_plasticity_bridge_t* bridge) {
 int gw_plasticity_reset(gw_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_plasticity_bridge_heartbeat("gw_plasticit_gw_plasticity_reset", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset all synapses to initial weights */
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            gw_plasticity_bridge_heartbeat("gw_plasticit_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         bridge->synapses[i].weight = bridge->synapses[i].initial_weight;
         bridge->synapses[i].eligibility_trace = 0.0f;
         bridge->synapses[i].bcm_threshold = bridge->config.bcm_target_rate;
@@ -242,6 +270,10 @@ int gw_plasticity_register_synapse(
     float initial_weight
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    gw_plasticity_bridge_heartbeat("gw_plasticit_gw_plasticity_regist", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -292,9 +324,19 @@ int gw_plasticity_unregister_synapse(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_plasticity_bridge_heartbeat("gw_plasticit_gw_plasticity_unregi", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            gw_plasticity_bridge_heartbeat("gw_plasticit_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (bridge->synapses[i].synapse_id == synapse_id) {
             /* Move last to current position */
             if (i < bridge->num_synapses - 1) {
@@ -317,6 +359,10 @@ int gw_plasticity_get_synapse(
 ) {
     if (!bridge || !synapse) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_plasticity_bridge_heartbeat("gw_plasticit_gw_plasticity_get_sy", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     gw_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
@@ -337,6 +383,10 @@ int gw_plasticity_protect_synapse(
     bool protect
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    gw_plasticity_bridge_heartbeat("gw_plasticit_gw_plasticity_protec", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -364,6 +414,10 @@ int gw_plasticity_learn(
     float context
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    gw_plasticity_bridge_heartbeat("gw_plasticit_gw_plasticity_learn", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = GW_PLASTICITY_STATE_LEARNING;
@@ -474,6 +528,10 @@ float gw_plasticity_apply_stdp(
 ) {
     if (!bridge) return NAN;
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_plasticity_bridge_heartbeat("gw_plasticit_gw_plasticity_apply_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     gw_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
@@ -531,6 +589,10 @@ int gw_plasticity_apply_reward(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_plasticity_bridge_heartbeat("gw_plasticit_gw_plasticity_apply_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     reward = clamp_f(reward, -1.0f, 1.0f);
@@ -538,6 +600,12 @@ int gw_plasticity_apply_reward(
 
     /* Apply reward-modulated learning to all synapses with eligibility */
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            gw_plasticity_bridge_heartbeat("gw_plasticit_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         gw_plasticity_synapse_t* syn = &bridge->synapses[i];
 
         if (syn->is_protected || syn->eligibility_trace < 0.001f) {
@@ -568,11 +636,21 @@ int gw_plasticity_update_bcm(
     if (!bridge) return -1;
     if (dt_ms <= 0.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_plasticity_bridge_heartbeat("gw_plasticit_gw_plasticity_update", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float decay = expf(-dt_ms / bridge->config.bcm_tau_ms);
 
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            gw_plasticity_bridge_heartbeat("gw_plasticit_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         gw_plasticity_synapse_t* syn = &bridge->synapses[i];
 
         /* Update sliding threshold towards average activity */
@@ -599,6 +677,10 @@ int gw_plasticity_homeostatic_update(
     if (!bridge) return -1;
     if (dt_ms <= 0.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_plasticity_bridge_heartbeat("gw_plasticit_gw_plasticity_homeos", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Calculate mean weight */
@@ -606,6 +688,12 @@ int gw_plasticity_homeostatic_update(
     uint32_t active_count = 0;
 
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            gw_plasticity_bridge_heartbeat("gw_plasticit_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (!bridge->synapses[i].is_protected) {
             mean_weight += bridge->synapses[i].weight;
             active_count++;
@@ -625,6 +713,12 @@ int gw_plasticity_homeostatic_update(
     scale_factor = clamp_f(scale_factor, 0.99f, 1.01f);
 
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            gw_plasticity_bridge_heartbeat("gw_plasticit_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (!bridge->synapses[i].is_protected) {
             bridge->synapses[i].weight = clamp_f(
                 bridge->synapses[i].weight * scale_factor,
@@ -659,11 +753,21 @@ int gw_plasticity_update_traces(
     if (!bridge) return -1;
     if (dt_ms <= 0.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_plasticity_bridge_heartbeat("gw_plasticit_gw_plasticity_update", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float decay = expf(-dt_ms / bridge->config.stdp_tau_plus_ms);
 
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            gw_plasticity_bridge_heartbeat("gw_plasticit_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         bridge->synapses[i].eligibility_trace *= decay;
     }
 
@@ -677,11 +781,21 @@ int gw_plasticity_update_traces(
 int gw_plasticity_consolidate(gw_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_plasticity_bridge_heartbeat("gw_plasticit_gw_plasticity_consol", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = GW_PLASTICITY_STATE_CONSOLIDATING;
 
     /* Consolidate learning by resetting eligibility traces */
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            gw_plasticity_bridge_heartbeat("gw_plasticit_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         bridge->synapses[i].eligibility_trace = 0.0f;
     }
 
@@ -702,6 +816,10 @@ int gw_plasticity_get_access_learning_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_plasticity_bridge_heartbeat("gw_plasticit_gw_plasticity_get_ac", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->access_learning;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -715,6 +833,10 @@ int gw_plasticity_get_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_plasticity_bridge_heartbeat("gw_plasticit_gw_plasticity_get_st", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
@@ -725,6 +847,12 @@ int gw_plasticity_get_state(
     float sum_sq = 0.0f;
 
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            gw_plasticity_bridge_heartbeat("gw_plasticit_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         sum += bridge->synapses[i].weight;
         sum_sq += bridge->synapses[i].weight * bridge->synapses[i].weight;
     }
@@ -751,6 +879,10 @@ int gw_plasticity_get_stats(
 ) {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_plasticity_bridge_heartbeat("gw_plasticit_gw_plasticity_get_st", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -760,6 +892,10 @@ int gw_plasticity_get_stats(
 
 int gw_plasticity_reset_stats(gw_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    gw_plasticity_bridge_heartbeat("gw_plasticit_gw_plasticity_reset_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(gw_plasticity_stats_t));
@@ -779,6 +915,10 @@ int gw_plasticity_register_learn_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_plasticity_bridge_heartbeat("gw_plasticit_gw_plasticity_regist", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->learn_callback = callback;
     bridge->learn_callback_data = user_data;
@@ -793,6 +933,10 @@ int gw_plasticity_register_access_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    gw_plasticity_bridge_heartbeat("gw_plasticit_gw_plasticity_regist", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->access_callback = callback;
@@ -810,6 +954,10 @@ int gw_plasticity_bio_async_connect(gw_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_plasticity_bridge_heartbeat("gw_plasticit_gw_plasticity_bio_as", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = true;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -820,6 +968,10 @@ int gw_plasticity_bio_async_connect(gw_plasticity_bridge_t* bridge) {
 int gw_plasticity_bio_async_disconnect(gw_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_plasticity_bridge_heartbeat("gw_plasticit_gw_plasticity_bio_as", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -829,6 +981,10 @@ int gw_plasticity_bio_async_disconnect(gw_plasticity_bridge_t* bridge) {
 
 bool gw_plasticity_is_bio_async_connected(gw_plasticity_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    gw_plasticity_bridge_heartbeat("gw_plasticit_gw_plasticity_is_bio", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;

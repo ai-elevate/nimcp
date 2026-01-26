@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_working_memory_plasticity_bridge_health_agent = N
  * @brief Set health agent for working_memory_plasticity_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void working_memory_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void working_memory_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_working_memory_plasticity_bridge_health_agent = agent;
 }
 
@@ -104,6 +104,12 @@ static wm_plasticity_synapse_t* find_synapse(
     uint32_t synapse_id)
 {
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            working_memory_plasticity_bridge_heartbeat("working_memo_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         if (bridge->synapses[i].synapse_id == synapse_id) {
             return &bridge->synapses[i];
         }
@@ -163,6 +169,10 @@ static void update_bcm_threshold(
 //=============================================================================
 
 wm_plasticity_config_t wm_plasticity_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_config", 0.0f);
+
+
     wm_plasticity_config_t config = {
         /* STDP parameters */
         .stdp_ltp_window_ms = WM_PLASTICITY_STDP_WINDOW,
@@ -225,6 +235,10 @@ wm_plasticity_config_t wm_plasticity_config_default(void) {
 }
 
 wm_plasticity_bridge_t* wm_plasticity_create(const wm_plasticity_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_create", 0.0f);
+
+
     wm_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(wm_plasticity_bridge_t));
     if (!bridge) {
 
@@ -269,6 +283,12 @@ wm_plasticity_bridge_t* wm_plasticity_create(const wm_plasticity_config_t* confi
 
     /* Initialize slot states */
     for (uint32_t s = 0; s < bridge->num_slots; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && bridge->num_slots > 256) {
+            working_memory_plasticity_bridge_heartbeat("working_memo_loop",
+                             (float)(s + 1) / (float)bridge->num_slots);
+        }
+
         bridge->slot_states[s].occupied = false;
         bridge->slot_states[s].encoding_strength = 0.0f;
         bridge->slot_states[s].current_strength = 0.0f;
@@ -293,6 +313,10 @@ wm_plasticity_bridge_t* wm_plasticity_create(const wm_plasticity_config_t* confi
 void wm_plasticity_destroy(wm_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_destro", 0.0f);
+
+
     if (bridge->bio_async_connected) {
         wm_plasticity_disconnect_bio_async(bridge);
     }
@@ -309,10 +333,20 @@ void wm_plasticity_destroy(wm_plasticity_bridge_t* bridge) {
 int wm_plasticity_reset(wm_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_reset", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset all synapses to initial state */
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            working_memory_plasticity_bridge_heartbeat("working_memo_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         bridge->synapses[i].weight = bridge->synapses[i].initial_weight;
         bridge->synapses[i].eligibility_trace = 0.0f;
         bridge->synapses[i].bcm_threshold = 0.5f;
@@ -323,6 +357,12 @@ int wm_plasticity_reset(wm_plasticity_bridge_t* bridge) {
 
     /* Reset slot states */
     for (uint32_t s = 0; s < bridge->num_slots; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && bridge->num_slots > 256) {
+            working_memory_plasticity_bridge_heartbeat("working_memo_loop",
+                             (float)(s + 1) / (float)bridge->num_slots);
+        }
+
         bridge->slot_states[s].occupied = false;
         bridge->slot_states[s].encoding_strength = 0.0f;
         bridge->slot_states[s].current_strength = 0.0f;
@@ -356,6 +396,10 @@ int wm_plasticity_register_synapse(
     float initial_weight)
 {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_regist", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -400,9 +444,19 @@ int wm_plasticity_unregister_synapse(
 {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_unregi", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            working_memory_plasticity_bridge_heartbeat("working_memo_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         if (bridge->synapses[i].synapse_id == synapse_id) {
             if (i < bridge->synapse_count - 1) {
                 bridge->synapses[i] = bridge->synapses[bridge->synapse_count - 1];
@@ -423,6 +477,10 @@ int wm_plasticity_get_synapse(
     wm_plasticity_synapse_t* synapse)
 {
     if (!bridge || !synapse) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_get_sy", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -452,6 +510,10 @@ int wm_plasticity_encode(
     if (!bridge) return -1;
     if (slot_idx >= bridge->num_slots) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_encode", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = WM_PLASTICITY_STATE_ENCODING;
@@ -470,6 +532,12 @@ int wm_plasticity_encode(
                          (1.0f + salience * bridge->config.salience_ltp_gain) : 1.0f;
 
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            working_memory_plasticity_bridge_heartbeat("working_memo_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         wm_plasticity_synapse_t* syn = &bridge->synapses[i];
         if (syn->slot_idx == (int32_t)slot_idx && syn->type == WM_SYNAPSE_ENCODING) {
             syn->last_pre_spike_us = timestamp_us;
@@ -512,6 +580,10 @@ int wm_plasticity_maintain(
     if (!bridge) return -1;
     if (slot_idx >= bridge->num_slots) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_mainta", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = WM_PLASTICITY_STATE_MAINTAINING;
@@ -534,6 +606,12 @@ int wm_plasticity_maintain(
                                bridge->config.rehearsal_ltp_gain : 1.0f;
 
         for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+                working_memory_plasticity_bridge_heartbeat("working_memo_loop",
+                                 (float)(i + 1) / (float)bridge->synapse_count);
+            }
+
             wm_plasticity_synapse_t* syn = &bridge->synapses[i];
             if (syn->slot_idx == (int32_t)slot_idx && syn->type == WM_SYNAPSE_MAINTENANCE) {
                 syn->last_pre_spike_us = timestamp_us;
@@ -578,6 +656,10 @@ int wm_plasticity_retrieve(
     if (!bridge) return -1;
     if (slot_idx >= bridge->num_slots) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_retrie", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = WM_PLASTICITY_STATE_RETRIEVING;
@@ -587,6 +669,12 @@ int wm_plasticity_retrieve(
 
     /* Retrieval strengthens both encoding and retrieval synapses */
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            working_memory_plasticity_bridge_heartbeat("working_memo_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         wm_plasticity_synapse_t* syn = &bridge->synapses[i];
         if (syn->slot_idx == (int32_t)slot_idx &&
             (syn->type == WM_SYNAPSE_RETRIEVAL || syn->type == WM_SYNAPSE_ENCODING)) {
@@ -629,6 +717,10 @@ int wm_plasticity_evict(
     if (!bridge) return -1;
     if (slot_idx >= bridge->num_slots) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_evict", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     wm_slot_plasticity_t* slot = &bridge->slot_states[slot_idx];
@@ -637,6 +729,12 @@ int wm_plasticity_evict(
     /* Capacity-based LTD for evicted items */
     if (bridge->config.enable_capacity_ltd) {
         for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+                working_memory_plasticity_bridge_heartbeat("working_memo_loop",
+                                 (float)(i + 1) / (float)bridge->synapse_count);
+            }
+
             wm_plasticity_synapse_t* syn = &bridge->synapses[i];
             if (syn->slot_idx == (int32_t)slot_idx) {
                 float dw = -bridge->config.capacity_ltd_rate * bridge->current_capacity_pressure;
@@ -670,6 +768,10 @@ int wm_plasticity_decay(
     if (!bridge) return -1;
     if (slot_idx >= bridge->num_slots) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_decay", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     wm_slot_plasticity_t* slot = &bridge->slot_states[slot_idx];
@@ -683,6 +785,12 @@ int wm_plasticity_decay(
         /* Apply weight changes for significant decay */
         if (decay_amount > 0.1f) {
             for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+                    working_memory_plasticity_bridge_heartbeat("working_memo_loop",
+                                     (float)(i + 1) / (float)bridge->synapse_count);
+                }
+
                 wm_plasticity_synapse_t* syn = &bridge->synapses[i];
                 if (syn->slot_idx == (int32_t)slot_idx && syn->type == WM_SYNAPSE_MAINTENANCE) {
                     float dw = -decay_amount * 0.001f;
@@ -716,6 +824,10 @@ int wm_plasticity_reward(
 {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_reward", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->pending_reward = reward;
@@ -724,6 +836,12 @@ int wm_plasticity_reward(
     /* Apply reward to all eligible synapses */
     if (bridge->config.enable_eligibility) {
         for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+                working_memory_plasticity_bridge_heartbeat("working_memo_loop",
+                                 (float)(i + 1) / (float)bridge->synapse_count);
+            }
+
             wm_plasticity_synapse_t* syn = &bridge->synapses[i];
             if (syn->eligibility_trace > 0.01f) {
                 float dw = apply_eligibility(syn, reward, bridge->config.reward_modulation_gain);
@@ -753,6 +871,10 @@ int wm_plasticity_update(
 {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_update", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t now_us = nimcp_time_get_us();
@@ -760,6 +882,12 @@ int wm_plasticity_update(
     /* Update capacity pressure */
     uint32_t occupied_count = 0;
     for (uint32_t s = 0; s < bridge->num_slots; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && bridge->num_slots > 256) {
+            working_memory_plasticity_bridge_heartbeat("working_memo_loop",
+                             (float)(s + 1) / (float)bridge->num_slots);
+        }
+
         if (bridge->slot_states[s].occupied) occupied_count++;
     }
     bridge->current_capacity_pressure = (float)occupied_count / (float)bridge->num_slots;
@@ -767,6 +895,12 @@ int wm_plasticity_update(
 
     /* Update synapses */
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            working_memory_plasticity_bridge_heartbeat("working_memo_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         wm_plasticity_synapse_t* syn = &bridge->synapses[i];
 
         /* Decay eligibility traces */
@@ -817,6 +951,10 @@ int wm_plasticity_consolidate_slot(
     if (!bridge) return -1;
     if (slot_idx >= bridge->num_slots) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_consol", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = WM_PLASTICITY_STATE_CONSOLIDATING;
@@ -828,6 +966,12 @@ int wm_plasticity_consolidate_slot(
 
         /* Apply consolidation LTP boost */
         for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+                working_memory_plasticity_bridge_heartbeat("working_memo_loop",
+                                 (float)(i + 1) / (float)bridge->synapse_count);
+            }
+
             wm_plasticity_synapse_t* syn = &bridge->synapses[i];
             if (syn->slot_idx == (int32_t)slot_idx) {
                 syn->consolidation_level = 1.0f;
@@ -864,12 +1008,22 @@ int wm_plasticity_consolidate_all(wm_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_sleep_consolidation) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_consol", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = WM_PLASTICITY_STATE_CONSOLIDATING;
 
     /* Consolidate all occupied slots */
     for (uint32_t s = 0; s < bridge->num_slots; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && bridge->num_slots > 256) {
+            working_memory_plasticity_bridge_heartbeat("working_memo_loop",
+                             (float)(s + 1) / (float)bridge->num_slots);
+        }
+
         if (bridge->slot_states[s].occupied) {
             nimcp_mutex_unlock(bridge->base.mutex);
             wm_plasticity_consolidate_slot(bridge, s);
@@ -879,6 +1033,12 @@ int wm_plasticity_consolidate_all(wm_plasticity_bridge_t* bridge) {
 
     /* Reset eligibility traces */
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            working_memory_plasticity_bridge_heartbeat("working_memo_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         bridge->synapses[i].eligibility_trace = 0.0f;
     }
 
@@ -900,6 +1060,10 @@ float wm_plasticity_get_encoding_strength(
     if (!bridge) return -1.0f;
     if (slot_idx >= bridge->num_slots) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_get_en", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float strength = bridge->slot_states[slot_idx].encoding_strength;
@@ -916,6 +1080,10 @@ float wm_plasticity_get_consolidation_level(
     if (!bridge) return -1.0f;
     if (slot_idx >= bridge->num_slots) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_get_co", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float level = bridge->slot_states[slot_idx].consolidation_progress;
@@ -931,6 +1099,10 @@ float wm_plasticity_get_retrieval_priority(
 {
     if (!bridge) return -1.0f;
     if (slot_idx >= bridge->num_slots) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_get_re", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -953,11 +1125,21 @@ int wm_plasticity_get_maintenance_modulation(
 {
     if (!bridge || !modulation) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_get_ma", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t n = (num_slots < bridge->num_slots) ? num_slots : bridge->num_slots;
 
     for (uint32_t s = 0; s < n; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && n > 256) {
+            working_memory_plasticity_bridge_heartbeat("working_memo_loop",
+                             (float)(s + 1) / (float)n);
+        }
+
         /* Modulation based on encoding strength and rehearsal count */
         wm_slot_plasticity_t* slot = &bridge->slot_states[s];
         modulation[s] = slot->encoding_strength *
@@ -980,6 +1162,10 @@ int wm_plasticity_get_state(
 {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_get_st", 0.0f);
+
+
     wm_plasticity_bridge_t* mutable_bridge = (wm_plasticity_bridge_t*)bridge;
 
     nimcp_mutex_lock(mutable_bridge->base.mutex);
@@ -990,6 +1176,12 @@ int wm_plasticity_get_state(
     /* Count active slots */
     state->active_slots = 0;
     for (uint32_t s = 0; s < bridge->num_slots; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && bridge->num_slots > 256) {
+            working_memory_plasticity_bridge_heartbeat("working_memo_loop",
+                             (float)(s + 1) / (float)bridge->num_slots);
+        }
+
         if (bridge->slot_states[s].occupied) state->active_slots++;
     }
 
@@ -1008,6 +1200,10 @@ int wm_plasticity_get_stats(
     wm_plasticity_stats_t* stats)
 {
     if (!bridge || !stats) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_get_st", 0.0f);
+
 
     wm_plasticity_bridge_t* mutable_bridge = (wm_plasticity_bridge_t*)bridge;
 
@@ -1028,6 +1224,10 @@ int wm_plasticity_get_stats(
 void wm_plasticity_reset_stats(wm_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_reset_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     memset(&bridge->stats, 0, sizeof(wm_plasticity_stats_t));
@@ -1046,6 +1246,10 @@ int wm_plasticity_set_weight_callback(
 {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_set_we", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->weight_callback = callback;
@@ -1062,6 +1266,10 @@ int wm_plasticity_set_consolidation_callback(
     void* user_data)
 {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_set_co", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1083,6 +1291,10 @@ int wm_plasticity_set_capacity_pressure(
 {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_set_ca", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->current_capacity_pressure = clamp_f(pressure, 0.0f, 1.0f);
@@ -1097,6 +1309,10 @@ int wm_plasticity_set_salience_modulation(
     float salience_level)
 {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_set_sa", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1115,6 +1331,10 @@ int wm_plasticity_connect_bio_async(wm_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_connec", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->bio_async_connected = true;
@@ -1126,6 +1346,10 @@ int wm_plasticity_connect_bio_async(wm_plasticity_bridge_t* bridge) {
 
 int wm_plasticity_disconnect_bio_async(wm_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_discon", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1140,5 +1364,9 @@ int wm_plasticity_disconnect_bio_async(wm_plasticity_bridge_t* bridge) {
 
 bool wm_plasticity_is_bio_async_connected(const wm_plasticity_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_is_bio", 0.0f);
+
+
     return bridge->bio_async_connected;
 }

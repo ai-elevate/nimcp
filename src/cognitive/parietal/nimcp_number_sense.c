@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_number_sense_health_agent = NULL;
  * @brief Set health agent for number_sense heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void number_sense_set_health_agent(nimcp_health_agent_t* agent) {
+void number_sense_set_health_agent(nimcp_health_agent_t* agent) {
     g_number_sense_health_agent = agent;
 }
 
@@ -168,6 +168,10 @@ static float clamp_magnitude(float value) {
  * ============================================================================ */
 
 number_sense_config_t number_sense_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    number_sense_heartbeat("number_sense_default_config", 0.0f);
+
+
     number_sense_config_t config = {
         .weber_fraction = NUMBER_SENSE_DEFAULT_WEBER_FRACTION,
         .subitizing_limit = NUMBER_SENSE_SUBITIZING_LIMIT,
@@ -183,6 +187,10 @@ number_sense_config_t number_sense_default_config(void) {
 
 bool number_sense_validate_config(const number_sense_config_t* config) {
     if (!config) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    number_sense_heartbeat("number_sense_validate_config", 0.0f);
+
 
     if (config->weber_fraction <= 0.0f || config->weber_fraction > 1.0f) {
         set_error("Weber fraction must be in (0, 1]");
@@ -213,10 +221,18 @@ bool number_sense_validate_config(const number_sense_config_t* config) {
 }
 
 number_sense_t* number_sense_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    number_sense_heartbeat("number_sense_create", 0.0f);
+
+
     return number_sense_create_custom(NULL);
 }
 
 number_sense_t* number_sense_create_custom(const number_sense_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    number_sense_heartbeat("number_sense_create_custom", 0.0f);
+
+
     number_sense_config_t cfg;
 
     if (config) {
@@ -260,6 +276,10 @@ number_sense_t* number_sense_create_custom(const number_sense_config_t* config) 
 void number_sense_destroy(number_sense_t* ns) {
     if (!ns) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    number_sense_heartbeat("number_sense_destroy", 0.0f);
+
+
     if (ns->lock) {
         nimcp_mutex_free(ns->lock);
     }
@@ -276,6 +296,10 @@ number_estimate_t number_sense_estimate(
     const float* input,
     uint32_t input_size
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    number_sense_heartbeat("number_sense_estimate", 0.0f);
+
+
     number_estimate_t result = {0};
 
     if (!ns) {
@@ -300,6 +324,12 @@ number_estimate_t number_sense_estimate(
     /* Sum input activations to get magnitude estimate */
     float sum = 0.0f;
     for (uint32_t i = 0; i < input_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && input_size > 256) {
+            number_sense_heartbeat("number_sense_loop",
+                             (float)(i + 1) / (float)input_size);
+        }
+
         if (input[i] > 0.0f) {
             sum += input[i];
         }
@@ -334,6 +364,10 @@ number_estimate_t number_sense_estimate_from_magnitude(
     number_sense_t* ns,
     float actual_magnitude
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    number_sense_heartbeat("number_sense_estimate_from_magnit", 0.0f);
+
+
     number_estimate_t result = {0};
 
     if (!ns) {
@@ -391,6 +425,10 @@ number_estimate_t number_sense_subitize(
     const float* input,
     uint32_t input_size
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    number_sense_heartbeat("number_sense_subitize", 0.0f);
+
+
     number_estimate_t result = {0};
 
     if (!ns || !input || input_size == 0) {
@@ -441,6 +479,10 @@ number_comparison_t number_sense_compare(
     float magnitude_a,
     float magnitude_b
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    number_sense_heartbeat("number_sense_compare", 0.0f);
+
+
     number_comparison_t result = {0};
 
     if (!ns) {
@@ -486,6 +528,10 @@ float number_sense_get_weber_fraction(
 ) {
     if (!ns) return NUMBER_SENSE_DEFAULT_WEBER_FRACTION;
 
+    /* Phase 8: Heartbeat at operation start */
+    number_sense_heartbeat("number_sense_get_weber_fraction", 0.0f);
+
+
     (void)magnitude;  /* Weber fraction is magnitude-independent in this model */
 
     return ns->effective_weber_fraction;
@@ -497,6 +543,10 @@ float number_sense_discriminability(
     float magnitude_b
 ) {
     if (!ns) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    number_sense_heartbeat("number_sense_discriminability", 0.0f);
+
 
     magnitude_a = clamp_magnitude(magnitude_a);
     magnitude_b = clamp_magnitude(magnitude_b);
@@ -518,6 +568,10 @@ approx_arithmetic_t number_sense_approximate_add(
     float a,
     float b
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    number_sense_heartbeat("number_sense_approximate_add", 0.0f);
+
+
     approx_arithmetic_t result = {0};
 
     if (!ns) {
@@ -556,6 +610,10 @@ approx_arithmetic_t number_sense_approximate_sub(
     float a,
     float b
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    number_sense_heartbeat("number_sense_approximate_sub", 0.0f);
+
+
     approx_arithmetic_t result = {0};
 
     if (!ns) {
@@ -594,6 +652,10 @@ approx_arithmetic_t number_sense_approximate_mul(
     float a,
     float b
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    number_sense_heartbeat("number_sense_approximate_mul", 0.0f);
+
+
     approx_arithmetic_t result = {0};
 
     if (!ns) {
@@ -631,6 +693,10 @@ approx_arithmetic_t number_sense_approximate_div(
     float a,
     float b
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    number_sense_heartbeat("number_sense_approximate_div", 0.0f);
+
+
     approx_arithmetic_t result = {0};
 
     if (!ns) {
@@ -672,6 +738,10 @@ int number_sense_order_of_magnitude(
 ) {
     if (!ns) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    number_sense_heartbeat("number_sense_order_of_magnitude", 0.0f);
+
+
     value = clamp_magnitude(value);
 
     /* Compute order of magnitude */
@@ -700,6 +770,10 @@ int number_sense_set_inflammation(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    number_sense_heartbeat("number_sense_set_inflammation", 0.0f);
+
+
     if (level < 0.0f) level = 0.0f;
     if (level > 1.0f) level = 1.0f;
 
@@ -723,6 +797,10 @@ int number_sense_set_sleep_deprivation(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    number_sense_heartbeat("number_sense_set_sleep_deprivatio", 0.0f);
+
+
     if (level < 0.0f) level = 0.0f;
     if (level > 1.0f) level = 1.0f;
 
@@ -736,6 +814,10 @@ int number_sense_set_sleep_deprivation(
 
 float number_sense_get_effective_weber_fraction(const number_sense_t* ns) {
     if (!ns) return NUMBER_SENSE_DEFAULT_WEBER_FRACTION;
+    /* Phase 8: Heartbeat at operation start */
+    number_sense_heartbeat("number_sense_get_effective_weber_", 0.0f);
+
+
     return ns->effective_weber_fraction;
 }
 
@@ -757,6 +839,10 @@ int number_sense_get_stats(
     }
 
     /* Cast away const for lock - safe because we only read */
+    /* Phase 8: Heartbeat at operation start */
+    number_sense_heartbeat("number_sense_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(((number_sense_t*)ns)->lock);
 
     stats->estimates_performed = ns->estimates_performed;
@@ -784,6 +870,10 @@ int number_sense_get_stats(
 void number_sense_reset_stats(number_sense_t* ns) {
     if (!ns) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    number_sense_heartbeat("number_sense_reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(ns->lock);
 
     ns->estimates_performed = 0;
@@ -806,9 +896,19 @@ const char* number_sense_get_last_error(void) {
 
 int number_sense_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    number_sense_heartbeat("number_sense_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Number_Sense");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                number_sense_heartbeat("number_sense_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Module self-knowledge logged */
         }
     }

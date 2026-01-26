@@ -38,7 +38,7 @@ static nimcp_health_agent_t* g_systems_consolidation_pink_noise_bridge_health_ag
  * @brief Set health agent for systems_consolidation_pink_noise_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void systems_consolidation_pink_noise_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void systems_consolidation_pink_noise_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_systems_consolidation_pink_noise_bridge_health_agent = agent;
 }
 
@@ -97,6 +97,10 @@ int consolidation_pink_noise_default_config(consolidation_pink_noise_config_t* c
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    systems_consolidation_pink_noise_bridge_heartbeat("systems_cons_consolidation_pink_n", 0.0f);
+
+
     config->enable_amplitude_modulation = true;
     config->enable_alpha_modulation = true;
     config->enable_spindle_priority = true;
@@ -136,6 +140,10 @@ consolidation_pink_noise_bridge_t* consolidation_pink_noise_create(
     }
 
     // Allocate bridge structure
+    /* Phase 8: Heartbeat at operation start */
+    systems_consolidation_pink_noise_bridge_heartbeat("systems_cons_consolidation_pink_n", 0.0f);
+
+
     consolidation_pink_noise_bridge_t* bridge =
         (consolidation_pink_noise_bridge_t*)nimcp_malloc(sizeof(consolidation_pink_noise_bridge_t));
     if (!bridge) {
@@ -198,6 +206,10 @@ void consolidation_pink_noise_destroy(consolidation_pink_noise_bridge_t* bridge)
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    systems_consolidation_pink_noise_bridge_heartbeat("systems_cons_consolidation_pink_n", 0.0f);
+
+
     if (bridge->base.mutex) {
         nimcp_mutex_free(bridge->base.mutex);
         bridge->base.mutex = NULL;
@@ -220,6 +232,10 @@ int consolidation_pink_noise_update(consolidation_pink_noise_bridge_t* bridge) {
         NIMCP_LOGGING_ERROR("Null bridge pointer");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    systems_consolidation_pink_noise_bridge_heartbeat("systems_cons_consolidation_pink_n", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -332,6 +348,10 @@ int consolidation_pink_noise_apply_modulation(consolidation_pink_noise_bridge_t*
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    systems_consolidation_pink_noise_bridge_heartbeat("systems_cons_consolidation_pink_n", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     // The consolidation system would need to expose:
@@ -378,6 +398,10 @@ int consolidation_pink_noise_get_effects(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    systems_consolidation_pink_noise_bridge_heartbeat("systems_cons_consolidation_pink_n", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     memcpy(effects_out, &bridge->effects, sizeof(consolidation_pink_noise_effects_t));
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -395,6 +419,10 @@ float consolidation_pink_noise_get_replay_strength(
     if (!bridge) {
         return -1.0f;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    systems_consolidation_pink_noise_bridge_heartbeat("systems_cons_consolidation_pink_n", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     float strength = bridge->effects.replay_strength_factor;
@@ -414,6 +442,10 @@ float consolidation_pink_noise_get_transfer_quality(
         return -1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    systems_consolidation_pink_noise_bridge_heartbeat("systems_cons_consolidation_pink_n", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float quality = bridge->effects.transfer_quality_factor;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -432,6 +464,10 @@ float consolidation_pink_noise_get_replay_frequency(
         return -1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    systems_consolidation_pink_noise_bridge_heartbeat("systems_cons_consolidation_pink_n", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float freq = bridge->effects.replay_frequency_hz;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -449,6 +485,10 @@ bool consolidation_pink_noise_in_spindle_burst(
     if (!bridge) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    systems_consolidation_pink_noise_bridge_heartbeat("systems_cons_consolidation_pink_n", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool in_spindle = bridge->effects.in_spindle_burst;
@@ -476,6 +516,10 @@ int consolidation_pink_noise_get_statistics(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    systems_consolidation_pink_noise_bridge_heartbeat("systems_cons_consolidation_pink_n", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (total_updates_out) {
@@ -500,6 +544,10 @@ float consolidation_pink_noise_stage_replay_strength(pink_sleep_stage_t stage) {
     // WHAT: Map sleep stage to base replay strength
     // WHY:  Different stages have different consolidation potential
     // HOW:  Lookup table based on biological research
+
+    /* Phase 8: Heartbeat at operation start */
+    systems_consolidation_pink_noise_bridge_heartbeat("systems_cons_consolidation_pink_n", 0.0f);
+
 
     switch (stage) {
         case PINK_SLEEP_WAKE:
@@ -530,6 +578,10 @@ float consolidation_pink_noise_alpha_to_quality(float alpha) {
     // - Red noise (α≈1.5): 1.5 quality (optimal for SWS)
     // - Very red (α≈2.0): 1.3 quality (diminishing returns)
 
+    /* Phase 8: Heartbeat at operation start */
+    systems_consolidation_pink_noise_bridge_heartbeat("systems_cons_consolidation_pink_n", 0.0f);
+
+
     if (alpha <= 0.5f) {
         return 0.5f;  // White noise minimum
     } else if (alpha <= 1.0f) {
@@ -555,6 +607,10 @@ float consolidation_pink_noise_arousal_to_frequency(float arousal) {
     // - Deep sleep (arousal ≈ 0.0): ~10 Hz sharp-wave ripples
     // - Light sleep (arousal ≈ 0.5): ~5 Hz theta sequences
     // - Awake (arousal ≈ 1.0): ~0.5 Hz spontaneous reactivation
+
+    /* Phase 8: Heartbeat at operation start */
+    systems_consolidation_pink_noise_bridge_heartbeat("systems_cons_consolidation_pink_n", 0.0f);
+
 
     arousal = clamp_f(arousal, 0.0f, 1.0f);
 
@@ -587,9 +643,19 @@ float consolidation_pink_noise_arousal_to_frequency(float arousal) {
 int consolidation_pink_noise_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    systems_consolidation_pink_noise_bridge_heartbeat("systems_cons_consolidation_pink_n", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Systems_Consolidation_Pink_Noise_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                systems_consolidation_pink_noise_bridge_heartbeat("systems_cons_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Consolidation pink noise bridge self-knowledge: %s", self->observations[i]);
         }
     }

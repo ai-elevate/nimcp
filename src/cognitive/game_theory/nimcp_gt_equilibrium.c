@@ -37,7 +37,7 @@ static nimcp_health_agent_t* g_gt_equilibrium_health_agent = NULL;
  * @brief Set health agent for gt_equilibrium heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void gt_equilibrium_set_health_agent(nimcp_health_agent_t* agent) {
+void gt_equilibrium_set_health_agent(nimcp_health_agent_t* agent) {
     g_gt_equilibrium_health_agent = agent;
 }
 
@@ -119,6 +119,10 @@ nimcp_equilibrium_config_t nimcp_equilibrium_default_config(
     uint32_t num_players,
     const uint32_t* strategies_per_player
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_equilibrium_heartbeat("gt_equilibri_equilibrium_default_", 0.0f);
+
+
     nimcp_equilibrium_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -128,6 +132,12 @@ nimcp_equilibrium_config_t nimcp_equilibrium_default_config(
 
     // Set strategies per player
     for (uint32_t i = 0; i < config.num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && config.num_players > 256) {
+            gt_equilibrium_heartbeat("gt_equilibri_loop",
+                             (float)(i + 1) / (float)config.num_players);
+        }
+
         if (strategies_per_player) {
             config.num_strategies[i] = strategies_per_player[i] > NIMCP_GT_MAX_STRATEGIES ?
                                        NIMCP_GT_MAX_STRATEGIES : strategies_per_player[i];
@@ -161,7 +171,17 @@ nimcp_equilibrium_t nimcp_equilibrium_create(const nimcp_equilibrium_config_t* c
     }
 
     // Validate strategies
+    /* Phase 8: Heartbeat at operation start */
+    gt_equilibrium_heartbeat("gt_equilibri_equilibrium_create", 0.0f);
+
+
     for (uint32_t i = 0; i < config->num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && config->num_players > 256) {
+            gt_equilibrium_heartbeat("gt_equilibri_loop",
+                             (float)(i + 1) / (float)config->num_players);
+        }
+
         if (config->num_strategies[i] == 0 ||
             config->num_strategies[i] > NIMCP_GT_MAX_STRATEGIES) {
             return NULL;
@@ -180,6 +200,12 @@ nimcp_equilibrium_t nimcp_equilibrium_create(const nimcp_equilibrium_config_t* c
 
     // Initialize payoff matrices
     for (uint32_t i = 0; i < config->num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && config->num_players > 256) {
+            gt_equilibrium_heartbeat("gt_equilibri_loop",
+                             (float)(i + 1) / (float)config->num_players);
+        }
+
         ctx->payoffs[i] = NULL;
         ctx->payoffs_set[i] = false;
     }
@@ -194,6 +220,12 @@ nimcp_equilibrium_t nimcp_equilibrium_create(const nimcp_equilibrium_config_t* c
     // Allocate temp probabilities (for largest player's strategy set)
     uint32_t max_strategies = 0;
     for (uint32_t i = 0; i < config->num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && config->num_players > 256) {
+            gt_equilibrium_heartbeat("gt_equilibri_loop",
+                             (float)(i + 1) / (float)config->num_players);
+        }
+
         if (config->num_strategies[i] > max_strategies) {
             max_strategies = config->num_strategies[i];
         }
@@ -223,10 +255,20 @@ nimcp_equilibrium_t nimcp_equilibrium_create(const nimcp_equilibrium_config_t* c
 void nimcp_equilibrium_destroy(nimcp_equilibrium_t ctx) {
     if (!ctx) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_equilibrium_heartbeat("gt_equilibri_equilibrium_destroy", 0.0f);
+
+
     nimcp_platform_mutex_destroy(&ctx->mutex);
 
     // Free payoff matrices
     for (uint32_t i = 0; i < ctx->config.num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->config.num_players > 256) {
+            gt_equilibrium_heartbeat("gt_equilibri_loop",
+                             (float)(i + 1) / (float)ctx->config.num_players);
+        }
+
         if (ctx->payoffs[i]) {
             nimcp_game_matrix_destroy(ctx->payoffs[i]);
         }
@@ -250,6 +292,9 @@ nimcp_game_matrix_t* nimcp_game_matrix_create(
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_equilibrium_heartbeat("gt_equilibri_game_matrix_create", 0.0f);
+
     nimcp_game_matrix_t* matrix = nimcp_calloc(1, sizeof(nimcp_game_matrix_t));
     if (!matrix) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "matrix is NULL");
@@ -262,6 +307,12 @@ nimcp_game_matrix_t* nimcp_game_matrix_create(
     // Compute strides and total cells
     matrix->total_cells = 1;
     for (uint32_t i = 0; i < num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_players > 256) {
+            gt_equilibrium_heartbeat("gt_equilibri_loop",
+                             (float)(i + 1) / (float)num_players);
+        }
+
         matrix->num_strategies[i] = strategies_per_player[i];
         matrix->total_cells *= strategies_per_player[i];
     }
@@ -285,6 +336,10 @@ nimcp_game_matrix_t* nimcp_game_matrix_create(
 
 void nimcp_game_matrix_destroy(nimcp_game_matrix_t* matrix) {
     if (!matrix) return;
+    /* Phase 8: Heartbeat at operation start */
+    gt_equilibrium_heartbeat("gt_equilibri_game_matrix_destroy", 0.0f);
+
+
     nimcp_free(matrix->data);
     nimcp_free(matrix);
 }
@@ -295,8 +350,18 @@ float nimcp_game_matrix_get(
 ) {
     if (!matrix || !strategy_profile) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_equilibrium_heartbeat("gt_equilibri_game_matrix_get", 0.0f);
+
+
     uint32_t index = 0;
     for (uint32_t i = 0; i < matrix->num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && matrix->num_players > 256) {
+            gt_equilibrium_heartbeat("gt_equilibri_loop",
+                             (float)(i + 1) / (float)matrix->num_players);
+        }
+
         if (strategy_profile[i] >= matrix->num_strategies[i]) {
             return 0.0f;  // Invalid strategy
         }
@@ -313,8 +378,18 @@ void nimcp_game_matrix_set(
 ) {
     if (!matrix || !strategy_profile) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_equilibrium_heartbeat("gt_equilibri_game_matrix_set", 0.0f);
+
+
     uint32_t index = 0;
     for (uint32_t i = 0; i < matrix->num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && matrix->num_players > 256) {
+            gt_equilibrium_heartbeat("gt_equilibri_loop",
+                             (float)(i + 1) / (float)matrix->num_players);
+        }
+
         if (strategy_profile[i] >= matrix->num_strategies[i]) {
             return;  // Invalid strategy
         }
@@ -337,6 +412,10 @@ nimcp_error_t nimcp_equilibrium_set_payoffs(
     if (!ctx || !payoffs) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_equilibrium_heartbeat("gt_equilibri_equilibrium_set_payo", 0.0f);
+
 
     if (player >= ctx->config.num_players) {
         return NIMCP_GT_ERROR_INVALID_PARAMETER;
@@ -381,6 +460,10 @@ nimcp_error_t nimcp_equilibrium_set_bimatrix(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_equilibrium_heartbeat("gt_equilibri_equilibrium_set_bima", 0.0f);
+
+
     if (ctx->config.num_players != 2) {
         return NIMCP_GT_ERROR_INVALID_PARAMETER;
     }
@@ -405,10 +488,20 @@ nimcp_error_t nimcp_equilibrium_find_pure_nash(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_equilibrium_heartbeat("gt_equilibri_equilibrium_find_pur", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
 
     // Verify all payoffs set
     for (uint32_t i = 0; i < ctx->config.num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->config.num_players > 256) {
+            gt_equilibrium_heartbeat("gt_equilibri_loop",
+                             (float)(i + 1) / (float)ctx->config.num_players);
+        }
+
         if (!ctx->payoffs_set[i]) {
             nimcp_platform_mutex_unlock(&ctx->mutex);
             return NIMCP_GT_ERROR_NOT_INITIALIZED;
@@ -426,6 +519,12 @@ nimcp_error_t nimcp_equilibrium_find_pure_nash(
 
     // Iterate through all pure strategy profiles
     for (uint32_t p = 0; p < ctx->total_strategy_profiles; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && ctx->total_strategy_profiles > 256) {
+            gt_equilibrium_heartbeat("gt_equilibri_loop",
+                             (float)(p + 1) / (float)ctx->total_strategy_profiles);
+        }
+
         ctx->stats.iterations_completed++;
 
         // Check timeout
@@ -443,6 +542,12 @@ nimcp_error_t nimcp_equilibrium_find_pure_nash(
         bool is_nash = true;
 
         for (uint32_t player = 0; player < n; player++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((player & 0xFF) == 0 && n > 256) {
+                gt_equilibrium_heartbeat("gt_equilibri_loop",
+                                 (float)(player + 1) / (float)n);
+            }
+
             // Find best response for this player
             uint32_t current_strategy = ctx->temp_profile[player];
             float current_payoff = compute_pure_payoff(ctx, player, ctx->temp_profile);
@@ -474,6 +579,12 @@ nimcp_error_t nimcp_equilibrium_find_pure_nash(
 
             // Compute payoffs
             for (uint32_t i = 0; i < n; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && n > 256) {
+                    gt_equilibrium_heartbeat("gt_equilibri_loop",
+                                     (float)(i + 1) / (float)n);
+                }
+
                 result->payoffs[i] = compute_pure_payoff(ctx, i, ctx->temp_profile);
                 result->social_welfare += result->payoffs[i];
             }
@@ -514,10 +625,20 @@ nimcp_error_t nimcp_equilibrium_find_mixed_nash(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_equilibrium_heartbeat("gt_equilibri_equilibrium_find_mix", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
 
     // Verify all payoffs set
     for (uint32_t i = 0; i < ctx->config.num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->config.num_players > 256) {
+            gt_equilibrium_heartbeat("gt_equilibri_loop",
+                             (float)(i + 1) / (float)ctx->config.num_players);
+        }
+
         if (!ctx->payoffs_set[i]) {
             nimcp_platform_mutex_unlock(&ctx->mutex);
             return NIMCP_GT_ERROR_NOT_INITIALIZED;
@@ -572,6 +693,12 @@ nimcp_error_t nimcp_equilibrium_find_mixed_nash(
         for (uint32_t row_mask = 1; row_mask < (1u << m) && !found; row_mask++) {
             uint32_t row_support_size = 0;
             for (uint32_t i = 0; i < m; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && m > 256) {
+                    gt_equilibrium_heartbeat("gt_equilibri_loop",
+                                     (float)(i + 1) / (float)m);
+                }
+
                 if (row_mask & (1u << i)) {
                     support_row[row_support_size++] = i;
                 }
@@ -580,6 +707,12 @@ nimcp_error_t nimcp_equilibrium_find_mixed_nash(
             for (uint32_t col_mask = 1; col_mask < (1u << n) && !found; col_mask++) {
                 uint32_t col_support_size = 0;
                 for (uint32_t j = 0; j < n; j++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((j & 0xFF) == 0 && n > 256) {
+                        gt_equilibrium_heartbeat("gt_equilibri_loop",
+                                         (float)(j + 1) / (float)n);
+                    }
+
                     if (col_mask & (1u << j)) {
                         support_col[col_support_size++] = j;
                     }
@@ -676,6 +809,10 @@ nimcp_error_t nimcp_equilibrium_lemke_howson(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_equilibrium_heartbeat("gt_equilibri_equilibrium_lemke_ho", 0.0f);
+
+
     if (ctx->config.num_players != 2) {
         return NIMCP_GT_ERROR_INVALID_PARAMETER;
     }
@@ -684,6 +821,12 @@ nimcp_error_t nimcp_equilibrium_lemke_howson(
 
     // Verify all payoffs set
     for (uint32_t i = 0; i < 2; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 2 > 256) {
+            gt_equilibrium_heartbeat("gt_equilibri_loop",
+                             (float)(i + 1) / (float)2);
+        }
+
         if (!ctx->payoffs_set[i]) {
             nimcp_platform_mutex_unlock(&ctx->mutex);
             return NIMCP_GT_ERROR_NOT_INITIALIZED;
@@ -720,7 +863,19 @@ nimcp_error_t nimcp_equilibrium_lemke_howson(
     // We need to shift payoffs to be strictly positive
     float min_payoff = FLT_MAX;
     for (uint32_t i = 0; i < m; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && m > 256) {
+            gt_equilibrium_heartbeat("gt_equilibri_loop",
+                             (float)(i + 1) / (float)m);
+        }
+
         for (uint32_t j = 0; j < n; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && n > 256) {
+                gt_equilibrium_heartbeat("gt_equilibri_loop",
+                                 (float)(j + 1) / (float)n);
+            }
+
             uint32_t profile[2] = {i, j};
             float p0 = nimcp_game_matrix_get(ctx->payoffs[0], profile);
             float p1 = nimcp_game_matrix_get(ctx->payoffs[1], profile);
@@ -738,11 +893,23 @@ nimcp_error_t nimcp_equilibrium_lemke_howson(
 
     // Player 1 constraints: y^T * B^T <= 1 (shifted to be positive)
     for (uint32_t i = 0; i < m; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && m > 256) {
+            gt_equilibrium_heartbeat("gt_equilibri_loop",
+                             (float)(i + 1) / (float)m);
+        }
+
         // Slack variable coefficient
         tableau[i * tableau_cols + i] = 1.0f;
 
         // Strategy variable coefficients (B transposed)
         for (uint32_t j = 0; j < n; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && n > 256) {
+                gt_equilibrium_heartbeat("gt_equilibri_loop",
+                                 (float)(j + 1) / (float)n);
+            }
+
             uint32_t profile[2] = {i, j};
             float payoff = nimcp_game_matrix_get(ctx->payoffs[1], profile) + shift;
             tableau[i * tableau_cols + (m + j)] = payoff;
@@ -757,6 +924,12 @@ nimcp_error_t nimcp_equilibrium_lemke_howson(
 
     // Player 2 constraints: A * x <= 1 (shifted)
     for (uint32_t j = 0; j < n; j++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((j & 0xFF) == 0 && n > 256) {
+            gt_equilibrium_heartbeat("gt_equilibri_loop",
+                             (float)(j + 1) / (float)n);
+        }
+
         uint32_t row = m + j;
 
         // Slack variable coefficient
@@ -764,6 +937,12 @@ nimcp_error_t nimcp_equilibrium_lemke_howson(
 
         // Strategy variable coefficients (A)
         for (uint32_t i = 0; i < m; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && m > 256) {
+                gt_equilibrium_heartbeat("gt_equilibri_loop",
+                                 (float)(i + 1) / (float)m);
+            }
+
             uint32_t profile[2] = {i, j};
             float payoff = nimcp_game_matrix_get(ctx->payoffs[0], profile) + shift;
             tableau[row * tableau_cols + i] = payoff;
@@ -830,6 +1009,12 @@ nimcp_error_t nimcp_equilibrium_lemke_howson(
 
         // Normalize pivot row
         for (uint32_t col = 0; col < tableau_cols; col++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((col & 0xFF) == 0 && tableau_cols > 256) {
+                gt_equilibrium_heartbeat("gt_equilibri_loop",
+                                 (float)(col + 1) / (float)tableau_cols);
+            }
+
             tableau[(uint32_t)pivot_row * tableau_cols + col] /= pivot_val;
         }
 
@@ -838,6 +1023,12 @@ nimcp_error_t nimcp_equilibrium_lemke_howson(
             if (row != (uint32_t)pivot_row) {
                 float factor = tableau[row * tableau_cols + (uint32_t)entering];
                 for (uint32_t col = 0; col < tableau_cols; col++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((col & 0xFF) == 0 && tableau_cols > 256) {
+                        gt_equilibrium_heartbeat("gt_equilibri_loop",
+                                         (float)(col + 1) / (float)tableau_cols);
+                    }
+
                     tableau[row * tableau_cols + col] -=
                         factor * tableau[(uint32_t)pivot_row * tableau_cols + col];
                 }
@@ -900,11 +1091,23 @@ nimcp_error_t nimcp_equilibrium_lemke_howson(
         // Normalize probabilities
         if (sum_x > 1e-10f) {
             for (uint32_t i = 0; i < m; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && m > 256) {
+                    gt_equilibrium_heartbeat("gt_equilibri_loop",
+                                     (float)(i + 1) / (float)m);
+                }
+
                 result->strategies.mixed_strategies[0][i] /= sum_x;
             }
         }
         if (sum_y > 1e-10f) {
             for (uint32_t j = 0; j < n; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && n > 256) {
+                    gt_equilibrium_heartbeat("gt_equilibri_loop",
+                                     (float)(j + 1) / (float)n);
+                }
+
                 result->strategies.mixed_strategies[1][j] /= sum_y;
             }
         }
@@ -918,11 +1121,23 @@ nimcp_error_t nimcp_equilibrium_lemke_howson(
 
         // Count support sizes
         for (uint32_t i = 0; i < m; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && m > 256) {
+                gt_equilibrium_heartbeat("gt_equilibri_loop",
+                                 (float)(i + 1) / (float)m);
+            }
+
             if (result->strategies.mixed_strategies[0][i] > 1e-6f) {
                 result->support_sizes[0]++;
             }
         }
         for (uint32_t j = 0; j < n; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && n > 256) {
+                gt_equilibrium_heartbeat("gt_equilibri_loop",
+                                 (float)(j + 1) / (float)n);
+            }
+
             if (result->strategies.mixed_strategies[1][j] > 1e-6f) {
                 result->support_sizes[1]++;
             }
@@ -966,9 +1181,19 @@ nimcp_error_t nimcp_equilibrium_find_all(
     *num_found = 0;
 
     // First, find all pure strategy equilibria
+    /* Phase 8: Heartbeat at operation start */
+    gt_equilibrium_heartbeat("gt_equilibri_equilibrium_find_all", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
 
     for (uint32_t i = 0; i < ctx->config.num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->config.num_players > 256) {
+            gt_equilibrium_heartbeat("gt_equilibri_loop",
+                             (float)(i + 1) / (float)ctx->config.num_players);
+        }
+
         if (!ctx->payoffs_set[i]) {
             nimcp_platform_mutex_unlock(&ctx->mutex);
             return NIMCP_GT_ERROR_NOT_INITIALIZED;
@@ -1007,6 +1232,12 @@ nimcp_error_t nimcp_equilibrium_find_all(
             nimcp_strategy_profile_init_pure(&res->strategies, n, ctx->temp_profile);
 
             for (uint32_t i = 0; i < n; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && n > 256) {
+                    gt_equilibrium_heartbeat("gt_equilibri_loop",
+                                     (float)(i + 1) / (float)n);
+                }
+
                 res->payoffs[i] = compute_pure_payoff(ctx, i, ctx->temp_profile);
                 res->social_welfare += res->payoffs[i];
             }
@@ -1066,6 +1297,10 @@ nimcp_error_t nimcp_equilibrium_best_response(
     if (!ctx || !opponent_strategies || !best_strategy) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_equilibrium_heartbeat("gt_equilibri_equilibrium_best_res", 0.0f);
+
 
     if (player >= ctx->config.num_players) {
         return NIMCP_GT_ERROR_INVALID_PARAMETER;
@@ -1137,6 +1372,10 @@ nimcp_error_t nimcp_equilibrium_best_response_mixed(
     }
 
     // Find pure best response first
+    /* Phase 8: Heartbeat at operation start */
+    gt_equilibrium_heartbeat("gt_equilibri_equilibrium_best_res", 0.0f);
+
+
     uint32_t best_s;
     float max_payoff;
     nimcp_error_t err = nimcp_equilibrium_best_response(ctx, player, opponent_strategies,
@@ -1169,6 +1408,10 @@ bool nimcp_equilibrium_is_nash(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_equilibrium_heartbeat("gt_equilibri_equilibrium_is_nash", 0.0f);
+
+
     float regrets[NIMCP_GT_MAX_PLAYERS];
     nimcp_error_t err = nimcp_equilibrium_compute_regret(ctx, strategies, regrets);
     if (err != NIMCP_SUCCESS) {
@@ -1176,6 +1419,12 @@ bool nimcp_equilibrium_is_nash(
     }
 
     for (uint32_t i = 0; i < ctx->config.num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->config.num_players > 256) {
+            gt_equilibrium_heartbeat("gt_equilibri_loop",
+                             (float)(i + 1) / (float)ctx->config.num_players);
+        }
+
         if (regrets[i] > epsilon) {
             return false;
         }
@@ -1193,9 +1442,19 @@ nimcp_error_t nimcp_equilibrium_compute_regret(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_equilibrium_heartbeat("gt_equilibri_equilibrium_compute_", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
 
     for (uint32_t player = 0; player < ctx->config.num_players; player++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((player & 0xFF) == 0 && ctx->config.num_players > 256) {
+            gt_equilibrium_heartbeat("gt_equilibri_loop",
+                             (float)(player + 1) / (float)ctx->config.num_players);
+        }
+
         if (!ctx->payoffs_set[player]) {
             nimcp_platform_mutex_unlock(&ctx->mutex);
             return NIMCP_GT_ERROR_NOT_INITIALIZED;
@@ -1245,6 +1504,10 @@ float nimcp_equilibrium_expected_payoff(
         return 0.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_equilibrium_heartbeat("gt_equilibri_equilibrium_expected", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
 
     float payoff;
@@ -1266,6 +1529,10 @@ nimcp_error_t nimcp_equilibrium_get_stats(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_equilibrium_heartbeat("gt_equilibri_equilibrium_get_stat", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
     *stats = ctx->stats;
     nimcp_platform_mutex_unlock(&ctx->mutex);
@@ -1278,10 +1545,20 @@ nimcp_error_t nimcp_equilibrium_reset(nimcp_equilibrium_t ctx) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_equilibrium_heartbeat("gt_equilibri_equilibrium_reset", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
 
     // Clear payoff matrices
     for (uint32_t i = 0; i < ctx->config.num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->config.num_players > 256) {
+            gt_equilibrium_heartbeat("gt_equilibri_loop",
+                             (float)(i + 1) / (float)ctx->config.num_players);
+        }
+
         if (ctx->payoffs[i]) {
             nimcp_game_matrix_destroy(ctx->payoffs[i]);
             ctx->payoffs[i] = NULL;
@@ -1322,6 +1599,10 @@ void nimcp_strategy_profile_init_pure(
 ) {
     if (!profile) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_equilibrium_heartbeat("gt_equilibri_strategy_profile_ini", 0.0f);
+
+
     memset(profile, 0, sizeof(nimcp_strategy_profile_t));
     profile->type = NIMCP_STRATEGY_PURE;
     profile->num_players = num_players;
@@ -1340,6 +1621,10 @@ nimcp_error_t nimcp_strategy_profile_init_mixed(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_equilibrium_heartbeat("gt_equilibri_strategy_profile_ini", 0.0f);
+
+
     memset(profile, 0, sizeof(nimcp_strategy_profile_t));
     profile->type = NIMCP_STRATEGY_MIXED;
     profile->num_players = num_players;
@@ -1350,6 +1635,12 @@ nimcp_error_t nimcp_strategy_profile_init_mixed(
         if (!profile->mixed_strategies[i]) {
             // Cleanup on failure
             for (uint32_t j = 0; j < i; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && i > 256) {
+                    gt_equilibrium_heartbeat("gt_equilibri_loop",
+                                     (float)(j + 1) / (float)i);
+                }
+
                 nimcp_free(profile->mixed_strategies[j]);
             }
             return NIMCP_GT_ERROR_NO_MEMORY;
@@ -1361,6 +1652,10 @@ nimcp_error_t nimcp_strategy_profile_init_mixed(
 
 void nimcp_strategy_profile_cleanup(nimcp_strategy_profile_t* profile) {
     if (!profile) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_equilibrium_heartbeat("gt_equilibri_strategy_profile_cle", 0.0f);
+
 
     if (profile->type == NIMCP_STRATEGY_MIXED) {
         for (uint32_t i = 0; i < profile->num_players && i < NIMCP_GT_MAX_PLAYERS; i++) {
@@ -1381,6 +1676,10 @@ nimcp_error_t nimcp_strategy_profile_copy(
     }
 
     // Copy basic fields
+    /* Phase 8: Heartbeat at operation start */
+    gt_equilibrium_heartbeat("gt_equilibri_strategy_profile_cop", 0.0f);
+
+
     dest->type = src->type;
     dest->num_players = src->num_players;
 
@@ -1395,6 +1694,12 @@ nimcp_error_t nimcp_strategy_profile_copy(
             if (!dest->mixed_strategies[i]) {
                 // Cleanup on failure
                 for (uint32_t j = 0; j < i; j++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((j & 0xFF) == 0 && i > 256) {
+                        gt_equilibrium_heartbeat("gt_equilibri_loop",
+                                         (float)(j + 1) / (float)i);
+                    }
+
                     nimcp_free(dest->mixed_strategies[j]);
                 }
                 return NIMCP_GT_ERROR_NO_MEMORY;
@@ -1414,6 +1719,12 @@ nimcp_error_t nimcp_strategy_profile_copy(
 static uint32_t compute_total_profiles(const nimcp_equilibrium_config_t* config) {
     uint32_t total = 1;
     for (uint32_t i = 0; i < config->num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && config->num_players > 256) {
+            gt_equilibrium_heartbeat("gt_equilibri_loop",
+                             (float)(i + 1) / (float)config->num_players);
+        }
+
         total *= config->num_strategies[i];
     }
     return total;
@@ -1452,9 +1763,21 @@ static float compute_mixed_payoff(const nimcp_equilibrium_t ctx, uint32_t player
     memset(temp_profile, 0, sizeof(temp_profile));
 
     for (uint32_t p = 0; p < ctx->total_strategy_profiles; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && ctx->total_strategy_profiles > 256) {
+            gt_equilibrium_heartbeat("gt_equilibri_loop",
+                             (float)(p + 1) / (float)ctx->total_strategy_profiles);
+        }
+
         // Compute probability of this profile
         float prob = 1.0f;
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                gt_equilibrium_heartbeat("gt_equilibri_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             prob *= strategies->mixed_strategies[i][temp_profile[i]];
         }
 
@@ -1577,6 +1900,12 @@ static bool check_no_outside_deviation(const nimcp_equilibrium_t ctx,
                                        const nimcp_strategy_profile_t* strategies) {
     // For each player, check that strategies outside support don't give higher payoff
     for (uint32_t player = 0; player < ctx->config.num_players; player++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((player & 0xFF) == 0 && ctx->config.num_players > 256) {
+            gt_equilibrium_heartbeat("gt_equilibri_loop",
+                             (float)(player + 1) / (float)ctx->config.num_players);
+        }
+
         // Compute payoff from any strategy in support
         float support_payoff = 0.0f;
         bool found_support = false;
@@ -1632,9 +1961,19 @@ static bool check_no_outside_deviation(const nimcp_equilibrium_t ctx,
 int equilibrium_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_equilibrium_heartbeat("gt_equilibri_equilibrium_query_se", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Equilibrium_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                gt_equilibrium_heartbeat("gt_equilibri_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG(LOG_MODULE, "Equilibrium self-knowledge: %s", self->observations[i]);
         }
     }

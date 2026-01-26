@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_pr_bio_bridge_health_agent = NULL;
  * @brief Set health agent for pr_bio_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void pr_bio_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void pr_bio_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_pr_bio_bridge_health_agent = agent;
 }
 
@@ -423,6 +423,12 @@ NIMCP_EXPORT pr_bio_bridge_t pr_bio_bridge_create(
 
     /* Initialize default priorities */
     for (int i = 0; i < PR_MSG_TYPE_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_MSG_TYPE_COUNT > 256) {
+            pr_bio_bridge_heartbeat("pr_bio_bridg_loop",
+                             (float)(i + 1) / (float)PR_MSG_TYPE_COUNT);
+        }
+
         bridge->type_priorities[i] = default_priority_for_type((pr_message_type_t)i);
     }
 
@@ -650,6 +656,12 @@ NIMCP_EXPORT size_t pr_bio_bridge_process_pending(pr_bio_bridge_t bridge) {
         size_t succeeded = 0;
         if (subs_copy) {
             for (size_t i = 0; i < num_subs; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && num_subs > 256) {
+                    pr_bio_bridge_heartbeat("pr_bio_bridg_loop",
+                                     (float)(i + 1) / (float)num_subs);
+                }
+
                 if (!subs_copy[i].is_active) continue;
                 if (subs_copy[i].type_filter != entry.message.type) continue;
                 if (entry.message.priority > subs_copy[i].min_priority) continue;
@@ -805,6 +817,12 @@ NIMCP_EXPORT pr_bio_bridge_error_t pr_bio_bridge_unsubscribe(
     /* Find subscriber */
     bool found = false;
     for (size_t i = 0; i < bridge->num_subscribers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_subscribers > 256) {
+            pr_bio_bridge_heartbeat("pr_bio_bridg_loop",
+                             (float)(i + 1) / (float)bridge->num_subscribers);
+        }
+
         if (bridge->subscribers[i].subscriber_id == subscriber_id) {
             /* Remove by shifting remaining elements */
             for (size_t j = i; j < bridge->num_subscribers - 1; j++) {
@@ -844,6 +862,12 @@ NIMCP_EXPORT size_t pr_bio_bridge_unsubscribe_all(
     size_t write_idx = 0;
 
     for (size_t i = 0; i < bridge->num_subscribers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_subscribers > 256) {
+            pr_bio_bridge_heartbeat("pr_bio_bridg_loop",
+                             (float)(i + 1) / (float)bridge->num_subscribers);
+        }
+
         if (bridge->subscribers[i].type_filter == type) {
             removed++;
         } else {
@@ -1206,6 +1230,12 @@ NIMCP_EXPORT void pr_bio_bridge_print_summary(const pr_bio_bridge_t bridge) {
     printf("  Avg process time: %.3f ms\n", stats.avg_process_time_ms);
     printf("\nMessages by Type:\n");
     for (int i = 0; i < PR_MSG_TYPE_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_MSG_TYPE_COUNT > 256) {
+            pr_bio_bridge_heartbeat("pr_bio_bridg_loop",
+                             (float)(i + 1) / (float)PR_MSG_TYPE_COUNT);
+        }
+
         if (stats.messages_by_type[i] > 0) {
             printf("  %s: %lu\n",
                    pr_bio_bridge_type_name((pr_message_type_t)i),

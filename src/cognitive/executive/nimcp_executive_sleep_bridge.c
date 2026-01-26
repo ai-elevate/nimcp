@@ -31,7 +31,7 @@ static nimcp_health_agent_t* g_executive_sleep_bridge_health_agent = NULL;
  * @brief Set health agent for executive_sleep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void executive_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void executive_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_executive_sleep_bridge_health_agent = agent;
 }
 
@@ -105,6 +105,10 @@ static void executive_on_sleep_state_change(sleep_state_t new_state, void* user_
 
 int executive_sleep_default_config(executive_sleep_config_t* config) {
     if (!config) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    executive_sleep_bridge_heartbeat("executive_sl_executive_sleep_defa", 0.0f);
+
+
     config->enable_inhibition_modulation = true;
     config->enable_flexibility_modulation = true;
     config->enable_switch_cost_modulation = true;
@@ -123,6 +127,10 @@ executive_sleep_bridge_t executive_sleep_bridge_create(
         return NULL;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    executive_sleep_bridge_heartbeat("executive_sl_create", 0.0f);
+
 
     struct executive_sleep_bridge_struct* bridge =
         (struct executive_sleep_bridge_struct*)nimcp_malloc(
@@ -173,6 +181,10 @@ void executive_sleep_bridge_destroy(executive_sleep_bridge_t bridge) {
     if (!bridge) return;
 
     /* Unregister callback if it was registered */
+    /* Phase 8: Heartbeat at operation start */
+    executive_sleep_bridge_heartbeat("executive_sl_destroy", 0.0f);
+
+
     if (bridge->callback_registered && bridge->sleep_system) {
         bool unregistered = sleep_unregister_state_callback(
             bridge->sleep_system,
@@ -190,6 +202,10 @@ void executive_sleep_bridge_destroy(executive_sleep_bridge_t bridge) {
 
 int executive_sleep_update(executive_sleep_bridge_t bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    executive_sleep_bridge_heartbeat("executive_sl_executive_sleep_upda", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -227,6 +243,10 @@ int executive_sleep_get_effects(
     executive_sleep_effects_t* effects)
 {
     if (!bridge || !effects) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    executive_sleep_bridge_heartbeat("executive_sl_executive_sleep_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -235,6 +255,10 @@ int executive_sleep_get_effects(
 
 float executive_sleep_get_inhibition(const executive_sleep_bridge_t bridge) {
     if (!bridge) return 1.0f;
+    /* Phase 8: Heartbeat at operation start */
+    executive_sleep_bridge_heartbeat("executive_sl_executive_sleep_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.inhibition_factor;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -243,6 +267,10 @@ float executive_sleep_get_inhibition(const executive_sleep_bridge_t bridge) {
 
 bool executive_sleep_is_offline(const executive_sleep_bridge_t bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    executive_sleep_bridge_heartbeat("executive_sl_executive_sleep_is_o", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.executive_offline;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -250,6 +278,10 @@ bool executive_sleep_is_offline(const executive_sleep_bridge_t bridge) {
 }
 
 float executive_sleep_inhibition_for_state(sleep_state_t state) {
+    /* Phase 8: Heartbeat at operation start */
+    executive_sleep_bridge_heartbeat("executive_sl_executive_sleep_inhi", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return EXEC_SLEEP_INHIBITION_AWAKE;
         case SLEEP_STATE_DROWSY:     return EXEC_SLEEP_INHIBITION_DROWSY;
@@ -261,6 +293,10 @@ float executive_sleep_inhibition_for_state(sleep_state_t state) {
 }
 
 float executive_sleep_flexibility_for_state(sleep_state_t state) {
+    /* Phase 8: Heartbeat at operation start */
+    executive_sleep_bridge_heartbeat("executive_sl_executive_sleep_flex", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return EXEC_SLEEP_FLEXIBILITY_AWAKE;
         case SLEEP_STATE_DROWSY:     return EXEC_SLEEP_FLEXIBILITY_DROWSY;
@@ -272,6 +308,10 @@ float executive_sleep_flexibility_for_state(sleep_state_t state) {
 }
 
 float executive_sleep_switch_cost_for_state(sleep_state_t state) {
+    /* Phase 8: Heartbeat at operation start */
+    executive_sleep_bridge_heartbeat("executive_sl_executive_sleep_swit", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return EXEC_SLEEP_SWITCH_COST_AWAKE;
         case SLEEP_STATE_DROWSY:     return EXEC_SLEEP_SWITCH_COST_DROWSY;
@@ -293,9 +333,19 @@ float executive_sleep_switch_cost_for_state(sleep_state_t state) {
  */
 int executive_sleep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    executive_sleep_bridge_heartbeat("executive_sl_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Executive_Sleep_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                executive_sleep_bridge_heartbeat("executive_sl_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Executive Sleep Bridge self-knowledge: %s", self->observations[i]);
         }
     }

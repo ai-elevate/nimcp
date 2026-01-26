@@ -45,7 +45,7 @@ static nimcp_health_agent_t* g_epistemic_fep_bridge_health_agent = NULL;
  * @brief Set health agent for epistemic_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void epistemic_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void epistemic_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_epistemic_fep_bridge_health_agent = agent;
 }
 
@@ -62,6 +62,10 @@ static inline void epistemic_fep_bridge_heartbeat(const char* operation, float p
  * ============================================================================ */
 
 int epistemic_fep_bridge_default_config(epistemic_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_fep_bridge_heartbeat("epistemic_fe_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* FEP -> Epistemic */
@@ -92,6 +96,10 @@ int epistemic_fep_bridge_default_config(epistemic_fep_config_t* config) {
 epistemic_fep_bridge_t* epistemic_fep_bridge_create(
     const epistemic_fep_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_fep_bridge_heartbeat("epistemic_fe_create", 0.0f);
+
+
     epistemic_fep_bridge_t* bridge = nimcp_malloc(sizeof(epistemic_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate epistemic FEP bridge");
@@ -128,6 +136,10 @@ void epistemic_fep_bridge_destroy(epistemic_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_fep_bridge_heartbeat("epistemic_fe_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         epistemic_fep_bridge_disconnect_bio_async(bridge);
     }
@@ -149,6 +161,10 @@ int epistemic_fep_bridge_connect_fep(
     epistemic_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_fep_bridge_heartbeat("epistemic_fe_connect_fep", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -163,6 +179,10 @@ int epistemic_fep_bridge_connect_epistemic(
     epistemic_fep_bridge_t* bridge,
     epistemic_filter_t filter
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_fep_bridge_heartbeat("epistemic_fe_connect_epistemic", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -174,6 +194,10 @@ int epistemic_fep_bridge_connect_epistemic(
 }
 
 int epistemic_fep_bridge_disconnect(epistemic_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_fep_bridge_heartbeat("epistemic_fe_disconnect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -192,6 +216,10 @@ int epistemic_fep_bridge_disconnect(epistemic_fep_bridge_t* bridge) {
 int epistemic_fep_compute_epistemic_value(
     epistemic_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_fep_bridge_heartbeat("epistemic_fe_epistemic_fep_comput", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_uncertainty_seeking) return 0;
 
@@ -243,6 +271,10 @@ int epistemic_fep_compute_epistemic_value(
 int epistemic_fep_detect_bias_from_precision(
     epistemic_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_fep_bridge_heartbeat("epistemic_fe_epistemic_fep_detect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_bias_detection) return 0;
 
@@ -277,6 +309,10 @@ int epistemic_fep_detect_bias_from_precision(
 int epistemic_fep_trigger_information_seeking(
     epistemic_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_fep_bridge_heartbeat("epistemic_fe_epistemic_fep_trigge", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -300,6 +336,10 @@ int epistemic_fep_update_evidence_precision(
     epistemic_fep_bridge_t* bridge,
     float evidence_quality
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_fep_bridge_heartbeat("epistemic_fe_epistemic_fep_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_quality_updates) return 0;
 
@@ -334,6 +374,10 @@ int epistemic_fep_update_evidence_precision(
 int epistemic_fep_revise_priors_from_bias(
     epistemic_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_fep_bridge_heartbeat("epistemic_fe_epistemic_fep_revise", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_bias_detection) return 0;
 
@@ -366,6 +410,10 @@ int epistemic_fep_weight_by_source_reliability(
     epistemic_fep_bridge_t* bridge,
     float reliability
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_fep_bridge_heartbeat("epistemic_fe_epistemic_fep_weight", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_source_precision) return 0;
 
@@ -395,6 +443,10 @@ int epistemic_fep_bridge_update(
     epistemic_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_fep_bridge_heartbeat("epistemic_fe_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Compute epistemic value from current uncertainty */
@@ -431,6 +483,10 @@ int epistemic_fep_bridge_get_state(
     const epistemic_fep_bridge_t* bridge,
     epistemic_fep_state_t* state
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_fep_bridge_heartbeat("epistemic_fe_get_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -444,6 +500,10 @@ int epistemic_fep_bridge_get_stats(
     const epistemic_fep_bridge_t* bridge,
     epistemic_fep_stats_t* stats
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_fep_bridge_heartbeat("epistemic_fe_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -460,6 +520,10 @@ int epistemic_fep_bridge_get_stats(
 int epistemic_fep_bridge_connect_bio_async(
     epistemic_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_fep_bridge_heartbeat("epistemic_fe_connect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
@@ -484,6 +548,10 @@ int epistemic_fep_bridge_connect_bio_async(
 int epistemic_fep_bridge_disconnect_bio_async(
     epistemic_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_fep_bridge_heartbeat("epistemic_fe_disconnect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return 0;
 
@@ -501,6 +569,10 @@ int epistemic_fep_bridge_disconnect_bio_async(
 bool epistemic_fep_bridge_is_bio_async_connected(
     const epistemic_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_fep_bridge_heartbeat("epistemic_fe_is_bio_async_connect", 0.0f);
+
+
     return bridge ? bridge->base.bio_async_enabled : false;
 }
 
@@ -511,9 +583,19 @@ bool epistemic_fep_bridge_is_bio_async_connected(
 int epistemic_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    epistemic_fep_bridge_heartbeat("epistemic_fe_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Epistemic_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                epistemic_fep_bridge_heartbeat("epistemic_fe_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

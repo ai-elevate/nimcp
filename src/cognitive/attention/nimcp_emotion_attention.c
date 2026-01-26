@@ -45,7 +45,7 @@ static nimcp_health_agent_t* g_emotion_attention_health_agent = NULL;
  * @brief Set health agent for emotion_attention heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void emotion_attention_set_health_agent(nimcp_health_agent_t* agent) {
+void emotion_attention_set_health_agent(nimcp_health_agent_t* agent) {
     g_emotion_attention_health_agent = agent;
 }
 
@@ -270,6 +270,10 @@ static void on_emotion_tensor_update(void* context, const void* msg_data, size_t
 //=============================================================================
 
 emotion_attention_config_t emotion_attention_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_attention_heartbeat("emotion_atte_default_config", 0.0f);
+
+
     emotion_attention_config_t config = {
         .arousal_narrowing_factor = 0.7F,    /* Strong narrowing effect */
         .valence_broadening_factor = 0.5F,   /* Moderate broadening */
@@ -303,6 +307,10 @@ emotion_attention_system_t* emotion_attention_create(
     }
 
     /* WHAT: Allocate system */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_attention_heartbeat("emotion_atte_create", 0.0f);
+
+
     emotion_attention_system_t* system = calloc(1, sizeof(emotion_attention_system_t));
     if (!system) {
         EA_LOG_ERROR("Failed to allocate emotion-attention system");
@@ -385,6 +393,10 @@ bool emotion_attention_connect_brain(emotion_attention_system_t* system, void* b
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_attention_heartbeat("emotion_atte_connect_brain", 0.0f);
+
+
     pthread_rwlock_wrlock(&system->lock);
     system->brain_ref = brain;
     pthread_rwlock_unlock(&system->lock);
@@ -399,6 +411,10 @@ void emotion_attention_destroy(emotion_attention_system_t* system) {
     }
 
     /* WHAT: Unregister from bio-async */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_attention_heartbeat("emotion_atte_destroy", 0.0f);
+
+
     if (system->bio_async_registered) {
         emotion_attention_unregister_bio_async(system);
     }
@@ -427,6 +443,10 @@ bool emotion_attention_modulate(emotion_attention_system_t* system) {
     if (!system) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_attention_heartbeat("emotion_atte_modulate", 0.0f);
+
 
     pthread_rwlock_rdlock(&system->lock);
 
@@ -467,6 +487,10 @@ float emotion_attention_compute_salience(
     }
 
     /* Guard: Clamp input */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_attention_heartbeat("emotion_atte_compute_salience", 0.0f);
+
+
     if (base_salience < 0.0F) base_salience = 0.0F;
     if (base_salience > 1.0F) base_salience = 1.0F;
 
@@ -500,6 +524,10 @@ float emotion_attention_get_width(const emotion_attention_system_t* system) {
     if (!system) {
         return -1.0F;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_attention_heartbeat("emotion_atte_get_width", 0.0f);
+
 
     pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
     float width = system->current_attention_width;
@@ -535,6 +563,10 @@ bool emotion_attention_set_sleep_state(emotion_attention_system_t* system, sleep
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_attention_heartbeat("emotion_atte_set_sleep_state", 0.0f);
+
+
     pthread_rwlock_wrlock(&system->lock);
     system->current_sleep_state = state;
     pthread_rwlock_unlock(&system->lock);
@@ -558,6 +590,10 @@ sleep_state_t emotion_attention_get_sleep_state(const emotion_attention_system_t
         return SLEEP_STATE_AWAKE;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_attention_heartbeat("emotion_atte_get_sleep_state", 0.0f);
+
+
     pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
     sleep_state_t state = system->current_sleep_state;
     pthread_rwlock_unlock((pthread_rwlock_t*)&system->lock);
@@ -577,6 +613,10 @@ bool emotion_attention_get_stats(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_attention_heartbeat("emotion_atte_get_stats", 0.0f);
+
+
     pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
     *stats = system->stats;
     pthread_rwlock_unlock((pthread_rwlock_t*)&system->lock);
@@ -588,6 +628,10 @@ void emotion_attention_reset_stats(emotion_attention_system_t* system) {
     if (!system) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_attention_heartbeat("emotion_atte_reset_stats", 0.0f);
+
 
     pthread_rwlock_wrlock(&system->lock);
     memset(&system->stats, 0, sizeof(emotion_attention_stats_t));
@@ -608,6 +652,10 @@ bool emotion_attention_register_bio_async(emotion_attention_system_t* system) {
     }
 
     /* Guard: Already registered */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_attention_heartbeat("emotion_atte_register_bio_async", 0.0f);
+
+
     if (system->bio_async_registered) {
         EA_LOG_WARN("Already registered with bio-async");
         return true;
@@ -653,9 +701,12 @@ void emotion_attention_unregister_bio_async(emotion_attention_system_t* system) 
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_attention_heartbeat("emotion_atte_unregister_bio_async", 0.0f);
+
     /* WHAT: Unsubscribe from emotion tensor updates */
-    /* TODO: Implement bio_async_unsubscribe when needed */
-    /* bio_async_unsubscribe(
+    /* TODO: Implement bio_async_unsubscribe when needed
+       bio_async_unsubscribe(
         BIO_CHANNEL_SEROTONIN,
         BIO_MSG_EMOTION_TENSOR_UPDATE,
         on_emotion_tensor_update,
@@ -763,6 +814,10 @@ bool emotion_attention_set_pe_config(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_attention_heartbeat("emotion_atte_set_pe_config", 0.0f);
+
+
     if (max_sequence == 0 || max_sequence > NIMCP_POS_MAX_SEQ_LENGTH) {
         EA_LOG_ERROR("Invalid max_sequence: %u (must be 1-%u)",
                      max_sequence, NIMCP_POS_MAX_SEQ_LENGTH);
@@ -848,6 +903,10 @@ bool emotion_attention_encode_temporal(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_attention_heartbeat("emotion_atte_encode_temporal", 0.0f);
+
+
     if (seq_length == 0) {
         EA_LOG_ERROR("Invalid seq_length: 0");
         return false;
@@ -909,6 +968,10 @@ bool emotion_attention_get_priority_embedding(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_attention_heartbeat("emotion_atte_get_priority_embeddi", 0.0f);
+
+
     pthread_rwlock_rdlock(&system->lock);
 
     /* Guard: Check priority encoder enabled */
@@ -958,9 +1021,19 @@ bool emotion_attention_get_priority_embedding(
  */
 int emotion_attention_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    emotion_attention_heartbeat("emotion_atte_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Emotion_Attention");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                emotion_attention_heartbeat("emotion_atte_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             EA_LOG_DEBUG("Emotion Attention self-knowledge: %s", self->observations[i]);
         }
     }

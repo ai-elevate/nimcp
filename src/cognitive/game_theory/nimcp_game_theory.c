@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_game_theory_health_agent = NULL;
  * @brief Set health agent for game_theory heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void game_theory_set_health_agent(nimcp_health_agent_t* agent) {
+void game_theory_set_health_agent(nimcp_health_agent_t* agent) {
     g_game_theory_health_agent = agent;
 }
 
@@ -89,6 +89,10 @@ static const char* s_solution_concept_names[] = {
 //=============================================================================
 
 nimcp_gt_config_t nimcp_gt_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_heartbeat("game_theory_gt_default_config", 0.0f);
+
+
     nimcp_gt_config_t config = {
         .max_players = NIMCP_GT_MAX_PLAYERS,
         .max_iterations = NIMCP_GT_MAX_ITERATIONS,
@@ -105,6 +109,10 @@ nimcp_gt_config_t nimcp_gt_default_config(void) {
 //=============================================================================
 
 nimcp_gt_system_t nimcp_gt_create(const nimcp_gt_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_heartbeat("game_theory_gt_create", 0.0f);
+
+
     nimcp_gt_system_t system = nimcp_calloc(1, sizeof(struct nimcp_gt_system_struct));
     if (!system) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
@@ -132,11 +140,19 @@ nimcp_gt_system_t nimcp_gt_create(const nimcp_gt_config_t* config) {
 void nimcp_gt_destroy(nimcp_gt_system_t system) {
     if (!system) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_heartbeat("game_theory_gt_destroy", 0.0f);
+
+
     nimcp_platform_mutex_destroy(&system->mutex);
     nimcp_free(system);
 }
 
 bool nimcp_gt_is_initialized(const nimcp_gt_system_t system) {
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_heartbeat("game_theory_gt_is_initialized", 0.0f);
+
+
     return system && system->initialized;
 }
 
@@ -145,6 +161,10 @@ nimcp_error_t nimcp_gt_get_stats(const nimcp_gt_system_t system,
     if (!system || !stats) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_heartbeat("game_theory_gt_get_stats", 0.0f);
+
 
     nimcp_platform_mutex_lock(&system->mutex);
     *stats = system->stats;
@@ -155,6 +175,10 @@ nimcp_error_t nimcp_gt_get_stats(const nimcp_gt_system_t system,
 
 void nimcp_gt_reset_stats(nimcp_gt_system_t system) {
     if (!system) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_heartbeat("game_theory_gt_reset_stats", 0.0f);
+
 
     nimcp_platform_mutex_lock(&system->mutex);
     memset(&system->stats, 0, sizeof(nimcp_game_stats_t));
@@ -189,10 +213,20 @@ float nimcp_compute_fairness_index(const float* allocations, uint32_t n) {
     }
 
     // Jain's fairness index: J = (sum x_i)^2 / (n * sum x_i^2)
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_heartbeat("game_theory_compute_fairness_ind", 0.0f);
+
+
     float sum = 0.0f;
     float sum_sq = 0.0f;
 
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            game_theory_heartbeat("game_theory_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         sum += allocations[i];
         sum_sq += allocations[i] * allocations[i];
     }
@@ -212,13 +246,29 @@ bool nimcp_is_pareto_optimal(const float* utilities, uint32_t n,
     }
 
     // Check if any feasible allocation Pareto-dominates current
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_heartbeat("game_theory_is_pareto_optimal", 0.0f);
+
+
     for (uint32_t f = 0; f < num_feasible; f++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((f & 0xFF) == 0 && num_feasible > 256) {
+            game_theory_heartbeat("game_theory_loop",
+                             (float)(f + 1) / (float)num_feasible);
+        }
+
         const float* other = &feasible_utilities[f * n];
 
         bool at_least_one_better = false;
         bool all_at_least_as_good = true;
 
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                game_theory_heartbeat("game_theory_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             if (other[i] < utilities[i]) {
                 all_at_least_as_good = false;
                 break;
@@ -245,6 +295,10 @@ void nimcp_player_init(nimcp_player_t* player, nimcp_player_id_t id,
                         const char* name, uint32_t num_actions) {
     if (!player) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_heartbeat("game_theory_player_init", 0.0f);
+
+
     memset(player, 0, sizeof(nimcp_player_t));
     player->id = id;
     player->num_actions = num_actions;
@@ -260,6 +314,12 @@ void nimcp_player_init(nimcp_player_t* player, nimcp_player_id_t id,
             // Default: uniform distribution
             float uniform = 1.0f / (float)num_actions;
             for (uint32_t i = 0; i < num_actions; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && num_actions > 256) {
+                    game_theory_heartbeat("game_theory_loop",
+                                     (float)(i + 1) / (float)num_actions);
+                }
+
                 player->strategy[i] = uniform;
             }
         }
@@ -268,6 +328,10 @@ void nimcp_player_init(nimcp_player_t* player, nimcp_player_id_t id,
 
 void nimcp_player_cleanup(nimcp_player_t* player) {
     if (!player) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_heartbeat("game_theory_player_cleanup", 0.0f);
+
 
     if (player->strategy) {
         nimcp_free(player->strategy);
@@ -282,10 +346,20 @@ void nimcp_player_cleanup(nimcp_player_t* player) {
 void nimcp_game_outcome_init(nimcp_game_outcome_t* outcome) {
     if (!outcome) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_heartbeat("game_theory_game_outcome_init", 0.0f);
+
+
     memset(outcome, 0, sizeof(nimcp_game_outcome_t));
 
     // Initialize winners to invalid
     for (uint32_t i = 0; i < NIMCP_GT_MAX_PLAYERS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && NIMCP_GT_MAX_PLAYERS > 256) {
+            game_theory_heartbeat("game_theory_loop",
+                             (float)(i + 1) / (float)NIMCP_GT_MAX_PLAYERS);
+        }
+
         outcome->winners[i] = NIMCP_GT_INVALID_PLAYER;
     }
 }
@@ -301,9 +375,19 @@ void nimcp_game_outcome_init(nimcp_game_outcome_t* outcome) {
  */
 int game_theory_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_heartbeat("game_theory_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Game_Theory");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                game_theory_heartbeat("game_theory_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Game theory self-knowledge logged */
         }
     }
@@ -333,6 +417,10 @@ uint32_t nimcp_gt_sample_action_mc(const nimcp_player_t* player) {
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_heartbeat("game_theory_gt_sample_action_mc", 0.0f);
+
+
     if (g_gt_mc_seed == 0) {
         g_gt_mc_seed = mc_seed_from_time();
     }
@@ -342,6 +430,12 @@ uint32_t nimcp_gt_sample_action_mc(const nimcp_player_t* player) {
     float cumulative = 0.0f;
 
     for (uint32_t i = 0; i < player->num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && player->num_actions > 256) {
+            game_theory_heartbeat("game_theory_loop",
+                             (float)(i + 1) / (float)player->num_actions);
+        }
+
         cumulative += player->strategy[i];
         if (r < cumulative) {
             return i;
@@ -380,12 +474,22 @@ int nimcp_gt_expected_utility_mc(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_heartbeat("game_theory_gt_expected_utility_", 0.0f);
+
+
     if (g_gt_mc_seed == 0) {
         g_gt_mc_seed = mc_seed_from_time();
     }
 
     /* Initialize utilities to zero */
     for (uint32_t i = 0; i < num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_players > 256) {
+            game_theory_heartbeat("game_theory_loop",
+                             (float)(i + 1) / (float)num_players);
+        }
+
         expected_utilities[i] = 0.0f;
     }
 
@@ -395,8 +499,20 @@ int nimcp_gt_expected_utility_mc(
 
     /* Monte Carlo sampling */
     for (uint32_t s = 0; s < num_samples; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && num_samples > 256) {
+            game_theory_heartbeat("game_theory_loop",
+                             (float)(s + 1) / (float)num_samples);
+        }
+
         /* Sample action profile from mixed strategies */
         for (uint32_t p = 0; p < num_players; p++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((p & 0xFF) == 0 && num_players > 256) {
+                game_theory_heartbeat("game_theory_loop",
+                                 (float)(p + 1) / (float)num_players);
+            }
+
             float r = mc_random_uniform(&g_gt_mc_seed);
             float cumulative = 0.0f;
             actions[p] = 0;
@@ -413,12 +529,24 @@ int nimcp_gt_expected_utility_mc(
         /* Compute payoff and accumulate */
         float payoff = payoff_fn(actions, num_players, user_data);
         for (uint32_t p = 0; p < num_players; p++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((p & 0xFF) == 0 && num_players > 256) {
+                game_theory_heartbeat("game_theory_loop",
+                                 (float)(p + 1) / (float)num_players);
+            }
+
             expected_utilities[p] += payoff;
         }
     }
 
     /* Average */
     for (uint32_t i = 0; i < num_players; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_players > 256) {
+            game_theory_heartbeat("game_theory_loop",
+                             (float)(i + 1) / (float)num_players);
+        }
+
         expected_utilities[i] /= (float)num_samples;
     }
 
@@ -451,6 +579,10 @@ int nimcp_gt_fictitious_play_update_mc(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    game_theory_heartbeat("game_theory_gt_fictitious_play_u", 0.0f);
+
+
     if (g_gt_mc_seed == 0) {
         g_gt_mc_seed = mc_seed_from_time();
     }
@@ -463,8 +595,20 @@ int nimcp_gt_fictitious_play_update_mc(
     uint32_t best_action = 0;
 
     for (uint32_t a = 0; a < player->num_actions; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && player->num_actions > 256) {
+            game_theory_heartbeat("game_theory_loop",
+                             (float)(a + 1) / (float)player->num_actions);
+        }
+
         expected_payoffs[a] = 0.0f;
         for (uint32_t o = 0; o < num_opponent_actions; o++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((o & 0xFF) == 0 && num_opponent_actions > 256) {
+                game_theory_heartbeat("game_theory_loop",
+                                 (float)(o + 1) / (float)num_opponent_actions);
+            }
+
             expected_payoffs[a] += payoff_matrix[a * num_opponent_actions + o] * opponent_frequencies[o];
         }
         if (expected_payoffs[a] > max_payoff) {
@@ -475,6 +619,12 @@ int nimcp_gt_fictitious_play_update_mc(
 
     /* Update strategy toward best response with noise for exploration */
     for (uint32_t a = 0; a < player->num_actions; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && player->num_actions > 256) {
+            game_theory_heartbeat("game_theory_loop",
+                             (float)(a + 1) / (float)player->num_actions);
+        }
+
         float target = (a == best_action) ? 1.0f : 0.0f;
         /* Add small noise for exploration */
         float noise = mc_random_normal(&g_gt_mc_seed, 0.0f, 0.01f);
@@ -486,10 +636,22 @@ int nimcp_gt_fictitious_play_update_mc(
     /* Normalize */
     float sum = 0.0f;
     for (uint32_t a = 0; a < player->num_actions; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && player->num_actions > 256) {
+            game_theory_heartbeat("game_theory_loop",
+                             (float)(a + 1) / (float)player->num_actions);
+        }
+
         sum += player->strategy[a];
     }
     if (sum > 0.0f) {
         for (uint32_t a = 0; a < player->num_actions; a++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((a & 0xFF) == 0 && player->num_actions > 256) {
+                game_theory_heartbeat("game_theory_loop",
+                                 (float)(a + 1) / (float)player->num_actions);
+            }
+
             player->strategy[a] /= sum;
         }
     }

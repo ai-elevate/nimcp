@@ -31,7 +31,7 @@ static nimcp_health_agent_t* g_analysis_thalamic_bridge_health_agent = NULL;
  * @brief Set health agent for analysis_thalamic_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void analysis_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void analysis_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_analysis_thalamic_bridge_health_agent = agent;
 }
 
@@ -53,6 +53,10 @@ struct analysis_thalamic_bridge {
 };
 
 analysis_thalamic_config_t analysis_thalamic_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    analysis_thalamic_bridge_heartbeat("analysis_tha_analysis_thalamic_de", 0.0f);
+
+
     return (analysis_thalamic_config_t){
         .enable_attention_gating = true,
         .enable_complexity_routing = true,
@@ -66,6 +70,10 @@ analysis_thalamic_bridge_t* analysis_thalamic_bridge_create(
     thalamic_router_t* router,
     const analysis_thalamic_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    analysis_thalamic_bridge_heartbeat("analysis_tha_create", 0.0f);
+
+
     analysis_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(analysis_thalamic_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "analysis_thalamic_bridge_create: failed to allocate bridge");
@@ -90,6 +98,10 @@ analysis_thalamic_bridge_t* analysis_thalamic_bridge_create(
 }
 
 void analysis_thalamic_bridge_destroy(analysis_thalamic_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    analysis_thalamic_bridge_heartbeat("analysis_tha_destroy", 0.0f);
+
+
     if (bridge) {
         if (bridge->base.mutex) {
             bridge_base_cleanup(&bridge->base);
@@ -103,6 +115,10 @@ int analysis_thalamic_bridge_reset(analysis_thalamic_bridge_t* bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_thalamic_bridge_reset: bridge is NULL");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    analysis_thalamic_bridge_heartbeat("analysis_tha_reset", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
@@ -119,6 +135,10 @@ int analysis_thalamic_route_signal(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_thalamic_route_signal: bridge or signal is NULL");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    analysis_thalamic_bridge_heartbeat("analysis_tha_analysis_thalamic_ro", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -190,6 +210,10 @@ int analysis_thalamic_route_decomposition(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    analysis_thalamic_bridge_heartbeat("analysis_tha_analysis_thalamic_ro", 0.0f);
+
+
     analysis_thalamic_signal_t signal = {
         .signal_type = ANALYSIS_SIGNAL_DECOMPOSITION,
         .analysis_urgency = 0.6f + (complexity * 0.3f),
@@ -213,6 +237,10 @@ int analysis_thalamic_request_depth(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    analysis_thalamic_bridge_heartbeat("analysis_tha_analysis_thalamic_re", 0.0f);
+
+
     analysis_thalamic_signal_t signal = {
         .signal_type = ANALYSIS_SIGNAL_DEPTH_REQUEST,
         .analysis_urgency = urgency < 0.0f ? 0.0f : (urgency > 1.0f ? 1.0f : urgency),
@@ -232,6 +260,10 @@ int analysis_thalamic_set_attention(analysis_thalamic_bridge_t* bridge, float at
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    analysis_thalamic_bridge_heartbeat("analysis_tha_analysis_thalamic_se", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f :
                                (attention > 1.0f ? 1.0f : attention);
@@ -244,6 +276,10 @@ int analysis_thalamic_get_attention(const analysis_thalamic_bridge_t* bridge, fl
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_thalamic_get_attention: bridge or attention is NULL");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    analysis_thalamic_bridge_heartbeat("analysis_tha_analysis_thalamic_ge", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
@@ -259,6 +295,10 @@ int analysis_thalamic_bridge_get_stats(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis_thalamic_bridge_get_stats: bridge or stats is NULL");
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    analysis_thalamic_bridge_heartbeat("analysis_tha_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -266,6 +306,10 @@ int analysis_thalamic_bridge_get_stats(
 }
 
 void analysis_thalamic_bridge_reset_stats(analysis_thalamic_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    analysis_thalamic_bridge_heartbeat("analysis_tha_reset_stats", 0.0f);
+
+
     if (bridge) {
         nimcp_mutex_lock(bridge->base.mutex);
         memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -284,9 +328,19 @@ void analysis_thalamic_bridge_reset_stats(analysis_thalamic_bridge_t* bridge) {
  */
 int analysis_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    analysis_thalamic_bridge_heartbeat("analysis_tha_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Analysis_Thalamic_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                analysis_thalamic_bridge_heartbeat("analysis_tha_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Log observation */
         }
     }

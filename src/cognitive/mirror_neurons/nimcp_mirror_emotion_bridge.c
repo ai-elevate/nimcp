@@ -39,7 +39,7 @@ static nimcp_health_agent_t* g_mirror_emotion_bridge_health_agent = NULL;
  * @brief Set health agent for mirror_emotion_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_emotion_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_emotion_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_emotion_bridge_health_agent = agent;
 }
 
@@ -98,6 +98,12 @@ static double simd_dot_product(const float* a, const float* b, uint32_t dim) {
     /* Scalar fallback for small vectors */
     double sum = 0.0;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            mirror_emotion_bridge_heartbeat("mirror_emoti_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         sum += (double)a[i] * (double)b[i];
     }
     return sum;
@@ -113,6 +119,12 @@ static double simd_sum_sq(const float* a, uint32_t dim) {
 
     double sum = 0.0;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            mirror_emotion_bridge_heartbeat("mirror_emoti_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         sum += (double)a[i] * (double)a[i];
     }
     return sum;
@@ -218,6 +230,12 @@ static uint32_t match_emotion_from_aus(const float* aus, float* confidence) {
     uint32_t best_emotion = MIRROR_EMOTION_TOTAL_COUNT - 1; /* Neutral */
 
     for (uint32_t i = 0; i < MIRROR_EMOTION_BASIC_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MIRROR_EMOTION_BASIC_COUNT > 256) {
+            mirror_emotion_bridge_heartbeat("mirror_emoti_loop",
+                             (float)(i + 1) / (float)MIRROR_EMOTION_BASIC_COUNT);
+        }
+
         float sim = compute_cosine_similarity(aus, EMOTION_AU_TEMPLATES[i],
                                                MIRROR_EMOTION_ACTION_UNITS);
         if (sim > best_score) {
@@ -247,6 +265,12 @@ static mirror_emotion_agent_state_t* get_or_create_agent(
 ) {
     /* Find existing */
     for (uint32_t i = 0; i < MIRROR_EMOTION_MAX_AGENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MIRROR_EMOTION_MAX_AGENTS > 256) {
+            mirror_emotion_bridge_heartbeat("mirror_emoti_loop",
+                             (float)(i + 1) / (float)MIRROR_EMOTION_MAX_AGENTS);
+        }
+
         if (bridge->agents[i].active && bridge->agents[i].agent_id == agent_id) {
             return &bridge->agents[i];
         }
@@ -254,6 +278,12 @@ static mirror_emotion_agent_state_t* get_or_create_agent(
 
     /* Find empty slot */
     for (uint32_t i = 0; i < MIRROR_EMOTION_MAX_AGENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MIRROR_EMOTION_MAX_AGENTS > 256) {
+            mirror_emotion_bridge_heartbeat("mirror_emoti_loop",
+                             (float)(i + 1) / (float)MIRROR_EMOTION_MAX_AGENTS);
+        }
+
         if (!bridge->agents[i].active) {
             memset(&bridge->agents[i], 0, sizeof(mirror_emotion_agent_state_t));
             bridge->agents[i].agent_id = agent_id;
@@ -386,6 +416,10 @@ static mirror_contagion_type_t determine_contagion_type(
 //=============================================================================
 
 mirror_emotion_config_t mirror_emotion_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_confi", 0.0f);
+
+
     mirror_emotion_config_t config = {
         .resonance_threshold = 0.3f,
         .contagion_threshold = 0.4f,
@@ -413,6 +447,10 @@ mirror_emotion_config_t mirror_emotion_config_default(void) {
 }
 
 mirror_emotion_bridge_t* mirror_emotion_create(const mirror_emotion_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_creat", 0.0f);
+
+
     mirror_emotion_bridge_t* bridge = nimcp_calloc(1, sizeof(mirror_emotion_bridge_t));
     if (!bridge) {
         nimcp_log(LOG_LEVEL_ERROR, "Mirror-Emotion: Failed to allocate bridge");
@@ -455,6 +493,10 @@ void mirror_emotion_destroy(mirror_emotion_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Unregister from bio-async */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_destr", 0.0f);
+
+
     if (bridge->bio_async_registered) {
         mirror_emotion_unregister_bio_async(bridge);
     }
@@ -472,6 +514,10 @@ bool mirror_emotion_process_observation(
     mirror_emotion_resonance_t* result
 ) {
     if (!bridge || !observation || !result) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_proce", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -605,8 +651,18 @@ uint32_t mirror_emotion_process_batch(
 ) {
     if (!bridge || !observations || !results || count == 0) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_proce", 0.0f);
+
+
     uint32_t processed = 0;
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            mirror_emotion_bridge_heartbeat("mirror_emoti_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (mirror_emotion_process_observation(bridge, &observations[i], &results[i])) {
             processed++;
         }
@@ -629,6 +685,10 @@ float mirror_emotion_compute_contagion(
 ) {
     if (!bridge) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_compu", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     mirror_emotion_agent_state_t* agent = get_or_create_agent(bridge, agent_id);
@@ -645,6 +705,10 @@ bool mirror_emotion_trigger_empathy(
 ) {
     if (!bridge || !resonance) return false;
     if (resonance->empathy_level < 0.3f) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_trigg", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -671,10 +735,20 @@ float mirror_emotion_regulate_contagion(
 ) {
     if (!bridge) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_regul", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     mirror_emotion_agent_state_t* agent = NULL;
     for (uint32_t i = 0; i < MIRROR_EMOTION_MAX_AGENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MIRROR_EMOTION_MAX_AGENTS > 256) {
+            mirror_emotion_bridge_heartbeat("mirror_emoti_loop",
+                             (float)(i + 1) / (float)MIRROR_EMOTION_MAX_AGENTS);
+        }
+
         if (bridge->agents[i].active && bridge->agents[i].agent_id == agent_id) {
             agent = &bridge->agents[i];
             break;
@@ -708,6 +782,10 @@ mirror_emotion_agent_state_t* mirror_emotion_get_agent(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_get_a", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     mirror_emotion_agent_state_t* agent = get_or_create_agent(bridge, agent_id);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -722,10 +800,20 @@ void mirror_emotion_update_familiarity(
 ) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_updat", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     mirror_emotion_agent_state_t* agent = NULL;
     for (uint32_t i = 0; i < MIRROR_EMOTION_MAX_AGENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MIRROR_EMOTION_MAX_AGENTS > 256) {
+            mirror_emotion_bridge_heartbeat("mirror_emoti_loop",
+                             (float)(i + 1) / (float)MIRROR_EMOTION_MAX_AGENTS);
+        }
+
         if (bridge->agents[i].active && bridge->agents[i].agent_id == agent_id) {
             agent = &bridge->agents[i];
             break;
@@ -744,6 +832,10 @@ float mirror_emotion_simd_similarity(
     const float* features_b,
     uint32_t dim
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_simd_", 0.0f);
+
+
     return compute_cosine_similarity(features_a, features_b, dim);
 }
 
@@ -753,7 +845,17 @@ void mirror_emotion_simd_au_compare(
     float* similarities,
     uint32_t count
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_simd_", 0.0f);
+
+
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            mirror_emotion_bridge_heartbeat("mirror_emoti_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         similarities[i] = compute_cosine_similarity(
             observed_aus + i * MIRROR_EMOTION_ACTION_UNITS,
             template_aus,
@@ -769,6 +871,10 @@ float mirror_emotion_modulate_sensitivity(
     float valence
 ) {
     if (!bridge) return 1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_modul", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -803,6 +909,10 @@ void mirror_emotion_set_crisis_mode(
 ) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_set_c", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->crisis_mode = crisis_active;
     if (crisis_active) {
@@ -817,12 +927,20 @@ bool mirror_emotion_register_bio_async(mirror_emotion_bridge_t* bridge) {
 
     /* Mark as registered - actual router registration would happen
      * when integrated into a full bio-async context */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_regis", 0.0f);
+
+
     bridge->bio_async_registered = true;
     return true;
 }
 
 void mirror_emotion_unregister_bio_async(mirror_emotion_bridge_t* bridge) {
     if (!bridge || !bridge->bio_async_registered) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_unreg", 0.0f);
+
 
     bridge->bio_async_registered = false;
 }
@@ -833,6 +951,10 @@ bool mirror_emotion_get_stats(
 ) {
     if (!bridge || !stats) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_get_s", 0.0f);
+
+
     nimcp_mutex_lock(((mirror_emotion_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
 
@@ -840,6 +962,12 @@ bool mirror_emotion_get_stats(
     stats->active_agents = 0;
     float total_familiarity = 0.0f;
     for (uint32_t i = 0; i < MIRROR_EMOTION_MAX_AGENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MIRROR_EMOTION_MAX_AGENTS > 256) {
+            mirror_emotion_bridge_heartbeat("mirror_emoti_loop",
+                             (float)(i + 1) / (float)MIRROR_EMOTION_MAX_AGENTS);
+        }
+
         if (bridge->agents[i].active) {
             stats->active_agents++;
             total_familiarity += bridge->agents[i].familiarity;
@@ -855,6 +983,10 @@ bool mirror_emotion_get_stats(
 
 void mirror_emotion_reset_stats(mirror_emotion_bridge_t* bridge) {
     if (!bridge) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_reset", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(mirror_emotion_stats_t));

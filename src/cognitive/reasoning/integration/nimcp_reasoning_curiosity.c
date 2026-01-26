@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_reasoning_curiosity_health_agent = NULL;
  * @brief Set health agent for reasoning_curiosity heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void reasoning_curiosity_set_health_agent(nimcp_health_agent_t* agent) {
+void reasoning_curiosity_set_health_agent(nimcp_health_agent_t* agent) {
     g_reasoning_curiosity_health_agent = agent;
 }
 
@@ -73,6 +73,10 @@ static uint64_t get_time_us(void) {
 }
 
 reasoning_curiosity_config_t reasoning_curiosity_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_curiosity_heartbeat("reasoning_cu_default_config", 0.0f);
+
+
     reasoning_curiosity_config_t config = {
         .enable_proof_failure_exploration = true,
         .enable_novel_fact_exploration = true,
@@ -87,10 +91,18 @@ bool reasoning_curiosity_validate_config(const reasoning_curiosity_config_t* con
     if (!config) return false;
     if (config->proof_failed_curiosity_boost < 0.0F || config->proof_failed_curiosity_boost > 1.0F) return false;
     if (config->novel_fact_curiosity_boost < 0.0F || config->novel_fact_curiosity_boost > 1.0F) return false;
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_curiosity_heartbeat("reasoning_cu_validate_config", 0.0f);
+
+
     return true;
 }
 
 reasoning_curiosity_t* reasoning_curiosity_create(event_bus_t bus, curiosity_engine_t curiosity) {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_curiosity_heartbeat("reasoning_cu_create", 0.0f);
+
+
     LOG_DEBUG("Creating module");
     reasoning_curiosity_config_t config = reasoning_curiosity_default_config();
     return reasoning_curiosity_create_custom(bus, curiosity, &config);
@@ -101,6 +113,10 @@ reasoning_curiosity_t* reasoning_curiosity_create_custom(
 ) {
     if (!bus || !curiosity) return NULL;
     
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_curiosity_heartbeat("reasoning_cu_create_custom", 0.0f);
+
+
     reasoning_curiosity_t* integration = nimcp_calloc(1, sizeof(reasoning_curiosity_t));
     if (!integration) {
 
@@ -145,6 +161,10 @@ return integration;
 }
 
 void reasoning_curiosity_destroy(reasoning_curiosity_t* integration) {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_curiosity_heartbeat("reasoning_cu_destroy", 0.0f);
+
+
     LOG_DEBUG("Destroying module");
     if (!integration) return;
     if (integration->subscription_handle != INVALID_SUBSCRIPTION_HANDLE) {
@@ -162,6 +182,10 @@ void reasoning_curiosity_destroy(reasoning_curiosity_t* integration) {
 
 void reasoning_curiosity_callback(const brain_event_t* event, void* context) {
     if (!event || !context) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_curiosity_heartbeat("reasoning_cu_callback", 0.0f);
+
 
     reasoning_curiosity_t* integration = (reasoning_curiosity_t*)context;
 
@@ -201,6 +225,10 @@ void reasoning_curiosity_callback(const brain_event_t* event, void* context) {
 bool reasoning_curiosity_explore_unexplained_fact(reasoning_curiosity_t* integration, const char* fact) {
     if (!integration || !fact) return false;
     
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_curiosity_heartbeat("reasoning_cu_explore_unexplained_", 0.0f);
+
+
     knowledge_gap_t gap = curiosity_detect_knowledge_gap(integration->curiosity, fact);
     if (gap.gap_size > 0.3F) {
         integration->stats.exploration_triggers++;
@@ -212,11 +240,19 @@ bool reasoning_curiosity_explore_unexplained_fact(reasoning_curiosity_t* integra
 bool reasoning_curiosity_get_stats(const reasoning_curiosity_t* integration, reasoning_curiosity_stats_t* stats) {
     if (!integration || !stats) return false;
     *stats = integration->stats;
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_curiosity_heartbeat("reasoning_cu_get_stats", 0.0f);
+
+
     return true;
 }
 
 bool reasoning_curiosity_reset_stats(reasoning_curiosity_t* integration) {
     if (!integration) return false;
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_curiosity_heartbeat("reasoning_cu_reset_stats", 0.0f);
+
+
     memset(&integration->stats, 0, sizeof(reasoning_curiosity_stats_t));
     return true;
 }
@@ -224,11 +260,19 @@ bool reasoning_curiosity_reset_stats(reasoning_curiosity_t* integration) {
 bool reasoning_curiosity_get_config(const reasoning_curiosity_t* integration, reasoning_curiosity_config_t* config) {
     if (!integration || !config) return false;
     *config = integration->config;
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_curiosity_heartbeat("reasoning_cu_get_config", 0.0f);
+
+
     return true;
 }
 
 bool reasoning_curiosity_set_config(reasoning_curiosity_t* integration, const reasoning_curiosity_config_t* config) {
     if (!integration || !config || !reasoning_curiosity_validate_config(config)) return false;
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_curiosity_heartbeat("reasoning_cu_set_config", 0.0f);
+
+
     integration->config = *config;
     return true;
 }
@@ -239,9 +283,19 @@ bool reasoning_curiosity_set_config(reasoning_curiosity_t* integration, const re
 
 int reasoning_curiosity_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_curiosity_heartbeat("reasoning_cu_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Reasoning_Curiosity");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                reasoning_curiosity_heartbeat("reasoning_cu_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Reasoning_Curiosity self-knowledge: %s", self->observations[i]);
         }
     }

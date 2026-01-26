@@ -36,7 +36,7 @@ static nimcp_health_agent_t* g_quantum_math_engine_health_agent = NULL;
  * @brief Set health agent for quantum_math_engine heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void quantum_math_engine_set_health_agent(nimcp_health_agent_t* agent) {
+void quantum_math_engine_set_health_agent(nimcp_health_agent_t* agent) {
     g_quantum_math_engine_health_agent = agent;
 }
 
@@ -159,6 +159,12 @@ static void sample_uniform_box(qme_math_simulation_t* sim,
                                const qme_domain_t* domain,
                                float* sample) {
     for (uint32_t i = 0; i < domain->dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && domain->dim > 256) {
+            quantum_math_engine_heartbeat("quantum_math_loop",
+                             (float)(i + 1) / (float)domain->dim);
+        }
+
         float range = domain->upper_bounds[i] - domain->lower_bounds[i];
         sample[i] = domain->lower_bounds[i] + random_uniform(sim) * range;
     }
@@ -173,6 +179,12 @@ static void sample_uniform_ball(qme_math_simulation_t* sim,
     /* Generate point on unit sphere */
     float norm_sq = 0.0f;
     for (uint32_t i = 0; i < domain->dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && domain->dim > 256) {
+            quantum_math_engine_heartbeat("quantum_math_loop",
+                             (float)(i + 1) / (float)domain->dim);
+        }
+
         sample[i] = random_normal(sim);
         norm_sq += sample[i] * sample[i];
     }
@@ -183,6 +195,12 @@ static void sample_uniform_ball(qme_math_simulation_t* sim,
     float scale = r * domain->radius / norm;
 
     for (uint32_t i = 0; i < domain->dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && domain->dim > 256) {
+            quantum_math_engine_heartbeat("quantum_math_loop",
+                             (float)(i + 1) / (float)domain->dim);
+        }
+
         sample[i] = domain->center[i] + sample[i] * scale;
     }
 }
@@ -205,10 +223,22 @@ static void sample_from_domain(qme_math_simulation_t* sim,
             {
                 float sum = 0.0f;
                 for (uint32_t i = 0; i < domain->dim; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && domain->dim > 256) {
+                        quantum_math_engine_heartbeat("quantum_math_loop",
+                                         (float)(i + 1) / (float)domain->dim);
+                    }
+
                     sample[i] = -logf(random_uniform(sim) + 1e-10f);
                     sum += sample[i];
                 }
                 for (uint32_t i = 0; i < domain->dim; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && domain->dim > 256) {
+                        quantum_math_engine_heartbeat("quantum_math_loop",
+                                         (float)(i + 1) / (float)domain->dim);
+                    }
+
                     sample[i] /= sum;
                 }
             }
@@ -415,6 +445,12 @@ NIMCP_API nimcp_error_t qme_integrate(
             if (sim->config.enable_antithetic) {
                 /* Reflect sample */
                 for (uint32_t i = 0; i < domain->dim; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && domain->dim > 256) {
+                        quantum_math_engine_heartbeat("quantum_math_loop",
+                                         (float)(i + 1) / (float)domain->dim);
+                    }
+
                     if (domain->type == QME_DOMAIN_BOX) {
                         float mid = (domain->lower_bounds[i] + domain->upper_bounds[i]) / 2.0f;
                         sample[i] = 2.0f * mid - sample[i];
@@ -490,6 +526,12 @@ NIMCP_API nimcp_error_t qme_integrate_importance(
         double sum_fwsq = 0.0;
 
         for (uint32_t n = 0; n < sim->config.num_samples; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && sim->config.num_samples > 256) {
+                quantum_math_engine_heartbeat("quantum_math_loop",
+                                 (float)(n + 1) / (float)sim->config.num_samples);
+            }
+
             /* Sample from proposal */
             sample_from_domain(sim, domain, sample);
 
@@ -557,6 +599,12 @@ NIMCP_API nimcp_error_t qme_estimate_expectation(
 
         /* Initialize chain */
         for (uint32_t i = 0; i < dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && dim > 256) {
+                quantum_math_engine_heartbeat("quantum_math_loop",
+                                 (float)(i + 1) / (float)dim);
+            }
+
             current[i] = random_normal(sim);
         }
 
@@ -569,6 +617,12 @@ NIMCP_API nimcp_error_t qme_estimate_expectation(
         for (uint32_t iter = 0; iter < sim->config.num_samples + sim->config.burnin; iter++) {
             /* Propose new state */
             for (uint32_t i = 0; i < dim; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && dim > 256) {
+                    quantum_math_engine_heartbeat("quantum_math_loop",
+                                     (float)(i + 1) / (float)dim);
+                }
+
                 proposed[i] = current[i] + sim->current_step_size * random_normal(sim);
             }
 
@@ -692,6 +746,12 @@ NIMCP_API nimcp_error_t qme_partition_function(
 
         /* Initialize */
         for (uint32_t i = 0; i < dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && dim > 256) {
+                quantum_math_engine_heartbeat("quantum_math_loop",
+                                 (float)(i + 1) / (float)dim);
+            }
+
             current[i] = random_normal(sim);
         }
         float current_energy = energy_func(current, dim, user_data);
@@ -706,6 +766,12 @@ NIMCP_API nimcp_error_t qme_partition_function(
         for (uint32_t iter = 0; iter < sim->config.num_samples + sim->config.burnin; iter++) {
             /* Propose */
             for (uint32_t i = 0; i < dim; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && dim > 256) {
+                    quantum_math_engine_heartbeat("quantum_math_loop",
+                                     (float)(i + 1) / (float)dim);
+                }
+
                 proposed[i] = current[i] + sim->current_step_size * random_normal(sim);
             }
 
@@ -816,8 +882,20 @@ NIMCP_API nimcp_error_t qme_path_integral(
 
         /* Initialize path with linear interpolation */
         for (uint32_t t = 0; t < num_time_steps; t++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((t & 0xFF) == 0 && num_time_steps > 256) {
+                quantum_math_engine_heartbeat("quantum_math_loop",
+                                 (float)(t + 1) / (float)num_time_steps);
+            }
+
             float alpha = (float)t / (num_time_steps - 1);
             for (uint32_t d = 0; d < dim; d++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((d & 0xFF) == 0 && dim > 256) {
+                    quantum_math_engine_heartbeat("quantum_math_loop",
+                                     (float)(d + 1) / (float)dim);
+                }
+
                 current_path[t * dim + d] = (1.0f - alpha) * initial[d] + alpha * final[d];
             }
         }
@@ -834,12 +912,24 @@ NIMCP_API nimcp_error_t qme_path_integral(
 
         /* Path integral Monte Carlo */
         for (uint32_t iter = 0; iter < sim->config.num_samples; iter++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((iter & 0xFF) == 0 && sim->config.num_samples > 256) {
+                quantum_math_engine_heartbeat("quantum_math_loop",
+                                 (float)(iter + 1) / (float)sim->config.num_samples);
+            }
+
             /* Copy current path */
             memcpy(proposed_path, current_path, path_size * sizeof(float));
 
             /* Perturb interior points */
             for (uint32_t t = 1; t < num_time_steps - 1; t++) {
                 for (uint32_t d = 0; d < dim; d++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((d & 0xFF) == 0 && dim > 256) {
+                        quantum_math_engine_heartbeat("quantum_math_loop",
+                                         (float)(d + 1) / (float)dim);
+                    }
+
                     proposed_path[t * dim + d] += 0.1f * random_normal(sim);
                 }
             }
@@ -903,8 +993,20 @@ NIMCP_API nimcp_error_t qme_find_classical_path(
 
     /* Initialize with linear interpolation */
     for (uint32_t t = 0; t < num_time_steps; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && num_time_steps > 256) {
+            quantum_math_engine_heartbeat("quantum_math_loop",
+                             (float)(t + 1) / (float)num_time_steps);
+        }
+
         float alpha = (float)t / (num_time_steps - 1);
         for (uint32_t d = 0; d < dim; d++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((d & 0xFF) == 0 && dim > 256) {
+                quantum_math_engine_heartbeat("quantum_math_loop",
+                                 (float)(d + 1) / (float)dim);
+            }
+
             path[t * dim + d] = (1.0f - alpha) * initial[d] + alpha * final[d];
         }
     }
@@ -921,11 +1023,23 @@ NIMCP_API nimcp_error_t qme_find_classical_path(
     }
 
     for (uint32_t iter = 0; iter < 1000; iter++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((iter & 0xFF) == 0 && 1000 > 256) {
+            quantum_math_engine_heartbeat("quantum_math_loop",
+                             (float)(iter + 1) / (float)1000);
+        }
+
         float current_action = action(path, num_time_steps, dim, user_data);
 
         /* Compute numerical gradient */
         for (uint32_t t = 1; t < num_time_steps - 1; t++) {
             for (uint32_t d = 0; d < dim; d++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((d & 0xFF) == 0 && dim > 256) {
+                    quantum_math_engine_heartbeat("quantum_math_loop",
+                                     (float)(d + 1) / (float)dim);
+                }
+
                 uint32_t idx = t * dim + d;
                 path[idx] += epsilon;
                 float action_plus = action(path, num_time_steps, dim, user_data);
@@ -941,6 +1055,12 @@ NIMCP_API nimcp_error_t qme_find_classical_path(
         float max_grad = 0.0f;
         for (uint32_t t = 1; t < num_time_steps - 1; t++) {
             for (uint32_t d = 0; d < dim; d++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((d & 0xFF) == 0 && dim > 256) {
+                    quantum_math_engine_heartbeat("quantum_math_loop",
+                                     (float)(d + 1) / (float)dim);
+                }
+
                 uint32_t idx = t * dim + d;
                 path[idx] -= learning_rate * gradient[idx];
                 if (fabsf(gradient[idx]) > max_grad) {
@@ -1035,6 +1155,12 @@ NIMCP_API float qme_domain_volume(const qme_domain_t* domain) {
         case QME_DOMAIN_BOX: {
             float vol = 1.0f;
             for (uint32_t i = 0; i < domain->dim; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && domain->dim > 256) {
+                    quantum_math_engine_heartbeat("quantum_math_loop",
+                                     (float)(i + 1) / (float)domain->dim);
+                }
+
                 vol *= domain->upper_bounds[i] - domain->lower_bounds[i];
             }
             return vol;

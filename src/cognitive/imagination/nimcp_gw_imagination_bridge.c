@@ -36,7 +36,7 @@ static nimcp_health_agent_t* g_gw_imagination_bridge_health_agent = NULL;
  * @brief Set health agent for gw_imagination_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void gw_imagination_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void gw_imagination_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_gw_imagination_bridge_health_agent = agent;
 }
 
@@ -54,6 +54,10 @@ static inline void gw_imagination_bridge_heartbeat(const char* operation, float 
 
 int gw_imagination_default_config(gw_imagination_config_t* config) {
     if (!config) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_defau", 0.0f);
+
 
     config->attention_boost_factor = GW_IMAG_DEFAULT_ATTENTION_BOOST;
     config->focus_decay_rate = 0.05f;
@@ -75,6 +79,10 @@ int gw_imagination_default_config(gw_imagination_config_t* config) {
 
 int gw_imagination_validate_config(const gw_imagination_config_t* config) {
     if (!config) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_valid", 0.0f);
+
 
     if (config->attention_boost_factor < 1.0f || config->attention_boost_factor > 3.0f) {
         return -1;
@@ -111,6 +119,10 @@ int gw_imagination_validate_config(const gw_imagination_config_t* config) {
 gw_imagination_bridge_t* gw_imagination_bridge_create(
     const gw_imagination_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_create", 0.0f);
+
+
     gw_imagination_bridge_t* bridge = nimcp_calloc(
         1, sizeof(gw_imagination_bridge_t));
     if (!bridge) {
@@ -157,6 +169,12 @@ gw_imagination_bridge_t* gw_imagination_bridge_create(
     /* Initialize pending submissions */
     bridge->num_pending = 0;
     for (uint32_t i = 0; i < GW_IMAG_MAX_COMPETING_SCENARIOS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && GW_IMAG_MAX_COMPETING_SCENARIOS > 256) {
+            gw_imagination_bridge_heartbeat("gw_imaginati_loop",
+                             (float)(i + 1) / (float)GW_IMAG_MAX_COMPETING_SCENARIOS);
+        }
+
         bridge->pending_submissions[i].pending = false;
     }
 
@@ -174,6 +192,10 @@ void gw_imagination_bridge_destroy(gw_imagination_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         gw_imagination_disconnect_bio_async(bridge);
     }
@@ -200,6 +222,10 @@ void gw_imagination_bridge_destroy(gw_imagination_bridge_t* bridge) {
 int gw_imagination_reset(gw_imagination_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_reset", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Clear effects (but preserve allocated tensors) */
@@ -217,6 +243,12 @@ int gw_imagination_reset(gw_imagination_bridge_t* bridge) {
     /* Clear pending submissions */
     bridge->num_pending = 0;
     for (uint32_t i = 0; i < GW_IMAG_MAX_COMPETING_SCENARIOS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && GW_IMAG_MAX_COMPETING_SCENARIOS > 256) {
+            gw_imagination_bridge_heartbeat("gw_imaginati_loop",
+                             (float)(i + 1) / (float)GW_IMAG_MAX_COMPETING_SCENARIOS);
+        }
+
         bridge->pending_submissions[i].pending = false;
     }
 
@@ -233,6 +265,10 @@ int gw_imagination_connect_global_workspace(
     global_workspace_t* gw)
 {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_conne", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -255,6 +291,10 @@ int gw_imagination_connect_imagination(
 {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_conne", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->imagination = imagination;
@@ -271,15 +311,27 @@ int gw_imagination_connect_imagination(
 }
 
 int gw_imagination_disconnect_global_workspace(gw_imagination_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_disco", 0.0f);
+
+
     return gw_imagination_connect_global_workspace(bridge, NULL);
 }
 
 int gw_imagination_disconnect_imagination(gw_imagination_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_disco", 0.0f);
+
+
     return gw_imagination_connect_imagination(bridge, NULL);
 }
 
 bool gw_imagination_is_connected(const gw_imagination_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_is_co", 0.0f);
+
+
     return bridge->base.bridge_active;
 }
 
@@ -293,6 +345,10 @@ int gw_imagination_update(
 {
     if (!bridge) return -1;
     if (!bridge->base.bridge_active) return 0;  /* Nothing to do */
+
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_updat", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -330,6 +386,10 @@ int gw_imagination_compute_gw_effects(gw_imagination_bridge_t* bridge) {
     /* In a full implementation, this would call global workspace APIs */
 
     /* Check if there's a current broadcast */
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_compu", 0.0f);
+
+
     bool has_broadcast = global_workspace_has_broadcast(bridge->global_workspace);
 
     if (has_broadcast) {
@@ -367,6 +427,10 @@ int gw_imagination_compute_imag_effects(gw_imagination_bridge_t* bridge) {
     }
 
     /* Compute combined salience */
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_compu", 0.0f);
+
+
     float combined_salience =
         bridge->imag_to_gw.novelty_salience * bridge->config.salience_weight_novelty +
         bridge->imag_to_gw.emotional_salience * bridge->config.salience_weight_emotional +
@@ -387,6 +451,10 @@ int gw_imagination_apply_effects(gw_imagination_bridge_t* bridge) {
     if (!bridge) return -1;
 
     /* Apply GW effects to imagination */
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_apply", 0.0f);
+
+
     if (bridge->imagination && bridge->gw_to_imag.attention_boost > 1.0f) {
         /* Would call imagination APIs to boost vividness */
         bridge->stats.attention_boosts_applied++;
@@ -400,6 +468,12 @@ int gw_imagination_apply_effects(gw_imagination_bridge_t* bridge) {
     /* Process pending submissions to workspace */
     if (bridge->global_workspace && bridge->num_pending > 0) {
         for (uint32_t i = 0; i < GW_IMAG_MAX_COMPETING_SCENARIOS; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && GW_IMAG_MAX_COMPETING_SCENARIOS > 256) {
+                gw_imagination_bridge_heartbeat("gw_imaginati_loop",
+                                 (float)(i + 1) / (float)GW_IMAG_MAX_COMPETING_SCENARIOS);
+            }
+
             if (bridge->pending_submissions[i].pending) {
                 /* Submit to global workspace competition */
                 /* In full implementation: global_workspace_submit(...) */
@@ -435,6 +509,10 @@ int gw_imagination_submit_for_broadcast(
     if (!bridge) return -1;
     if (strength < 0.0f || strength > 1.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_submi", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Find an empty slot */
@@ -445,6 +523,12 @@ int gw_imagination_submit_for_broadcast(
     }
 
     for (uint32_t i = 0; i < GW_IMAG_MAX_COMPETING_SCENARIOS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && GW_IMAG_MAX_COMPETING_SCENARIOS > 256) {
+            gw_imagination_bridge_heartbeat("gw_imaginati_loop",
+                             (float)(i + 1) / (float)GW_IMAG_MAX_COMPETING_SCENARIOS);
+        }
+
         if (!bridge->pending_submissions[i].pending) {
             bridge->pending_submissions[i].scenario_id = scenario_id;
             bridge->pending_submissions[i].strength = strength;
@@ -468,6 +552,10 @@ int gw_imagination_request_attention_boost(
     if (!bridge) return -1;
     if (boost_level < 0.0f || boost_level > 1.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_reque", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Set focus strength which will translate to attention boost */
@@ -484,6 +572,10 @@ int gw_imagination_set_conscious_goal(
     const nimcp_tensor_t* goal_embedding)
 {
     if (!bridge || !goal_embedding) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_set_c", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -506,6 +598,10 @@ int gw_imagination_set_conscious_goal(
 int gw_imagination_clear_conscious_goal(gw_imagination_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_clear", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->gw_to_imag.goal_embedding) {
@@ -523,11 +619,19 @@ bool gw_imagination_is_broadcasting(const gw_imagination_bridge_t* bridge) {
 
     /* Check if imagination module is currently broadcasting */
     /* In full implementation, would check global_workspace_get_broadcast_source() */
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_is_br", 0.0f);
+
+
     return false;  /* Placeholder */
 }
 
 float gw_imagination_get_broadcast_strength(const gw_imagination_bridge_t* bridge) {
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_get_b", 0.0f);
+
+
     return bridge->imag_to_gw.submission_strength;
 }
 
@@ -542,6 +646,10 @@ int gw_imagination_get_gw_effects(
     if (!bridge || !effects) return -1;
 
     *effects = bridge->gw_to_imag;
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_get_g", 0.0f);
+
+
     return 0;
 }
 
@@ -552,6 +660,10 @@ int gw_imagination_get_imag_effects(
     if (!bridge || !effects) return -1;
 
     *effects = bridge->imag_to_gw;
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_get_i", 0.0f);
+
+
     return 0;
 }
 
@@ -562,11 +674,19 @@ int gw_imagination_get_stats(
     if (!bridge || !stats) return -1;
 
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_get_s", 0.0f);
+
+
     return 0;
 }
 
 int gw_imagination_reset_stats(gw_imagination_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_reset", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -577,6 +697,10 @@ int gw_imagination_reset_stats(gw_imagination_bridge_t* bridge) {
 
 uint32_t gw_imagination_get_pending_count(const gw_imagination_bridge_t* bridge) {
     if (!bridge) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_get_p", 0.0f);
+
+
     return bridge->num_pending;
 }
 
@@ -589,6 +713,10 @@ int gw_imagination_connect_bio_async(gw_imagination_bridge_t* bridge) {
     if (bridge->base.bio_async_enabled) return 0;  /* Already connected */
 
     /* Use bridge base helper */
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_conne", 0.0f);
+
+
     int result = bridge_base_connect_bio_async(&bridge->base);
     if (result == 0) {
         NIMCP_LOGGING_INFO("GW-imagination bridge connected to bio-async");
@@ -601,6 +729,10 @@ int gw_imagination_disconnect_bio_async(gw_imagination_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->base.bio_async_enabled) return 0;  /* Already disconnected */
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_disco", 0.0f);
+
+
     int result = bridge_base_disconnect_bio_async(&bridge->base);
     if (result == 0) {
         NIMCP_LOGGING_INFO("GW-imagination bridge disconnected from bio-async");
@@ -611,6 +743,10 @@ int gw_imagination_disconnect_bio_async(gw_imagination_bridge_t* bridge) {
 
 bool gw_imagination_is_bio_async_connected(const gw_imagination_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_is_bi", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -626,6 +762,10 @@ int gw_imagination_process_messages(gw_imagination_bridge_t* bridge) {
      * - BIO_MSG_GW_COMPETITION_RESULT
      */
 
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_proce", 0.0f);
+
+
     return 0;
 }
 
@@ -640,9 +780,19 @@ int gw_imagination_process_messages(gw_imagination_bridge_t* bridge) {
  */
 int gw_imagination_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    gw_imagination_bridge_heartbeat("gw_imaginati_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "GW_Imagination_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                gw_imagination_bridge_heartbeat("gw_imaginati_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("GW Imagination Bridge self-knowledge: %s", self->observations[i]);
         }
     }

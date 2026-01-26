@@ -31,7 +31,7 @@ static nimcp_health_agent_t* g_emotional_system_sleep_bridge_health_agent = NULL
  * @brief Set health agent for emotional_system_sleep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void emotional_system_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void emotional_system_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_emotional_system_sleep_bridge_health_agent = agent;
 }
 
@@ -116,6 +116,10 @@ static void emotional_on_sleep_state_change(sleep_state_t new_state, void* user_
 
 int emotional_sleep_default_config(emotional_sleep_config_t* config) {
     if (!config) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_sleep_bridge_heartbeat("emotional_sy_emotional_sleep_defa", 0.0f);
+
+
     config->enable_regulation_modulation = true;
     config->enable_reactivity_modulation = true;
     config->modulation_strength = 1.0f;
@@ -133,6 +137,10 @@ emotional_sleep_bridge_t emotional_sleep_bridge_create(
         return NULL;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_sleep_bridge_heartbeat("emotional_sy_emotional_sleep_brid", 0.0f);
+
 
     struct emotional_sleep_bridge_struct* bridge =
         (struct emotional_sleep_bridge_struct*)nimcp_malloc(sizeof(struct emotional_sleep_bridge_struct));
@@ -183,6 +191,10 @@ void emotional_sleep_bridge_destroy(emotional_sleep_bridge_t bridge) {
     if (!bridge) return;
 
     /* Unregister callback if it was registered */
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_sleep_bridge_heartbeat("emotional_sy_emotional_sleep_brid", 0.0f);
+
+
     if (bridge->callback_registered && bridge->sleep_system) {
         bool unregistered = sleep_unregister_state_callback(
             bridge->sleep_system,
@@ -200,6 +212,10 @@ void emotional_sleep_bridge_destroy(emotional_sleep_bridge_t bridge) {
 
 int emotional_sleep_update(emotional_sleep_bridge_t bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_sleep_bridge_heartbeat("emotional_sy_emotional_sleep_upda", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -252,6 +268,10 @@ int emotional_sleep_update(emotional_sleep_bridge_t bridge) {
 
 int emotional_sleep_get_effects(const emotional_sleep_bridge_t bridge, emotional_sleep_effects_t* effects) {
     if (!bridge || !effects) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_sleep_bridge_heartbeat("emotional_sy_emotional_sleep_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -260,6 +280,10 @@ int emotional_sleep_get_effects(const emotional_sleep_bridge_t bridge, emotional
 
 float emotional_sleep_get_regulation_capacity(const emotional_sleep_bridge_t bridge) {
     if (!bridge) return 1.0f;
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_sleep_bridge_heartbeat("emotional_sy_emotional_sleep_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.regulation_capacity_factor;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -268,6 +292,10 @@ float emotional_sleep_get_regulation_capacity(const emotional_sleep_bridge_t bri
 
 bool emotional_sleep_is_processing_active(const emotional_sleep_bridge_t bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_sleep_bridge_heartbeat("emotional_sy_emotional_sleep_is_p", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.emotional_processing_active;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -275,6 +303,10 @@ bool emotional_sleep_is_processing_active(const emotional_sleep_bridge_t bridge)
 }
 
 float emotional_sleep_regulation_for_state(sleep_state_t state) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_sleep_bridge_heartbeat("emotional_sy_emotional_sleep_regu", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return EMOTIONAL_SLEEP_REGULATION_AWAKE;
         case SLEEP_STATE_DROWSY:     return EMOTIONAL_SLEEP_REGULATION_DROWSY;
@@ -286,6 +318,10 @@ float emotional_sleep_regulation_for_state(sleep_state_t state) {
 }
 
 float emotional_sleep_reactivity_for_state(sleep_state_t state) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_sleep_bridge_heartbeat("emotional_sy_emotional_sleep_reac", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return EMOTIONAL_SLEEP_REACTIVITY_AWAKE;
         case SLEEP_STATE_DROWSY:     return EMOTIONAL_SLEEP_REACTIVITY_DROWSY;
@@ -303,9 +339,19 @@ float emotional_sleep_reactivity_for_state(sleep_state_t state) {
 int emotional_system_sleep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_sleep_bridge_heartbeat("emotional_sy_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Emotional_System_Sleep_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                emotional_system_sleep_bridge_heartbeat("emotional_sy_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

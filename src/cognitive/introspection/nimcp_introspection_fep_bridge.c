@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_introspection_fep_bridge_health_agent = NULL;
  * @brief Set health agent for introspection_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void introspection_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void introspection_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_introspection_fep_bridge_health_agent = agent;
 }
 
@@ -46,6 +46,10 @@ static inline void introspection_fep_bridge_heartbeat(const char* operation, flo
 
 
 int introspection_fep_bridge_default_config(introspection_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    introspection_fep_bridge_heartbeat("introspectio_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->pe_threshold = INTROSPECTION_FEP_HIGH_PE_THRESHOLD;
     config->uncertainty_threshold = INTROSPECTION_FEP_HIGH_UNCERTAINTY;
@@ -57,6 +61,10 @@ int introspection_fep_bridge_default_config(introspection_fep_config_t* config) 
 }
 
 introspection_fep_bridge_t* introspection_fep_bridge_create(const introspection_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    introspection_fep_bridge_heartbeat("introspectio_create", 0.0f);
+
+
     introspection_fep_bridge_t* bridge = (introspection_fep_bridge_t*)nimcp_malloc(sizeof(introspection_fep_bridge_t));
     if (!bridge) {
 
@@ -77,6 +85,10 @@ introspection_fep_bridge_t* introspection_fep_bridge_create(const introspection_
 
 void introspection_fep_bridge_destroy(introspection_fep_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    introspection_fep_bridge_heartbeat("introspectio_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) introspection_fep_bridge_disconnect_bio_async(bridge);
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
@@ -85,6 +97,10 @@ void introspection_fep_bridge_destroy(introspection_fep_bridge_t* bridge) {
 }
 
 int introspection_fep_bridge_connect_fep(introspection_fep_bridge_t* bridge, fep_system_t* fep) {
+    /* Phase 8: Heartbeat at operation start */
+    introspection_fep_bridge_heartbeat("introspectio_connect_fep", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -93,6 +109,10 @@ int introspection_fep_bridge_connect_fep(introspection_fep_bridge_t* bridge, fep
 }
 
 int introspection_fep_bridge_connect_introspection(introspection_fep_bridge_t* bridge, introspection_context_t intro) {
+    /* Phase 8: Heartbeat at operation start */
+    introspection_fep_bridge_heartbeat("introspectio_connect_introspectio", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && intro, NIMCP_ERROR_NULL_POINTER, "bridge or introspection is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->introspection_system = intro;
@@ -101,6 +121,10 @@ int introspection_fep_bridge_connect_introspection(introspection_fep_bridge_t* b
 }
 
 int introspection_fep_estimate_precision(introspection_fep_bridge_t* bridge, float* precision) {
+    /* Phase 8: Heartbeat at operation start */
+    introspection_fep_bridge_heartbeat("introspectio_introspection_fep_es", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && precision, NIMCP_ERROR_NULL_POINTER, "bridge or precision is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *precision = bridge->state.current_precision;
@@ -110,6 +134,10 @@ int introspection_fep_estimate_precision(introspection_fep_bridge_t* bridge, flo
 }
 
 int introspection_fep_monitor_uncertainty(introspection_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    introspection_fep_bridge_heartbeat("introspectio_introspection_fep_mo", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->effects.uncertainty_estimate = bridge->state.current_uncertainty;
@@ -118,6 +146,10 @@ int introspection_fep_monitor_uncertainty(introspection_fep_bridge_t* bridge) {
 }
 
 int introspection_fep_meta_learn(introspection_fep_bridge_t* bridge, float prediction_error) {
+    /* Phase 8: Heartbeat at operation start */
+    introspection_fep_bridge_heartbeat("introspectio_introspection_fep_me", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_meta_learning) return NIMCP_SUCCESS;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -134,6 +166,10 @@ int introspection_fep_meta_learn(introspection_fep_bridge_t* bridge, float predi
 }
 
 int introspection_fep_bridge_update(introspection_fep_bridge_t* bridge, uint64_t delta_ms) {
+    /* Phase 8: Heartbeat at operation start */
+    introspection_fep_bridge_heartbeat("introspectio_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->effects.meta_confidence = 1.0f - bridge->state.current_uncertainty;
@@ -144,6 +180,10 @@ int introspection_fep_bridge_update(introspection_fep_bridge_t* bridge, uint64_t
 }
 
 int introspection_fep_bridge_get_state(const introspection_fep_bridge_t* bridge, introspection_fep_state_t* state) {
+    /* Phase 8: Heartbeat at operation start */
+    introspection_fep_bridge_heartbeat("introspectio_get_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -152,6 +192,10 @@ int introspection_fep_bridge_get_state(const introspection_fep_bridge_t* bridge,
 }
 
 int introspection_fep_bridge_get_stats(const introspection_fep_bridge_t* bridge, introspection_fep_stats_t* stats) {
+    /* Phase 8: Heartbeat at operation start */
+    introspection_fep_bridge_heartbeat("introspectio_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -160,6 +204,10 @@ int introspection_fep_bridge_get_stats(const introspection_fep_bridge_t* bridge,
 }
 
 int introspection_fep_bridge_connect_bio_async(introspection_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    introspection_fep_bridge_heartbeat("introspectio_connect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
     bio_module_info_t info = {
@@ -178,12 +226,20 @@ int introspection_fep_bridge_connect_bio_async(introspection_fep_bridge_t* bridg
 
 int introspection_fep_bridge_disconnect_bio_async(introspection_fep_bridge_t* bridge) {
     if (!bridge || !bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
+    /* Phase 8: Heartbeat at operation start */
+    introspection_fep_bridge_heartbeat("introspectio_disconnect_bio_async", 0.0f);
+
+
     if (bridge->base.bio_ctx) bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_async_enabled = false;
     return NIMCP_SUCCESS;
 }
 
 bool introspection_fep_bridge_is_bio_async_connected(const introspection_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    introspection_fep_bridge_heartbeat("introspectio_is_bio_async_connect", 0.0f);
+
+
     return bridge ? bridge->base.bio_async_enabled : false;
 }
 
@@ -203,10 +259,20 @@ int introspection_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
     /* Query our own entity from the knowledge graph */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_fep_bridge_heartbeat("introspectio_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Introspection_FEP_Bridge");
     if (self) {
         /* Module now knows its own capabilities from KG */
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                introspection_fep_bridge_heartbeat("introspectio_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG(LOG_MODULE_INTROSPECTION_FEP " self-knowledge: %s", self->observations[i]);
         }
     }

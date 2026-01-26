@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_wellbeing_plasticity_bridge_health_agent = NULL;
  * @brief Set health agent for wellbeing_plasticity_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void wellbeing_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void wellbeing_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_wellbeing_plasticity_bridge_health_agent = agent;
 }
 
@@ -96,6 +96,12 @@ static wellbeing_plasticity_synapse_t* find_synapse(
     uint32_t synapse_id
 ) {
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         if (bridge->synapses[i].synapse_id == synapse_id) {
             return &bridge->synapses[i];
         }
@@ -112,6 +118,10 @@ static bool is_protected_type(wellbeing_synapse_type_t type) {
 //=============================================================================
 
 wellbeing_plasticity_config_t wellbeing_plasticity_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);
+
+
     wellbeing_plasticity_config_t config = {
         .base_learning_rate = WELLBEING_PLASTICITY_DEFAULT_LR,
         .stdp_tau_plus_ms = 20.0f,
@@ -146,6 +156,10 @@ wellbeing_plasticity_config_t wellbeing_plasticity_config_default(void) {
 wellbeing_plasticity_bridge_t* wellbeing_plasticity_create(
     const wellbeing_plasticity_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);
+
+
     wellbeing_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(wellbeing_plasticity_bridge_t));
     if (!bridge) {
 
@@ -200,6 +214,10 @@ wellbeing_plasticity_bridge_t* wellbeing_plasticity_create(
 void wellbeing_plasticity_destroy(wellbeing_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);
+
+
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
     }
@@ -211,10 +229,20 @@ void wellbeing_plasticity_destroy(wellbeing_plasticity_bridge_t* bridge) {
 int wellbeing_plasticity_reset(wellbeing_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset synapses to initial weights but keep registrations */
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         bridge->synapses[i].weight = bridge->synapses[i].initial_weight;
         bridge->synapses[i].eligibility_trace = 0.0f;
         bridge->synapses[i].bcm_threshold = bridge->config.bcm_target_rate;
@@ -251,6 +279,10 @@ int wellbeing_plasticity_register_synapse(
     float initial_weight
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -296,10 +328,20 @@ int wellbeing_plasticity_unregister_synapse(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     int found_idx = -1;
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         if (bridge->synapses[i].synapse_id == synapse_id) {
             found_idx = (int)i;
             break;
@@ -328,6 +370,10 @@ int wellbeing_plasticity_get_synapse(
 ) {
     if (!bridge || !synapse) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     wellbeing_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
@@ -347,6 +393,10 @@ int wellbeing_plasticity_protect_synapse(
     bool protect
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -373,6 +423,10 @@ int wellbeing_plasticity_learn(
     float context
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = WELLBEING_PLASTICITY_STATE_LEARNING;
@@ -506,6 +560,10 @@ float wellbeing_plasticity_apply_stdp(
 ) {
     if (!bridge) return NAN;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     wellbeing_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
@@ -559,6 +617,10 @@ int wellbeing_plasticity_apply_reward(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     reward = clamp_f(reward, -1.0f, 1.0f);
@@ -567,6 +629,12 @@ int wellbeing_plasticity_apply_reward(
     /* Apply reward to all non-protected synapses */
     float reward_factor = 1.0f + reward * 0.1f;
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         if (!bridge->synapses[i].is_protected) {
             /* Modulate eligibility traces */
             bridge->synapses[i].eligibility_trace *= reward_factor;
@@ -592,12 +660,22 @@ int wellbeing_plasticity_update_bcm(
     if (!bridge) return -1;
     if (dt_ms <= 0.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* BCM threshold sliding based on average activity */
     float decay = expf(-dt_ms / bridge->config.bcm_tau_ms);
 
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         wellbeing_plasticity_synapse_t* syn = &bridge->synapses[i];
 
         /* Update average activity */
@@ -623,6 +701,10 @@ int wellbeing_plasticity_homeostatic_update(
     if (!bridge) return -1;
     if (dt_ms <= 0.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Calculate mean wellbeing across weights */
@@ -630,6 +712,12 @@ int wellbeing_plasticity_homeostatic_update(
     uint32_t unprotected_count = 0;
 
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         if (!bridge->synapses[i].is_protected) {
             mean_weight += bridge->synapses[i].weight;
             unprotected_count++;
@@ -649,6 +737,12 @@ int wellbeing_plasticity_homeostatic_update(
     /* Apply slow homeostatic scaling to weights */
     float scale = 1.0f + correction * 0.01f;
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         if (!bridge->synapses[i].is_protected) {
             bridge->synapses[i].weight = clamp_f(
                 bridge->synapses[i].weight * scale,
@@ -669,12 +763,22 @@ int wellbeing_plasticity_update_traces(
     if (!bridge) return -1;
     if (dt_ms <= 0.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Decay eligibility traces */
     float decay = expf(-dt_ms / 100.0f);  /* 100ms time constant */
 
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         bridge->synapses[i].eligibility_trace *= decay;
     }
 
@@ -692,6 +796,10 @@ int wellbeing_plasticity_update_traces(
 int wellbeing_plasticity_consolidate(wellbeing_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = WELLBEING_PLASTICITY_STATE_CONSOLIDATING;
 
@@ -699,6 +807,12 @@ int wellbeing_plasticity_consolidate(wellbeing_plasticity_bridge_t* bridge) {
     float threshold = 0.5f;
 
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         wellbeing_plasticity_synapse_t* syn = &bridge->synapses[i];
 
         if (syn->is_protected) continue;
@@ -728,10 +842,20 @@ int wellbeing_plasticity_consolidate(wellbeing_plasticity_bridge_t* bridge) {
 int wellbeing_plasticity_protect_resilience(wellbeing_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     int protected_count = 0;
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         if (bridge->synapses[i].type == WELLBEING_SYNAPSE_RESILIENCE) {
             bridge->synapses[i].is_protected = true;
             protected_count++;
@@ -745,12 +869,22 @@ int wellbeing_plasticity_protect_resilience(wellbeing_plasticity_bridge_t* bridg
 int wellbeing_plasticity_protect_flourishing(wellbeing_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     int protected_count = 0;
     /* Protect synapses that represent core flourishing capacity */
     /* In practice, this would protect specific synapse patterns */
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         /* Protect high-weight synapses as they represent established patterns */
         if (bridge->synapses[i].weight > 0.8f &&
             bridge->synapses[i].type != WELLBEING_SYNAPSE_RESILIENCE) {
@@ -773,6 +907,10 @@ int wellbeing_plasticity_get_foundation_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->foundation;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -786,6 +924,10 @@ int wellbeing_plasticity_get_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
@@ -797,6 +939,12 @@ int wellbeing_plasticity_get_state(
     /* Calculate mean weight and variance */
     float mean = 0.0f;
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         mean += bridge->synapses[i].weight;
     }
     if (bridge->synapse_count > 0) {
@@ -806,6 +954,12 @@ int wellbeing_plasticity_get_state(
 
     float variance = 0.0f;
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         float diff = bridge->synapses[i].weight - mean;
         variance += diff * diff;
     }
@@ -824,6 +978,10 @@ int wellbeing_plasticity_get_stats(
 ) {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -833,6 +991,10 @@ int wellbeing_plasticity_get_stats(
 
 int wellbeing_plasticity_reset_stats(wellbeing_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(wellbeing_plasticity_stats_t));
@@ -852,6 +1014,10 @@ int wellbeing_plasticity_register_learn_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->learn_callback = callback;
     bridge->learn_callback_data = user_data;
@@ -866,6 +1032,10 @@ int wellbeing_plasticity_register_foundation_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->foundation_callback = callback;
@@ -883,6 +1053,10 @@ int wellbeing_plasticity_bio_async_connect(wellbeing_plasticity_bridge_t* bridge
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
@@ -894,6 +1068,10 @@ int wellbeing_plasticity_bio_async_connect(wellbeing_plasticity_bridge_t* bridge
 int wellbeing_plasticity_bio_async_disconnect(wellbeing_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -903,6 +1081,10 @@ int wellbeing_plasticity_bio_async_disconnect(wellbeing_plasticity_bridge_t* bri
 
 bool wellbeing_plasticity_is_bio_async_connected(wellbeing_plasticity_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;

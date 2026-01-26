@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_jepa_context_health_agent = NULL;
  * @brief Set health agent for jepa_context heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void jepa_context_set_health_agent(nimcp_health_agent_t* agent) {
+void jepa_context_set_health_agent(nimcp_health_agent_t* agent) {
     g_jepa_context_health_agent = agent;
 }
 
@@ -88,6 +88,10 @@ static int compose_context(jepa_context_encoder_t* encoder);
 
 int jepa_context_default_config(jepa_context_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_context_heartbeat("jepa_context_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     memset(config, 0, sizeof(*config));
@@ -152,6 +156,10 @@ int jepa_context_default_config(jepa_context_config_t* config)
 jepa_context_encoder_t* jepa_context_encoder_create(
     const jepa_context_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_context_heartbeat("jepa_context_encoder_create", 0.0f);
+
+
     jepa_context_encoder_t* encoder = NULL;
     jepa_context_config_t default_config;
     int rc;
@@ -298,6 +306,10 @@ void jepa_context_encoder_destroy(jepa_context_encoder_t* encoder)
     }
 
     /* Disconnect from bio-async */
+    /* Phase 8: Heartbeat at operation start */
+    jepa_context_heartbeat("jepa_context_encoder_destroy", 0.0f);
+
+
     jepa_context_disconnect_bio_async(encoder);
 
     /* Free context state */
@@ -336,6 +348,10 @@ void jepa_context_encoder_destroy(jepa_context_encoder_t* encoder)
 
 int jepa_context_encoder_reset(jepa_context_encoder_t* encoder)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_context_heartbeat("jepa_context_encoder_reset", 0.0f);
+
+
     NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
 
     /* Clear context */
@@ -353,6 +369,10 @@ int jepa_context_encoder_reset(jepa_context_encoder_t* encoder)
 
 jepa_context_state_t* jepa_context_state_create(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_context_heartbeat("jepa_context_state_create", 0.0f);
+
+
     jepa_context_state_t* state = (jepa_context_state_t*)nimcp_calloc(
         1, sizeof(jepa_context_state_t));
     return state;
@@ -363,6 +383,10 @@ void jepa_context_state_destroy(jepa_context_state_t* state)
     if (!state) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    jepa_context_heartbeat("jepa_context_state_destroy", 0.0f);
+
 
     nimcp_free(state->task.goal_embedding);
     nimcp_free(state->task.task_embedding);
@@ -382,6 +406,10 @@ int jepa_context_set_task(
     const float* task_embedding,
     uint32_t task_dim)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_context_heartbeat("jepa_context_set_task", 0.0f);
+
+
     NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
     NIMCP_CHECK_THROW(encoder->current_context, NIMCP_ERROR_INVALID_PARAM, "encoder->current_context is NULL");
     NIMCP_CHECK_THROW(goal_dim == 0 || goal_embedding, NIMCP_ERROR_NULL_POINTER, "goal_embedding is NULL but goal_dim > 0");
@@ -422,6 +450,10 @@ int jepa_context_set_working_memory(
     uint32_t item_dim,
     uint32_t num_items)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_context_heartbeat("jepa_context_set_working_memory", 0.0f);
+
+
     NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
     NIMCP_CHECK_THROW(encoder->current_context, NIMCP_ERROR_INVALID_PARAM, "encoder->current_context is NULL");
     NIMCP_CHECK_THROW(!(num_items > 0 && item_dim > 0) || wm_items,
@@ -449,11 +481,29 @@ int jepa_context_set_working_memory(
         }
 
         for (uint32_t i = 0; i < num_items; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_items > 256) {
+                jepa_context_heartbeat("jepa_context_loop",
+                                 (float)(i + 1) / (float)num_items);
+            }
+
             for (uint32_t j = 0; j < item_dim; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && item_dim > 256) {
+                    jepa_context_heartbeat("jepa_context_loop",
+                                     (float)(j + 1) / (float)item_dim);
+                }
+
                 wm->aggregated[j] += wm_items[i * item_dim + j];
             }
         }
         for (uint32_t j = 0; j < item_dim; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && item_dim > 256) {
+                jepa_context_heartbeat("jepa_context_loop",
+                                 (float)(j + 1) / (float)item_dim);
+            }
+
             wm->aggregated[j] /= (float)num_items;
         }
         wm->aggregated_dim = item_dim;
@@ -471,6 +521,10 @@ int jepa_context_set_attention(
     const float* attended_features,
     uint32_t feature_dim)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_context_heartbeat("jepa_context_set_attention", 0.0f);
+
+
     NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
     NIMCP_CHECK_THROW(encoder->current_context, NIMCP_ERROR_INVALID_PARAM, "encoder->current_context is NULL");
     NIMCP_CHECK_THROW(num_locations == 0 || attention_weights,
@@ -494,6 +548,12 @@ int jepa_context_set_attention(
         /* Compute attention entropy */
         attn->entropy = 0.0f;
         for (uint32_t i = 0; i < num_locations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_locations > 256) {
+                jepa_context_heartbeat("jepa_context_loop",
+                                 (float)(i + 1) / (float)num_locations);
+            }
+
             if (attention_weights[i] > 1e-8f) {
                 attn->entropy -= attention_weights[i] * logf(attention_weights[i]);
             }
@@ -522,6 +582,10 @@ int jepa_context_set_custom(
     const float* custom,
     uint32_t dim)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_context_heartbeat("jepa_context_set_custom", 0.0f);
+
+
     NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
     NIMCP_CHECK_THROW(encoder->current_context, NIMCP_ERROR_INVALID_PARAM, "encoder->current_context is NULL");
     NIMCP_CHECK_THROW(dim == 0 || custom, NIMCP_ERROR_INVALID_PARAM, "custom is NULL with dim > 0");
@@ -545,6 +609,10 @@ int jepa_context_set_custom(
 
 int jepa_context_clear(jepa_context_encoder_t* encoder)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_context_heartbeat("jepa_context_clear", 0.0f);
+
+
     NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
     NIMCP_CHECK_THROW(encoder->current_context, NIMCP_ERROR_INVALID_PARAM, "encoder->current_context is NULL");
 
@@ -589,6 +657,10 @@ int jepa_context_encode(
     const jepa_latent_t* input,
     jepa_latent_t* output)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_context_heartbeat("jepa_context_encode", 0.0f);
+
+
     NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
     NIMCP_CHECK_THROW(input, NIMCP_ERROR_INVALID_PARAM, "input is NULL");
     NIMCP_CHECK_THROW(output, NIMCP_ERROR_INVALID_PARAM, "output is NULL");
@@ -635,12 +707,24 @@ int jepa_context_encode(
 
             /* Apply: output = gamma * input + beta */
             for (uint32_t i = 0; i < input_dim; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && input_dim > 256) {
+                    jepa_context_heartbeat("jepa_context_loop",
+                                     (float)(i + 1) / (float)input_dim);
+                }
+
                 output->embedding[i] = gamma[i] * encoder->input_buffer[i] + beta[i];
             }
 
             /* Track modulation strength */
             float mod_strength = 0.0f;
             for (uint32_t i = 0; i < input_dim; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && input_dim > 256) {
+                    jepa_context_heartbeat("jepa_context_loop",
+                                     (float)(i + 1) / (float)input_dim);
+                }
+
                 mod_strength += fabsf(gamma[i] - 1.0f) + fabsf(beta[i]);
             }
             encoder->stats.avg_modulation_strength =
@@ -669,13 +753,31 @@ int jepa_context_encode(
             memset(context_proj, 0, input_dim * sizeof(float));
 
             for (uint32_t j = 0; j < input_dim; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && input_dim > 256) {
+                    jepa_context_heartbeat("jepa_context_loop",
+                                     (float)(j + 1) / (float)input_dim);
+                }
+
                 for (uint32_t i = 0; i < encoder->config.context_dim; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && encoder->config.context_dim > 256) {
+                        jepa_context_heartbeat("jepa_context_loop",
+                                         (float)(i + 1) / (float)encoder->config.context_dim);
+                    }
+
                     context_proj[j] += encoder->composed_context[i] *
                         encoder->conditioning.additive_proj[i * input_dim + j];
                 }
             }
 
             for (uint32_t i = 0; i < input_dim; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && input_dim > 256) {
+                    jepa_context_heartbeat("jepa_context_loop",
+                                     (float)(i + 1) / (float)input_dim);
+                }
+
                 output->embedding[i] = encoder->input_buffer[i] + context_proj[i];
             }
             break;
@@ -684,6 +786,12 @@ int jepa_context_encode(
         case JEPA_COND_MULTIPLICATIVE: {
             /* Element-wise multiplication (context broadcast) */
             for (uint32_t i = 0; i < input_dim; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && input_dim > 256) {
+                    jepa_context_heartbeat("jepa_context_loop",
+                                     (float)(i + 1) / (float)input_dim);
+                }
+
                 uint32_t ctx_idx = i % encoder->config.context_dim;
                 output->embedding[i] = encoder->input_buffer[i] *
                     encoder->composed_context[ctx_idx];
@@ -697,7 +805,19 @@ int jepa_context_encode(
             memset(gate, 0, input_dim * sizeof(float));
 
             for (uint32_t j = 0; j < input_dim; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && input_dim > 256) {
+                    jepa_context_heartbeat("jepa_context_loop",
+                                     (float)(j + 1) / (float)input_dim);
+                }
+
                 for (uint32_t i = 0; i < encoder->config.context_dim; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && encoder->config.context_dim > 256) {
+                        jepa_context_heartbeat("jepa_context_loop",
+                                         (float)(i + 1) / (float)encoder->config.context_dim);
+                    }
+
                     gate[j] += encoder->composed_context[i] *
                         encoder->conditioning.gate_weights[i * input_dim + j];
                 }
@@ -707,6 +827,12 @@ int jepa_context_encode(
 
             /* Apply gate */
             for (uint32_t i = 0; i < input_dim; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && input_dim > 256) {
+                    jepa_context_heartbeat("jepa_context_loop",
+                                     (float)(i + 1) / (float)input_dim);
+                }
+
                 output->embedding[i] = gate[i] * encoder->input_buffer[i];
             }
             break;
@@ -745,6 +871,12 @@ int jepa_context_encode(
     /* Track context norm */
     float ctx_norm = 0.0f;
     for (uint32_t i = 0; i < encoder->config.context_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && encoder->config.context_dim > 256) {
+            jepa_context_heartbeat("jepa_context_loop",
+                             (float)(i + 1) / (float)encoder->config.context_dim);
+        }
+
         ctx_norm += encoder->composed_context[i] * encoder->composed_context[i];
     }
     ctx_norm = sqrtf(ctx_norm);
@@ -761,11 +893,21 @@ int jepa_context_encode_batch(
     jepa_latent_t** outputs,
     uint32_t batch_size)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_context_heartbeat("jepa_context_encode_batch", 0.0f);
+
+
     NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
     NIMCP_CHECK_THROW(inputs, NIMCP_ERROR_INVALID_PARAM, "inputs is NULL");
     NIMCP_CHECK_THROW(outputs, NIMCP_ERROR_INVALID_PARAM, "outputs is NULL");
 
     for (uint32_t i = 0; i < batch_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && batch_size > 256) {
+            jepa_context_heartbeat("jepa_context_loop",
+                             (float)(i + 1) / (float)batch_size);
+        }
+
         int rc = jepa_context_encode(encoder, inputs[i], outputs[i]);
         if (rc != NIMCP_SUCCESS) {
             return rc;
@@ -780,6 +922,10 @@ int jepa_context_get_composed(
     float* context,
     uint32_t dim)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_context_heartbeat("jepa_context_get_composed", 0.0f);
+
+
     NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
     NIMCP_CHECK_THROW(context, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
 
@@ -801,6 +947,10 @@ int jepa_context_apply_film(
     float* output,
     uint32_t dim)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_context_heartbeat("jepa_context_apply_film", 0.0f);
+
+
     NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
     NIMCP_CHECK_THROW(input, NIMCP_ERROR_INVALID_PARAM, "input is NULL");
     NIMCP_CHECK_THROW(context, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
@@ -824,6 +974,12 @@ int jepa_context_apply_film(
     }
 
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            jepa_context_heartbeat("jepa_context_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         output[i] = gamma[i] * input[i] + beta[i];
     }
 
@@ -839,6 +995,10 @@ int jepa_context_apply_cross_attention(
     const float* context,
     float* output)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_context_heartbeat("jepa_context_apply_cross_attentio", 0.0f);
+
+
     NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
     NIMCP_CHECK_THROW(input, NIMCP_ERROR_INVALID_PARAM, "input is NULL");
     NIMCP_CHECK_THROW(context, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
@@ -859,6 +1019,10 @@ int jepa_context_get_stats(
     const jepa_context_encoder_t* encoder,
     jepa_context_stats_t* stats)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_context_heartbeat("jepa_context_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
     NIMCP_CHECK_THROW(stats, NIMCP_ERROR_INVALID_PARAM, "stats is NULL");
 
@@ -868,6 +1032,10 @@ int jepa_context_get_stats(
 
 int jepa_context_reset_stats(jepa_context_encoder_t* encoder)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_context_heartbeat("jepa_context_reset_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
 
     memset(&encoder->stats, 0, sizeof(encoder->stats));
@@ -880,6 +1048,10 @@ int jepa_context_reset_stats(jepa_context_encoder_t* encoder)
 
 int jepa_context_connect_bio_async(jepa_context_encoder_t* encoder)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_context_heartbeat("jepa_context_connect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
 
     encoder->base.bio_async_enabled = true;
@@ -890,6 +1062,10 @@ int jepa_context_connect_bio_async(jepa_context_encoder_t* encoder)
 
 int jepa_context_disconnect_bio_async(jepa_context_encoder_t* encoder)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_context_heartbeat("jepa_context_disconnect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
 
     encoder->base.bio_async_enabled = false;
@@ -898,6 +1074,10 @@ int jepa_context_disconnect_bio_async(jepa_context_encoder_t* encoder)
 
 bool jepa_context_is_bio_async_connected(const jepa_context_encoder_t* encoder)
 {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_context_heartbeat("jepa_context_is_bio_async_connect", 0.0f);
+
+
     return encoder && encoder->base.bio_async_enabled;
 }
 
@@ -957,6 +1137,12 @@ static int compose_context(jepa_context_encoder_t* encoder)
                     if (weighted_feats) {
                         float total_attn = 0.0f;
                         for (uint32_t loc = 0; loc < num_locs; loc++) {
+                            /* Phase 8: Loop progress heartbeat */
+                            if ((loc & 0xFF) == 0 && num_locs > 256) {
+                                jepa_context_heartbeat("jepa_context_loop",
+                                                 (float)(loc + 1) / (float)num_locs);
+                            }
+
                             total_attn += ctx->attention.attention_weights[loc];
                         }
 
@@ -967,6 +1153,12 @@ static int compose_context(jepa_context_encoder_t* encoder)
 
                         /* Modulate features by attention strength */
                         for (uint32_t f = 0; f < feat_dim; f++) {
+                            /* Phase 8: Loop progress heartbeat */
+                            if ((f & 0xFF) == 0 && feat_dim > 256) {
+                                jepa_context_heartbeat("jepa_context_loop",
+                                                 (float)(f + 1) / (float)feat_dim);
+                            }
+
                             weighted_feats[f] = ctx->attention.attended_features[f] *
                                                (0.5f + 0.5f * attn_strength);
                         }
@@ -981,6 +1173,12 @@ static int compose_context(jepa_context_encoder_t* encoder)
                                 copy_dim = context_dim - write_idx;
                             }
                             for (uint32_t i = 0; i < copy_dim; i++) {
+                                /* Phase 8: Loop progress heartbeat */
+                                if ((i & 0xFF) == 0 && copy_dim > 256) {
+                                    jepa_context_heartbeat("jepa_context_loop",
+                                                     (float)(i + 1) / (float)copy_dim);
+                                }
+
                                 encoder->composed_context[write_idx + i] +=
                                     weight * source_data[i];
                             }
@@ -1023,6 +1221,12 @@ static int compose_context(jepa_context_encoder_t* encoder)
             }
 
             for (uint32_t i = 0; i < copy_dim; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && copy_dim > 256) {
+                    jepa_context_heartbeat("jepa_context_loop",
+                                     (float)(i + 1) / (float)copy_dim);
+                }
+
                 encoder->composed_context[write_idx + i] +=
                     weight * source_data[i];
             }
@@ -1035,6 +1239,12 @@ static int compose_context(jepa_context_encoder_t* encoder)
     /* Normalize by total weight */
     if (total_weight > 0.0f) {
         for (uint32_t i = 0; i < context_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && context_dim > 256) {
+                jepa_context_heartbeat("jepa_context_loop",
+                                 (float)(i + 1) / (float)context_dim);
+            }
+
             encoder->composed_context[i] /= total_weight;
         }
     }
@@ -1105,6 +1315,12 @@ static int film_layer_create(
 
     /* Initialize gamma bias to 1 (no scaling initially) */
     for (uint32_t i = 0; i < feature_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && feature_dim > 256) {
+            jepa_context_heartbeat("jepa_context_loop",
+                             (float)(i + 1) / (float)feature_dim);
+        }
+
         f->gamma_bias[i] = 1.0f;
         f->beta_bias[i] = 0.0f;
     }
@@ -1149,8 +1365,20 @@ static int film_layer_forward(
         }
 
         for (uint32_t j = 0; j < film->hidden_dim; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && film->hidden_dim > 256) {
+                jepa_context_heartbeat("jepa_context_loop",
+                                 (float)(j + 1) / (float)film->hidden_dim);
+            }
+
             float sum = film->hidden_bias[j];
             for (uint32_t i = 0; i < film->context_dim; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && film->context_dim > 256) {
+                    jepa_context_heartbeat("jepa_context_loop",
+                                     (float)(i + 1) / (float)film->context_dim);
+                }
+
                 sum += context[i] * film->hidden_weights[i * film->hidden_dim + j];
             }
             hidden[j] = gelu_activation(sum);
@@ -1162,8 +1390,20 @@ static int film_layer_forward(
 
     /* Compute gamma */
     for (uint32_t j = 0; j < film->feature_dim; j++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((j & 0xFF) == 0 && film->feature_dim > 256) {
+            jepa_context_heartbeat("jepa_context_loop",
+                             (float)(j + 1) / (float)film->feature_dim);
+        }
+
         float sum = film->gamma_bias[j];
         for (uint32_t i = 0; i < feature_input_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && feature_input_dim > 256) {
+                jepa_context_heartbeat("jepa_context_loop",
+                                 (float)(i + 1) / (float)feature_input_dim);
+            }
+
             sum += features[i] * film->gamma_weights[i * film->feature_dim + j];
         }
         gamma[j] = sum;
@@ -1171,8 +1411,20 @@ static int film_layer_forward(
 
     /* Compute beta */
     for (uint32_t j = 0; j < film->feature_dim; j++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((j & 0xFF) == 0 && film->feature_dim > 256) {
+            jepa_context_heartbeat("jepa_context_loop",
+                             (float)(j + 1) / (float)film->feature_dim);
+        }
+
         float sum = film->beta_bias[j];
         for (uint32_t i = 0; i < feature_input_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && feature_input_dim > 256) {
+                jepa_context_heartbeat("jepa_context_loop",
+                                 (float)(i + 1) / (float)feature_input_dim);
+            }
+
             sum += features[i] * film->beta_weights[i * film->feature_dim + j];
         }
         beta[j] = sum;
@@ -1282,8 +1534,20 @@ static int cross_attention_forward(
 
     /* Project Q from query */
     for (uint32_t j = 0; j < proj_dim; j++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((j & 0xFF) == 0 && proj_dim > 256) {
+            jepa_context_heartbeat("jepa_context_loop",
+                             (float)(j + 1) / (float)proj_dim);
+        }
+
         float sum = 0.0f;
         for (uint32_t i = 0; i < attn->input_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && attn->input_dim > 256) {
+                jepa_context_heartbeat("jepa_context_loop",
+                                 (float)(i + 1) / (float)attn->input_dim);
+            }
+
             sum += query[i] * attn->q_weights[i * proj_dim + j];
         }
         q_proj[j] = sum;
@@ -1291,9 +1555,21 @@ static int cross_attention_forward(
 
     /* Project K, V from context */
     for (uint32_t j = 0; j < proj_dim; j++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((j & 0xFF) == 0 && proj_dim > 256) {
+            jepa_context_heartbeat("jepa_context_loop",
+                             (float)(j + 1) / (float)proj_dim);
+        }
+
         float sum_k = 0.0f;
         float sum_v = 0.0f;
         for (uint32_t i = 0; i < attn->context_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && attn->context_dim > 256) {
+                jepa_context_heartbeat("jepa_context_loop",
+                                 (float)(i + 1) / (float)attn->context_dim);
+            }
+
             sum_k += context[i] * attn->k_weights[i * proj_dim + j];
             sum_v += context[i] * attn->v_weights[i * proj_dim + j];
         }
@@ -1306,11 +1582,23 @@ static int cross_attention_forward(
 
     /* For each head */
     for (uint32_t h = 0; h < attn->num_heads; h++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((h & 0xFF) == 0 && attn->num_heads > 256) {
+            jepa_context_heartbeat("jepa_context_loop",
+                             (float)(h + 1) / (float)attn->num_heads);
+        }
+
         uint32_t offset = h * attn->head_dim;
 
         /* Compute attention score: Q . K */
         float score = 0.0f;
         for (uint32_t d = 0; d < attn->head_dim; d++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((d & 0xFF) == 0 && attn->head_dim > 256) {
+                jepa_context_heartbeat("jepa_context_loop",
+                                 (float)(d + 1) / (float)attn->head_dim);
+            }
+
             score += q_proj[offset + d] * k_proj[offset + d];
         }
         score *= scale;
@@ -1321,14 +1609,32 @@ static int cross_attention_forward(
 
         /* Apply attention to V */
         for (uint32_t d = 0; d < attn->head_dim; d++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((d & 0xFF) == 0 && attn->head_dim > 256) {
+                jepa_context_heartbeat("jepa_context_loop",
+                                 (float)(d + 1) / (float)attn->head_dim);
+            }
+
             attn_out[offset + d] = v_proj[offset + d];
         }
     }
 
     /* Output projection */
     for (uint32_t j = 0; j < attn->output_dim; j++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((j & 0xFF) == 0 && attn->output_dim > 256) {
+            jepa_context_heartbeat("jepa_context_loop",
+                             (float)(j + 1) / (float)attn->output_dim);
+        }
+
         float sum = 0.0f;
         for (uint32_t i = 0; i < proj_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && proj_dim > 256) {
+                jepa_context_heartbeat("jepa_context_loop",
+                                 (float)(i + 1) / (float)proj_dim);
+            }
+
             sum += attn_out[i] * attn->o_weights[i * attn->output_dim + j];
         }
         output[j] = sum;
@@ -1359,12 +1665,24 @@ static void layer_normalize(float* data, uint32_t dim)
 
     float mean = 0.0f;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            jepa_context_heartbeat("jepa_context_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         mean += data[i];
     }
     mean /= (float)dim;
 
     float variance = 0.0f;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            jepa_context_heartbeat("jepa_context_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         float diff = data[i] - mean;
         variance += diff * diff;
     }
@@ -1372,6 +1690,12 @@ static void layer_normalize(float* data, uint32_t dim)
 
     float std_inv = 1.0f / sqrtf(variance + 1e-5f);
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            jepa_context_heartbeat("jepa_context_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         data[i] = (data[i] - mean) * std_inv;
     }
 }
@@ -1387,11 +1711,23 @@ static void softmax(float* data, uint32_t dim)
 
     float sum = 0.0f;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            jepa_context_heartbeat("jepa_context_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         data[i] = expf(data[i] - max_val);
         sum += data[i];
     }
 
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            jepa_context_heartbeat("jepa_context_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         data[i] /= sum;
     }
 }
@@ -1403,11 +1739,21 @@ static void softmax(float* data, uint32_t dim)
 int jepa_context_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_context_heartbeat("jepa_context_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "JEPA_Context");
     if (self) {
         NIMCP_LOGGING_INFO("[%s] Self-knowledge entity: %s (type: %s)",
                           CONTEXT_LOG_TAG, self->name, self->entity_type);
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                jepa_context_heartbeat("jepa_context_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("[%s] Observation[%u]: %s",
                                CONTEXT_LOG_TAG, i, self->observations[i]);
         }

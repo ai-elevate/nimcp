@@ -83,7 +83,7 @@ static nimcp_health_agent_t* g_consolidation_health_agent = NULL;
  * @brief Set health agent for consolidation heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void consolidation_set_health_agent(nimcp_health_agent_t* agent) {
+void consolidation_set_health_agent(nimcp_health_agent_t* agent) {
     g_consolidation_health_agent = agent;
 }
 
@@ -192,6 +192,10 @@ static bool consolidate_pruning(brain_t brain, const consolidation_config_t* con
  */
 consolidation_config_t consolidation_default_config(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_default_config", 0.0f);
+
+
     consolidation_config_t config = {.strategy = CONSOLIDATION_STRATEGY_FULL,
                                      .priority = CONSOLIDATION_PRIORITY_IMPORTANT,
 
@@ -238,6 +242,10 @@ bool brain_consolidate_memory(brain_t brain, const consolidation_config_t* confi
     }
 
     /* WHAT: Use default config if none provided */
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_brain_consolidate_me", 0.0f);
+
+
     consolidation_config_t default_config = consolidation_default_config();
     const consolidation_config_t* cfg = config ? config : &default_config;
 
@@ -326,6 +334,12 @@ static bool perform_consolidation(brain_t brain, const consolidation_config_t* c
 
     /* WHAT: Execute consolidation cycles */
     for (uint32_t cycle = 0; cycle < config->consolidation_cycles; cycle++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((cycle & 0xFF) == 0 && config->consolidation_cycles > 256) {
+            consolidation_heartbeat("consolidatio_loop",
+                             (float)(cycle + 1) / (float)config->consolidation_cycles);
+        }
+
         /* WHAT: Update progress */
         if (progress) {
             *progress = (float) cycle / (float) config->consolidation_cycles;
@@ -413,6 +427,12 @@ static bool consolidate_replay(brain_t brain, const consolidation_config_t* conf
         uint32_t max_replay = config->replay_count < wm_size ? config->replay_count : wm_size;
 
         for (uint32_t i = 0; i < max_replay; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && max_replay > 256) {
+                consolidation_heartbeat("consolidatio_loop",
+                                 (float)(i + 1) / (float)max_replay);
+            }
+
             /* Get total salience (includes emotional boost) */
             float total_salience = 0.0F;
             if (!working_memory_get_total_salience(wm, i, &total_salience)) {
@@ -502,6 +522,12 @@ static bool consolidate_scaling(brain_t brain, const consolidation_config_t* con
     uint32_t active_neurons = 0;
 
     for (uint32_t neuron_id = 0; neuron_id < num_neurons; neuron_id++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((neuron_id & 0xFF) == 0 && num_neurons > 256) {
+            consolidation_heartbeat("consolidatio_loop",
+                             (float)(neuron_id + 1) / (float)num_neurons);
+        }
+
         /* Get neuron activation */
         float activation = 0.0F;
         if (adaptive_network_get_neuron_activation(network, neuron_id, &activation)) {
@@ -522,6 +548,12 @@ static bool consolidate_scaling(brain_t brain, const consolidation_config_t* con
 
         if (synapses != NULL && synapse_count > 0) {
             for (uint32_t i = 0; i < synapse_count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && synapse_count > 256) {
+                    consolidation_heartbeat("consolidatio_loop",
+                                     (float)(i + 1) / (float)synapse_count);
+                }
+
                 total_weight += fabsf(synapses[i].weight);
                 total_synapses++;
             }
@@ -603,6 +635,12 @@ static bool consolidate_pruning(brain_t brain, const consolidation_config_t* con
     }
 
     for (uint32_t neuron_id = 0; neuron_id < num_neurons; neuron_id++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((neuron_id & 0xFF) == 0 && num_neurons > 256) {
+            consolidation_heartbeat("consolidatio_loop",
+                             (float)(neuron_id + 1) / (float)num_neurons);
+        }
+
         /* Get incoming synapses for this neuron */
         const synapse_t* synapses = NULL;
         uint32_t synapse_count = neural_network_get_incoming_synapses(
@@ -610,6 +648,12 @@ static bool consolidate_pruning(brain_t brain, const consolidation_config_t* con
 
         if (synapses != NULL && synapse_count > 0) {
             for (uint32_t i = 0; i < synapse_count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && synapse_count > 256) {
+                    consolidation_heartbeat("consolidatio_loop",
+                                     (float)(i + 1) / (float)synapse_count);
+                }
+
                 total_connections++;
 
                 /* WHAT: Check if weight is below pruning threshold */
@@ -749,6 +793,12 @@ static int consolidation_wiring_handler_callback(
 
     int registered = 0;
     for (uint32_t i = 0; i < message_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && message_count > 256) {
+            consolidation_heartbeat("consolidatio_loop",
+                             (float)(i + 1) / (float)message_count);
+        }
+
         switch (message_types[i]) {
             case BIO_MSG_CONSOLIDATION_TRIGGER:
                 bio_router_register_handler(ctx, message_types[i], handle_consolidation_trigger);
@@ -823,6 +873,10 @@ consolidation_handle_t brain_start_background_consolidation(brain_t brain,
     }
 
     /* WHAT: Allocate handle */
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_brain_start_backgrou", 0.0f);
+
+
     consolidation_handle_t handle =
         (consolidation_handle_t) nimcp_calloc(1, sizeof(struct consolidation_handle_struct));
     if (handle == NULL) {
@@ -916,6 +970,10 @@ void brain_stop_background_consolidation(consolidation_handle_t handle)
     }
 
     // Unregister from bio-async router
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_brain_stop_backgroun", 0.0f);
+
+
     if (handle->bio_async_enabled && handle->bio_ctx) {
         bio_router_unregister_module(handle->bio_ctx);
         handle->bio_ctx = NULL;
@@ -953,6 +1011,10 @@ void brain_pause_consolidation(consolidation_handle_t handle)
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_brain_pause_consolid", 0.0f);
+
+
     nimcp_mutex_lock(&handle->lock);
     handle->paused = true;
     nimcp_mutex_unlock(&handle->lock);
@@ -968,6 +1030,10 @@ void brain_resume_consolidation(consolidation_handle_t handle)
     if (handle == NULL) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_brain_resume_consoli", 0.0f);
+
 
     nimcp_mutex_lock(&handle->lock);
     handle->paused = false;
@@ -985,6 +1051,10 @@ bool brain_trigger_consolidation(consolidation_handle_t handle)
     if (handle == NULL) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_brain_trigger_consol", 0.0f);
+
 
     nimcp_mutex_lock(&handle->lock);
     handle->trigger_now = true;
@@ -1026,6 +1096,10 @@ pattern_importance_t* brain_get_important_patterns(brain_t brain, uint32_t* num_
 
     /* WHAT: Simulate 10 important patterns */
     *num_patterns = 10;
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_brain_get_important_", 0.0f);
+
+
     pattern_importance_t* patterns =
         (pattern_importance_t*) nimcp_malloc(*num_patterns * sizeof(pattern_importance_t));
 
@@ -1063,7 +1137,17 @@ void pattern_importance_free(pattern_importance_t* patterns, uint32_t num_patter
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_pattern_importance_f", 0.0f);
+
+
     for (uint32_t i = 0; i < num_patterns; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_patterns > 256) {
+            consolidation_heartbeat("consolidatio_loop",
+                             (float)(i + 1) / (float)num_patterns);
+        }
+
         nimcp_free(patterns[i].pattern_name);
     }
     nimcp_free(patterns);
@@ -1084,6 +1168,10 @@ bool brain_mark_pattern_important(brain_t brain, const char* pattern_name, float
 
     /* TODO: In real implementation, lookup pattern in registry and set importance */
     /* For now, just return success */
+
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_brain_mark_pattern_i", 0.0f);
+
 
     return true;
 }
@@ -1115,6 +1203,10 @@ bool consolidation_get_stats(consolidation_handle_t handle, consolidation_stats_
         nimcp_mutex_unlock(&handle->lock);
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_get_stats", 0.0f);
+
+
     return true;
 }
 
@@ -1137,6 +1229,10 @@ void consolidation_reset_stats(consolidation_handle_t handle)
         memset(&handle->stats, 0, sizeof(consolidation_stats_t));
         nimcp_mutex_unlock(&handle->lock);
     }
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_reset_stats", 0.0f);
+
+
 }
 
 /**
@@ -1151,6 +1247,10 @@ void consolidation_reset_stats(consolidation_handle_t handle)
 void consolidation_reset_global_state(void)
 {
     /* WHAT: Ensure initialized before reset */
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_reset_global_state", 0.0f);
+
+
     ensure_sync_stats_init();
 
     /* WHAT: Acquire lock to prevent concurrent access */
@@ -1178,6 +1278,10 @@ bool consolidation_is_running(consolidation_handle_t handle)
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_is_running", 0.0f);
+
+
     nimcp_mutex_lock(&handle->lock);
     bool is_running = handle->is_consolidating;
     nimcp_mutex_unlock(&handle->lock);
@@ -1195,6 +1299,10 @@ float consolidation_get_progress(consolidation_handle_t handle)
     if (handle == NULL) {
         return -1.0F;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_get_progress", 0.0f);
+
 
     nimcp_mutex_lock(&handle->lock);
     float progress = handle->is_consolidating ? handle->current_progress : -1.0F;
@@ -1226,6 +1334,10 @@ bool brain_replay_pattern(brain_t brain, const char* pattern_name, uint32_t repl
     }
 
     /* Guard: Validate strength parameter */
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_brain_replay_pattern", 0.0f);
+
+
     if (strength <= 0.0F || strength > 1.0F) {
         return false;
     }
@@ -1279,6 +1391,10 @@ bool brain_apply_synaptic_scaling(brain_t brain, float target_activation)
     }
 
     /* Guard: Validate target activation */
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_brain_apply_synaptic", 0.0f);
+
+
     if (target_activation <= 0.0F || target_activation > 2.0F) {
         return false;
     }
@@ -1300,6 +1416,12 @@ bool brain_apply_synaptic_scaling(brain_t brain, float target_activation)
     uint32_t active_count = 0;
 
     for (uint32_t i = 0; i < num_neurons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_neurons > 256) {
+            consolidation_heartbeat("consolidatio_loop",
+                             (float)(i + 1) / (float)num_neurons);
+        }
+
         float activation = 0.0F;
         if (adaptive_network_get_neuron_activation(network, i, &activation)) {
             total_activation += fabsf(activation);
@@ -1349,6 +1471,10 @@ uint32_t brain_prune_weak_connections(brain_t brain, float threshold)
     }
 
     /* Guard: Validate threshold */
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_brain_prune_weak_con", 0.0f);
+
+
     if (threshold < 0.0F || threshold > 1.0F) {
         return 0;
     }
@@ -1380,9 +1506,19 @@ uint32_t brain_prune_weak_connections(brain_t brain, float threshold)
 int consolidation_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    consolidation_heartbeat("consolidatio_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Memory_Consolidation_System");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                consolidation_heartbeat("consolidatio_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

@@ -38,7 +38,7 @@ static nimcp_health_agent_t* g_emotion_tensor_health_agent = NULL;
  * @brief Set health agent for emotion_tensor heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void emotion_tensor_set_health_agent(nimcp_health_agent_t* agent) {
+void emotion_tensor_set_health_agent(nimcp_health_agent_t* agent) {
     g_emotion_tensor_health_agent = agent;
 }
 
@@ -227,6 +227,12 @@ static float compute_aggregate_valence(const float* channels) {
     float total_activation = 0.0F;
 
     for (int i = 0; i < EMOTION_TENSOR_PRIMARY_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && EMOTION_TENSOR_PRIMARY_COUNT > 256) {
+            emotion_tensor_heartbeat("emotion_tens_loop",
+                             (float)(i + 1) / (float)EMOTION_TENSOR_PRIMARY_COUNT);
+        }
+
         sum += channels[i] * get_emotion_valence_weight((emotion_primary_t)i);
         total_activation += channels[i];
     }
@@ -250,6 +256,12 @@ static float compute_aggregate_arousal(const float* channels) {
     float total_activation = 0.0F;
 
     for (int i = 0; i < EMOTION_TENSOR_PRIMARY_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && EMOTION_TENSOR_PRIMARY_COUNT > 256) {
+            emotion_tensor_heartbeat("emotion_tens_loop",
+                             (float)(i + 1) / (float)EMOTION_TENSOR_PRIMARY_COUNT);
+        }
+
         sum += channels[i] * get_emotion_arousal_weight((emotion_primary_t)i);
         total_activation += channels[i];
     }
@@ -271,6 +283,12 @@ static float compute_aggregate_arousal(const float* channels) {
 static float compute_entropy(const float* channels) {
     float total = 0.0F;
     for (int i = 0; i < EMOTION_TENSOR_PRIMARY_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && EMOTION_TENSOR_PRIMARY_COUNT > 256) {
+            emotion_tensor_heartbeat("emotion_tens_loop",
+                             (float)(i + 1) / (float)EMOTION_TENSOR_PRIMARY_COUNT);
+        }
+
         total += channels[i];
     }
 
@@ -280,6 +298,12 @@ static float compute_entropy(const float* channels) {
 
     float entropy = 0.0F;
     for (int i = 0; i < EMOTION_TENSOR_PRIMARY_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && EMOTION_TENSOR_PRIMARY_COUNT > 256) {
+            emotion_tensor_heartbeat("emotion_tens_loop",
+                             (float)(i + 1) / (float)EMOTION_TENSOR_PRIMARY_COUNT);
+        }
+
         float p = channels[i] / total;
         if (p > 0.001F) {
             entropy -= p * log2f(p);
@@ -369,6 +393,12 @@ static void record_dynamics(emotion_tensor_t* tensor) {
     uint32_t idx = tensor->dynamics_index;
 
     for (int i = 0; i < EMOTION_TENSOR_PRIMARY_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && EMOTION_TENSOR_PRIMARY_COUNT > 256) {
+            emotion_tensor_heartbeat("emotion_tens_loop",
+                             (float)(i + 1) / (float)EMOTION_TENSOR_PRIMARY_COUNT);
+        }
+
         tensor->dynamics[i][idx] = tensor->channels[i];
     }
 
@@ -386,10 +416,22 @@ static float compute_stability(const emotion_tensor_t* tensor) {
     float total_variance = 0.0F;
 
     for (int e = 0; e < EMOTION_TENSOR_PRIMARY_COUNT; e++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((e & 0xFF) == 0 && EMOTION_TENSOR_PRIMARY_COUNT > 256) {
+            emotion_tensor_heartbeat("emotion_tens_loop",
+                             (float)(e + 1) / (float)EMOTION_TENSOR_PRIMARY_COUNT);
+        }
+
         float sum = 0.0F;
         float sum_sq = 0.0F;
 
         for (int t = 0; t < EMOTION_TENSOR_TEMPORAL_WINDOW; t++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((t & 0xFF) == 0 && EMOTION_TENSOR_TEMPORAL_WINDOW > 256) {
+                emotion_tensor_heartbeat("emotion_tens_loop",
+                                 (float)(t + 1) / (float)EMOTION_TENSOR_TEMPORAL_WINDOW);
+            }
+
             float v = tensor->dynamics[e][t];
             sum += v;
             sum_sq += v * v;
@@ -410,6 +452,10 @@ static float compute_stability(const emotion_tensor_t* tensor) {
 //=============================================================================
 
 emotion_tensor_config_t emotion_tensor_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_heartbeat("emotion_tens_default_config", 0.0f);
+
+
     emotion_tensor_config_t config = {
         .decay_rate = 0.1F,
         .interaction_strength = 0.3F,
@@ -428,10 +474,20 @@ void emotion_tensor_init_interaction_matrix(emotion_interaction_matrix_t* matrix
     }
 
     /* Initialize to neutral (no interaction) */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_heartbeat("emotion_tens_init_interaction_mat", 0.0f);
+
+
     memset(matrix, 0, sizeof(emotion_interaction_matrix_t));
 
     /* Self-reinforcement (diagonal) - emotions reinforce themselves slightly */
     for (int i = 0; i < EMOTION_TENSOR_PRIMARY_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && EMOTION_TENSOR_PRIMARY_COUNT > 256) {
+            emotion_tensor_heartbeat("emotion_tens_loop",
+                             (float)(i + 1) / (float)EMOTION_TENSOR_PRIMARY_COUNT);
+        }
+
         matrix->matrix[i][i] = 0.1F;
     }
 
@@ -477,6 +533,10 @@ void emotion_tensor_init_interaction_matrix(emotion_interaction_matrix_t* matrix
 }
 
 emotion_tensor_system_t* emotion_tensor_create(const emotion_tensor_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_heartbeat("emotion_tens_create", 0.0f);
+
+
     emotion_tensor_system_t* system = calloc(1, sizeof(emotion_tensor_system_t));
     if (!system) {
         TENSOR_LOG_ERROR("Failed to allocate emotion tensor system");
@@ -515,6 +575,10 @@ void emotion_tensor_destroy(emotion_tensor_system_t* system) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_heartbeat("emotion_tens_destroy", 0.0f);
+
+
     pthread_rwlock_destroy(&system->lock);
     free(system);
     TENSOR_LOG_INFO("Emotion tensor system destroyed");
@@ -529,6 +593,10 @@ bool emotion_tensor_get(const emotion_tensor_system_t* system, emotion_tensor_t*
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_heartbeat("emotion_tens_get", 0.0f);
+
+
     pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
     *tensor = system->tensor;
     pthread_rwlock_unlock((pthread_rwlock_t*)&system->lock);
@@ -540,6 +608,10 @@ float emotion_tensor_get_channel(const emotion_tensor_system_t* system, emotion_
     if (!system) {
         return -1.0F;
     }
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_heartbeat("emotion_tens_get_channel", 0.0f);
+
+
     if (emotion < 0 || emotion >= EMOTION_TENSOR_PRIMARY_COUNT) {
         return -1.0F;
     }
@@ -555,6 +627,10 @@ float emotion_tensor_get_compound(const emotion_tensor_system_t* system, emotion
     if (!system) {
         return -1.0F;
     }
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_heartbeat("emotion_tens_get_compound", 0.0f);
+
+
     if (compound < 0 || compound >= EMOTION_TENSOR_COMPOUND_COUNT) {
         return -1.0F;
     }
@@ -570,6 +646,10 @@ bool emotion_tensor_is_contradictory(const emotion_tensor_system_t* system, floa
     if (!system) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_heartbeat("emotion_tens_is_contradictory", 0.0f);
+
 
     pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
     const float* c = system->tensor.channels;
@@ -595,6 +675,10 @@ float emotion_tensor_get_valence(const emotion_tensor_system_t* system) {
         return 0.0F;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_heartbeat("emotion_tens_get_valence", 0.0f);
+
+
     pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
     float valence = system->tensor.overall_valence;
     pthread_rwlock_unlock((pthread_rwlock_t*)&system->lock);
@@ -606,6 +690,10 @@ float emotion_tensor_get_arousal(const emotion_tensor_system_t* system) {
     if (!system) {
         return 0.0F;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_heartbeat("emotion_tens_get_arousal", 0.0f);
+
 
     pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
     float arousal = system->tensor.overall_arousal;
@@ -627,6 +715,10 @@ bool emotion_tensor_set_channel(
     if (!system) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_heartbeat("emotion_tens_set_channel", 0.0f);
+
+
     if (emotion < 0 || emotion >= EMOTION_TENSOR_PRIMARY_COUNT) {
         return false;
     }
@@ -661,9 +753,19 @@ bool emotion_tensor_set_channels(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_heartbeat("emotion_tens_set_channels", 0.0f);
+
+
     pthread_rwlock_wrlock(&system->lock);
 
     for (int i = 0; i < EMOTION_TENSOR_PRIMARY_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && EMOTION_TENSOR_PRIMARY_COUNT > 256) {
+            emotion_tensor_heartbeat("emotion_tens_loop",
+                             (float)(i + 1) / (float)EMOTION_TENSOR_PRIMARY_COUNT);
+        }
+
         system->tensor.channels[i] = fmaxf(0.0F, fminf(1.0F, activations[i]));
     }
     system->tensor.last_update_ms = timestamp_ms;
@@ -691,6 +793,10 @@ bool emotion_tensor_set_appraisal(
     if (!system) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_heartbeat("emotion_tens_set_appraisal", 0.0f);
+
+
     if (emotion < 0 || emotion >= EMOTION_TENSOR_PRIMARY_COUNT) {
         return false;
     }
@@ -717,6 +823,10 @@ bool emotion_tensor_apply_stimulus(
     if (!system) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_heartbeat("emotion_tens_apply_stimulus", 0.0f);
+
+
     if (emotion < 0 || emotion >= EMOTION_TENSOR_PRIMARY_COUNT) {
         return false;
     }
@@ -761,6 +871,10 @@ bool emotion_tensor_update(
     if (!system) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_heartbeat("emotion_tens_update", 0.0f);
+
+
     if (delta_time <= 0.0F) {
         return false;
     }
@@ -770,6 +884,12 @@ bool emotion_tensor_update(
     /* Apply decay */
     float decay_factor = expf(-system->config.decay_rate * delta_time);
     for (int i = 0; i < EMOTION_TENSOR_PRIMARY_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && EMOTION_TENSOR_PRIMARY_COUNT > 256) {
+            emotion_tensor_heartbeat("emotion_tens_loop",
+                             (float)(i + 1) / (float)EMOTION_TENSOR_PRIMARY_COUNT);
+        }
+
         system->tensor.channels[i] *= decay_factor;
     }
 
@@ -779,8 +899,20 @@ bool emotion_tensor_update(
         memcpy(new_channels, system->tensor.channels, sizeof(new_channels));
 
         for (int i = 0; i < EMOTION_TENSOR_PRIMARY_COUNT; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && EMOTION_TENSOR_PRIMARY_COUNT > 256) {
+                emotion_tensor_heartbeat("emotion_tens_loop",
+                                 (float)(i + 1) / (float)EMOTION_TENSOR_PRIMARY_COUNT);
+            }
+
             float interaction_effect = 0.0F;
             for (int j = 0; j < EMOTION_TENSOR_PRIMARY_COUNT; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && EMOTION_TENSOR_PRIMARY_COUNT > 256) {
+                    emotion_tensor_heartbeat("emotion_tens_loop",
+                                     (float)(j + 1) / (float)EMOTION_TENSOR_PRIMARY_COUNT);
+                }
+
                 if (i != j) {
                     interaction_effect += system->interactions.matrix[i][j] *
                                          system->tensor.channels[j];
@@ -813,6 +945,10 @@ bool emotion_tensor_compute_compounds(emotion_tensor_system_t* system) {
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_heartbeat("emotion_tens_compute_compounds", 0.0f);
+
+
     pthread_rwlock_wrlock(&system->lock);
     update_compounds(&system->tensor);
     pthread_rwlock_unlock(&system->lock);
@@ -825,14 +961,30 @@ bool emotion_tensor_apply_interactions(emotion_tensor_system_t* system, float de
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_heartbeat("emotion_tens_apply_interactions", 0.0f);
+
+
     pthread_rwlock_wrlock(&system->lock);
 
     float new_channels[EMOTION_TENSOR_PRIMARY_COUNT];
     memcpy(new_channels, system->tensor.channels, sizeof(new_channels));
 
     for (int i = 0; i < EMOTION_TENSOR_PRIMARY_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && EMOTION_TENSOR_PRIMARY_COUNT > 256) {
+            emotion_tensor_heartbeat("emotion_tens_loop",
+                             (float)(i + 1) / (float)EMOTION_TENSOR_PRIMARY_COUNT);
+        }
+
         float interaction_effect = 0.0F;
         for (int j = 0; j < EMOTION_TENSOR_PRIMARY_COUNT; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && EMOTION_TENSOR_PRIMARY_COUNT > 256) {
+                emotion_tensor_heartbeat("emotion_tens_loop",
+                                 (float)(j + 1) / (float)EMOTION_TENSOR_PRIMARY_COUNT);
+            }
+
             if (i != j) {
                 interaction_effect += system->interactions.matrix[i][j] *
                                      system->tensor.channels[j];
@@ -855,6 +1007,10 @@ bool emotion_tensor_reset(emotion_tensor_system_t* system) {
     if (!system) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_heartbeat("emotion_tens_reset", 0.0f);
+
 
     pthread_rwlock_wrlock(&system->lock);
 
@@ -889,6 +1045,10 @@ float emotion_tensor_get_entropy(const emotion_tensor_system_t* system) {
         return -1.0F;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_heartbeat("emotion_tens_get_entropy", 0.0f);
+
+
     pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
     float entropy = system->tensor.emotional_entropy;
     pthread_rwlock_unlock((pthread_rwlock_t*)&system->lock);
@@ -900,6 +1060,10 @@ float emotion_tensor_get_stability(const emotion_tensor_system_t* system) {
     if (!system) {
         return -1.0F;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_heartbeat("emotion_tens_get_stability", 0.0f);
+
 
     pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
     float stability = system->tensor.stability;
@@ -917,6 +1081,10 @@ bool emotion_tensor_get_dominant(
     if (!system || !primary || !secondary || !blend_ratio) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_heartbeat("emotion_tens_get_dominant", 0.0f);
+
 
     pthread_rwlock_rdlock((pthread_rwlock_t*)&system->lock);
     *primary = system->tensor.primary_emotion;
@@ -990,9 +1158,19 @@ const char* emotion_tensor_compound_name(emotion_compound_t compound) {
 int emotion_tensor_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_tensor_heartbeat("emotion_tens_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Emotion_Tensor");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                emotion_tensor_heartbeat("emotion_tens_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

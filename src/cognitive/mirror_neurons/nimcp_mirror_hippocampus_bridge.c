@@ -39,7 +39,7 @@ static nimcp_health_agent_t* g_mirror_hippocampus_bridge_health_agent = NULL;
  * @brief Set health agent for mirror_hippocampus_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_hippocampus_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_hippocampus_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_hippocampus_bridge_health_agent = agent;
 }
 
@@ -87,6 +87,12 @@ static float compute_action_similarity(const action_t* a, const action_t* b) {
     float norm_b = 0.0f;
 
     for (uint32_t i = 0; i < min_features; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && min_features > 256) {
+            mirror_hippocampus_bridge_heartbeat("mirror_hippo_loop",
+                             (float)(i + 1) / (float)min_features);
+        }
+
         dot += a->features[i] * b->features[i];
         norm_a += a->features[i] * a->features[i];
         norm_b += b->features[i] * b->features[i];
@@ -123,6 +129,12 @@ static float compute_observation_similarity(const action_t* action,
         float norm_b = 0.0f;
 
         for (uint32_t i = 0; i < min_features; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && min_features > 256) {
+                mirror_hippocampus_bridge_heartbeat("mirror_hippo_loop",
+                                 (float)(i + 1) / (float)min_features);
+            }
+
             dot += action->features[i] * obs->features[i];
             norm_a += action->features[i] * action->features[i];
             norm_b += obs->features[i] * obs->features[i];
@@ -149,6 +161,12 @@ static float compute_episode_similarity(const action_episode_t* episode,
     /* Find best matching action in episode */
     float best_sim = 0.0f;
     for (uint32_t i = 0; i < episode->num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && episode->num_actions > 256) {
+            mirror_hippocampus_bridge_heartbeat("mirror_hippo_loop",
+                             (float)(i + 1) / (float)episode->num_actions);
+        }
+
         float sim = compute_observation_similarity(cue, &episode->actions[i]);
         if (sim > best_sim) {
             best_sim = sim;
@@ -165,6 +183,12 @@ static float compute_episode_similarity(const action_episode_t* episode,
 static int32_t find_episode_by_id(const mirror_hippocampus_bridge_t* bridge,
                                    uint32_t episode_id) {
     for (uint32_t i = 0; i < bridge->num_episodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_episodes > 256) {
+            mirror_hippocampus_bridge_heartbeat("mirror_hippo_loop",
+                             (float)(i + 1) / (float)bridge->num_episodes);
+        }
+
         if (bridge->episodes[i].episode_id == episode_id) {
             return (int32_t)i;
         }
@@ -185,6 +209,12 @@ static int32_t get_free_episode_slot(mirror_hippocampus_bridge_t* bridge) {
     int32_t min_idx = -1;
 
     for (uint32_t i = 0; i < bridge->num_episodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_episodes > 256) {
+            mirror_hippocampus_bridge_heartbeat("mirror_hippo_loop",
+                             (float)(i + 1) / (float)bridge->num_episodes);
+        }
+
         if (!bridge->episodes[i].is_consolidated &&
             bridge->episodes[i].episode_strength < min_strength) {
             min_strength = bridge->episodes[i].episode_strength;
@@ -229,6 +259,10 @@ int mirror_hippocampus_bridge_default_config(mirror_hippocampus_config_t* config
     }
 
     /* Encoding parameters */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hippocampus_bridge_heartbeat("mirror_hippo_default_config", 0.0f);
+
+
     config->encoding_threshold = MIRROR_HIPPO_ENCODE_THRESHOLD;
     config->sequence_gap_ms = 2000;
     config->min_sequence_length = 2;
@@ -259,6 +293,10 @@ int mirror_hippocampus_bridge_default_config(mirror_hippocampus_config_t* config
 mirror_hippocampus_bridge_t* mirror_hippocampus_bridge_create(
     const mirror_hippocampus_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hippocampus_bridge_heartbeat("mirror_hippo_create", 0.0f);
+
+
     LOG_DEBUG("Creating mirror-hippocampus bridge");
 
     /* Allocate bridge */
@@ -328,10 +366,20 @@ mirror_hippocampus_bridge_t* mirror_hippocampus_bridge_create(
 void mirror_hippocampus_bridge_destroy(mirror_hippocampus_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hippocampus_bridge_heartbeat("mirror_hippo_destroy", 0.0f);
+
+
     LOG_DEBUG("Destroying mirror-hippocampus bridge");
 
     /* Free episode action arrays */
     for (uint32_t i = 0; i < bridge->num_episodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_episodes > 256) {
+            mirror_hippocampus_bridge_heartbeat("mirror_hippo_loop",
+                             (float)(i + 1) / (float)bridge->num_episodes);
+        }
+
         if (bridge->episodes[i].actions) {
             nimcp_free(bridge->episodes[i].actions);
         }
@@ -359,6 +407,10 @@ int mirror_hippocampus_bridge_connect_mirror(
     mirror_hippocampus_bridge_t* bridge,
     mirror_neurons_t mirror
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hippocampus_bridge_heartbeat("mirror_hippo_connect_mirror", 0.0f);
+
+
     BRIDGE_NULL_CHECK(bridge);
     BRIDGE_NULL_CHECK(mirror);
 
@@ -375,6 +427,10 @@ int mirror_hippocampus_bridge_connect_hippocampus(
     mirror_hippocampus_bridge_t* bridge,
     hippocampus_adapter_t* hippocampus
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hippocampus_bridge_heartbeat("mirror_hippo_connect_hippocampus", 0.0f);
+
+
     BRIDGE_NULL_CHECK(bridge);
     BRIDGE_NULL_CHECK(hippocampus);
 
@@ -400,6 +456,10 @@ int mirror_hippocampus_store_action(
     }
 
     /* Check encoding threshold */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hippocampus_bridge_heartbeat("mirror_hippo_mirror_hippocampus_s", 0.0f);
+
+
     if (action->confidence < bridge->config.encoding_threshold) {
         return -1;
     }
@@ -459,6 +519,10 @@ uint32_t mirror_hippocampus_complete_sequence(
     }
 
     /* Check minimum length */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hippocampus_bridge_heartbeat("mirror_hippo_mirror_hippocampus_c", 0.0f);
+
+
     if (bridge->current_sequence_length < bridge->config.min_sequence_length &&
         !bridge->config.encode_single_actions) {
         bridge->current_sequence_length = 0;
@@ -515,6 +579,12 @@ uint32_t mirror_hippocampus_complete_sequence(
         for (uint32_t f = 0; f < 32 && f < episode->actions[0].num_features; f++) {
             float sum = 0.0f;
             for (uint32_t a = 0; a < episode->num_actions; a++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((a & 0xFF) == 0 && episode->num_actions > 256) {
+                    mirror_hippocampus_bridge_heartbeat("mirror_hippo_loop",
+                                     (float)(a + 1) / (float)episode->num_actions);
+                }
+
                 if (f < episode->actions[a].num_features) {
                     sum += episode->actions[a].features[f];
                 }
@@ -564,7 +634,17 @@ uint32_t mirror_hippocampus_store_demonstration(
     }
 
     /* Store each action in sequence */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hippocampus_bridge_heartbeat("mirror_hippo_mirror_hippocampus_s", 0.0f);
+
+
     for (uint32_t i = 0; i < num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_actions > 256) {
+            mirror_hippocampus_bridge_heartbeat("mirror_hippo_loop",
+                             (float)(i + 1) / (float)num_actions);
+        }
+
         /* Temporarily set agent_id to demonstrator */
         action_t action = actions[i];
         action.agent_id = demonstrator_id;
@@ -595,10 +675,20 @@ int mirror_hippocampus_retrieve_by_action(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hippocampus_bridge_heartbeat("mirror_hippo_mirror_hippocampus_r", 0.0f);
+
+
     memset(result, 0, sizeof(episode_retrieval_result_t));
 
     /* Find similar episodes */
     for (uint32_t i = 0; i < bridge->num_episodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_episodes > 256) {
+            mirror_hippocampus_bridge_heartbeat("mirror_hippo_loop",
+                             (float)(i + 1) / (float)bridge->num_episodes);
+        }
+
         action_episode_t* episode = &bridge->episodes[i];
         if (episode->num_actions == 0) continue;
 
@@ -608,6 +698,12 @@ int mirror_hippocampus_retrieve_by_action(
             /* Insert in sorted order */
             uint32_t insert_pos = result->num_retrieved;
             for (uint32_t j = 0; j < result->num_retrieved; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && result->num_retrieved > 256) {
+                    mirror_hippocampus_bridge_heartbeat("mirror_hippo_loop",
+                                     (float)(j + 1) / (float)result->num_retrieved);
+                }
+
                 if (sim > result->similarities[j]) {
                     insert_pos = j;
                     break;
@@ -634,6 +730,12 @@ int mirror_hippocampus_retrieve_by_action(
 
     /* Update retrieval metadata */
     for (uint32_t i = 0; i < result->num_retrieved; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && result->num_retrieved > 256) {
+            mirror_hippocampus_bridge_heartbeat("mirror_hippo_loop",
+                             (float)(i + 1) / (float)result->num_retrieved);
+        }
+
         result->episodes[i]->last_retrieval_ms = bridge->last_update_ms;
         result->episodes[i]->retrieval_count++;
 
@@ -671,10 +773,20 @@ int mirror_hippocampus_retrieve_by_demonstrator(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hippocampus_bridge_heartbeat("mirror_hippo_mirror_hippocampus_r", 0.0f);
+
+
     memset(result, 0, sizeof(episode_retrieval_result_t));
 
     /* Find episodes by demonstrator */
     for (uint32_t i = 0; i < bridge->num_episodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_episodes > 256) {
+            mirror_hippocampus_bridge_heartbeat("mirror_hippo_loop",
+                             (float)(i + 1) / (float)bridge->num_episodes);
+        }
+
         action_episode_t* episode = &bridge->episodes[i];
         if (episode->demonstrator_id != demonstrator_id) continue;
         if (episode->num_actions == 0) continue;
@@ -705,10 +817,20 @@ int mirror_hippocampus_retrieve_by_sequence(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hippocampus_bridge_heartbeat("mirror_hippo_mirror_hippocampus_r", 0.0f);
+
+
     memset(result, 0, sizeof(episode_retrieval_result_t));
 
     /* Find episodes with similar sequences */
     for (uint32_t i = 0; i < bridge->num_episodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_episodes > 256) {
+            mirror_hippocampus_bridge_heartbeat("mirror_hippo_loop",
+                             (float)(i + 1) / (float)bridge->num_episodes);
+        }
+
         action_episode_t* episode = &bridge->episodes[i];
         if (episode->num_actions == 0) continue;
 
@@ -717,8 +839,20 @@ int mirror_hippocampus_retrieve_by_sequence(
         uint32_t matches = 0;
 
         for (uint32_t q = 0; q < num_actions; q++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((q & 0xFF) == 0 && num_actions > 256) {
+                mirror_hippocampus_bridge_heartbeat("mirror_hippo_loop",
+                                 (float)(q + 1) / (float)num_actions);
+            }
+
             float best_match = 0.0f;
             for (uint32_t e = 0; e < episode->num_actions; e++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((e & 0xFF) == 0 && episode->num_actions > 256) {
+                    mirror_hippocampus_bridge_heartbeat("mirror_hippo_loop",
+                                     (float)(e + 1) / (float)episode->num_actions);
+                }
+
                 float sim = compute_observation_similarity(&actions[q],
                                                            &episode->actions[e]);
                 if (sim > best_match) {
@@ -760,6 +894,10 @@ int mirror_hippocampus_get_episode(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hippocampus_bridge_heartbeat("mirror_hippo_mirror_hippocampus_g", 0.0f);
+
+
     int32_t idx = find_episode_by_id(bridge, episode_id);
     if (idx < 0) {
         *episode = NULL;
@@ -786,12 +924,22 @@ int mirror_hippocampus_request_replay(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hippocampus_bridge_heartbeat("mirror_hippo_mirror_hippocampus_r", 0.0f);
+
+
     uint32_t episode_id = request->episode_id;
 
     /* Auto-select strongest episode if not specified */
     if (episode_id == 0) {
         float best_strength = 0.0f;
         for (uint32_t i = 0; i < bridge->num_episodes; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->num_episodes > 256) {
+                mirror_hippocampus_bridge_heartbeat("mirror_hippo_loop",
+                                 (float)(i + 1) / (float)bridge->num_episodes);
+            }
+
             if (bridge->episodes[i].episode_strength > best_strength &&
                 bridge->episodes[i].num_actions > 0) {
                 best_strength = bridge->episodes[i].episode_strength;
@@ -832,6 +980,10 @@ int mirror_hippocampus_step_replay(
     if (!bridge || !bridge->replay_active) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hippocampus_bridge_heartbeat("mirror_hippo_mirror_hippocampus_s", 0.0f);
+
 
     int32_t ep_idx = find_episode_by_id(bridge, bridge->replay_episode_id);
     if (ep_idx < 0) {
@@ -905,6 +1057,10 @@ int mirror_hippocampus_stop_replay(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hippocampus_bridge_heartbeat("mirror_hippo_mirror_hippocampus_s", 0.0f);
+
+
     bridge->replay_active = false;
     bridge->replay_episode_id = 0;
     bridge->replay_position = 0;
@@ -916,6 +1072,10 @@ int mirror_hippocampus_stop_replay(
 bool mirror_hippocampus_is_replaying(
     const mirror_hippocampus_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hippocampus_bridge_heartbeat("mirror_hippo_mirror_hippocampus_i", 0.0f);
+
+
     return bridge ? bridge->replay_active : false;
 }
 
@@ -927,9 +1087,19 @@ uint32_t mirror_hippocampus_consolidate(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hippocampus_bridge_heartbeat("mirror_hippo_mirror_hippocampus_c", 0.0f);
+
+
     uint32_t consolidated = 0;
 
     for (uint32_t i = 0; i < bridge->num_episodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_episodes > 256) {
+            mirror_hippocampus_bridge_heartbeat("mirror_hippo_loop",
+                             (float)(i + 1) / (float)bridge->num_episodes);
+        }
+
         action_episode_t* episode = &bridge->episodes[i];
 
         if (episode->is_consolidated) continue;
@@ -975,6 +1145,10 @@ int mirror_hippocampus_bridge_update(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hippocampus_bridge_heartbeat("mirror_hippo_update", 0.0f);
+
+
     bridge->last_update_ms += delta_ms;
 
     /* Reset per-cycle effects */
@@ -1000,6 +1174,12 @@ int mirror_hippocampus_bridge_update(
     if (bridge->config.enable_decay) {
         float decay = bridge->config.decay_rate * (delta_ms / 1000.0f);
         for (uint32_t i = 0; i < bridge->num_episodes; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->num_episodes > 256) {
+                mirror_hippocampus_bridge_heartbeat("mirror_hippo_loop",
+                                 (float)(i + 1) / (float)bridge->num_episodes);
+            }
+
             action_episode_t* episode = &bridge->episodes[i];
             if (episode->is_consolidated) continue;
 
@@ -1028,6 +1208,12 @@ int mirror_hippocampus_bridge_update(
     uint32_t active_count = 0;
 
     for (uint32_t i = 0; i < bridge->num_episodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_episodes > 256) {
+            mirror_hippocampus_bridge_heartbeat("mirror_hippo_loop",
+                             (float)(i + 1) / (float)bridge->num_episodes);
+        }
+
         if (bridge->episodes[i].is_consolidated) {
             consolidated_count++;
         }
@@ -1064,6 +1250,10 @@ int mirror_hippocampus_bridge_get_state(
     }
 
     *state = bridge->state;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hippocampus_bridge_heartbeat("mirror_hippo_get_state", 0.0f);
+
+
     return 0;
 }
 
@@ -1076,6 +1266,10 @@ int mirror_hippocampus_bridge_get_effects(
     }
 
     *effects = bridge->effects;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hippocampus_bridge_heartbeat("mirror_hippo_get_effects", 0.0f);
+
+
     return 0;
 }
 
@@ -1088,6 +1282,10 @@ int mirror_hippocampus_bridge_get_stats(
     }
 
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hippocampus_bridge_heartbeat("mirror_hippo_get_stats", 0.0f);
+
+
     return 0;
 }
 
@@ -1099,6 +1297,10 @@ int mirror_hippocampus_bridge_reset_stats(
 
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_hippocampus_bridge_heartbeat("mirror_hippo_reset_stats", 0.0f);
+
 
     memset(&bridge->stats, 0, sizeof(mirror_hippocampus_stats_t));
     return 0;

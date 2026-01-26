@@ -68,7 +68,7 @@ static nimcp_health_agent_t* g_brain_immune_tick_health_agent = NULL;
  * @brief Set health agent for brain_immune_tick heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void brain_immune_tick_set_health_agent(nimcp_health_agent_t* agent) {
+void brain_immune_tick_set_health_agent(nimcp_health_agent_t* agent) {
     g_brain_immune_tick_health_agent = agent;
 }
 
@@ -119,6 +119,10 @@ static _Thread_local bool tl_in_immune_tick = false;
  * @brief Check if currently inside a tick (for reentry detection)
  */
 bool brain_immune_tick_in_progress(void) {
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_tick_heartbeat("brain_immune_in_progress", 0.0f);
+
+
     return tl_in_immune_tick;
 }
 
@@ -469,6 +473,12 @@ static float qa_recovery_energy(const float* state_vec, uint32_t dim, void* user
     /* Penalty for non-normalized weights (should sum to 1) */
     float sum = 0.0f;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            brain_immune_tick_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         sum += state_vec[i] * state_vec[i];
     }
     energy += 10.0f * fabsf(sum - 1.0f);
@@ -596,6 +606,12 @@ static nimcp_exception_recovery_action_t qa_select_recovery_action(
 
     /* Compute costs for each candidate */
     for (uint32_t i = 0; i < ctx.num_candidates; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx.num_candidates > 256) {
+            brain_immune_tick_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)ctx.num_candidates);
+        }
+
         ctx.costs[i] = get_recovery_cost(ctx.candidates[i], ctx.severity, ctx.source);
     }
 
@@ -604,6 +620,12 @@ static nimcp_exception_recovery_action_t qa_select_recovery_action(
     float optimized_state[QA_MAX_RECOVERY_ACTIONS] = {0};
     float uniform_weight = 1.0f / sqrtf((float)ctx.num_candidates);
     for (uint32_t i = 0; i < ctx.num_candidates; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx.num_candidates > 256) {
+            brain_immune_tick_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)ctx.num_candidates);
+        }
+
         initial_state[i] = uniform_weight;
     }
 
@@ -621,6 +643,12 @@ static nimcp_exception_recovery_action_t qa_select_recovery_action(
     uint32_t best_idx = 0;
     float best_weight = -INFINITY;
     for (uint32_t i = 0; i < ctx.num_candidates; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx.num_candidates > 256) {
+            brain_immune_tick_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)ctx.num_candidates);
+        }
+
         float weight = optimized_state[i] * optimized_state[i];
         if (weight > best_weight) {
             best_weight = weight;
@@ -647,6 +675,12 @@ static pattern_memory_t* pattern_memory_create(void) {
 
     /* Initialize all patterns as inactive */
     for (uint32_t i = 0; i < MAX_EPITOPE_PATTERNS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && MAX_EPITOPE_PATTERNS > 256) {
+            brain_immune_tick_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)MAX_EPITOPE_PATTERNS);
+        }
+
         pm->patterns[i].is_active = false;
     }
 
@@ -668,6 +702,12 @@ static void pattern_memory_destroy(pattern_memory_t* pm) {
 static uint32_t epitope_hash(const uint8_t* epitope, size_t len) {
     uint32_t hash = 2166136261u;  /* FNV offset basis */
     for (size_t i = 0; i < len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && len > 256) {
+            brain_immune_tick_heartbeat("brain_immune_loop",
+                             (float)(i + 1) / (float)len);
+        }
+
         hash ^= epitope[i];
         hash *= 16777619u;  /* FNV prime */
     }
@@ -1246,6 +1286,10 @@ static int process_resource_exhaustion(brain_immune_system_t* immune,
 void brain_immune_tick_default_config(brain_immune_tick_config_t* config) {
     if (!config) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_tick_heartbeat("brain_immune_default_config", 0.0f);
+
+
     config->max_exceptions_per_tick = BRAIN_IMMUNE_TICK_DEFAULT_MAX_EXCEPTIONS;
     config->max_health_msgs_per_tick = BRAIN_IMMUNE_TICK_DEFAULT_MAX_HEALTH_MSGS;
     config->enable_exception_processing = true;
@@ -1268,6 +1312,10 @@ int brain_immune_tick_init(brain_immune_system_t* immune,
     }
 
     /* Check if already initialized */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_tick_heartbeat("brain_immune_init", 0.0f);
+
+
     tick_state_t* existing = get_tick_state(immune);
     if (existing && existing->initialized) {
         LOG_WARNING("Tick orchestrator already initialized");
@@ -1348,6 +1396,10 @@ int brain_immune_tick_init(brain_immune_system_t* immune,
 
 int brain_immune_tick_connect_health_agent(brain_immune_system_t* immune,
                                             nimcp_health_agent_t* agent) {
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_tick_heartbeat("brain_immune_connect_health_agent", 0.0f);
+
+
     tick_state_t* state = get_tick_state(immune);
     if (!state || !state->initialized) {
         LOG_ERROR("Tick orchestrator not initialized");
@@ -1368,6 +1420,10 @@ int brain_immune_tick_connect_health_agent(brain_immune_system_t* immune,
 }
 
 void brain_immune_tick_shutdown(brain_immune_system_t* immune) {
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_tick_heartbeat("brain_immune_shutdown", 0.0f);
+
+
     tick_state_t* state = get_tick_state(immune);
     if (!state) return;
 
@@ -1419,6 +1475,10 @@ void brain_immune_tick_shutdown(brain_immune_system_t* immune) {
 
 int brain_immune_tick(brain_immune_system_t* immune, uint64_t delta_ms) {
     /* Reentry guard - prevent recursive tick calls */
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_tick_heartbeat("brain_immune_brain_immune_tick", 0.0f);
+
+
     if (tl_in_immune_tick) {
         /* Get state to track blocked calls */
         tick_state_t* state = get_tick_state(immune);
@@ -1511,6 +1571,10 @@ int brain_immune_tick(brain_immune_system_t* immune, uint64_t delta_ms) {
 int brain_immune_process_health_message(brain_immune_system_t* immune,
                                          const health_agent_message_t* msg) {
     if (!immune || !msg) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_tick_heartbeat("brain_immune_brain_immune_process", 0.0f);
+
 
     tick_state_t* state = get_tick_state(immune);
     int result = 0;
@@ -1605,6 +1669,10 @@ int brain_immune_process_health_queue(brain_immune_system_t* immune,
                                        size_t max_count) {
     if (!immune) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_tick_heartbeat("brain_immune_brain_immune_process", 0.0f);
+
+
     tick_state_t* state = get_tick_state(immune);
     if (!state || !state->health_agent) {
         return 0;  /* No agent connected, nothing to process */
@@ -1627,11 +1695,19 @@ int brain_immune_process_health_queue(brain_immune_system_t* immune,
  * ============================================================================ */
 
 bool brain_immune_tick_is_initialized(const brain_immune_system_t* immune) {
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_tick_heartbeat("brain_immune_is_initialized", 0.0f);
+
+
     const tick_state_t* state = get_tick_state_const(immune);
     return state && state->initialized;
 }
 
 bool brain_immune_tick_has_health_agent(const brain_immune_system_t* immune) {
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_tick_heartbeat("brain_immune_has_health_agent", 0.0f);
+
+
     const tick_state_t* state = get_tick_state_const(immune);
     return state && state->health_agent != NULL;
 }
@@ -1639,6 +1715,10 @@ bool brain_immune_tick_has_health_agent(const brain_immune_system_t* immune) {
 int brain_immune_tick_get_stats(const brain_immune_system_t* immune,
                                  brain_immune_tick_stats_t* stats) {
     if (!stats) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_tick_heartbeat("brain_immune_get_stats", 0.0f);
+
 
     const tick_state_t* state = get_tick_state_const(immune);
     if (!state) {
@@ -1651,6 +1731,10 @@ int brain_immune_tick_get_stats(const brain_immune_system_t* immune,
 }
 
 void brain_immune_tick_reset_stats(brain_immune_system_t* immune) {
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_tick_heartbeat("brain_immune_reset_stats", 0.0f);
+
+
     tick_state_t* state = get_tick_state(immune);
     if (!state) return;
 
@@ -1663,6 +1747,10 @@ void brain_immune_tick_reset_stats(brain_immune_system_t* immune) {
 int brain_immune_tick_get_config(const brain_immune_system_t* immune,
                                   brain_immune_tick_config_t* config) {
     if (!config) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_tick_heartbeat("brain_immune_get_config", 0.0f);
+
 
     const tick_state_t* state = get_tick_state_const(immune);
     if (!state) {
@@ -1677,6 +1765,10 @@ int brain_immune_tick_get_config(const brain_immune_system_t* immune,
 int brain_immune_tick_set_config(brain_immune_system_t* immune,
                                   const brain_immune_tick_config_t* config) {
     if (!config) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    brain_immune_tick_heartbeat("brain_immune_set_config", 0.0f);
+
 
     tick_state_t* state = get_tick_state(immune);
     if (!state) return -1;

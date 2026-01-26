@@ -44,7 +44,7 @@ static nimcp_health_agent_t* g_rcog_hub_bridge_health_agent = NULL;
  * @brief Set health agent for rcog_hub_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void rcog_hub_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void rcog_hub_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_rcog_hub_bridge_health_agent = agent;
 }
 
@@ -371,6 +371,10 @@ int rcog_hub_bridge_default_config(rcog_hub_bridge_config_t* config) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_hub_bridge_heartbeat("rcog_hub_bri_default_config", 0.0f);
+
+
     config->module_id = RCOG_HUB_DEFAULT_MODULE_ID;
     config->auto_subscribe_input = true;
     config->auto_subscribe_memory = true;
@@ -386,6 +390,10 @@ rcog_hub_bridge_t* rcog_hub_bridge_create(
     const rcog_hub_bridge_config_t* config
 ) {
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_hub_bridge_heartbeat("rcog_hub_bri_create", 0.0f);
+
+
     rcog_hub_bridge_t* bridge = (rcog_hub_bridge_t*)nimcp_calloc(
         1, sizeof(rcog_hub_bridge_t));
     if (!bridge) {
@@ -435,6 +443,10 @@ void rcog_hub_bridge_destroy(rcog_hub_bridge_t* bridge) {
     }
 
     /* Disconnect from hub if connected */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_hub_bridge_heartbeat("rcog_hub_bri_destroy", 0.0f);
+
+
     if (bridge->connected) {
         rcog_hub_bridge_disconnect(bridge);
     }
@@ -462,6 +474,10 @@ int rcog_hub_bridge_connect(
     if (!bridge || !bridge->initialized || !hub) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_hub_bridge_heartbeat("rcog_hub_bri_connect", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -558,6 +574,10 @@ int rcog_hub_bridge_disconnect(rcog_hub_bridge_t* bridge) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_hub_bridge_heartbeat("rcog_hub_bri_disconnect", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->hub) {
@@ -601,6 +621,10 @@ int rcog_hub_bridge_set_engine(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_hub_bridge_heartbeat("rcog_hub_bri_set_engine", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->engine = engine;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -614,6 +638,10 @@ bool rcog_hub_bridge_is_connected(const rcog_hub_bridge_t* bridge) {
     }
 
     /* Cast away const for mutex lock (safe - only reading) */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_hub_bridge_heartbeat("rcog_hub_bri_is_connected", 0.0f);
+
+
     rcog_hub_bridge_t* mutable_bridge = (rcog_hub_bridge_t*)bridge;
 
     nimcp_mutex_lock(mutable_bridge->base.mutex);
@@ -636,6 +664,10 @@ int rcog_hub_bridge_set_input_callback(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_hub_bridge_heartbeat("rcog_hub_bri_set_input_callback", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->input_callback = callback;
     bridge->input_callback_user_data = user_data;
@@ -653,6 +685,10 @@ int rcog_hub_bridge_set_attention_callback(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_hub_bridge_heartbeat("rcog_hub_bri_set_attention_callba", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_callback = callback;
     bridge->attention_callback_user_data = user_data;
@@ -669,6 +705,10 @@ int rcog_hub_bridge_set_memory_callback(
     if (!bridge || !bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_hub_bridge_heartbeat("rcog_hub_bri_set_memory_callback", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->memory_callback = callback;
@@ -692,6 +732,10 @@ int rcog_hub_publish_recursion_start(
     if (!bridge || !bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_hub_bridge_heartbeat("rcog_hub_bri_rcog_hub_publish_rec", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -750,6 +794,10 @@ int rcog_hub_publish_recursion_complete(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_hub_bridge_heartbeat("rcog_hub_bri_rcog_hub_publish_rec", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->hub) {
@@ -805,6 +853,10 @@ int rcog_hub_publish_subtask_spawned(
     if (!bridge || !bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_hub_bridge_heartbeat("rcog_hub_bri_rcog_hub_publish_sub", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -865,6 +917,10 @@ int rcog_hub_publish_recursion_event(
     if (!bridge || !bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_hub_bridge_heartbeat("rcog_hub_bri_rcog_hub_publish_rec", 0.0f);
+
 
     if (event_type >= RCOG_HUB_EVENT_COUNT) {
         return -1;
@@ -943,6 +999,10 @@ int rcog_hub_bridge_get_state(
     }
 
     /* Cast away const for mutex lock */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_hub_bridge_heartbeat("rcog_hub_bri_get_state", 0.0f);
+
+
     rcog_hub_bridge_t* mutable_bridge = (rcog_hub_bridge_t*)bridge;
 
     nimcp_mutex_lock(mutable_bridge->base.mutex);
@@ -985,6 +1045,10 @@ int rcog_hub_bridge_get_stats(
     }
 
     /* Cast away const for mutex lock */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_hub_bridge_heartbeat("rcog_hub_bri_get_stats", 0.0f);
+
+
     rcog_hub_bridge_t* mutable_bridge = (rcog_hub_bridge_t*)bridge;
 
     nimcp_mutex_lock(mutable_bridge->base.mutex);
@@ -998,6 +1062,10 @@ int rcog_hub_bridge_reset_stats(rcog_hub_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_hub_bridge_heartbeat("rcog_hub_bri_reset_stats", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(rcog_hub_bridge_stats_t));

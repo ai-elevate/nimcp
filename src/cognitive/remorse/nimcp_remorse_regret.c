@@ -47,7 +47,7 @@ static nimcp_health_agent_t* g_remorse_regret_health_agent = NULL;
  * @brief Set health agent for remorse_regret heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void remorse_regret_set_health_agent(nimcp_health_agent_t* agent) {
+void remorse_regret_set_health_agent(nimcp_health_agent_t* agent) {
     g_remorse_regret_health_agent = agent;
 }
 
@@ -115,6 +115,12 @@ static int remorse_wiring_handler_callback(
         message_count);
 
     for (uint32_t i = 0; i < message_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && message_count > 256) {
+            remorse_regret_heartbeat("remorse_regr_loop",
+                             (float)(i + 1) / (float)message_count);
+        }
+
         switch (message_types[i]) {
             case BIO_MSG_ETHICS_EVALUATION_RESPONSE:
                 bio_router_register_handler(ctx, message_types[i], handle_ethics_response);
@@ -206,6 +212,10 @@ remorse_regret_system_t* remorse_regret_system_create(void) {
     // WHY:  Required for tracking moral emotions and learning from mistakes
     // HOW:  Allocate memory, zero-initialize, set defaults
 
+    /* Phase 8: Heartbeat at operation start */
+    remorse_regret_heartbeat("remorse_regr_system_create", 0.0f);
+
+
     remorse_regret_system_t* system = (remorse_regret_system_t*)nimcp_calloc(1, sizeof(remorse_regret_system_t));
     if (!system) {
 
@@ -277,6 +287,10 @@ void remorse_regret_system_destroy(remorse_regret_system_t* system) {
 
     if (!system) return;
     // Unregister from bio-router
+    /* Phase 8: Heartbeat at operation start */
+    remorse_regret_heartbeat("remorse_regr_system_destroy", 0.0f);
+
+
     if (system->bio_async_enabled && system->bio_ctx_ptr) {
         bio_router_unregister_module(system->bio_ctx_ptr);
         system->bio_ctx_ptr = NULL;
@@ -294,6 +308,10 @@ void remorse_regret_system_reset(remorse_regret_system_t* system) {
     if (!system) return;
 
     // Save personality traits
+    /* Phase 8: Heartbeat at operation start */
+    remorse_regret_heartbeat("remorse_regr_system_reset", 0.0f);
+
+
     float conscientiousness = system->conscientiousness;
     float neuroticism = system->neuroticism;
     float self_compassion = system->self_compassion;
@@ -345,6 +363,10 @@ void remorse_process_event(
     if (!system) return;
 
     // Find or create event slot (ring buffer)
+    /* Phase 8: Heartbeat at operation start */
+    remorse_regret_heartbeat("remorse_regr_remorse_process_even", 0.0f);
+
+
     uint32_t idx = system->event_history_index;
     regret_event_t* event = &system->events[idx];
 
@@ -453,6 +475,10 @@ void remorse_run_counterfactual(
     if (!system || event_index >= REGRET_MAX_EVENTS) return;
     if (!system->events[event_index].active) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    remorse_regret_heartbeat("remorse_regr_remorse_run_counterf", 0.0f);
+
+
     regret_event_t* event = &system->events[event_index];
     event->counterfactual_type = direction;
     event->alternative_outcome = alternative_outcome;
@@ -497,6 +523,10 @@ void remorse_attempt_atonement(
     if (!system || event_index >= REGRET_MAX_EVENTS) return;
     if (!system->events[event_index].active) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    remorse_regret_heartbeat("remorse_regr_remorse_attempt_aton", 0.0f);
+
+
     regret_event_t* event = &system->events[event_index];
     event->atonement_attempted = true;
     event->atonement_effectiveness = effectiveness;
@@ -535,6 +565,10 @@ void remorse_practice_self_forgiveness(
     if (!system || event_index >= REGRET_MAX_EVENTS) return;
     if (!system->events[event_index].active) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    remorse_regret_heartbeat("remorse_regr_remorse_practice_sel", 0.0f);
+
+
     regret_event_t* event = &system->events[event_index];
 
     // Self-forgiveness requires time and compassion
@@ -559,6 +593,10 @@ void remorse_practice_self_forgiveness(
 
 void remorse_update(remorse_regret_system_t* system, float dt, uint64_t current_time_us) {
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    remorse_regret_heartbeat("remorse_regr_remorse_update", 0.0f);
+
+
     if (system && system->bio_async_enabled && system->bio_ctx_ptr) {
         bio_router_process_inbox(system->bio_ctx_ptr, 5);
     }
@@ -580,6 +618,12 @@ void remorse_update(remorse_regret_system_t* system, float dt, uint64_t current_
 
     // Decay all active events
     for (uint32_t i = 0; i < REGRET_MAX_EVENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && REGRET_MAX_EVENTS > 256) {
+            remorse_regret_heartbeat("remorse_regr_loop",
+                             (float)(i + 1) / (float)REGRET_MAX_EVENTS);
+        }
+
         if (!system->events[i].active) continue;
 
         regret_event_t* event = &system->events[i];
@@ -632,26 +676,50 @@ void remorse_update(remorse_regret_system_t* system, float dt, uint64_t current_
 //=============================================================================
 
 bool remorse_is_guilty(const remorse_regret_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    remorse_regret_heartbeat("remorse_regr_remorse_is_guilty", 0.0f);
+
+
     return system ? system->emotion.experiencing_guilt : false;
 }
 
 bool remorse_is_remorseful(const remorse_regret_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    remorse_regret_heartbeat("remorse_regr_remorse_is_remorsefu", 0.0f);
+
+
     return system ? system->emotion.experiencing_remorse : false;
 }
 
 bool remorse_is_ashamed(const remorse_regret_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    remorse_regret_heartbeat("remorse_regr_remorse_is_ashamed", 0.0f);
+
+
     return system ? system->emotion.experiencing_shame : false;
 }
 
 float remorse_get_regret_intensity(const remorse_regret_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    remorse_regret_heartbeat("remorse_regr_remorse_get_regret_i", 0.0f);
+
+
     return system ? system->emotion.regret_intensity : 0.0F;
 }
 
 float remorse_get_self_worth(const remorse_regret_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    remorse_regret_heartbeat("remorse_regr_remorse_get_self_wor", 0.0f);
+
+
     return system ? system->emotion.self_worth : 0.7F;
 }
 
 float remorse_get_lessons_learned(const remorse_regret_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    remorse_regret_heartbeat("remorse_regr_remorse_get_lessons_", 0.0f);
+
+
     return system ? system->lessons_learned : 0.0F;
 }
 
@@ -670,6 +738,10 @@ void remorse_get_neuromodulator_effects(
     }
 
     // Remorse/guilt/shame reduce dopamine (reduced motivation)
+    /* Phase 8: Heartbeat at operation start */
+    remorse_regret_heartbeat("remorse_regr_remorse_get_neuromod", 0.0f);
+
+
     float negative_emotion = (system->emotion.guilt_intensity * 0.3F +
                              system->emotion.remorse_intensity * 0.5F +
                              system->emotion.shame_intensity * 0.7F);
@@ -683,6 +755,10 @@ emotional_tag_t remorse_get_emotion(const remorse_regret_system_t* system) {
     // WHAT: Get current moral emotion as emotional_tag_t
     // WHY:  Integration with emotional tagging system
     // HOW:  Map moral emotions to valence/arousal space
+
+    /* Phase 8: Heartbeat at operation start */
+    remorse_regret_heartbeat("remorse_regr_remorse_get_emotion", 0.0f);
+
 
     emotional_tag_t tag = {0};
     if (!system) return tag;
@@ -725,9 +801,19 @@ emotional_tag_t remorse_get_emotion(const remorse_regret_system_t* system) {
 int remorse_regret_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    remorse_regret_heartbeat("remorse_regr_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Remorse_Regret");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                remorse_regret_heartbeat("remorse_regr_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

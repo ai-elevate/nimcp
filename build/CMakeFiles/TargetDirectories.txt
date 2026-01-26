@@ -820,6 +820,7 @@
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_brain_state_manager_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_fault_tolerance_exception_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_health_workflow_e2e.dir
+/home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B01_memory_core_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/rebuild_cache.dir
@@ -1415,6 +1416,7 @@
 /home/bbrelin/nimcp/build/test/integration/fault_tolerance/CMakeFiles/integration_self_repair.dir
 /home/bbrelin/nimcp/build/test/integration/fault_tolerance/CMakeFiles/integration_self_repair_bio_async.dir
 /home/bbrelin/nimcp/build/test/integration/fault_tolerance/CMakeFiles/integration_health_module.dir
+/home/bbrelin/nimcp/build/test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B01_memory_core.dir
 /home/bbrelin/nimcp/build/test/integration/fault_tolerance/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/fault_tolerance/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/fault_tolerance/CMakeFiles/rebuild_cache.dir
@@ -3153,6 +3155,7 @@
 /home/bbrelin/nimcp/build/test/regression/utils/fault_tolerance/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/regression/fault_tolerance/CMakeFiles/regression_fault_tolerance.dir
 /home/bbrelin/nimcp/build/test/regression/fault_tolerance/CMakeFiles/regression_health_stability.dir
+/home/bbrelin/nimcp/build/test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B01_memory_core.dir
 /home/bbrelin/nimcp/build/test/regression/fault_tolerance/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/fault_tolerance/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/fault_tolerance/CMakeFiles/rebuild_cache.dir
@@ -3202,6 +3205,7 @@
 /home/bbrelin/nimcp/build/test/unit/fault_tolerance/CMakeFiles/unit_health_agent_heartbeat.dir
 /home/bbrelin/nimcp/build/test/unit/fault_tolerance/CMakeFiles/unit_state_manager.dir
 /home/bbrelin/nimcp/build/test/unit/fault_tolerance/CMakeFiles/unit_training_state_manager.dir
+/home/bbrelin/nimcp/build/test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B01_memory_core.dir
 /home/bbrelin/nimcp/build/test/unit/fault_tolerance/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/fault_tolerance/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/fault_tolerance/CMakeFiles/rebuild_cache.dir

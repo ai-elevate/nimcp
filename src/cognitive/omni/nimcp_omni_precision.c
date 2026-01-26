@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_omni_precision_health_agent = NULL;
  * @brief Set health agent for omni_precision heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void omni_precision_set_health_agent(nimcp_health_agent_t* agent) {
+void omni_precision_set_health_agent(nimcp_health_agent_t* agent) {
     g_omni_precision_health_agent = agent;
 }
 
@@ -61,6 +61,12 @@ static inline void omni_precision_heartbeat(const char* operation, float progres
 static omni_module_precision_t* find_module(omni_precision_ctx_t* ctx,
                                              uint16_t module_id) {
     for (uint32_t i = 0; i < ctx->module_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->module_count > 256) {
+            omni_precision_heartbeat("omni_precisi_loop",
+                             (float)(i + 1) / (float)ctx->module_count);
+        }
+
         if (ctx->modules[i].module_id == module_id && ctx->modules[i].active) {
             return &ctx->modules[i];
         }
@@ -73,6 +79,12 @@ static const omni_module_precision_t* find_module_const(
     uint16_t module_id)
 {
     for (uint32_t i = 0; i < ctx->module_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->module_count > 256) {
+            omni_precision_heartbeat("omni_precisi_loop",
+                             (float)(i + 1) / (float)ctx->module_count);
+        }
+
         if (ctx->modules[i].module_id == module_id && ctx->modules[i].active) {
             return &ctx->modules[i];
         }
@@ -123,6 +135,12 @@ static void update_module_aggregate(omni_module_precision_t* module) {
     uint32_t count = 0;
 
     for (int i = 0; i < OMNI_PREC_CHANNEL_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && OMNI_PREC_CHANNEL_COUNT > 256) {
+            omni_precision_heartbeat("omni_precisi_loop",
+                             (float)(i + 1) / (float)OMNI_PREC_CHANNEL_COUNT);
+        }
+
         if (module->channels[i].enabled) {
             sum += module->channels[i].value;
             count++;
@@ -138,6 +156,10 @@ static void update_module_aggregate(omni_module_precision_t* module) {
  * ============================================================================ */
 
 int omni_precision_default_config(omni_precision_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     memset(config, 0, sizeof(omni_precision_config_t));
@@ -166,6 +188,10 @@ int omni_precision_default_config(omni_precision_config_t* config) {
  * ============================================================================ */
 
 omni_precision_ctx_t* omni_precision_create(const omni_precision_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_create", 0.0f);
+
+
     omni_precision_ctx_t* ctx = nimcp_calloc(1, sizeof(omni_precision_ctx_t));
     if (!ctx) {
 
@@ -200,8 +226,20 @@ omni_precision_ctx_t* omni_precision_create(const omni_precision_config_t* confi
 
     /* Initialize modules to default state */
     for (int i = 0; i < OMNI_PRECISION_MAX_MODULES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && OMNI_PRECISION_MAX_MODULES > 256) {
+            omni_precision_heartbeat("omni_precisi_loop",
+                             (float)(i + 1) / (float)OMNI_PRECISION_MAX_MODULES);
+        }
+
         ctx->modules[i].active = false;
         for (int j = 0; j < OMNI_PREC_CHANNEL_COUNT; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && OMNI_PREC_CHANNEL_COUNT > 256) {
+                omni_precision_heartbeat("omni_precisi_loop",
+                                 (float)(j + 1) / (float)OMNI_PREC_CHANNEL_COUNT);
+            }
+
             ctx->modules[i].channels[j].value = OMNI_PRECISION_DEFAULT;
             ctx->modules[i].channels[j].variance = 1.0f;
             ctx->modules[i].channels[j].error_history = 0.0f;
@@ -220,6 +258,10 @@ omni_precision_ctx_t* omni_precision_create(const omni_precision_config_t* confi
 void omni_precision_destroy(omni_precision_ctx_t* ctx) {
     if (!ctx) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_destroy", 0.0f);
+
+
     if (ctx->bio_async_connected) {
         omni_precision_disconnect_bio_async(ctx);
     }
@@ -236,13 +278,29 @@ void omni_precision_destroy(omni_precision_ctx_t* ctx) {
 }
 
 int omni_precision_reset(omni_precision_ctx_t* ctx) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_reset", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
 
     /* Reset all module precisions */
     for (uint32_t i = 0; i < ctx->module_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->module_count > 256) {
+            omni_precision_heartbeat("omni_precisi_loop",
+                             (float)(i + 1) / (float)ctx->module_count);
+        }
+
         for (int j = 0; j < OMNI_PREC_CHANNEL_COUNT; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && OMNI_PREC_CHANNEL_COUNT > 256) {
+                omni_precision_heartbeat("omni_precisi_loop",
+                                 (float)(j + 1) / (float)OMNI_PREC_CHANNEL_COUNT);
+            }
+
             ctx->modules[i].channels[j].value = OMNI_PRECISION_DEFAULT;
             ctx->modules[i].channels[j].variance = 1.0f;
             ctx->modules[i].channels[j].error_history = 0.0f;
@@ -269,6 +327,10 @@ int omni_precision_register_module(omni_precision_ctx_t* ctx,
                                     uint16_t module_id,
                                     const char* name,
                                     float initial_precision) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_register_module", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
     NIMCP_CHECK_THROW(name, NIMCP_ERROR_INVALID_PARAM, "name is NULL");
 
@@ -294,6 +356,12 @@ int omni_precision_register_module(omni_precision_ctx_t* ctx,
 
     /* Initialize all channels with initial precision */
     for (int i = 0; i < OMNI_PREC_CHANNEL_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && OMNI_PREC_CHANNEL_COUNT > 256) {
+            omni_precision_heartbeat("omni_precisi_loop",
+                             (float)(i + 1) / (float)OMNI_PREC_CHANNEL_COUNT);
+        }
+
         module->channels[i].value = initial_precision;
         module->channels[i].variance = 1.0f;
         module->channels[i].error_history = 0.0f;
@@ -314,6 +382,10 @@ int omni_precision_enable_channel(omni_precision_ctx_t* ctx,
                                    uint16_t module_id,
                                    omni_precision_channel_t channel,
                                    float initial_precision) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_enable_channel", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
     NIMCP_CHECK_THROW(channel < OMNI_PREC_CHANNEL_COUNT, NIMCP_ERROR_INVALID_PARAM, "channel out of range");
 
@@ -335,6 +407,10 @@ int omni_precision_enable_channel(omni_precision_ctx_t* ctx,
 
 int omni_precision_unregister_module(omni_precision_ctx_t* ctx,
                                       uint16_t module_id) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_unregister_module", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
@@ -359,6 +435,10 @@ int omni_precision_update(omni_precision_ctx_t* ctx,
                            uint16_t module_id,
                            omni_precision_channel_t channel,
                            float prediction_error) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
     NIMCP_CHECK_THROW(channel < OMNI_PREC_CHANNEL_COUNT, NIMCP_ERROR_INVALID_PARAM, "channel out of range");
 
@@ -421,6 +501,10 @@ int omni_precision_update(omni_precision_ctx_t* ctx,
 int omni_precision_update_from_fep(omni_precision_ctx_t* ctx,
                                     uint16_t module_id,
                                     const void* fep) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_update_from_fep", 0.0f);
+
+
     const fep_system_t* fep_sys = (const fep_system_t*)fep;
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
     NIMCP_CHECK_THROW(fep, NIMCP_ERROR_INVALID_PARAM, "fep is NULL");
@@ -439,6 +523,12 @@ int omni_precision_update_from_fep(omni_precision_ctx_t* ctx,
     }
 
     for (int i = 0; i < OMNI_PREC_CHANNEL_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && OMNI_PREC_CHANNEL_COUNT > 256) {
+            omni_precision_heartbeat("omni_precisi_loop",
+                             (float)(i + 1) / (float)OMNI_PREC_CHANNEL_COUNT);
+        }
+
         if (module->channels[i].enabled) {
             float current = module->channels[i].value;
             /* Higher free energy = lower precision (more uncertainty) */
@@ -454,6 +544,10 @@ int omni_precision_update_from_fep(omni_precision_ctx_t* ctx,
 }
 
 int omni_precision_propagate(omni_precision_ctx_t* ctx) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_propagate", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
     if (!ctx->config.enable_propagation) return NIMCP_SUCCESS;
 
@@ -461,6 +555,12 @@ int omni_precision_propagate(omni_precision_ctx_t* ctx) {
 
     /* Propagate precision through edges */
     for (uint32_t e = 0; e < ctx->edge_count; e++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((e & 0xFF) == 0 && ctx->edge_count > 256) {
+            omni_precision_heartbeat("omni_precisi_loop",
+                             (float)(e + 1) / (float)ctx->edge_count);
+        }
+
         const omni_precision_edge_t* edge = &ctx->edges[e];
 
         const omni_module_precision_t* source =
@@ -483,6 +583,12 @@ int omni_precision_propagate(omni_precision_ctx_t* ctx) {
 
     /* Update aggregates for all affected modules */
     for (uint32_t i = 0; i < ctx->module_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->module_count > 256) {
+            omni_precision_heartbeat("omni_precisi_loop",
+                             (float)(i + 1) / (float)ctx->module_count);
+        }
+
         if (ctx->modules[i].active) {
             update_module_aggregate(&ctx->modules[i]);
         }
@@ -495,14 +601,30 @@ int omni_precision_propagate(omni_precision_ctx_t* ctx) {
 }
 
 int omni_precision_decay(omni_precision_ctx_t* ctx) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_decay", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
 
     for (uint32_t i = 0; i < ctx->module_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->module_count > 256) {
+            omni_precision_heartbeat("omni_precisi_loop",
+                             (float)(i + 1) / (float)ctx->module_count);
+        }
+
         if (!ctx->modules[i].active) continue;
 
         for (int j = 0; j < OMNI_PREC_CHANNEL_COUNT; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && OMNI_PREC_CHANNEL_COUNT > 256) {
+                omni_precision_heartbeat("omni_precisi_loop",
+                                 (float)(j + 1) / (float)OMNI_PREC_CHANNEL_COUNT);
+            }
+
             if (!ctx->modules[i].channels[j].enabled) continue;
 
             float current = ctx->modules[i].channels[j].value;
@@ -533,6 +655,10 @@ float omni_precision_get(const omni_precision_ctx_t* ctx,
     if (!ctx) return OMNI_PRECISION_DEFAULT;
     if (channel >= OMNI_PREC_CHANNEL_COUNT) return OMNI_PRECISION_DEFAULT;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_get", 0.0f);
+
+
     nimcp_mutex_lock(((omni_precision_ctx_t*)ctx)->mutex);
 
     const omni_module_precision_t* module = find_module_const(ctx, module_id);
@@ -550,6 +676,10 @@ float omni_precision_get_aggregate(const omni_precision_ctx_t* ctx,
                                     uint16_t module_id) {
     if (!ctx) return OMNI_PRECISION_DEFAULT;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_get_aggregate", 0.0f);
+
+
     nimcp_mutex_lock(((omni_precision_ctx_t*)ctx)->mutex);
 
     const omni_module_precision_t* module = find_module_const(ctx, module_id);
@@ -563,6 +693,10 @@ float omni_precision_get_confidence(const omni_precision_ctx_t* ctx,
                                      uint16_t module_id) {
     if (!ctx) return 0.5f;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_get_confidence", 0.0f);
+
+
     nimcp_mutex_lock(((omni_precision_ctx_t*)ctx)->mutex);
 
     const omni_module_precision_t* module = find_module_const(ctx, module_id);
@@ -575,6 +709,10 @@ float omni_precision_get_confidence(const omni_precision_ctx_t* ctx,
 int omni_precision_get_all_channels(const omni_precision_ctx_t* ctx,
                                      uint16_t module_id,
                                      float* precisions) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_get_all_channels", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
     NIMCP_CHECK_THROW(precisions, NIMCP_ERROR_INVALID_PARAM, "precisions array is NULL");
 
@@ -587,6 +725,12 @@ int omni_precision_get_all_channels(const omni_precision_ctx_t* ctx,
     }
 
     for (int i = 0; i < OMNI_PREC_CHANNEL_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && OMNI_PREC_CHANNEL_COUNT > 256) {
+            omni_precision_heartbeat("omni_precisi_loop",
+                             (float)(i + 1) / (float)OMNI_PREC_CHANNEL_COUNT);
+        }
+
         precisions[i] = module->channels[i].enabled ?
                         module->channels[i].value : 0.0f;
     }
@@ -597,6 +741,10 @@ int omni_precision_get_all_channels(const omni_precision_ctx_t* ctx,
 
 int omni_precision_get_stats(const omni_precision_ctx_t* ctx,
                               omni_precision_stats_t* stats) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
     NIMCP_CHECK_THROW(stats, NIMCP_ERROR_INVALID_PARAM, "stats is NULL");
 
@@ -608,6 +756,10 @@ int omni_precision_get_stats(const omni_precision_ctx_t* ctx,
 }
 
 int omni_precision_reset_stats(omni_precision_ctx_t* ctx) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_reset_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
@@ -628,6 +780,10 @@ int omni_precision_add_edge(omni_precision_ctx_t* ctx,
                              uint16_t target_module,
                              omni_precision_channel_t channel,
                              float weight) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_add_edge", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
     NIMCP_CHECK_THROW(channel < OMNI_PREC_CHANNEL_COUNT, NIMCP_ERROR_INVALID_PARAM, "channel out of range");
 
@@ -661,6 +817,10 @@ int omni_precision_add_bidirectional_edge(omni_precision_ctx_t* ctx,
                                            uint16_t module_a,
                                            uint16_t module_b,
                                            float weight) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_add_bidirectional_ed", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
 
     /* Add forward edge */
@@ -678,11 +838,21 @@ int omni_precision_remove_edge(omni_precision_ctx_t* ctx,
                                 uint16_t source_module,
                                 uint16_t target_module,
                                 omni_precision_channel_t channel) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_remove_edge", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
 
     for (uint32_t i = 0; i < ctx->edge_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->edge_count > 256) {
+            omni_precision_heartbeat("omni_precisi_loop",
+                             (float)(i + 1) / (float)ctx->edge_count);
+        }
+
         if (ctx->edges[i].source_module == source_module &&
             ctx->edges[i].target_module == target_module &&
             ctx->edges[i].channel == channel) {
@@ -705,6 +875,10 @@ int omni_precision_remove_edge(omni_precision_ctx_t* ctx,
 
 int omni_precision_connect_fep(omni_precision_ctx_t* ctx,
                                 void* fep) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_connect_fep", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
@@ -716,6 +890,10 @@ int omni_precision_connect_fep(omni_precision_ctx_t* ctx,
 
 int omni_precision_connect_kg_sync(omni_precision_ctx_t* ctx,
                                     omni_kg_sync_t* kg_sync) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_connect_kg_sync", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
@@ -726,6 +904,10 @@ int omni_precision_connect_kg_sync(omni_precision_ctx_t* ctx,
 }
 
 int omni_precision_sync_to_kg(omni_precision_ctx_t* ctx) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_sync_to_kg", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
     NIMCP_CHECK_THROW(ctx->kg_sync, NIMCP_ERROR_INVALID_STATE, "kg_sync is not connected");
 
@@ -784,6 +966,10 @@ static nimcp_error_t handle_free_energy_report(
  * ============================================================================ */
 
 int omni_precision_connect_bio_async(omni_precision_ctx_t* ctx) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_connect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
     if (ctx->bio_async_connected) return NIMCP_SUCCESS;
 
@@ -811,6 +997,10 @@ int omni_precision_connect_bio_async(omni_precision_ctx_t* ctx) {
 }
 
 int omni_precision_disconnect_bio_async(omni_precision_ctx_t* ctx) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_disconnect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
     if (!ctx->bio_async_connected) return NIMCP_SUCCESS;
 
@@ -825,12 +1015,20 @@ int omni_precision_disconnect_bio_async(omni_precision_ctx_t* ctx) {
 
 bool omni_precision_is_bio_async_connected(const omni_precision_ctx_t* ctx) {
     if (!ctx) return false;
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_is_bio_async_connect", 0.0f);
+
+
     return ctx->bio_async_connected;
 }
 
 int omni_precision_broadcast_update(omni_precision_ctx_t* ctx,
                                      uint16_t module_id,
                                      omni_precision_channel_t channel) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_broadcast_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
     NIMCP_CHECK_THROW(ctx->bio_async_connected, NIMCP_ERROR_INVALID_STATE, "bio-async is not connected");
 
@@ -863,16 +1061,28 @@ int omni_precision_broadcast_update(omni_precision_ctx_t* ctx,
  * ============================================================================ */
 
 float omni_precision_from_variance(float variance) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_from_variance", 0.0f);
+
+
     if (variance <= 0.0f) variance = 0.01f;
     float precision = 1.0f / variance;
     return omni_precision_clamp(precision);
 }
 
 float omni_precision_weight_error(float error, float precision) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_weight_error", 0.0f);
+
+
     return precision * error;
 }
 
 float omni_precision_to_confidence(float precision) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_to_confidence", 0.0f);
+
+
     if (precision < 0.0f) precision = 0.0f;
     return precision / (precision + 1.0f);
 }
@@ -880,6 +1090,10 @@ float omni_precision_to_confidence(float precision) {
 float omni_precision_clamp(float precision) {
     if (precision < OMNI_PRECISION_MIN) return OMNI_PRECISION_MIN;
     if (precision > OMNI_PRECISION_MAX) return OMNI_PRECISION_MAX;
+    /* Phase 8: Heartbeat at operation start */
+    omni_precision_heartbeat("omni_precisi_clamp", 0.0f);
+
+
     return precision;
 }
 

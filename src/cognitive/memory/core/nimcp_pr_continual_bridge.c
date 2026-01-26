@@ -42,7 +42,7 @@ static nimcp_health_agent_t* g_pr_continual_bridge_health_agent = NULL;
  * @brief Set health agent for pr_continual_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void pr_continual_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void pr_continual_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_pr_continual_bridge_health_agent = agent;
 }
 
@@ -223,6 +223,12 @@ static int add_task_to_history(pr_continual_bridge_t bridge,
 static float compute_l2_norm(const float* arr, size_t n) {
     float sum = 0.0f;
     for (size_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            pr_continual_bridge_heartbeat("pr_continual_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         sum += arr[i] * arr[i];
     }
     return sqrtf(sum);
@@ -233,6 +239,10 @@ static float compute_l2_norm(const float* arr, size_t n) {
 //=============================================================================
 
 pr_continual_config_t pr_continual_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_config_", 0.0f);
+
+
     pr_continual_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -262,6 +272,10 @@ pr_continual_config_t pr_continual_config_default(void) {
 }
 
 pr_continual_config_t pr_continual_config_ewc_only(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_config_", 0.0f);
+
+
     pr_continual_config_t config = pr_continual_config_default();
 
     config.type = PR_CONTINUAL_EWC;
@@ -272,6 +286,10 @@ pr_continual_config_t pr_continual_config_ewc_only(void) {
 }
 
 pr_continual_config_t pr_continual_config_replay_focused(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_config_", 0.0f);
+
+
     pr_continual_config_t config = pr_continual_config_default();
 
     config.type = PR_CONTINUAL_RESONANCE_REPLAY;
@@ -283,6 +301,10 @@ pr_continual_config_t pr_continual_config_replay_focused(void) {
 }
 
 pr_continual_config_t pr_continual_config_max_protection(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_config_", 0.0f);
+
+
     pr_continual_config_t config = pr_continual_config_default();
 
     config.type = PR_CONTINUAL_COMBINED;
@@ -309,7 +331,17 @@ bool pr_continual_config_validate(const pr_continual_config_t* config) {
     if (config->replay_ratio < 0.0f || config->replay_ratio > 1.0f) return false;
     if (config->replay_batch_size == 0) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_config_", 0.0f);
+
+
     for (int i = 0; i < PR_CONTINUAL_NUM_TIERS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_CONTINUAL_NUM_TIERS > 256) {
+            pr_continual_bridge_heartbeat("pr_continual_loop",
+                             (float)(i + 1) / (float)PR_CONTINUAL_NUM_TIERS);
+        }
+
         if (config->protection_threshold[i] < 0.0f ||
             config->protection_threshold[i] > 1.0f) {
             return false;
@@ -331,6 +363,10 @@ bool pr_continual_config_validate(const pr_continual_config_t* config) {
 pr_continual_bridge_t pr_continual_bridge_create(
     const pr_continual_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_create", 0.0f);
+
+
     pr_continual_bridge_t bridge = nimcp_calloc(1, sizeof(struct pr_continual_bridge_struct));
     if (!bridge) {
 
@@ -433,6 +469,10 @@ void pr_continual_bridge_destroy(pr_continual_bridge_t bridge) {
     if (!bridge) return;
 
     /* Free Fisher storage */
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_destroy", 0.0f);
+
+
     if (bridge->fisher_diag) nimcp_free(bridge->fisher_diag);
     if (bridge->old_params) nimcp_free(bridge->old_params);
     if (bridge->fisher_accum) nimcp_free(bridge->fisher_accum);
@@ -440,6 +480,12 @@ void pr_continual_bridge_destroy(pr_continual_bridge_t bridge) {
     /* Free task-specific Fisher */
     if (bridge->task_fisher) {
         for (uint32_t t = 0; t < bridge->num_task_fisher; t++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((t & 0xFF) == 0 && bridge->num_task_fisher > 256) {
+                pr_continual_bridge_heartbeat("pr_continual_loop",
+                                 (float)(t + 1) / (float)bridge->num_task_fisher);
+            }
+
             if (bridge->task_fisher[t]) {
                 nimcp_free(bridge->task_fisher[t]);
             }
@@ -461,6 +507,10 @@ void pr_continual_bridge_destroy(pr_continual_bridge_t bridge) {
 
 int pr_continual_bridge_reset(pr_continual_bridge_t bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_reset", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -513,6 +563,10 @@ int pr_continual_compute_fisher(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_compute", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Ensure capacity */
@@ -528,9 +582,21 @@ int pr_continual_compute_fisher(
 
     /* Compute empirical Fisher: F_i = (1/N) * sum_n (grad[n][i])^2 */
     for (size_t s = 0; s < num_samples; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && num_samples > 256) {
+            pr_continual_bridge_heartbeat("pr_continual_loop",
+                             (float)(s + 1) / (float)num_samples);
+        }
+
         if (!gradients[s]) continue;
 
         for (size_t i = 0; i < num_params; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_params > 256) {
+                pr_continual_bridge_heartbeat("pr_continual_loop",
+                                 (float)(i + 1) / (float)num_params);
+            }
+
             float g = gradients[s][i];
             bridge->fisher_diag[i] += g * g;
         }
@@ -539,6 +605,12 @@ int pr_continual_compute_fisher(
     /* Normalize by sample count */
     float inv_n = 1.0f / (float)num_samples;
     for (size_t i = 0; i < num_params; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_params > 256) {
+            pr_continual_bridge_heartbeat("pr_continual_loop",
+                             (float)(i + 1) / (float)num_params);
+        }
+
         bridge->fisher_diag[i] *= inv_n;
 
         /* Clamp to valid range */
@@ -558,6 +630,12 @@ int pr_continual_compute_fisher(
     float fisher_sum = 0.0f;
     size_t fisher_nonzero = 0;
     for (size_t i = 0; i < num_params; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_params > 256) {
+            pr_continual_bridge_heartbeat("pr_continual_loop",
+                             (float)(i + 1) / (float)num_params);
+        }
+
         fisher_sum += bridge->fisher_diag[i];
         if (bridge->fisher_diag[i] > PR_CONTINUAL_FISHER_EPSILON) {
             fisher_nonzero++;
@@ -588,6 +666,9 @@ int pr_continual_compute_fisher_weighted(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_compute", 0.0f);
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Ensure capacity */
@@ -604,6 +685,12 @@ int pr_continual_compute_fisher_weighted(
 
     /* Compute weighted Fisher: F_i = sum_n ((grad[n][i])^2 * (1 + alpha * w^2)) */
     for (size_t s = 0; s < num_samples; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && num_samples > 256) {
+            pr_continual_bridge_heartbeat("pr_continual_loop",
+                             (float)(s + 1) / (float)num_samples);
+        }
+
         if (!gradients[s]) continue;
 
         /* Compute consolidation weight */
@@ -612,6 +699,12 @@ int pr_continual_compute_fisher_weighted(
         total_weight += weight;
 
         for (size_t i = 0; i < num_params; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_params > 256) {
+                pr_continual_bridge_heartbeat("pr_continual_loop",
+                                 (float)(i + 1) / (float)num_params);
+            }
+
             float g = gradients[s][i];
             bridge->fisher_diag[i] += g * g * weight;
         }
@@ -621,6 +714,12 @@ int pr_continual_compute_fisher_weighted(
     if (total_weight > PR_CONTINUAL_EPSILON) {
         float inv_w = 1.0f / total_weight;
         for (size_t i = 0; i < num_params; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_params > 256) {
+                pr_continual_bridge_heartbeat("pr_continual_loop",
+                                 (float)(i + 1) / (float)num_params);
+            }
+
             bridge->fisher_diag[i] *= inv_w;
             bridge->fisher_diag[i] = clamp_f(bridge->fisher_diag[i],
                                               0.0f, PR_CONTINUAL_FISHER_MAX);
@@ -641,6 +740,10 @@ float pr_continual_get_fisher(
     if (!bridge) return -1.0f;
     if (param_idx >= bridge->fisher_size) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_get_fis", 0.0f);
+
+
     return bridge->fisher_diag[param_idx];
 }
 
@@ -650,6 +753,10 @@ int pr_continual_set_fisher(
     float value)
 {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_set_fis", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -679,6 +786,10 @@ int pr_continual_accumulate_fisher(
 {
     if (!bridge || !new_fisher || num_params == 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_accumul", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (ensure_fisher_capacity(bridge, num_params) != 0) {
@@ -690,12 +801,24 @@ int pr_continual_accumulate_fisher(
     if (decay && bridge->config.enable_importance_decay) {
         float decay_factor = 1.0f - bridge->config.importance_decay_rate;
         for (size_t i = 0; i < bridge->fisher_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->fisher_size > 256) {
+                pr_continual_bridge_heartbeat("pr_continual_loop",
+                                 (float)(i + 1) / (float)bridge->fisher_size);
+            }
+
             bridge->fisher_diag[i] *= decay_factor;
         }
     }
 
     /* Accumulate new Fisher */
     for (size_t i = 0; i < num_params; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_params > 256) {
+            pr_continual_bridge_heartbeat("pr_continual_loop",
+                             (float)(i + 1) / (float)num_params);
+        }
+
         bridge->fisher_diag[i] += new_fisher[i];
         bridge->fisher_diag[i] = clamp_f(bridge->fisher_diag[i],
                                           0.0f, PR_CONTINUAL_FISHER_MAX);
@@ -718,6 +841,10 @@ float pr_continual_ewc_loss(
     if (!bridge || !current_params || num_params == 0) return -1.0f;
     if (!bridge->params_stored) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_ewc_los", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     size_t n = (num_params < bridge->fisher_size) ? num_params : bridge->fisher_size;
@@ -726,6 +853,12 @@ float pr_continual_ewc_loss(
 
     /* L_ewc = (lambda/2) * sum_i (F[i] * (theta[i] - theta*[i])^2) */
     for (size_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            pr_continual_bridge_heartbeat("pr_continual_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         float diff = current_params[i] - bridge->old_params[i];
         loss += bridge->fisher_diag[i] * diff * diff;
     }
@@ -753,6 +886,10 @@ float pr_continual_ewc_loss_weighted(
     if (!bridge || !current_params || num_params == 0) return -1.0f;
     if (!bridge->params_stored) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_ewc_los", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     size_t n = (num_params < bridge->fisher_size) ? num_params : bridge->fisher_size;
@@ -761,6 +898,12 @@ float pr_continual_ewc_loss_weighted(
     float loss = 0.0f;
 
     for (size_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            pr_continual_bridge_heartbeat("pr_continual_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         float diff = current_params[i] - bridge->old_params[i];
 
         /* Scale by quaternion consolidation if provided */
@@ -796,6 +939,10 @@ int pr_continual_ewc_gradient(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_ewc_gra", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     size_t n = (num_params < bridge->fisher_size) ? num_params : bridge->fisher_size;
@@ -803,6 +950,12 @@ int pr_continual_ewc_gradient(
 
     /* grad_ewc[i] = lambda * F[i] * (theta[i] - theta*[i]) */
     for (size_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            pr_continual_bridge_heartbeat("pr_continual_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         float diff = current_params[i] - bridge->old_params[i];
         ewc_gradients[i] = lambda * bridge->fisher_diag[i] * diff;
     }
@@ -827,6 +980,10 @@ float pr_continual_consolidation_importance(
 {
     if (!bridge || !node) return 1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_consoli", 0.0f);
+
+
     nimcp_quaternion_t quat = pr_memory_node_get_state(node);
     return pr_continual_quat_importance(bridge, quat);
 }
@@ -836,6 +993,10 @@ float pr_continual_quat_importance(
     nimcp_quaternion_t quat)
 {
     if (!bridge) return 1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_quat_im", 0.0f);
+
 
     float alpha = bridge->config.consolidation_weight;
     float w = quat.w;
@@ -851,6 +1012,10 @@ float pr_continual_tier_protection_mask(
     if (!bridge) return 0.0f;
     if (tier >= PR_CONTINUAL_NUM_TIERS) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_tier_pr", 0.0f);
+
+
     return bridge->config.protection_threshold[tier];
 }
 
@@ -859,6 +1024,10 @@ float pr_continual_entanglement_protection(
     const pr_memory_node_t* node)
 {
     if (!bridge || !node) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_entangl", 0.0f);
+
 
     uint32_t entangle_count = pr_memory_node_get_entanglement_count(node);
     uint32_t threshold = bridge->config.entangle_threshold;
@@ -877,6 +1046,10 @@ float pr_continual_combined_importance(
     if (!bridge || !node) return 0.0f;
 
     /* Get tier protection */
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_combine", 0.0f);
+
+
     pr_memory_tier_t tier = pr_memory_node_get_tier(node);
     float tier_prot = pr_continual_tier_protection_mask(bridge, (pr_continual_tier_t)tier);
 
@@ -911,6 +1084,10 @@ int pr_continual_replay_sample(
     size_t* samples_returned)
 {
     if (!bridge || !ladder || !samples || !samples_returned) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_replay_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -984,6 +1161,12 @@ int pr_continual_replay_sample(
     if (total_sampled > 0) {
         float total_imp = 0.0f;
         for (size_t i = 0; i < total_sampled; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && total_sampled > 256) {
+                pr_continual_bridge_heartbeat("pr_continual_loop",
+                                 (float)(i + 1) / (float)total_sampled);
+            }
+
             total_imp += samples[i].importance;
         }
         bridge->stats.avg_replay_importance =
@@ -1010,6 +1193,10 @@ int pr_continual_replay_sample_resonant(
 
     /* For now, delegate to basic sampling */
     /* Full implementation would compute resonance and filter */
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_replay_", 0.0f);
+
+
     (void)query;
     (void)min_resonance;
 
@@ -1025,10 +1212,20 @@ int pr_continual_replay_tier_distribution(
     if (!bridge || !tier_counts) return -1;
 
     /* Default distribution: Z0=40%, Z1=30%, Z2=20%, Z3=10% */
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_replay_", 0.0f);
+
+
     float dist[PR_CONTINUAL_NUM_TIERS] = {0.4f, 0.3f, 0.2f, 0.1f};
 
     size_t assigned = 0;
     for (int t = 0; t < PR_CONTINUAL_NUM_TIERS; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && PR_CONTINUAL_NUM_TIERS > 256) {
+            pr_continual_bridge_heartbeat("pr_continual_loop",
+                             (float)(t + 1) / (float)PR_CONTINUAL_NUM_TIERS);
+        }
+
         tier_counts[t] = (size_t)(dist[t] * (float)total_batch);
         assigned += tier_counts[t];
     }
@@ -1051,6 +1248,10 @@ int pr_continual_apply_protection(
 {
     if (!bridge || !gradients || num_params == 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_apply_p", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t start_time_us = nimcp_time_get_us();
@@ -1064,6 +1265,12 @@ int pr_continual_apply_protection(
     float max_protection = 0.0f;
 
     for (size_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            pr_continual_bridge_heartbeat("pr_continual_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         float fisher = bridge->fisher_diag[i];
         if (fisher < PR_CONTINUAL_FISHER_EPSILON) continue;
 
@@ -1124,6 +1331,10 @@ int pr_continual_apply_protection_nodes(
 {
     if (!bridge || !gradients || !nodes || num_params == 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_apply_p", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float norm_before = compute_l2_norm(gradients, num_params);
@@ -1134,6 +1345,12 @@ int pr_continual_apply_protection_nodes(
     float max_protection = 0.0f;
 
     for (size_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            pr_continual_bridge_heartbeat("pr_continual_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         float fisher = bridge->fisher_diag[i];
 
         /* Add node-specific importance if node provided */
@@ -1185,11 +1402,21 @@ int pr_continual_preview_protection(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_preview", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     size_t n = (num_params < bridge->fisher_size) ? num_params : bridge->fisher_size;
 
     for (size_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            pr_continual_bridge_heartbeat("pr_continual_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         float fisher = bridge->fisher_diag[i];
         float protection = fisher * bridge->config.ewc_lambda;
         protection_factors[i] = 1.0f / (1.0f + protection);
@@ -1214,6 +1441,10 @@ int pr_continual_task_boundary(
     uint32_t task_id)
 {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_task_bo", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1253,6 +1484,10 @@ int pr_continual_store_params(
 {
     if (!bridge || !params || num_params == 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_store_p", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (ensure_fisher_capacity(bridge, num_params) != 0) {
@@ -1276,6 +1511,10 @@ float pr_continual_get_stored_param(
     if (!bridge->params_stored) return NAN;
     if (param_idx >= bridge->fisher_size) return NAN;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_get_sto", 0.0f);
+
+
     return bridge->old_params[param_idx];
 }
 
@@ -1286,6 +1525,10 @@ int pr_continual_consolidate_task(
     uint32_t task_id)
 {
     if (!bridge || !ladder || !graph) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_consoli", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1309,6 +1552,12 @@ int pr_continual_consolidate_task(
         }
 
         for (size_t idx = 0; idx < actual_count; idx++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((idx & 0xFF) == 0 && actual_count > 256) {
+                pr_continual_bridge_heartbeat("pr_continual_loop",
+                                 (float)(idx + 1) / (float)actual_count);
+            }
+
             pr_memory_node_t* node = tier_nodes[idx];
             if (!node) continue;
 
@@ -1358,6 +1607,10 @@ int pr_continual_get_stats(
 {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_get_sta", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1372,11 +1625,21 @@ int pr_continual_get_task_info(
 {
     if (!bridge || !info) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_get_tas", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Search for task */
     bool found = false;
     for (uint32_t i = 0; i < bridge->task_history_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->task_history_count > 256) {
+            pr_continual_bridge_heartbeat("pr_continual_loop",
+                             (float)(i + 1) / (float)bridge->task_history_count);
+        }
+
         if (bridge->task_history[i].task_id == task_id) {
             *info = bridge->task_history[i];
             found = true;
@@ -1391,16 +1654,28 @@ int pr_continual_get_task_info(
 
 uint32_t pr_continual_get_current_task(pr_continual_bridge_t bridge) {
     if (!bridge) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_get_cur", 0.0f);
+
+
     return bridge->current_task_id;
 }
 
 size_t pr_continual_get_num_params(pr_continual_bridge_t bridge) {
     if (!bridge) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_get_num", 0.0f);
+
+
     return bridge->fisher_size;
 }
 
 void pr_continual_reset_stats(pr_continual_bridge_t bridge) {
     if (!bridge) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_reset_s", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(pr_continual_stats_t));
@@ -1435,6 +1710,10 @@ const char* pr_continual_tier_name(pr_continual_tier_t tier) {
 void pr_continual_print_stats(pr_continual_bridge_t bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_print_s", 0.0f);
+
+
     pr_continual_stats_t stats;
     if (pr_continual_get_stats(bridge, &stats) != 0) return;
 
@@ -1461,6 +1740,12 @@ void pr_continual_print_stats(pr_continual_bridge_t bridge) {
     printf("  Avg replay importance: %.4f\n", stats.avg_replay_importance);
     printf("  Samples per tier:\n");
     for (int t = 0; t < PR_CONTINUAL_NUM_TIERS; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && PR_CONTINUAL_NUM_TIERS > 256) {
+            pr_continual_bridge_heartbeat("pr_continual_loop",
+                             (float)(t + 1) / (float)PR_CONTINUAL_NUM_TIERS);
+        }
+
         printf("    %s: %lu\n", pr_continual_tier_name((pr_continual_tier_t)t),
                (unsigned long)stats.replay_per_tier[t]);
     }
@@ -1483,6 +1768,10 @@ void pr_continual_print_stats(pr_continual_bridge_t bridge) {
 void pr_continual_print_task_info(const pr_continual_task_info_t* info) {
     if (!info) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_print_t", 0.0f);
+
+
     printf("Task %u Information:\n", info->task_id);
     printf("  Duration:           %lu ms\n",
            (unsigned long)(info->end_time_ms - info->start_time_ms));
@@ -1500,7 +1789,17 @@ bool pr_continual_validate(pr_continual_bridge_t bridge) {
     if (bridge->fisher_size > bridge->fisher_capacity) return false;
 
     /* Check Fisher values are valid */
+    /* Phase 8: Heartbeat at operation start */
+    pr_continual_bridge_heartbeat("pr_continual_pr_continual_validat", 0.0f);
+
+
     for (size_t i = 0; i < bridge->fisher_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->fisher_size > 256) {
+            pr_continual_bridge_heartbeat("pr_continual_loop",
+                             (float)(i + 1) / (float)bridge->fisher_size);
+        }
+
         if (isnan(bridge->fisher_diag[i]) || isinf(bridge->fisher_diag[i])) {
             return false;
         }
@@ -1512,6 +1811,12 @@ bool pr_continual_validate(pr_continual_bridge_t bridge) {
     /* Check old params if stored */
     if (bridge->params_stored) {
         for (size_t i = 0; i < bridge->fisher_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->fisher_size > 256) {
+                pr_continual_bridge_heartbeat("pr_continual_loop",
+                                 (float)(i + 1) / (float)bridge->fisher_size);
+            }
+
             if (isnan(bridge->old_params[i]) || isinf(bridge->old_params[i])) {
                 return false;
             }

@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_pr_cognitive_bridge_health_agent = NULL;
  * @brief Set health agent for pr_cognitive_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void pr_cognitive_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void pr_cognitive_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_pr_cognitive_bridge_health_agent = agent;
 }
 
@@ -151,6 +151,12 @@ static void init_wm_link(pr_wm_link_t* link, uint32_t max_slots) {
     link->state = PR_COG_LINK_DISCONNECTED;
     link->max_slots = max_slots;
     for (uint32_t i = 0; i < PR_COG_MAX_WM_SLOTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_COG_MAX_WM_SLOTS > 256) {
+            pr_cognitive_bridge_heartbeat("pr_cognitive_loop",
+                             (float)(i + 1) / (float)PR_COG_MAX_WM_SLOTS);
+        }
+
         link->slots[i].node_id = 0;
         link->slots[i].wm_slot_index = i;
         link->slots[i].is_synced = false;
@@ -232,6 +238,10 @@ static int hub_event_handler(
 //=============================================================================
 
 pr_cognitive_config_t pr_cognitive_bridge_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_default_config", 0.0f);
+
+
     pr_cognitive_config_t config = {
         // Attention
         .enable_attention_link = true,
@@ -268,6 +278,10 @@ bool pr_cognitive_bridge_validate_config(const pr_cognitive_config_t* config) {
     if (!config) return false;
 
     // Validate ranges
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_validate_config", 0.0f);
+
+
     if (config->attention_strength < 0.0f || config->attention_strength > 1.0f)
         return false;
     if (config->emotion_strength < 0.0f || config->emotion_strength > 1.0f)
@@ -299,6 +313,10 @@ pr_cognitive_bridge_t pr_cognitive_bridge_create(
     }
 
     // Use default config if not provided
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_create", 0.0f);
+
+
     pr_cognitive_config_t cfg;
     if (config) {
         if (!pr_cognitive_bridge_validate_config(config)) return NULL;
@@ -347,6 +365,10 @@ pr_cognitive_bridge_t pr_cognitive_bridge_create(
 void pr_cognitive_bridge_destroy(pr_cognitive_bridge_t bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_destroy", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     // Disconnect all links
@@ -372,6 +394,10 @@ void pr_cognitive_bridge_destroy(pr_cognitive_bridge_t bridge) {
 pr_cognitive_error_t pr_cognitive_bridge_reset(pr_cognitive_bridge_t bridge) {
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_reset", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -406,6 +432,10 @@ pr_cognitive_error_t pr_cognitive_bridge_connect_attention(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_connect_attention", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->attention.state == PR_COG_LINK_CONNECTED) {
@@ -428,6 +458,10 @@ pr_cognitive_error_t pr_cognitive_bridge_disconnect_attention(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_disconnect_attention", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->attention.state = PR_COG_LINK_DISCONNECTED;
@@ -445,6 +479,10 @@ pr_cognitive_error_t pr_cognitive_bridge_update_attention(
 ) {
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_update_attention", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -468,6 +506,10 @@ float pr_cognitive_bridge_apply_attention_boost(
     float attention_weight
 ) {
     if (!bridge || !bridge->initialized) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_apply_attention_boos", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -524,6 +566,10 @@ pr_cognitive_error_t pr_cognitive_bridge_get_attention_state(
     if (!bridge || !link_state) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_get_attention_state", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *link_state = bridge->attention;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -541,6 +587,10 @@ pr_cognitive_error_t pr_cognitive_bridge_connect_emotion(
 ) {
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_connect_emotion", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -564,6 +614,10 @@ pr_cognitive_error_t pr_cognitive_bridge_disconnect_emotion(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_disconnect_emotion", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->emotion.state = PR_COG_LINK_DISCONNECTED;
@@ -581,6 +635,10 @@ pr_cognitive_error_t pr_cognitive_bridge_update_emotion(
 ) {
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_update_emotion", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -606,6 +664,10 @@ pr_cognitive_error_t pr_cognitive_bridge_apply_emotion_tag(
 ) {
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_apply_emotion_tag", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -663,6 +725,10 @@ pr_cognitive_error_t pr_cognitive_bridge_get_emotion_state(
     if (!bridge || !link_state) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_get_emotion_state", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *link_state = bridge->emotion;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -680,6 +746,10 @@ pr_cognitive_error_t pr_cognitive_bridge_connect_executive(
 ) {
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_connect_executive", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -702,6 +772,10 @@ pr_cognitive_error_t pr_cognitive_bridge_disconnect_executive(
 ) {
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_disconnect_executive", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -728,6 +802,10 @@ pr_cognitive_error_t pr_cognitive_bridge_update_executive(
 ) {
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_update_executive", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -761,6 +839,10 @@ pr_cognitive_error_t pr_cognitive_bridge_update_executive(
 bool pr_cognitive_bridge_encoding_permitted(pr_cognitive_bridge_t bridge) {
     if (!bridge || !bridge->initialized) return true;  // Default to permitted
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_encoding_permitted", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bool permitted = true;
@@ -786,6 +868,10 @@ bool pr_cognitive_bridge_encoding_permitted(pr_cognitive_bridge_t bridge) {
 
 bool pr_cognitive_bridge_retrieval_permitted(pr_cognitive_bridge_t bridge) {
     if (!bridge || !bridge->initialized) return true;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_retrieval_permitted", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -816,6 +902,10 @@ pr_cognitive_error_t pr_cognitive_bridge_get_executive_state(
     if (!bridge || !link_state) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_get_executive_state", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *link_state = bridge->executive;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -833,6 +923,10 @@ pr_cognitive_error_t pr_cognitive_bridge_sync_working_memory(
 ) {
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_sync_working_memory", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -889,6 +983,10 @@ pr_cognitive_error_t pr_cognitive_bridge_map_wm_slot(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_map_wm_slot", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (wm_slot_index >= bridge->config.max_wm_slots) {
@@ -911,6 +1009,12 @@ pr_cognitive_error_t pr_cognitive_bridge_map_wm_slot(
     // Update active count
     uint32_t active = 0;
     for (uint32_t i = 0; i < bridge->config.max_wm_slots; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.max_wm_slots > 256) {
+            pr_cognitive_bridge_heartbeat("pr_cognitive_loop",
+                             (float)(i + 1) / (float)bridge->config.max_wm_slots);
+        }
+
         if (bridge->wm.slots[i].node_id != 0) active++;
     }
     bridge->wm.active_slots = active;
@@ -927,6 +1031,10 @@ pr_cognitive_error_t pr_cognitive_bridge_unmap_wm_slot(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_unmap_wm_slot", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (wm_slot_index >= bridge->config.max_wm_slots) {
@@ -940,6 +1048,12 @@ pr_cognitive_error_t pr_cognitive_bridge_unmap_wm_slot(
     // Update active count
     uint32_t active = 0;
     for (uint32_t i = 0; i < bridge->config.max_wm_slots; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.max_wm_slots > 256) {
+            pr_cognitive_bridge_heartbeat("pr_cognitive_loop",
+                             (float)(i + 1) / (float)bridge->config.max_wm_slots);
+        }
+
         if (bridge->wm.slots[i].node_id != 0) active++;
     }
     bridge->wm.active_slots = active;
@@ -955,6 +1069,10 @@ pr_cognitive_error_t pr_cognitive_bridge_get_wm_state(
 ) {
     if (!bridge || !link_state) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_get_wm_state", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     *link_state = bridge->wm;
@@ -973,6 +1091,10 @@ pr_cognitive_error_t pr_cognitive_bridge_connect_hub(
 ) {
     if (!bridge || !hub) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_connect_hub", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1029,6 +1151,10 @@ pr_cognitive_error_t pr_cognitive_bridge_disconnect_hub(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_disconnect_hub", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->hub.state != PR_COG_LINK_CONNECTED || !bridge->hub.hub) {
@@ -1072,6 +1198,10 @@ pr_cognitive_error_t pr_cognitive_bridge_broadcast_memory_event(
 ) {
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_broadcast_memory_eve", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1153,6 +1283,10 @@ pr_cognitive_error_t pr_cognitive_bridge_get_hub_state(
     if (!bridge || !link_state) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_get_hub_state", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *link_state = bridge->hub;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1167,6 +1301,10 @@ pr_cognitive_error_t pr_cognitive_bridge_get_hub_state(
 pr_cognitive_error_t pr_cognitive_bridge_update(pr_cognitive_bridge_t bridge) {
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_update", 0.0f);
+
 
     uint64_t start_time = get_current_time_ms();
 
@@ -1235,6 +1373,10 @@ pr_cognitive_error_t pr_cognitive_bridge_apply_salience_decay(
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
     if (dt_seconds <= 0.0f) return PR_COG_SUCCESS;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_apply_salience_decay", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     // Get all Z0 and Z1 nodes
@@ -1246,6 +1388,12 @@ pr_cognitive_error_t pr_cognitive_bridge_apply_salience_decay(
     float decay_factor = expf(-bridge->config.salience_decay_rate * dt_seconds);
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_cognitive_bridge_heartbeat("pr_cognitive_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (nodes[i]) {
             nimcp_quaternion_t state = pr_memory_node_get_state(nodes[i]);
             state.y *= decay_factor;  // Decay salience
@@ -1259,6 +1407,12 @@ pr_cognitive_error_t pr_cognitive_bridge_apply_salience_decay(
     decay_factor = expf(-bridge->config.salience_decay_rate * dt_seconds * 0.5f);
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_cognitive_bridge_heartbeat("pr_cognitive_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (nodes[i]) {
             nimcp_quaternion_t state = pr_memory_node_get_state(nodes[i]);
             state.y *= decay_factor;
@@ -1284,6 +1438,10 @@ pr_cognitive_error_t pr_cognitive_bridge_set_attention_callback(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_set_attention_callba", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_cb = callback;
     bridge->attention_cb_data = user_data;
@@ -1300,6 +1458,10 @@ pr_cognitive_error_t pr_cognitive_bridge_set_emotion_callback(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_set_emotion_callback", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->emotion_cb = callback;
     bridge->emotion_cb_data = user_data;
@@ -1315,6 +1477,10 @@ pr_cognitive_error_t pr_cognitive_bridge_set_executive_callback(
 ) {
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_set_executive_callba", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->executive_cb = callback;
@@ -1335,6 +1501,10 @@ pr_cognitive_error_t pr_cognitive_bridge_get_stats(
     if (!bridge || !stats) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1348,6 +1518,10 @@ pr_cognitive_error_t pr_cognitive_bridge_reset_stats(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1357,6 +1531,10 @@ pr_cognitive_error_t pr_cognitive_bridge_reset_stats(
 
 bool pr_cognitive_bridge_is_connected(pr_cognitive_bridge_t bridge) {
     if (!bridge || !bridge->initialized) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_cognitive_bridge_heartbeat("pr_cognitive_is_connected", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 

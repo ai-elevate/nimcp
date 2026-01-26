@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_fractal_cognitive_fep_bridge_health_agent = NULL;
  * @brief Set health agent for fractal_cognitive_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void fractal_cognitive_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void fractal_cognitive_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_fractal_cognitive_fep_bridge_health_agent = agent;
 }
 
@@ -51,6 +51,10 @@ static inline void fractal_cognitive_fep_bridge_heartbeat(const char* operation,
  * HOW:  Set biologically-plausible parameters for hub-FEP integration
  */
 int fractal_cognitive_fep_bridge_default_config(fractal_cognitive_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     config->pe_exploration_threshold = FRACTAL_FEP_HIGH_PE_THRESHOLD;
@@ -77,6 +81,10 @@ int fractal_cognitive_fep_bridge_default_config(fractal_cognitive_fep_config_t* 
 fractal_cognitive_fep_bridge_t* fractal_cognitive_fep_bridge_create(
     const fractal_cognitive_fep_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_create", 0.0f);
+
+
     fractal_cognitive_fep_bridge_t* bridge = nimcp_malloc(sizeof(fractal_cognitive_fep_bridge_t));
     if (!bridge) {
 
@@ -110,6 +118,10 @@ fractal_cognitive_fep_bridge_t* fractal_cognitive_fep_bridge_create(
 void fractal_cognitive_fep_bridge_destroy(fractal_cognitive_fep_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         fractal_cognitive_fep_bridge_disconnect_bio_async(bridge);
     }
@@ -130,6 +142,10 @@ int fractal_cognitive_fep_bridge_connect_fep(
     fractal_cognitive_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_connect_fep", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -148,6 +164,10 @@ int fractal_cognitive_fep_bridge_connect_fractal(
     fractal_cognitive_fep_bridge_t* bridge,
     fractal_cognitive_cache_t* fractal_cache
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_connect_fractal", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && fractal_cache, NIMCP_ERROR_NULL_POINTER, "bridge or fractal_cache is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -163,6 +183,10 @@ int fractal_cognitive_fep_bridge_connect_fractal(
  * HOW:  NULL both pointers with mutex protection
  */
 int fractal_cognitive_fep_bridge_disconnect(fractal_cognitive_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_disconnect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -182,6 +206,10 @@ int fractal_cognitive_fep_trigger_hub_discovery(
     fractal_cognitive_fep_bridge_t* bridge,
     float pe_magnitude
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_fractal_cognitive_fe", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_pe_exploration) return 0;
 
@@ -208,6 +236,10 @@ int fractal_cognitive_fep_trigger_hub_discovery(
 int fractal_cognitive_fep_weight_hubs_by_precision(
     fractal_cognitive_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_fractal_cognitive_fe", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_hub_precision) return 0;
 
@@ -233,6 +265,10 @@ int fractal_cognitive_fep_weight_hubs_by_precision(
 int fractal_cognitive_fep_trigger_hierarchy_update(
     fractal_cognitive_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_fractal_cognitive_fe", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fractal_cache, NIMCP_ERROR_NULL_POINTER, "bridge or fractal_cache is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -250,6 +286,10 @@ int fractal_cognitive_fep_trigger_hierarchy_update(
  * HOW:  Use centrality as precision prior
  */
 int fractal_cognitive_fep_apply_hub_priors(fractal_cognitive_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_fractal_cognitive_fe", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_hub_beliefs) return 0;
 
@@ -269,6 +309,10 @@ int fractal_cognitive_fep_apply_hub_priors(fractal_cognitive_fep_bridge_t* bridg
  * HOW:  Align fractal levels with FEP state hierarchy
  */
 int fractal_cognitive_fep_map_hierarchy_to_fep(fractal_cognitive_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_fractal_cognitive_fe", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_hierarchy_mapping) return 0;
 
@@ -291,6 +335,10 @@ int fractal_cognitive_fep_map_hierarchy_to_fep(fractal_cognitive_fep_bridge_t* b
 int fractal_cognitive_fep_update_model_structure(
     fractal_cognitive_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_fractal_cognitive_fe", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_structure_updates) return 0;
 
@@ -312,6 +360,10 @@ int fractal_cognitive_fep_bridge_update(
     fractal_cognitive_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     fractal_cognitive_fep_weight_hubs_by_precision(bridge);
@@ -331,6 +383,10 @@ int fractal_cognitive_fep_bridge_get_state(
     const fractal_cognitive_fep_bridge_t* bridge,
     fractal_cognitive_fep_state_t* state
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_get_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -349,6 +405,10 @@ int fractal_cognitive_fep_bridge_get_stats(
     const fractal_cognitive_fep_bridge_t* bridge,
     fractal_cognitive_fep_stats_t* stats
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -366,6 +426,10 @@ int fractal_cognitive_fep_bridge_get_stats(
 int fractal_cognitive_fep_bridge_connect_bio_async(
     fractal_cognitive_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_connect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
@@ -395,6 +459,10 @@ int fractal_cognitive_fep_bridge_disconnect_bio_async(
 ) {
     if (!bridge || !bridge->base.bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_disconnect_bio_async", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
     }
@@ -413,6 +481,10 @@ int fractal_cognitive_fep_bridge_disconnect_bio_async(
 bool fractal_cognitive_fep_bridge_is_bio_async_connected(
     const fractal_cognitive_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_is_bio_async_connect", 0.0f);
+
+
     return bridge ? bridge->base.bio_async_enabled : false;
 }
 
@@ -423,9 +495,19 @@ bool fractal_cognitive_fep_bridge_is_bio_async_connected(
 int fractal_cognitive_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Fractal_Cognitive_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                fractal_cognitive_fep_bridge_heartbeat("fractal_cogn_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

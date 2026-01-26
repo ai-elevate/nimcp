@@ -25,7 +25,7 @@ static nimcp_health_agent_t* g_hypergraph_kg_bridge_health_agent = NULL;
  * @brief Set health agent for hypergraph_kg_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void hypergraph_kg_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void hypergraph_kg_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_hypergraph_kg_bridge_health_agent = agent;
 }
 

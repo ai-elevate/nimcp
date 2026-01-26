@@ -115,7 +115,7 @@ static nimcp_health_agent_t* g_exec_health_agent = NULL;
  * @brief Set health agent for executive heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void executive_set_health_agent(nimcp_health_agent_t* agent) {
+void executive_set_health_agent(nimcp_health_agent_t* agent) {
     g_exec_health_agent = agent;
 }
 
@@ -249,6 +249,12 @@ static int executive_wiring_handler_callback(
 
     int registered = 0;
     for (uint32_t i = 0; i < message_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && message_count > 256) {
+            exec_heartbeat("exec_loop",
+                             (float)(i + 1) / (float)message_count);
+        }
+
         switch (message_types[i]) {
             case BIO_MSG_DECISION_REQUEST:
                 bio_router_register_handler(ctx, message_types[i], handle_decision_request);
@@ -580,6 +586,12 @@ static task_descriptor_t* find_task_by_id(executive_controller_t* exec, uint32_t
 
     // Search queue
     for (uint32_t i = 0; i < exec->num_tasks; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && exec->num_tasks > 256) {
+            exec_heartbeat("exec_loop",
+                             (float)(i + 1) / (float)exec->num_tasks);
+        }
+
         if (exec->task_queue[i] && exec->task_queue[i]->task_id == task_id) {
             return exec->task_queue[i];
         }
@@ -617,6 +629,12 @@ static task_descriptor_t* get_highest_priority_task(executive_controller_t* exec
     uint32_t best_idx = 0;
 
     for (uint32_t i = 0; i < exec->num_tasks; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && exec->num_tasks > 256) {
+            exec_heartbeat("exec_loop",
+                             (float)(i + 1) / (float)exec->num_tasks);
+        }
+
         task_descriptor_t* task = exec->task_queue[i];
         if (!task || task->status != TASK_STATUS_PENDING) continue;
 
@@ -691,6 +709,10 @@ static float compute_modulated_switch_cost(executive_controller_t* exec,
 
 executive_controller_t* executive_create(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_create", 0.0f);
+
+
     LOG_DEBUG("Creating module");
     executive_config_t default_config = {
         .max_tasks = DEFAULT_MAX_TASKS,
@@ -741,6 +763,10 @@ executive_controller_t* executive_create_custom(const executive_config_t* config
     }
 
     // Guard: Task queue size validation
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_create_cus", 0.0f);
+
+
     if (config->max_tasks == 0 || config->max_tasks > 1024) {
         set_error("Invalid max_tasks: %u (must be 1-1024)", config->max_tasks);
         return NULL;
@@ -930,6 +956,10 @@ void executive_set_brain(executive_controller_t* exec, brain_t brain)
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_set_brain", 0.0f);
+
+
     exec->brain = brain;
 }
 
@@ -950,6 +980,10 @@ void executive_set_workspace(executive_controller_t* exec, global_workspace_t* w
     if (!exec) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_set_worksp", 0.0f);
+
 
     exec->workspace = workspace;
     exec->workspace_integration_enabled = (workspace != NULL);
@@ -1053,6 +1087,10 @@ static bool broadcast_decision_to_workspace(
  */
 void executive_destroy(executive_controller_t* exec)
 {
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_destroy", 0.0f);
+
+
     LOG_DEBUG("Destroying module");
     if (!exec) return;
 
@@ -1060,6 +1098,12 @@ void executive_destroy(executive_controller_t* exec)
     // WHY:  Prevent memory leaks from dynamically allocated tasks
     // HOW:  Iterate and free each task descriptor
     for (uint32_t i = 0; i < exec->num_tasks; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && exec->num_tasks > 256) {
+            exec_heartbeat("exec_loop",
+                             (float)(i + 1) / (float)exec->num_tasks);
+        }
+
         nimcp_free(exec->task_queue[i]);
     }
 
@@ -1115,6 +1159,10 @@ uint32_t executive_add_task(executive_controller_t* exec, const task_descriptor_
     /* P0 fix: Acquire task mutex to protect shared state access
      * WHY:  Prevents race conditions when multiple threads add tasks
      */
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_add_task", 0.0f);
+
+
     nimcp_mutex_lock(&exec->task_mutex);
 
     if (exec->num_tasks >= exec->max_tasks) {
@@ -1159,6 +1207,10 @@ bool executive_switch_task(executive_controller_t* exec, uint32_t task_id, uint6
     /* P0 fix: Acquire task mutex to protect shared state access
      * WHY:  Prevents race conditions when multiple threads access task queue
      */
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_switch_tas", 0.0f);
+
+
     nimcp_mutex_lock(&exec->task_mutex);
 
     // Find target task in queue
@@ -1175,6 +1227,12 @@ bool executive_switch_task(executive_controller_t* exec, uint32_t task_id, uint6
 
     // Search in queue
     for (uint32_t i = 0; i < exec->num_tasks; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && exec->num_tasks > 256) {
+            exec_heartbeat("exec_loop",
+                             (float)(i + 1) / (float)exec->num_tasks);
+        }
+
         if (exec->task_queue[i] && exec->task_queue[i]->task_id == task_id) {
             target = exec->task_queue[i];
             target_index = i;
@@ -1252,6 +1310,10 @@ const task_descriptor_t* executive_get_active_task(executive_controller_t* exec)
         return NULL;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_get_active", 0.0f);
+
+
     return exec->active_task;
 }
 
@@ -1265,6 +1327,10 @@ bool executive_complete_task(executive_controller_t* exec, bool success, uint64_
     /* P0 fix: Acquire task mutex to protect shared state access
      * WHY:  Prevents race conditions when completing tasks
      */
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_complete_t", 0.0f);
+
+
     nimcp_mutex_lock(&exec->task_mutex);
 
     if (!exec->active_task) {
@@ -1327,6 +1393,10 @@ bool executive_should_inhibit(executive_controller_t* exec, float response_salie
 {
     if (!exec) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_should_inh", 0.0f);
+
+
     exec->total_decisions++;
 
     // Apply sleep modulation to inhibition threshold
@@ -1359,6 +1429,10 @@ plan_t* executive_create_plan(executive_controller_t* exec, const char* goal, ui
     }
 
     // Process pending bio-async messages before planning
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_create_pla", 0.0f);
+
+
     if (exec->bio_async_enabled && exec->bio_ctx) {
         bio_router_process_inbox(exec->bio_ctx, 10);
     }
@@ -1410,6 +1484,12 @@ plan_t* executive_create_plan(executive_controller_t* exec, const char* goal, ui
 
             // Generate plan steps from quantum hypothesis
             for (uint32_t i = 0; i < plan->num_steps; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && plan->num_steps > 256) {
+                    exec_heartbeat("exec_loop",
+                                     (float)(i + 1) / (float)plan->num_steps);
+                }
+
                 uint32_t action_id = qresult.best_hypothesis->action_sequence[i];
                 snprintf(plan->steps[i].description, sizeof(plan->steps[i].description),
                          "Quantum step %u: action %u for %s", i, action_id, goal);
@@ -1440,6 +1520,12 @@ classical_planning:
             plan->num_steps = (mcts_plan->num_steps <= max_steps) ? mcts_plan->num_steps : max_steps;
 
             for (uint32_t i = 0; i < plan->num_steps; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && plan->num_steps > 256) {
+                    exec_heartbeat("exec_loop",
+                                     (float)(i + 1) / (float)plan->num_steps);
+                }
+
                 plan->steps[i] = mcts_plan->steps[i];
             }
 
@@ -1483,9 +1569,19 @@ void executive_destroy_plan(plan_t* plan)
 {
     if (!plan) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_destroy_pl", 0.0f);
+
+
     if (plan->steps) {
         // Free any action_data in steps
         for (uint32_t i = 0; i < plan->num_steps; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && plan->num_steps > 256) {
+                exec_heartbeat("exec_loop",
+                                 (float)(i + 1) / (float)plan->num_steps);
+            }
+
             // action_data ownership is external, don't free here
         }
         nimcp_free(plan->steps);
@@ -1506,12 +1602,20 @@ bool executive_get_stats(executive_controller_t* exec, executive_stats_t* stats)
     }
 
     *stats = exec->stats;
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_get_stats", 0.0f);
+
+
     return true;
 }
 
 void executive_reset_stats(executive_controller_t* exec)
 {
     if (!exec) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_reset_stat", 0.0f);
+
 
     memset(&exec->stats, 0, sizeof(executive_stats_t));
     exec->total_decisions = 0;
@@ -1546,6 +1650,10 @@ float executive_get_cognitive_load(executive_controller_t* exec)
     // WHAT: Compute load as ratio of active tasks to capacity
     // WHY:  Simple proxy for cognitive resource usage
     // HOW:  (num_tasks + active_task) / max_tasks
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_get_cognit", 0.0f);
+
+
     uint32_t total_tasks = exec->num_tasks;
     if (exec->active_task) {
         total_tasks++;  // Count active task
@@ -1586,6 +1694,10 @@ bool executive_boost_task_priority(executive_controller_t* exec,
     }
 
     // Clamp boost amount
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_boost_task", 0.0f);
+
+
     boost_amount = fminf(fmaxf(boost_amount, 0.0F), 1.0F);
 
     // WHAT: Search for task by name
@@ -1601,6 +1713,12 @@ bool executive_boost_task_priority(executive_controller_t* exec,
 
     // Check queued tasks
     for (uint32_t i = 0; i < exec->num_tasks; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && exec->num_tasks > 256) {
+            exec_heartbeat("exec_loop",
+                             (float)(i + 1) / (float)exec->num_tasks);
+        }
+
         task_descriptor_t* task = exec->task_queue[i];
         if (task && strcmp(task->name, task_name) == 0) {
             task->priority += boost_amount;
@@ -1655,6 +1773,10 @@ bool executive_save(executive_controller_t* exec, FILE* file)
     // WHAT: Write version marker for backward compatibility
     // WHY:  Enable future format changes while supporting old saves
     // HOW:  Write uint32_t version = 1
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_save", 0.0f);
+
+
     uint32_t version = 1;
     if (fwrite(&version, sizeof(uint32_t), 1, file) != 1) {
         set_error("Failed to write version marker");
@@ -1707,6 +1829,12 @@ bool executive_save(executive_controller_t* exec, FILE* file)
     // WHY:  Restore queued tasks on load
     // HOW:  For each task, write task_descriptor_t (context pointer set to NULL)
     for (uint32_t i = 0; i < exec->num_tasks; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && exec->num_tasks > 256) {
+            exec_heartbeat("exec_loop",
+                             (float)(i + 1) / (float)exec->num_tasks);
+        }
+
         if (!exec->task_queue[i]) {
             set_error("NULL task in queue at index %u", i);
             return false;
@@ -1772,6 +1900,10 @@ executive_controller_t* executive_load(FILE* file)
     // WHAT: Read and validate version
     // WHY:  Ensure format compatibility
     // HOW:  Read version, check against current version
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_load", 0.0f);
+
+
     uint32_t version = 0;
     if (fread(&version, sizeof(uint32_t), 1, file) != 1) {
         set_error("Failed to read version marker");
@@ -1848,6 +1980,12 @@ executive_controller_t* executive_load(FILE* file)
     // WHY:  Restore queued tasks
     // HOW:  For each task, allocate and read task_descriptor_t
     for (uint32_t i = 0; i < exec->num_tasks; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && exec->num_tasks > 256) {
+            exec_heartbeat("exec_loop",
+                             (float)(i + 1) / (float)exec->num_tasks);
+        }
+
         exec->task_queue[i] = (task_descriptor_t*)nimcp_calloc(1, sizeof(task_descriptor_t));
         if (!exec->task_queue[i]) {
             set_error("Failed to allocate task %u", i);
@@ -1899,6 +2037,12 @@ cleanup:
     // HOW:  Free allocated tasks and queue
     if (exec->task_queue) {
         for (uint32_t i = 0; i < exec->num_tasks; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && exec->num_tasks > 256) {
+                exec_heartbeat("exec_loop",
+                                 (float)(i + 1) / (float)exec->num_tasks);
+            }
+
             if (exec->task_queue[i]) {
                 nimcp_free(exec->task_queue[i]);
             }
@@ -1930,6 +2074,10 @@ uint32_t executive_get_portia_tier(executive_controller_t* exec)
     }
 
     // Return cached tier (updated via bio-async messages)
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_get_portia", 0.0f);
+
+
     return exec->current_tier;
 }
 
@@ -1946,6 +2094,10 @@ bool executive_is_resource_aware(executive_controller_t* exec)
     }
 
     // resource_aware_mode is set when Portia is initialized AND tier < FULL
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_is_resourc", 0.0f);
+
+
     return exec->resource_aware_mode;
 }
 
@@ -1973,6 +2125,10 @@ uint32_t executive_get_recommended_plan_depth(executive_controller_t* exec)
 
     // Query Portia's current tier directly (fallback if bio-async messages not received)
     // This ensures we always have the latest tier info even if async messaging isn't working
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_get_recomm", 0.0f);
+
+
     platform_tier_t current_tier = portia_get_current_tier();
     // Update cached value
     if (current_tier != exec->current_tier) {
@@ -2013,6 +2169,10 @@ uint32_t executive_process_messages(executive_controller_t* exec, uint32_t max_m
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_process_me", 0.0f);
+
+
     return bio_router_process_inbox(exec->bio_ctx, max_messages);
 }
 
@@ -2035,6 +2195,10 @@ void executive_set_immune_system(executive_controller_t* exec, brain_immune_syst
     if (!exec) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_set_immune", 0.0f);
+
 
     exec->immune_system = immune;
     exec->immune_integration_enabled = (immune != NULL);
@@ -2111,6 +2275,10 @@ float executive_get_immune_adjusted_capacity(executive_controller_t* exec)
         return 1.0F;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_get_immune", 0.0f);
+
+
     float inflammation = get_current_inflammation_level(exec);
 
     // WHAT: Map inflammation [0, 1] to capacity [1, 0]
@@ -2145,6 +2313,10 @@ bool executive_is_immune_impaired(executive_controller_t* exec)
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_is_immune_", 0.0f);
+
+
     float inflammation = get_current_inflammation_level(exec);
     float threshold = exec->config.immune_impairment_threshold;
 
@@ -2171,6 +2343,10 @@ float executive_get_immune_adjusted_switch_cost(executive_controller_t* exec)
     if (!exec) {
         return DEFAULT_SWITCH_COST_MS;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_get_immune", 0.0f);
+
 
     float base_cost = exec->config.task_switch_cost_ms;
 
@@ -2212,6 +2388,10 @@ float executive_get_immune_adjusted_inhibition(executive_controller_t* exec)
     if (!exec) {
         return DEFAULT_INHIBITION_THRESHOLD;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_get_immune", 0.0f);
+
 
     float base_threshold = exec->config.inhibition_threshold;
 
@@ -2263,6 +2443,10 @@ void executive_set_sleep_state(executive_controller_t* exec, sleep_state_t state
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_set_sleep_", 0.0f);
+
+
     exec->current_sleep_state = state;
 
     LOG_MODULE_DEBUG(LOG_MODULE, "Sleep state updated to %d", state);
@@ -2288,6 +2472,10 @@ bool executive_connect_kg(executive_controller_t* exec, brain_t brain)
     if (!exec) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_connect_kg", 0.0f);
+
 
     int result = kg_module_init(&exec->kg_context, brain, "Executive_Controller");
 
@@ -2328,6 +2516,10 @@ int executive_query_connected_modules(executive_controller_t* exec)
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_query_conn", 0.0f);
+
+
     brain_kg_edge_list_t* outgoing = kg_get_outgoing_safe(&exec->kg_context);
     if (!outgoing) {
         return 0;
@@ -2360,6 +2552,10 @@ bool executive_query_self_capabilities(executive_controller_t* exec)
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_query_self", 0.0f);
+
+
     const brain_kg_node_t* self = kg_get_node_safe(
         &exec->kg_context,
         exec->kg_context.self_node_id
@@ -2381,9 +2577,19 @@ bool executive_query_self_capabilities(executive_controller_t* exec)
 int executive_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_query_self", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Executive");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                exec_heartbeat("exec_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }
@@ -2422,6 +2628,10 @@ task_descriptor_t* executive_select_task_epsilon_greedy_mc(
 ) {
     if (!exec || exec->num_tasks == 0) return NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_select_tas", 0.0f);
+
+
     if (g_exec_mc_seed == 0) {
         g_exec_mc_seed = mc_seed_from_time();
     }
@@ -2429,6 +2639,12 @@ task_descriptor_t* executive_select_task_epsilon_greedy_mc(
     /* Count pending tasks */
     uint32_t num_pending = 0;
     for (uint32_t i = 0; i < exec->num_tasks; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && exec->num_tasks > 256) {
+            exec_heartbeat("exec_loop",
+                             (float)(i + 1) / (float)exec->num_tasks);
+        }
+
         if (exec->task_queue[i] && exec->task_queue[i]->status == TASK_STATUS_PENDING) {
             num_pending++;
         }
@@ -2445,6 +2661,12 @@ task_descriptor_t* executive_select_task_epsilon_greedy_mc(
         uint32_t count = 0;
 
         for (uint32_t i = 0; i < exec->num_tasks; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && exec->num_tasks > 256) {
+                exec_heartbeat("exec_loop",
+                                 (float)(i + 1) / (float)exec->num_tasks);
+            }
+
             if (exec->task_queue[i] && exec->task_queue[i]->status == TASK_STATUS_PENDING) {
                 if (count == random_idx) {
                     return exec->task_queue[i];
@@ -2479,6 +2701,10 @@ float executive_estimate_task_value_mc(
 ) {
     if (!exec || !task) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_estimate_t", 0.0f);
+
+
     if (g_exec_mc_seed == 0) {
         g_exec_mc_seed = mc_seed_from_time();
     }
@@ -2486,6 +2712,12 @@ float executive_estimate_task_value_mc(
     float total_value = 0.0f;
 
     for (uint32_t r = 0; r < num_rollouts; r++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((r & 0xFF) == 0 && num_rollouts > 256) {
+            exec_heartbeat("exec_loop",
+                             (float)(r + 1) / (float)num_rollouts);
+        }
+
         float rollout_value = 0.0f;
         float gamma = 1.0f;
 
@@ -2538,6 +2770,10 @@ task_descriptor_t* executive_select_task_softmax_mc(
 ) {
     if (!exec || exec->num_tasks == 0 || temperature <= 0.0f) return NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_select_tas", 0.0f);
+
+
     if (g_exec_mc_seed == 0) {
         g_exec_mc_seed = mc_seed_from_time();
     }
@@ -2555,6 +2791,12 @@ task_descriptor_t* executive_select_task_softmax_mc(
     float max_value = -1e30f;
 
     for (uint32_t i = 0; i < exec->num_tasks; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && exec->num_tasks > 256) {
+            exec_heartbeat("exec_loop",
+                             (float)(i + 1) / (float)exec->num_tasks);
+        }
+
         if (exec->task_queue[i] && exec->task_queue[i]->status == TASK_STATUS_PENDING) {
             pending[num_pending] = exec->task_queue[i];
             values[num_pending] = executive_estimate_task_value_mc(
@@ -2576,6 +2818,12 @@ task_descriptor_t* executive_select_task_softmax_mc(
     /* Compute softmax probabilities (with max subtraction for stability) */
     float sum_exp = 0.0f;
     for (uint32_t i = 0; i < num_pending; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_pending > 256) {
+            exec_heartbeat("exec_loop",
+                             (float)(i + 1) / (float)num_pending);
+        }
+
         values[i] = expf((values[i] - max_value) / temperature);
         sum_exp += values[i];
     }
@@ -2586,6 +2834,12 @@ task_descriptor_t* executive_select_task_softmax_mc(
     task_descriptor_t* selected = pending[num_pending - 1];
 
     for (uint32_t i = 0; i < num_pending; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_pending > 256) {
+            exec_heartbeat("exec_loop",
+                             (float)(i + 1) / (float)num_pending);
+        }
+
         cumulative += values[i];
         if (r < cumulative) {
             selected = pending[i];
@@ -2807,6 +3061,10 @@ static void* plan_clone_state(const void* state, void* user_data) {
 void executive_mcts_config_init(executive_mcts_config_t* config) {
     if (!config) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_mcts_confi", 0.0f);
+
+
     config->max_iterations = MCTS_DEFAULT_ITERATIONS;
     config->max_depth = DEFAULT_MAX_PLAN_DEPTH;
     config->exploration_constant = MCTS_DEFAULT_EXPLORATION;
@@ -2828,6 +3086,10 @@ plan_t* executive_create_plan_mcts(
     }
 
     /* Use defaults if config not provided */
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_create_pla", 0.0f);
+
+
     executive_mcts_config_t default_config;
     if (!config) {
         executive_mcts_config_init(&default_config);
@@ -2947,6 +3209,12 @@ plan_t* executive_create_plan_mcts(
     };
 
     for (uint32_t i = 0; i < num_steps; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_steps > 256) {
+            exec_heartbeat("exec_loop",
+                             (float)(i + 1) / (float)num_steps);
+        }
+
         /* Use best action from current state if available */
         uint32_t best_action = 0;
         bool have_action = false;
@@ -2956,6 +3224,12 @@ plan_t* executive_create_plan_mcts(
                 /* First step: use MCTS best action */
                 float best_val = -1e30f;
                 for (uint32_t a = 0; a < mcts_result.num_actions; a++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((a & 0xFF) == 0 && mcts_result.num_actions > 256) {
+                        exec_heartbeat("exec_loop",
+                                         (float)(a + 1) / (float)mcts_result.num_actions);
+                    }
+
                     if (mcts_result.action_values && mcts_result.action_values[a] > best_val) {
                         best_val = mcts_result.action_values[a];
                         best_action = a;
@@ -3036,6 +3310,10 @@ float executive_evaluate_plan_mcts(
 {
     if (!exec || !plan || plan->num_steps == 0) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_evaluate_p", 0.0f);
+
+
     if (g_exec_mc_seed == 0) {
         g_exec_mc_seed = mc_seed_from_time();
     }
@@ -3043,10 +3321,22 @@ float executive_evaluate_plan_mcts(
     float total_success = 0.0f;
 
     for (uint32_t r = 0; r < num_rollouts; r++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((r & 0xFF) == 0 && num_rollouts > 256) {
+            exec_heartbeat("exec_loop",
+                             (float)(r + 1) / (float)num_rollouts);
+        }
+
         float success_prob = 1.0f;
 
         /* Simulate plan execution */
         for (uint32_t i = 0; i < plan->num_steps; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && plan->num_steps > 256) {
+                exec_heartbeat("exec_loop",
+                                 (float)(i + 1) / (float)plan->num_steps);
+            }
+
             /* Base success probability per step */
             float step_success = 0.85f;
 
@@ -3081,6 +3371,10 @@ plan_t* executive_replan_mcts(
         set_error("NULL parameter");
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    exec_heartbeat("exec_executive_replan_mct", 0.0f);
+
 
     if (current_step >= current_plan->num_steps) {
         set_error("Current step %u exceeds plan length %u", current_step, current_plan->num_steps);

@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_parietal_training_bridge_health_agent = NULL;
  * @brief Set health agent for parietal_training_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void parietal_training_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void parietal_training_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_parietal_training_bridge_health_agent = agent;
 }
 
@@ -160,6 +160,10 @@ int parietal_training_default_config(parietal_training_config_t* config) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    parietal_training_bridge_heartbeat("parietal_tra_parietal_training_de", 0.0f);
+
+
     memset(config, 0, sizeof(*config));
 
     /* Global parameters */
@@ -169,6 +173,12 @@ int parietal_training_default_config(parietal_training_config_t* config) {
 
     /* Enable all domains with default settings */
     for (int i = 0; i < PARIETAL_DOMAIN_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PARIETAL_DOMAIN_COUNT > 256) {
+            parietal_training_bridge_heartbeat("parietal_tra_loop",
+                             (float)(i + 1) / (float)PARIETAL_DOMAIN_COUNT);
+        }
+
         config->domains[i].enabled = true;
         config->domains[i].learning_rate = PARIETAL_TRAIN_DEFAULT_LR;
         config->domains[i].momentum = 0.9f;
@@ -214,6 +224,10 @@ parietal_training_bridge_t* parietal_training_create(
 
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    parietal_training_bridge_heartbeat("parietal_tra_parietal_training_cr", 0.0f);
+
 
     parietal_training_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
@@ -281,6 +295,10 @@ void parietal_training_destroy(parietal_training_bridge_t* bridge) {
     }
 
     /* Disconnect from training */
+    /* Phase 8: Heartbeat at operation start */
+    parietal_training_bridge_heartbeat("parietal_tra_parietal_training_de", 0.0f);
+
+
     if (bridge->training) {
         parietal_training_disconnect(bridge);
     }
@@ -310,6 +328,10 @@ int parietal_training_connect(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    parietal_training_bridge_heartbeat("parietal_tra_parietal_training_co", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->training = training;
@@ -333,6 +355,10 @@ int parietal_training_disconnect(parietal_training_bridge_t* bridge) {
     if (!bridge || bridge->magic != PARIETAL_TRAINING_BRIDGE_MAGIC) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    parietal_training_bridge_heartbeat("parietal_tra_parietal_training_di", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -362,6 +388,10 @@ int parietal_training_connect_plasticity(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    parietal_training_bridge_heartbeat("parietal_tra_parietal_training_co", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->plasticity = plasticity;
     bridge->stats.plasticity_connected = (plasticity != NULL);
@@ -377,6 +407,10 @@ int parietal_training_connect_bio_async(
     if (!bridge || bridge->magic != PARIETAL_TRAINING_BRIDGE_MAGIC) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    parietal_training_bridge_heartbeat("parietal_tra_parietal_training_co", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_router = router;
@@ -397,6 +431,10 @@ parietal_train_response_t parietal_training_process_signal(
     if (!bridge || bridge->magic != PARIETAL_TRAINING_BRIDGE_MAGIC || !signal) {
         return PARIETAL_TRAIN_RESPONSE_NONE;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    parietal_training_bridge_heartbeat("parietal_tra_parietal_training_pr", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -481,6 +519,10 @@ int parietal_training_update_weights(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    parietal_training_bridge_heartbeat("parietal_tra_parietal_training_up", 0.0f);
+
+
     if (domain >= PARIETAL_DOMAIN_COUNT) {
         return -1;
     }
@@ -499,6 +541,12 @@ static int flush_batch_unlocked(parietal_training_bridge_t* bridge) {
     int updates_applied = 0;
 
     for (uint32_t i = 0; i < bridge->pending_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->pending_count > 256) {
+            parietal_training_bridge_heartbeat("parietal_tra_loop",
+                             (float)(i + 1) / (float)bridge->pending_count);
+        }
+
         pending_update_t* update = &bridge->pending_updates[i];
         if (apply_weight_update(bridge, update->domain, update->learning_rate) == 0) {
             updates_applied++;
@@ -516,6 +564,10 @@ int parietal_training_flush_batch(parietal_training_bridge_t* bridge) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    parietal_training_bridge_heartbeat("parietal_tra_parietal_training_fl", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     int updates_applied = flush_batch_unlocked(bridge);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -531,6 +583,10 @@ int parietal_training_set_domain_lr(
     if (!bridge || bridge->magic != PARIETAL_TRAINING_BRIDGE_MAGIC) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    parietal_training_bridge_heartbeat("parietal_tra_parietal_training_se", 0.0f);
+
 
     if (domain >= PARIETAL_DOMAIN_COUNT || learning_rate < 0) {
         return -1;
@@ -551,6 +607,10 @@ int parietal_training_set_domain_enabled(
     if (!bridge || bridge->magic != PARIETAL_TRAINING_BRIDGE_MAGIC) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    parietal_training_bridge_heartbeat("parietal_tra_parietal_training_se", 0.0f);
+
 
     if (domain >= PARIETAL_DOMAIN_COUNT) {
         return -1;
@@ -576,6 +636,10 @@ int parietal_training_set_learning_callback(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    parietal_training_bridge_heartbeat("parietal_tra_parietal_training_se", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->learning_callback = callback;
     bridge->learning_callback_data = user_data;
@@ -592,6 +656,10 @@ int parietal_training_set_update_callback(
     if (!bridge || bridge->magic != PARIETAL_TRAINING_BRIDGE_MAGIC) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    parietal_training_bridge_heartbeat("parietal_tra_parietal_training_se", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->update_callback = callback;
@@ -611,6 +679,10 @@ parietal_train_state_t parietal_training_get_state(
     if (!bridge || bridge->magic != PARIETAL_TRAINING_BRIDGE_MAGIC) {
         return PARIETAL_TRAIN_STATE_ERROR;
     }
+    /* Phase 8: Heartbeat at operation start */
+    parietal_training_bridge_heartbeat("parietal_tra_parietal_training_ge", 0.0f);
+
+
     return bridge->state;
 }
 
@@ -621,6 +693,10 @@ int parietal_training_get_stats(
     if (!bridge || bridge->magic != PARIETAL_TRAINING_BRIDGE_MAGIC || !stats) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    parietal_training_bridge_heartbeat("parietal_tra_parietal_training_ge", 0.0f);
+
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *stats = bridge->stats;
@@ -633,6 +709,10 @@ void parietal_training_reset_stats(parietal_training_bridge_t* bridge) {
     if (!bridge || bridge->magic != PARIETAL_TRAINING_BRIDGE_MAGIC) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    parietal_training_bridge_heartbeat("parietal_tra_parietal_training_re", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -656,6 +736,10 @@ bool parietal_training_is_connected(const parietal_training_bridge_t* bridge) {
     if (!bridge || bridge->magic != PARIETAL_TRAINING_BRIDGE_MAGIC) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    parietal_training_bridge_heartbeat("parietal_tra_parietal_training_is", 0.0f);
+
+
     return bridge->training != NULL;
 }
 

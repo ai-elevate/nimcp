@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_hyperscanning_health_agent = NULL;
  * @brief Set health agent for hyperscanning heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void hyperscanning_set_health_agent(nimcp_health_agent_t* agent) {
+void hyperscanning_set_health_agent(nimcp_health_agent_t* agent) {
     g_hyperscanning_health_agent = agent;
 }
 
@@ -200,6 +200,12 @@ static hyperscanning_instance_t* find_instance(
 
     /* Fallback to linear search (should rarely happen) */
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            hyperscanning_heartbeat("hyperscannin_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (hs->instances[i].active && hs->instances[i].instance_id == instance_id) {
             return &hs->instances[i];
         }
@@ -226,6 +232,12 @@ static int find_instance_index(
 
     /* Fallback to linear search */
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            hyperscanning_heartbeat("hyperscannin_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (hs->instances[i].active && hs->instances[i].instance_id == instance_id) {
             return (int)i;
         }
@@ -235,6 +247,12 @@ static int find_instance_index(
 
 static hyperscanning_instance_t* find_free_slot(hyperscanning_t* hs) {
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            hyperscanning_heartbeat("hyperscannin_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (!hs->instances[i].active) {
             return &hs->instances[i];
         }
@@ -271,6 +289,12 @@ static pair_sync_entry_t* find_pair(
     }
 
     for (uint32_t i = 0; i < hs->pair_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hs->pair_count > 256) {
+            hyperscanning_heartbeat("hyperscannin_loop",
+                             (float)(i + 1) / (float)hs->pair_count);
+        }
+
         if (hs->pairs[i].instance_a == instance_a &&
             hs->pairs[i].instance_b == instance_b) {
             return &hs->pairs[i];
@@ -387,6 +411,12 @@ static float compute_plv_with_history(
     float sum_sin = 0.0f;
 
     for (uint32_t i = 0; i < hist->history_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hist->history_count > 256) {
+            hyperscanning_heartbeat("hyperscannin_loop",
+                             (float)(i + 1) / (float)hist->history_count);
+        }
+
         float diff = hist->phase_diff_history[i];
         sum_cos += cosf(diff);
         sum_sin += sinf(diff);
@@ -495,6 +525,12 @@ static float compute_granger_causality_timeseries(
     /* Compute means */
     float mean_a = 0.0f, mean_b = 0.0f;
     for (uint32_t i = 0; i < hist->history_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hist->history_count > 256) {
+            hyperscanning_heartbeat("hyperscannin_loop",
+                             (float)(i + 1) / (float)hist->history_count);
+        }
+
         mean_a += hist->power_history_a[i];
         mean_b += hist->power_history_b[i];
     }
@@ -572,6 +608,12 @@ static void update_pair_metrics(
     /* Compute PLV and coherence for each band using proper circular statistics */
     float avg_plv = 0.0f;
     for (int b = 0; b < SYNC_BAND_COUNT; b++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((b & 0xFF) == 0 && SYNC_BAND_COUNT > 256) {
+            hyperscanning_heartbeat("hyperscannin_loop",
+                             (float)(b + 1) / (float)SYNC_BAND_COUNT);
+        }
+
         m->plv[b] = compute_plv_with_history(pair, state_a, state_b, (sync_band_t)b);
         m->coherence[b] = compute_coherence_for_band(state_a, state_b, (sync_band_t)b);
         avg_plv += m->plv[b];
@@ -613,6 +655,12 @@ static void update_global_state(hyperscanning_t* hs) {
         /* Single instance is trivially its own leader */
         if (hs->config.enable_leader_detection && hs->instance_count == 1) {
             for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+                    hyperscanning_heartbeat("hyperscannin_loop",
+                                     (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+                }
+
                 if (hs->instances[i].active) {
                     gs->leader_instance_id = hs->instances[i].instance_id;
                     gs->leader_influence = hs->instances[i].state.band_power[SYNC_BAND_GAMMA];
@@ -634,11 +682,23 @@ static void update_global_state(hyperscanning_t* hs) {
     uint32_t pair_count = 0;
 
     for (uint32_t i = 0; i < hs->pair_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hs->pair_count > 256) {
+            hyperscanning_heartbeat("hyperscannin_loop",
+                             (float)(i + 1) / (float)hs->pair_count);
+        }
+
         pair_sync_entry_t* pair = &hs->pairs[i];
         hyperscan_pair_t* m = &pair->metrics;
 
         float pair_avg = 0.0f;
         for (int b = 0; b < SYNC_BAND_COUNT; b++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((b & 0xFF) == 0 && SYNC_BAND_COUNT > 256) {
+                hyperscanning_heartbeat("hyperscannin_loop",
+                                 (float)(b + 1) / (float)SYNC_BAND_COUNT);
+            }
+
             pair_avg += m->plv[b];
         }
         pair_avg /= SYNC_BAND_COUNT;
@@ -680,6 +740,12 @@ static void update_global_state(hyperscanning_t* hs) {
         uint32_t leader_id = 0;
 
         for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+                hyperscanning_heartbeat("hyperscannin_loop",
+                                 (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+            }
+
             if (!hs->instances[i].active) continue;
 
             float gamma = hs->instances[i].state.band_power[SYNC_BAND_GAMMA];
@@ -704,6 +770,10 @@ static void update_global_state(hyperscanning_t* hs) {
  *===========================================================================*/
 
 hyperscanning_t* hyperscanning_create(const hyperscanning_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    hyperscanning_heartbeat("hyperscannin_create", 0.0f);
+
+
     hyperscanning_t* hs = nimcp_malloc(sizeof(hyperscanning_t));
     if (!hs) {
 
@@ -736,11 +806,23 @@ hyperscanning_t* hyperscanning_create(const hyperscanning_config_t* config) {
 
     /* Initialize instances */
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            hyperscanning_heartbeat("hyperscannin_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         hs->instances[i].active = false;
         hs->instances[i].entrainment_status = ENTRAINMENT_NONE;
 
         /* Initialize default state */
         for (int b = 0; b < SYNC_BAND_COUNT; b++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((b & 0xFF) == 0 && SYNC_BAND_COUNT > 256) {
+                hyperscanning_heartbeat("hyperscannin_loop",
+                                 (float)(b + 1) / (float)SYNC_BAND_COUNT);
+            }
+
             hs->instances[i].state.band_power[b] = 0.5f;
             hs->instances[i].state.band_phase[b] = 0.0f;
         }
@@ -756,6 +838,10 @@ void hyperscanning_destroy(hyperscanning_t* hs) {
     if (!hs) return;
 
     /* Destroy hash table */
+    /* Phase 8: Heartbeat at operation start */
+    hyperscanning_heartbeat("hyperscannin_destroy", 0.0f);
+
+
     if (hs->instance_lookup) {
         hash_table_destroy(hs->instance_lookup);
         hs->instance_lookup = NULL;
@@ -768,12 +854,22 @@ int hyperscanning_reset(hyperscanning_t* hs) {
     if (!hs) return -1;
 
     /* Clear hash table */
+    /* Phase 8: Heartbeat at operation start */
+    hyperscanning_heartbeat("hyperscannin_reset", 0.0f);
+
+
     if (hs->instance_lookup) {
         hash_table_clear(hs->instance_lookup);
     }
 
     /* Reset all instances */
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            hyperscanning_heartbeat("hyperscannin_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         hs->instances[i].active = false;
         hs->instances[i].entrainment_status = ENTRAINMENT_NONE;
     }
@@ -804,6 +900,10 @@ int hyperscanning_register_instance(
     if (!hs) return -1;
 
     /* Check if already registered */
+    /* Phase 8: Heartbeat at operation start */
+    hyperscanning_heartbeat("hyperscannin_register_instance", 0.0f);
+
+
     if (find_instance(hs, instance_id)) {
         return -1;
     }
@@ -827,6 +927,12 @@ int hyperscanning_register_instance(
     slot->state.gw_broadcast_strength = 0.5f;
 
     for (int b = 0; b < SYNC_BAND_COUNT; b++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((b & 0xFF) == 0 && SYNC_BAND_COUNT > 256) {
+            hyperscanning_heartbeat("hyperscannin_loop",
+                             (float)(b + 1) / (float)SYNC_BAND_COUNT);
+        }
+
         slot->state.band_power[b] = 0.5f;
         slot->state.band_phase[b] = (float)(instance_id * 0.5);
     }
@@ -844,6 +950,12 @@ int hyperscanning_register_instance(
 
     /* Create pairs with all existing instances */
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            hyperscanning_heartbeat("hyperscannin_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (hs->instances[i].active &&
             hs->instances[i].instance_id != instance_id) {
             get_or_create_pair(hs, instance_id, hs->instances[i].instance_id);
@@ -858,6 +970,10 @@ int hyperscanning_unregister_instance(
     uint32_t instance_id
 ) {
     if (!hs) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    hyperscanning_heartbeat("hyperscannin_unregister_instance", 0.0f);
+
 
     hyperscanning_instance_t* inst = find_instance(hs, instance_id);
     if (!inst) return -1;
@@ -881,6 +997,10 @@ int hyperscanning_update_state(
     const hyperscanning_neural_state_t* state
 ) {
     if (!hs || !state) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    hyperscanning_heartbeat("hyperscannin_update_state", 0.0f);
+
 
     hyperscanning_instance_t* inst = find_instance(hs, state->instance_id);
     if (!inst) return -1;
@@ -906,7 +1026,17 @@ int hyperscanning_update(hyperscanning_t* hs) {
     if (!hs || !hs->initialized) return -1;
 
     /* Update all pair metrics */
+    /* Phase 8: Heartbeat at operation start */
+    hyperscanning_heartbeat("hyperscannin_update", 0.0f);
+
+
     for (uint32_t i = 0; i < hs->pair_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hs->pair_count > 256) {
+            hyperscanning_heartbeat("hyperscannin_loop",
+                             (float)(i + 1) / (float)hs->pair_count);
+        }
+
         pair_sync_entry_t* pair = &hs->pairs[i];
 
         /* Find both instances */
@@ -923,6 +1053,12 @@ int hyperscanning_update(hyperscanning_t* hs) {
 
     /* Process entrainment */
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            hyperscanning_heartbeat("hyperscannin_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         hyperscanning_instance_t* inst = &hs->instances[i];
         if (!inst->active) continue;
 
@@ -966,9 +1102,21 @@ int hyperscanning_update(hyperscanning_t* hs) {
 
     /* Simulate phase evolution */
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            hyperscanning_heartbeat("hyperscannin_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (!hs->instances[i].active) continue;
 
         for (int b = 0; b < SYNC_BAND_COUNT; b++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((b & 0xFF) == 0 && SYNC_BAND_COUNT > 256) {
+                hyperscanning_heartbeat("hyperscannin_loop",
+                                 (float)(b + 1) / (float)SYNC_BAND_COUNT);
+            }
+
             /* Different base frequencies per band */
             float base_freq = 2.0f + b * 8.0f;
             hs->instances[i].state.band_phase[b] += base_freq * 0.01f;
@@ -992,6 +1140,10 @@ int hyperscanning_get_pair_sync(
 ) {
     if (!hs || !pair) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    hyperscanning_heartbeat("hyperscannin_get_pair_sync", 0.0f);
+
+
     pair_sync_entry_t* entry = find_pair((hyperscanning_t*)hs, instance_a, instance_b);
     if (!entry) return -1;
 
@@ -1006,6 +1158,10 @@ int hyperscanning_get_state(
     if (!hs || !state) return -1;
 
     *state = hs->global_state;
+    /* Phase 8: Heartbeat at operation start */
+    hyperscanning_heartbeat("hyperscannin_get_state", 0.0f);
+
+
     return 0;
 }
 
@@ -1016,6 +1172,10 @@ float hyperscanning_get_plv(
     sync_band_t band
 ) {
     if (!hs || band >= SYNC_BAND_COUNT) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    hyperscanning_heartbeat("hyperscannin_get_plv", 0.0f);
+
 
     pair_sync_entry_t* entry = find_pair((hyperscanning_t*)hs, instance_a, instance_b);
     if (!entry) return -1.0f;
@@ -1032,6 +1192,10 @@ int hyperscanning_entrain_to(
     const entrainment_request_t* request
 ) {
     if (!hs || !request) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    hyperscanning_heartbeat("hyperscannin_entrain_to", 0.0f);
+
 
     hyperscanning_instance_t* requester = find_instance(hs, request->requester_id);
     hyperscanning_instance_t* target = find_instance(hs, request->target_id);
@@ -1064,6 +1228,10 @@ int hyperscanning_release_entrainment(
 ) {
     if (!hs) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    hyperscanning_heartbeat("hyperscannin_release_entrainment", 0.0f);
+
+
     hyperscanning_instance_t* inst = find_instance(hs, instance_id);
     if (!inst) return -1;
 
@@ -1092,7 +1260,17 @@ entrainment_status_t hyperscanning_get_entrainment_status(
 ) {
     if (!hs) return ENTRAINMENT_NONE;
 
+    /* Phase 8: Heartbeat at operation start */
+    hyperscanning_heartbeat("hyperscannin_get_entrainment_stat", 0.0f);
+
+
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            hyperscanning_heartbeat("hyperscannin_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (hs->instances[i].active && hs->instances[i].instance_id == instance_id) {
             return hs->instances[i].entrainment_status;
         }
@@ -1107,6 +1285,10 @@ int hyperscanning_set_entrainment_callback(
 ) {
     if (!hs) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    hyperscanning_heartbeat("hyperscannin_set_entrainment_call", 0.0f);
+
+
     hs->entrainment_callback = callback;
     hs->entrainment_callback_data = user_data;
 
@@ -1118,10 +1300,18 @@ int hyperscanning_set_entrainment_callback(
  *===========================================================================*/
 
 uint32_t hyperscanning_get_leader(const hyperscanning_t* hs) {
+    /* Phase 8: Heartbeat at operation start */
+    hyperscanning_heartbeat("hyperscannin_get_leader", 0.0f);
+
+
     return hs ? hs->global_state.leader_instance_id : 0;
 }
 
 float hyperscanning_get_leader_influence(const hyperscanning_t* hs) {
+    /* Phase 8: Heartbeat at operation start */
+    hyperscanning_heartbeat("hyperscannin_get_leader_influence", 0.0f);
+
+
     return hs ? hs->global_state.leader_influence : 0.0f;
 }
 
@@ -1131,6 +1321,10 @@ float hyperscanning_get_influence(
     uint32_t to_instance
 ) {
     if (!hs) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    hyperscanning_heartbeat("hyperscannin_get_influence", 0.0f);
+
 
     pair_sync_entry_t* pair = find_pair((hyperscanning_t*)hs, from_instance, to_instance);
     if (!pair) return 0.0f;
@@ -1157,11 +1351,19 @@ int hyperscanning_get_stats(
     if (!hs || !stats) return -1;
 
     *stats = hs->stats;
+    /* Phase 8: Heartbeat at operation start */
+    hyperscanning_heartbeat("hyperscannin_get_stats", 0.0f);
+
+
     return 0;
 }
 
 void hyperscanning_reset_stats(hyperscanning_t* hs) {
     if (!hs) return;
+    /* Phase 8: Heartbeat at operation start */
+    hyperscanning_heartbeat("hyperscannin_reset_stats", 0.0f);
+
+
     memset(&hs->stats, 0, sizeof(hs->stats));
 }
 
@@ -1174,6 +1376,10 @@ void hyperscanning_dump(const hyperscanning_t* hs) {
         printf("Hyperscanning: NULL\n");
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    hyperscanning_heartbeat("hyperscannin_dump", 0.0f);
+
 
     printf("=== Hyperscanning State ===\n");
     printf("Initialized: %s\n", hs->initialized ? "yes" : "no");
@@ -1192,6 +1398,12 @@ void hyperscanning_dump(const hyperscanning_t* hs) {
 
     printf("\nRegistered Instances:\n");
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            hyperscanning_heartbeat("hyperscannin_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (hs->instances[i].active) {
             printf("  [%u] ID=%u entrainment=%d\n",
                    i, hs->instances[i].instance_id,
@@ -1207,6 +1419,12 @@ void hyperscanning_dump(const hyperscanning_t* hs) {
 
     printf("\nPair Metrics:\n");
     for (uint32_t i = 0; i < hs->pair_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hs->pair_count > 256) {
+            hyperscanning_heartbeat("hyperscannin_loop",
+                             (float)(i + 1) / (float)hs->pair_count);
+        }
+
         pair_sync_entry_t* pair = &hs->pairs[i];
         printf("  [%u-%u] PLV: D=%.2f T=%.2f A=%.2f B=%.2f G=%.2f sync=%s\n",
                pair->instance_a, pair->instance_b,
@@ -1238,9 +1456,19 @@ void hyperscanning_dump(const hyperscanning_t* hs) {
  */
 int hyperscanning_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    hyperscanning_heartbeat("hyperscannin_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Hyperscanning");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                hyperscanning_heartbeat("hyperscannin_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             printf("Hyperscanning self-knowledge: %s\n", self->observations[i]);
         }
     }

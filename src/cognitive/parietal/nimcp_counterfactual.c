@@ -57,6 +57,10 @@ static float apply_mod(const counterfactual_engine_t* e, float v) {
 }
 
 cf_config_t counterfactual_engine_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_engine_default_confi", 0.0f);
+
+
     return (cf_config_t){
         .min_plausibility = 0.2f,
         .consequence_threshold = 0.1f,
@@ -69,12 +73,20 @@ cf_config_t counterfactual_engine_default_config(void) {
 }
 
 counterfactual_engine_t* counterfactual_engine_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_engine_create", 0.0f);
+
+
     cf_config_t c = counterfactual_engine_default_config();
     return counterfactual_engine_create_custom(&c);
 }
 
 counterfactual_engine_t* counterfactual_engine_create_custom(const cf_config_t* config) {
     if (!config) { set_error("NULL config"); return NULL; }
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_engine_create_custom", 0.0f);
+
+
     counterfactual_engine_t* e = nimcp_calloc(1, sizeof(counterfactual_engine_t));
     if (!e) {
 
@@ -89,11 +101,19 @@ counterfactual_engine_t* counterfactual_engine_create_custom(const cf_config_t* 
 }
 
 void counterfactual_engine_destroy(counterfactual_engine_t* engine) {
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_engine_destroy", 0.0f);
+
+
     if (engine) nimcp_free(engine);
 }
 
 cf_state_t* counterfactual_create_state(const float* values, uint32_t dim,
     const char* description) {
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_create_state", 0.0f);
+
+
     cf_state_t* s = nimcp_calloc(1, sizeof(cf_state_t));
     if (!s) {
 
@@ -117,6 +137,10 @@ cf_state_t* counterfactual_create_state(const float* values, uint32_t dim,
 
 void counterfactual_free_state(cf_state_t* state) {
     if (!state) return;
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_free_state", 0.0f);
+
+
     if (state->values) nimcp_free(state->values);
     nimcp_free(state);
 }
@@ -124,6 +148,10 @@ void counterfactual_free_state(cf_state_t* state) {
 cf_counterfactual_t* counterfactual_imagine(counterfactual_engine_t* engine,
     const cf_state_t* actual, const cf_intervention_t* what_if) {
     if (!engine || !actual || !what_if) return NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_imagine", 0.0f);
+
 
     cf_counterfactual_t* cf = nimcp_calloc(1, sizeof(cf_counterfactual_t));
     if (!cf) {
@@ -208,6 +236,10 @@ int counterfactual_trace_effects(counterfactual_engine_t* engine,
     if (!cf->actual_world || !cf->counterfactual_world) return 0;
 
     /* Find variables that differ between actual and counterfactual */
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_trace_effects", 0.0f);
+
+
     for (uint32_t i = 0; i < cf->actual_world->dim && *num_found < max_consequences; i++) {
         float diff = cf->counterfactual_world->values[i] - cf->actual_world->values[i];
         if (fabsf(diff) > engine->config.consequence_threshold) {
@@ -230,6 +262,10 @@ int counterfactual_trace_effects(counterfactual_engine_t* engine,
 float counterfactual_estimate_probability(counterfactual_engine_t* engine,
     const cf_counterfactual_t* cf) {
     if (!engine || !cf) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_estimate_probability", 0.0f);
+
+
     return apply_mod(engine, cf->plausibility);
 }
 
@@ -239,6 +275,10 @@ float counterfactual_causal_strength(counterfactual_engine_t* engine,
     if (cause_var >= context->dim || effect_var >= context->dim) return 0;
 
     /* Simple correlation-based estimate */
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_causal_strength", 0.0f);
+
+
     float strength = fabsf(context->values[cause_var] * context->values[effect_var]);
     return apply_mod(engine, fminf(1.0f, strength));
 }
@@ -250,6 +290,10 @@ int counterfactual_find_causes(counterfactual_engine_t* engine,
     if (effect_var >= state->dim) return -1;
 
     *num_found = 0;
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_find_causes", 0.0f);
+
+
     for (uint32_t i = 0; i < state->dim && *num_found < max_causes; i++) {
         if (i == effect_var) continue;
         float strength = counterfactual_causal_strength(engine, i, effect_var, state);
@@ -266,10 +310,20 @@ float counterfactual_distance(counterfactual_engine_t* engine,
     if (!engine || !s1 || !s2) return 0;
     if (!s1->values || !s2->values) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_distance", 0.0f);
+
+
     uint32_t min_dim = (s1->dim < s2->dim) ? s1->dim : s2->dim;
     float dist = 0;
 
     for (uint32_t i = 0; i < min_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && min_dim > 256) {
+            counterfactual_heartbeat("counterfactu_loop",
+                             (float)(i + 1) / (float)min_dim);
+        }
+
         float diff = s1->values[i] - s2->values[i];
         dist += diff * diff;
     }
@@ -282,6 +336,10 @@ cf_counterfactual_t* counterfactual_find_closest(counterfactual_engine_t* engine
     if (!engine || !actual || !target) return NULL;
 
     /* Create intervention that moves toward target */
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_find_closest", 0.0f);
+
+
     uint32_t best_var = 0;
     float best_improvement = 0;
 
@@ -307,6 +365,10 @@ cf_counterfactual_t* counterfactual_find_closest(counterfactual_engine_t* engine
 
 void counterfactual_free(cf_counterfactual_t* cf) {
     if (!cf) return;
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_free", 0.0f);
+
+
     if (cf->actual_world) counterfactual_free_state(cf->actual_world);
     if (cf->counterfactual_world) counterfactual_free_state(cf->counterfactual_world);
     if (cf->intervention) nimcp_free(cf->intervention);
@@ -316,12 +378,20 @@ void counterfactual_free(cf_counterfactual_t* cf) {
 
 int counterfactual_set_inflammation(counterfactual_engine_t* engine, float level) {
     if (!engine) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_set_inflammation", 0.0f);
+
+
     engine->inflammation = fmaxf(0, fminf(1, level));
     return 0;
 }
 
 int counterfactual_set_fatigue(counterfactual_engine_t* engine, float level) {
     if (!engine) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_set_fatigue", 0.0f);
+
+
     engine->fatigue = fmaxf(0, fminf(1, level));
     return 0;
 }
@@ -329,10 +399,18 @@ int counterfactual_set_fatigue(counterfactual_engine_t* engine, float level) {
 int counterfactual_get_stats(const counterfactual_engine_t* engine, cf_stats_t* stats) {
     if (!engine || !stats) return -1;
     *stats = engine->stats;
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_get_stats", 0.0f);
+
+
     return 0;
 }
 
 void counterfactual_reset_stats(counterfactual_engine_t* engine) {
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_reset_stats", 0.0f);
+
+
     if (engine) memset(&engine->stats, 0, sizeof(engine->stats));
 }
 
@@ -344,9 +422,19 @@ const char* counterfactual_get_last_error(void) { return g_last_error; }
 
 int counterfactual_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Counterfactual_Reasoning");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                counterfactual_heartbeat("counterfactu_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Module self-knowledge logged */
         }
     }

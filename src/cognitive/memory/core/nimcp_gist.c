@@ -41,7 +41,7 @@ static nimcp_health_agent_t* g_gist_health_agent = NULL;
  * @brief Set health agent for gist heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void gist_set_health_agent(nimcp_health_agent_t* agent) {
+void gist_set_health_agent(nimcp_health_agent_t* agent) {
     g_gist_health_agent = agent;
 }
 
@@ -192,6 +192,12 @@ static void gist_table_destroy(gist_hash_entry_t** table, size_t size) {
     if (!table) return;
 
     for (size_t i = 0; i < size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && size > 256) {
+            gist_heartbeat("gist_loop",
+                             (float)(i + 1) / (float)size);
+        }
+
         gist_hash_entry_t* entry = table[i];
         while (entry) {
             gist_hash_entry_t* next = entry->next;
@@ -285,6 +291,12 @@ static void trace_table_destroy(trace_hash_entry_t** table, size_t size) {
     if (!table) return;
 
     for (size_t i = 0; i < size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && size > 256) {
+            gist_heartbeat("gist_loop",
+                             (float)(i + 1) / (float)size);
+        }
+
         trace_hash_entry_t* entry = table[i];
         while (entry) {
             trace_hash_entry_t* next = entry->next;
@@ -342,6 +354,12 @@ static void init_feature_weights(gist_system_t system) {
     // Initialize with type-based defaults
     // Lower prime indices tend to be more semantic (by convention)
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            gist_heartbeat("gist_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         // Semantic features (lower indices) get higher weight
         if (i < PRIME_SIG_DIM / 4) {
             system->feature_weights[i] = 0.8f + 0.2f * (float)(PRIME_SIG_DIM / 4 - i) / (PRIME_SIG_DIM / 4);
@@ -413,6 +431,12 @@ static void update_feature_statistics(gist_system_t system,
     float n = (float)(system->feature_samples + 1);
 
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            gist_heartbeat("gist_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         float value = (float)sig->exponents[i] / 255.0f;
 
         // Update running mean (for frequency)
@@ -448,6 +472,12 @@ static void create_gist_signature(gist_system_t system,
 
     // Copy only key feature exponents
     for (size_t i = 0; i < num_features; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_features > 256) {
+            gist_heartbeat("gist_loop",
+                             (float)(i + 1) / (float)num_features);
+        }
+
         uint32_t idx = features[i].prime_index;
         if (idx < PRIME_SIG_DIM) {
             gist_out->exponents[idx] = verbatim->exponents[idx];
@@ -544,6 +574,10 @@ static dual_trace_t* alloc_dual_trace(gist_system_t system) {
 //=============================================================================
 
 gist_config_t gist_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_config_default", 0.0f);
+
+
     gist_config_t config = {
         .method = GIST_METHOD_FEATURE_IMPORTANCE,
         .compression_target = GIST_DEFAULT_COMPRESSION,
@@ -576,6 +610,10 @@ bool gist_config_validate(const gist_config_t* config) {
     if (!config) return false;
 
     // Compression target
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_config_validate", 0.0f);
+
+
     if (config->compression_target <= 0.0f || config->compression_target > 1.0f) {
         gist_set_error("compression_target must be in (0, 1]");
         return false;
@@ -618,6 +656,10 @@ gist_system_t gist_system_create(
     entangle_graph_t entanglement,
     pr_node_manager_t node_manager
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_system_create", 0.0f);
+
+
     gist_config_t cfg = config ? *config : gist_config_default();
 
     if (!gist_config_validate(&cfg)) {
@@ -671,6 +713,10 @@ void gist_system_destroy(gist_system_t system) {
     if (!system) return;
 
     // Destroy hash tables (includes freeing all gists and traces)
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_system_destroy", 0.0f);
+
+
     gist_table_destroy(system->gist_table, system->gist_table_size);
     trace_table_destroy(system->trace_table, system->trace_table_size);
 
@@ -681,7 +727,17 @@ gist_error_t gist_system_clear(gist_system_t system) {
     if (!system) return GIST_ERROR_NULL_POINTER;
 
     // Clear gist table
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_system_clear", 0.0f);
+
+
     for (size_t i = 0; i < system->gist_table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->gist_table_size > 256) {
+            gist_heartbeat("gist_loop",
+                             (float)(i + 1) / (float)system->gist_table_size);
+        }
+
         gist_hash_entry_t* entry = system->gist_table[i];
         while (entry) {
             gist_hash_entry_t* next = entry->next;
@@ -699,6 +755,12 @@ gist_error_t gist_system_clear(gist_system_t system) {
 
     // Clear trace table
     for (size_t i = 0; i < system->trace_table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->trace_table_size > 256) {
+            gist_heartbeat("gist_loop",
+                             (float)(i + 1) / (float)system->trace_table_size);
+        }
+
         trace_hash_entry_t* entry = system->trace_table[i];
         while (entry) {
             trace_hash_entry_t* next = entry->next;
@@ -727,6 +789,10 @@ gist_error_t gist_extract(
     const pr_memory_node_t* memory,
     gist_extraction_result_t* result
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_extract", 0.0f);
+
+
     return gist_extract_custom(system, memory, system->config.method,
                                system->config.compression_target, result);
 }
@@ -738,6 +804,10 @@ gist_error_t gist_extract_custom(
     float compression_target,
     gist_extraction_result_t* result
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_extract_custom", 0.0f);
+
+
     (void)method;  // TODO: Implement method-specific extraction
 
     if (!system || !memory || !result) {
@@ -902,9 +972,19 @@ int gist_extract_batch(
 ) {
     if (!system || !memories || !results) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_extract_batch", 0.0f);
+
+
     int successful = 0;
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            gist_heartbeat("gist_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (memories[i]) {
             gist_error_t err = gist_extract(system, memories[i], &results[i]);
             if (err == GIST_SUCCESS) {
@@ -925,6 +1005,10 @@ dual_trace_t* gist_create_dual_trace(
     float abstractness
 ) {
     if (!system || !memory || !gist_signature) return NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_create_dual_trace", 0.0f);
+
 
     const prime_signature_t* verbatim_sig = pr_memory_node_get_signature(memory);
     if (!verbatim_sig) {
@@ -982,10 +1066,20 @@ gist_error_t gist_compress(
     }
 
     // Identify key features
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_compress", 0.0f);
+
+
     gist_key_feature_t features[PRIME_SIG_DIM];
     size_t num_features = 0;
 
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            gist_heartbeat("gist_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         if (verbatim_sig->exponents[i] > 0) {
             features[num_features].prime_index = (uint32_t)i;
             features[num_features].importance = compute_feature_score(
@@ -1025,12 +1119,22 @@ gist_error_t gist_expand(
     }
 
     // Start with gist signature
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_expand", 0.0f);
+
+
     memcpy(verbatim_estimate, gist_sig, sizeof(prime_signature_t));
 
     // Expand by adding correlated features based on learned statistics
     // This is a best-effort reconstruction
 
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            gist_heartbeat("gist_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         if (gist_sig->exponents[i] == 0) {
             // Estimate missing feature based on frequency and correlation
             // with present features
@@ -1038,6 +1142,12 @@ gist_error_t gist_expand(
             float weight_sum = 0.0f;
 
             for (size_t j = 0; j < PRIME_SIG_DIM; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+                    gist_heartbeat("gist_loop",
+                                     (float)(j + 1) / (float)PRIME_SIG_DIM);
+                }
+
                 if (gist_sig->exponents[j] > 0) {
                     // Simple correlation model: nearby indices correlate
                     float distance = fabsf((float)i - (float)j);
@@ -1084,11 +1194,21 @@ gist_error_t gist_identify_key_features(
     }
 
     *num_features = 0;
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_identify_key_feature", 0.0f);
+
+
     gist_key_feature_t all_features[PRIME_SIG_DIM];
     size_t count = 0;
 
     // Score all non-zero features
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            gist_heartbeat("gist_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         if (signature->exponents[i] > 0) {
             float score = compute_feature_score(system, i, signature->exponents[i]);
 
@@ -1120,11 +1240,21 @@ float gist_compute_abstractness(
 ) {
     if (!system || !signature) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_compute_abstractness", 0.0f);
+
+
     float semantic_weight = 0.0f;
     float surface_weight = 0.0f;
     float total_weight = 0.0f;
 
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            gist_heartbeat("gist_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         if (signature->exponents[i] > 0) {
             float weight = (float)signature->exponents[i];
             feature_type_t type = get_feature_type(i);
@@ -1166,6 +1296,10 @@ gist_error_t gist_update_feature_importance(
     if (learning_rate < 0.0f || learning_rate > 1.0f) return GIST_ERROR_INVALID_CONFIG;
 
     // Update weight with bounded learning
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_update_feature_impor", 0.0f);
+
+
     float old_weight = system->feature_weights[feature_index];
     float new_weight = old_weight + learning_rate * success_delta;
 
@@ -1183,6 +1317,10 @@ float gist_get_feature_importance(
     uint32_t feature_index
 ) {
     if (!system || feature_index >= PRIME_SIG_DIM) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_get_feature_importan", 0.0f);
+
+
     return system->feature_weights[feature_index];
 }
 
@@ -1205,6 +1343,10 @@ gist_error_t gist_match(
     *num_results = 0;
 
     // Collect all matches with scores
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_match", 0.0f);
+
+
     gist_match_result_t* all_matches = malloc(system->num_gists * sizeof(gist_match_result_t));
     if (!all_matches && system->num_gists > 0) {
         return GIST_ERROR_NO_MEMORY;
@@ -1214,6 +1356,12 @@ gist_error_t gist_match(
 
     // Iterate through hash table
     for (size_t i = 0; i < system->gist_table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->gist_table_size > 256) {
+            gist_heartbeat("gist_loop",
+                             (float)(i + 1) / (float)system->gist_table_size);
+        }
+
         gist_hash_entry_t* entry = system->gist_table[i];
         while (entry) {
             gist_node_t* gist = entry->gist;
@@ -1226,6 +1374,12 @@ gist_error_t gist_match(
                 if (gist->num_features > 0) {
                     size_t matches = 0;
                     for (size_t j = 0; j < gist->num_features; j++) {
+                        /* Phase 8: Loop progress heartbeat */
+                        if ((j & 0xFF) == 0 && gist->num_features > 256) {
+                            gist_heartbeat("gist_loop",
+                                             (float)(j + 1) / (float)gist->num_features);
+                        }
+
                         uint32_t idx = gist->key_features[j].prime_index;
                         if (idx < PRIME_SIG_DIM && query_sig->exponents[idx] > 0) {
                             matches++;
@@ -1258,6 +1412,12 @@ gist_error_t gist_match(
 
     // Sort by similarity (descending)
     for (size_t i = 0; i < match_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && match_count > 256) {
+            gist_heartbeat("gist_loop",
+                             (float)(i + 1) / (float)match_count);
+        }
+
         for (size_t j = i + 1; j < match_count; j++) {
             if (all_matches[j].similarity > all_matches[i].similarity) {
                 gist_match_result_t tmp = all_matches[i];
@@ -1289,6 +1449,10 @@ gist_error_t gist_retrieve_verbatim(
 
     *num_memories = 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_retrieve_verbatim", 0.0f);
+
+
     gist_node_t* gist = gist_table_lookup(system->gist_table,
                                            system->gist_table_size, gist_id);
     if (!gist) {
@@ -1319,6 +1483,10 @@ gist_node_t* gist_get_by_id(
         return NULL;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_get_by_id", 0.0f);
+
+
     return gist_table_lookup(system->gist_table, system->gist_table_size, gist_id);
 }
 
@@ -1333,6 +1501,10 @@ dual_trace_t* gist_get_dual_trace(
         return NULL;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_get_dual_trace", 0.0f);
+
+
     return trace_table_lookup(system->trace_table, system->trace_table_size, trace_id);
 }
 
@@ -1351,10 +1523,20 @@ gist_error_t gist_merge(
     }
 
     // Collect gists to merge
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_merge", 0.0f);
+
+
     gist_node_t** gists = malloc(count * sizeof(gist_node_t*));
     if (!gists) return GIST_ERROR_NO_MEMORY;
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            gist_heartbeat("gist_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         gists[i] = gist_table_lookup(system->gist_table, system->gist_table_size,
                                       gist_ids[i]);
         if (!gists[i]) {
@@ -1412,6 +1594,12 @@ gist_error_t gist_merge(
     }
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            gist_heartbeat("gist_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         quats[i] = gists[i]->gist_quaternion;
         weights[i] = 1.0f;  // Equal weights
     }
@@ -1423,6 +1611,12 @@ gist_error_t gist_merge(
     // Collect all source memories
     size_t total_sources = 0;
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            gist_heartbeat("gist_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         total_sources += gists[i]->num_sources;
     }
 
@@ -1444,6 +1638,12 @@ gist_error_t gist_merge(
     // Copy source IDs
     size_t offset = 0;
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            gist_heartbeat("gist_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         memcpy(merged->source_memory_ids + offset, gists[i]->source_memory_ids,
                gists[i]->num_sources * sizeof(uint64_t));
         offset += gists[i]->num_sources;
@@ -1455,6 +1655,12 @@ gist_error_t gist_merge(
     merged->generality = (float)count;  // Covers 'count' gists
     merged->confidence = 0.0f;
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            gist_heartbeat("gist_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         merged->confidence += gists[i]->confidence;
     }
     merged->confidence /= (float)count;
@@ -1499,6 +1705,10 @@ gist_error_t gist_generalize(
     // For now, we create a placeholder generalized gist from the IDs.
 
     // Allocate new generalized gist
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_generalize", 0.0f);
+
+
     gist_node_t* generalized = alloc_gist_node(system);
     if (!generalized) {
         return GIST_ERROR_NO_MEMORY;
@@ -1544,6 +1754,10 @@ gist_error_t gist_apply_forgetting(
     if (elapsed_hours < 0.0f) return GIST_ERROR_INVALID_CONFIG;
 
     // Apply exponential decay to verbatim (faster)
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_apply_forgetting", 0.0f);
+
+
     trace->verbatim_strength *= expf(-trace->verbatim_decay_rate * elapsed_hours);
 
     // Apply exponential decay to gist (slower)
@@ -1562,9 +1776,19 @@ size_t gist_apply_forgetting_all(
 ) {
     if (!system || elapsed_hours < 0.0f) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_apply_forgetting_all", 0.0f);
+
+
     size_t affected = 0;
 
     for (size_t i = 0; i < system->trace_table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->trace_table_size > 256) {
+            gist_heartbeat("gist_loop",
+                             (float)(i + 1) / (float)system->trace_table_size);
+        }
+
         trace_hash_entry_t* entry = system->trace_table[i];
         while (entry) {
             if (entry->trace) {
@@ -1587,6 +1811,10 @@ gist_error_t gist_reinforce(
     if (!system || !trace) return GIST_ERROR_NULL_POINTER;
 
     // Reinforce verbatim
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_reinforce", 0.0f);
+
+
     trace->verbatim_strength += verbatim_boost * (1.0f - trace->verbatim_strength);
     if (trace->verbatim_strength > 1.0f) trace->verbatim_strength = 1.0f;
 
@@ -1608,6 +1836,10 @@ size_t gist_prune_weak(
 ) {
     if (!system) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_prune_weak", 0.0f);
+
+
     size_t removed = 0;
 
     // Iterate and collect weak gists
@@ -1617,6 +1849,12 @@ size_t gist_prune_weak(
     size_t remove_count = 0;
 
     for (size_t i = 0; i < system->gist_table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->gist_table_size > 256) {
+            gist_heartbeat("gist_loop",
+                             (float)(i + 1) / (float)system->gist_table_size);
+        }
+
         gist_hash_entry_t* entry = system->gist_table[i];
         while (entry) {
             if (entry->gist && entry->gist->current_strength < strength_threshold) {
@@ -1628,6 +1866,12 @@ size_t gist_prune_weak(
 
     // Remove collected gists
     for (size_t i = 0; i < remove_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && remove_count > 256) {
+            gist_heartbeat("gist_loop",
+                             (float)(i + 1) / (float)remove_count);
+        }
+
         gist_node_t* gist = gist_table_remove(system->gist_table,
                                                system->gist_table_size,
                                                to_remove[i]);
@@ -1654,6 +1898,10 @@ gist_error_t gist_get_stats(
 ) {
     if (!system || !stats) return GIST_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_get_stats", 0.0f);
+
+
     memset(stats, 0, sizeof(gist_stats_t));
 
     stats->num_gists = system->num_gists;
@@ -1669,6 +1917,12 @@ gist_error_t gist_get_stats(
 
     // Count total features
     for (size_t i = 0; i < system->gist_table_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->gist_table_size > 256) {
+            gist_heartbeat("gist_loop",
+                             (float)(i + 1) / (float)system->gist_table_size);
+        }
+
         gist_hash_entry_t* entry = system->gist_table[i];
         while (entry) {
             if (entry->gist) {
@@ -1691,10 +1945,18 @@ gist_error_t gist_get_stats(
 }
 
 size_t gist_get_count(gist_system_t system) {
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_get_count", 0.0f);
+
+
     return system ? system->num_gists : 0;
 }
 
 size_t gist_get_dual_trace_count(gist_system_t system) {
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_get_dual_trace_count", 0.0f);
+
+
     return system ? system->num_traces : 0;
 }
 
@@ -1752,6 +2014,10 @@ void gist_print(const gist_node_t* gist) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_print", 0.0f);
+
+
     printf("Gist[id=%llu]:\n", (unsigned long long)gist->gist_id);
     printf("  Abstractness: %.3f\n", gist->abstractness);
     printf("  Generality: %.3f\n", gist->generality);
@@ -1779,6 +2045,10 @@ void gist_dual_trace_print(const dual_trace_t* trace) {
         printf("DualTrace: NULL\n");
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_dual_trace_print", 0.0f);
+
 
     printf("DualTrace[id=%llu]:\n", (unsigned long long)trace->trace_id);
     printf("  Source Node: %llu\n", (unsigned long long)trace->source_node_id);
@@ -1810,6 +2080,9 @@ bool gist_validate(const gist_node_t* gist) {
         return false;  // Inconsistent
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_validate", 0.0f);
+
     return true;
 }
 
@@ -1823,6 +2096,10 @@ float gist_compute_coherence(
     // High coherence means gist contains the most important parts of verbatim
 
     // Basic Jaccard similarity
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_compute_coherence", 0.0f);
+
+
     float jaccard = prime_sig_jaccard(verbatim, gist);
 
     // Check that gist features are subset of verbatim
@@ -1831,6 +2108,12 @@ float gist_compute_coherence(
     uint32_t subset_count = 0;
 
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            gist_heartbeat("gist_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         if (gist->exponents[i] > 0) {
             gist_count++;
             if (verbatim->exponents[i] >= gist->exponents[i]) {
@@ -1848,6 +2131,10 @@ float gist_compute_coherence(
 }
 
 uint64_t gist_current_time_ms(void) {
+    /* Phase 8: Heartbeat at operation start */
+    gist_heartbeat("gist_current_time_ms", 0.0f);
+
+
     struct timespec ts;
     if (clock_gettime(CLOCK_REALTIME, &ts) == 0) {
         return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;

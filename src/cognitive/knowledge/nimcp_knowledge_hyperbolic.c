@@ -62,7 +62,7 @@ static nimcp_health_agent_t* g_knowledge_hyperbolic_health_agent = NULL;
  * @brief Set health agent for knowledge_hyperbolic heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void knowledge_hyperbolic_set_health_agent(nimcp_health_agent_t* agent) {
+void knowledge_hyperbolic_set_health_agent(nimcp_health_agent_t* agent) {
     g_knowledge_hyperbolic_health_agent = agent;
 }
 
@@ -113,6 +113,10 @@ bool knowledge_init_hyperbolic_embedding(knowledge_item_t *item, uint32_t dim,
     }
 
     // If already has hyperbolic embedding, destroy it first
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_hyperbolic_heartbeat("knowledge_hy_knowledge_init_hyper", 0.0f);
+
+
     if (item->hyperbolic_embedding) {
         poincare_point_destroy(item->hyperbolic_embedding);
         item->hyperbolic_embedding = NULL;
@@ -141,6 +145,12 @@ bool knowledge_init_hyperbolic_embedding(knowledge_item_t *item, uint32_t dim,
         // Add small random offset (0.1-0.2 in random direction)
         float offset_magnitude = 0.1F + 0.1F * ((float)rand() / RAND_MAX);
         for (uint32_t i = 0; i < dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && dim > 256) {
+                knowledge_hyperbolic_heartbeat("knowledge_hy_loop",
+                                 (float)(i + 1) / (float)dim);
+            }
+
             float offset = (2.0F * ((float)rand() / RAND_MAX) - 1.0F) * offset_magnitude;
             coords[i] += offset;
         }
@@ -149,6 +159,12 @@ bool knowledge_init_hyperbolic_embedding(knowledge_item_t *item, uint32_t dim,
         // First generate random unit vector
         float norm = 0.0F;
         for (uint32_t i = 0; i < dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && dim > 256) {
+                knowledge_hyperbolic_heartbeat("knowledge_hy_loop",
+                                 (float)(i + 1) / (float)dim);
+            }
+
             coords[i] = 2.0F * ((float)rand() / RAND_MAX) - 1.0F;
             norm += coords[i] * coords[i];
         }
@@ -157,6 +173,12 @@ bool knowledge_init_hyperbolic_embedding(knowledge_item_t *item, uint32_t dim,
         // Normalize and scale to target radius
         if (norm > 1e-6F) {
             for (uint32_t i = 0; i < dim; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && dim > 256) {
+                    knowledge_hyperbolic_heartbeat("knowledge_hy_loop",
+                                     (float)(i + 1) / (float)dim);
+                }
+
                 coords[i] = (coords[i] / norm) * radius;
             }
         } else {
@@ -208,6 +230,10 @@ float knowledge_hyperbolic_distance(const knowledge_item_t *item1,
     }
 
     // Check dimensions match
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_hyperbolic_heartbeat("knowledge_hy_distance", 0.0f);
+
+
     if (item1->hyperbolic_embedding->dim != item2->hyperbolic_embedding->dim) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
             "knowledge_hyperbolic_distance: dimension mismatch (%u vs %u)",
@@ -244,6 +270,10 @@ uint32_t knowledge_hyperbolic_knn(knowledge_system_t system,
     // Get all knowledge items from system
     // NOTE: This requires access to internal knowledge_system structure
     // For now, we'll use the confidence-based retrieval as a workaround
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_hyperbolic_heartbeat("knowledge_hy_knn", 0.0f);
+
+
     knowledge_item_t *all_items = NULL;
     uint32_t num_items = knowledge_get_all_ordered_by_confidence(system, &all_items);
 
@@ -263,6 +293,12 @@ uint32_t knowledge_hyperbolic_knn(knowledge_system_t system,
     // Compute distances to all items
     uint32_t valid_candidates = 0;
     for (uint32_t i = 0; i < num_items; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_items > 256) {
+            knowledge_hyperbolic_heartbeat("knowledge_hy_loop",
+                             (float)(i + 1) / (float)num_items);
+        }
+
         // Skip query item itself
         if (&all_items[i] == query_item) {
             continue;
@@ -290,6 +326,12 @@ uint32_t knowledge_hyperbolic_knn(knowledge_system_t system,
     // Copy top k to output
     uint32_t num_neighbors = (k < valid_candidates) ? k : valid_candidates;
     for (uint32_t i = 0; i < num_neighbors; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_neighbors > 256) {
+            knowledge_hyperbolic_heartbeat("knowledge_hy_loop",
+                             (float)(i + 1) / (float)num_neighbors);
+        }
+
         neighbors_out[i] = candidates[i].item;
         if (distances_out) {
             distances_out[i] = candidates[i].distance;
@@ -324,6 +366,10 @@ bool knowledge_hyperbolic_sgd_step(knowledge_item_t *item,
     }
 
     // Use Poincaré SGD step from hyperbolic library
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_hyperbolic_heartbeat("knowledge_hy_sgd_step", 0.0f);
+
+
     return poincare_sgd_step(item->hyperbolic_embedding, euclidean_gradient, learning_rate);
 }
 
@@ -341,6 +387,10 @@ float knowledge_learn_hyperbolic_embeddings(knowledge_system_t system,
     }
 
     // Get all knowledge items
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_hyperbolic_heartbeat("knowledge_hy_knowledge_learn_hype", 0.0f);
+
+
     knowledge_item_t *all_items = NULL;
     uint32_t num_items = knowledge_get_all_ordered_by_confidence(system, &all_items);
 
@@ -353,6 +403,12 @@ float knowledge_learn_hyperbolic_embeddings(knowledge_system_t system,
     // Count items with hyperbolic embeddings
     uint32_t num_hyperbolic = 0;
     for (uint32_t i = 0; i < num_items; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_items > 256) {
+            knowledge_hyperbolic_heartbeat("knowledge_hy_loop",
+                             (float)(i + 1) / (float)num_items);
+        }
+
         if (all_items[i].hyperbolic_embedding) {
             num_hyperbolic++;
         }
@@ -365,6 +421,12 @@ float knowledge_learn_hyperbolic_embeddings(knowledge_system_t system,
     // Get embedding dimension from first item
     uint32_t dim = 0;
     for (uint32_t i = 0; i < num_items; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_items > 256) {
+            knowledge_hyperbolic_heartbeat("knowledge_hy_loop",
+                             (float)(i + 1) / (float)num_items);
+        }
+
         if (all_items[i].hyperbolic_embedding) {
             dim = all_items[i].hyperbolic_embedding->dim;
             break;
@@ -388,6 +450,12 @@ float knowledge_learn_hyperbolic_embeddings(knowledge_system_t system,
 
     // Training loop
     for (uint32_t epoch = 0; epoch < num_epochs; epoch++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((epoch & 0xFF) == 0 && num_epochs > 256) {
+            knowledge_hyperbolic_heartbeat("knowledge_hy_loop",
+                             (float)(epoch + 1) / (float)num_epochs);
+        }
+
         float epoch_loss = 0.0F;
         uint32_t num_pairs = 0;
 
@@ -396,6 +464,12 @@ float knowledge_learn_hyperbolic_embeddings(knowledge_system_t system,
 
         // For each pair of items
         for (uint32_t i = 0; i < num_items; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_items > 256) {
+                knowledge_hyperbolic_heartbeat("knowledge_hy_loop",
+                                 (float)(i + 1) / (float)num_items);
+            }
+
             if (!all_items[i].hyperbolic_embedding) continue;
 
             for (uint32_t j = i + 1; j < num_items; j++) {
@@ -442,6 +516,12 @@ float knowledge_learn_hyperbolic_embeddings(knowledge_system_t system,
 
                     // Compute direction vector: (item_i - item_j)
                     for (uint32_t d = 0; d < dim; d++) {
+                        /* Phase 8: Loop progress heartbeat */
+                        if ((d & 0xFF) == 0 && dim > 256) {
+                            knowledge_hyperbolic_heartbeat("knowledge_hy_loop",
+                                             (float)(d + 1) / (float)dim);
+                        }
+
                         float diff = all_items[i].hyperbolic_embedding->coords[d] -
                                    all_items[j].hyperbolic_embedding->coords[d];
                         gradient[d] = direction * magnitude * diff;
@@ -452,6 +532,12 @@ float knowledge_learn_hyperbolic_embeddings(knowledge_system_t system,
 
                     // Apply negative gradient to item j
                     for (uint32_t d = 0; d < dim; d++) {
+                        /* Phase 8: Loop progress heartbeat */
+                        if ((d & 0xFF) == 0 && dim > 256) {
+                            knowledge_hyperbolic_heartbeat("knowledge_hy_loop",
+                                             (float)(d + 1) / (float)dim);
+                        }
+
                         gradient[d] = -gradient[d];
                     }
                     knowledge_hyperbolic_sgd_step(&all_items[j], gradient, current_lr);
@@ -501,6 +587,10 @@ bool knowledge_euclidean_to_hyperbolic(knowledge_item_t *item, uint32_t target_d
     // 1. Take first target_dim dimensions of Euclidean embedding
     // 2. Normalize to fit in Poincaré ball
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_hyperbolic_heartbeat("knowledge_hy_knowledge_euclidean_", 0.0f);
+
+
     uint32_t source_dim = item->embedding_dim;
     uint32_t copy_dim = (target_dim < source_dim) ? target_dim : source_dim;
 
@@ -515,6 +605,12 @@ bool knowledge_euclidean_to_hyperbolic(knowledge_item_t *item, uint32_t target_d
     // Copy and normalize
     float norm = 0.0F;
     for (uint32_t i = 0; i < copy_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && copy_dim > 256) {
+            knowledge_hyperbolic_heartbeat("knowledge_hy_loop",
+                             (float)(i + 1) / (float)copy_dim);
+        }
+
         hyp_coords[i] = item->euclidean_embedding[i];
         norm += hyp_coords[i] * hyp_coords[i];
     }
@@ -532,6 +628,12 @@ bool knowledge_euclidean_to_hyperbolic(knowledge_item_t *item, uint32_t target_d
         target_radius = fminf(target_radius, 0.95F);
 
         for (uint32_t i = 0; i < target_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && target_dim > 256) {
+                knowledge_hyperbolic_heartbeat("knowledge_hy_loop",
+                                 (float)(i + 1) / (float)target_dim);
+            }
+
             hyp_coords[i] = (hyp_coords[i] / norm) * target_radius;
         }
     }
@@ -571,6 +673,10 @@ uint32_t knowledge_get_hierarchical_path(knowledge_system_t system,
     }
 
     // Find the concept
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_hyperbolic_heartbeat("knowledge_hy_knowledge_get_hierar", 0.0f);
+
+
     knowledge_item_t query_item;
     if (!knowledge_retrieve(system, concept_name, &query_item)) {
         return 0;  // Concept not found
@@ -622,9 +728,19 @@ uint32_t knowledge_get_hierarchical_path(knowledge_system_t system,
 int knowledge_hyperbolic_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_hyperbolic_heartbeat("knowledge_hy_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Knowledge_Hyperbolic");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                knowledge_hyperbolic_heartbeat("knowledge_hy_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

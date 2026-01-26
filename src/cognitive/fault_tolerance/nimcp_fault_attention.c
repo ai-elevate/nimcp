@@ -47,7 +47,7 @@ static nimcp_health_agent_t* g_fault_attention_health_agent = NULL;
  * @brief Set health agent for fault_attention heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void fault_attention_set_health_agent(nimcp_health_agent_t* agent) {
+void fault_attention_set_health_agent(nimcp_health_agent_t* agent) {
     g_fault_attention_health_agent = agent;
 }
 
@@ -236,6 +236,10 @@ static int find_dominant_factor(
 //=============================================================================
 
 fault_attention_config_t fault_attention_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    fault_attention_heartbeat("fault_attent_default_config", 0.0f);
+
+
     fault_attention_config_t config = {};
 
     config.severity_weight = FAULT_ATTENTION_DEFAULT_SEVERITY_WEIGHT;
@@ -253,10 +257,18 @@ fault_attention_config_t fault_attention_default_config(void) {
 }
 
 bool fault_attention_validate_config(const fault_attention_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    fault_attention_heartbeat("fault_attent_validate_config", 0.0f);
+
+
     return validate_config_internal(config);
 }
 
 fault_attention_t* fault_attention_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    fault_attention_heartbeat("fault_attent_create", 0.0f);
+
+
     LOG_DEBUG("Creating module");
     fault_attention_config_t config = fault_attention_default_config();
     return fault_attention_create_custom(&config);
@@ -268,6 +280,10 @@ fault_attention_t* fault_attention_create_custom(
     // =========================================================================
     // GUARD: Validate parameters
     // =========================================================================
+
+    /* Phase 8: Heartbeat at operation start */
+    fault_attention_heartbeat("fault_attent_create_custom", 0.0f);
+
 
     fault_attention_config_t final_config;
 
@@ -354,6 +370,10 @@ return attention;
 }
 
 void fault_attention_destroy(fault_attention_t* attention) {
+    /* Phase 8: Heartbeat at operation start */
+    fault_attention_heartbeat("fault_attent_destroy", 0.0f);
+
+
     LOG_DEBUG("Destroying module");
     if (!attention) {
         return;
@@ -394,6 +414,10 @@ bool fault_attention_compute_weights(
     }
 
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    fault_attention_heartbeat("fault_attent_compute_weights", 0.0f);
+
+
     if (attention->bio_async_enabled && attention->bio_ctx) {
         bio_router_process_inbox(attention->bio_ctx, 5);
     }
@@ -439,6 +463,12 @@ bool fault_attention_compute_weights(
     uint64_t max_time_delta = 0;
 
     for (uint32_t i = 0; i < fault_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && fault_count > 256) {
+            fault_attention_heartbeat("fault_attent_loop",
+                             (float)(i + 1) / (float)fault_count);
+        }
+
         const active_fault_t* fault = &faults[i];
 
         // Severity is already normalized [0, 1]
@@ -469,6 +499,12 @@ bool fault_attention_compute_weights(
     // =========================================================================
 
     for (uint32_t i = 0; i < fault_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && fault_count > 256) {
+            fault_attention_heartbeat("fault_attent_loop",
+                             (float)(i + 1) / (float)fault_count);
+        }
+
         const active_fault_t* fault = &faults[i];
 
         // Severity factor (already [0, 1])
@@ -511,6 +547,12 @@ bool fault_attention_compute_weights(
 
     float max_weight = 0.0F;
     for (uint32_t i = 0; i < fault_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && fault_count > 256) {
+            fault_attention_heartbeat("fault_attent_loop",
+                             (float)(i + 1) / (float)fault_count);
+        }
+
         if (attention->weights[i] > max_weight) {
             max_weight = attention->weights[i];
         }
@@ -518,6 +560,12 @@ bool fault_attention_compute_weights(
 
     if (max_weight > 0.0F) {
         for (uint32_t i = 0; i < fault_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && fault_count > 256) {
+                fault_attention_heartbeat("fault_attent_loop",
+                                 (float)(i + 1) / (float)fault_count);
+            }
+
             attention->weights[i] /= max_weight;
         }
     }
@@ -582,6 +630,10 @@ bool fault_attention_get_weight(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    fault_attention_heartbeat("fault_attent_get_weight", 0.0f);
+
+
     if (fault_index >= attention->fault_count) {
         nimcp_log(LOG_LEVEL_ERROR,
                   "Fault index %u out of bounds (count=%u)",
@@ -613,6 +665,10 @@ uint32_t fault_attention_get_all_weights(
     // =========================================================================
     // COPY: Copy weights to output
     // =========================================================================
+
+    /* Phase 8: Heartbeat at operation start */
+    fault_attention_heartbeat("fault_attent_get_all_weights", 0.0f);
+
 
     uint32_t count = (attention->fault_count < max_count) ?
                      attention->fault_count : max_count;
@@ -653,6 +709,10 @@ bool fault_attention_get_focused_index(
     // =========================================================================
 
     *focused_index = attention->focused_fault_idx;
+    /* Phase 8: Heartbeat at operation start */
+    fault_attention_heartbeat("fault_attent_get_focused_index", 0.0f);
+
+
     return true;
 }
 
@@ -673,6 +733,10 @@ bool fault_attention_get_focused_fault(
     if (!attention->has_focus) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    fault_attention_heartbeat("fault_attent_get_focused_fault", 0.0f);
+
 
     if (attention->focused_fault_idx >= fault_count) {
         nimcp_log(LOG_LEVEL_ERROR,
@@ -712,6 +776,10 @@ bool fault_attention_update_weights(
         return true;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    fault_attention_heartbeat("fault_attent_update_weights", 0.0f);
+
+
     if (fault_index >= attention->fault_count) {
         nimcp_log(LOG_LEVEL_ERROR,
                   "Fault index %u out of bounds in update_weights",
@@ -746,6 +814,12 @@ bool fault_attention_update_weights(
 
         // Decrease other weights proportionally
         for (int i = 0; i < 4; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && 4 > 256) {
+                fault_attention_heartbeat("fault_attent_loop",
+                                 (float)(i + 1) / (float)4);
+            }
+
             if (i != dominant) {
                 *weights[i] -= learning_rate / 3.0F;
             }
@@ -759,6 +833,12 @@ bool fault_attention_update_weights(
 
         // Increase other weights proportionally
         for (int i = 0; i < 4; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && 4 > 256) {
+                fault_attention_heartbeat("fault_attent_loop",
+                                 (float)(i + 1) / (float)4);
+            }
+
             if (i != dominant) {
                 *weights[i] += learning_rate / 3.0F;
             }
@@ -771,6 +851,12 @@ bool fault_attention_update_weights(
 
     // Clamp to non-negative
     for (int i = 0; i < 4; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 4 > 256) {
+            fault_attention_heartbeat("fault_attent_loop",
+                             (float)(i + 1) / (float)4);
+        }
+
         if (*weights[i] < 0.01F) {
             *weights[i] = 0.01F; // Minimum weight
         }
@@ -813,6 +899,10 @@ bool fault_attention_reset_weights(fault_attention_t* attention) {
     }
 
     // Reset to defaults
+    /* Phase 8: Heartbeat at operation start */
+    fault_attention_heartbeat("fault_attent_reset_weights", 0.0f);
+
+
     fault_attention_config_t defaults = fault_attention_default_config();
     attention->config.severity_weight = defaults.severity_weight;
     attention->config.recency_weight = defaults.recency_weight;
@@ -837,6 +927,10 @@ bool fault_attention_get_config(
     }
 
     *config = attention->config;
+    /* Phase 8: Heartbeat at operation start */
+    fault_attention_heartbeat("fault_attent_get_config", 0.0f);
+
+
     return true;
 }
 
@@ -851,6 +945,10 @@ bool fault_attention_set_config(
     if (!validate_config_internal(config)) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    fault_attention_heartbeat("fault_attent_set_config", 0.0f);
+
 
     attention->config = *config;
 
@@ -872,6 +970,10 @@ bool fault_attention_get_stats(
     }
 
     *stats = attention->stats;
+    /* Phase 8: Heartbeat at operation start */
+    fault_attention_heartbeat("fault_attent_get_stats", 0.0f);
+
+
     return true;
 }
 
@@ -879,6 +981,10 @@ bool fault_attention_reset_stats(fault_attention_t* attention) {
     if (!attention) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    fault_attention_heartbeat("fault_attent_reset_stats", 0.0f);
+
 
     memset(&attention->stats, 0, sizeof(attention->stats));
 
@@ -894,9 +1000,19 @@ bool fault_attention_reset_stats(fault_attention_t* attention) {
 int fault_attention_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    fault_attention_heartbeat("fault_attent_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Fault_Attention");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                fault_attention_heartbeat("fault_attent_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             nimcp_log(LOG_LEVEL_DEBUG, "[KG-Self] %s", self->observations[i]);
         }
     }
@@ -904,6 +1020,12 @@ int fault_attention_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Fault_Attention");
     if (connections) {
         for (uint32_t i = 0; i < connections->count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && connections->count > 256) {
+                fault_attention_heartbeat("fault_attent_loop",
+                                 (float)(i + 1) / (float)connections->count);
+            }
+
             nimcp_log(LOG_LEVEL_DEBUG, "[KG-Rel] -> %s (%s)",
                       connections->relations[i]->to,
                       connections->relations[i]->relation_type);
@@ -914,6 +1036,12 @@ int fault_attention_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Fault_Attention");
     if (incoming) {
         for (uint32_t i = 0; i < incoming->count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && incoming->count > 256) {
+                fault_attention_heartbeat("fault_attent_loop",
+                                 (float)(i + 1) / (float)incoming->count);
+            }
+
             nimcp_log(LOG_LEVEL_DEBUG, "[KG-Rel] <- %s (%s)",
                       incoming->relations[i]->from,
                       incoming->relations[i]->relation_type);

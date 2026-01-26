@@ -42,7 +42,7 @@ static nimcp_health_agent_t* g_physics_nn_health_agent = NULL;
  * @brief Set health agent for physics_nn heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void physics_nn_set_health_agent(nimcp_health_agent_t* agent) {
+void physics_nn_set_health_agent(nimcp_health_agent_t* agent) {
     g_physics_nn_health_agent = agent;
 }
 
@@ -318,6 +318,12 @@ static void layer_destroy(nn_layer_t* layer) {
 static float vector_norm(const float* v, uint32_t n) {
     float sum = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            physics_nn_heartbeat("physics_nn_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         sum += v[i] * v[i];
     }
     return sqrtf(sum);
@@ -335,13 +341,31 @@ static bool clip_gradients(physics_nn_t* nn, float max_norm, float* actual_norm)
     /* Compute global gradient norm */
     float total_sq = 0.0f;
     for (uint32_t l = 0; l < nn->num_layers; l++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((l & 0xFF) == 0 && nn->num_layers > 256) {
+            physics_nn_heartbeat("physics_nn_loop",
+                             (float)(l + 1) / (float)nn->num_layers);
+        }
+
         nn_layer_t* layer = &nn->layers[l];
         uint32_t w_size = layer->input_size * layer->output_size;
 
         for (uint32_t i = 0; i < w_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && w_size > 256) {
+                physics_nn_heartbeat("physics_nn_loop",
+                                 (float)(i + 1) / (float)w_size);
+            }
+
             total_sq += layer->weight_grads[i] * layer->weight_grads[i];
         }
         for (uint32_t i = 0; i < layer->output_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && layer->output_size > 256) {
+                physics_nn_heartbeat("physics_nn_loop",
+                                 (float)(i + 1) / (float)layer->output_size);
+            }
+
             total_sq += layer->bias_grads[i] * layer->bias_grads[i];
         }
     }
@@ -352,13 +376,31 @@ static bool clip_gradients(physics_nn_t* nn, float max_norm, float* actual_norm)
     if (*actual_norm > max_norm) {
         float scale = max_norm / *actual_norm;
         for (uint32_t l = 0; l < nn->num_layers; l++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((l & 0xFF) == 0 && nn->num_layers > 256) {
+                physics_nn_heartbeat("physics_nn_loop",
+                                 (float)(l + 1) / (float)nn->num_layers);
+            }
+
             nn_layer_t* layer = &nn->layers[l];
             uint32_t w_size = layer->input_size * layer->output_size;
 
             for (uint32_t i = 0; i < w_size; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && w_size > 256) {
+                    physics_nn_heartbeat("physics_nn_loop",
+                                     (float)(i + 1) / (float)w_size);
+                }
+
                 layer->weight_grads[i] *= scale;
             }
             for (uint32_t i = 0; i < layer->output_size; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && layer->output_size > 256) {
+                    physics_nn_heartbeat("physics_nn_loop",
+                                     (float)(i + 1) / (float)layer->output_size);
+                }
+
                 layer->bias_grads[i] *= scale;
             }
         }
@@ -373,6 +415,10 @@ static bool clip_gradients(physics_nn_t* nn, float max_norm, float* actual_norm)
  * ============================================================================ */
 
 physics_nn_config_t physics_nn_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    physics_nn_heartbeat("physics_nn_default_config", 0.0f);
+
+
     physics_nn_config_t config = {0};
 
     /* Architecture */
@@ -413,6 +459,10 @@ physics_nn_config_t physics_nn_default_config(void) {
 bool physics_nn_validate_config(const physics_nn_config_t* config) {
     if (!config) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    physics_nn_heartbeat("physics_nn_validate_config", 0.0f);
+
+
     if (config->state_dim == 0 || config->state_dim > PHYSICS_NN_MAX_NEURONS) {
         snprintf(s_last_error, sizeof(s_last_error),
                  "Invalid state_dim: %u (max %u)", config->state_dim, PHYSICS_NN_MAX_NEURONS);
@@ -448,11 +498,19 @@ bool physics_nn_validate_config(const physics_nn_config_t* config) {
 }
 
 physics_nn_t* physics_nn_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    physics_nn_heartbeat("physics_nn_create", 0.0f);
+
+
     physics_nn_config_t config = physics_nn_default_config();
     return physics_nn_create_custom(&config);
 }
 
 physics_nn_t* physics_nn_create_custom(const physics_nn_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    physics_nn_heartbeat("physics_nn_create_custom", 0.0f);
+
+
     physics_nn_config_t default_config;
     if (!config) {
         default_config = physics_nn_default_config();
@@ -498,10 +556,22 @@ physics_nn_t* physics_nn_create_custom(const physics_nn_config_t* config) {
 
     /* Create each layer */
     for (uint32_t i = 0; i < config->num_layers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && config->num_layers > 256) {
+            physics_nn_heartbeat("physics_nn_loop",
+                             (float)(i + 1) / (float)config->num_layers);
+        }
+
         nn_layer_t* layer = layer_create(sizes[i], sizes[i + 1], config->optimizer);
         if (!layer) {
             /* Cleanup previously created layers */
             for (uint32_t j = 0; j < i; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && i > 256) {
+                    physics_nn_heartbeat("physics_nn_loop",
+                                     (float)(j + 1) / (float)i);
+                }
+
                 layer_destroy(&nn->layers[j]);
             }
             free(nn->layers);
@@ -524,6 +594,12 @@ physics_nn_t* physics_nn_create_custom(const physics_nn_config_t* config) {
     }
 
     for (uint32_t i = 0; i < config->num_layers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && config->num_layers > 256) {
+            physics_nn_heartbeat("physics_nn_loop",
+                             (float)(i + 1) / (float)config->num_layers);
+        }
+
         nn->layer_inputs[i] = (float*)calloc(sizes[i], sizeof(float));
         nn->layer_outputs[i] = (float*)calloc(sizes[i + 1], sizeof(float));
         nn->pre_activations[i] = (float*)calloc(sizes[i + 1], sizeof(float));
@@ -570,8 +646,18 @@ void physics_nn_destroy(physics_nn_t* nn) {
     if (!nn) return;
 
     /* Free layers */
+    /* Phase 8: Heartbeat at operation start */
+    physics_nn_heartbeat("physics_nn_destroy", 0.0f);
+
+
     if (nn->layers) {
         for (uint32_t i = 0; i < nn->num_layers; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && nn->num_layers > 256) {
+                physics_nn_heartbeat("physics_nn_loop",
+                                 (float)(i + 1) / (float)nn->num_layers);
+            }
+
             nn_layer_t* layer = &nn->layers[i];
             free(layer->weights);
             free(layer->biases);
@@ -588,6 +674,12 @@ void physics_nn_destroy(physics_nn_t* nn) {
     /* Free forward pass cache */
     if (nn->layer_inputs) {
         for (uint32_t i = 0; i < nn->num_layers; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && nn->num_layers > 256) {
+                physics_nn_heartbeat("physics_nn_loop",
+                                 (float)(i + 1) / (float)nn->num_layers);
+            }
+
             free(nn->layer_inputs[i]);
         }
         free(nn->layer_inputs);
@@ -595,6 +687,12 @@ void physics_nn_destroy(physics_nn_t* nn) {
 
     if (nn->layer_outputs) {
         for (uint32_t i = 0; i < nn->num_layers; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && nn->num_layers > 256) {
+                physics_nn_heartbeat("physics_nn_loop",
+                                 (float)(i + 1) / (float)nn->num_layers);
+            }
+
             free(nn->layer_outputs[i]);
         }
         free(nn->layer_outputs);
@@ -602,6 +700,12 @@ void physics_nn_destroy(physics_nn_t* nn) {
 
     if (nn->pre_activations) {
         for (uint32_t i = 0; i < nn->num_layers; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && nn->num_layers > 256) {
+                physics_nn_heartbeat("physics_nn_loop",
+                                 (float)(i + 1) / (float)nn->num_layers);
+            }
+
             free(nn->pre_activations[i]);
         }
         free(nn->pre_activations);
@@ -619,7 +723,17 @@ int physics_nn_reset(physics_nn_t* nn) {
     if (!nn) return -1;
 
     /* Re-initialize weights */
+    /* Phase 8: Heartbeat at operation start */
+    physics_nn_heartbeat("physics_nn_reset", 0.0f);
+
+
     for (uint32_t l = 0; l < nn->num_layers; l++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((l & 0xFF) == 0 && nn->num_layers > 256) {
+            physics_nn_heartbeat("physics_nn_loop",
+                             (float)(l + 1) / (float)nn->num_layers);
+        }
+
         nn_layer_t* layer = &nn->layers[l];
         xavier_init(layer->weights, layer->input_size, layer->output_size);
         memset(layer->biases, 0, layer->output_size * sizeof(float));
@@ -652,6 +766,10 @@ int physics_nn_forward(physics_nn_t* nn, const float* state, float* derivative) 
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    physics_nn_heartbeat("physics_nn_forward", 0.0f);
+
+
     uint32_t state_dim = nn->config.state_dim;
 
     /* Copy input to first layer input cache */
@@ -661,14 +779,32 @@ int physics_nn_forward(physics_nn_t* nn, const float* state, float* derivative) 
     const float* current_input = nn->layer_inputs[0];
 
     for (uint32_t l = 0; l < nn->num_layers; l++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((l & 0xFF) == 0 && nn->num_layers > 256) {
+            physics_nn_heartbeat("physics_nn_loop",
+                             (float)(l + 1) / (float)nn->num_layers);
+        }
+
         nn_layer_t* layer = &nn->layers[l];
         float* output = nn->layer_outputs[l];
         float* pre_act = nn->pre_activations[l];
 
         /* Compute z = W * x + b */
         for (uint32_t j = 0; j < layer->output_size; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && layer->output_size > 256) {
+                physics_nn_heartbeat("physics_nn_loop",
+                                 (float)(j + 1) / (float)layer->output_size);
+            }
+
             float sum = layer->biases[j];
             for (uint32_t i = 0; i < layer->input_size; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && layer->input_size > 256) {
+                    physics_nn_heartbeat("physics_nn_loop",
+                                     (float)(i + 1) / (float)layer->input_size);
+                }
+
                 sum += layer->weights[i * layer->output_size + j] * current_input[i];
             }
             pre_act[j] = sum;
@@ -694,6 +830,12 @@ int physics_nn_forward(physics_nn_t* nn, const float* state, float* derivative) 
     /* Apply modulation (reduce precision with inflammation/fatigue) */
     if (nn->effective_precision < 1.0f) {
         for (uint32_t i = 0; i < state_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && state_dim > 256) {
+                physics_nn_heartbeat("physics_nn_loop",
+                                 (float)(i + 1) / (float)state_dim);
+            }
+
             /* Add noise proportional to 1 - precision */
             float noise = (1.0f - nn->effective_precision) *
                           ((float)rand() / (float)RAND_MAX - 0.5f) * 0.1f;
@@ -707,6 +849,10 @@ int physics_nn_forward(physics_nn_t* nn, const float* state, float* derivative) 
 float physics_nn_compute_hamiltonian(physics_nn_t* nn, const float* state) {
     if (!nn || !state) return NAN;
 
+    /* Phase 8: Heartbeat at operation start */
+    physics_nn_heartbeat("physics_nn_compute_hamiltonian", 0.0f);
+
+
     uint32_t state_dim = nn->config.state_dim;
     uint32_t n = state_dim / 2;  /* Number of position/momentum pairs */
 
@@ -717,6 +863,12 @@ float physics_nn_compute_hamiltonian(physics_nn_t* nn, const float* state) {
     /* Kinetic energy: T = sum(p_i^2 / 2) */
     float kinetic = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            physics_nn_heartbeat("physics_nn_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         kinetic += 0.5f * p[i] * p[i];
     }
 
@@ -724,6 +876,12 @@ float physics_nn_compute_hamiltonian(physics_nn_t* nn, const float* state) {
     /* In a learned system, we'd use a separate potential network */
     float potential = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            physics_nn_heartbeat("physics_nn_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         potential += 0.5f * q[i] * q[i];
     }
 
@@ -743,6 +901,12 @@ static void backpropagate(physics_nn_t* nn, const float* target_derivative) {
     /* Compute output layer error: delta = output - target */
     float* output = nn->layer_outputs[nn->num_layers - 1];
     for (uint32_t i = 0; i < state_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && state_dim > 256) {
+            physics_nn_heartbeat("physics_nn_loop",
+                             (float)(i + 1) / (float)state_dim);
+        }
+
         nn->delta[i] = output[i] - target_derivative[i];
     }
 
@@ -757,12 +921,30 @@ static void backpropagate(physics_nn_t* nn, const float* target_derivative) {
 
         /* Compute gradients for this layer */
         for (uint32_t i = 0; i < in_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && in_size > 256) {
+                physics_nn_heartbeat("physics_nn_loop",
+                                 (float)(i + 1) / (float)in_size);
+            }
+
             for (uint32_t j = 0; j < out_size; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && out_size > 256) {
+                    physics_nn_heartbeat("physics_nn_loop",
+                                     (float)(j + 1) / (float)out_size);
+                }
+
                 layer->weight_grads[i * out_size + j] += nn->delta[j] * layer_input[i];
             }
         }
 
         for (uint32_t j = 0; j < out_size; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && out_size > 256) {
+                physics_nn_heartbeat("physics_nn_loop",
+                                 (float)(j + 1) / (float)out_size);
+            }
+
             layer->bias_grads[j] += nn->delta[j];
         }
 
@@ -774,7 +956,19 @@ static void backpropagate(physics_nn_t* nn, const float* target_derivative) {
 
             /* delta_prev = W^T * delta * activation'(pre_activation) */
             for (uint32_t i = 0; i < in_size; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && in_size > 256) {
+                    physics_nn_heartbeat("physics_nn_loop",
+                                     (float)(i + 1) / (float)in_size);
+                }
+
                 for (uint32_t j = 0; j < out_size; j++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((j & 0xFF) == 0 && out_size > 256) {
+                        physics_nn_heartbeat("physics_nn_loop",
+                                         (float)(j + 1) / (float)out_size);
+                    }
+
                     new_delta[i] += layer->weights[i * out_size + j] * nn->delta[j];
                 }
                 /* Multiply by activation derivative */
@@ -806,6 +1000,12 @@ static void apply_optimizer(physics_nn_t* nn) {
     float bias_correction2 = 1.0f - powf(beta2, (float)nn->training_step);
 
     for (uint32_t l = 0; l < nn->num_layers; l++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((l & 0xFF) == 0 && nn->num_layers > 256) {
+            physics_nn_heartbeat("physics_nn_loop",
+                             (float)(l + 1) / (float)nn->num_layers);
+        }
+
         nn_layer_t* layer = &nn->layers[l];
         uint32_t w_size = layer->input_size * layer->output_size;
 
@@ -813,6 +1013,12 @@ static void apply_optimizer(physics_nn_t* nn) {
             case PHYSICS_NN_OPTIMIZER_SGD:
                 /* Simple SGD: w = w - lr * grad */
                 for (uint32_t i = 0; i < w_size; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && w_size > 256) {
+                        physics_nn_heartbeat("physics_nn_loop",
+                                         (float)(i + 1) / (float)w_size);
+                    }
+
                     float grad = layer->weight_grads[i];
                     if (weight_decay > 0.0f) {
                         grad += weight_decay * layer->weights[i];
@@ -820,6 +1026,12 @@ static void apply_optimizer(physics_nn_t* nn) {
                     layer->weights[i] -= lr * grad;
                 }
                 for (uint32_t i = 0; i < layer->output_size; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && layer->output_size > 256) {
+                        physics_nn_heartbeat("physics_nn_loop",
+                                         (float)(i + 1) / (float)layer->output_size);
+                    }
+
                     layer->biases[i] -= lr * layer->bias_grads[i];
                 }
                 break;
@@ -827,6 +1039,12 @@ static void apply_optimizer(physics_nn_t* nn) {
             case PHYSICS_NN_OPTIMIZER_SGD_MOMENTUM:
                 /* SGD with momentum: v = momentum * v + grad; w = w - lr * v */
                 for (uint32_t i = 0; i < w_size; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && w_size > 256) {
+                        physics_nn_heartbeat("physics_nn_loop",
+                                         (float)(i + 1) / (float)w_size);
+                    }
+
                     float grad = layer->weight_grads[i];
                     if (weight_decay > 0.0f) {
                         grad += weight_decay * layer->weights[i];
@@ -835,6 +1053,12 @@ static void apply_optimizer(physics_nn_t* nn) {
                     layer->weights[i] -= lr * layer->weight_m[i];
                 }
                 for (uint32_t i = 0; i < layer->output_size; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && layer->output_size > 256) {
+                        physics_nn_heartbeat("physics_nn_loop",
+                                         (float)(i + 1) / (float)layer->output_size);
+                    }
+
                     layer->bias_m[i] = momentum * layer->bias_m[i] + layer->bias_grads[i];
                     layer->biases[i] -= lr * layer->bias_m[i];
                 }
@@ -843,6 +1067,12 @@ static void apply_optimizer(physics_nn_t* nn) {
             case PHYSICS_NN_OPTIMIZER_ADAM:
                 /* Adam: m = beta1*m + (1-beta1)*grad; v = beta2*v + (1-beta2)*grad^2 */
                 for (uint32_t i = 0; i < w_size; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && w_size > 256) {
+                        physics_nn_heartbeat("physics_nn_loop",
+                                         (float)(i + 1) / (float)w_size);
+                    }
+
                     float grad = layer->weight_grads[i];
                     if (weight_decay > 0.0f) {
                         grad += weight_decay * layer->weights[i];
@@ -857,6 +1087,12 @@ static void apply_optimizer(physics_nn_t* nn) {
                     layer->weights[i] -= lr * m_hat / (sqrtf(v_hat) + epsilon);
                 }
                 for (uint32_t i = 0; i < layer->output_size; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && layer->output_size > 256) {
+                        physics_nn_heartbeat("physics_nn_loop",
+                                         (float)(i + 1) / (float)layer->output_size);
+                    }
+
                     float grad = layer->bias_grads[i];
 
                     layer->bias_m[i] = beta1 * layer->bias_m[i] + (1.0f - beta1) * grad;
@@ -891,6 +1127,10 @@ int physics_nn_train_step(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    physics_nn_heartbeat("physics_nn_train_step", 0.0f);
+
+
     uint32_t state_dim = nn->config.state_dim;
 
     /* Forward pass */
@@ -901,6 +1141,12 @@ int physics_nn_train_step(
     /* Compute MSE loss */
     float mse_loss = 0.0f;
     for (uint32_t i = 0; i < state_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && state_dim > 256) {
+            physics_nn_heartbeat("physics_nn_loop",
+                             (float)(i + 1) / (float)state_dim);
+        }
+
         float diff = nn->temp_deriv[i] - target_derivative[i];
         mse_loss += diff * diff;
     }
@@ -916,6 +1162,12 @@ int physics_nn_train_step(
         /* Predict next state using current derivative */
         float dt_small = 0.001f;
         for (uint32_t i = 0; i < state_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && state_dim > 256) {
+                physics_nn_heartbeat("physics_nn_loop",
+                                 (float)(i + 1) / (float)state_dim);
+            }
+
             nn->temp_state[i] = state[i] + dt_small * nn->temp_deriv[i];
         }
         float H_next = physics_nn_compute_hamiltonian(nn, nn->temp_state);
@@ -976,6 +1228,10 @@ int physics_nn_train_batch(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    physics_nn_heartbeat("physics_nn_train_batch", 0.0f);
+
+
     float total_loss = 0.0f;
     float total_mse = 0.0f;
     float total_hamiltonian = 0.0f;
@@ -983,6 +1239,12 @@ int physics_nn_train_batch(
     uint32_t clips = 0;
 
     for (uint32_t b = 0; b < batch_size; b++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((b & 0xFF) == 0 && batch_size > 256) {
+            physics_nn_heartbeat("physics_nn_loop",
+                             (float)(b + 1) / (float)batch_size);
+        }
+
         physics_nn_train_result_t step_result;
         if (physics_nn_train_step(nn, states[b], derivatives[b], &step_result) != 0) {
             return -1;
@@ -1022,6 +1284,10 @@ int physics_nn_train_from_trajectory(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    physics_nn_heartbeat("physics_nn_train_from_trajector", 0.0f);
+
+
     uint32_t state_dim = nn->config.state_dim;
 
     /* Compute derivatives from trajectory using finite differences */
@@ -1042,11 +1308,23 @@ int physics_nn_train_from_trajectory(
         if (i > 0 && i < num_points - 1) {
             /* Central difference: (x[i+1] - x[i-1]) / (2*dt) */
             for (uint32_t j = 0; j < state_dim; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && state_dim > 256) {
+                    physics_nn_heartbeat("physics_nn_loop",
+                                     (float)(j + 1) / (float)state_dim);
+                }
+
                 derivative[j] = (trajectory[i + 1][j] - trajectory[i - 1][j]) / (2.0f * dt);
             }
         } else {
             /* Forward difference: (x[i+1] - x[i]) / dt */
             for (uint32_t j = 0; j < state_dim; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && state_dim > 256) {
+                    physics_nn_heartbeat("physics_nn_loop",
+                                     (float)(j + 1) / (float)state_dim);
+                }
+
                 derivative[j] = (trajectory[i + 1][j] - trajectory[i][j]) / dt;
             }
         }
@@ -1110,6 +1388,10 @@ int physics_nn_predict(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    physics_nn_heartbeat("physics_nn_predict", 0.0f);
+
+
     uint32_t state_dim = nn->config.state_dim;
 
     /* Allocate trajectory */
@@ -1120,9 +1402,21 @@ int physics_nn_predict(
     }
 
     for (uint32_t i = 0; i < num_steps; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_steps > 256) {
+            physics_nn_heartbeat("physics_nn_loop",
+                             (float)(i + 1) / (float)num_steps);
+        }
+
         prediction->trajectory[i] = (float*)malloc(state_dim * sizeof(float));
         if (!prediction->trajectory[i]) {
             for (uint32_t j = 0; j < i; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && i > 256) {
+                    physics_nn_heartbeat("physics_nn_loop",
+                                     (float)(j + 1) / (float)i);
+                }
+
                 free(prediction->trajectory[j]);
             }
             free(prediction->trajectory);
@@ -1181,6 +1475,12 @@ int physics_nn_predict(
 
     /* Integrate trajectory */
     for (uint32_t step = 0; step < num_steps; step++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((step & 0xFF) == 0 && num_steps > 256) {
+            physics_nn_heartbeat("physics_nn_loop",
+                             (float)(step + 1) / (float)num_steps);
+        }
+
         /* Store current state */
         memcpy(prediction->trajectory[step], current_state, state_dim * sizeof(float));
 
@@ -1236,6 +1536,10 @@ int physics_nn_step(physics_nn_t* nn, float* state, float dt) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    physics_nn_heartbeat("physics_nn_step", 0.0f);
+
+
     integration_params_t int_params = { .nn = nn };
 
     switch (nn->config.integrator) {
@@ -1274,8 +1578,18 @@ int physics_nn_step(physics_nn_t* nn, float* state, float dt) {
 void physics_nn_free_prediction(physics_nn_prediction_t* prediction) {
     if (!prediction) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    physics_nn_heartbeat("physics_nn_free_prediction", 0.0f);
+
+
     if (prediction->trajectory) {
         for (uint32_t i = 0; i < prediction->num_steps; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && prediction->num_steps > 256) {
+                physics_nn_heartbeat("physics_nn_loop",
+                                 (float)(i + 1) / (float)prediction->num_steps);
+            }
+
             free(prediction->trajectory[i]);
         }
         free(prediction->trajectory);
@@ -1296,6 +1610,10 @@ int physics_nn_symplectic_euler(physics_nn_t* nn, float* q, float* p, float dt) 
         snprintf(s_last_error, sizeof(s_last_error), "Invalid parameters in symplectic_euler");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    physics_nn_heartbeat("physics_nn_symplectic_euler", 0.0f);
+
 
     uint32_t n = nn->config.state_dim / 2;
 
@@ -1326,6 +1644,12 @@ int physics_nn_symplectic_euler(physics_nn_t* nn, float* q, float* p, float dt) 
 
     /* Update momentum first (symplectic) */
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            physics_nn_heartbeat("physics_nn_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         p[i] += dt * deriv[n + i];  /* dp/dt = -dH/dq (learned) */
     }
 
@@ -1334,6 +1658,12 @@ int physics_nn_symplectic_euler(physics_nn_t* nn, float* q, float* p, float dt) 
     physics_nn_forward(nn, state, deriv);
 
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            physics_nn_heartbeat("physics_nn_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         q[i] += dt * deriv[i];  /* dq/dt = dH/dp (learned) */
     }
 
@@ -1347,6 +1677,10 @@ int physics_nn_leapfrog(physics_nn_t* nn, float* q, float* p, float dt) {
         snprintf(s_last_error, sizeof(s_last_error), "Invalid parameters in leapfrog");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    physics_nn_heartbeat("physics_nn_leapfrog", 0.0f);
+
 
     uint32_t n = nn->config.state_dim / 2;
 
@@ -1373,6 +1707,12 @@ int physics_nn_leapfrog(physics_nn_t* nn, float* q, float* p, float dt) {
 
     /* Half step in momentum */
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            physics_nn_heartbeat("physics_nn_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         p[i] += 0.5f * dt * deriv[n + i];
     }
 
@@ -1381,6 +1721,12 @@ int physics_nn_leapfrog(physics_nn_t* nn, float* q, float* p, float dt) {
     physics_nn_forward(nn, state, deriv);
 
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            physics_nn_heartbeat("physics_nn_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         q[i] += dt * deriv[i];
     }
 
@@ -1390,6 +1736,12 @@ int physics_nn_leapfrog(physics_nn_t* nn, float* q, float* p, float dt) {
 
     /* Half step in momentum with new force */
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            physics_nn_heartbeat("physics_nn_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         p[i] += 0.5f * dt * deriv[n + i];
     }
 
@@ -1403,6 +1755,10 @@ int physics_nn_velocity_verlet(physics_nn_t* nn, float* q, float* p, float dt) {
         snprintf(s_last_error, sizeof(s_last_error), "Invalid parameters in velocity_verlet");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    physics_nn_heartbeat("physics_nn_velocity_verlet", 0.0f);
+
 
     uint32_t n = nn->config.state_dim / 2;
 
@@ -1431,6 +1787,12 @@ int physics_nn_velocity_verlet(physics_nn_t* nn, float* q, float* p, float dt) {
 
     /* Update position: q_new = q + dt * v + (dt²/2) * a */
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            physics_nn_heartbeat("physics_nn_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         q[i] += dt * deriv[i] + 0.5f * dt * dt * force_old[i];
     }
 
@@ -1440,6 +1802,12 @@ int physics_nn_velocity_verlet(physics_nn_t* nn, float* q, float* p, float dt) {
 
     /* Update velocity: v_new = v + (dt/2) * (a + a_new) */
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            physics_nn_heartbeat("physics_nn_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         p[i] += 0.5f * dt * (force_old[i] + deriv[n + i]);
     }
 
@@ -1455,6 +1823,10 @@ int physics_nn_velocity_verlet(physics_nn_t* nn, float* q, float* p, float dt) {
 
 int physics_nn_set_inflammation(physics_nn_t* nn, float level) {
     if (!nn) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    physics_nn_heartbeat("physics_nn_set_inflammation", 0.0f);
+
+
     if (level < 0.0f) level = 0.0f;
     if (level > 1.0f) level = 1.0f;
 
@@ -1470,6 +1842,10 @@ int physics_nn_set_inflammation(physics_nn_t* nn, float level) {
 
 int physics_nn_set_fatigue(physics_nn_t* nn, float level) {
     if (!nn) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    physics_nn_heartbeat("physics_nn_set_fatigue", 0.0f);
+
+
     if (level < 0.0f) level = 0.0f;
     if (level > 1.0f) level = 1.0f;
 
@@ -1489,6 +1865,10 @@ int physics_nn_set_learning_rate(physics_nn_t* nn, float lr) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    physics_nn_heartbeat("physics_nn_set_learning_rate", 0.0f);
+
+
     nn->config.learning_rate = lr;
     nn->stats.current_learning_rate = lr;
     return 0;
@@ -1501,11 +1881,19 @@ int physics_nn_set_learning_rate(physics_nn_t* nn, float lr) {
 int physics_nn_get_stats(const physics_nn_t* nn, physics_nn_stats_t* stats) {
     if (!nn || !stats) return -1;
     *stats = nn->stats;
+    /* Phase 8: Heartbeat at operation start */
+    physics_nn_heartbeat("physics_nn_get_stats", 0.0f);
+
+
     return 0;
 }
 
 void physics_nn_reset_stats(physics_nn_t* nn) {
     if (!nn) return;
+    /* Phase 8: Heartbeat at operation start */
+    physics_nn_heartbeat("physics_nn_reset_stats", 0.0f);
+
+
     memset(&nn->stats, 0, sizeof(physics_nn_stats_t));
     nn->stats.min_loss = INFINITY;
     nn->stats.current_learning_rate = nn->config.learning_rate;
@@ -1524,6 +1912,10 @@ int physics_nn_save(const physics_nn_t* nn, const char* filename) {
         snprintf(s_last_error, sizeof(s_last_error), "NULL pointer in save");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    physics_nn_heartbeat("physics_nn_save", 0.0f);
+
 
     FILE* f = fopen(filename, "wb");
     if (!f) {
@@ -1545,6 +1937,12 @@ int physics_nn_save(const physics_nn_t* nn, const char* filename) {
 
     /* Write each layer */
     for (uint32_t l = 0; l < nn->num_layers; l++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((l & 0xFF) == 0 && nn->num_layers > 256) {
+            physics_nn_heartbeat("physics_nn_loop",
+                             (float)(l + 1) / (float)nn->num_layers);
+        }
+
         nn_layer_t* layer = &nn->layers[l];
         fwrite(&layer->input_size, sizeof(uint32_t), 1, f);
         fwrite(&layer->output_size, sizeof(uint32_t), 1, f);
@@ -1580,6 +1978,10 @@ int physics_nn_load(physics_nn_t* nn, const char* filename) {
         snprintf(s_last_error, sizeof(s_last_error), "NULL pointer in load");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    physics_nn_heartbeat("physics_nn_load", 0.0f);
+
 
     FILE* f = fopen(filename, "rb");
     if (!f) {
@@ -1631,6 +2033,12 @@ int physics_nn_load(physics_nn_t* nn, const char* filename) {
 
     /* Read each layer */
     for (uint32_t l = 0; l < nn->num_layers; l++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((l & 0xFF) == 0 && nn->num_layers > 256) {
+            physics_nn_heartbeat("physics_nn_loop",
+                             (float)(l + 1) / (float)nn->num_layers);
+        }
+
         nn_layer_t* layer = &nn->layers[l];
         uint32_t in_size, out_size;
         fread(&in_size, sizeof(uint32_t), 1, f);
@@ -1676,9 +2084,19 @@ int physics_nn_load(physics_nn_t* nn, const char* filename) {
 int physics_nn_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    physics_nn_heartbeat("physics_nn_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Physics_NN_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                physics_nn_heartbeat("physics_nn_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Physics NN self-knowledge: %s", self->observations[i]);
         }
     }

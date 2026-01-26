@@ -93,4 +93,33 @@ gtest_discover_tests(unit_training_state_manager
         TIMEOUT 120
 )
 
+# Heartbeat B01 Memory Core Unit Tests (Phase 8: Per-Batch Heartbeat Testing)
+add_executable(unit_heartbeat_B01_memory_core
+    test_heartbeat_B01_memory_core_functions.cpp
+)
+
+target_include_directories(unit_heartbeat_B01_memory_core PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
+)
+
+target_link_libraries(unit_heartbeat_B01_memory_core
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_compile_features(unit_heartbeat_B01_memory_core PRIVATE cxx_std_17)
+target_compile_definitions(unit_heartbeat_B01_memory_core PRIVATE NIMCP_TESTING)
+
+gtest_discover_tests(unit_heartbeat_B01_memory_core
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;fault_tolerance;heartbeat;B01;memory_core"
+        TIMEOUT 120
+)
+
 message(STATUS "Added fault tolerance unit tests")

@@ -25,7 +25,7 @@ static nimcp_health_agent_t* g_evolutionary_proof_logic_bridge_health_agent = NU
  * @brief Set health agent for evolutionary_proof_logic_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void evolutionary_proof_logic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void evolutionary_proof_logic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_evolutionary_proof_logic_bridge_health_agent = agent;
 }
 

@@ -45,7 +45,7 @@ static nimcp_health_agent_t* g_salience_attention_bridge_health_agent = NULL;
  * @brief Set health agent for salience_attention_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void salience_attention_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void salience_attention_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_salience_attention_bridge_health_agent = agent;
 }
 
@@ -402,6 +402,10 @@ int salience_attention_bridge_default_config(salience_attention_config_t* config
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_bridge_heartbeat("salience_att_default_config", 0.0f);
+
+
     config->module_id = SALIENCE_ATTENTION_DEFAULT_MODULE_ID;
     config->enable_logging = false;
     config->salience_threshold = SALIENCE_ATTENTION_DEFAULT_THRESHOLD;
@@ -418,6 +422,10 @@ salience_attention_bridge_t* salience_attention_bridge_create(
     const salience_attention_config_t* config
 ) {
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_bridge_heartbeat("salience_att_create", 0.0f);
+
+
     salience_attention_bridge_t* bridge = (salience_attention_bridge_t*)nimcp_calloc(
         1, sizeof(salience_attention_bridge_t));
     if (!bridge) {
@@ -475,6 +483,10 @@ void salience_attention_bridge_destroy(salience_attention_bridge_t* bridge) {
     }
 
     /* Unregister from hub if registered */
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_bridge_heartbeat("salience_att_destroy", 0.0f);
+
+
     if (bridge->registered) {
         salience_attention_bridge_unregister_from_hub(bridge);
     }
@@ -498,6 +510,10 @@ int salience_attention_bridge_register_with_hub(
     if (!bridge || !bridge->initialized || !hub) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_bridge_heartbeat("salience_att_register_with_hub", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -593,6 +609,10 @@ int salience_attention_bridge_unregister_from_hub(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_bridge_heartbeat("salience_att_unregister_from_hub", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->registered || !bridge->hub) {
@@ -634,6 +654,10 @@ bool salience_attention_bridge_is_registered(
     }
 
     /* Cast away const for mutex lock */
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_bridge_heartbeat("salience_att_is_registered", 0.0f);
+
+
     salience_attention_bridge_t* mutable_bridge = (salience_attention_bridge_t*)bridge;
 
     nimcp_mutex_lock(mutable_bridge->base.mutex);
@@ -655,6 +679,10 @@ int salience_attention_bridge_set_salience(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_bridge_heartbeat("salience_att_set_salience", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->salience = evaluator;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -669,6 +697,10 @@ int salience_attention_bridge_set_attention(
     if (!bridge || !bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_bridge_heartbeat("salience_att_set_attention", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention = attention;
@@ -690,6 +722,10 @@ int salience_attention_bridge_set_salience_callback(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_bridge_heartbeat("salience_att_set_salience_callbac", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->salience_callback = callback;
     bridge->salience_callback_user_data = user_data;
@@ -706,6 +742,10 @@ int salience_attention_bridge_set_attention_callback(
     if (!bridge || !bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_bridge_heartbeat("salience_att_set_attention_callba", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_callback = callback;
@@ -724,6 +764,10 @@ int salience_attention_bridge_set_priority_callback(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_bridge_heartbeat("salience_att_set_priority_callbac", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->priority_callback = callback;
     bridge->priority_callback_user_data = user_data;
@@ -740,6 +784,10 @@ int salience_attention_bridge_set_eval_callback(
     if (!bridge || !bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_bridge_heartbeat("salience_att_set_eval_callback", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->eval_callback = callback;
@@ -761,6 +809,10 @@ int salience_attention_publish_salience_detection(
     if (!bridge || !bridge->initialized || !item) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_bridge_heartbeat("salience_att_salience_attention_p", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -824,6 +876,10 @@ int salience_attention_request_attention_shift(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_bridge_heartbeat("salience_att_salience_attention_r", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->registered || !bridge->hub) {
@@ -873,6 +929,10 @@ int salience_attention_publish_priority_update(
     if (!bridge || !bridge->initialized || !priorities || num_priorities == 0) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_bridge_heartbeat("salience_att_salience_attention_p", 0.0f);
+
 
     if (num_priorities > SALIENCE_ATTENTION_MAX_PRIORITIES) {
         num_priorities = SALIENCE_ATTENTION_MAX_PRIORITIES;
@@ -926,6 +986,10 @@ int salience_attention_notify_attention_focus(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_bridge_heartbeat("salience_att_salience_attention_n", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->registered || !bridge->hub) {
@@ -977,6 +1041,10 @@ int salience_attention_request_salience_evaluation(
     if (!bridge || !bridge->initialized || !request) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_bridge_heartbeat("salience_att_salience_attention_r", 0.0f);
+
 
     if (request->num_items == 0 || request->num_items > SALIENCE_ATTENTION_MAX_ITEMS) {
         return -1;
@@ -1031,6 +1099,10 @@ int salience_attention_bridge_get_salience_state(
     }
 
     /* Cast away const for mutex lock */
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_bridge_heartbeat("salience_att_get_salience_state", 0.0f);
+
+
     salience_attention_bridge_t* mutable_bridge = (salience_attention_bridge_t*)bridge;
 
     nimcp_mutex_lock(mutable_bridge->base.mutex);
@@ -1055,6 +1127,10 @@ int salience_attention_bridge_get_attention_state(
     }
 
     /* Cast away const for mutex lock */
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_bridge_heartbeat("salience_att_get_attention_state", 0.0f);
+
+
     salience_attention_bridge_t* mutable_bridge = (salience_attention_bridge_t*)bridge;
 
     nimcp_mutex_lock(mutable_bridge->base.mutex);
@@ -1081,6 +1157,10 @@ int salience_attention_bridge_get_stats(
     }
 
     /* Cast away const for mutex lock */
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_bridge_heartbeat("salience_att_get_stats", 0.0f);
+
+
     salience_attention_bridge_t* mutable_bridge = (salience_attention_bridge_t*)bridge;
 
     nimcp_mutex_lock(mutable_bridge->base.mutex);
@@ -1094,6 +1174,10 @@ int salience_attention_bridge_reset_stats(salience_attention_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_bridge_heartbeat("salience_att_reset_stats", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(salience_attention_stats_t));
@@ -1116,6 +1200,10 @@ int salience_attention_bridge_set_threshold(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_bridge_heartbeat("salience_att_set_threshold", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.salience_threshold = clamp_float(threshold, 0.0f, 1.0f);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1130,6 +1218,10 @@ int salience_attention_bridge_set_shift_weight(
     if (!bridge || !bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_attention_bridge_heartbeat("salience_att_set_shift_weight", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.attention_shift_weight = clamp_float(weight, 0.0f, 1.0f);

@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_ethics_plasticity_bridge_health_agent = NULL;
  * @brief Set health agent for ethics_plasticity_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void ethics_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void ethics_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_ethics_plasticity_bridge_health_agent = agent;
 }
 
@@ -96,6 +96,12 @@ static ethics_plasticity_synapse_t* find_synapse(
     uint32_t synapse_id)
 {
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            ethics_plasticity_bridge_heartbeat("ethics_plast_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         if (bridge->synapses[i].synapse_id == synapse_id) {
             return &bridge->synapses[i];
         }
@@ -125,6 +131,10 @@ static float compute_stdp_update(
 //=============================================================================
 
 ethics_plasticity_config_t ethics_plasticity_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_co", 0.0f);
+
+
     ethics_plasticity_config_t config = {
         .base_learning_rate = ETHICS_PLASTICITY_DEFAULT_LR,
         .stdp_tau_plus_ms = 20.0f,
@@ -159,6 +169,10 @@ ethics_plasticity_config_t ethics_plasticity_config_default(void) {
 ethics_plasticity_bridge_t* ethics_plasticity_create(
     const ethics_plasticity_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_cr", 0.0f);
+
+
     ethics_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(ethics_plasticity_bridge_t));
     if (!bridge) {
 
@@ -211,6 +225,10 @@ ethics_plasticity_bridge_t* ethics_plasticity_create(
 void ethics_plasticity_destroy(ethics_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_de", 0.0f);
+
+
     if (bridge->synapses) nimcp_free(bridge->synapses);
     if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
 
@@ -220,10 +238,20 @@ void ethics_plasticity_destroy(ethics_plasticity_bridge_t* bridge) {
 int ethics_plasticity_reset(ethics_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_re", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset synapses to initial weights */
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            ethics_plasticity_bridge_heartbeat("ethics_plast_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         bridge->synapses[i].weight = bridge->synapses[i].initial_weight;
         bridge->synapses[i].eligibility_trace = 0.0f;
         bridge->synapses[i].bcm_threshold = 0.5f;
@@ -258,6 +286,10 @@ int ethics_plasticity_register_synapse(
     float initial_weight)
 {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_re", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -309,9 +341,19 @@ int ethics_plasticity_unregister_synapse(
 {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_un", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            ethics_plasticity_bridge_heartbeat("ethics_plast_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         if (bridge->synapses[i].synapse_id == synapse_id) {
             /* Move last synapse to this position */
             if (i < bridge->synapse_count - 1) {
@@ -333,6 +375,10 @@ int ethics_plasticity_get_synapse(
     ethics_plasticity_synapse_t* synapse)
 {
     if (!bridge || !synapse) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_ge", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -359,6 +405,10 @@ int ethics_plasticity_learn(
     uint64_t timestamp)
 {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_le", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -413,6 +463,12 @@ int ethics_plasticity_learn(
 
     /* Update matching synapses */
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            ethics_plasticity_bridge_heartbeat("ethics_plast_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         ethics_plasticity_synapse_t* syn = &bridge->synapses[i];
 
         if (syn->type == target_type || target_type == ETHICS_SYNAPSE_OUTCOME) {
@@ -502,6 +558,10 @@ float ethics_plasticity_apply_stdp(
 {
     if (!bridge) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_ap", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     ethics_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
@@ -541,6 +601,10 @@ int ethics_plasticity_apply_reward(
 {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_ap", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     reward = clamp_f(reward, -1.0f, 1.0f);
@@ -552,6 +616,12 @@ int ethics_plasticity_apply_reward(
     float lr = bridge->config.base_learning_rate * bridge->global_learning_rate;
 
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            ethics_plasticity_bridge_heartbeat("ethics_plast_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         ethics_plasticity_synapse_t* syn = &bridge->synapses[i];
 
         if (syn->eligibility_trace > 0.01f && !syn->is_protected) {
@@ -575,11 +645,21 @@ int ethics_plasticity_update_traces(
 {
     if (!bridge || dt_ms <= 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_up", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float decay = expf(-dt_ms / bridge->config.stdp_tau_plus_ms);
 
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            ethics_plasticity_bridge_heartbeat("ethics_plast_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         bridge->synapses[i].eligibility_trace *= decay;
     }
 
@@ -594,11 +674,21 @@ int ethics_plasticity_update_bcm(
 {
     if (!bridge || dt_ms <= 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_up", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float alpha = dt_ms / bridge->config.bcm_tau_ms;
 
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            ethics_plasticity_bridge_heartbeat("ethics_plast_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         ethics_plasticity_synapse_t* syn = &bridge->synapses[i];
 
         /* Update BCM threshold towards average activity */
@@ -617,6 +707,10 @@ int ethics_plasticity_homeostatic_update(
 {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_ho", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     target_activity = clamp_f(target_activity, 0.0f, 1.0f);
@@ -624,6 +718,12 @@ int ethics_plasticity_homeostatic_update(
     /* Compute current average weight */
     float mean_weight = 0.0f;
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            ethics_plasticity_bridge_heartbeat("ethics_plast_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         mean_weight += bridge->synapses[i].weight;
     }
     if (bridge->synapse_count > 0) {
@@ -635,6 +735,12 @@ int ethics_plasticity_homeostatic_update(
     scale = clamp_f(scale, 0.9f, 1.1f); /* Limit scaling */
 
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            ethics_plasticity_bridge_heartbeat("ethics_plast_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         if (!bridge->synapses[i].is_protected) {
             bridge->synapses[i].weight *= scale;
             bridge->synapses[i].weight = clamp_f(
@@ -653,12 +759,22 @@ int ethics_plasticity_homeostatic_update(
 int ethics_plasticity_consolidate(ethics_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_co", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ETHICS_PLASTICITY_STATE_CONSOLIDATING;
 
     /* Consolidation: strengthen strong weights, weaken weak ones */
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            ethics_plasticity_bridge_heartbeat("ethics_plast_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         ethics_plasticity_synapse_t* syn = &bridge->synapses[i];
 
         if (!syn->is_protected) {
@@ -698,6 +814,10 @@ int ethics_plasticity_protect_synapse(
 {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_pr", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     ethics_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
@@ -717,6 +837,10 @@ int ethics_plasticity_unprotect_synapse(
 {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_un", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     ethics_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
@@ -733,10 +857,20 @@ int ethics_plasticity_unprotect_synapse(
 int ethics_plasticity_protect_first_law(ethics_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_pr", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     int count = 0;
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            ethics_plasticity_bridge_heartbeat("ethics_plast_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         if (bridge->synapses[i].type == ETHICS_SYNAPSE_FIRST_LAW) {
             bridge->synapses[i].is_protected = true;
             count++;
@@ -750,10 +884,20 @@ int ethics_plasticity_protect_first_law(ethics_plasticity_bridge_t* bridge) {
 int ethics_plasticity_protect_golden_rule(ethics_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_pr", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     int count = 0;
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            ethics_plasticity_bridge_heartbeat("ethics_plast_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         if (bridge->synapses[i].type == ETHICS_SYNAPSE_GOLDEN_RULE) {
             bridge->synapses[i].is_protected = true;
             count++;
@@ -774,6 +918,10 @@ int ethics_plasticity_get_principle_state(
 {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_ge", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->principles;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -786,6 +934,10 @@ int ethics_plasticity_get_state(
     ethics_plasticity_bridge_state_t* state)
 {
     if (!bridge || !state) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_ge", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -801,11 +953,23 @@ int ethics_plasticity_get_state(
 
     if (bridge->synapse_count > 0) {
         for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+                ethics_plasticity_bridge_heartbeat("ethics_plast_loop",
+                                 (float)(i + 1) / (float)bridge->synapse_count);
+            }
+
             state->mean_weight += bridge->synapses[i].weight;
         }
         state->mean_weight /= (float)bridge->synapse_count;
 
         for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+                ethics_plasticity_bridge_heartbeat("ethics_plast_loop",
+                                 (float)(i + 1) / (float)bridge->synapse_count);
+            }
+
             float diff = bridge->synapses[i].weight - state->mean_weight;
             state->weight_variance += diff * diff;
         }
@@ -823,6 +987,10 @@ int ethics_plasticity_get_stats(
 {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_ge", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -832,6 +1000,10 @@ int ethics_plasticity_get_stats(
 
 int ethics_plasticity_reset_stats(ethics_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_re", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(ethics_plasticity_stats_t));
@@ -851,6 +1023,10 @@ int ethics_plasticity_set_weight_callback(
 {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_se", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->weight_callback = callback;
     bridge->weight_callback_data = user_data;
@@ -865,6 +1041,10 @@ int ethics_plasticity_set_principle_callback(
     void* user_data)
 {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_se", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->principle_callback = callback;
@@ -882,6 +1062,10 @@ int ethics_plasticity_bio_async_connect(ethics_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_bi", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = true;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -892,6 +1076,10 @@ int ethics_plasticity_bio_async_connect(ethics_plasticity_bridge_t* bridge) {
 int ethics_plasticity_bio_async_disconnect(ethics_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_bi", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -901,6 +1089,10 @@ int ethics_plasticity_bio_async_disconnect(ethics_plasticity_bridge_t* bridge) {
 
 bool ethics_plasticity_is_bio_async_connected(ethics_plasticity_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_is", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;

@@ -25,7 +25,7 @@ static nimcp_health_agent_t* g_genius_game_theory_bridge_health_agent = NULL;
  * @brief Set health agent for genius_game_theory_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void genius_game_theory_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void genius_game_theory_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_genius_game_theory_bridge_health_agent = agent;
 }
 

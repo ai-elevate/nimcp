@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_mirror_neurons_fep_bridge_health_agent = NULL;
  * @brief Set health agent for mirror_neurons_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_neurons_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_neurons_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_neurons_fep_bridge_health_agent = agent;
 }
 
@@ -69,6 +69,10 @@ int mirror_neurons_fep_bridge_default_config(mirror_neurons_fep_config_t* config
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_fep_bridge_heartbeat("mirror_neuro_default_config", 0.0f);
+
+
     config->precision_gain_factor = 1.0f;
     config->min_mirror_gain = FEP_PRECISION_MIRROR_GAIN_MIN;
     config->max_mirror_gain = FEP_PRECISION_MIRROR_GAIN_MAX;
@@ -94,6 +98,10 @@ int mirror_neurons_fep_bridge_default_config(mirror_neurons_fep_config_t* config
 mirror_neurons_fep_bridge_t* mirror_neurons_fep_bridge_create(
     const mirror_neurons_fep_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_fep_bridge_heartbeat("mirror_neuro_create", 0.0f);
+
+
     mirror_neurons_fep_bridge_t* bridge = (mirror_neurons_fep_bridge_t*)nimcp_calloc(
         1, sizeof(mirror_neurons_fep_bridge_t));
     if (!bridge) {
@@ -139,6 +147,10 @@ mirror_neurons_fep_bridge_t* mirror_neurons_fep_bridge_create(
 void mirror_neurons_fep_bridge_destroy(mirror_neurons_fep_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_fep_bridge_heartbeat("mirror_neuro_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         mirror_neurons_fep_bridge_disconnect_bio_async(bridge);
     }
@@ -168,6 +180,10 @@ int mirror_neurons_fep_bridge_connect_fep(
     }
     /* Allow NULL fep to disconnect/reset FEP connection */
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_fep_bridge_heartbeat("mirror_neuro_connect_fep", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -181,6 +197,10 @@ int mirror_neurons_fep_bridge_connect_mirror_neurons(
     mirror_hierarchy_t mirror
 ) {
     if (!bridge || !mirror) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_fep_bridge_heartbeat("mirror_neuro_connect_mirror_neuro", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->mirror_system = mirror;
@@ -200,6 +220,10 @@ int mirror_neurons_fep_apply_precision_modulation(
     if (!bridge || !bridge->fep_system || !bridge->mirror_system) return -1;
     if (!bridge->config.enable_precision_modulation) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_fep_bridge_heartbeat("mirror_neuro_mirror_neurons_fep_a", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get average precision across FEP hierarchy */
@@ -208,8 +232,20 @@ int mirror_neurons_fep_apply_precision_modulation(
     uint32_t precision_count = 0;
 
     for (uint32_t l = 0; l < fep->num_levels; l++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((l & 0xFF) == 0 && fep->num_levels > 256) {
+            mirror_neurons_fep_bridge_heartbeat("mirror_neuro_loop",
+                             (float)(l + 1) / (float)fep->num_levels);
+        }
+
         fep_hierarchy_level_t* level = &fep->levels[l];
         for (uint32_t i = 0; i < level->errors.dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && level->errors.dim > 256) {
+                mirror_neurons_fep_bridge_heartbeat("mirror_neuro_loop",
+                                 (float)(i + 1) / (float)level->errors.dim);
+            }
+
             total_precision += level->errors.precision[i];
             precision_count++;
         }
@@ -247,6 +283,10 @@ int mirror_neurons_fep_update_goals_from_beliefs(
     if (!bridge || !bridge->fep_system || !bridge->mirror_system) return -1;
     if (!bridge->config.enable_goal_belief_coupling) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_fep_bridge_heartbeat("mirror_neuro_mirror_neurons_fep_u", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     fep_system_t* fep = bridge->fep_system;
@@ -259,6 +299,12 @@ int mirror_neurons_fep_update_goals_from_beliefs(
         uint32_t max_goals = beliefs->dim < 32 ? beliefs->dim : 32;
 
         for (uint32_t g = 0; g < max_goals; g++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((g & 0xFF) == 0 && max_goals > 256) {
+                mirror_neurons_fep_bridge_heartbeat("mirror_neuro_loop",
+                                 (float)(g + 1) / (float)max_goals);
+            }
+
             float belief_activation = beliefs->mean[g];
 
             /* Only update if above confidence threshold */
@@ -283,6 +329,10 @@ int mirror_neurons_fep_propagate_prediction_errors(
     if (!bridge || !bridge->fep_system || !bridge->mirror_system) return -1;
     if (!bridge->config.enable_pe_propagation) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_fep_bridge_heartbeat("mirror_neuro_mirror_neurons_fep_p", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     fep_system_t* fep = bridge->fep_system;
@@ -292,6 +342,12 @@ int mirror_neurons_fep_propagate_prediction_errors(
     uint32_t pe_count = 0;
 
     for (uint32_t l = 0; l < fep->num_levels; l++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((l & 0xFF) == 0 && fep->num_levels > 256) {
+            mirror_neurons_fep_bridge_heartbeat("mirror_neuro_loop",
+                             (float)(l + 1) / (float)fep->num_levels);
+        }
+
         total_pe += fep->levels[l].errors.magnitude;
         pe_count++;
     }
@@ -322,6 +378,10 @@ int mirror_neurons_fep_transfer_goals_to_beliefs(
 ) {
     if (!bridge || !bridge->fep_system || !bridge->mirror_system) return -1;
     if (!bridge->config.enable_goal_belief_coupling) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_fep_bridge_heartbeat("mirror_neuro_mirror_neurons_fep_t", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -362,6 +422,10 @@ int mirror_neurons_fep_provide_motor_evidence(
     if (!bridge || !bridge->fep_system || !bridge->mirror_system) return -1;
     if (!bridge->config.enable_motor_evidence) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_fep_bridge_heartbeat("mirror_neuro_mirror_neurons_fep_p", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     mirror_hierarchy_t mirror = bridge->mirror_system;
@@ -388,6 +452,10 @@ int mirror_neurons_fep_set_precision_from_resonance(
 ) {
     if (!bridge || !bridge->fep_system || !bridge->mirror_system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_fep_bridge_heartbeat("mirror_neuro_mirror_neurons_fep_s", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get mirror neuron resonance strength */
@@ -405,6 +473,12 @@ int mirror_neurons_fep_set_precision_from_resonance(
         if (fep->num_levels > 0) {
             fep_hierarchy_level_t* sensory = &fep->levels[0];
             for (uint32_t i = 0; i < sensory->errors.dim; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && sensory->errors.dim > 256) {
+                    mirror_neurons_fep_bridge_heartbeat("mirror_neuro_loop",
+                                     (float)(i + 1) / (float)sensory->errors.dim);
+                }
+
                 sensory->errors.precision[i] *= precision_scale;
             }
         }
@@ -431,6 +505,10 @@ int mirror_neurons_fep_bridge_update(
     }
 
     /* FEP → Mirror Neurons */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_fep_bridge_heartbeat("mirror_neuro_update", 0.0f);
+
+
     mirror_neurons_fep_apply_precision_modulation(bridge);
     mirror_neurons_fep_update_goals_from_beliefs(bridge);
     mirror_neurons_fep_propagate_prediction_errors(bridge);
@@ -458,6 +536,10 @@ int mirror_neurons_fep_bridge_get_state(
 ) {
     if (!bridge || !state) return -1;
     *state = bridge->state;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_fep_bridge_heartbeat("mirror_neuro_get_state", 0.0f);
+
+
     return 0;
 }
 
@@ -467,6 +549,10 @@ int mirror_neurons_fep_bridge_get_stats(
 ) {
     if (!bridge || !stats) return -1;
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_fep_bridge_heartbeat("mirror_neuro_get_stats", 0.0f);
+
+
     return 0;
 }
 
@@ -485,6 +571,10 @@ int mirror_neurons_fep_bridge_connect_bio_async(
 
     }
     if (bridge->base.bio_async_enabled) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_fep_bridge_heartbeat("mirror_neuro_connect_bio_async", 0.0f);
+
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_MIRROR_NEURONS_BRIDGE,
@@ -515,6 +605,10 @@ int mirror_neurons_fep_bridge_disconnect_bio_async(
     }
     if (!bridge->base.bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_fep_bridge_heartbeat("mirror_neuro_disconnect_bio_async", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -526,6 +620,10 @@ int mirror_neurons_fep_bridge_disconnect_bio_async(
 bool mirror_neurons_fep_bridge_is_bio_async_connected(
     const mirror_neurons_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_fep_bridge_heartbeat("mirror_neuro_is_bio_async_connect", 0.0f);
+
+
     return bridge && bridge->base.bio_async_enabled;
 }
 
@@ -535,9 +633,19 @@ bool mirror_neurons_fep_bridge_is_bio_async_connected(
 
 int mirror_neurons_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_neurons_fep_bridge_heartbeat("mirror_neuro_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Mirror_Neurons_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                mirror_neurons_fep_bridge_heartbeat("mirror_neuro_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Mirror neurons FEP bridge self-knowledge: %s", self->observations[i]);
         }
     }

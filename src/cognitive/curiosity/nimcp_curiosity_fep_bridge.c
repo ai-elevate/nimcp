@@ -55,7 +55,7 @@ static nimcp_health_agent_t* g_curiosity_fep_bridge_health_agent = NULL;
  * @brief Set health agent for curiosity_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void curiosity_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void curiosity_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_curiosity_fep_bridge_health_agent = agent;
 }
 
@@ -111,6 +111,10 @@ int curiosity_fep_bridge_default_config(curiosity_fep_config_t* config) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_fep_bridge_heartbeat("curiosity_fe_default_config", 0.0f);
+
+
     config->epistemic_value_weight = 1.0f;
     config->uncertainty_sensitivity = 0.5f;
     config->information_gain_rate = INFORMATION_GAIN_BASELINE;
@@ -130,6 +134,10 @@ int curiosity_fep_bridge_default_config(curiosity_fep_config_t* config) {
  * HOW:  Allocate bridge structure, initialize state and stats
  */
 curiosity_fep_bridge_t* curiosity_fep_bridge_create(const curiosity_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_fep_bridge_heartbeat("curiosity_fe_create", 0.0f);
+
+
     curiosity_fep_bridge_t* bridge = (curiosity_fep_bridge_t*)nimcp_calloc(
         1, sizeof(curiosity_fep_bridge_t));
     if (!bridge) {
@@ -176,6 +184,10 @@ void curiosity_fep_bridge_destroy(curiosity_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if enabled */
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_fep_bridge_heartbeat("curiosity_fe_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         curiosity_fep_bridge_disconnect_bio_async(bridge);
     }
@@ -211,6 +223,10 @@ int curiosity_fep_bridge_connect_fep(
     }
     /* Allow NULL fep to disconnect/reset FEP connection */
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_fep_bridge_heartbeat("curiosity_fe_connect_fep", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -229,6 +245,10 @@ int curiosity_fep_bridge_connect_curiosity(
     curiosity_engine_t curiosity
 ) {
     if (!bridge || !curiosity) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_fep_bridge_heartbeat("curiosity_fe_connect_curiosity", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->curiosity_engine = curiosity;
@@ -259,6 +279,10 @@ int curiosity_fep_compute_epistemic_value(curiosity_fep_bridge_t* bridge) {
     }
     if (!bridge->config.enable_epistemic_curiosity) return 0;
     if (!bridge->fep_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_fep_bridge_heartbeat("curiosity_fe_curiosity_fep_comput", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -309,6 +333,10 @@ int curiosity_fep_detect_knowledge_gaps(curiosity_fep_bridge_t* bridge) {
     }
     if (!bridge->config.enable_knowledge_gap_detection) return 0;
     if (!bridge->fep_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_fep_bridge_heartbeat("curiosity_fe_curiosity_fep_detect", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -371,6 +399,10 @@ int curiosity_fep_trigger_exploration(curiosity_fep_bridge_t* bridge) {
     }
     if (!bridge->config.enable_exploration_feedback) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_fep_bridge_heartbeat("curiosity_fe_curiosity_fep_trigge", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Compute exploration motivation */
@@ -422,6 +454,10 @@ int curiosity_fep_update_model_from_learning(curiosity_fep_bridge_t* bridge) {
     }
     if (!bridge->config.enable_learning_updates) return 0;
     if (!bridge->curiosity_engine || !bridge->fep_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_fep_bridge_heartbeat("curiosity_fe_curiosity_fep_update", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -483,6 +519,10 @@ int curiosity_fep_bridge_update(curiosity_fep_bridge_t* bridge, uint64_t delta_m
     }
 
     /* FEP → Curiosity direction */
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_fep_bridge_heartbeat("curiosity_fe_update", 0.0f);
+
+
     if (curiosity_fep_compute_epistemic_value(bridge) != 0) {
         NIMCP_LOGGING_WARN("Failed to compute epistemic value");
     }
@@ -530,6 +570,10 @@ int curiosity_fep_bridge_get_state(
 ) {
     if (!bridge || !state) return -1;
     *state = bridge->state;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_fep_bridge_heartbeat("curiosity_fe_get_state", 0.0f);
+
+
     return 0;
 }
 
@@ -544,6 +588,10 @@ int curiosity_fep_bridge_get_stats(
 ) {
     if (!bridge || !stats) return -1;
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_fep_bridge_heartbeat("curiosity_fe_get_stats", 0.0f);
+
+
     return 0;
 }
 
@@ -565,6 +613,10 @@ int curiosity_fep_bridge_connect_bio_async(curiosity_fep_bridge_t* bridge) {
 
     }
     if (bridge->base.bio_async_enabled) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_fep_bridge_heartbeat("curiosity_fe_connect_bio_async", 0.0f);
+
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_CURIOSITY_CORE_BRIDGE,
@@ -599,6 +651,10 @@ int curiosity_fep_bridge_disconnect_bio_async(curiosity_fep_bridge_t* bridge) {
     }
     if (!bridge->base.bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_fep_bridge_heartbeat("curiosity_fe_disconnect_bio_async", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -615,6 +671,10 @@ int curiosity_fep_bridge_disconnect_bio_async(curiosity_fep_bridge_t* bridge) {
  * HOW:  Return bio_async_enabled flag
  */
 bool curiosity_fep_bridge_is_bio_async_connected(const curiosity_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_fep_bridge_heartbeat("curiosity_fe_is_bio_async_connect", 0.0f);
+
+
     return bridge && bridge->base.bio_async_enabled;
 }
 
@@ -625,9 +685,19 @@ bool curiosity_fep_bridge_is_bio_async_connected(const curiosity_fep_bridge_t* b
 int curiosity_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_fep_bridge_heartbeat("curiosity_fe_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Curiosity_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                curiosity_fep_bridge_heartbeat("curiosity_fe_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

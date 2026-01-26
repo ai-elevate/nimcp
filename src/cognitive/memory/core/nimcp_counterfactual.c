@@ -44,7 +44,7 @@ static nimcp_health_agent_t* g_counterfactual_health_agent = NULL;
  * @brief Set health agent for counterfactual heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void counterfactual_set_health_agent(nimcp_health_agent_t* agent) {
+void counterfactual_set_health_agent(nimcp_health_agent_t* agent) {
     g_counterfactual_health_agent = agent;
 }
 
@@ -387,6 +387,10 @@ static void compute_affect_internal(counterfactual_t* cf, float controllability)
 //=============================================================================
 
 counterfactual_config_t counterfactual_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_config_default", 0.0f);
+
+
     counterfactual_config_t config = {
         .causal_dim = CF_DEFAULT_CAUSAL_DIM,
         .max_analyses = CF_DEFAULT_MAX_ANALYSES,
@@ -411,6 +415,10 @@ bool counterfactual_config_validate(const counterfactual_config_t* config) {
         set_error("NULL config pointer");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_config_validate", 0.0f);
+
 
     if (config->causal_dim == 0 || config->causal_dim > 4096) {
         set_error("causal_dim must be in [1, 4096]");
@@ -446,6 +454,10 @@ counterfactual_system_t counterfactual_create(
     const counterfactual_config_t* config)
 {
     // Use default config if not provided
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_create", 0.0f);
+
+
     counterfactual_config_t cfg;
     if (config) {
         cfg = *config;
@@ -485,6 +497,12 @@ counterfactual_system_t counterfactual_create(
 
     // Initialize causal matrix with small default values
     for (size_t i = 0; i < matrix_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && matrix_size > 256) {
+            counterfactual_heartbeat("counterfactu_loop",
+                             (float)(i + 1) / (float)matrix_size);
+        }
+
         system->causal_matrix[i] = 0.01f;  // Small prior
     }
 
@@ -516,8 +534,18 @@ void counterfactual_destroy(counterfactual_system_t system) {
     if (!system) return;
 
     // Free cached analyses
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_destroy", 0.0f);
+
+
     if (system->analysis_cache) {
         for (size_t i = 0; i < system->cache_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && system->cache_count > 256) {
+                counterfactual_heartbeat("counterfactu_loop",
+                                 (float)(i + 1) / (float)system->cache_count);
+            }
+
             if (system->analysis_cache[i]) {
                 counterfactual_analysis_cleanup(system->analysis_cache[i]);
                 free(system->analysis_cache[i]);
@@ -538,7 +566,17 @@ bool counterfactual_clear_cache(counterfactual_system_t system) {
     }
 
     // Free cached analyses
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_clear_cache", 0.0f);
+
+
     for (size_t i = 0; i < system->cache_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->cache_count > 256) {
+            counterfactual_heartbeat("counterfactu_loop",
+                             (float)(i + 1) / (float)system->cache_count);
+        }
+
         if (system->analysis_cache[i]) {
             counterfactual_analysis_cleanup(system->analysis_cache[i]);
             free(system->analysis_cache[i]);
@@ -559,8 +597,18 @@ bool counterfactual_reset_causal_matrix(counterfactual_system_t system) {
     }
 
     // Reset to small prior values
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_reset_causal_matrix", 0.0f);
+
+
     size_t matrix_size = system->causal_dim * system->causal_dim;
     for (size_t i = 0; i < matrix_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && matrix_size > 256) {
+            counterfactual_heartbeat("counterfactu_loop",
+                             (float)(i + 1) / (float)matrix_size);
+        }
+
         system->causal_matrix[i] = 0.01f;
     }
 
@@ -584,6 +632,10 @@ bool counterfactual_analyze(
                   (void*)system, (void*)memory, (void*)analysis);
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_analyze", 0.0f);
+
 
     uint64_t start_time = get_current_time_ms();
 
@@ -779,6 +831,12 @@ bool counterfactual_analyze(
     float max_relief = 0.0f;
 
     for (size_t i = 0; i < analysis->num_counterfactuals; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && analysis->num_counterfactuals > 256) {
+            counterfactual_heartbeat("counterfactu_loop",
+                             (float)(i + 1) / (float)analysis->num_counterfactuals);
+        }
+
         counterfactual_t* cf = &analysis->counterfactuals[i];
         float impact = fabsf_fast(cf->affect_change) * cf->outcome_probability;
 
@@ -824,6 +882,10 @@ bool counterfactual_generate(
         set_error("NULL pointer in counterfactual_generate");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_generate", 0.0f);
+
 
     memset(result, 0, sizeof(*result));
 
@@ -909,6 +971,10 @@ bool counterfactual_mutate_action(
     const prime_signature_t* action_alternative,
     counterfactual_t* result)
 {
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_mutate_action", 0.0f);
+
+
     return counterfactual_generate(system, memory, MUTATE_ACTION,
                                    action_taken, action_alternative, result);
 }
@@ -923,6 +989,10 @@ bool counterfactual_mutate_inaction(
         set_error("NULL result pointer");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_mutate_inaction", 0.0f);
+
 
     prime_signature_t inaction_sig;
     generate_inaction_signature(&inaction_sig);
@@ -942,6 +1012,10 @@ bool counterfactual_mutate_timing(
         set_error("NULL pointer in counterfactual_mutate_timing");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_mutate_timing", 0.0f);
+
 
     memset(result, 0, sizeof(*result));
 
@@ -1016,6 +1090,10 @@ bool counterfactual_mutate_event(
     }
 
     // Generate "event didn't happen" signature
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_mutate_event", 0.0f);
+
+
     prime_signature_t no_event_sig;
     generate_inaction_signature(&no_event_sig);
 
@@ -1039,6 +1117,10 @@ bool counterfactual_evaluate_outcome(
     }
 
     // Return already computed values
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_evaluate_outcome", 0.0f);
+
+
     if (outcome) {
         *outcome = cf->alternate_outcome;
     }
@@ -1059,6 +1141,10 @@ bool counterfactual_compute_affect(
         set_error("NULL pointer in counterfactual_compute_affect");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_compute_affect", 0.0f);
+
 
     float controllability = compute_controllability(cf->mutation_type, cf->original_memory);
     compute_affect_internal(cf, controllability);
@@ -1113,6 +1199,10 @@ bool counterfactual_extract_causes(
     }
 
     // Get memory signature for causal lookup
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_extract_causes", 0.0f);
+
+
     const prime_signature_t* mem_sig = pr_memory_node_get_signature(memory);
     if (!mem_sig) {
         clear_error();
@@ -1161,6 +1251,10 @@ bool counterfactual_update_causal_model(
         return true;  // Learning disabled, but not an error
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_update_causal_model", 0.0f);
+
+
     size_t cause_idx = sig_to_causal_index(cause, system->causal_dim);
     size_t effect_idx = sig_to_causal_index(effect, system->causal_dim);
 
@@ -1187,6 +1281,10 @@ float counterfactual_get_causal_strength(
         return -1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_get_causal_strength", 0.0f);
+
+
     size_t cause_idx = sig_to_causal_index(cause, system->causal_dim);
     size_t effect_idx = sig_to_causal_index(effect, system->causal_dim);
 
@@ -1209,6 +1307,10 @@ bool counterfactual_get_most_mutable(
         set_error("NULL pointer in counterfactual_get_most_mutable");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_get_most_mutable", 0.0f);
+
 
     uint64_t current_time = get_current_time_ms();
     float recency = compute_recency_mutability(memory->created_time_ms, current_time);
@@ -1269,6 +1371,10 @@ float counterfactual_compute_mutability(
     const prime_signature_t* element,
     mutation_type_t type)
 {
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_compute_mutability", 0.0f);
+
+
     (void)element;  // Not used in this simple implementation
 
     if (!system || !memory) {
@@ -1321,6 +1427,10 @@ bool counterfactual_compare_updown(
     float* downward_strength,
     float* ratio)
 {
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_compare_updown", 0.0f);
+
+
     (void)system;  // Not used
 
     if (!analysis) {
@@ -1334,6 +1444,12 @@ bool counterfactual_compare_updown(
     size_t down_count = 0;
 
     for (size_t i = 0; i < analysis->num_counterfactuals; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && analysis->num_counterfactuals > 256) {
+            counterfactual_heartbeat("counterfactu_loop",
+                             (float)(i + 1) / (float)analysis->num_counterfactuals);
+        }
+
         const counterfactual_t* cf = &analysis->counterfactuals[i];
 
         if (cf->direction == COUNTER_UPWARD || cf->direction == COUNTER_ADDITIVE) {
@@ -1367,6 +1483,10 @@ bool counterfactual_find_most_actionable(
     const counterfactual_analysis_t* analysis,
     counterfactual_t** result)
 {
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_find_most_actionable", 0.0f);
+
+
     (void)system;  // Not used
 
     if (!analysis || !result) {
@@ -1378,6 +1498,12 @@ bool counterfactual_find_most_actionable(
     float max_actionability = 0.0f;
 
     for (size_t i = 0; i < analysis->num_counterfactuals; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && analysis->num_counterfactuals > 256) {
+            counterfactual_heartbeat("counterfactu_loop",
+                             (float)(i + 1) / (float)analysis->num_counterfactuals);
+        }
+
         counterfactual_t* cf = &analysis->counterfactuals[i];
 
         // Actionability = controllability * |affect_change| * probability * salience
@@ -1416,6 +1542,10 @@ bool counterfactual_analysis_init(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_analysis_init", 0.0f);
+
+
     memset(analysis, 0, sizeof(*analysis));
 
     // Allocate causes array
@@ -1449,6 +1579,10 @@ bool counterfactual_analysis_init(
 void counterfactual_analysis_cleanup(counterfactual_analysis_t* analysis) {
     if (!analysis) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_analysis_cleanup", 0.0f);
+
+
     free(analysis->causes);
     free(analysis->causal_strengths);
     free(analysis->counterfactuals);
@@ -1471,6 +1605,10 @@ bool counterfactual_analysis_copy(
     }
 
     // Copy scalar fields
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_analysis_copy", 0.0f);
+
+
     dest->memory = src->memory;
     dest->memory_id = src->memory_id;
     dest->num_causes = src->num_causes;
@@ -1534,6 +1672,10 @@ bool pr_counterfactual_get_stats(
     }
 
     *stats = system->stats;
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_pr_counterfactual_ge", 0.0f);
+
+
     stats->cached_analyses = system->cache_count;
 
     clear_error();
@@ -1542,6 +1684,10 @@ bool pr_counterfactual_get_stats(
 
 void pr_counterfactual_reset_stats(counterfactual_system_t system) {
     if (!system) return;
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_pr_counterfactual_re", 0.0f);
+
+
     memset(&system->stats, 0, sizeof(system->stats));
 }
 
@@ -1577,6 +1723,10 @@ void counterfactual_print(const counterfactual_t* cf) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_print", 0.0f);
+
+
     printf("Counterfactual {\n");
     printf("  mutation_type: %s\n", counterfactual_mutation_name(cf->mutation_type));
     printf("  direction: %s\n", counterfactual_type_name(cf->direction));
@@ -1595,6 +1745,10 @@ void counterfactual_analysis_print(const counterfactual_analysis_t* analysis) {
         printf("CounterfactualAnalysis: (null)\n");
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_analysis_print", 0.0f);
+
 
     printf("CounterfactualAnalysis {\n");
     printf("  memory_id: %lu\n", (unsigned long)analysis->memory_id);
@@ -1632,6 +1786,10 @@ size_t counterfactual_explain(
     if (!cf || !buf || size == 0) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    counterfactual_heartbeat("counterfactu_explain", 0.0f);
+
 
     const char* direction_desc;
     if (cf->direction == COUNTER_UPWARD) {

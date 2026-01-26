@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_attention_plasticity_bridge_health_agent = NULL;
  * @brief Set health agent for attention_plasticity_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void attention_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void attention_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_attention_plasticity_bridge_health_agent = agent;
 }
 
@@ -106,6 +106,12 @@ static attention_plasticity_synapse_t* find_synapse(
     uint32_t synapse_id)
 {
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            attention_plasticity_bridge_heartbeat("attention_pl_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         if (bridge->synapses[i].synapse_id == synapse_id) {
             return &bridge->synapses[i];
         }
@@ -166,6 +172,10 @@ static void update_bcm_threshold(
 //=============================================================================
 
 attention_plasticity_config_t attention_plasticity_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
+
     attention_plasticity_config_t config = {
         /* STDP parameters */
         .stdp_ltp_window_ms = ATTENTION_PLASTICITY_STDP_WINDOW,
@@ -227,6 +237,10 @@ attention_plasticity_config_t attention_plasticity_config_default(void) {
 attention_plasticity_bridge_t* attention_plasticity_create(
     const attention_plasticity_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
+
     attention_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(attention_plasticity_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_plasticity_create: failed to allocate bridge");
@@ -271,6 +285,12 @@ attention_plasticity_bridge_t* attention_plasticity_create(
 
     /* Initialize head states */
     for (uint32_t h = 0; h < bridge->num_heads; h++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((h & 0xFF) == 0 && bridge->num_heads > 256) {
+            attention_plasticity_bridge_heartbeat("attention_pl_loop",
+                             (float)(h + 1) / (float)bridge->num_heads);
+        }
+
         bridge->head_states[h].learning_rate = 1.0f;
         bridge->head_states[h].attention_bias = 0.0f;
         bridge->head_states[h].habituation_level = 0.0f;
@@ -294,6 +314,10 @@ attention_plasticity_bridge_t* attention_plasticity_create(
 void attention_plasticity_destroy(attention_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
+
     if (bridge->bio_async_connected) {
         attention_plasticity_disconnect_bio_async(bridge);
     }
@@ -313,10 +337,20 @@ int attention_plasticity_reset(attention_plasticity_bridge_t* bridge) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset all synapses to initial state */
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            attention_plasticity_bridge_heartbeat("attention_pl_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         bridge->synapses[i].weight = bridge->synapses[i].initial_weight;
         bridge->synapses[i].eligibility_trace = 0.0f;
         bridge->synapses[i].bcm_threshold = 0.5f;
@@ -328,6 +362,12 @@ int attention_plasticity_reset(attention_plasticity_bridge_t* bridge) {
 
     /* Reset head states */
     for (uint32_t h = 0; h < bridge->num_heads; h++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((h & 0xFF) == 0 && bridge->num_heads > 256) {
+            attention_plasticity_bridge_heartbeat("attention_pl_loop",
+                             (float)(h + 1) / (float)bridge->num_heads);
+        }
+
         bridge->head_states[h].learning_rate = 1.0f;
         bridge->head_states[h].attention_bias = 0.0f;
         bridge->head_states[h].habituation_level = 0.0f;
@@ -363,6 +403,10 @@ int attention_plasticity_register_synapse(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_register_synapse: bridge is NULL");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -411,10 +455,20 @@ int attention_plasticity_unregister_synapse(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Find synapse */
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            attention_plasticity_bridge_heartbeat("attention_pl_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         if (bridge->synapses[i].synapse_id == synapse_id) {
             /* Move last synapse to this slot */
             if (i < bridge->synapse_count - 1) {
@@ -439,6 +493,10 @@ int attention_plasticity_get_synapse(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_get_synapse: bridge or synapse is NULL");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -469,6 +527,10 @@ int attention_plasticity_focus(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_focus: bridge is NULL");
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
+
     if (head_idx >= bridge->num_heads) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_plasticity_focus: head_idx out of range");
         return -1;
@@ -489,6 +551,12 @@ int attention_plasticity_focus(
 
     /* Record pre-spike for all synapses of this head */
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            attention_plasticity_bridge_heartbeat("attention_pl_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         if (bridge->synapses[i].head_idx == head_idx) {
             bridge->synapses[i].last_pre_spike_us = timestamp_us;
 
@@ -523,6 +591,10 @@ int attention_plasticity_shift(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_shift: bridge is NULL");
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
+
     if (from_head >= bridge->num_heads || to_head >= bridge->num_heads) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_plasticity_shift: head index out of range");
         return -1;
@@ -534,6 +606,12 @@ int attention_plasticity_shift(
 
     /* Update source head - LTD for losing focus */
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            attention_plasticity_bridge_heartbeat("attention_pl_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         if (bridge->synapses[i].head_idx == from_head) {
             if (bridge->synapses[i].last_pre_spike_us > 0) {
                 float dt = (float)(timestamp_us - bridge->synapses[i].last_pre_spike_us) / 1000.0f;
@@ -563,6 +641,12 @@ int attention_plasticity_shift(
 
     /* Update destination head - LTP for gaining focus */
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            attention_plasticity_bridge_heartbeat("attention_pl_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         if (bridge->synapses[i].head_idx == to_head) {
             bridge->synapses[i].last_pre_spike_us = timestamp_us;
 
@@ -611,11 +695,21 @@ int attention_plasticity_salience(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute average salience */
     float avg_salience = 0.0f;
     for (uint32_t i = 0; i < sequence_length; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sequence_length > 256) {
+            attention_plasticity_bridge_heartbeat("attention_pl_loop",
+                             (float)(i + 1) / (float)sequence_length);
+        }
+
         avg_salience += salience_map[i];
     }
     avg_salience /= (float)sequence_length;
@@ -644,6 +738,10 @@ int attention_plasticity_reward(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->pending_reward = reward;
@@ -652,6 +750,12 @@ int attention_plasticity_reward(
     /* Apply reward to all eligible synapses */
     if (bridge->config.enable_eligibility) {
         for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+                attention_plasticity_bridge_heartbeat("attention_pl_loop",
+                                 (float)(i + 1) / (float)bridge->synapse_count);
+            }
+
             if (bridge->synapses[i].eligibility_trace > 0.01f) {
                 float dw = apply_eligibility(
                     &bridge->synapses[i],
@@ -693,6 +797,10 @@ int attention_plasticity_habituation_trial(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_habituation_trial: bridge is NULL");
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
+
     if (head_idx >= bridge->num_heads) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_plasticity_habituation_trial: head_idx out of range");
         return -1;
@@ -709,6 +817,12 @@ int attention_plasticity_habituation_trial(
 
     /* Apply habituation to synapses of this head */
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            attention_plasticity_bridge_heartbeat("attention_pl_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         if (bridge->synapses[i].head_idx == head_idx) {
             bridge->synapses[i].habituation_level = head->habituation_level;
 
@@ -743,6 +857,10 @@ int attention_plasticity_novelty(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_novelty: bridge is NULL");
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
+
     if (head_idx >= bridge->num_heads) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_plasticity_novelty: head_idx out of range");
         return -1;
@@ -761,6 +879,12 @@ int attention_plasticity_novelty(
     if (novelty_score > (1.0f - bridge->config.familiarity_threshold)) {
         /* High novelty - boost learning */
         for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+                attention_plasticity_bridge_heartbeat("attention_pl_loop",
+                                 (float)(i + 1) / (float)bridge->synapse_count);
+            }
+
             if (bridge->synapses[i].head_idx == head_idx) {
                 float boost = bridge->config.novelty_boost * novelty_score;
                 float dw = bridge->config.stdp_a_plus * boost * 0.1f;
@@ -784,6 +908,12 @@ int attention_plasticity_novelty(
     } else {
         /* Familiar - increase familiarity metric */
         for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+                attention_plasticity_bridge_heartbeat("attention_pl_loop",
+                                 (float)(i + 1) / (float)bridge->synapse_count);
+            }
+
             if (bridge->synapses[i].head_idx == head_idx) {
                 bridge->synapses[i].familiarity += 0.1f * (1.0f - novelty_score);
                 bridge->synapses[i].familiarity = clamp_f(
@@ -810,6 +940,10 @@ int attention_plasticity_update(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ATTENTION_PLASTICITY_STATE_UPDATING;
@@ -817,6 +951,12 @@ int attention_plasticity_update(
     uint64_t now_us = nimcp_time_get_us();
 
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            attention_plasticity_bridge_heartbeat("attention_pl_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         attention_plasticity_synapse_t* syn = &bridge->synapses[i];
 
         /* Decay eligibility traces */
@@ -859,6 +999,12 @@ int attention_plasticity_update(
 
     /* Update per-head states */
     for (uint32_t h = 0; h < bridge->num_heads; h++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((h & 0xFF) == 0 && bridge->num_heads > 256) {
+            attention_plasticity_bridge_heartbeat("attention_pl_loop",
+                             (float)(h + 1) / (float)bridge->num_heads);
+        }
+
         attention_head_plasticity_t* head = &bridge->head_states[h];
 
         /* Decay habituation */
@@ -888,12 +1034,22 @@ int attention_plasticity_consolidate(attention_plasticity_bridge_t* bridge) {
     }
     if (!bridge->config.enable_sleep_consolidation) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ATTENTION_PLASTICITY_STATE_CONSOLIDATING;
 
     /* Consolidation: strengthen high-weight synapses, weaken low-weight ones */
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            attention_plasticity_bridge_heartbeat("attention_pl_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         attention_plasticity_synapse_t* syn = &bridge->synapses[i];
 
         float midpoint = (bridge->config.weight_max + bridge->config.weight_min) / 2.0f;
@@ -918,6 +1074,12 @@ int attention_plasticity_consolidate(attention_plasticity_bridge_t* bridge) {
 
     /* Reset habituation levels during sleep */
     for (uint32_t h = 0; h < bridge->num_heads; h++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((h & 0xFF) == 0 && bridge->num_heads > 256) {
+            attention_plasticity_bridge_heartbeat("attention_pl_loop",
+                             (float)(h + 1) / (float)bridge->num_heads);
+        }
+
         bridge->head_states[h].habituation_level *= 0.5f;
     }
 
@@ -941,6 +1103,10 @@ int attention_plasticity_get_bias(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_get_bias: bridge or bias is NULL");
         return -1;
     }
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
+
     if (head_idx >= bridge->num_heads) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_plasticity_get_bias: head_idx out of range");
         return -1;
@@ -965,11 +1131,21 @@ int attention_plasticity_get_modulation(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t n = (num_heads < bridge->num_heads) ? num_heads : bridge->num_heads;
 
     for (uint32_t h = 0; h < n; h++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((h & 0xFF) == 0 && n > 256) {
+            attention_plasticity_bridge_heartbeat("attention_pl_loop",
+                             (float)(h + 1) / (float)n);
+        }
+
         /* Compute modulation from learned bias, habituation, and novelty */
         float bias = bridge->head_states[h].attention_bias;
         float hab = bridge->head_states[h].habituation_level;
@@ -991,6 +1167,10 @@ float attention_plasticity_get_habituation(
     if (!bridge) return -1.0f;
     if (head_idx >= bridge->num_heads) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float hab = bridge->head_states[head_idx].habituation_level;
@@ -1006,6 +1186,10 @@ float attention_plasticity_get_novelty_score(
 {
     if (!bridge) return -1.0f;
     if (head_idx >= bridge->num_heads) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1023,6 +1207,10 @@ float attention_plasticity_get_sensitivity(
     if (!bridge) return -1.0f;
     if (head_idx >= bridge->num_heads) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute sensitivity as average weight of head's synapses */
@@ -1030,6 +1218,12 @@ float attention_plasticity_get_sensitivity(
     uint32_t count = 0;
 
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            attention_plasticity_bridge_heartbeat("attention_pl_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         if (bridge->synapses[i].head_idx == head_idx) {
             sum += bridge->synapses[i].weight;
             count++;
@@ -1055,6 +1249,10 @@ int attention_plasticity_get_state(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_get_state: bridge or state is NULL");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
 
     attention_plasticity_bridge_t* mutable_bridge = (attention_plasticity_bridge_t*)bridge;
 
@@ -1082,6 +1280,10 @@ int attention_plasticity_get_stats(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
+
     attention_plasticity_bridge_t* mutable_bridge = (attention_plasticity_bridge_t*)bridge;
 
     nimcp_mutex_lock(mutable_bridge->base.mutex);
@@ -1106,6 +1308,10 @@ int attention_plasticity_get_stats(
 void attention_plasticity_reset_stats(attention_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     memset(&bridge->stats, 0, sizeof(attention_plasticity_stats_t));
@@ -1127,6 +1333,10 @@ int attention_plasticity_set_weight_callback(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->weight_callback = callback;
@@ -1146,6 +1356,10 @@ int attention_plasticity_set_shift_callback(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_set_shift_callback: bridge is NULL");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1170,6 +1384,10 @@ int attention_plasticity_set_attention_modulation(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->current_attention_mod = clamp_f(attention_level, 0.1f, 2.0f);
@@ -1187,6 +1405,10 @@ int attention_plasticity_set_salience_modulation(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_set_salience_modulation: bridge is NULL");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1208,6 +1430,10 @@ int attention_plasticity_connect_bio_async(attention_plasticity_bridge_t* bridge
     }
     if (!bridge->config.enable_bio_async) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Registration would happen here via bio-async API */
@@ -1224,6 +1450,10 @@ int attention_plasticity_disconnect_bio_async(attention_plasticity_bridge_t* bri
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->bio_async_connected) {
@@ -1237,5 +1467,9 @@ int attention_plasticity_disconnect_bio_async(attention_plasticity_bridge_t* bri
 
 bool attention_plasticity_is_bio_async_connected(const attention_plasticity_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
+
+
     return bridge->bio_async_connected;
 }

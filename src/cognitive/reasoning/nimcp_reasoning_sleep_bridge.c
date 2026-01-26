@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_reasoning_sleep_bridge_health_agent = NULL;
  * @brief Set health agent for reasoning_sleep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void reasoning_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void reasoning_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_reasoning_sleep_bridge_health_agent = agent;
 }
 
@@ -199,6 +199,10 @@ int reasoning_sleep_default_config(reasoning_sleep_config_t* config)
     }
 
     /* Set defaults - all modulations enabled */
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_sleep_bridge_heartbeat("reasoning_sl_reasoning_sleep_defa", 0.0f);
+
+
     config->enable_logical_modulation = true;
     config->enable_creative_modulation = true;
     config->enable_speed_modulation = true;
@@ -219,6 +223,10 @@ reasoning_sleep_bridge_t reasoning_sleep_bridge_create(
     }
 
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_sleep_bridge_heartbeat("reasoning_sl_create", 0.0f);
+
+
     struct reasoning_sleep_bridge_struct* bridge =
         (struct reasoning_sleep_bridge_struct*)nimcp_malloc(
             sizeof(struct reasoning_sleep_bridge_struct));
@@ -284,6 +292,10 @@ void reasoning_sleep_bridge_destroy(reasoning_sleep_bridge_t bridge)
     }
 
     /* Unregister callback if registered */
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_sleep_bridge_heartbeat("reasoning_sl_destroy", 0.0f);
+
+
     if (bridge->callback_registered && bridge->sleep_system) {
         bool unregistered = sleep_unregister_state_callback(
             bridge->sleep_system,
@@ -319,6 +331,10 @@ int reasoning_sleep_update(reasoning_sleep_bridge_t bridge)
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_sleep_bridge_heartbeat("reasoning_sl_reasoning_sleep_upda", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get current state and pressure */
@@ -341,6 +357,10 @@ int reasoning_sleep_get_effects(const reasoning_sleep_bridge_t bridge,
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_sleep_bridge_heartbeat("reasoning_sl_reasoning_sleep_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -354,6 +374,10 @@ float reasoning_sleep_get_logical_factor(const reasoning_sleep_bridge_t bridge)
     if (!bridge) {
         return 1.0f;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_sleep_bridge_heartbeat("reasoning_sl_reasoning_sleep_get_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.logical_reasoning_factor;
@@ -369,6 +393,10 @@ float reasoning_sleep_get_creative_factor(const reasoning_sleep_bridge_t bridge)
         return 1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_sleep_bridge_heartbeat("reasoning_sl_reasoning_sleep_get_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.creative_reasoning_factor;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -382,6 +410,10 @@ bool reasoning_sleep_is_offline(const reasoning_sleep_bridge_t bridge)
     if (!bridge) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_sleep_bridge_heartbeat("reasoning_sl_reasoning_sleep_is_o", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.reasoning_offline;
@@ -397,6 +429,10 @@ bool reasoning_sleep_is_rem_creative(const reasoning_sleep_bridge_t bridge)
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_sleep_bridge_heartbeat("reasoning_sl_reasoning_sleep_is_r", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.rem_creativity_boost;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -410,6 +446,10 @@ bool reasoning_sleep_is_rem_creative(const reasoning_sleep_bridge_t bridge)
 
 float reasoning_sleep_logical_for_state(sleep_state_t state)
 {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_sleep_bridge_heartbeat("reasoning_sl_reasoning_sleep_logi", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:
             return REASONING_SLEEP_LOGICAL_AWAKE;
@@ -428,6 +468,10 @@ float reasoning_sleep_logical_for_state(sleep_state_t state)
 
 float reasoning_sleep_creative_for_state(sleep_state_t state)
 {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_sleep_bridge_heartbeat("reasoning_sl_reasoning_sleep_crea", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:
             return REASONING_SLEEP_CREATIVE_AWAKE;
@@ -446,6 +490,10 @@ float reasoning_sleep_creative_for_state(sleep_state_t state)
 
 float reasoning_sleep_speed_for_state(sleep_state_t state)
 {
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_sleep_bridge_heartbeat("reasoning_sl_reasoning_sleep_spee", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:
             return REASONING_SLEEP_SPEED_AWAKE;
@@ -484,6 +532,10 @@ int reasoning_sleep_connect_bio_async(reasoning_sleep_bridge_t bridge)
 
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_sleep_bridge_heartbeat("reasoning_sl_reasoning_sleep_conn", 0.0f);
+
 
     if (bridge->base.bio_async_enabled) {
         return 0;  /* Already connected */
@@ -527,6 +579,10 @@ int reasoning_sleep_disconnect_bio_async(reasoning_sleep_bridge_t bridge)
     }
 
     /* Unregister from bio-async router */
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_sleep_bridge_heartbeat("reasoning_sl_reasoning_sleep_disc", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -550,6 +606,10 @@ bool reasoning_sleep_is_bio_async_connected(const reasoning_sleep_bridge_t bridg
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_sleep_bridge_heartbeat("reasoning_sl_reasoning_sleep_is_b", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -559,9 +619,19 @@ bool reasoning_sleep_is_bio_async_connected(const reasoning_sleep_bridge_t bridg
 
 int reasoning_sleep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    reasoning_sleep_bridge_heartbeat("reasoning_sl_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Reasoning_Sleep_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                reasoning_sleep_bridge_heartbeat("reasoning_sl_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Reasoning_Sleep_Bridge self-knowledge: %s", self->observations[i]);
         }
     }

@@ -59,7 +59,7 @@ static nimcp_health_agent_t* g_global_workspace_shannon_health_agent = NULL;
  * @brief Set health agent for global_workspace_shannon heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void global_workspace_shannon_set_health_agent(nimcp_health_agent_t* agent) {
+void global_workspace_shannon_set_health_agent(nimcp_health_agent_t* agent) {
     g_global_workspace_shannon_health_agent = agent;
 }
 
@@ -186,6 +186,12 @@ static shannon_workspace_state_t* get_shannon_state(const global_workspace_t* wo
     }
 
     for (uint32_t i = 0; i < g_num_mappings; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && g_num_mappings > 256) {
+            global_workspace_shannon_heartbeat("global_works_loop",
+                             (float)(i + 1) / (float)g_num_mappings);
+        }
+
         if (g_shannon_mappings[i].workspace == workspace) {
             return g_shannon_mappings[i].state;
         }
@@ -230,6 +236,12 @@ static subscriber_shannon_state_t* find_subscriber(
     }
 
     for (uint32_t i = 0; i < state->num_subscribers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && state->num_subscribers > 256) {
+            global_workspace_shannon_heartbeat("global_works_loop",
+                             (float)(i + 1) / (float)state->num_subscribers);
+        }
+
         if (state->subscribers[i].module == module &&
             state->subscribers[i].is_active) {
             return &state->subscribers[i];
@@ -259,6 +271,10 @@ shannon_workspace_config_t shannon_workspace_default_config(void) {
     /* WHAT: Sensible defaults for Shannon workspace
      * WHY:  Convenient starting point with balanced parameters
      * HOW:  Initialize struct with documented values */
+
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_shannon_heartbeat("global_works_shannon_workspace_de", 0.0f);
+
 
     shannon_workspace_config_t config;
     memset(&config, 0, sizeof(config));
@@ -303,6 +319,10 @@ bool global_workspace_enable_shannon(
     }
 
     /* Check capacity */
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_shannon_heartbeat("global_works_global_workspace_ena", 0.0f);
+
+
     if (g_num_mappings >= MAX_SHANNON_WORKSPACES) {
         return false;  /* Too many workspaces */
     }
@@ -352,7 +372,17 @@ void global_workspace_disable_shannon(global_workspace_t* workspace) {
 
     if (!workspace) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_shannon_heartbeat("global_works_global_workspace_dis", 0.0f);
+
+
     for (uint32_t i = 0; i < g_num_mappings; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && g_num_mappings > 256) {
+            global_workspace_shannon_heartbeat("global_works_loop",
+                             (float)(i + 1) / (float)g_num_mappings);
+        }
+
         if (g_shannon_mappings[i].workspace == workspace) {
             /* Free state */
             if (g_shannon_mappings[i].state) {
@@ -373,6 +403,10 @@ bool global_workspace_is_shannon_enabled(const global_workspace_t* workspace) {
     /* WHAT: Check if Shannon features active
      * WHY:  Conditional code paths
      * HOW:  Lookup state */
+
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_shannon_heartbeat("global_works_global_workspace_is_", 0.0f);
+
 
     shannon_workspace_state_t* state = get_shannon_state(workspace);
     return (state != NULL && state->is_enabled);
@@ -403,8 +437,18 @@ float shannon_measure_feature_information(
     if (!features || dim == 0) return 0.0F;
 
     /* Step 1: Compute sum for normalization */
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_shannon_heartbeat("global_works_shannon_measure_feat", 0.0f);
+
+
     float sum = 0.0F;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            global_workspace_shannon_heartbeat("global_works_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         float val = features[i];
         if (val < 0.0F) val = -val;  /* Use absolute value */
         sum += val;
@@ -420,6 +464,12 @@ float shannon_measure_feature_information(
     float inv_sum = 1.0F / sum;
 
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            global_workspace_shannon_heartbeat("global_works_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         float val = features[i];
         if (val < 0.0F) val = -val;
 
@@ -449,6 +499,10 @@ float shannon_measure_relative_information(
      */
 
     if (!features || dim == 0) return 0.0F;
+
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_shannon_heartbeat("global_works_shannon_measure_rela", 0.0f);
+
 
     float max_entropy = log2f((float)dim);
     float actual_entropy = shannon_measure_feature_information(features, dim);
@@ -491,6 +545,10 @@ bool global_workspace_compete_with_info(
     }
 
     /* Measure information content */
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_shannon_heartbeat("global_works_global_workspace_com", 0.0f);
+
+
     float info_bits = shannon_measure_feature_information(content, content_dim);
     if (info_bits_out) {
         *info_bits_out = info_bits;
@@ -582,6 +640,10 @@ shannon_broadcast_metrics_t global_workspace_broadcast_with_shannon(
      * 6. Notify subscriber
      */
 
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_shannon_heartbeat("global_works_global_workspace_bro", 0.0f);
+
+
     shannon_broadcast_metrics_t metrics;
     memset(&metrics, 0, sizeof(metrics));
     metrics.content_info_bits = content_info_bits;
@@ -611,6 +673,12 @@ shannon_broadcast_metrics_t global_workspace_broadcast_with_shannon(
     metrics.num_subscribers = state->num_subscribers;
 
     for (uint32_t i = 0; i < state->num_subscribers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && state->num_subscribers > 256) {
+            global_workspace_shannon_heartbeat("global_works_loop",
+                             (float)(i + 1) / (float)state->num_subscribers);
+        }
+
         subscriber_shannon_state_t* sub = &state->subscribers[i];
         if (!sub->is_active) continue;
 
@@ -715,6 +783,10 @@ bool global_workspace_set_subscriber_capacity(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_shannon_heartbeat("global_works_global_workspace_set", 0.0f);
+
+
     shannon_workspace_state_t* state = get_shannon_state(workspace);
     if (!state) {
         return false;  /* Shannon not enabled */
@@ -753,6 +825,10 @@ float global_workspace_get_subscriber_capacity(
      * WHY:  Query for analysis/debugging
      * HOW:  Lookup subscriber */
 
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_shannon_heartbeat("global_works_global_workspace_get", 0.0f);
+
+
     shannon_workspace_state_t* state = get_shannon_state(workspace);
     if (!state) return 0.0F;
 
@@ -767,6 +843,10 @@ float global_workspace_get_subscriber_load(
     /* WHAT: Get subscriber current load
      * WHY:  Monitor utilization
      * HOW:  Lookup subscriber */
+
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_shannon_heartbeat("global_works_global_workspace_get", 0.0f);
+
 
     shannon_workspace_state_t* state = get_shannon_state(workspace);
     if (!state) return 0.0F;
@@ -783,6 +863,10 @@ void global_workspace_update_subscriber_load(
     /* WHAT: Manually update subscriber load
      * WHY:  Allow external load tracking
      * HOW:  Add to EMA */
+
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_shannon_heartbeat("global_works_global_workspace_upd", 0.0f);
+
 
     shannon_workspace_state_t* state = get_shannon_state(workspace);
     if (!state) return;
@@ -806,6 +890,10 @@ bool global_workspace_set_broadcast_rate(
      * WHY:  Manual rate control
      * HOW:  Validate and store */
 
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_shannon_heartbeat("global_works_global_workspace_set", 0.0f);
+
+
     shannon_workspace_state_t* state = get_shannon_state(workspace);
     if (!state) return false;
 
@@ -823,6 +911,10 @@ float global_workspace_get_broadcast_rate(const global_workspace_t* workspace) {
     /* WHAT: Get current rate multiplier
      * WHY:  Query current state
      * HOW:  Return cached value */
+
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_shannon_heartbeat("global_works_global_workspace_get", 0.0f);
+
 
     shannon_workspace_state_t* state = get_shannon_state(workspace);
     return state ? state->current_broadcast_rate : 1.0F;
@@ -842,6 +934,10 @@ void global_workspace_adapt_broadcast_rate(
      */
 
     if (!workspace || !metrics) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_shannon_heartbeat("global_works_global_workspace_ada", 0.0f);
+
 
     shannon_workspace_state_t* state = get_shannon_state(workspace);
     if (!state || !state->config.enable_adaptive_rate) return;
@@ -885,6 +981,10 @@ bool global_workspace_get_shannon_stats(
 
     if (!stats) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_shannon_heartbeat("global_works_global_workspace_get", 0.0f);
+
+
     shannon_workspace_state_t* state = get_shannon_state(workspace);
     if (!state) return false;
 
@@ -896,6 +996,10 @@ void global_workspace_reset_shannon_stats(global_workspace_t* workspace) {
     /* WHAT: Clear Shannon statistics
      * WHY:  Fresh measurement period
      * HOW:  Zero stats, keep config */
+
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_shannon_heartbeat("global_works_global_workspace_res", 0.0f);
+
 
     shannon_workspace_state_t* state = get_shannon_state(workspace);
     if (!state) return;
@@ -909,6 +1013,12 @@ void global_workspace_reset_shannon_stats(global_workspace_t* workspace) {
 
     /* Reset per-subscriber stats */
     for (uint32_t i = 0; i < state->num_subscribers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && state->num_subscribers > 256) {
+            global_workspace_shannon_heartbeat("global_works_loop",
+                             (float)(i + 1) / (float)state->num_subscribers);
+        }
+
         state->subscribers[i].total_delivered = 0.0F;
         state->subscribers[i].total_lost = 0.0F;
         state->subscribers[i].bottleneck_count = 0;
@@ -924,6 +1034,10 @@ bool global_workspace_get_last_broadcast_metrics(
      * HOW:  Copy cached metrics */
 
     if (!metrics) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_shannon_heartbeat("global_works_global_workspace_get", 0.0f);
+
 
     shannon_workspace_state_t* state = get_shannon_state(workspace);
     if (!state || !state->has_last_metrics) return false;
@@ -956,6 +1070,10 @@ bool global_workspace_on_salience_peak_shannon(
      * - float* feature_vector
      * - uint32_t dimension
      */
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_shannon_heartbeat("global_works_global_workspace_on_", 0.0f);
+
+
     typedef struct {
         float salience_score;
         float* feature_vector;
@@ -1009,9 +1127,19 @@ bool global_workspace_on_salience_peak_shannon(
 int global_workspace_shannon_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    global_workspace_shannon_heartbeat("global_works_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Global_Workspace_Shannon");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                global_workspace_shannon_heartbeat("global_works_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

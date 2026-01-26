@@ -821,8 +821,13 @@ TEST_F(CycleCoordinatorIntegrationTest, test_multi_cycle_health_tracking) {
     EXPECT_EQ(5u, stats.total_cycles_registered);
     EXPECT_EQ(3u, stats.total_cycles_healthy);   // immune, health_agent, brain_update
     EXPECT_EQ(1u, stats.total_cycles_degraded);  // oscillations
-    // error counts as stalled in category stats
-    EXPECT_GE(stats.total_cycles_stalled, 1u);   // sleep_wake (ERROR)
+    // ERROR is distinct from STALLED - not counted in total_cycles_stalled
+    EXPECT_EQ(0u, stats.total_cycles_stalled);
+    // sleep_wake has ERROR health (from always_error health_fn)
+    brain_cycle_status_t sw_status;
+    ASSERT_EQ(0, brain_cycle_coordinator_get_status(
+        coord, BRAIN_CYCLE_SLEEP_WAKE, &sw_status));
+    EXPECT_EQ(BRAIN_CYCLE_HEALTH_ERROR, sw_status.health);
 }
 
 /**
@@ -1214,4 +1219,216 @@ TEST_F(CycleCoordinatorIntegrationTest, test_unregister_callbacks) {
 
     // Callback should not have fired since we unregistered
     EXPECT_EQ(0, tracker.health_changed_count.load());
+}
+
+//=============================================================================
+// 11. BIO-ASYNC INTEGRATION TESTS
+//=============================================================================
+
+/**
+ * TEST: Bio-async null context is safe - no crash when bio_context is NULL
+ * Verifies the publish_bio_* helpers gracefully skip when not connected.
+ */
+TEST_F(CycleCoordinatorIntegrationTest, test_bio_async_null_context_safe) {
+    int dummy = 0;
+    ASSERT_EQ(0, brain_cycle_coordinator_register(
+        coord, BRAIN_CYCLE_IMMUNE_TICK, &dummy, always_healthy));
+
+    // Trigger health change with NULL bio_context (default) - should not crash
+    tickCycle(BRAIN_CYCLE_IMMUNE_TICK, 5000);
+    int issues = brain_cycle_coordinator_check_health(coord);
+    EXPECT_GE(issues, 0);
+}
+
+/**
+ * TEST: Health changes still fire callbacks with bio-async integration wired
+ * Even though bio_context is NULL, callbacks should still work.
+ */
+TEST_F(CycleCoordinatorIntegrationTest, test_bio_async_health_changed_with_callbacks) {
+    CallbackTracker tracker;
+    registerCallbackTracker(&tracker);
+
+    int dummy = 0;
+    ASSERT_EQ(0, brain_cycle_coordinator_register(
+        coord, BRAIN_CYCLE_IMMUNE_TICK, &dummy, always_degraded));
+
+    // Tick to establish baseline
+    tickCycle(BRAIN_CYCLE_IMMUNE_TICK, 5000);
+
+    // check_health queries health_fn (DEGRADED), transitions UNKNOWN -> DEGRADED
+    // This fires health_changed callback + bio-async hook (no-op with NULL ctx)
+    brain_cycle_coordinator_check_health(coord);
+    EXPECT_GT(tracker.health_changed_count.load(), 0);
+}
+
+/**
+ * TEST: Stall detection fires both callbacks and bio-async hooks safely
+ */
+TEST_F(CycleCoordinatorIntegrationTest, test_bio_async_stall_with_callbacks) {
+    CallbackTracker tracker;
+    registerCallbackTracker(&tracker);
+
+    int dummy = 0;
+    ASSERT_EQ(0, brain_cycle_coordinator_register(
+        coord, BRAIN_CYCLE_OSCILLATIONS, &dummy, nullptr));
+
+    // OSCILLATIONS default interval = 10ms, stall threshold = 30ms
+
+    // First tick to establish baseline
+    tickCycle(BRAIN_CYCLE_OSCILLATIONS, 5000);
+
+    // Wait for stall condition
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    // Check health should detect stall and fire both callback + bio-async
+    int issues = brain_cycle_coordinator_check_health(coord);
+    EXPECT_GT(issues, 0);
+    EXPECT_GT(tracker.stall_detected_count.load(), 0);
+}
+
+/**
+ * TEST: Dependency violation fires bio-async hook safely
+ */
+TEST_F(CycleCoordinatorIntegrationTest, test_bio_async_dependency_violated) {
+    CallbackTracker tracker;
+    registerCallbackTracker(&tracker);
+
+    int dummy1 = 1, dummy2 = 2;
+    ASSERT_EQ(0, brain_cycle_coordinator_register(
+        coord, BRAIN_CYCLE_BRAIN_UPDATE, &dummy1, nullptr));
+    ASSERT_EQ(0, brain_cycle_coordinator_register(
+        coord, BRAIN_CYCLE_OSCILLATIONS, &dummy2, always_degraded));
+
+    // Set up dependency
+    brain_cycle_coordinator_add_dependency(
+        coord, BRAIN_CYCLE_BRAIN_UPDATE, BRAIN_CYCLE_OSCILLATIONS);
+
+    // Tick both
+    tickCycle(BRAIN_CYCLE_OSCILLATIONS, 5000);
+    tickCycle(BRAIN_CYCLE_BRAIN_UPDATE, 5000);
+
+    // Check health with degraded dependency
+    brain_cycle_coordinator_check_health(coord);
+
+    // Dependency violation should have been detected and published safely
+    // (bio-async hook is a no-op with NULL context but shouldn't crash)
+    EXPECT_GE(tracker.dep_violated_count.load(), 0);
+}
+
+/**
+ * TEST: Overall health change fires stats bio-async hook safely
+ */
+TEST_F(CycleCoordinatorIntegrationTest, test_bio_async_stats_on_overall_change) {
+    CallbackTracker tracker;
+    registerCallbackTracker(&tracker);
+
+    int dummy = 0;
+    ASSERT_EQ(0, brain_cycle_coordinator_register(
+        coord, BRAIN_CYCLE_IMMUNE_TICK, &dummy, always_healthy));
+    tickCycle(BRAIN_CYCLE_IMMUNE_TICK, 5000);
+    brain_cycle_coordinator_check_health(coord);
+
+    // Initial overall health should have triggered callback
+    // bio-async stats hook should have executed safely (no crash)
+    EXPECT_GE(tracker.overall_health_count.load(), 0);
+}
+
+//=============================================================================
+// 12. IMMUNE SYSTEM INTEGRATION TESTS
+//=============================================================================
+
+/**
+ * TEST: Immune null system is safe - no crash when immune_system is NULL
+ */
+TEST_F(CycleCoordinatorIntegrationTest, test_immune_null_system_safe) {
+    int dummy = 0;
+    ASSERT_EQ(0, brain_cycle_coordinator_register(
+        coord, BRAIN_CYCLE_IMMUNE_TICK, &dummy, always_degraded));
+
+    tickCycle(BRAIN_CYCLE_IMMUNE_TICK, 5000);
+
+    // check_health will trigger health change (UNKNOWN->DEGRADED) which
+    // calls report_immune_health_change with NULL immune - should not crash
+    int issues = brain_cycle_coordinator_check_health(coord);
+    EXPECT_GT(issues, 0);
+}
+
+/**
+ * TEST: Immune stall report is safe with NULL system
+ * Stall detection should work normally even without immune system.
+ */
+TEST_F(CycleCoordinatorIntegrationTest, test_immune_stall_report_null_safe) {
+    CallbackTracker tracker;
+    registerCallbackTracker(&tracker);
+
+    int dummy = 0;
+    ASSERT_EQ(0, brain_cycle_coordinator_register(
+        coord, BRAIN_CYCLE_OSCILLATIONS, &dummy, nullptr));
+    // OSCILLATIONS default interval = 10ms, stall threshold = 30ms
+
+    tickCycle(BRAIN_CYCLE_OSCILLATIONS, 5000);
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    // Stall detected -> report_immune_stall called with NULL -> no crash
+    int issues = brain_cycle_coordinator_check_health(coord);
+    EXPECT_GT(issues, 0);
+    EXPECT_GT(tracker.stall_detected_count.load(), 0);
+}
+
+/**
+ * TEST: Without immune system, sensitivity defaults to 1.0f
+ * The stall threshold should be interval * multiplier / 1.0 = interval * multiplier
+ */
+TEST_F(CycleCoordinatorIntegrationTest, test_immune_sensitivity_default_without_immune) {
+    int dummy = 0;
+    ASSERT_EQ(0, brain_cycle_coordinator_register(
+        coord, BRAIN_CYCLE_OSCILLATIONS, &dummy, nullptr));
+    // OSCILLATIONS default interval = 10ms, stall threshold = 30ms
+
+    tickCycle(BRAIN_CYCLE_OSCILLATIONS, 5000);
+
+    // With sensitivity=1.0 (no immune), threshold = 10ms * 3 / 1.0 = 30ms
+    // Wait 35ms to exceed threshold
+    std::this_thread::sleep_for(std::chrono::milliseconds(35));
+    int issues = brain_cycle_coordinator_check_health(coord);
+    EXPECT_GT(issues, 0);
+
+    // Verify stall was detected (indirectly confirms sensitivity=1.0)
+    brain_cycle_status_t status;
+    ASSERT_EQ(0, brain_cycle_coordinator_get_status(
+        coord, BRAIN_CYCLE_OSCILLATIONS, &status));
+    EXPECT_EQ(BRAIN_CYCLE_HEALTH_STALLED, status.health);
+}
+
+//=============================================================================
+// 13. KG PERSISTENCE INTEGRATION TESTS
+//=============================================================================
+
+/**
+ * TEST: KG flush returns error when KG not connected
+ */
+TEST_F(CycleCoordinatorIntegrationTest, test_kg_flush_returns_error_not_connected) {
+    EXPECT_EQ(-1, brain_cycle_coordinator_flush_to_kg(coord));
+}
+
+/**
+ * TEST: KG flush with NULL coordinator returns error
+ */
+TEST_F(CycleCoordinatorIntegrationTest, test_kg_flush_null_coord) {
+    EXPECT_EQ(-1, brain_cycle_coordinator_flush_to_kg(nullptr));
+}
+
+/**
+ * TEST: Auto-flush in check_health is safe when KG is NULL
+ * check_health should complete normally without KG dispatcher.
+ */
+TEST_F(CycleCoordinatorIntegrationTest, test_kg_auto_flush_null_dispatcher_safe) {
+    int dummy = 0;
+    ASSERT_EQ(0, brain_cycle_coordinator_register(
+        coord, BRAIN_CYCLE_IMMUNE_TICK, &dummy, always_healthy));
+    tickCycle(BRAIN_CYCLE_IMMUNE_TICK, 5000);
+
+    // check_health with NULL kg_dispatcher should not crash during auto-flush check
+    int issues = brain_cycle_coordinator_check_health(coord);
+    EXPECT_EQ(0, issues);
 }

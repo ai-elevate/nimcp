@@ -37,7 +37,7 @@ static nimcp_health_agent_t* g_fractal_health_agent = NULL;
  * @brief Set health agent for fractal heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void fractal_set_health_agent(nimcp_health_agent_t* agent) {
+void fractal_set_health_agent(nimcp_health_agent_t* agent) {
     g_fractal_health_agent = agent;
 }
 
@@ -95,6 +95,10 @@ static bool validate_input(const float* samples, size_t count, size_t min_requir
 //=============================================================================
 
 fractal_config_t fractal_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    fractal_heartbeat("fractal_config_default", 0.0f);
+
+
     fractal_config_t config = {
         .min_scale = FRACTAL_DEFAULT_MIN_SCALE,
         .max_scale = 0,  /* Auto-determined from N/4 */
@@ -128,6 +132,10 @@ bool fractal_config_validate(const fractal_config_t* config) {
     }
 
     /* Validate scale parameters */
+    /* Phase 8: Heartbeat at operation start */
+    fractal_heartbeat("fractal_config_validate", 0.0f);
+
+
     if (config->min_scale < 4) {
         return false;
     }
@@ -167,6 +175,12 @@ static float compute_mean(const float* data, size_t count) {
 
     double sum = 0.0;
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            fractal_heartbeat("fractal_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         sum += (double)data[i];
     }
     return (float)(sum / (double)count);
@@ -182,6 +196,12 @@ static float compute_variance(const float* data, size_t count, float mean) {
 
     double sum_sq = 0.0;
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            fractal_heartbeat("fractal_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         double diff = (double)data[i] - (double)mean;
         sum_sq += diff * diff;
     }
@@ -220,6 +240,12 @@ static bool linear_regression(const float* x, const float* y, size_t n, linear_f
     double sum_xx = 0.0, sum_xy = 0.0;
 
     for (size_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            fractal_heartbeat("fractal_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         sum_x += (double)x[i];
         sum_y += (double)y[i];
         sum_xx += (double)x[i] * (double)x[i];
@@ -243,6 +269,12 @@ static bool linear_regression(const float* x, const float* y, size_t n, linear_f
     /* Compute R^2 */
     double ss_tot = 0.0, ss_res = 0.0;
     for (size_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            fractal_heartbeat("fractal_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         double y_pred = fit->slope * (double)x[i] + fit->intercept;
         double diff_tot = (double)y[i] - mean_y;
         double diff_res = (double)y[i] - y_pred;
@@ -303,14 +335,32 @@ static bool polynomial_fit(const float* x, const float* y, size_t n, int order, 
     memset(b, 0, sizeof(double) * (size_t)p);
 
     for (size_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            fractal_heartbeat("fractal_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         double xi = (double)x[i];
         double yi = (double)y[i];
         double xpow = 1.0;
 
         for (int j = 0; j < p; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && p > 256) {
+                fractal_heartbeat("fractal_loop",
+                                 (float)(j + 1) / (float)p);
+            }
+
             b[j] += xpow * yi;
             double xpow2 = 1.0;
             for (int k = 0; k < p; k++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((k & 0xFF) == 0 && p > 256) {
+                    fractal_heartbeat("fractal_loop",
+                                     (float)(k + 1) / (float)p);
+                }
+
                 A[j * p + k] += xpow * xpow2;
                 xpow2 *= xi;
             }
@@ -320,6 +370,12 @@ static bool polynomial_fit(const float* x, const float* y, size_t n, int order, 
 
     /* Solve via Gaussian elimination with partial pivoting */
     for (int i = 0; i < p; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && p > 256) {
+            fractal_heartbeat("fractal_loop",
+                             (float)(i + 1) / (float)p);
+        }
+
         /* Find pivot */
         int max_row = i;
         double max_val = fabs(A[i * p + i]);
@@ -339,6 +395,12 @@ static bool polynomial_fit(const float* x, const float* y, size_t n, int order, 
         /* Swap rows */
         if (max_row != i) {
             for (int j = 0; j < p; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && p > 256) {
+                    fractal_heartbeat("fractal_loop",
+                                     (float)(j + 1) / (float)p);
+                }
+
                 double tmp = A[i * p + j];
                 A[i * p + j] = A[max_row * p + j];
                 A[max_row * p + j] = tmp;
@@ -409,6 +471,12 @@ static void generate_scales(size_t min_scale, size_t max_scale, size_t num_scale
         double log_step = (log_max - log_min) / (double)(num_scales - 1);
 
         for (size_t i = 0; i < num_scales; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_scales > 256) {
+                fractal_heartbeat("fractal_loop",
+                                 (float)(i + 1) / (float)num_scales);
+            }
+
             scales[i] = (size_t)exp(log_min + (double)i * log_step);
             if (scales[i] < min_scale) {
                 scales[i] = min_scale;
@@ -417,6 +485,12 @@ static void generate_scales(size_t min_scale, size_t max_scale, size_t num_scale
     } else {
         double step = (double)(max_scale - min_scale) / (double)(num_scales - 1);
         for (size_t i = 0; i < num_scales; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_scales > 256) {
+                fractal_heartbeat("fractal_loop",
+                                 (float)(i + 1) / (float)num_scales);
+            }
+
             scales[i] = min_scale + (size_t)((double)i * step);
         }
     }
@@ -443,6 +517,12 @@ static bool validate_input(const float* samples, size_t count, size_t min_requir
 
     /* Check for NaN/Inf */
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            fractal_heartbeat("fractal_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (!isfinite(samples[i])) {
             return false;
         }
@@ -472,6 +552,10 @@ int fractal_hurst_rs(
             "fractal_hurst_rs: result is NULL");
         return FRACTAL_ERROR_NULL_PTR;
     }
+    /* Phase 8: Heartbeat at operation start */
+    fractal_heartbeat("fractal_hurst_rs", 0.0f);
+
+
     if (count < FRACTAL_MIN_SAMPLES) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
             "fractal_hurst_rs: insufficient samples");
@@ -522,6 +606,12 @@ int fractal_hurst_rs(
     /* Compute R/S for each scale */
     size_t valid_scales = 0;
     for (size_t si = 0; si < cfg.num_scales; si++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((si & 0xFF) == 0 && cfg.num_scales > 256) {
+            fractal_heartbeat("fractal_loop",
+                             (float)(si + 1) / (float)cfg.num_scales);
+        }
+
         size_t n = scales[si];
         if (n > count || n < 4) {
             continue;
@@ -536,6 +626,12 @@ int fractal_hurst_rs(
         size_t rs_count = 0;
 
         for (size_t seg = 0; seg < num_segments; seg++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((seg & 0xFF) == 0 && num_segments > 256) {
+                fractal_heartbeat("fractal_loop",
+                                 (float)(seg + 1) / (float)num_segments);
+            }
+
             const float* segment = samples + seg * n;
 
             /* Compute mean */
@@ -553,6 +649,12 @@ int fractal_hurst_rs(
             float min_cumsum = FLT_MAX;
 
             for (size_t i = 0; i < n; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && n > 256) {
+                    fractal_heartbeat("fractal_loop",
+                                     (float)(i + 1) / (float)n);
+                }
+
                 cumsum += segment[i] - mean;
                 if (cumsum > max_cumsum) max_cumsum = cumsum;
                 if (cumsum < min_cumsum) min_cumsum = cumsum;
@@ -630,6 +732,10 @@ int fractal_dfa(
             "fractal_dfa: result is NULL");
         return FRACTAL_ERROR_NULL_PTR;
     }
+    /* Phase 8: Heartbeat at operation start */
+    fractal_heartbeat("fractal_dfa", 0.0f);
+
+
     if (count < FRACTAL_MIN_SAMPLES) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
             "fractal_dfa: insufficient samples");
@@ -673,6 +779,12 @@ int fractal_dfa(
 
     float cumsum = 0.0f;
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            fractal_heartbeat("fractal_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (cfg.dfa_remove_mean) {
             cumsum += samples[i] - mean;
         } else {
@@ -706,6 +818,12 @@ int fractal_dfa(
     /* Compute fluctuation for each scale */
     size_t valid_scales = 0;
     for (size_t si = 0; si < cfg.num_scales; si++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((si & 0xFF) == 0 && cfg.num_scales > 256) {
+            fractal_heartbeat("fractal_loop",
+                             (float)(si + 1) / (float)cfg.num_scales);
+        }
+
         size_t n = scales[si];
         if (n > count || n < (size_t)(cfg.dfa_poly_order + 2)) {
             continue;
@@ -718,6 +836,12 @@ int fractal_dfa(
 
         /* Create x values for polynomial fit (0, 1, 2, ..., n-1) */
         for (size_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                fractal_heartbeat("fractal_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             x_seg[i] = (float)i;
         }
 
@@ -726,7 +850,19 @@ int fractal_dfa(
 
         /* Process segments from both ends for better statistics */
         for (int direction = 0; direction < 2; direction++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((direction & 0xFF) == 0 && 2 > 256) {
+                fractal_heartbeat("fractal_loop",
+                                 (float)(direction + 1) / (float)2);
+            }
+
             for (size_t seg = 0; seg < num_segments; seg++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((seg & 0xFF) == 0 && num_segments > 256) {
+                    fractal_heartbeat("fractal_loop",
+                                     (float)(seg + 1) / (float)num_segments);
+                }
+
                 const float* y_seg;
                 if (direction == 0) {
                     y_seg = y + seg * n;
@@ -746,6 +882,12 @@ int fractal_dfa(
                 /* Compute fluctuation: F^2 = (1/n) * sum((y - y_fit)^2) */
                 double f2 = 0.0;
                 for (size_t i = 0; i < n; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && n > 256) {
+                        fractal_heartbeat("fractal_loop",
+                                         (float)(i + 1) / (float)n);
+                    }
+
                     float y_fit = polyval(coeffs, cfg.dfa_poly_order, x_seg[i]);
                     float diff = y_seg[i] - y_fit;
                     f2 += (double)(diff * diff);
@@ -821,6 +963,10 @@ int fractal_spectral_exponent(
     size_t count,
     fractal_result_t* result
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fractal_heartbeat("fractal_spectral_exponent", 0.0f);
+
+
     return fractal_spectral_exponent_config(samples, count, NULL, result);
 }
 
@@ -841,6 +987,10 @@ int fractal_spectral_exponent_config(
             "fractal_spectral_exponent: result is NULL");
         return FRACTAL_ERROR_NULL_PTR;
     }
+    /* Phase 8: Heartbeat at operation start */
+    fractal_heartbeat("fractal_spectral_exponent_co", 0.0f);
+
+
     if (count < FRACTAL_MIN_SAMPLES) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
             "fractal_spectral_exponent: insufficient samples");
@@ -904,6 +1054,12 @@ int fractal_spectral_exponent_config(
     /* Remove mean */
     float mean = compute_mean(windowed, fft_size);
     for (size_t i = 0; i < fft_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && fft_size > 256) {
+            fractal_heartbeat("fractal_loop",
+                             (float)(i + 1) / (float)fft_size);
+        }
+
         windowed[i] -= mean;
     }
 
@@ -1029,6 +1185,10 @@ int fractal_box_dimension(
             "fractal_box_dimension: result is NULL");
         return FRACTAL_ERROR_NULL_PTR;
     }
+    /* Phase 8: Heartbeat at operation start */
+    fractal_heartbeat("fractal_box_dimension", 0.0f);
+
+
     if (count < FRACTAL_MIN_SAMPLES) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
             "fractal_box_dimension: insufficient samples");
@@ -1097,6 +1257,12 @@ int fractal_box_dimension(
     /* Count boxes at each scale */
     size_t valid_scales = 0;
     for (size_t si = 0; si < num_scales; si++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((si & 0xFF) == 0 && num_scales > 256) {
+            fractal_heartbeat("fractal_loop",
+                             (float)(si + 1) / (float)num_scales);
+        }
+
         size_t box_size = scales[si];
         if (box_size < 2 || box_size > count) {
             continue;
@@ -1127,6 +1293,12 @@ int fractal_box_dimension(
         }
 
         for (size_t i = 0; i < count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && count > 256) {
+                fractal_heartbeat("fractal_loop",
+                                 (float)(i + 1) / (float)count);
+            }
+
             size_t x_box = i / box_size;
             size_t y_box = (size_t)((samples[i] - y_min) / epsilon_y);
             if (y_box >= num_y_boxes) y_box = num_y_boxes - 1;
@@ -1196,6 +1368,10 @@ float fractal_lacunarity(
             "fractal_lacunarity: samples is NULL");
         return -1.0f;
     }
+    /* Phase 8: Heartbeat at operation start */
+    fractal_heartbeat("fractal_lacunarity", 0.0f);
+
+
     if (count == 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
             "fractal_lacunarity: count is zero");
@@ -1222,6 +1398,12 @@ float fractal_lacunarity(
     /* Compute first window sum */
     double window_sum = 0.0;
     for (size_t i = 0; i < box_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && box_size > 256) {
+            fractal_heartbeat("fractal_loop",
+                             (float)(i + 1) / (float)box_size);
+        }
+
         window_sum += (double)samples[i];
     }
     mass_sum += window_sum;
@@ -1273,6 +1455,10 @@ int fractal_lacunarity_curve(
             "fractal_lacunarity_curve: lacunarities is NULL");
         return FRACTAL_ERROR_NULL_PTR;
     }
+    /* Phase 8: Heartbeat at operation start */
+    fractal_heartbeat("fractal_lacunarity_curve", 0.0f);
+
+
     if (num_scales == 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
             "fractal_lacunarity_curve: num_scales is zero");
@@ -1316,6 +1502,12 @@ int fractal_lacunarity_curve(
 
     /* Compute lacunarity at each scale */
     for (size_t i = 0; i < num_scales; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_scales > 256) {
+            fractal_heartbeat("fractal_loop",
+                             (float)(i + 1) / (float)num_scales);
+        }
+
         scales[i] = (float)scale_vals[i];
         lacunarities[i] = fractal_lacunarity(samples, count, scale_vals[i]);
     }
@@ -1347,6 +1539,10 @@ int fractal_multifractal_spectrum(
             "fractal_multifractal_spectrum: spectrum output is NULL");
         return FRACTAL_ERROR_NULL_PTR;
     }
+    /* Phase 8: Heartbeat at operation start */
+    fractal_heartbeat("fractal_multifractal_spectru", 0.0f);
+
+
     if (count < FRACTAL_MIN_SAMPLES) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
             "fractal_multifractal_spectrum: insufficient samples");
@@ -1393,6 +1589,12 @@ int fractal_multifractal_spectrum(
     /* Generate q values */
     float q_step = (q_max - q_min) / (float)(q_steps - 1);
     for (size_t i = 0; i < q_steps; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && q_steps > 256) {
+            fractal_heartbeat("fractal_loop",
+                             (float)(i + 1) / (float)q_steps);
+        }
+
         mf->q_values[i] = q_min + (float)i * q_step;
     }
 
@@ -1408,6 +1610,12 @@ int fractal_multifractal_spectrum(
 
     float cumsum = 0.0f;
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            fractal_heartbeat("fractal_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         cumsum += samples[i] - mean;
         y[i] = cumsum;
     }
@@ -1440,11 +1648,23 @@ int fractal_multifractal_spectrum(
 
     /* For each q, compute h(q) */
     for (size_t qi = 0; qi < q_steps; qi++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((qi & 0xFF) == 0 && q_steps > 256) {
+            fractal_heartbeat("fractal_loop",
+                             (float)(qi + 1) / (float)q_steps);
+        }
+
         float q = mf->q_values[qi];
 
         size_t valid_scales = 0;
 
         for (size_t si = 0; si < num_scales; si++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((si & 0xFF) == 0 && num_scales > 256) {
+                fractal_heartbeat("fractal_loop",
+                                 (float)(si + 1) / (float)num_scales);
+            }
+
             size_t n = scales[si];
             if (n > count || n < 4) {
                 continue;
@@ -1457,6 +1677,12 @@ int fractal_multifractal_spectrum(
 
             /* Create x values */
             for (size_t i = 0; i < n; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && n > 256) {
+                    fractal_heartbeat("fractal_loop",
+                                     (float)(i + 1) / (float)n);
+                }
+
                 x_seg[i] = (float)i;
             }
 
@@ -1464,6 +1690,12 @@ int fractal_multifractal_spectrum(
             size_t seg_count = 0;
 
             for (size_t seg = 0; seg < num_segments; seg++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((seg & 0xFF) == 0 && num_segments > 256) {
+                    fractal_heartbeat("fractal_loop",
+                                     (float)(seg + 1) / (float)num_segments);
+                }
+
                 const float* y_seg = y + seg * n;
 
                 /* Linear fit for detrending */
@@ -1474,6 +1706,12 @@ int fractal_multifractal_spectrum(
                 /* Compute variance of residuals */
                 double var = 0.0;
                 for (size_t i = 0; i < n; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && n > 256) {
+                        fractal_heartbeat("fractal_loop",
+                                         (float)(i + 1) / (float)n);
+                    }
+
                     float y_fit = polyval(coeffs, 1, x_seg[i]);
                     float diff = y_seg[i] - y_fit;
                     var += (double)(diff * diff);
@@ -1527,6 +1765,12 @@ int fractal_multifractal_spectrum(
 
     /* Compute D(q) = tau(q)/(q-1) and f(alpha), alpha via Legendre transform */
     for (size_t i = 0; i < q_steps; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && q_steps > 256) {
+            fractal_heartbeat("fractal_loop",
+                             (float)(i + 1) / (float)q_steps);
+        }
+
         float q = mf->q_values[i];
 
         /* D(q) = tau(q)/(q-1) for q != 1 */
@@ -1575,6 +1819,12 @@ int fractal_multifractal_spectrum(
 
     /* Find h(q=2) for monofractal estimate */
     for (size_t i = 0; i < q_steps; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && q_steps > 256) {
+            fractal_heartbeat("fractal_loop",
+                             (float)(i + 1) / (float)q_steps);
+        }
+
         if (fabsf(mf->q_values[i] - 2.0f) < fabsf(mf->q_values[0] - 2.0f)) {
             mf->h_mono = mf->h_q[i];
         }
@@ -1584,6 +1834,12 @@ int fractal_multifractal_spectrum(
     float left_sum = 0.0f, right_sum = 0.0f;
     size_t peak_idx = f_max_idx;
     for (size_t i = 0; i < peak_idx; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && peak_idx > 256) {
+            fractal_heartbeat("fractal_loop",
+                             (float)(i + 1) / (float)peak_idx);
+        }
+
         left_sum += mf->f_alpha[i];
     }
     for (size_t i = peak_idx + 1; i < q_steps; i++) {
@@ -1615,6 +1871,10 @@ void multifractal_spectrum_destroy(multifractal_spectrum_t* spectrum) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    fractal_heartbeat("fractal_multifractal_spectru", 0.0f);
+
+
     free(spectrum->q_values);
     free(spectrum->tau_q);
     free(spectrum->h_q);
@@ -1640,6 +1900,10 @@ bool fractal_is_pink_noise(
 
             return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    fractal_heartbeat("fractal_is_pink_noise", 0.0f);
+
+
     if (tolerance <= 0.0f || tolerance > 1.0f) {
         tolerance = FRACTAL_PINK_NOISE_TOLERANCE;
     }
@@ -1666,6 +1930,10 @@ bool fractal_is_self_similar(
 
             return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    fractal_heartbeat("fractal_is_self_similar", 0.0f);
+
+
     if (min_scales < 4) {
         min_scales = 4;
     }
@@ -1695,7 +1963,17 @@ bool fractal_validate_signal(
     }
 
     /* Check for NaN/Inf */
+    /* Phase 8: Heartbeat at operation start */
+    fractal_heartbeat("fractal_validate_signal", 0.0f);
+
+
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            fractal_heartbeat("fractal_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (!isfinite(samples[i])) {
             return false;
         }
@@ -1731,6 +2009,10 @@ int fractal_analyze(
     if (!fractal_validate_signal(samples, count)) {
         return FRACTAL_ERROR_QUALITY;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    fractal_heartbeat("fractal_analyze", 0.0f);
+
 
     fractal_result_t dfa_result, rs_result, spectral_result, box_result;
     memset(result, 0, sizeof(fractal_result_t));
@@ -1794,6 +2076,10 @@ void fractal_result_print(const fractal_result_t* result) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    fractal_heartbeat("fractal_result_print", 0.0f);
+
+
     printf("=== Fractal Analysis Results ===\n");
     printf("Samples analyzed: %u\n", result->samples_analyzed);
     printf("Scales computed:  %u\n", result->scales_computed);
@@ -1817,6 +2103,10 @@ void multifractal_spectrum_print(const multifractal_spectrum_t* spectrum) {
         printf("Multifractal Spectrum: NULL\n");
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    fractal_heartbeat("fractal_multifractal_spectru", 0.0f);
+
 
     printf("=== Multifractal Spectrum ===\n");
     printf("Spectrum size: %zu q-values\n", spectrum->spectrum_size);
@@ -1842,6 +2132,10 @@ size_t fractal_estimate_sample_requirement(
 ) {
     /* Based on empirical requirements for stable estimates */
     /* Higher confidence requires more samples */
+    /* Phase 8: Heartbeat at operation start */
+    fractal_heartbeat("fractal_estimate_sample_requ", 0.0f);
+
+
     if (confidence_target < 0.9f) {
         confidence_target = 0.9f;
     }
@@ -1877,6 +2171,10 @@ void fractal_convert_exponents(
     float* spectral_out,
     float* dimension_out
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fractal_heartbeat("fractal_convert_exponents", 0.0f);
+
+
     if (dfa_out) {
         *dfa_out = hurst;  /* H ~ alpha for stationary signals */
     }

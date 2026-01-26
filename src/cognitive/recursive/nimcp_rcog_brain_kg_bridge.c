@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_rcog_brain_kg_bridge_health_agent = NULL;
  * @brief Set health agent for rcog_brain_kg_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void rcog_brain_kg_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void rcog_brain_kg_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_rcog_brain_kg_bridge_health_agent = agent;
 }
 
@@ -125,6 +125,10 @@ static rcog_kg_node_id_t generate_node_id(rcog_kg_node_type_t type) {
  *===========================================================================*/
 
 rcog_brain_kg_bridge_config_t rcog_brain_kg_bridge_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_default_config", 0.0f);
+
+
     rcog_brain_kg_bridge_config_t config = {0};
 
     config.auto_register_on_connect = true;
@@ -146,6 +150,10 @@ rcog_brain_kg_bridge_config_t rcog_brain_kg_bridge_default_config(void) {
 rcog_brain_kg_bridge_t* rcog_brain_kg_bridge_create(
     const rcog_brain_kg_bridge_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_create", 0.0f);
+
+
     rcog_brain_kg_bridge_t* bridge = nimcp_calloc(1, sizeof(rcog_brain_kg_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -173,6 +181,10 @@ rcog_brain_kg_bridge_t* rcog_brain_kg_bridge_create(
 }
 
 rcog_brain_kg_bridge_t* rcog_brain_kg_bridge_create_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_create_default", 0.0f);
+
+
     return rcog_brain_kg_bridge_create(NULL);
 }
 
@@ -182,6 +194,10 @@ void rcog_brain_kg_bridge_destroy(rcog_brain_kg_bridge_t* bridge) {
     }
 
     /* Cleanup base bridge infrastructure */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_destroy", 0.0f);
+
+
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
@@ -198,6 +214,10 @@ int rcog_brain_kg_bridge_connect(
     if (!bridge || !kg) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_connect", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->kg = kg;
@@ -225,6 +245,10 @@ int rcog_brain_kg_bridge_connect_reader(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_connect_reader", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->reader = reader;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -240,6 +264,10 @@ int rcog_brain_kg_bridge_connect_engine(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_connect_engine", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->engine = engine;
     bridge->connected = (bridge->kg != NULL && bridge->engine != NULL);
@@ -249,6 +277,10 @@ int rcog_brain_kg_bridge_connect_engine(
 }
 
 bool rcog_brain_kg_bridge_is_connected(const rcog_brain_kg_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_is_connected", 0.0f);
+
+
     return bridge && bridge->connected;
 }
 
@@ -263,6 +295,10 @@ int rcog_brain_kg_bridge_update(
     if (!bridge) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_update", 0.0f);
+
 
     uint64_t now = nimcp_platform_time_monotonic_ms();
 
@@ -281,6 +317,12 @@ int rcog_brain_kg_bridge_update(
 
     /* Invalidate stale capability cache entries */
     for (size_t i = 0; i < bridge->num_capabilities; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_capabilities > 256) {
+            rcog_brain_kg_bridge_heartbeat("rcog_brain_k_loop",
+                             (float)(i + 1) / (float)bridge->num_capabilities);
+        }
+
         if (bridge->capabilities[i].valid) {
             uint64_t age = now - bridge->capabilities[i].cached_at_ms;
             if (age > bridge->config.capability_cache_ttl_ms) {
@@ -299,6 +341,12 @@ int rcog_brain_kg_bridge_update(
     /* Count connected modules */
     uint32_t connected = 0;
     for (int i = 0; i < RCOG_KG_NODE_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && RCOG_KG_NODE_COUNT > 256) {
+            rcog_brain_kg_bridge_heartbeat("rcog_brain_k_loop",
+                             (float)(i + 1) / (float)RCOG_KG_NODE_COUNT);
+        }
+
         if (bridge->registered_nodes[i].registered) {
             connected++;
         }
@@ -324,6 +372,10 @@ int rcog_brain_kg_bridge_register_engine(
     if (!bridge || !node_id) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_register_engine", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -375,6 +427,10 @@ int rcog_brain_kg_bridge_register_component(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_register_component", 0.0f);
+
+
     if (component_type < 0 || component_type >= RCOG_KG_NODE_COUNT) {
         return RCOG_ERROR_INVALID_CONFIG;
     }
@@ -413,6 +469,10 @@ int rcog_brain_kg_bridge_register_capability(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_register_capability", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->num_capabilities >= RCOG_KG_MAX_CAPABILITIES) {
@@ -422,6 +482,12 @@ int rcog_brain_kg_bridge_register_capability(
 
     /* Check for duplicate */
     for (size_t i = 0; i < bridge->num_capabilities; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_capabilities > 256) {
+            rcog_brain_kg_bridge_heartbeat("rcog_brain_k_loop",
+                             (float)(i + 1) / (float)bridge->num_capabilities);
+        }
+
         if (bridge->capabilities[i].info.name &&
             capability->name &&
             strcmp(bridge->capabilities[i].info.name, capability->name) == 0) {
@@ -459,6 +525,10 @@ int rcog_brain_kg_bridge_create_edge(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_create_edge", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->kg) {
@@ -489,6 +559,10 @@ int rcog_brain_kg_bridge_update_state(
     if (!bridge || !state) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_update_state", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -522,6 +596,10 @@ int rcog_brain_kg_bridge_set_property(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_set_property", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->kg) {
@@ -553,6 +631,10 @@ int rcog_brain_kg_bridge_query_capabilities(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_query_capabilities", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     size_t to_copy = bridge->num_capabilities;
@@ -561,6 +643,12 @@ int rcog_brain_kg_bridge_query_capabilities(
     }
 
     for (size_t i = 0; i < to_copy; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && to_copy > 256) {
+            rcog_brain_kg_bridge_heartbeat("rcog_brain_k_loop",
+                             (float)(i + 1) / (float)to_copy);
+        }
+
         capabilities[i] = bridge->capabilities[i].info;
     }
     *num_capabilities = to_copy;
@@ -580,9 +668,19 @@ bool rcog_brain_kg_bridge_has_capability(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_has_capability", 0.0f);
+
+
     nimcp_mutex_lock(((rcog_brain_kg_bridge_t*)bridge)->base.mutex);
 
     for (size_t i = 0; i < bridge->num_capabilities; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_capabilities > 256) {
+            rcog_brain_kg_bridge_heartbeat("rcog_brain_k_loop",
+                             (float)(i + 1) / (float)bridge->num_capabilities);
+        }
+
         if (bridge->capabilities[i].valid &&
             bridge->capabilities[i].info.name &&
             strcmp(bridge->capabilities[i].info.name, capability_name) == 0 &&
@@ -610,6 +708,10 @@ int rcog_brain_kg_bridge_load_semantic_knowledge(
     if (!bridge || !context_store || !variable_name || !query) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_load_semantic_knowle", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -641,6 +743,10 @@ int rcog_brain_kg_bridge_semantic_query(
     if (!bridge || !query || !result) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_semantic_query", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -676,6 +782,10 @@ void rcog_brain_kg_bridge_free_semantic_result(
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_free_semantic_result", 0.0f);
+
+
     if (result->result_data) {
         nimcp_free(result->result_data);
         result->result_data = NULL;
@@ -697,6 +807,10 @@ int rcog_brain_kg_bridge_get_focus(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_get_focus", 0.0f);
+
+
     nimcp_mutex_lock(((rcog_brain_kg_bridge_t*)bridge)->base.mutex);
 
     strncpy(focus, bridge->current_focus, max_len - 1);
@@ -713,6 +827,10 @@ float rcog_brain_kg_bridge_get_system_health(
     if (!bridge) {
         return 0.0f;
     }
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_get_system_health", 0.0f);
+
+
     return bridge->system_health;
 }
 
@@ -728,6 +846,10 @@ int rcog_brain_kg_bridge_get_connected_modules(
 
     /* Placeholder - would query KG for connected modules */
     *num_modules = 0;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_get_connected_module", 0.0f);
+
+
     (void)max_modules;
 
     return RCOG_OK;
@@ -745,6 +867,10 @@ int rcog_brain_kg_bridge_get_outgoing_effects(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_get_outgoing_effects", 0.0f);
+
+
     nimcp_mutex_lock(((rcog_brain_kg_bridge_t*)bridge)->base.mutex);
     *effects = bridge->outgoing_effects;
     nimcp_mutex_unlock(((rcog_brain_kg_bridge_t*)bridge)->base.mutex);
@@ -759,6 +885,10 @@ int rcog_brain_kg_bridge_get_incoming_effects(
     if (!bridge || !effects) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_get_incoming_effects", 0.0f);
+
 
     nimcp_mutex_lock(((rcog_brain_kg_bridge_t*)bridge)->base.mutex);
     *effects = bridge->incoming_effects;
@@ -779,6 +909,10 @@ int rcog_brain_kg_bridge_get_stats(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(((rcog_brain_kg_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(((rcog_brain_kg_bridge_t*)bridge)->base.mutex);
@@ -791,6 +925,10 @@ void rcog_brain_kg_bridge_reset_stats(rcog_brain_kg_bridge_t* bridge) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(rcog_brain_kg_bridge_stats_t));
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -802,9 +940,19 @@ void rcog_brain_kg_bridge_reset_stats(rcog_brain_kg_bridge_t* bridge) {
 
 int rcog_brain_kg_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_brain_kg_bridge_heartbeat("rcog_brain_k_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Recursive_Cognition_Brain_KG_Bridge_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                rcog_brain_kg_bridge_heartbeat("rcog_brain_k_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Log self-knowledge observations */
         }
     }

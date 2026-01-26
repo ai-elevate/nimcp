@@ -37,7 +37,7 @@ static nimcp_health_agent_t* g_gt_learning_health_agent = NULL;
  * @brief Set health agent for gt_learning heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void gt_learning_set_health_agent(nimcp_health_agent_t* agent) {
+void gt_learning_set_health_agent(nimcp_health_agent_t* agent) {
     g_gt_learning_health_agent = agent;
 }
 
@@ -163,6 +163,12 @@ static uint32_t sample_distribution(const float* probs, uint32_t n, unsigned int
     float cumsum = 0.0f;
 
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         cumsum += probs[i];
         if (r < cumsum) {
             return i;
@@ -191,6 +197,12 @@ static void softmax(const float* values, float* probs, uint32_t n, float tempera
     /* Compute exp and sum */
     float sum = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         probs[i] = expf((values[i] - max_val) / temperature);
         sum += probs[i];
     }
@@ -198,12 +210,24 @@ static void softmax(const float* values, float* probs, uint32_t n, float tempera
     /* Normalize */
     if (sum > 0.0f) {
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                gt_learning_heartbeat("gt_learning_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             probs[i] /= sum;
         }
     } else {
         /* Uniform fallback */
         float uniform = 1.0f / (float)n;
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                gt_learning_heartbeat("gt_learning_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             probs[i] = uniform;
         }
     }
@@ -323,6 +347,12 @@ static nimcp_gt_regret_table_t regret_table_create(uint32_t num_info_sets, uint3
 
     /* Allocate regret/strategy arrays for each info set */
     for (uint32_t i = 0; i < num_info_sets; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_info_sets > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(i + 1) / (float)num_info_sets);
+        }
+
         table->entries[i].cumulative_regret = nimcp_calloc(max_actions, sizeof(float));
         table->entries[i].cumulative_strategy = nimcp_calloc(max_actions, sizeof(float));
         table->entries[i].num_actions = max_actions;
@@ -346,6 +376,12 @@ static void regret_table_destroy(nimcp_gt_regret_table_t table) {
     if (!table) return;
 
     for (uint32_t i = 0; i < table->num_info_sets; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && table->num_info_sets > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(i + 1) / (float)table->num_info_sets);
+        }
+
         nimcp_free(table->entries[i].cumulative_regret);
         nimcp_free(table->entries[i].cumulative_strategy);
     }
@@ -357,6 +393,12 @@ static void regret_table_reset(nimcp_gt_regret_table_t table) {
     if (!table) return;
 
     for (uint32_t i = 0; i < table->num_info_sets; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && table->num_info_sets > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(i + 1) / (float)table->num_info_sets);
+        }
+
         if (table->entries[i].cumulative_regret) {
             memset(table->entries[i].cumulative_regret, 0,
                    table->max_actions * sizeof(float));
@@ -374,6 +416,10 @@ static void regret_table_reset(nimcp_gt_regret_table_t table) {
 //=============================================================================
 
 nimcp_gt_learning_config_t nimcp_gt_learning_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_learning_default_", 0.0f);
+
+
     nimcp_gt_learning_config_t config = {
         .method = NIMCP_GT_LEARN_Q_LEARNING,
         .explore = NIMCP_GT_EXPLORE_EPSILON_GREEDY,
@@ -445,6 +491,10 @@ nimcp_gt_learner_t nimcp_gt_learner_create(
     if (!config || num_states == 0 || num_actions == 0) {
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_learner_create", 0.0f);
+
 
     if (num_states > NIMCP_GT_MAX_STATES || num_actions > NIMCP_GT_MAX_ACTIONS) {
         return NULL;
@@ -518,6 +568,12 @@ nimcp_gt_learner_t nimcp_gt_learner_create(
 
     /* Initialize EXP3 weights to 1 */
     for (uint32_t i = 0; i < num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_actions > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(i + 1) / (float)num_actions);
+        }
+
         learner->exp3_weights[i] = 1.0f;
     }
 
@@ -561,6 +617,10 @@ nimcp_gt_learner_t nimcp_gt_learner_create(
 void nimcp_gt_learner_destroy(nimcp_gt_learner_t learner) {
     if (!learner) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_learner_destroy", 0.0f);
+
+
     nimcp_platform_mutex_destroy(&learner->mutex);
     nimcp_gt_opponent_model_cleanup(&learner->opponent_model);
     nimcp_free(learner->our_action_history);
@@ -578,6 +638,10 @@ nimcp_error_t nimcp_gt_learner_reset(nimcp_gt_learner_t learner) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_learner_reset", 0.0f);
+
+
     nimcp_platform_mutex_lock(&learner->mutex);
 
     /* Reset Q-table */
@@ -593,6 +657,12 @@ nimcp_error_t nimcp_gt_learner_reset(nimcp_gt_learner_t learner) {
 
     /* Reset EXP3 weights */
     for (uint32_t i = 0; i < learner->config.num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && learner->config.num_actions > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(i + 1) / (float)learner->config.num_actions);
+        }
+
         learner->exp3_weights[i] = 1.0f;
     }
 
@@ -632,6 +702,10 @@ nimcp_error_t nimcp_gt_learner_update(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_learner_update", 0.0f);
+
+
     if (state >= learner->config.num_states ||
         action >= learner->config.num_actions ||
         next_state >= learner->config.num_states) {
@@ -649,6 +723,12 @@ nimcp_error_t nimcp_gt_learner_update(
     /* Find max Q(s', a') for Q-learning */
     float max_next_q = 0.0f;
     for (uint32_t a = 0; a < learner->config.num_actions; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && learner->config.num_actions > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(a + 1) / (float)learner->config.num_actions);
+        }
+
         nimcp_gt_q_entry_t* next_entry = get_q_entry(learner->q_table, next_state, a);
         if (next_entry && next_entry->value > max_next_q) {
             max_next_q = next_entry->value;
@@ -697,6 +777,10 @@ nimcp_error_t nimcp_gt_learner_update_sarsa(
     if (!learner) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_learner_update_sa", 0.0f);
+
 
     if (state >= learner->config.num_states ||
         action >= learner->config.num_actions ||
@@ -748,6 +832,10 @@ nimcp_error_t nimcp_gt_learner_select_action(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_learner_select_ac", 0.0f);
+
+
     if (state >= learner->config.num_states) {
         return NIMCP_GT_ERROR_INVALID_STATE_IDX;
     }
@@ -768,6 +856,12 @@ nimcp_error_t nimcp_gt_learner_select_action(
                 /* Exploit: greedy action */
                 float best_q = -FLT_MAX;
                 for (uint32_t a = 0; a < num_actions; a++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((a & 0xFF) == 0 && num_actions > 256) {
+                        gt_learning_heartbeat("gt_learning_loop",
+                                         (float)(a + 1) / (float)num_actions);
+                    }
+
                     nimcp_gt_q_entry_t* entry = get_q_entry(learner->q_table, state, a);
                     if (entry && entry->value > best_q) {
                         best_q = entry->value;
@@ -785,6 +879,12 @@ nimcp_error_t nimcp_gt_learner_select_action(
 
             if (q_values && probs) {
                 for (uint32_t a = 0; a < num_actions; a++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((a & 0xFF) == 0 && num_actions > 256) {
+                        gt_learning_heartbeat("gt_learning_loop",
+                                         (float)(a + 1) / (float)num_actions);
+                    }
+
                     nimcp_gt_q_entry_t* entry = get_q_entry(learner->q_table, state, a);
                     q_values[a] = entry ? entry->value : 0.0f;
                 }
@@ -805,6 +905,12 @@ nimcp_error_t nimcp_gt_learner_select_action(
             float log_t = logf((float)total_visits);
 
             for (uint32_t a = 0; a < num_actions; a++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((a & 0xFF) == 0 && num_actions > 256) {
+                    gt_learning_heartbeat("gt_learning_loop",
+                                     (float)(a + 1) / (float)num_actions);
+                }
+
                 nimcp_gt_q_entry_t* entry = get_q_entry(learner->q_table, state, a);
                 float q = entry ? entry->value : 0.0f;
                 uint32_t n = entry ? entry->visit_count : 0;
@@ -829,6 +935,12 @@ nimcp_error_t nimcp_gt_learner_select_action(
             float best_sample = -FLT_MAX;
 
             for (uint32_t a = 0; a < num_actions; a++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((a & 0xFF) == 0 && num_actions > 256) {
+                    gt_learning_heartbeat("gt_learning_loop",
+                                     (float)(a + 1) / (float)num_actions);
+                }
+
                 nimcp_gt_q_entry_t* entry = get_q_entry(learner->q_table, state, a);
                 float mean = entry ? entry->value : 0.0f;
                 float var = entry ? entry->variance : 1.0f;
@@ -879,6 +991,10 @@ nimcp_error_t nimcp_gt_learner_select_greedy(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_learner_select_gr", 0.0f);
+
+
     if (state >= learner->config.num_states) {
         return NIMCP_GT_ERROR_INVALID_STATE_IDX;
     }
@@ -889,6 +1005,12 @@ nimcp_error_t nimcp_gt_learner_select_greedy(
     uint32_t best_action = 0;
 
     for (uint32_t a = 0; a < learner->config.num_actions; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && learner->config.num_actions > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(a + 1) / (float)learner->config.num_actions);
+        }
+
         nimcp_gt_q_entry_t* entry = get_q_entry(learner->q_table, state, a);
         if (entry && entry->value > best_q) {
             best_q = entry->value;
@@ -909,6 +1031,10 @@ float nimcp_gt_learner_get_q_value(
 ) {
     if (!learner) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_learner_get_q_val", 0.0f);
+
+
     nimcp_platform_mutex_lock(&((nimcp_gt_learner_t)learner)->mutex);
 
     nimcp_gt_q_entry_t* entry = get_q_entry(learner->q_table, state, action);
@@ -927,6 +1053,10 @@ nimcp_error_t nimcp_gt_learner_set_q_value(
     if (!learner) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_learner_set_q_val", 0.0f);
+
 
     if (state >= learner->config.num_states || action >= learner->config.num_actions) {
         return NIMCP_GT_ERROR_INVALID_STATE_IDX;
@@ -952,6 +1082,10 @@ nimcp_error_t nimcp_gt_learner_get_strategy(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_learner_get_strat", 0.0f);
+
+
     if (state >= learner->config.num_states) {
         return NIMCP_GT_ERROR_INVALID_STATE_IDX;
     }
@@ -968,6 +1102,12 @@ nimcp_error_t nimcp_gt_learner_get_strategy(
     }
 
     for (uint32_t a = 0; a < num_actions; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && num_actions > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(a + 1) / (float)num_actions);
+        }
+
         nimcp_gt_q_entry_t* entry = get_q_entry(learner->q_table, state, a);
         q_values[a] = entry ? entry->value : 0.0f;
     }
@@ -999,6 +1139,10 @@ nimcp_error_t nimcp_gt_cfr_update(
     if (!learner->regret_table) {
         return NIMCP_GT_ERROR_NOT_INITIALIZED;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_cfr_update", 0.0f);
+
 
     if (info_set >= learner->regret_table->num_info_sets) {
         return NIMCP_GT_ERROR_INVALID_INFO_SET;
@@ -1049,6 +1193,12 @@ nimcp_error_t nimcp_gt_cfr_update(
         /* Uniform strategy if no positive regrets */
         float uniform = 1.0f / (float)num_actions;
         for (uint32_t i = 0; i < num_actions; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_actions > 256) {
+                gt_learning_heartbeat("gt_learning_loop",
+                                 (float)(i + 1) / (float)num_actions);
+            }
+
             strategy[i] = uniform;
         }
     }
@@ -1056,6 +1206,12 @@ nimcp_error_t nimcp_gt_cfr_update(
     /* Compute counterfactual value (expected utility) */
     float cfv = 0.0f;
     for (uint32_t i = 0; i < num_actions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_actions > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(i + 1) / (float)num_actions);
+        }
+
         cfv += strategy[i] * utilities[i];
     }
 
@@ -1086,6 +1242,12 @@ nimcp_error_t nimcp_gt_cfr_update(
     /* Update stats */
     float total_regret = 0.0f;
     for (uint32_t a = 0; a < entry->num_actions; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && entry->num_actions > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(a + 1) / (float)entry->num_actions);
+        }
+
         float r = entry->cumulative_regret[a];
         if (r > 0.0f) {
             total_regret += r;
@@ -1112,6 +1274,10 @@ nimcp_error_t nimcp_gt_cfr_get_strategy(
         return NIMCP_GT_ERROR_INVALID_INFO_SET;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_cfr_get_strategy", 0.0f);
+
+
     nimcp_platform_mutex_lock(&((nimcp_gt_learner_t)learner)->mutex);
 
     nimcp_gt_regret_entry_t* entry = get_regret_entry(learner->regret_table, info_set);
@@ -1123,6 +1289,12 @@ nimcp_error_t nimcp_gt_cfr_get_strategy(
     /* Regret matching */
     float positive_regret_sum = 0.0f;
     for (uint32_t a = 0; a < entry->num_actions; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && entry->num_actions > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(a + 1) / (float)entry->num_actions);
+        }
+
         float r = entry->cumulative_regret[a];
         if (learner->config.use_cfr_plus) {
             r = fmaxf(r, 0.0f);
@@ -1134,6 +1306,12 @@ nimcp_error_t nimcp_gt_cfr_get_strategy(
 
     if (positive_regret_sum > learner->config.regret_matching_epsilon) {
         for (uint32_t a = 0; a < entry->num_actions; a++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((a & 0xFF) == 0 && entry->num_actions > 256) {
+                gt_learning_heartbeat("gt_learning_loop",
+                                 (float)(a + 1) / (float)entry->num_actions);
+            }
+
             float r = entry->cumulative_regret[a];
             if (learner->config.use_cfr_plus) {
                 r = fmaxf(r, 0.0f);
@@ -1143,6 +1321,12 @@ nimcp_error_t nimcp_gt_cfr_get_strategy(
     } else {
         float uniform = 1.0f / (float)entry->num_actions;
         for (uint32_t a = 0; a < entry->num_actions; a++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((a & 0xFF) == 0 && entry->num_actions > 256) {
+                gt_learning_heartbeat("gt_learning_loop",
+                                 (float)(a + 1) / (float)entry->num_actions);
+            }
+
             strategy_out[a] = uniform;
         }
     }
@@ -1164,6 +1348,10 @@ nimcp_error_t nimcp_gt_cfr_get_average_strategy(
         return NIMCP_GT_ERROR_INVALID_INFO_SET;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_cfr_get_average_s", 0.0f);
+
+
     nimcp_platform_mutex_lock(&((nimcp_gt_learner_t)learner)->mutex);
 
     nimcp_gt_regret_entry_t* entry = get_regret_entry(learner->regret_table, info_set);
@@ -1175,16 +1363,34 @@ nimcp_error_t nimcp_gt_cfr_get_average_strategy(
     /* Normalize cumulative strategy */
     float strategy_sum = 0.0f;
     for (uint32_t a = 0; a < entry->num_actions; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && entry->num_actions > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(a + 1) / (float)entry->num_actions);
+        }
+
         strategy_sum += entry->cumulative_strategy[a];
     }
 
     if (strategy_sum > learner->config.regret_matching_epsilon) {
         for (uint32_t a = 0; a < entry->num_actions; a++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((a & 0xFF) == 0 && entry->num_actions > 256) {
+                gt_learning_heartbeat("gt_learning_loop",
+                                 (float)(a + 1) / (float)entry->num_actions);
+            }
+
             strategy_out[a] = entry->cumulative_strategy[a] / strategy_sum;
         }
     } else {
         float uniform = 1.0f / (float)entry->num_actions;
         for (uint32_t a = 0; a < entry->num_actions; a++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((a & 0xFF) == 0 && entry->num_actions > 256) {
+                gt_learning_heartbeat("gt_learning_loop",
+                                 (float)(a + 1) / (float)entry->num_actions);
+            }
+
             strategy_out[a] = uniform;
         }
     }
@@ -1201,6 +1407,10 @@ float nimcp_gt_cfr_get_regret(
         return 0.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_cfr_get_regret", 0.0f);
+
+
     if (info_set >= learner->regret_table->num_info_sets) {
         return 0.0f;
     }
@@ -1212,6 +1422,12 @@ float nimcp_gt_cfr_get_regret(
 
     if (entry) {
         for (uint32_t a = 0; a < entry->num_actions; a++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((a & 0xFF) == 0 && entry->num_actions > 256) {
+                gt_learning_heartbeat("gt_learning_loop",
+                                 (float)(a + 1) / (float)entry->num_actions);
+            }
+
             float r = entry->cumulative_regret[a];
             if (r > 0.0f) {
                 total += r;
@@ -1234,6 +1450,10 @@ nimcp_error_t nimcp_gt_fictitious_play_update(
     if (!learner) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_fictitious_play_u", 0.0f);
+
 
     if (opponent_action >= learner->config.num_actions) {
         return NIMCP_GT_ERROR_INVALID_ACTION_IDX;
@@ -1268,6 +1488,10 @@ nimcp_error_t nimcp_gt_fictitious_play_predict(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_fictitious_play_p", 0.0f);
+
+
     nimcp_platform_mutex_lock(&((nimcp_gt_learner_t)learner)->mutex);
 
     if (learner->total_opponent_observations == 0) {
@@ -1291,17 +1515,33 @@ nimcp_error_t nimcp_gt_fictitious_play_get_distribution(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_fictitious_play_g", 0.0f);
+
+
     nimcp_platform_mutex_lock(&((nimcp_gt_learner_t)learner)->mutex);
 
     if (learner->total_opponent_observations == 0) {
         /* Uniform prior */
         float uniform = 1.0f / (float)learner->config.num_actions;
         for (uint32_t a = 0; a < learner->config.num_actions; a++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((a & 0xFF) == 0 && learner->config.num_actions > 256) {
+                gt_learning_heartbeat("gt_learning_loop",
+                                 (float)(a + 1) / (float)learner->config.num_actions);
+            }
+
             distribution_out[a] = uniform;
         }
     } else {
         float total = (float)learner->total_opponent_observations;
         for (uint32_t a = 0; a < learner->config.num_actions; a++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((a & 0xFF) == 0 && learner->config.num_actions > 256) {
+                gt_learning_heartbeat("gt_learning_loop",
+                                 (float)(a + 1) / (float)learner->config.num_actions);
+            }
+
             distribution_out[a] = (float)learner->opponent_action_counts[a] / total;
         }
     }
@@ -1320,6 +1560,10 @@ nimcp_error_t nimcp_gt_fictitious_play_best_response(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_fictitious_play_b", 0.0f);
+
+
     (void)state;  /* State not used in basic fictitious play */
 
     nimcp_platform_mutex_lock(&((nimcp_gt_learner_t)learner)->mutex);
@@ -1336,11 +1580,23 @@ nimcp_error_t nimcp_gt_fictitious_play_best_response(
     if (learner->total_opponent_observations == 0) {
         float uniform = 1.0f / (float)num_actions;
         for (uint32_t a = 0; a < num_actions; a++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((a & 0xFF) == 0 && num_actions > 256) {
+                gt_learning_heartbeat("gt_learning_loop",
+                                 (float)(a + 1) / (float)num_actions);
+            }
+
             opp_dist[a] = uniform;
         }
     } else {
         float total = (float)learner->total_opponent_observations;
         for (uint32_t a = 0; a < num_actions; a++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((a & 0xFF) == 0 && num_actions > 256) {
+                gt_learning_heartbeat("gt_learning_loop",
+                                 (float)(a + 1) / (float)num_actions);
+            }
+
             opp_dist[a] = (float)learner->opponent_action_counts[a] / total;
         }
     }
@@ -1350,8 +1606,20 @@ nimcp_error_t nimcp_gt_fictitious_play_best_response(
     uint32_t best_action = 0;
 
     for (uint32_t our_a = 0; our_a < num_actions; our_a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((our_a & 0xFF) == 0 && num_actions > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(our_a + 1) / (float)num_actions);
+        }
+
         float expected = 0.0f;
         for (uint32_t opp_a = 0; opp_a < num_actions; opp_a++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((opp_a & 0xFF) == 0 && num_actions > 256) {
+                gt_learning_heartbeat("gt_learning_loop",
+                                 (float)(opp_a + 1) / (float)num_actions);
+            }
+
             /* Row-major: payoff_matrix[our_a * num_actions + opp_a] */
             expected += opp_dist[opp_a] * payoff_matrix[our_a * num_actions + opp_a];
         }
@@ -1381,6 +1649,10 @@ nimcp_error_t nimcp_gt_exp3_update(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_exp3_update", 0.0f);
+
+
     if (action >= learner->config.num_actions) {
         return NIMCP_GT_ERROR_INVALID_ACTION_IDX;
     }
@@ -1393,6 +1665,12 @@ nimcp_error_t nimcp_gt_exp3_update(
     /* Compute current probabilities */
     float weight_sum = 0.0f;
     for (uint32_t a = 0; a < num_actions; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && num_actions > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(a + 1) / (float)num_actions);
+        }
+
         weight_sum += learner->exp3_weights[a];
     }
 
@@ -1414,6 +1692,12 @@ nimcp_error_t nimcp_gt_exp3_update(
     }
     if (max_weight > 1e6f) {
         for (uint32_t a = 0; a < num_actions; a++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((a & 0xFF) == 0 && num_actions > 256) {
+                gt_learning_heartbeat("gt_learning_loop",
+                                 (float)(a + 1) / (float)num_actions);
+            }
+
             learner->exp3_weights[a] /= max_weight;
         }
     }
@@ -1432,6 +1716,10 @@ nimcp_error_t nimcp_gt_exp3_select(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_exp3_select", 0.0f);
+
+
     nimcp_platform_mutex_lock(&learner->mutex);
 
     uint32_t num_actions = learner->config.num_actions;
@@ -1440,10 +1728,22 @@ nimcp_error_t nimcp_gt_exp3_select(
     /* Compute probabilities */
     float weight_sum = 0.0f;
     for (uint32_t a = 0; a < num_actions; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && num_actions > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(a + 1) / (float)num_actions);
+        }
+
         weight_sum += learner->exp3_weights[a];
     }
 
     for (uint32_t a = 0; a < num_actions; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && num_actions > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(a + 1) / (float)num_actions);
+        }
+
         learner->exp3_probabilities[a] = (1.0f - gamma) *
                                           (learner->exp3_weights[a] / weight_sum) +
                                           gamma / (float)num_actions;
@@ -1467,6 +1767,10 @@ nimcp_error_t nimcp_gt_exp3_get_probabilities(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_exp3_get_probabil", 0.0f);
+
+
     nimcp_platform_mutex_lock(&((nimcp_gt_learner_t)learner)->mutex);
 
     uint32_t num_actions = learner->config.num_actions;
@@ -1474,10 +1778,22 @@ nimcp_error_t nimcp_gt_exp3_get_probabilities(
 
     float weight_sum = 0.0f;
     for (uint32_t a = 0; a < num_actions; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && num_actions > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(a + 1) / (float)num_actions);
+        }
+
         weight_sum += learner->exp3_weights[a];
     }
 
     for (uint32_t a = 0; a < num_actions; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && num_actions > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(a + 1) / (float)num_actions);
+        }
+
         probabilities_out[a] = (1.0f - gamma) *
                                 (learner->exp3_weights[a] / weight_sum) +
                                 gamma / (float)num_actions;
@@ -1501,6 +1817,10 @@ nimcp_error_t nimcp_gt_model_opponent(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_model_opponent", 0.0f);
+
+
     if (history_len == 0) {
         return NIMCP_GT_ERROR_EMPTY_HISTORY;
     }
@@ -1514,6 +1834,12 @@ nimcp_error_t nimcp_gt_model_opponent(
 
     /* Count action frequencies */
     for (uint32_t i = 0; i < history_len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && history_len > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(i + 1) / (float)history_len);
+        }
+
         if (history[i] < num_actions) {
             model_out->action_counts[history[i]]++;
         }
@@ -1522,6 +1848,12 @@ nimcp_error_t nimcp_gt_model_opponent(
 
     /* Compute action predictions (empirical distribution) */
     for (uint32_t a = 0; a < num_actions; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && num_actions > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(a + 1) / (float)num_actions);
+        }
+
         model_out->action_predictions[a] = (float)model_out->action_counts[a] /
                                             (float)history_len;
     }
@@ -1530,6 +1862,12 @@ nimcp_error_t nimcp_gt_model_opponent(
     /* Compute entropy of action distribution */
     float entropy = 0.0f;
     for (uint32_t a = 0; a < num_actions; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && num_actions > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(a + 1) / (float)num_actions);
+        }
+
         float p = model_out->action_predictions[a];
         if (p > 1e-6f) {
             entropy -= p * logf(p);
@@ -1541,6 +1879,12 @@ nimcp_error_t nimcp_gt_model_opponent(
     /* Initialize uniform priors */
     float prior = learner->config.type_prior_strength / (float)NIMCP_GT_OPPONENT_COUNT;
     for (uint32_t t = 0; t < NIMCP_GT_OPPONENT_COUNT; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && NIMCP_GT_OPPONENT_COUNT > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(t + 1) / (float)NIMCP_GT_OPPONENT_COUNT);
+        }
+
         model_out->type_beliefs[t] = prior;
     }
 
@@ -1587,9 +1931,21 @@ nimcp_error_t nimcp_gt_model_opponent(
     /* Normalize beliefs */
     float belief_sum = 0.0f;
     for (uint32_t t = 0; t < NIMCP_GT_OPPONENT_COUNT; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && NIMCP_GT_OPPONENT_COUNT > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(t + 1) / (float)NIMCP_GT_OPPONENT_COUNT);
+        }
+
         belief_sum += model_out->type_beliefs[t];
     }
     for (uint32_t t = 0; t < NIMCP_GT_OPPONENT_COUNT; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && NIMCP_GT_OPPONENT_COUNT > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(t + 1) / (float)NIMCP_GT_OPPONENT_COUNT);
+        }
+
         model_out->type_beliefs[t] /= belief_sum;
     }
 
@@ -1597,6 +1953,12 @@ nimcp_error_t nimcp_gt_model_opponent(
     model_out->predicted_type = NIMCP_GT_OPPONENT_UNKNOWN;
     float max_belief = 0.0f;
     for (uint32_t t = 0; t < NIMCP_GT_OPPONENT_COUNT; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && NIMCP_GT_OPPONENT_COUNT > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(t + 1) / (float)NIMCP_GT_OPPONENT_COUNT);
+        }
+
         if (model_out->type_beliefs[t] > max_belief) {
             max_belief = model_out->type_beliefs[t];
             model_out->predicted_type = (nimcp_gt_opponent_type_t)t;
@@ -1616,6 +1978,10 @@ nimcp_error_t nimcp_gt_update_opponent_model(
     if (!learner) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_update_opponent_m", 0.0f);
+
 
     if (our_action >= learner->config.num_actions ||
         opponent_action >= learner->config.num_actions) {
@@ -1667,6 +2033,10 @@ nimcp_error_t nimcp_gt_get_opponent_model(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_get_opponent_mode", 0.0f);
+
+
     nimcp_platform_mutex_lock(&((nimcp_gt_learner_t)learner)->mutex);
 
     /* Copy model (shallow copy of pointers is OK since we copy the data) */
@@ -1700,6 +2070,10 @@ nimcp_error_t nimcp_gt_predict_opponent_action(
     if (!learner || !prediction_out) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_predict_opponent_", 0.0f);
+
 
     nimcp_platform_mutex_lock(&((nimcp_gt_learner_t)learner)->mutex);
 
@@ -1764,6 +2138,10 @@ nimcp_error_t nimcp_gt_learner_advance_schedule(nimcp_gt_learner_t learner) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_learner_advance_s", 0.0f);
+
+
     nimcp_platform_mutex_lock(&learner->mutex);
 
     learner->schedule_step++;
@@ -1827,11 +2205,19 @@ nimcp_error_t nimcp_gt_learner_advance_schedule(nimcp_gt_learner_t learner) {
 
 float nimcp_gt_learner_get_learning_rate(const nimcp_gt_learner_t learner) {
     if (!learner) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_learner_get_learn", 0.0f);
+
+
     return learner->current_learning_rate;
 }
 
 float nimcp_gt_learner_get_exploration_rate(const nimcp_gt_learner_t learner) {
     if (!learner) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_learner_get_explo", 0.0f);
+
+
     return learner->current_exploration_rate;
 }
 
@@ -1842,6 +2228,10 @@ nimcp_error_t nimcp_gt_learner_set_learning_rate(
     if (!learner) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_learner_set_learn", 0.0f);
+
 
     nimcp_platform_mutex_lock(&learner->mutex);
     learner->current_learning_rate = rate;
@@ -1857,6 +2247,10 @@ nimcp_error_t nimcp_gt_learner_set_exploration_rate(
     if (!learner) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_learner_set_explo", 0.0f);
+
 
     nimcp_platform_mutex_lock(&learner->mutex);
     learner->current_exploration_rate = rate;
@@ -1877,6 +2271,10 @@ nimcp_error_t nimcp_gt_learner_get_stats(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_learner_get_stats", 0.0f);
+
+
     nimcp_platform_mutex_lock(&((nimcp_gt_learner_t)learner)->mutex);
     *stats_out = learner->stats;
     nimcp_platform_mutex_unlock(&((nimcp_gt_learner_t)learner)->mutex);
@@ -1886,6 +2284,10 @@ nimcp_error_t nimcp_gt_learner_get_stats(
 
 void nimcp_gt_learner_reset_stats(nimcp_gt_learner_t learner) {
     if (!learner) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_learner_reset_sta", 0.0f);
+
 
     nimcp_platform_mutex_lock(&learner->mutex);
     memset(&learner->stats, 0, sizeof(nimcp_gt_learning_stats_t));
@@ -1899,6 +2301,10 @@ bool nimcp_gt_learner_has_converged(
     float threshold
 ) {
     if (!learner) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_learner_has_conve", 0.0f);
+
 
     nimcp_platform_mutex_lock(&((nimcp_gt_learner_t)learner)->mutex);
     bool converged = learner->last_max_q_change < threshold;
@@ -1916,6 +2322,10 @@ nimcp_error_t nimcp_gt_compute_exploitability(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_compute_exploitab", 0.0f);
+
+
     nimcp_platform_mutex_lock(&((nimcp_gt_learner_t)learner)->mutex);
 
     uint32_t num_actions = learner->config.num_actions;
@@ -1930,7 +2340,19 @@ nimcp_error_t nimcp_gt_compute_exploitability(
     /* Average strategy across states */
     float count = 0.0f;
     for (uint32_t s = 0; s < learner->config.num_states; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && learner->config.num_states > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(s + 1) / (float)learner->config.num_states);
+        }
+
         for (uint32_t a = 0; a < num_actions; a++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((a & 0xFF) == 0 && num_actions > 256) {
+                gt_learning_heartbeat("gt_learning_loop",
+                                 (float)(a + 1) / (float)num_actions);
+            }
+
             nimcp_gt_q_entry_t* entry = get_q_entry(learner->q_table, s, a);
             if (entry && entry->visit_count > 0) {
                 strategy[a] += entry->value;
@@ -1941,6 +2363,12 @@ nimcp_error_t nimcp_gt_compute_exploitability(
 
     if (count > 0.0f) {
         for (uint32_t a = 0; a < num_actions; a++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((a & 0xFF) == 0 && num_actions > 256) {
+                gt_learning_heartbeat("gt_learning_loop",
+                                 (float)(a + 1) / (float)num_actions);
+            }
+
             strategy[a] /= count;
         }
         /* Convert to probabilities via softmax */
@@ -1948,6 +2376,12 @@ nimcp_error_t nimcp_gt_compute_exploitability(
     } else {
         float uniform = 1.0f / (float)num_actions;
         for (uint32_t a = 0; a < num_actions; a++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((a & 0xFF) == 0 && num_actions > 256) {
+                gt_learning_heartbeat("gt_learning_loop",
+                                 (float)(a + 1) / (float)num_actions);
+            }
+
             strategy[a] = uniform;
         }
     }
@@ -1955,8 +2389,20 @@ nimcp_error_t nimcp_gt_compute_exploitability(
     /* Compute opponent best response value */
     float max_br_value = -FLT_MAX;
     for (uint32_t opp_a = 0; opp_a < num_actions; opp_a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((opp_a & 0xFF) == 0 && num_actions > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(opp_a + 1) / (float)num_actions);
+        }
+
         float br_value = 0.0f;
         for (uint32_t our_a = 0; our_a < num_actions; our_a++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((our_a & 0xFF) == 0 && num_actions > 256) {
+                gt_learning_heartbeat("gt_learning_loop",
+                                 (float)(our_a + 1) / (float)num_actions);
+            }
+
             /* Opponent payoff is -our payoff in zero-sum */
             br_value += strategy[our_a] * (-payoff_matrix[our_a * num_actions + opp_a]);
         }
@@ -1983,11 +2429,21 @@ void nimcp_gt_opponent_model_init(
 ) {
     if (!model) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_opponent_model_in", 0.0f);
+
+
     memset(model, 0, sizeof(nimcp_gt_opponent_model_t));
 
     /* Initialize with uniform beliefs */
     float uniform = 1.0f / (float)NIMCP_GT_OPPONENT_COUNT;
     for (uint32_t t = 0; t < NIMCP_GT_OPPONENT_COUNT; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && NIMCP_GT_OPPONENT_COUNT > 256) {
+            gt_learning_heartbeat("gt_learning_loop",
+                             (float)(t + 1) / (float)NIMCP_GT_OPPONENT_COUNT);
+        }
+
         model->type_beliefs[t] = uniform;
     }
 
@@ -2003,6 +2459,12 @@ void nimcp_gt_opponent_model_init(
         if (model->action_predictions) {
             float uniform_action = 1.0f / (float)num_actions;
             for (uint32_t a = 0; a < num_actions; a++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((a & 0xFF) == 0 && num_actions > 256) {
+                    gt_learning_heartbeat("gt_learning_loop",
+                                     (float)(a + 1) / (float)num_actions);
+                }
+
                 model->action_predictions[a] = uniform_action;
             }
         }
@@ -2011,6 +2473,10 @@ void nimcp_gt_opponent_model_init(
 
 void nimcp_gt_opponent_model_cleanup(nimcp_gt_opponent_model_t* model) {
     if (!model) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_gt_opponent_model_cl", 0.0f);
+
 
     nimcp_free(model->action_predictions);
     nimcp_free(model->action_counts);
@@ -2031,9 +2497,19 @@ void nimcp_gt_opponent_model_cleanup(nimcp_gt_opponent_model_t* model) {
  */
 int gt_learning_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    gt_learning_heartbeat("gt_learning_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "GT_Learning");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                gt_learning_heartbeat("gt_learning_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* GT Learning self-knowledge logged */
         }
     }

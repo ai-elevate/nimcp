@@ -42,7 +42,7 @@ static nimcp_health_agent_t* g_pr_attention_bridge_health_agent = NULL;
  * @brief Set health agent for pr_attention_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void pr_attention_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void pr_attention_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_pr_attention_bridge_health_agent = agent;
 }
 
@@ -165,6 +165,12 @@ static int find_memory_index(
     const pr_memory_node_t* node
 ) {
     for (size_t i = 0; i < bridge->num_attended; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_attended > 256) {
+            pr_attention_bridge_heartbeat("pr_attention_loop",
+                             (float)(i + 1) / (float)bridge->num_attended);
+        }
+
         if (bridge->attended_memories[i].node == node) {
             return (int)i;
         }
@@ -203,6 +209,10 @@ static float inverted_u_attention(float resonance, float fam_thresh, float nov_t
 //=============================================================================
 
 pr_attention_bridge_config_t pr_attention_bridge_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_config_default", 0.0f);
+
+
     pr_attention_bridge_config_t config = {
         // Spatial attention map dimensions
         .spatial_width = PR_ATTN_DEFAULT_SPATIAL_WIDTH,
@@ -256,6 +266,10 @@ bool pr_attention_bridge_config_validate(const pr_attention_bridge_config_t* con
     }
 
     // Spatial dimensions
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_config_validate", 0.0f);
+
+
     if (config->spatial_width == 0 || config->spatial_height == 0) {
         return false;
     }
@@ -307,6 +321,10 @@ pr_attention_bridge_t* pr_attention_bridge_create(
     const pr_attention_bridge_config_t* config
 ) {
     // Use default config if none provided
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_create", 0.0f);
+
+
     pr_attention_bridge_config_t cfg;
     if (config) {
         cfg = *config;
@@ -429,6 +447,10 @@ void pr_attention_bridge_destroy(pr_attention_bridge_t* bridge) {
     }
 
     // Free attention maps
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_destroy", 0.0f);
+
+
     if (bridge->unified_attention_map) {
         free(bridge->unified_attention_map);
     }
@@ -458,6 +480,10 @@ pr_attn_error_t pr_attention_bridge_reset(pr_attention_bridge_t* bridge) {
     }
 
     // Clear attention maps
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_reset", 0.0f);
+
+
     size_t map_size = bridge->spatial_width * bridge->spatial_height *
                       bridge->temporal_depth;
     memset(bridge->unified_attention_map, 0, map_size * sizeof(float));
@@ -505,6 +531,10 @@ pr_attn_error_t pr_attention_bridge_connect_bridges(
         return PR_ATTN_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_connect_bridges", 0.0f);
+
+
     bridge->visual_bridge = visual;
     bridge->audio_bridge = audio;
     bridge->speech_bridge = speech;
@@ -521,6 +551,10 @@ pr_attn_error_t pr_attention_bridge_connect_theta_gamma(
         set_last_error("NULL bridge pointer");
         return PR_ATTN_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_connect_theta_gamma", 0.0f);
+
 
     bridge->theta_gamma = theta_gamma;
 
@@ -539,6 +573,10 @@ pr_attn_error_t pr_attention_bridge_update(
         set_last_error("NULL bridge pointer");
         return PR_ATTN_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_update", 0.0f);
+
 
     pr_attn_error_t err;
 
@@ -618,6 +656,10 @@ pr_attn_error_t pr_attention_bridge_compute_bottom_up(
         return PR_ATTN_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_compute_bottom_up", 0.0f);
+
+
     size_t map_size = bridge->spatial_width * bridge->spatial_height;
     float* bu_map = bridge->bottom_up_map;
 
@@ -641,7 +683,19 @@ pr_attn_error_t pr_attention_bridge_compute_bottom_up(
         float visual_weight = bridge->config.visual_weight / total_weight;
         // Synthetic: center-weighted attention
         for (size_t y = 0; y < bridge->spatial_height; y++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((y & 0xFF) == 0 && bridge->spatial_height > 256) {
+                pr_attention_bridge_heartbeat("pr_attention_loop",
+                                 (float)(y + 1) / (float)bridge->spatial_height);
+            }
+
             for (size_t x = 0; x < bridge->spatial_width; x++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((x & 0xFF) == 0 && bridge->spatial_width > 256) {
+                    pr_attention_bridge_heartbeat("pr_attention_loop",
+                                     (float)(x + 1) / (float)bridge->spatial_width);
+                }
+
                 float cx = (float)x / bridge->spatial_width - 0.5f;
                 float cy = (float)y / bridge->spatial_height - 0.5f;
                 float dist = sqrtf(cx * cx + cy * cy);
@@ -656,6 +710,12 @@ pr_attn_error_t pr_attention_bridge_compute_bottom_up(
         float audio_weight = bridge->config.audio_weight / total_weight;
         // Synthetic: uniform low-level attention (audio is non-spatial)
         for (size_t i = 0; i < map_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && map_size > 256) {
+                pr_attention_bridge_heartbeat("pr_attention_loop",
+                                 (float)(i + 1) / (float)map_size);
+            }
+
             bu_map[i] += 0.1f * audio_weight;
         }
     }
@@ -679,10 +739,22 @@ pr_attn_error_t pr_attention_bridge_compute_bottom_up(
     // Normalize to [0, 1]
     float max_val = 0.0f;
     for (size_t i = 0; i < map_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && map_size > 256) {
+            pr_attention_bridge_heartbeat("pr_attention_loop",
+                             (float)(i + 1) / (float)map_size);
+        }
+
         if (bu_map[i] > max_val) max_val = bu_map[i];
     }
     if (max_val > PR_ATTN_EPSILON) {
         for (size_t i = 0; i < map_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && map_size > 256) {
+                pr_attention_bridge_heartbeat("pr_attention_loop",
+                                 (float)(i + 1) / (float)map_size);
+            }
+
             bu_map[i] /= max_val;
         }
     }
@@ -702,6 +774,10 @@ pr_attn_error_t pr_attention_bridge_compute_top_down(
         return PR_ATTN_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_compute_top_down", 0.0f);
+
+
     size_t map_size = bridge->spatial_width * bridge->spatial_height;
     float* td_map = bridge->top_down_map;
 
@@ -711,6 +787,12 @@ pr_attn_error_t pr_attention_bridge_compute_top_down(
     // If no attended memories, top-down is uniform
     if (bridge->num_attended == 0) {
         for (size_t i = 0; i < map_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && map_size > 256) {
+                pr_attention_bridge_heartbeat("pr_attention_loop",
+                                 (float)(i + 1) / (float)map_size);
+            }
+
             td_map[i] = 0.5f;  // Neutral top-down
         }
         return PR_ATTN_SUCCESS;
@@ -718,6 +800,12 @@ pr_attn_error_t pr_attention_bridge_compute_top_down(
 
     // For each attended memory, generate attention template
     for (size_t m = 0; m < bridge->num_attended; m++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((m & 0xFF) == 0 && bridge->num_attended > 256) {
+            pr_attention_bridge_heartbeat("pr_attention_loop",
+                             (float)(m + 1) / (float)bridge->num_attended);
+        }
+
         pr_attn_memory_entry_t* entry = &bridge->attended_memories[m];
         if (!entry->node || entry->attention_weight < PR_ATTN_EPSILON) {
             continue;
@@ -736,7 +824,19 @@ pr_attn_error_t pr_attention_bridge_compute_top_down(
         float sigma = 0.15f;  // Template spread
 
         for (size_t y = 0; y < bridge->spatial_height; y++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((y & 0xFF) == 0 && bridge->spatial_height > 256) {
+                pr_attention_bridge_heartbeat("pr_attention_loop",
+                                 (float)(y + 1) / (float)bridge->spatial_height);
+            }
+
             for (size_t x = 0; x < bridge->spatial_width; x++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((x & 0xFF) == 0 && bridge->spatial_width > 256) {
+                    pr_attention_bridge_heartbeat("pr_attention_loop",
+                                     (float)(x + 1) / (float)bridge->spatial_width);
+                }
+
                 float dx = (float)x / bridge->spatial_width - cx;
                 float dy = (float)y / bridge->spatial_height - cy;
                 float dist_sq = dx * dx + dy * dy;
@@ -749,10 +849,22 @@ pr_attn_error_t pr_attention_bridge_compute_top_down(
     // Normalize to [0, 1]
     float max_val = 0.0f;
     for (size_t i = 0; i < map_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && map_size > 256) {
+            pr_attention_bridge_heartbeat("pr_attention_loop",
+                             (float)(i + 1) / (float)map_size);
+        }
+
         if (td_map[i] > max_val) max_val = td_map[i];
     }
     if (max_val > PR_ATTN_EPSILON) {
         for (size_t i = 0; i < map_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && map_size > 256) {
+                pr_attention_bridge_heartbeat("pr_attention_loop",
+                                 (float)(i + 1) / (float)map_size);
+            }
+
             td_map[i] /= max_val;
         }
     }
@@ -772,6 +884,10 @@ pr_attn_error_t pr_attention_bridge_fuse_attention(
         return PR_ATTN_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_fuse_attention", 0.0f);
+
+
     size_t map_size = bridge->spatial_width * bridge->spatial_height;
     float* unified = bridge->unified_attention_map;
     float* bu = bridge->bottom_up_map;
@@ -782,6 +898,12 @@ pr_attn_error_t pr_attention_bridge_fuse_attention(
         case PR_ATTN_FUSE_WEIGHTED:
             // Weighted average: unified = alpha * BU + (1-alpha) * TD
             for (size_t i = 0; i < map_size; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && map_size > 256) {
+                    pr_attention_bridge_heartbeat("pr_attention_loop",
+                                     (float)(i + 1) / (float)map_size);
+                }
+
                 unified[i] = alpha * bu[i] + (1.0f - alpha) * td[i];
             }
             break;
@@ -789,6 +911,12 @@ pr_attn_error_t pr_attention_bridge_fuse_attention(
         case PR_ATTN_FUSE_MAX:
             // Maximum: unified = max(BU, TD)
             for (size_t i = 0; i < map_size; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && map_size > 256) {
+                    pr_attention_bridge_heartbeat("pr_attention_loop",
+                                     (float)(i + 1) / (float)map_size);
+                }
+
                 unified[i] = (bu[i] > td[i]) ? bu[i] : td[i];
             }
             break;
@@ -796,6 +924,12 @@ pr_attn_error_t pr_attention_bridge_fuse_attention(
         case PR_ATTN_FUSE_MULTIPLY:
             // Multiplicative: unified = BU * TD (AND-like)
             for (size_t i = 0; i < map_size; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && map_size > 256) {
+                    pr_attention_bridge_heartbeat("pr_attention_loop",
+                                     (float)(i + 1) / (float)map_size);
+                }
+
                 unified[i] = bu[i] * td[i];
             }
             break;
@@ -806,12 +940,24 @@ pr_attn_error_t pr_attention_bridge_fuse_attention(
                 // Compute mean TD as bias
                 float mean_td = 0.0f;
                 for (size_t i = 0; i < map_size; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && map_size > 256) {
+                        pr_attention_bridge_heartbeat("pr_attention_loop",
+                                         (float)(i + 1) / (float)map_size);
+                    }
+
                     mean_td += td[i];
                 }
                 mean_td /= map_size;
 
                 // BU competes, biased by TD
                 for (size_t i = 0; i < map_size; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && map_size > 256) {
+                        pr_attention_bridge_heartbeat("pr_attention_loop",
+                                         (float)(i + 1) / (float)map_size);
+                    }
+
                     float bias = (td[i] > mean_td) ? (td[i] / mean_td) : 1.0f;
                     unified[i] = bu[i] * clampf(bias, 0.5f, 2.0f);
                 }
@@ -821,6 +967,12 @@ pr_attn_error_t pr_attention_bridge_fuse_attention(
         default:
             // Default to weighted
             for (size_t i = 0; i < map_size; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && map_size > 256) {
+                    pr_attention_bridge_heartbeat("pr_attention_loop",
+                                     (float)(i + 1) / (float)map_size);
+                }
+
                 unified[i] = alpha * bu[i] + (1.0f - alpha) * td[i];
             }
             break;
@@ -829,10 +981,22 @@ pr_attn_error_t pr_attention_bridge_fuse_attention(
     // Normalize unified map to [0, 1]
     float max_val = 0.0f;
     for (size_t i = 0; i < map_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && map_size > 256) {
+            pr_attention_bridge_heartbeat("pr_attention_loop",
+                             (float)(i + 1) / (float)map_size);
+        }
+
         if (unified[i] > max_val) max_val = unified[i];
     }
     if (max_val > PR_ATTN_EPSILON) {
         for (size_t i = 0; i < map_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && map_size > 256) {
+                pr_attention_bridge_heartbeat("pr_attention_loop",
+                                 (float)(i + 1) / (float)map_size);
+            }
+
             unified[i] /= max_val;
         }
     }
@@ -861,10 +1025,20 @@ pr_attn_error_t pr_attention_bridge_apply_resonance_boost(
     }
 
     // Compute mean resonance with attended memories
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_apply_resonance_boos", 0.0f);
+
+
     float mean_resonance = 0.0f;
     size_t count = 0;
 
     for (size_t i = 0; i < bridge->num_attended; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_attended > 256) {
+            pr_attention_bridge_heartbeat("pr_attention_loop",
+                             (float)(i + 1) / (float)bridge->num_attended);
+        }
+
         pr_attn_memory_entry_t* entry = &bridge->attended_memories[i];
         if (!entry->node) continue;
 
@@ -942,9 +1116,19 @@ float pr_attention_bridge_compute_familiarity(
         return -1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_compute_familiarity", 0.0f);
+
+
     float max_resonance = 0.0f;
 
     for (size_t i = 0; i < bridge->num_attended; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_attended > 256) {
+            pr_attention_bridge_heartbeat("pr_attention_loop",
+                             (float)(i + 1) / (float)bridge->num_attended);
+        }
+
         pr_attn_memory_entry_t* entry = &bridge->attended_memories[i];
         if (!entry->node) continue;
 
@@ -963,6 +1147,10 @@ float pr_attention_bridge_compute_novelty(
     pr_attention_bridge_t* bridge,
     const resonance_query_t* query
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_compute_novelty", 0.0f);
+
+
     float familiarity = pr_attention_bridge_compute_familiarity(bridge, query);
     if (familiarity < 0.0f) {
         return -1.0f;
@@ -984,6 +1172,10 @@ pr_attn_error_t pr_attention_bridge_update_quaternion_salience(
         set_last_error("NULL pointer argument");
         return PR_ATTN_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_update_quaternion_sa", 0.0f);
+
 
     if (spatial_x >= bridge->spatial_width || spatial_y >= bridge->spatial_height) {
         set_last_error("Invalid spatial coordinates");
@@ -1040,6 +1232,10 @@ pr_attn_error_t pr_attention_bridge_modulate_encoding(
     }
 
     // Get attention weight for this memory
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_modulate_encoding", 0.0f);
+
+
     float attention_weight = 0.5f;  // Default
 
     // If memory is in attended set, use its weight
@@ -1075,14 +1271,36 @@ pr_attn_error_t pr_attention_bridge_get_attention_peak(
         return PR_ATTN_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_get_attention_peak", 0.0f);
+
+
     memset(peak, 0, sizeof(pr_attn_peak_t));
 
     float max_val = -FLT_MAX;
     size_t max_x = 0, max_y = 0, max_t = 0;
 
     for (size_t t = 0; t < bridge->temporal_depth; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && bridge->temporal_depth > 256) {
+            pr_attention_bridge_heartbeat("pr_attention_loop",
+                             (float)(t + 1) / (float)bridge->temporal_depth);
+        }
+
         for (size_t y = 0; y < bridge->spatial_height; y++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((y & 0xFF) == 0 && bridge->spatial_height > 256) {
+                pr_attention_bridge_heartbeat("pr_attention_loop",
+                                 (float)(y + 1) / (float)bridge->spatial_height);
+            }
+
             for (size_t x = 0; x < bridge->spatial_width; x++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((x & 0xFF) == 0 && bridge->spatial_width > 256) {
+                    pr_attention_bridge_heartbeat("pr_attention_loop",
+                                     (float)(x + 1) / (float)bridge->spatial_width);
+                }
+
                 size_t idx = attn_map_index(bridge, x, y, t);
                 if (bridge->unified_attention_map[idx] > max_val) {
                     max_val = bridge->unified_attention_map[idx];
@@ -1124,6 +1342,10 @@ float pr_attention_bridge_get_attention_at(
         return -1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_get_attention_at", 0.0f);
+
+
     if (x >= bridge->spatial_width || y >= bridge->spatial_height ||
         t >= bridge->temporal_depth) {
         return -1.0f;
@@ -1142,21 +1364,49 @@ int pr_attention_bridge_get_top_k_peaks(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_get_top_k_peaks", 0.0f);
+
+
     size_t map_size = bridge->spatial_width * bridge->spatial_height;
     size_t actual_k = (k < map_size) ? k : map_size;
 
     // Simple O(n*k) selection for small k
     // For large k, would use partial sort
     for (size_t i = 0; i < actual_k; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && actual_k > 256) {
+            pr_attention_bridge_heartbeat("pr_attention_loop",
+                             (float)(i + 1) / (float)actual_k);
+        }
+
         peaks[i].attention_value = -FLT_MAX;
     }
 
     for (size_t y = 0; y < bridge->spatial_height; y++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((y & 0xFF) == 0 && bridge->spatial_height > 256) {
+            pr_attention_bridge_heartbeat("pr_attention_loop",
+                             (float)(y + 1) / (float)bridge->spatial_height);
+        }
+
         for (size_t x = 0; x < bridge->spatial_width; x++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((x & 0xFF) == 0 && bridge->spatial_width > 256) {
+                pr_attention_bridge_heartbeat("pr_attention_loop",
+                                 (float)(x + 1) / (float)bridge->spatial_width);
+            }
+
             float val = bridge->unified_attention_map[y * bridge->spatial_width + x];
 
             // Find position to insert
             for (size_t i = 0; i < actual_k; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && actual_k > 256) {
+                    pr_attention_bridge_heartbeat("pr_attention_loop",
+                                     (float)(i + 1) / (float)actual_k);
+                }
+
                 if (val > peaks[i].attention_value) {
                     // Shift down
                     for (size_t j = actual_k - 1; j > i; j--) {
@@ -1182,11 +1432,21 @@ float pr_attention_bridge_get_mean_attention(
         return -1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_get_mean_attention", 0.0f);
+
+
     size_t map_size = bridge->spatial_width * bridge->spatial_height *
                       bridge->temporal_depth;
     float sum = 0.0f;
 
     for (size_t i = 0; i < map_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && map_size > 256) {
+            pr_attention_bridge_heartbeat("pr_attention_loop",
+                             (float)(i + 1) / (float)map_size);
+        }
+
         sum += bridge->unified_attention_map[i];
     }
 
@@ -1209,12 +1469,22 @@ pr_attn_error_t pr_attention_bridge_apply_ior(
         return PR_ATTN_SUCCESS;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_apply_ior", 0.0f);
+
+
     size_t map_size = bridge->spatial_width * bridge->spatial_height;
     float* unified = bridge->unified_attention_map;
     float* ior = bridge->ior_state.ior_map;
 
     // Apply IOR: attention = attention * (1 - ior)
     for (size_t i = 0; i < map_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && map_size > 256) {
+            pr_attention_bridge_heartbeat("pr_attention_loop",
+                             (float)(i + 1) / (float)map_size);
+        }
+
         unified[i] *= (1.0f - ior[i]);
     }
 
@@ -1239,6 +1509,10 @@ pr_attn_error_t pr_attention_bridge_mark_attended(
         return PR_ATTN_SUCCESS;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_mark_attended", 0.0f);
+
+
     if (x >= bridge->spatial_width || y >= bridge->spatial_height) {
         set_last_error("Invalid coordinates");
         return PR_ATTN_ERROR_INVALID_COORDS;
@@ -1250,7 +1524,19 @@ pr_attn_error_t pr_attention_bridge_mark_attended(
 
     // Apply Gaussian inhibition around attended location
     for (size_t iy = 0; iy < bridge->spatial_height; iy++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((iy & 0xFF) == 0 && bridge->spatial_height > 256) {
+            pr_attention_bridge_heartbeat("pr_attention_loop",
+                             (float)(iy + 1) / (float)bridge->spatial_height);
+        }
+
         for (size_t ix = 0; ix < bridge->spatial_width; ix++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((ix & 0xFF) == 0 && bridge->spatial_width > 256) {
+                pr_attention_bridge_heartbeat("pr_attention_loop",
+                                 (float)(ix + 1) / (float)bridge->spatial_width);
+            }
+
             float dx = (float)ix - (float)x;
             float dy = (float)iy - (float)y;
             float dist_sq = dx * dx + dy * dy;
@@ -1279,10 +1565,20 @@ pr_attn_error_t pr_attention_bridge_decay_ior(
         return PR_ATTN_SUCCESS;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_decay_ior", 0.0f);
+
+
     float decay = expf(-dt_ms / bridge->ior_state.decay_tau_ms);
     size_t map_size = bridge->ior_state.width * bridge->ior_state.height;
 
     for (size_t i = 0; i < map_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && map_size > 256) {
+            pr_attention_bridge_heartbeat("pr_attention_loop",
+                             (float)(i + 1) / (float)map_size);
+        }
+
         bridge->ior_state.ior_map[i] *= decay;
     }
 
@@ -1300,6 +1596,10 @@ pr_attn_error_t pr_attention_bridge_clear_ior(
     if (!bridge->ior_state.ior_map) {
         return PR_ATTN_SUCCESS;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_clear_ior", 0.0f);
+
 
     size_t map_size = bridge->ior_state.width * bridge->ior_state.height;
     memset(bridge->ior_state.ior_map, 0, map_size * sizeof(float));
@@ -1320,6 +1620,10 @@ float pr_attention_bridge_compute_alpha_suppression(
     }
 
     // Alpha suppression proportional to mean attention
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_compute_alpha_suppre", 0.0f);
+
+
     float mean_attn = pr_attention_bridge_get_mean_attention(bridge);
     if (mean_attn < 0.0f) {
         mean_attn = 0.5f;
@@ -1339,6 +1643,10 @@ float pr_attention_bridge_get_gamma_enhancement(
         return -1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_get_gamma_enhancemen", 0.0f);
+
+
     return bridge->gamma_enhancement;
 }
 
@@ -1355,6 +1663,10 @@ pr_attn_error_t pr_attention_bridge_modulate_by_theta(
     }
 
     // Get encoding strength from theta phase
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_modulate_by_theta", 0.0f);
+
+
     float encode_strength = theta_gamma_get_encode_strength(bridge->theta_gamma);
     if (encode_strength < 0.0f) {
         return PR_ATTN_ERROR_THETA_GAMMA;
@@ -1366,18 +1678,36 @@ pr_attn_error_t pr_attention_bridge_modulate_by_theta(
     float modulation = 0.5f + 0.5f * encode_strength;
 
     for (size_t i = 0; i < map_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && map_size > 256) {
+            pr_attention_bridge_heartbeat("pr_attention_loop",
+                             (float)(i + 1) / (float)map_size);
+        }
+
         bridge->unified_attention_map[i] *= modulation;
     }
 
     // Renormalize
     float max_val = 0.0f;
     for (size_t i = 0; i < map_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && map_size > 256) {
+            pr_attention_bridge_heartbeat("pr_attention_loop",
+                             (float)(i + 1) / (float)map_size);
+        }
+
         if (bridge->unified_attention_map[i] > max_val) {
             max_val = bridge->unified_attention_map[i];
         }
     }
     if (max_val > PR_ATTN_EPSILON) {
         for (size_t i = 0; i < map_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && map_size > 256) {
+                pr_attention_bridge_heartbeat("pr_attention_loop",
+                                 (float)(i + 1) / (float)map_size);
+            }
+
             bridge->unified_attention_map[i] /= max_val;
         }
     }
@@ -1400,6 +1730,10 @@ pr_attn_error_t pr_attention_bridge_attend_memory(
     }
 
     // Check if already attended
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_attend_memory", 0.0f);
+
+
     int idx = find_memory_index(bridge, node);
     if (idx >= 0) {
         // Update existing entry
@@ -1441,6 +1775,10 @@ pr_attn_error_t pr_attention_bridge_unattend_memory(
         return PR_ATTN_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_unattend_memory", 0.0f);
+
+
     int idx = find_memory_index(bridge, node);
     if (idx < 0) {
         return PR_ATTN_SUCCESS;  // Not found, already unattended
@@ -1469,6 +1807,10 @@ pr_attn_error_t pr_attention_bridge_update_memory_attention(
         return PR_ATTN_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_update_memory_attent", 0.0f);
+
+
     int idx = find_memory_index(bridge, node);
     if (idx < 0) {
         set_last_error("Memory not in attended set");
@@ -1489,6 +1831,10 @@ float pr_attention_bridge_get_memory_attention(
         return -1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_get_memory_attention", 0.0f);
+
+
     int idx = find_memory_index(bridge, node);
     if (idx < 0) {
         return -1.0f;  // Not attended
@@ -1506,13 +1852,29 @@ pr_attn_error_t pr_attention_bridge_decay_memory_attention(
         return PR_ATTN_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_decay_memory_attenti", 0.0f);
+
+
     for (size_t i = 0; i < bridge->num_attended; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_attended > 256) {
+            pr_attention_bridge_heartbeat("pr_attention_loop",
+                             (float)(i + 1) / (float)bridge->num_attended);
+        }
+
         bridge->attended_memories[i].attention_weight *= decay_factor;
     }
 
     // Remove memories with very low attention
     size_t write_idx = 0;
     for (size_t i = 0; i < bridge->num_attended; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_attended > 256) {
+            pr_attention_bridge_heartbeat("pr_attention_loop",
+                             (float)(i + 1) / (float)bridge->num_attended);
+        }
+
         if (bridge->attended_memories[i].attention_weight > 0.01f) {
             if (write_idx != i) {
                 bridge->attended_memories[write_idx] = bridge->attended_memories[i];
@@ -1532,10 +1894,20 @@ pr_memory_node_t* pr_attention_bridge_get_most_attended_memory(
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_get_most_attended_me", 0.0f);
+
+
     float max_weight = -1.0f;
     pr_memory_node_t* max_node = NULL;
 
     for (size_t i = 0; i < bridge->num_attended; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_attended > 256) {
+            pr_attention_bridge_heartbeat("pr_attention_loop",
+                             (float)(i + 1) / (float)bridge->num_attended);
+        }
+
         if (bridge->attended_memories[i].attention_weight > max_weight) {
             max_weight = bridge->attended_memories[i].attention_weight;
             max_node = bridge->attended_memories[i].node;
@@ -1559,6 +1931,10 @@ pr_attn_error_t pr_attention_bridge_get_stats(
     }
 
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_get_stats", 0.0f);
+
+
     return PR_ATTN_SUCCESS;
 }
 
@@ -1569,6 +1945,10 @@ pr_attn_error_t pr_attention_bridge_reset_stats(
         set_last_error("NULL bridge pointer");
         return PR_ATTN_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_reset_stats", 0.0f);
+
 
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     bridge->stats.last_reset_time_ms = get_current_time_ms();
@@ -1581,6 +1961,10 @@ void pr_attention_bridge_print_state(const pr_attention_bridge_t* bridge) {
         printf("pr_attention_bridge: NULL\n");
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_print_state", 0.0f);
+
 
     printf("=== PR Attention Bridge State ===\n");
     printf("Spatial dimensions: %zu x %zu\n",
@@ -1659,5 +2043,9 @@ const char* pr_attn_fusion_mode_name(pr_attn_fusion_mode_t mode) {
 }
 
 uint64_t pr_attn_current_time_ms(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_attention_bridge_heartbeat("pr_attention_pr_attn_current_time", 0.0f);
+
+
     return get_current_time_ms();
 }

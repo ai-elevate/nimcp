@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_salience_plasticity_bridge_health_agent = NULL;
  * @brief Set health agent for salience_plasticity_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void salience_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void salience_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_salience_plasticity_bridge_health_agent = agent;
 }
 
@@ -100,6 +100,12 @@ static salience_plasticity_synapse_t* find_synapse(
     uint32_t synapse_id
 ) {
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            salience_plasticity_bridge_heartbeat("salience_pla_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (bridge->synapses[i].synapse_id == synapse_id) {
             return &bridge->synapses[i];
         }
@@ -112,6 +118,12 @@ static salience_feature_learning_t* find_feature(
     uint32_t feature_index
 ) {
     for (uint32_t i = 0; i < bridge->num_features; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_features > 256) {
+            salience_plasticity_bridge_heartbeat("salience_pla_loop",
+                             (float)(i + 1) / (float)bridge->num_features);
+        }
+
         if (bridge->features[i].feature_index == feature_index) {
             return &bridge->features[i];
         }
@@ -131,6 +143,10 @@ static void apply_weight_bounds(
 //=============================================================================
 
 salience_plasticity_config_t salience_plasticity_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
+
+
     salience_plasticity_config_t config = {
         .stdp_ltp_window_ms = SALIENCE_PLASTICITY_STDP_WINDOW,
         .stdp_ltd_window_ms = SALIENCE_PLASTICITY_STDP_WINDOW,
@@ -183,6 +199,10 @@ salience_plasticity_bridge_t* salience_plasticity_create(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
+
+
     salience_plasticity_bridge_t* bridge = calloc(1, sizeof(salience_plasticity_bridge_t));
     if (!bridge) {
 
@@ -222,6 +242,10 @@ salience_plasticity_bridge_t* salience_plasticity_create(
 void salience_plasticity_destroy(salience_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
+
+
     free(bridge->synapses);
     free(bridge->features);
     free(bridge);
@@ -229,6 +253,10 @@ void salience_plasticity_destroy(salience_plasticity_bridge_t* bridge) {
 
 int salience_plasticity_reset(salience_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
+
 
     bridge->state = SALIENCE_PLASTICITY_STATE_IDLE;
     bridge->num_synapses = 0;
@@ -261,6 +289,10 @@ int salience_plasticity_register_synapse(
 
     if (find_synapse(bridge, synapse_id)) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
+
+
     salience_plasticity_synapse_t* synapse = &bridge->synapses[bridge->num_synapses];
     synapse->synapse_id = synapse_id;
     synapse->type = type;
@@ -283,7 +315,17 @@ int salience_plasticity_unregister_synapse(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
+
+
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            salience_plasticity_bridge_heartbeat("salience_pla_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (bridge->synapses[i].synapse_id == synapse_id) {
             if (i < bridge->num_synapses - 1) {
                 bridge->synapses[i] = bridge->synapses[bridge->num_synapses - 1];
@@ -303,6 +345,10 @@ int salience_plasticity_get_synapse(
 ) {
     if (!bridge || !synapse) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
+
+
     salience_plasticity_synapse_t* found = find_synapse(bridge, synapse_id);
     if (!found) return -1;
 
@@ -321,6 +367,10 @@ int salience_plasticity_attention_event(
     uint64_t timestamp_us
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
+
 
     bridge->state = SALIENCE_PLASTICITY_STATE_ATTENDING;
     bridge->current_attention_level = clamp(attention_strength, 0.0f, 1.0f);
@@ -355,6 +405,12 @@ int salience_plasticity_attention_event(
 
     // Update eligibility traces
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            salience_plasticity_bridge_heartbeat("salience_pla_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (bridge->synapses[i].feature_index == feature_index) {
             bridge->synapses[i].last_pre_spike_us = timestamp_us;
             if (bridge->config.enable_eligibility) {
@@ -379,6 +435,10 @@ int salience_plasticity_attention_feedback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
+
+
     bridge->state = SALIENCE_PLASTICITY_STATE_UPDATING;
 
     // Update feature learning state
@@ -395,6 +455,12 @@ int salience_plasticity_attention_feedback(
 
     // Update synapses
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            salience_plasticity_bridge_heartbeat("salience_pla_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (bridge->synapses[i].feature_index == feature_index) {
             float old_weight = bridge->synapses[i].weight;
             float dw;
@@ -442,6 +508,10 @@ int salience_plasticity_feature_exposure(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
+
+
     salience_feature_learning_t* feature = find_feature(bridge, feature_index);
     if (!feature && bridge->num_features < bridge->max_features) {
         feature = &bridge->features[bridge->num_features++];
@@ -482,6 +552,12 @@ int salience_plasticity_feature_exposure(
 
             // Dishabituation strengthens synapses
             for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+                    salience_plasticity_bridge_heartbeat("salience_pla_loop",
+                                     (float)(i + 1) / (float)bridge->num_synapses);
+                }
+
                 if (bridge->synapses[i].feature_index == feature_index &&
                     bridge->synapses[i].type == SALIENCE_SYNAPSE_HABITUATION) {
                     float old_weight = bridge->synapses[i].weight;
@@ -514,10 +590,20 @@ int salience_plasticity_novelty_response(
 
     if (!bridge->config.enable_novelty_seeking) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
+
+
     bridge->state = SALIENCE_PLASTICITY_STATE_UPDATING;
 
     // Update novelty synapses
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            salience_plasticity_bridge_heartbeat("salience_pla_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (bridge->synapses[i].type == SALIENCE_SYNAPSE_NOVELTY) {
             float old_weight = bridge->synapses[i].weight;
             float dw;
@@ -554,9 +640,19 @@ int salience_plasticity_reward(
 
     if (!bridge->config.enable_eligibility) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
+
+
     bridge->state = SALIENCE_PLASTICITY_STATE_UPDATING;
 
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            salience_plasticity_bridge_heartbeat("salience_pla_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         if (bridge->synapses[i].eligibility_trace > 0.01f) {
             float old_weight = bridge->synapses[i].weight;
             float dw = reward * bridge->synapses[i].eligibility_trace *
@@ -611,9 +707,19 @@ int salience_plasticity_update(
     if (!bridge) return -1;
 
     // Decay eligibility traces
+    /* Phase 8: Heartbeat at operation start */
+    salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
+
+
     if (bridge->config.enable_eligibility) {
         float decay = powf(bridge->config.eligibility_decay, dt_ms);
         for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+                salience_plasticity_bridge_heartbeat("salience_pla_loop",
+                                 (float)(i + 1) / (float)bridge->num_synapses);
+            }
+
             bridge->synapses[i].eligibility_trace *= decay;
         }
     }
@@ -622,11 +728,23 @@ int salience_plasticity_update(
     if (bridge->config.enable_habituation) {
         float hab_decay = expf(-dt_ms / 10000.0f);  // 10 second time constant
         for (uint32_t i = 0; i < bridge->num_features; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->num_features > 256) {
+                salience_plasticity_bridge_heartbeat("salience_pla_loop",
+                                 (float)(i + 1) / (float)bridge->num_features);
+            }
+
             bridge->features[i].habituation_level *= hab_decay;
         }
 
         float total_hab = 0.0f;
         for (uint32_t i = 0; i < bridge->num_features; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->num_features > 256) {
+                salience_plasticity_bridge_heartbeat("salience_pla_loop",
+                                 (float)(i + 1) / (float)bridge->num_features);
+            }
+
             total_hab += bridge->features[i].habituation_level;
         }
         if (bridge->num_features > 0) {
@@ -638,6 +756,12 @@ int salience_plasticity_update(
     if (bridge->config.enable_value_learning) {
         float value_decay = expf(-dt_ms * bridge->config.value_decay_rate);
         for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+                salience_plasticity_bridge_heartbeat("salience_pla_loop",
+                                 (float)(i + 1) / (float)bridge->num_synapses);
+            }
+
             bridge->synapses[i].value_estimate *= value_decay;
         }
     }
@@ -648,6 +772,12 @@ int salience_plasticity_update(
         float activity_decay = expf(-dt_ms / bridge->config.bcm_activity_tau);
 
         for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+                salience_plasticity_bridge_heartbeat("salience_pla_loop",
+                                 (float)(i + 1) / (float)bridge->num_synapses);
+            }
+
             bridge->synapses[i].avg_activity =
                 bridge->synapses[i].avg_activity * activity_decay +
                 bridge->synapses[i].weight * (1.0f - activity_decay);
@@ -676,9 +806,19 @@ int salience_plasticity_update(
 int salience_plasticity_consolidate(salience_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
+
+
     bridge->state = SALIENCE_PLASTICITY_STATE_CONSOLIDATING;
 
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+            salience_plasticity_bridge_heartbeat("salience_pla_loop",
+                             (float)(i + 1) / (float)bridge->num_synapses);
+        }
+
         // Consolidation based on consistent attention and rewards
         if (bridge->synapses[i].attention_count > 10 && bridge->synapses[i].reward_count > 5) {
             float success_rate = (float)bridge->synapses[i].reward_count /
@@ -707,6 +847,10 @@ float salience_plasticity_get_learned_salience(
 ) {
     if (!bridge) return 0.5f;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
+
+
     salience_feature_learning_t* feature = find_feature(bridge, feature_index);
     if (!feature) return 0.5f;
 
@@ -718,6 +862,10 @@ float salience_plasticity_get_habituation(
     uint32_t feature_index
 ) {
     if (!bridge) return 0.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
+
 
     salience_feature_learning_t* feature = find_feature(bridge, feature_index);
     if (!feature) return 0.0f;
@@ -731,6 +879,10 @@ float salience_plasticity_get_value_estimate(
 ) {
     if (!bridge) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
+
+
     salience_feature_learning_t* feature = find_feature(bridge, feature_index);
     if (!feature) return 0.0f;
 
@@ -743,6 +895,10 @@ int salience_plasticity_get_feature_learning(
     salience_feature_learning_t* learning
 ) {
     if (!bridge || !learning) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
+
 
     salience_feature_learning_t* feature = find_feature(bridge, feature_index);
     if (!feature) return -1;
@@ -761,6 +917,10 @@ int salience_plasticity_get_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
+
+
     state->state = bridge->state;
     state->registered_synapses = bridge->num_synapses;
     state->tracked_features = bridge->num_features;
@@ -778,11 +938,19 @@ int salience_plasticity_get_stats(
     if (!bridge || !stats) return -1;
 
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
+
+
     return 0;
 }
 
 void salience_plasticity_reset_stats(salience_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
+
+
     memset(&bridge->stats, 0, sizeof(salience_plasticity_stats_t));
 }
 
@@ -797,6 +965,10 @@ int salience_plasticity_set_weight_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
+
+
     bridge->weight_callback = callback;
     bridge->weight_callback_data = user_data;
     return 0;
@@ -808,6 +980,10 @@ int salience_plasticity_set_habituation_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
+
 
     bridge->habituation_callback = callback;
     bridge->habituation_callback_data = user_data;
@@ -822,6 +998,10 @@ int salience_plasticity_connect_bio_async(salience_plasticity_bridge_t* bridge) 
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
+
+
     bridge->bio_async_connected = true;
     return 0;
 }
@@ -829,11 +1009,19 @@ int salience_plasticity_connect_bio_async(salience_plasticity_bridge_t* bridge) 
 int salience_plasticity_disconnect_bio_async(salience_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
+
+
     bridge->bio_async_connected = false;
     return 0;
 }
 
 bool salience_plasticity_is_bio_async_connected(const salience_plasticity_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
+
+
     return bridge->bio_async_connected;
 }

@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_collective_health_health_agent = NULL;
  * @brief Set health agent for collective_health heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void collective_health_set_health_agent(nimcp_health_agent_t* agent) {
+void collective_health_set_health_agent(nimcp_health_agent_t* agent) {
     g_collective_health_health_agent = agent;
 }
 
@@ -129,6 +129,10 @@ static uint64_t get_time_us(void) {
  * ============================================================================ */
 
 collective_health_config_t collective_health_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    collective_health_heartbeat("collective_h_default_config", 0.0f);
+
+
     collective_health_config_t config = {
         .enable_hyperscanning = true,
         .enable_collective_phi = true,
@@ -160,6 +164,10 @@ collective_health_monitor_t* collective_health_monitor_create(
 
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_health_heartbeat("collective_h_monitor_create", 0.0f);
+
 
     collective_health_monitor_t* monitor = calloc(1, sizeof(collective_health_monitor_t));
     if (!monitor) {
@@ -201,6 +209,10 @@ void collective_health_monitor_destroy(collective_health_monitor_t* monitor) {
     }
 
     /* Stop if running */
+    /* Phase 8: Heartbeat at operation start */
+    collective_health_heartbeat("collective_h_monitor_destroy", 0.0f);
+
+
     if (monitor->running) {
         collective_health_monitor_stop(monitor);
     }
@@ -214,6 +226,10 @@ int collective_health_monitor_start(collective_health_monitor_t* monitor) {
 
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_health_heartbeat("collective_h_monitor_start", 0.0f);
+
 
     if (monitor->running) {
         return 0;  /* Already running */
@@ -246,6 +262,10 @@ int collective_health_monitor_stop(collective_health_monitor_t* monitor) {
     }
 
     /* Unregister from collective if connected */
+    /* Phase 8: Heartbeat at operation start */
+    collective_health_heartbeat("collective_h_monitor_stop", 0.0f);
+
+
     if (monitor->collective) {
         collective_cognition_unregister_instance(
             monitor->collective,
@@ -262,6 +282,10 @@ bool collective_health_monitor_is_running(const collective_health_monitor_t* mon
     if (!monitor) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    collective_health_heartbeat("collective_h_monitor_is_running", 0.0f);
+
+
     return monitor->running;
 }
 
@@ -279,6 +303,10 @@ int collective_health_propose_anomaly(
     }
 
     /* Initialize consensus result */
+    /* Phase 8: Heartbeat at operation start */
+    collective_health_heartbeat("collective_h_propose_anomaly", 0.0f);
+
+
     memset(consensus, 0, sizeof(collective_anomaly_consensus_t));
 
     /* If no collective, auto-approve based on local confidence */
@@ -394,6 +422,10 @@ int collective_health_propose_anomaly_async(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_health_heartbeat("collective_h_propose_anomaly_asyn", 0.0f);
+
+
     if (monitor->num_pending_consensus >= COLLECTIVE_HEALTH_MAX_PENDING_CONSENSUS) {
         return -1;  /* Queue full */
     }
@@ -424,7 +456,17 @@ int collective_health_check_consensus(
     }
 
     /* Find the request */
+    /* Phase 8: Heartbeat at operation start */
+    collective_health_heartbeat("collective_h_check_consensus", 0.0f);
+
+
     for (uint32_t i = 0; i < monitor->num_pending_consensus; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && monitor->num_pending_consensus > 256) {
+            collective_health_heartbeat("collective_h_loop",
+                             (float)(i + 1) / (float)monitor->num_pending_consensus);
+        }
+
         if (monitor->pending_consensus[i].request_id == request_id) {
             pending_consensus_t* pending = &monitor->pending_consensus[i];
 
@@ -489,6 +531,10 @@ int collective_health_vote_anomaly(
 
     /* In a real implementation, this would send a vote to the collective.
      * For now, we just update local state. */
+    /* Phase 8: Heartbeat at operation start */
+    collective_health_heartbeat("collective_h_vote_anomaly", 0.0f);
+
+
     (void)proposal;
     (void)agree;
     (void)confidence;
@@ -508,6 +554,10 @@ int collective_health_get_summary(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_health_heartbeat("collective_h_get_summary", 0.0f);
+
+
     memset(summary, 0, sizeof(collective_health_summary_t));
 
     /* Calculate aggregate health from instance reports */
@@ -519,6 +569,12 @@ int collective_health_get_summary(
     float total_failure_prob = 0.0f;
 
     for (uint32_t i = 0; i < monitor->num_instances; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && monitor->num_instances > 256) {
+            collective_health_heartbeat("collective_h_loop",
+                             (float)(i + 1) / (float)monitor->num_instances);
+        }
+
         const instance_health_report_t* report = &monitor->instance_reports[i];
 
         float weight = monitor->config.use_reliability_weighting ?
@@ -604,7 +660,17 @@ int collective_health_get_instance_report(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_health_heartbeat("collective_h_get_instance_report", 0.0f);
+
+
     for (uint32_t i = 0; i < monitor->num_instances; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && monitor->num_instances > 256) {
+            collective_health_heartbeat("collective_h_loop",
+                             (float)(i + 1) / (float)monitor->num_instances);
+        }
+
         if (monitor->instance_reports[i].instance_id == instance_id) {
             *report = monitor->instance_reports[i];
             return 0;
@@ -623,6 +689,10 @@ int collective_health_get_all_reports(
     if (!monitor || !reports || !num_reports) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_health_heartbeat("collective_h_get_all_reports", 0.0f);
+
 
     uint32_t count = monitor->num_instances;
     if (count > max_reports) {
@@ -647,6 +717,10 @@ int collective_health_request_swarm_action(
     if (!monitor || !request || !response) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_health_heartbeat("collective_h_request_swarm_action", 0.0f);
+
 
     memset(response, 0, sizeof(swarm_immune_response_t));
 
@@ -730,6 +804,10 @@ int collective_health_request_swarm_action_async(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_health_heartbeat("collective_h_request_swarm_action", 0.0f);
+
+
     if (monitor->num_pending_swarm >= COLLECTIVE_HEALTH_MAX_PENDING_CONSENSUS) {
         return -1;  /* Queue full */
     }
@@ -760,7 +838,17 @@ int collective_health_check_swarm_action(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_health_heartbeat("collective_h_check_swarm_action", 0.0f);
+
+
     for (uint32_t i = 0; i < monitor->num_pending_swarm; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && monitor->num_pending_swarm > 256) {
+            collective_health_heartbeat("collective_h_loop",
+                             (float)(i + 1) / (float)monitor->num_pending_swarm);
+        }
+
         if (monitor->pending_swarm[i].request_id == request_id) {
             pending_swarm_action_t* pending = &monitor->pending_swarm[i];
 
@@ -816,6 +904,10 @@ int collective_health_get_sync_state(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_health_heartbeat("collective_h_get_sync_state", 0.0f);
+
+
     return collective_cognition_get_hyperscan_state(monitor->collective, sync_state);
 }
 
@@ -831,6 +923,10 @@ int collective_health_force_sync(collective_health_monitor_t* monitor) {
     }
 
     /* Trigger collective update */
+    /* Phase 8: Heartbeat at operation start */
+    collective_health_heartbeat("collective_h_force_sync", 0.0f);
+
+
     int result = collective_cognition_update(monitor->collective);
 
     if (result == 0) {
@@ -856,6 +952,10 @@ int collective_health_register_threat_callback(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_health_heartbeat("collective_h_register_threat_call", 0.0f);
+
+
     monitor->threat_callback = callback;
     monitor->threat_callback_data = user_data;
 
@@ -879,7 +979,17 @@ int collective_health_share_prediction(
     }
 
     /* Update local instance report */
+    /* Phase 8: Heartbeat at operation start */
+    collective_health_heartbeat("collective_h_share_prediction", 0.0f);
+
+
     for (uint32_t i = 0; i < monitor->num_instances; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && monitor->num_instances > 256) {
+            collective_health_heartbeat("collective_h_loop",
+                             (float)(i + 1) / (float)monitor->num_instances);
+        }
+
         if (monitor->instance_reports[i].instance_id == monitor->local_instance_id) {
             monitor->instance_reports[i].failure_probability = failure_probability;
             monitor->instance_reports[i].time_to_failure_ms = time_to_failure_ms;
@@ -903,11 +1013,21 @@ int collective_health_get_worst_prediction(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_health_heartbeat("collective_h_get_worst_prediction", 0.0f);
+
+
     float worst_prob = 0.0f;
     uint32_t worst_id = 0;
     uint32_t worst_ttf = UINT32_MAX;
 
     for (uint32_t i = 0; i < monitor->num_instances; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && monitor->num_instances > 256) {
+            collective_health_heartbeat("collective_h_loop",
+                             (float)(i + 1) / (float)monitor->num_instances);
+        }
+
         const instance_health_report_t* report = &monitor->instance_reports[i];
 
         if (report->failure_probability > worst_prob) {
@@ -937,6 +1057,10 @@ int collective_health_get_stats(
     }
 
     *stats = monitor->stats;
+    /* Phase 8: Heartbeat at operation start */
+    collective_health_heartbeat("collective_h_get_stats", 0.0f);
+
+
     return 0;
 }
 
@@ -944,6 +1068,10 @@ void collective_health_reset_stats(collective_health_monitor_t* monitor) {
     if (!monitor) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_health_heartbeat("collective_h_reset_stats", 0.0f);
+
 
     memset(&monitor->stats, 0, sizeof(collective_health_stats_t));
 }
@@ -972,6 +1100,10 @@ void collective_health_init_proposal(collective_anomaly_proposal_t* proposal) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    collective_health_heartbeat("collective_h_init_proposal", 0.0f);
+
+
     memset(proposal, 0, sizeof(collective_anomaly_proposal_t));
     proposal->anomaly_type = HEALTH_MSG_ANOMALY_DETECTED;
     proposal->source = HEALTH_SOURCE_UNKNOWN;
@@ -986,6 +1118,10 @@ void collective_health_init_swarm_request(swarm_immune_request_t* request) {
     if (!request) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    collective_health_heartbeat("collective_h_init_swarm_request", 0.0f);
+
 
     memset(request, 0, sizeof(swarm_immune_request_t));
     request->action = SWARM_IMMUNE_NONE;

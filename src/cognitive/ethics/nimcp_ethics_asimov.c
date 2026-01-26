@@ -42,7 +42,7 @@ static nimcp_health_agent_t* g_ethics_asimov_health_agent = NULL;
  * @brief Set health agent for ethics_asimov heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void ethics_asimov_set_health_agent(nimcp_health_agent_t* agent) {
+void ethics_asimov_set_health_agent(nimcp_health_agent_t* agent) {
     g_ethics_asimov_health_agent = agent;
 }
 
@@ -498,8 +498,18 @@ void ethics_compute_asimov_hash(uint8_t* hash_out)
 {
     // Simple hash of law texts for integrity verification
     // In production, use proper SHA-256
+    /* Phase 8: Heartbeat at operation start */
+    ethics_asimov_heartbeat("ethics_asimo_ethics_compute_asimo", 0.0f);
+
+
     uint32_t hash = 0;
     for (int i = 0; i < ASIMOV_LAW_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ASIMOV_LAW_COUNT > 256) {
+            ethics_asimov_heartbeat("ethics_asimo_loop",
+                             (float)(i + 1) / (float)ASIMOV_LAW_COUNT);
+        }
+
         const char* text = ASIMOV_LAW_TEXTS[i];
         while (*text) {
             hash = hash * 31 + (uint8_t)*text;
@@ -587,9 +597,19 @@ NIMCP_EXPORT bool asimov_laws_verify_integrity(ethics_engine_t engine)
  */
 int ethics_asimov_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    ethics_asimov_heartbeat("ethics_asimo_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Ethics_Asimov_Laws_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                ethics_asimov_heartbeat("ethics_asimo_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Ethics Asimov self-knowledge: %s", self->observations[i]);
         }
     }

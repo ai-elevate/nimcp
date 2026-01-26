@@ -8947,6 +8947,19 @@ e2e_fault_tolerance_test_health_workflow_e2e/fast:
 .PHONY : e2e_fault_tolerance_test_health_workflow_e2e/fast
 
 #=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_heartbeat_B01_memory_core_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_heartbeat_B01_memory_core_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_heartbeat_B01_memory_core_e2e
+.PHONY : e2e_fault_tolerance_test_heartbeat_B01_memory_core_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_heartbeat_B01_memory_core_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B01_memory_core_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B01_memory_core_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_heartbeat_B01_memory_core_e2e/fast
+
+#=============================================================================
 # Target rules for targets named e2e_cognitive_test_predictive_bridge_exception_e2e
 
 # Build rule for target.
@@ -11766,6 +11779,19 @@ integration_health_module: cmake_check_build_system
 integration_health_module/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_health_module.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_health_module.dir/build
 .PHONY : integration_health_module/fast
+
+#=============================================================================
+# Target rules for targets named integration_heartbeat_B01_memory_core
+
+# Build rule for target.
+integration_heartbeat_B01_memory_core: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_heartbeat_B01_memory_core
+.PHONY : integration_heartbeat_B01_memory_core
+
+# fast build rule for target.
+integration_heartbeat_B01_memory_core/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B01_memory_core.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B01_memory_core.dir/build
+.PHONY : integration_heartbeat_B01_memory_core/fast
 
 #=============================================================================
 # Target rules for targets named test_symbolic_logic_attachment
@@ -20803,6 +20829,19 @@ regression_health_stability/fast:
 .PHONY : regression_health_stability/fast
 
 #=============================================================================
+# Target rules for targets named regression_heartbeat_B01_memory_core
+
+# Build rule for target.
+regression_heartbeat_B01_memory_core: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_heartbeat_B01_memory_core
+.PHONY : regression_heartbeat_B01_memory_core
+
+# fast build rule for target.
+regression_heartbeat_B01_memory_core/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B01_memory_core.dir/build.make test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B01_memory_core.dir/build
+.PHONY : regression_heartbeat_B01_memory_core/fast
+
+#=============================================================================
 # Target rules for targets named unit_utils_vcs_integration
 
 # Build rule for target.
@@ -20983,6 +21022,19 @@ unit_training_state_manager: cmake_check_build_system
 unit_training_state_manager/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_training_state_manager.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_training_state_manager.dir/build
 .PHONY : unit_training_state_manager/fast
+
+#=============================================================================
+# Target rules for targets named unit_heartbeat_B01_memory_core
+
+# Build rule for target.
+unit_heartbeat_B01_memory_core: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_heartbeat_B01_memory_core
+.PHONY : unit_heartbeat_B01_memory_core
+
+# fast build rule for target.
+unit_heartbeat_B01_memory_core/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B01_memory_core.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B01_memory_core.dir/build
+.PHONY : unit_heartbeat_B01_memory_core/fast
 
 #=============================================================================
 # Target rules for targets named unit_brain_test_kg_module_wiring
@@ -33689,6 +33741,7 @@ help:
 	@echo "... e2e_fault_tolerance_test_health_agent_neural_e2e"
 	@echo "... e2e_fault_tolerance_test_health_self_repair_e2e"
 	@echo "... e2e_fault_tolerance_test_health_workflow_e2e"
+	@echo "... e2e_fault_tolerance_test_heartbeat_B01_memory_core_e2e"
 	@echo "... e2e_fault_tolerance_test_heartbeat_module_e2e"
 	@echo "... e2e_fault_tolerance_test_perception_cortical_health_e2e"
 	@echo "... e2e_fault_tolerance_test_plasticity_health_e2e"
@@ -34159,6 +34212,7 @@ help:
 	@echo "... integration_gpu_test_substrate_gpu_integration"
 	@echo "... integration_gpu_test_visual_processing_gpu"
 	@echo "... integration_health_module"
+	@echo "... integration_heartbeat_B01_memory_core"
 	@echo "... integration_hemispheric_brain"
 	@echo "... integration_hypergraph_knowledge"
 	@echo "... integration_imagination_fep"
@@ -34578,6 +34632,7 @@ help:
 	@echo "... regression_gpu_test_substrate_gpu_regression"
 	@echo "... regression_gpu_test_visual_processing_regression"
 	@echo "... regression_health_stability"
+	@echo "... regression_heartbeat_B01_memory_core"
 	@echo "... regression_hemispheric_brain_regression"
 	@echo "... regression_imagination_fep"
 	@echo "... regression_information_test_quantum_shannon_backward_compat"
@@ -35661,6 +35716,7 @@ help:
 	@echo "... unit_habenula_test_adapter"
 	@echo "... unit_habenula_test_core"
 	@echo "... unit_health_agent_heartbeat"
+	@echo "... unit_heartbeat_B01_memory_core"
 	@echo "... unit_information_test_quantum_shannon"
 	@echo "... unit_information_test_shannon"
 	@echo "... unit_integration_adapters_chemistry_test_calcium_adapter"

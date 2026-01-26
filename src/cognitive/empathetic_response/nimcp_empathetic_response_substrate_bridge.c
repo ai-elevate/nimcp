@@ -36,7 +36,7 @@ static nimcp_health_agent_t* g_empathetic_response_substrate_bridge_health_agent
  * @brief Set health agent for empathetic_response_substrate_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void empathetic_response_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void empathetic_response_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_empathetic_response_substrate_bridge_health_agent = agent;
 }
 
@@ -62,6 +62,10 @@ struct empathetic_response_substrate_bridge {
 };
 
 empathetic_response_substrate_config_t empathetic_response_substrate_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_substrate_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
+
+
     empathetic_response_substrate_config_t cfg = {
         .enable_atp_modulation = true,
         .enable_fatigue_modulation = true,
@@ -81,6 +85,10 @@ empathetic_response_substrate_bridge_t* empathetic_response_substrate_bridge_cre
         return NULL;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_substrate_bridge_heartbeat("empathetic_r_create", 0.0f);
+
 
     empathetic_response_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(empathetic_response_substrate_bridge_t));
     if (!bridge) {
@@ -122,6 +130,10 @@ void empathetic_response_substrate_bridge_destroy(empathetic_response_substrate_
     if (!bridge) return;
 
     /* Destroy mutex */
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_substrate_bridge_heartbeat("empathetic_r_destroy", 0.0f);
+
+
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
@@ -131,6 +143,10 @@ void empathetic_response_substrate_bridge_destroy(empathetic_response_substrate_
 
 int empathetic_response_substrate_bridge_update(empathetic_response_substrate_bridge_t* bridge) {
     if (!bridge || !bridge->substrate) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_substrate_bridge_heartbeat("empathetic_r_update", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -172,6 +188,10 @@ int empathetic_response_substrate_bridge_update(empathetic_response_substrate_br
 int empathetic_response_substrate_bridge_get_effects(const empathetic_response_substrate_bridge_t* bridge, empathetic_response_substrate_effects_t* effects) {
     if (!bridge || !effects) return -1;
     *effects = bridge->effects;
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_substrate_bridge_heartbeat("empathetic_r_get_effects", 0.0f);
+
+
     return 0;
 }
 
@@ -181,6 +201,10 @@ int empathetic_response_substrate_bridge_apply_effects(empathetic_response_subst
     if (!bridge->bio_async_connected || !bridge->ctx) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_substrate_bridge_heartbeat("empathetic_r_apply_effects", 0.0f);
+
 
     substrate_metabolic_state_t metabolic;
     float atp_level = 1.0f, fatigue_level = 0.0f;
@@ -243,6 +267,10 @@ int empathetic_response_substrate_bridge_apply_effects(empathetic_response_subst
 int empathetic_response_substrate_bridge_register_bio_async(empathetic_response_substrate_bridge_t* bridge, bio_router_t* router) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_substrate_bridge_heartbeat("empathetic_r_register_bio_async", 0.0f);
+
+
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
         bridge->ctx = NULL;
@@ -276,9 +304,19 @@ int empathetic_response_substrate_bridge_register_bio_async(empathetic_response_
 int empathetic_response_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    empathetic_response_substrate_bridge_heartbeat("empathetic_r_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Empathetic_Response_Substrate_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                empathetic_response_substrate_bridge_heartbeat("empathetic_r_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

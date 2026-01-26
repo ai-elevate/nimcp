@@ -73,7 +73,7 @@ static nimcp_health_agent_t* g_omni_wm_cognitive_bridge_health_agent = NULL;
  * @brief Set health agent for omni_wm_cognitive_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void omni_wm_cognitive_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void omni_wm_cognitive_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_omni_wm_cognitive_bridge_health_agent = agent;
 }
 
@@ -150,6 +150,12 @@ static int find_goal_by_id(const omni_wm_cognitive_bridge_t* bridge, uint32_t go
     if (!bridge) return -1;
 
     for (uint32_t i = 0; i < bridge->num_goals; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_goals > 256) {
+            omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_loop",
+                             (float)(i + 1) / (float)bridge->num_goals);
+        }
+
         if (bridge->goals[i].goal_id == goal_id && bridge->goals[i].is_active) {
             return (int)i;
         }
@@ -177,10 +183,22 @@ static nimcp_error_t allocate_prediction_buffers(omni_wm_cognitive_bridge_t* bri
     }
 
     for (uint32_t i = 0; i < DEFAULT_ACTION_BUFFER_CAPACITY; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && DEFAULT_ACTION_BUFFER_CAPACITY > 256) {
+            omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_loop",
+                             (float)(i + 1) / (float)DEFAULT_ACTION_BUFFER_CAPACITY);
+        }
+
         bridge->action_consequence_buffer[i] = nimcp_calloc(DEFAULT_STATE_BUFFER_SIZE, sizeof(float));
         if (!bridge->action_consequence_buffer[i]) {
             /* Clean up previously allocated buffers */
             for (uint32_t j = 0; j < i; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && i > 256) {
+                    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_loop",
+                                     (float)(j + 1) / (float)i);
+                }
+
                 nimcp_free(bridge->action_consequence_buffer[j]);
             }
             nimcp_free(bridge->action_consequence_buffer);
@@ -207,6 +225,12 @@ static void free_prediction_buffers(omni_wm_cognitive_bridge_t* bridge) {
 
     if (bridge->action_consequence_buffer) {
         for (uint32_t i = 0; i < bridge->action_consequence_capacity; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && bridge->action_consequence_capacity > 256) {
+                omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_loop",
+                                 (float)(i + 1) / (float)bridge->action_consequence_capacity);
+            }
+
             nimcp_free(bridge->action_consequence_buffer[i]);
         }
         nimcp_free(bridge->action_consequence_buffer);
@@ -336,6 +360,12 @@ static nimcp_error_t process_goal_updates(omni_wm_cognitive_bridge_t* bridge, fl
     uint64_t now = get_current_time_us();
 
     for (uint32_t i = 0; i < bridge->num_goals; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_goals > 256) {
+            omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_loop",
+                             (float)(i + 1) / (float)bridge->num_goals);
+        }
+
         wm_cognitive_goal_t* goal = &bridge->goals[i];
         if (!goal->is_active) continue;
 
@@ -367,6 +397,12 @@ static nimcp_error_t process_goal_updates(omni_wm_cognitive_bridge_t* bridge, fl
     /* Compact goal array (remove inactive) */
     uint32_t write_idx = 0;
     for (uint32_t read_idx = 0; read_idx < bridge->num_goals; read_idx++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((read_idx & 0xFF) == 0 && bridge->num_goals > 256) {
+            omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_loop",
+                             (float)(read_idx + 1) / (float)bridge->num_goals);
+        }
+
         if (bridge->goals[read_idx].is_active) {
             if (write_idx != read_idx) {
                 bridge->goals[write_idx] = bridge->goals[read_idx];
@@ -524,6 +560,10 @@ static nimcp_error_t handle_meta_lr_update(const void* msg, size_t msg_size,
  * ============================================================================ */
 
 omni_wm_cognitive_bridge_config_t omni_wm_cognitive_bridge_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_default_config", 0.0f);
+
+
     omni_wm_cognitive_bridge_config_t config;
 
     memset(&config, 0, sizeof(omni_wm_cognitive_bridge_config_t));
@@ -578,6 +618,10 @@ omni_wm_cognitive_bridge_t* omni_wm_cognitive_bridge_create(
     const omni_wm_cognitive_bridge_config_t* config) {
 
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_create", 0.0f);
+
+
     omni_wm_cognitive_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_wm_cognitive_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate WM cognitive bridge");
@@ -637,6 +681,10 @@ void omni_wm_cognitive_bridge_destroy(omni_wm_cognitive_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         omni_wm_cognitive_bridge_disconnect_bio_async(bridge);
     }
@@ -666,6 +714,10 @@ void omni_wm_cognitive_bridge_destroy(omni_wm_cognitive_bridge_t* bridge) {
 }
 
 nimcp_error_t omni_wm_cognitive_bridge_reset(omni_wm_cognitive_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_reset", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -721,6 +773,10 @@ nimcp_error_t omni_wm_cognitive_bridge_connect(
     salience_evaluator_t salience,
     meta_learner_t meta_learner) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_connect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_INVALID_PARAM, "world_model is NULL (required)");
 
@@ -750,6 +806,10 @@ nimcp_error_t omni_wm_cognitive_bridge_connect_world_model(
     omni_wm_cognitive_bridge_t* bridge,
     omni_world_model_t* world_model) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_connect_world_model", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_NULL_POINTER, "world_model is NULL");
 
@@ -767,6 +827,10 @@ nimcp_error_t omni_wm_cognitive_bridge_connect_executive(
     omni_wm_cognitive_bridge_t* bridge,
     executive_controller_t* executive) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_connect_executive", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(executive, NIMCP_ERROR_NULL_POINTER, "executive is NULL");
 
@@ -780,6 +844,10 @@ nimcp_error_t omni_wm_cognitive_bridge_connect_executive(
 nimcp_error_t omni_wm_cognitive_bridge_connect_working_memory(
     omni_wm_cognitive_bridge_t* bridge,
     working_memory_t* working_memory) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_connect_working_memo", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(working_memory, NIMCP_ERROR_NULL_POINTER, "working_memory is NULL");
@@ -795,6 +863,10 @@ nimcp_error_t omni_wm_cognitive_bridge_connect_salience(
     omni_wm_cognitive_bridge_t* bridge,
     salience_evaluator_t salience) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_connect_salience", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(salience, NIMCP_ERROR_NULL_POINTER, "salience is NULL");
 
@@ -808,6 +880,10 @@ nimcp_error_t omni_wm_cognitive_bridge_connect_salience(
 nimcp_error_t omni_wm_cognitive_bridge_connect_meta_learner(
     omni_wm_cognitive_bridge_t* bridge,
     meta_learner_t meta_learner) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_connect_meta_learner", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(meta_learner, NIMCP_ERROR_NULL_POINTER, "meta_learner is NULL");
@@ -823,6 +899,10 @@ nimcp_error_t omni_wm_cognitive_bridge_connect_attention(
     omni_wm_cognitive_bridge_t* bridge,
     attention_system_t* attention) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_connect_attention", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(attention, NIMCP_ERROR_NULL_POINTER, "attention is NULL");
 
@@ -835,6 +915,10 @@ nimcp_error_t omni_wm_cognitive_bridge_connect_attention(
 
 bool omni_wm_cognitive_bridge_is_connected(const omni_wm_cognitive_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_is_connected", 0.0f);
+
+
     return bridge->world_model != NULL;
 }
 
@@ -845,6 +929,10 @@ bool omni_wm_cognitive_bridge_is_connected(const omni_wm_cognitive_bridge_t* bri
 nimcp_error_t omni_wm_cognitive_bridge_update(
     omni_wm_cognitive_bridge_t* bridge,
     float dt) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_update", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_modulation) return NIMCP_SUCCESS;
@@ -914,6 +1002,10 @@ nimcp_error_t omni_wm_cognitive_bridge_register_goal(
     const char* description,
     uint32_t* goal_id_out) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_register_goal", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(target_state, NIMCP_ERROR_INVALID_PARAM, "target_state is NULL");
     NIMCP_CHECK_THROW(state_dim > 0, NIMCP_ERROR_INVALID_PARAM, "state_dim must be greater than 0");
@@ -967,6 +1059,10 @@ nimcp_error_t omni_wm_cognitive_bridge_update_goal_progress(
     uint32_t goal_id,
     float progress) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_update_goal_progress", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -988,6 +1084,10 @@ nimcp_error_t omni_wm_cognitive_bridge_update_goal_progress(
 nimcp_error_t omni_wm_cognitive_bridge_goal_achieved(
     omni_wm_cognitive_bridge_t* bridge,
     uint32_t goal_id) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_goal_achieved", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -1014,6 +1114,10 @@ nimcp_error_t omni_wm_cognitive_bridge_goal_failed(
     omni_wm_cognitive_bridge_t* bridge,
     uint32_t goal_id) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_goal_failed", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1037,6 +1141,10 @@ nimcp_error_t omni_wm_cognitive_bridge_goal_failed(
 nimcp_error_t omni_wm_cognitive_bridge_remove_goal(
     omni_wm_cognitive_bridge_t* bridge,
     uint32_t goal_id) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_remove_goal", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -1064,6 +1172,10 @@ nimcp_error_t omni_wm_cognitive_bridge_set_intention(
     uint32_t goal_id,
     float confidence) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_set_intention", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(action_sequence, NIMCP_ERROR_INVALID_PARAM, "action_sequence is NULL");
     NIMCP_CHECK_THROW(action_dim > 0, NIMCP_ERROR_INVALID_PARAM, "action_dim must be greater than 0");
@@ -1079,6 +1191,12 @@ nimcp_error_t omni_wm_cognitive_bridge_set_intention(
 
     /* Copy action sequence */
     for (uint32_t i = 0; i < sequence_length; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sequence_length > 256) {
+            omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_loop",
+                             (float)(i + 1) / (float)sequence_length);
+        }
+
         memcpy(intent->action_sequence[i], action_sequence[i],
                action_dim * sizeof(float));
     }
@@ -1105,6 +1223,10 @@ nimcp_error_t omni_wm_cognitive_bridge_set_attention_focus(
     uint32_t focus_dim,
     float strength,
     float bandwidth) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_set_attention_focus", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(focus_location, NIMCP_ERROR_INVALID_PARAM, "focus_location is NULL");
@@ -1141,6 +1263,10 @@ nimcp_error_t omni_wm_cognitive_bridge_attention_shift(
     uint32_t focus_dim,
     float new_strength) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_attention_shift", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1171,6 +1297,10 @@ nimcp_error_t omni_wm_cognitive_bridge_attention_shift(
 nimcp_error_t omni_wm_cognitive_bridge_clear_attention(
     omni_wm_cognitive_bridge_t* bridge) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_clear_attention", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1195,6 +1325,10 @@ nimcp_error_t omni_wm_cognitive_bridge_predict_state(
     uint32_t action_dim,
     float* predicted_state_out,
     float* confidence_out) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_predict_state", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(predicted_state_out, NIMCP_ERROR_INVALID_PARAM, "predicted_state_out is NULL");
@@ -1257,6 +1391,10 @@ nimcp_error_t omni_wm_cognitive_bridge_predict_action_consequences(
     float** consequences_out,
     float* values_out) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_predict_action_conse", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(actions, NIMCP_ERROR_NULL_POINTER, "actions is NULL");
     NIMCP_CHECK_THROW(consequences_out, NIMCP_ERROR_NULL_POINTER, "consequences_out is NULL");
@@ -1291,6 +1429,12 @@ nimcp_error_t omni_wm_cognitive_bridge_predict_action_consequences(
         if (values_out) {
             float best_value = -1000.0f;
             for (uint32_t g = 0; g < bridge->num_goals; g++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((g & 0xFF) == 0 && bridge->num_goals > 256) {
+                    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_loop",
+                                     (float)(g + 1) / (float)bridge->num_goals);
+                }
+
                 if (!bridge->goals[g].is_active) continue;
 
                 /* Compute distance to goal */
@@ -1326,6 +1470,10 @@ nimcp_error_t omni_wm_cognitive_bridge_evaluate_plan(
     float* expected_value_out,
     float* success_prob_out) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_evaluate_plan", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(initial_state, NIMCP_ERROR_INVALID_PARAM, "initial_state is NULL");
     NIMCP_CHECK_THROW(action_sequence, NIMCP_ERROR_INVALID_PARAM, "action_sequence is NULL");
@@ -1356,6 +1504,12 @@ nimcp_error_t omni_wm_cognitive_bridge_evaluate_plan(
 
     /* Simulate each step */
     for (uint32_t step = 0; step < sequence_length; step++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((step & 0xFF) == 0 && sequence_length > 256) {
+            omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_loop",
+                             (float)(step + 1) / (float)sequence_length);
+        }
+
         /* Apply action (placeholder dynamics) */
         if (action_sequence[step] && action_dim > 0) {
             for (uint32_t i = 0; i < state_dim && i < action_dim; i++) {
@@ -1422,6 +1576,10 @@ nimcp_error_t omni_wm_cognitive_bridge_update_salience(
     float surprise,
     float urgency) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_update_salience", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1466,6 +1624,10 @@ nimcp_error_t omni_wm_cognitive_bridge_get_prediction_error_map(
     uint32_t map_dim,
     float* max_pe_out) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_get_prediction_error", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(pe_map_out, NIMCP_ERROR_INVALID_PARAM, "pe_map_out is NULL");
     NIMCP_CHECK_THROW(map_dim > 0, NIMCP_ERROR_INVALID_PARAM, "map_dim must be greater than 0");
@@ -1478,6 +1640,12 @@ nimcp_error_t omni_wm_cognitive_bridge_get_prediction_error_map(
     float max_pe = 0.0f;
 
     for (uint32_t i = 0; i < map_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && map_dim > 256) {
+            omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_loop",
+                             (float)(i + 1) / (float)map_dim);
+        }
+
         /* Placeholder: uniform low PE with some random variation */
         pe_map_out[i] = 0.1f + 0.05f * ((float)(i % 10) / 10.0f);
 
@@ -1512,6 +1680,10 @@ nimcp_error_t omni_wm_cognitive_bridge_get_prediction_error_map(
 nimcp_error_t omni_wm_cognitive_bridge_update_wm_context(
     omni_wm_cognitive_bridge_t* bridge) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_update_wm_context", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1536,6 +1708,10 @@ nimcp_error_t omni_wm_cognitive_bridge_get_wm_context(
     float* context_out,
     uint32_t context_dim,
     float* utilization_out) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_get_wm_context", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(context_out, NIMCP_ERROR_INVALID_PARAM, "context_out is NULL");
@@ -1569,6 +1745,10 @@ nimcp_error_t omni_wm_cognitive_bridge_get_recommended_lr(
     const omni_wm_cognitive_bridge_t* bridge,
     float* recommended_lr_out) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_get_recommended_lr", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(recommended_lr_out, NIMCP_ERROR_INVALID_PARAM, "recommended_lr_out is NULL");
 
@@ -1585,6 +1765,10 @@ nimcp_error_t omni_wm_cognitive_bridge_get_recommended_lr(
 nimcp_error_t omni_wm_cognitive_bridge_trigger_adaptation(
     omni_wm_cognitive_bridge_t* bridge,
     float prediction_error) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_trigger_adaptation", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -1626,6 +1810,10 @@ const omni_wm_to_cognitive_effects_t* omni_wm_cognitive_bridge_get_wm_effects(
 
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_get_wm_effects", 0.0f);
+
+
     return &bridge->wm_to_cognitive;
 }
 
@@ -1642,12 +1830,20 @@ const cognitive_to_omni_wm_effects_t* omni_wm_cognitive_bridge_get_cognitive_eff
 
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_get_cognitive_effect", 0.0f);
+
+
     return &bridge->cognitive_to_wm;
 }
 
 nimcp_error_t omni_wm_cognitive_bridge_get_stats(
     const omni_wm_cognitive_bridge_t* bridge,
     omni_wm_cognitive_bridge_stats_t* stats) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_get_stats", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
@@ -1661,6 +1857,10 @@ nimcp_error_t omni_wm_cognitive_bridge_get_stats(
 
 nimcp_error_t omni_wm_cognitive_bridge_reset_stats(
     omni_wm_cognitive_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_reset_stats", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -1686,6 +1886,10 @@ const wm_cognitive_goal_t* omni_wm_cognitive_bridge_get_goal(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_get_goal", 0.0f);
+
+
     int idx = find_goal_by_id(bridge, goal_id);
     if (idx < 0) return NULL;
 
@@ -1696,6 +1900,10 @@ uint32_t omni_wm_cognitive_bridge_get_num_goals(
     const omni_wm_cognitive_bridge_t* bridge) {
 
     if (!bridge) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_get_num_goals", 0.0f);
+
+
     return bridge->num_goals;
 }
 
@@ -1705,6 +1913,10 @@ uint32_t omni_wm_cognitive_bridge_get_num_goals(
 
 nimcp_error_t omni_wm_cognitive_bridge_connect_bio_async(
     omni_wm_cognitive_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_connect_bio_async", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_bio_async) return NIMCP_SUCCESS;
@@ -1759,6 +1971,10 @@ nimcp_error_t omni_wm_cognitive_bridge_connect_bio_async(
 nimcp_error_t omni_wm_cognitive_bridge_disconnect_bio_async(
     omni_wm_cognitive_bridge_t* bridge) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_disconnect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
@@ -1775,6 +1991,10 @@ nimcp_error_t omni_wm_cognitive_bridge_disconnect_bio_async(
 
 bool omni_wm_cognitive_bridge_is_bio_async_connected(
     const omni_wm_cognitive_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_is_bio_async_connect", 0.0f);
+
 
     return bridge_base_is_bio_async_connected(bridge ? &bridge->base : NULL);
 }
@@ -1807,6 +2027,10 @@ const char* omni_wm_cognitive_msg_type_to_string(omni_wm_cognitive_msg_type_t ms
 
 nimcp_error_t omni_wm_cognitive_bridge_validate_config(
     const omni_wm_cognitive_bridge_config_t* config) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_validate_config", 0.0f);
+
 
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 

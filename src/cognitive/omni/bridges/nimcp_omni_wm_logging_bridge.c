@@ -70,7 +70,7 @@ static nimcp_health_agent_t* g_omni_wm_logging_bridge_health_agent = NULL;
  * @brief Set health agent for omni_wm_logging_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void omni_wm_logging_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void omni_wm_logging_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_omni_wm_logging_bridge_health_agent = agent;
 }
 
@@ -212,6 +212,12 @@ static float compute_vector_norm(const float* vec, uint32_t dim) {
 
     float sum_sq = 0.0f;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            omni_wm_logging_bridge_heartbeat("omni_wm_logg_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         sum_sq += vec[i] * vec[i];
     }
     return sqrtf(sum_sq);
@@ -369,6 +375,12 @@ static nimcp_error_t flush_prediction_buffer(omni_wm_logging_bridge_t* bridge) {
 
     /* Create general log entries from prediction entries */
     for (uint32_t i = 0; i < bridge->pred_buffer_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->pred_buffer_count > 256) {
+            omni_wm_logging_bridge_heartbeat("omni_wm_logg_loop",
+                             (float)(i + 1) / (float)bridge->pred_buffer_count);
+        }
+
         wm_prediction_log_entry_t* pred = &bridge->pred_buffer[i];
         wm_general_log_entry_t entry;
         memset(&entry, 0, sizeof(entry));
@@ -400,6 +412,12 @@ static nimcp_error_t flush_training_buffer(omni_wm_logging_bridge_t* bridge) {
 
     /* Create general log entries from training entries */
     for (uint32_t i = 0; i < bridge->train_buffer_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->train_buffer_count > 256) {
+            omni_wm_logging_bridge_heartbeat("omni_wm_logg_loop",
+                             (float)(i + 1) / (float)bridge->train_buffer_count);
+        }
+
         wm_training_log_entry_t* train = &bridge->train_buffer[i];
         wm_general_log_entry_t entry;
         memset(&entry, 0, sizeof(entry));
@@ -529,6 +547,10 @@ static nimcp_error_t handle_flush(const void* msg, size_t msg_size,
 
 nimcp_error_t omni_wm_logging_bridge_default_config(
     omni_wm_logging_bridge_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(*config));
@@ -587,6 +609,10 @@ omni_wm_logging_bridge_t* omni_wm_logging_bridge_create(
     const omni_wm_logging_bridge_config_t* config) {
 
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_create", 0.0f);
+
+
     omni_wm_logging_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_wm_logging_bridge_t));
     if (!bridge) {
         LOG_ERROR("Failed to allocate WM logging bridge");
@@ -638,6 +664,10 @@ void omni_wm_logging_bridge_destroy(omni_wm_logging_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Flush any remaining entries */
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_destroy", 0.0f);
+
+
     omni_wm_logging_bridge_flush(bridge);
 
     /* Free buffers */
@@ -653,6 +683,10 @@ void omni_wm_logging_bridge_destroy(omni_wm_logging_bridge_t* bridge) {
 }
 
 nimcp_error_t omni_wm_logging_bridge_reset(omni_wm_logging_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_reset", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -699,6 +733,10 @@ nimcp_error_t omni_wm_logging_bridge_connect(
     nimcp_logger_t logger,
     nimcp_audit_log_t* audit_log) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_connect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_INVALID_PARAMETER, "world_model is NULL");
 
@@ -726,6 +764,10 @@ nimcp_error_t omni_wm_logging_bridge_connect_world_model(
     omni_wm_logging_bridge_t* bridge,
     omni_world_model_t* world_model) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_connect_world_model", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_INVALID_PARAMETER, "world_model is NULL");
 
@@ -740,6 +782,10 @@ nimcp_error_t omni_wm_logging_bridge_connect_world_model(
 nimcp_error_t omni_wm_logging_bridge_connect_logger(
     omni_wm_logging_bridge_t* bridge,
     nimcp_logger_t logger) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_connect_logger", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -757,6 +803,10 @@ nimcp_error_t omni_wm_logging_bridge_connect_audit(
     omni_wm_logging_bridge_t* bridge,
     nimcp_audit_log_t* audit_log) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_connect_audit", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -768,6 +818,10 @@ nimcp_error_t omni_wm_logging_bridge_connect_audit(
 
 bool omni_wm_logging_bridge_is_connected(const omni_wm_logging_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_is_connected", 0.0f);
+
+
     return bridge->world_model != NULL;
 }
 
@@ -778,6 +832,10 @@ bool omni_wm_logging_bridge_is_connected(const omni_wm_logging_bridge_t* bridge)
 nimcp_error_t omni_wm_logging_bridge_update(
     omni_wm_logging_bridge_t* bridge,
     float dt) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_update", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     (void)dt;
@@ -815,6 +873,10 @@ nimcp_error_t omni_wm_logging_bridge_update(
 }
 
 nimcp_error_t omni_wm_logging_bridge_flush(omni_wm_logging_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_flush", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -840,6 +902,10 @@ nimcp_error_t omni_wm_logging_bridge_log_prediction(
     const float* output,
     uint32_t output_dim,
     float confidence) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_log_prediction", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_prediction_logging) return NIMCP_SUCCESS;
@@ -900,6 +966,10 @@ nimcp_error_t omni_wm_logging_bridge_log_prediction_entry(
     omni_wm_logging_bridge_t* bridge,
     const wm_prediction_log_entry_t* entry) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_log_prediction_entry", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(entry, NIMCP_ERROR_NULL_POINTER, "entry is NULL");
     if (!bridge->config.enable_prediction_logging) return NIMCP_SUCCESS;
@@ -923,6 +993,10 @@ nimcp_error_t omni_wm_logging_bridge_log_prediction_error(
     const float* actual,
     uint32_t dim,
     float error_magnitude) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_log_prediction_error", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_prediction_logging) return NIMCP_SUCCESS;
@@ -961,6 +1035,10 @@ nimcp_error_t omni_wm_logging_bridge_log_training_step(
     omni_wm_logging_bridge_t* bridge,
     float loss,
     const wm_training_metrics_t* metrics) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_log_training_step", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_training_logging) return NIMCP_SUCCESS;
@@ -1027,6 +1105,10 @@ nimcp_error_t omni_wm_logging_bridge_log_training_entry(
     omni_wm_logging_bridge_t* bridge,
     const wm_training_log_entry_t* entry) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_log_training_entry", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(entry, NIMCP_ERROR_NULL_POINTER, "entry is NULL");
     if (!bridge->config.enable_training_logging) return NIMCP_SUCCESS;
@@ -1050,6 +1132,10 @@ nimcp_error_t omni_wm_logging_bridge_log_lr_change(
     float new_lr,
     const char* reason) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_log_lr_change", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     return omni_wm_logging_bridge_logf(bridge, WM_LOG_CAT_TRAINING, WM_LOG_SEV_NOTICE,
@@ -1065,6 +1151,10 @@ nimcp_error_t omni_wm_logging_bridge_log_anomaly(
     omni_wm_logging_bridge_t* bridge,
     wm_anomaly_type_t type,
     const char* details) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_log_anomaly", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_anomaly_logging) return NIMCP_SUCCESS;
@@ -1129,6 +1219,10 @@ nimcp_error_t omni_wm_logging_bridge_log_anomaly_entry(
     omni_wm_logging_bridge_t* bridge,
     const wm_anomaly_log_entry_t* entry) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_log_anomaly_entry", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(entry, NIMCP_ERROR_NULL_POINTER, "entry is NULL");
 
@@ -1139,6 +1233,10 @@ nimcp_error_t omni_wm_logging_bridge_log_anomaly_resolved(
     omni_wm_logging_bridge_t* bridge,
     uint64_t original_entry_id,
     const char* resolution_details) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_log_anomaly_resolved", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -1157,6 +1255,10 @@ nimcp_error_t omni_wm_logging_bridge_log_anomaly_resolved(
 nimcp_error_t omni_wm_logging_bridge_log_calibration(
     omni_wm_logging_bridge_t* bridge,
     const wm_calibration_metrics_t* calibration) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_log_calibration", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(calibration, NIMCP_ERROR_NULL_POINTER, "calibration is NULL");
@@ -1181,6 +1283,10 @@ nimcp_error_t omni_wm_logging_bridge_update_calibration(
     omni_wm_logging_bridge_t* bridge,
     float confidence,
     bool was_accurate) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_update_calibration", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -1225,6 +1331,10 @@ nimcp_error_t omni_wm_logging_bridge_log_replay_operation(
     uint32_t count,
     uint32_t buffer_size) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_log_replay_operation", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_replay_logging) return NIMCP_SUCCESS;
 
@@ -1239,6 +1349,10 @@ nimcp_error_t omni_wm_logging_bridge_log_dream(
     uint32_t episode_length,
     float episode_reward,
     uint32_t training_updates) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_log_dream", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.log_dream_episodes) return NIMCP_SUCCESS;
@@ -1257,6 +1371,10 @@ nimcp_error_t omni_wm_logging_bridge_log(
     wm_log_category_t category,
     wm_log_severity_t severity,
     const char* message) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_log", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->logging_active) return NIMCP_SUCCESS;
@@ -1301,6 +1419,10 @@ nimcp_error_t omni_wm_logging_bridge_logf(
     const char* format,
     ...) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_logf", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(format, NIMCP_ERROR_NULL_POINTER, "format is NULL");
 
@@ -1326,6 +1448,10 @@ const omni_wm_to_logging_effects_t* omni_wm_logging_bridge_get_wm_effects(
         return NULL;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_get_wm_effects", 0.0f);
+
+
     return &bridge->wm_to_logging;
 }
 
@@ -1338,12 +1464,20 @@ const logging_to_omni_wm_effects_t* omni_wm_logging_bridge_get_logging_effects(
         return NULL;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_get_logging_effects", 0.0f);
+
+
     return &bridge->logging_to_wm;
 }
 
 nimcp_error_t omni_wm_logging_bridge_get_stats(
     const omni_wm_logging_bridge_t* bridge,
     omni_wm_logging_bridge_stats_t* stats) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_get_stats", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
@@ -1357,6 +1491,10 @@ nimcp_error_t omni_wm_logging_bridge_get_stats(
 
 nimcp_error_t omni_wm_logging_bridge_reset_stats(
     omni_wm_logging_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_reset_stats", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -1376,6 +1514,10 @@ const wm_training_metrics_t* omni_wm_logging_bridge_get_training_metrics(
         return NULL;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_get_training_metrics", 0.0f);
+
+
     return &bridge->training_metrics;
 }
 
@@ -1388,6 +1530,10 @@ const wm_calibration_metrics_t* omni_wm_logging_bridge_get_calibration(
         return NULL;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_get_calibration", 0.0f);
+
+
     return &bridge->calibration;
 }
 
@@ -1397,18 +1543,30 @@ const wm_calibration_metrics_t* omni_wm_logging_bridge_get_calibration(
 
 nimcp_error_t omni_wm_logging_bridge_connect_bio_async(
     omni_wm_logging_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_connect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     return bridge_base_connect_bio_async(&bridge->base);
 }
 
 nimcp_error_t omni_wm_logging_bridge_disconnect_bio_async(
     omni_wm_logging_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_disconnect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     return bridge_base_disconnect_bio_async(&bridge->base);
 }
 
 bool omni_wm_logging_bridge_is_bio_async_connected(
     const omni_wm_logging_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_is_bio_async_connect", 0.0f);
+
+
     return bridge_base_is_bio_async_connected(bridge ? &bridge->base : NULL);
 }
 
@@ -1465,6 +1623,10 @@ const char* wm_anomaly_type_to_string(wm_anomaly_type_t type) {
 
 nimcp_error_t omni_wm_logging_bridge_validate_config(
     const omni_wm_logging_bridge_config_t* config) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_logging_bridge_heartbeat("omni_wm_logg_validate_config", 0.0f);
+
 
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 

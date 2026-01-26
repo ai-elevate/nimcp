@@ -36,7 +36,7 @@ static nimcp_health_agent_t* g_omni_immune_bridge_health_agent = NULL;
  * @brief Set health agent for omni_immune_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void omni_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void omni_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_omni_immune_bridge_health_agent = agent;
 }
 
@@ -143,6 +143,10 @@ static omni_immune_source_t find_dominant_source(omni_immune_bridge_t* bridge) {
  * ============================================================================ */
 
 int omni_immune_default_config(omni_immune_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_immune_bridge_heartbeat("omni_immune__omni_immune_default_", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     memset(config, 0, sizeof(omni_immune_config_t));
@@ -172,6 +176,10 @@ int omni_immune_default_config(omni_immune_config_t* config) {
  * ============================================================================ */
 
 omni_immune_bridge_t* omni_immune_bridge_create(const omni_immune_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_immune_bridge_heartbeat("omni_immune__create", 0.0f);
+
+
     omni_immune_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_immune_bridge_t));
     if (!bridge) {
 
@@ -201,6 +209,10 @@ omni_immune_bridge_t* omni_immune_bridge_create(const omni_immune_config_t* conf
 void omni_immune_bridge_destroy(omni_immune_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_immune_bridge_heartbeat("omni_immune__destroy", 0.0f);
+
+
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
     }
@@ -214,6 +226,10 @@ void omni_immune_bridge_destroy(omni_immune_bridge_t* bridge) {
 
 int omni_immune_connect_jepa(omni_immune_bridge_t* bridge,
                               jepa_bidirectional_t* jepa) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_immune_bridge_heartbeat("omni_immune__omni_immune_connect_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->jepa = jepa;
@@ -223,6 +239,10 @@ int omni_immune_connect_jepa(omni_immune_bridge_t* bridge,
 
 int omni_immune_connect_hopfield(omni_immune_bridge_t* bridge,
                                   hopfield_memory_t* hopfield) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_immune_bridge_heartbeat("omni_immune__omni_immune_connect_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->hopfield = hopfield;
@@ -232,6 +252,10 @@ int omni_immune_connect_hopfield(omni_immune_bridge_t* bridge,
 
 int omni_immune_connect_pred_hier(omni_immune_bridge_t* bridge,
                                    predictive_hierarchy_t* pred_hier) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_immune_bridge_heartbeat("omni_immune__omni_immune_connect_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->pred_hier = pred_hier;
@@ -241,6 +265,10 @@ int omni_immune_connect_pred_hier(omni_immune_bridge_t* bridge,
 
 int omni_immune_connect_replay(omni_immune_bridge_t* bridge,
                                 temporal_replay_t* replay) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_immune_bridge_heartbeat("omni_immune__omni_immune_connect_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->replay = replay;
@@ -250,6 +278,10 @@ int omni_immune_connect_replay(omni_immune_bridge_t* bridge,
 
 int omni_immune_connect_immune(omni_immune_bridge_t* bridge,
                                 brain_immune_system_t* immune) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_immune_bridge_heartbeat("omni_immune__omni_immune_connect_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->immune = immune;
@@ -262,6 +294,10 @@ int omni_immune_connect_immune(omni_immune_bridge_t* bridge,
  * ============================================================================ */
 
 int omni_immune_update(omni_immune_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_immune_bridge_heartbeat("omni_immune__omni_immune_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -330,12 +366,20 @@ int omni_immune_update(omni_immune_bridge_t* bridge) {
 }
 
 int omni_immune_apply_to_immune(omni_immune_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_immune_bridge_heartbeat("omni_immune__omni_immune_apply_to", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     /* In a full implementation, this would call brain_immune_system APIs */
     return NIMCP_SUCCESS;
 }
 
 int omni_immune_apply_to_omni(omni_immune_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_immune_bridge_heartbeat("omni_immune__omni_immune_apply_to", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.precision_feedbacks++;
@@ -349,6 +393,10 @@ int omni_immune_apply_to_omni(omni_immune_bridge_t* bridge) {
 
 int omni_immune_get_omni_effects(const omni_immune_bridge_t* bridge,
                                   omni_to_immune_effects_t* effects) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_immune_bridge_heartbeat("omni_immune__omni_immune_get_omni", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_INVALID_PARAM, "bridge or effects is NULL");
     nimcp_mutex_lock(((omni_immune_bridge_t*)bridge)->mutex);
     memcpy(effects, &bridge->omni_effects, sizeof(omni_to_immune_effects_t));
@@ -358,6 +406,10 @@ int omni_immune_get_omni_effects(const omni_immune_bridge_t* bridge,
 
 int omni_immune_get_immune_effects(const omni_immune_bridge_t* bridge,
                                     immune_to_omni_effects_t* effects) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_immune_bridge_heartbeat("omni_immune__omni_immune_get_immu", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_INVALID_PARAM, "bridge or effects is NULL");
     nimcp_mutex_lock(((omni_immune_bridge_t*)bridge)->mutex);
     memcpy(effects, &bridge->immune_effects, sizeof(immune_to_omni_effects_t));
@@ -367,6 +419,10 @@ int omni_immune_get_immune_effects(const omni_immune_bridge_t* bridge,
 
 int omni_immune_get_stats(const omni_immune_bridge_t* bridge,
                            omni_immune_stats_t* stats) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_immune_bridge_heartbeat("omni_immune__omni_immune_get_stat", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_INVALID_PARAM, "bridge or stats is NULL");
     nimcp_mutex_lock(((omni_immune_bridge_t*)bridge)->mutex);
     memcpy(stats, &bridge->stats, sizeof(omni_immune_stats_t));
@@ -375,6 +431,10 @@ int omni_immune_get_stats(const omni_immune_bridge_t* bridge,
 }
 
 int omni_immune_reset_stats(omni_immune_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_immune_bridge_heartbeat("omni_immune__omni_immune_reset_st", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(omni_immune_stats_t));
@@ -424,6 +484,10 @@ static nimcp_error_t handle_immune_error_propagate(
  * ============================================================================ */
 
 int omni_immune_connect_bio_async(omni_immune_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_immune_bridge_heartbeat("omni_immune__omni_immune_connect_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     if (bridge->bio_async_connected) return NIMCP_SUCCESS;
 
@@ -451,6 +515,10 @@ int omni_immune_connect_bio_async(omni_immune_bridge_t* bridge) {
 }
 
 int omni_immune_disconnect_bio_async(omni_immune_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_immune_bridge_heartbeat("omni_immune__omni_immune_disconne", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     if (!bridge->bio_async_connected) return NIMCP_SUCCESS;
 
@@ -465,6 +533,10 @@ int omni_immune_disconnect_bio_async(omni_immune_bridge_t* bridge) {
 
 bool omni_immune_is_bio_async_connected(const omni_immune_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    omni_immune_bridge_heartbeat("omni_immune__omni_immune_is_bio_a", 0.0f);
+
+
     return bridge->bio_async_connected;
 }
 

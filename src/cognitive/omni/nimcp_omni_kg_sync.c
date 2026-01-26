@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_omni_kg_sync_health_agent = NULL;
  * @brief Set health agent for omni_kg_sync heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void omni_kg_sync_set_health_agent(nimcp_health_agent_t* agent) {
+void omni_kg_sync_set_health_agent(nimcp_health_agent_t* agent) {
     g_omni_kg_sync_health_agent = agent;
 }
 
@@ -116,6 +116,12 @@ static int ensure_capacity(omni_kg_sync_t* sync) {
 
 static int find_module_index(const omni_kg_sync_t* sync, const char* name) {
     for (uint32_t i = 0; i < sync->module_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sync->module_count > 256) {
+            omni_kg_sync_heartbeat("omni_kg_sync_loop",
+                             (float)(i + 1) / (float)sync->module_count);
+        }
+
         if (strcmp(sync->modules[i].name, name) == 0) {
             return (int)i;
         }
@@ -126,6 +132,12 @@ static int find_module_index(const omni_kg_sync_t* sync, const char* name) {
 static int find_module_index_by_node(const omni_kg_sync_t* sync,
                                       brain_kg_node_id_t node_id) {
     for (uint32_t i = 0; i < sync->module_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sync->module_count > 256) {
+            omni_kg_sync_heartbeat("omni_kg_sync_loop",
+                             (float)(i + 1) / (float)sync->module_count);
+        }
+
         if (sync->node_ids[i] == node_id) {
             return (int)i;
         }
@@ -138,6 +150,10 @@ static int find_module_index_by_node(const omni_kg_sync_t* sync,
  * ============================================================================ */
 
 int omni_kg_sync_default_config(omni_kg_sync_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_kg_sync_heartbeat("omni_kg_sync_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     memset(config, 0, sizeof(omni_kg_sync_config_t));
@@ -164,6 +180,10 @@ omni_kg_sync_t* omni_kg_sync_create(brain_kg_t* kg,
         return NULL;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_kg_sync_heartbeat("omni_kg_sync_create", 0.0f);
+
 
     omni_kg_sync_t* sync = nimcp_calloc(1, sizeof(omni_kg_sync_t));
     if (!sync) {
@@ -211,6 +231,10 @@ omni_kg_sync_t* omni_kg_sync_create(brain_kg_t* kg,
 void omni_kg_sync_destroy(omni_kg_sync_t* sync) {
     if (!sync) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_kg_sync_heartbeat("omni_kg_sync_destroy", 0.0f);
+
+
     if (sync->modules) nimcp_free(sync->modules);
     if (sync->node_ids) nimcp_free(sync->node_ids);
 
@@ -228,6 +252,10 @@ void omni_kg_sync_destroy(omni_kg_sync_t* sync) {
 brain_kg_node_id_t omni_kg_register_module(omni_kg_sync_t* sync,
                                             const omni_kg_module_info_t* info) {
     if (!sync || !info) return BRAIN_KG_INVALID_NODE;
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_kg_sync_heartbeat("omni_kg_sync_omni_kg_register_mod", 0.0f);
+
 
     nimcp_mutex_lock(sync->mutex);
 
@@ -295,6 +323,10 @@ brain_kg_node_id_t omni_kg_register_jepa(omni_kg_sync_t* sync,
                                           jepa_bidirectional_t* jepa) {
     if (!sync || !name) return BRAIN_KG_INVALID_NODE;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_kg_sync_heartbeat("omni_kg_sync_omni_kg_register_jep", 0.0f);
+
+
     omni_kg_module_info_t info = {0};
     strncpy(info.name, name, sizeof(info.name) - 1);
     info.type = OMNI_KG_TYPE_PREDICTOR;
@@ -311,6 +343,10 @@ brain_kg_node_id_t omni_kg_register_hopfield(omni_kg_sync_t* sync,
                                               const char* name,
                                               hopfield_memory_t* hopfield) {
     if (!sync || !name) return BRAIN_KG_INVALID_NODE;
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_kg_sync_heartbeat("omni_kg_sync_omni_kg_register_hop", 0.0f);
+
 
     omni_kg_module_info_t info = {0};
     strncpy(info.name, name, sizeof(info.name) - 1);
@@ -329,6 +365,10 @@ brain_kg_node_id_t omni_kg_register_pred_level(omni_kg_sync_t* sync,
                                                 predictive_hierarchy_t* hierarchy) {
     if (!sync || !name) return BRAIN_KG_INVALID_NODE;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_kg_sync_heartbeat("omni_kg_sync_omni_kg_register_pre", 0.0f);
+
+
     omni_kg_module_info_t info = {0};
     snprintf(info.name, sizeof(info.name), "%s_L%u", name, level_index);
     info.type = OMNI_KG_TYPE_HIERARCHY_LEVEL;
@@ -346,6 +386,10 @@ brain_kg_node_id_t omni_kg_register_replay(omni_kg_sync_t* sync,
                                             temporal_replay_t* replay) {
     if (!sync || !name) return BRAIN_KG_INVALID_NODE;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_kg_sync_heartbeat("omni_kg_sync_omni_kg_register_rep", 0.0f);
+
+
     omni_kg_module_info_t info = {0};
     strncpy(info.name, name, sizeof(info.name) - 1);
     info.type = OMNI_KG_TYPE_REPLAY;
@@ -362,6 +406,10 @@ brain_kg_node_id_t omni_kg_register_bridge(omni_kg_sync_t* sync,
                                             omni_kg_capability_t capabilities,
                                             void* bridge) {
     if (!sync || !name) return BRAIN_KG_INVALID_NODE;
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_kg_sync_heartbeat("omni_kg_sync_omni_kg_register_bri", 0.0f);
+
 
     omni_kg_module_info_t info = {0};
     strncpy(info.name, name, sizeof(info.name) - 1);
@@ -383,6 +431,10 @@ int omni_kg_add_prediction_edge(omni_kg_sync_t* sync,
                                  brain_kg_node_id_t to_node,
                                  omni_kg_edge_type_t edge_type,
                                  float precision) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_kg_sync_heartbeat("omni_kg_sync_omni_kg_add_predicti", 0.0f);
+
+
     NIMCP_CHECK_THROW(sync, NIMCP_ERROR_INVALID_PARAM, "sync is NULL");
 
     nimcp_mutex_lock(sync->mutex);
@@ -419,6 +471,10 @@ int omni_kg_add_bidirectional_edge(omni_kg_sync_t* sync,
                                     brain_kg_node_id_t node_a,
                                     brain_kg_node_id_t node_b,
                                     float precision) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_kg_sync_heartbeat("omni_kg_sync_omni_kg_add_bidirect", 0.0f);
+
+
     NIMCP_CHECK_THROW(sync, NIMCP_ERROR_INVALID_PARAM, "sync is NULL");
 
     int result = omni_kg_add_prediction_edge(sync, node_a, node_b,
@@ -435,6 +491,10 @@ int omni_kg_add_hierarchical_edges(omni_kg_sync_t* sync,
                                     brain_kg_node_id_t lower_node,
                                     brain_kg_node_id_t upper_node,
                                     float precision) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_kg_sync_heartbeat("omni_kg_sync_omni_kg_add_hierarch", 0.0f);
+
+
     NIMCP_CHECK_THROW(sync, NIMCP_ERROR_INVALID_PARAM, "sync is NULL");
 
     /* Bottom-up (lower → upper) */
@@ -454,6 +514,10 @@ int omni_kg_update_edge_precision(omni_kg_sync_t* sync,
                                    brain_kg_node_id_t to_node,
                                    omni_kg_edge_type_t edge_type,
                                    float new_precision) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_kg_sync_heartbeat("omni_kg_sync_omni_kg_update_edge_", 0.0f);
+
+
     NIMCP_CHECK_THROW(sync, NIMCP_ERROR_INVALID_PARAM, "sync is NULL");
 
     nimcp_mutex_lock(sync->mutex);
@@ -487,6 +551,10 @@ int omni_kg_get_modules_with_capability(const omni_kg_sync_t* sync,
                                          uint32_t max_nodes) {
     if (!sync || !nodes_out || max_nodes == 0) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_kg_sync_heartbeat("omni_kg_sync_omni_kg_get_modules_", 0.0f);
+
+
     nimcp_mutex_lock(((omni_kg_sync_t*)sync)->mutex);
 
     uint32_t count = 0;
@@ -509,6 +577,10 @@ int omni_kg_get_prediction_path(const omni_kg_sync_t* sync,
     if (!sync || !path_out || max_path_len == 0) return 0;
 
     /* Use brain_kg path finding */
+    /* Phase 8: Heartbeat at operation start */
+    omni_kg_sync_heartbeat("omni_kg_sync_omni_kg_get_predicti", 0.0f);
+
+
     brain_kg_path_t* path = brain_kg_find_path(sync->kg, from_node, to_node);
     if (!path) return 0;
 
@@ -529,6 +601,10 @@ int omni_kg_get_predictors_for(const omni_kg_sync_t* sync,
     if (!sync || !predictors_out || max_predictors == 0) return 0;
 
     /* Get incoming edges */
+    /* Phase 8: Heartbeat at operation start */
+    omni_kg_sync_heartbeat("omni_kg_sync_omni_kg_get_predicto", 0.0f);
+
+
     brain_kg_edge_list_t* edges = brain_kg_get_incoming(sync->kg, target_node);
     if (!edges) return 0;
 
@@ -549,6 +625,10 @@ brain_kg_node_id_t omni_kg_get_node_by_name(const omni_kg_sync_t* sync,
                                              const char* name) {
     if (!sync || !name) return BRAIN_KG_INVALID_NODE;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_kg_sync_heartbeat("omni_kg_sync_omni_kg_get_node_by_", 0.0f);
+
+
     nimcp_mutex_lock(((omni_kg_sync_t*)sync)->mutex);
 
     int index = find_module_index(sync, name);
@@ -562,6 +642,10 @@ brain_kg_node_id_t omni_kg_get_node_by_name(const omni_kg_sync_t* sync,
 omni_kg_capability_t omni_kg_get_capabilities(const omni_kg_sync_t* sync,
                                                brain_kg_node_id_t node) {
     if (!sync) return OMNI_KG_CAP_NONE;
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_kg_sync_heartbeat("omni_kg_sync_omni_kg_get_capabili", 0.0f);
+
 
     nimcp_mutex_lock(((omni_kg_sync_t*)sync)->mutex);
 
@@ -578,6 +662,10 @@ omni_kg_capability_t omni_kg_get_capabilities(const omni_kg_sync_t* sync,
  * ============================================================================ */
 
 int omni_kg_sync_all(omni_kg_sync_t* sync) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_kg_sync_heartbeat("omni_kg_sync_all", 0.0f);
+
+
     NIMCP_CHECK_THROW(sync, NIMCP_ERROR_INVALID_PARAM, "sync is NULL");
 
     nimcp_mutex_lock(sync->mutex);
@@ -591,12 +679,22 @@ int omni_kg_sync_all(omni_kg_sync_t* sync) {
 }
 
 int omni_kg_sync_precision(omni_kg_sync_t* sync) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_kg_sync_heartbeat("omni_kg_sync_precision", 0.0f);
+
+
     NIMCP_CHECK_THROW(sync, NIMCP_ERROR_INVALID_PARAM, "sync is NULL");
 
     nimcp_mutex_lock(sync->mutex);
 
     /* Update precision metadata for all modules */
     for (uint32_t i = 0; i < sync->module_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sync->module_count > 256) {
+            omni_kg_sync_heartbeat("omni_kg_sync_loop",
+                             (float)(i + 1) / (float)sync->module_count);
+        }
+
         char prec_str[32];
         snprintf(prec_str, sizeof(prec_str), "%.3f",
                  sync->modules[i].default_precision);
@@ -613,12 +711,22 @@ int omni_kg_sync_precision(omni_kg_sync_t* sync) {
 }
 
 int omni_kg_sync_capabilities(omni_kg_sync_t* sync) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_kg_sync_heartbeat("omni_kg_sync_capabilities", 0.0f);
+
+
     NIMCP_CHECK_THROW(sync, NIMCP_ERROR_INVALID_PARAM, "sync is NULL");
 
     nimcp_mutex_lock(sync->mutex);
 
     /* Update capability metadata for all modules */
     for (uint32_t i = 0; i < sync->module_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sync->module_count > 256) {
+            omni_kg_sync_heartbeat("omni_kg_sync_loop",
+                             (float)(i + 1) / (float)sync->module_count);
+        }
+
         char cap_str[32];
         snprintf(cap_str, sizeof(cap_str), "0x%02X",
                  sync->modules[i].capabilities);
@@ -636,6 +744,10 @@ int omni_kg_sync_capabilities(omni_kg_sync_t* sync) {
 
 int omni_kg_get_sync_stats(const omni_kg_sync_t* sync,
                             omni_kg_sync_stats_t* stats) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_kg_sync_heartbeat("omni_kg_sync_omni_kg_get_sync_sta", 0.0f);
+
+
     NIMCP_CHECK_THROW(sync, NIMCP_ERROR_INVALID_PARAM, "sync is NULL");
     NIMCP_CHECK_THROW(stats, NIMCP_ERROR_INVALID_PARAM, "stats is NULL");
 
@@ -646,6 +758,10 @@ int omni_kg_get_sync_stats(const omni_kg_sync_t* sync,
 }
 
 int omni_kg_reset_sync_stats(omni_kg_sync_t* sync) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_kg_sync_heartbeat("omni_kg_sync_omni_kg_reset_sync_s", 0.0f);
+
+
     NIMCP_CHECK_THROW(sync, NIMCP_ERROR_INVALID_PARAM, "sync is NULL");
 
     nimcp_mutex_lock(sync->mutex);

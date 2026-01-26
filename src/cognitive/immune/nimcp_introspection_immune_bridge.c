@@ -37,7 +37,7 @@ static nimcp_health_agent_t* g_introspection_immune_bridge_health_agent = NULL;
  * @brief Set health agent for introspection_immune_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void introspection_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void introspection_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_introspection_immune_bridge_health_agent = agent;
 }
 
@@ -81,6 +81,12 @@ static float get_cytokine_concentration(
 
     /* Search for cytokine of this type */
     for (size_t i = 0; i < immune->cytokine_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && immune->cytokine_count > 256) {
+            introspection_immune_bridge_heartbeat("introspectio_loop",
+                             (float)(i + 1) / (float)immune->cytokine_count);
+        }
+
         if (immune->cytokines[i].type == type && !immune->cytokines[i].delivered) {
             return immune->cytokines[i].concentration;
         }
@@ -103,6 +109,12 @@ static float get_inflammation_duration_sec(const brain_immune_system_t* immune) 
 
     /* Find oldest inflammation site */
     for (size_t i = 0; i < immune->inflammation_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && immune->inflammation_count > 256) {
+            introspection_immune_bridge_heartbeat("introspectio_loop",
+                             (float)(i + 1) / (float)immune->inflammation_count);
+        }
+
         if (immune->inflammation_sites[i].level != INFLAMMATION_NONE) {
             if (immune->inflammation_sites[i].start_time < oldest_time) {
                 oldest_time = immune->inflammation_sites[i].start_time;
@@ -135,6 +147,12 @@ static brain_inflammation_level_t get_max_inflammation_level(
 
     brain_inflammation_level_t max_level = INFLAMMATION_NONE;
     for (size_t i = 0; i < immune->inflammation_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && immune->inflammation_count > 256) {
+            introspection_immune_bridge_heartbeat("introspectio_loop",
+                             (float)(i + 1) / (float)immune->inflammation_count);
+        }
+
         if (immune->inflammation_sites[i].level > max_level) {
             max_level = immune->inflammation_sites[i].level;
         }
@@ -156,6 +174,10 @@ int introspection_immune_default_config(introspection_immune_config_t* config) {
     }
 
     /* All features enabled by default */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_immune_bridge_heartbeat("introspectio_introspection_immune", 0.0f);
+
+
     config->enable_cytokine_introspection_modulation = true;
     config->enable_inflammation_phi_reduction = true;
     config->enable_sickness_detection = true;
@@ -187,6 +209,10 @@ introspection_immune_bridge_t* introspection_immune_bridge_create(
     }
 
     /* Allocate bridge */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_immune_bridge_heartbeat("introspectio_create", 0.0f);
+
+
     introspection_immune_bridge_t* bridge = (introspection_immune_bridge_t*)
         nimcp_malloc(sizeof(introspection_immune_bridge_t));
     if (!bridge) {
@@ -240,6 +266,10 @@ void introspection_immune_bridge_destroy(introspection_immune_bridge_t* bridge) 
     if (!bridge) return;
 
     /* Destroy mutex */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_immune_bridge_heartbeat("introspectio_destroy", 0.0f);
+
+
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
     }
@@ -264,6 +294,10 @@ int introspection_immune_apply_cytokine_effects(introspection_immune_bridge_t* b
     }
     if (!bridge->enable_cytokine_introspection_modulation) return 0;
     if (!bridge->immune_system || !bridge->introspection_context) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    introspection_immune_bridge_heartbeat("introspectio_introspection_immune", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -324,6 +358,10 @@ int introspection_immune_apply_inflammation_effects(introspection_immune_bridge_
     if (!bridge->enable_inflammation_phi_reduction) return 0;
     if (!bridge->immune_system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_immune_bridge_heartbeat("introspectio_introspection_immune", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     inflammation_consciousness_state_t* state = &bridge->consciousness_state;
@@ -373,6 +411,10 @@ float introspection_immune_compute_phi_reduction(const introspection_immune_brid
     if (!bridge) return 0.0f;
 
     /* Combine cytokine-induced and inflammation-induced Phi reduction */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_immune_bridge_heartbeat("introspectio_introspection_immune", 0.0f);
+
+
     float cytokine_phi = bridge->cytokine_effects.phi_reduction;
     float inflammation_phi = bridge->consciousness_state.phi_reduction;
 
@@ -387,6 +429,10 @@ float introspection_immune_compute_uncertainty_increase(
     if (!bridge) return 0.0f;
 
     /* Combine cytokine-induced and inflammation-induced uncertainty */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_immune_bridge_heartbeat("introspectio_introspection_immune", 0.0f);
+
+
     float cytokine_unc = bridge->cytokine_effects.uncertainty_increase;
     float inflammation_unc = bridge->consciousness_state.epistemic_uncertainty_increase;
 
@@ -410,6 +456,10 @@ int introspection_immune_detect_sickness(introspection_immune_bridge_t* bridge) 
     }
     if (!bridge->enable_sickness_detection) return 0;
     if (!bridge->introspection_context) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    introspection_immune_bridge_heartbeat("introspectio_introspection_immune", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -478,6 +528,10 @@ int introspection_immune_correlate_patterns(introspection_immune_bridge_t* bridg
     if (!bridge->enable_pattern_immune_correlation) return 0;
     if (!bridge->introspection_context || !bridge->immune_system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_immune_bridge_heartbeat("introspectio_introspection_immune", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Get current immune phase */
@@ -510,6 +564,10 @@ int introspection_immune_bridge_update(
     }
 
     /* Apply immune → introspection effects */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_immune_bridge_heartbeat("introspectio_update", 0.0f);
+
+
     introspection_immune_apply_cytokine_effects(bridge);
     introspection_immune_apply_inflammation_effects(bridge);
 
@@ -531,6 +589,10 @@ int introspection_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_immune_bridge_heartbeat("introspectio_introspection_immune", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_introspection_effects_t));
     pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
@@ -543,6 +605,10 @@ int introspection_immune_get_consciousness_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_immune_bridge_heartbeat("introspectio_introspection_immune", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->consciousness_state, sizeof(inflammation_consciousness_state_t));
     pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
@@ -551,16 +617,28 @@ int introspection_immune_get_consciousness_state(
 
 bool introspection_immune_is_sickness_detected(const introspection_immune_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    introspection_immune_bridge_heartbeat("introspectio_introspection_immune", 0.0f);
+
+
     return bridge->sickness_detection.sickness_detected;
 }
 
 float introspection_immune_get_phi_reduction(const introspection_immune_bridge_t* bridge) {
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    introspection_immune_bridge_heartbeat("introspectio_introspection_immune", 0.0f);
+
+
     return introspection_immune_compute_phi_reduction(bridge);
 }
 
 float introspection_immune_get_accuracy_loss(const introspection_immune_bridge_t* bridge) {
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    introspection_immune_bridge_heartbeat("introspectio_introspection_immune", 0.0f);
+
+
     return bridge->consciousness_state.metacognitive_accuracy_loss;
 }
 
@@ -573,6 +651,10 @@ int introspection_immune_set_baseline(introspection_immune_bridge_t* bridge) {
 
     }
     if (!bridge->introspection_context) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    introspection_immune_bridge_heartbeat("introspectio_introspection_immune", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -598,6 +680,10 @@ int introspection_immune_reset_sickness_detection(introspection_immune_bridge_t*
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    introspection_immune_bridge_heartbeat("introspectio_introspection_immune", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -630,6 +716,10 @@ int introspection_immune_connect_bio_async(introspection_immune_bridge_t* bridge
     }
     if (bridge->base.bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_immune_bridge_heartbeat("introspectio_introspection_immune", 0.0f);
+
+
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_INTROSPECTION,
         .module_name = INTROSPECTION_IMMUNE_MODULE_NAME,
@@ -661,6 +751,10 @@ int introspection_immune_disconnect_bio_async(introspection_immune_bridge_t* bri
     }
     if (!bridge->base.bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_immune_bridge_heartbeat("introspectio_introspection_immune", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -676,6 +770,10 @@ int introspection_immune_disconnect_bio_async(introspection_immune_bridge_t* bri
  */
 bool introspection_immune_is_bio_async_connected(const introspection_immune_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    introspection_immune_bridge_heartbeat("introspectio_introspection_immune", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -695,9 +793,19 @@ bool introspection_immune_is_bio_async_connected(const introspection_immune_brid
  */
 int introspection_immune_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    introspection_immune_bridge_heartbeat("introspectio_introspection_immune", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Introspection_Immune_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                introspection_immune_bridge_heartbeat("introspectio_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Introspection immune bridge self-knowledge: %s", self->observations[i]);
         }
     }

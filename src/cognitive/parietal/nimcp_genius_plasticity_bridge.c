@@ -36,7 +36,7 @@ static nimcp_health_agent_t* g_genius_plasticity_bridge_health_agent = NULL;
  * @brief Set health agent for genius_plasticity_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void genius_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void genius_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_genius_plasticity_bridge_health_agent = agent;
 }
 
@@ -103,6 +103,12 @@ static inline float clamp_f(float x, float min_val, float max_val) {
 
 static genius_plasticity_synapse_t* find_synapse(genius_plasticity_bridge_t* bridge, uint32_t synapse_id) {
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            genius_plasticity_bridge_heartbeat("genius_plast_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         if (bridge->synapses[i].synapse_id == synapse_id) {
             return &bridge->synapses[i];
         }
@@ -143,6 +149,10 @@ static void update_mode_skill(genius_plasticity_bridge_t* bridge, genius_mode_t 
 //=============================================================================
 
 genius_plasticity_config_t genius_plasticity_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_co", 0.0f);
+
+
     genius_plasticity_config_t config = {
         .base_learning_rate = GENIUS_PLASTICITY_DEFAULT_LR,
         .stdp_tau_plus_ms = 20.0f,
@@ -181,6 +191,10 @@ genius_plasticity_config_t genius_plasticity_config_default(void) {
 }
 
 genius_plasticity_bridge_t* genius_plasticity_create(const genius_plasticity_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_cr", 0.0f);
+
+
     genius_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(genius_plasticity_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge allocation failed");
@@ -224,6 +238,12 @@ genius_plasticity_bridge_t* genius_plasticity_create(const genius_plasticity_con
 
     /* Initialize mode skills */
     for (int i = 0; i < GENIUS_MODE_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && GENIUS_MODE_COUNT > 256) {
+            genius_plasticity_bridge_heartbeat("genius_plast_loop",
+                             (float)(i + 1) / (float)GENIUS_MODE_COUNT);
+        }
+
         bridge->mode_skills[i] = 0.3f;
     }
 
@@ -243,6 +263,10 @@ genius_plasticity_bridge_t* genius_plasticity_create(const genius_plasticity_con
 void genius_plasticity_destroy(genius_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_de", 0.0f);
+
+
     if (bridge->synapses) nimcp_free(bridge->synapses);
 
     /* Destroy KG wiring */
@@ -258,10 +282,20 @@ void genius_plasticity_destroy(genius_plasticity_bridge_t* bridge) {
 int genius_plasticity_reset(genius_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_re", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset all synapses to initial weights */
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            genius_plasticity_bridge_heartbeat("genius_plast_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         bridge->synapses[i].weight = bridge->synapses[i].initial_weight;
         bridge->synapses[i].eligibility_trace = 0.0f;
         bridge->synapses[i].bcm_threshold = bridge->config.bcm_target_rate;
@@ -282,6 +316,10 @@ int genius_plasticity_reset(genius_plasticity_bridge_t* bridge) {
 int genius_plasticity_link_genius(genius_plasticity_bridge_t* bridge, struct mathematical_genius* genius) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_li", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->genius = genius;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -298,6 +336,10 @@ int genius_plasticity_register_synapse(genius_plasticity_bridge_t* bridge,
                                        float initial_weight,
                                        genius_mode_t mode) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_re", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -342,9 +384,19 @@ int genius_plasticity_register_synapse(genius_plasticity_bridge_t* bridge,
 int genius_plasticity_unregister_synapse(genius_plasticity_bridge_t* bridge, uint32_t synapse_id) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_un", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            genius_plasticity_bridge_heartbeat("genius_plast_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         if (bridge->synapses[i].synapse_id == synapse_id) {
             /* Swap with last and decrement count */
             bridge->synapses[i] = bridge->synapses[--bridge->synapse_count];
@@ -361,6 +413,10 @@ int genius_plasticity_get_synapse(genius_plasticity_bridge_t* bridge,
                                   uint32_t synapse_id,
                                   genius_plasticity_synapse_t* synapse) {
     if (!bridge || !synapse) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_ge", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -379,6 +435,10 @@ int genius_plasticity_protect_synapse(genius_plasticity_bridge_t* bridge,
                                       uint32_t synapse_id,
                                       bool protect) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_pr", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -407,6 +467,10 @@ int genius_plasticity_learn(genius_plasticity_bridge_t* bridge,
             "genius_plasticity_learn: bridge is NULL");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_le", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = GENIUS_PLASTICITY_STATE_LEARNING;
@@ -531,6 +595,10 @@ float genius_plasticity_apply_stdp(genius_plasticity_bridge_t* bridge,
                                    float post_time) {
     if (!bridge) return NAN;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_ap", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     genius_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
@@ -578,6 +646,10 @@ int genius_plasticity_apply_proof_reward(genius_plasticity_bridge_t* bridge,
                                          float elegance) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_ap", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     reward = clamp_f(reward, -1.0f, 1.0f);
@@ -588,6 +660,12 @@ int genius_plasticity_apply_proof_reward(genius_plasticity_bridge_t* bridge,
 
     /* Apply to all synapses with positive eligibility traces */
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            genius_plasticity_bridge_heartbeat("genius_plast_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         genius_plasticity_synapse_t* syn = &bridge->synapses[i];
         if (syn->eligibility_trace > 0.01f) {
             float dw = modulation * syn->eligibility_trace;
@@ -610,6 +688,10 @@ int genius_plasticity_apply_insight_reward(genius_plasticity_bridge_t* bridge,
                                            genius_mode_t mode) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_ap", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     insight_strength = clamp_f(insight_strength, 0.0f, 1.0f);
@@ -617,6 +699,12 @@ int genius_plasticity_apply_insight_reward(genius_plasticity_bridge_t* bridge,
 
     /* Apply to synapses associated with the mode */
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            genius_plasticity_bridge_heartbeat("genius_plast_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         genius_plasticity_synapse_t* syn = &bridge->synapses[i];
         if (syn->associated_mode == mode && syn->eligibility_trace > 0.01f) {
             float dw = modulation * syn->eligibility_trace;
@@ -639,12 +727,22 @@ int genius_plasticity_apply_insight_reward(genius_plasticity_bridge_t* bridge,
 int genius_plasticity_update_bcm(genius_plasticity_bridge_t* bridge, float dt_ms) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_up", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float tau = bridge->config.bcm_tau_ms;
     float target = bridge->config.bcm_target_rate;
 
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            genius_plasticity_bridge_heartbeat("genius_plast_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         genius_plasticity_synapse_t* syn = &bridge->synapses[i];
         syn->bcm_threshold += dt_ms * (syn->avg_activity * syn->avg_activity - syn->bcm_threshold) / tau;
         syn->bcm_threshold = clamp_f(syn->bcm_threshold, 0.01f, 1.0f);
@@ -657,6 +755,10 @@ int genius_plasticity_update_bcm(genius_plasticity_bridge_t* bridge, float dt_ms
 int genius_plasticity_homeostatic_update(genius_plasticity_bridge_t* bridge, float dt_ms) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_ho", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float tau = bridge->config.homeostatic_tau_ms;
@@ -665,6 +767,12 @@ int genius_plasticity_homeostatic_update(genius_plasticity_bridge_t* bridge, flo
     /* Compute mean weight */
     float mean_weight = 0.0f;
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            genius_plasticity_bridge_heartbeat("genius_plast_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         mean_weight += bridge->synapses[i].weight;
     }
     if (bridge->synapse_count > 0) {
@@ -675,6 +783,12 @@ int genius_plasticity_homeostatic_update(genius_plasticity_bridge_t* bridge, flo
     float scale_factor = 1.0f + dt_ms * (0.5f - mean_weight) / tau;
 
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            genius_plasticity_bridge_heartbeat("genius_plast_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         genius_plasticity_synapse_t* syn = &bridge->synapses[i];
         if (!syn->is_protected) {
             syn->weight *= scale_factor;
@@ -689,11 +803,21 @@ int genius_plasticity_homeostatic_update(genius_plasticity_bridge_t* bridge, flo
 int genius_plasticity_update_traces(genius_plasticity_bridge_t* bridge, float dt_ms) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_up", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float decay = expf(-dt_ms / 100.0f); /* 100ms trace decay */
 
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            genius_plasticity_bridge_heartbeat("genius_plast_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         bridge->synapses[i].eligibility_trace *= decay;
     }
 
@@ -704,11 +828,21 @@ int genius_plasticity_update_traces(genius_plasticity_bridge_t* bridge, float dt
 int genius_plasticity_consolidate(genius_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_co", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = GENIUS_PLASTICITY_STATE_CONSOLIDATING;
 
     /* Consolidate strong weights, weaken weak weights */
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            genius_plasticity_bridge_heartbeat("genius_plast_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         genius_plasticity_synapse_t* syn = &bridge->synapses[i];
         if (!syn->is_protected) {
             if (syn->weight > 0.7f) {
@@ -734,6 +868,10 @@ int genius_plasticity_consolidate(genius_plasticity_bridge_t* bridge) {
 int genius_plasticity_get_learning_state(genius_plasticity_bridge_t* bridge,
                                          genius_learning_state_t* state) {
     if (!bridge || !state) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_ge", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -767,6 +905,10 @@ float genius_plasticity_get_mode_skill(genius_plasticity_bridge_t* bridge, geniu
             "genius_plasticity_get_mode_skill: bridge is NULL");
         return -1.0f;
     }
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_ge", 0.0f);
+
+
     if (mode >= GENIUS_MODE_COUNT) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
             "genius_plasticity_get_mode_skill: invalid mode %d (max: %d)",
@@ -784,6 +926,10 @@ int genius_plasticity_get_state(genius_plasticity_bridge_t* bridge,
                                 genius_plasticity_bridge_state_t* state) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_ge", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
@@ -792,6 +938,12 @@ int genius_plasticity_get_state(genius_plasticity_bridge_t* bridge,
     /* Compute mean weight and variance */
     float sum = 0.0f, sum_sq = 0.0f;
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            genius_plasticity_bridge_heartbeat("genius_plast_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         sum += bridge->synapses[i].weight;
         sum_sq += bridge->synapses[i].weight * bridge->synapses[i].weight;
     }
@@ -817,11 +969,21 @@ int genius_plasticity_get_stats(genius_plasticity_bridge_t* bridge,
                                 genius_plasticity_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_ge", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
 
     /* Copy mode skills */
     for (int i = 0; i < GENIUS_MODE_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && GENIUS_MODE_COUNT > 256) {
+            genius_plasticity_bridge_heartbeat("genius_plast_loop",
+                             (float)(i + 1) / (float)GENIUS_MODE_COUNT);
+        }
+
         stats->mode_skill[i] = bridge->mode_skills[i];
     }
 
@@ -831,6 +993,10 @@ int genius_plasticity_get_stats(genius_plasticity_bridge_t* bridge,
 
 int genius_plasticity_reset_stats(genius_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_re", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(genius_plasticity_stats_t));
@@ -847,6 +1013,10 @@ int genius_plasticity_register_learn_callback(genius_plasticity_bridge_t* bridge
                                               void* user_data) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_re", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->learn_callback = callback;
     bridge->learn_callback_data = user_data;
@@ -859,6 +1029,10 @@ int genius_plasticity_register_skill_callback(genius_plasticity_bridge_t* bridge
                                               void* user_data) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_re", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->skill_callback = callback;
     bridge->skill_callback_data = user_data;
@@ -870,6 +1044,10 @@ int genius_plasticity_register_breakthrough_callback(genius_plasticity_bridge_t*
                                                      genius_plasticity_breakthrough_callback_t callback,
                                                      void* user_data) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_re", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->breakthrough_callback = callback;
@@ -885,6 +1063,10 @@ int genius_plasticity_register_breakthrough_callback(genius_plasticity_bridge_t*
 int genius_plasticity_bio_async_connect(genius_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_bi", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = true;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -894,6 +1076,10 @@ int genius_plasticity_bio_async_connect(genius_plasticity_bridge_t* bridge) {
 int genius_plasticity_bio_async_disconnect(genius_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_bi", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -902,6 +1088,10 @@ int genius_plasticity_bio_async_disconnect(genius_plasticity_bridge_t* bridge) {
 
 bool genius_plasticity_is_bio_async_connected(genius_plasticity_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_is", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;
@@ -958,6 +1148,10 @@ int genius_plasticity_serialize_state(genius_plasticity_bridge_t* bridge,
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_se", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     memset(serialized, 0, sizeof(*serialized));
@@ -972,6 +1166,12 @@ int genius_plasticity_serialize_state(genius_plasticity_bridge_t* bridge,
     /* Compute mean weight */
     float sum_weight = 0.0f;
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->synapse_count > 256) {
+            genius_plasticity_bridge_heartbeat("genius_plast_loop",
+                             (float)(i + 1) / (float)bridge->synapse_count);
+        }
+
         sum_weight += bridge->synapses[i].weight;
     }
     serialized->state.mean_weight = (bridge->synapse_count > 0)
@@ -1005,6 +1205,10 @@ int genius_plasticity_deserialize_state(genius_plasticity_bridge_t* bridge,
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_de", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Restore state */
@@ -1024,11 +1228,21 @@ uint32_t genius_plasticity_compute_checksum(const genius_plasticity_serialized_t
     if (!serialized) return 0;
 
     /* Simple FNV-1a hash over relevant fields */
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_co", 0.0f);
+
+
     uint32_t hash = 2166136261u;
     const uint8_t* data = (const uint8_t*)serialized;
     size_t len = offsetof(genius_plasticity_serialized_t, checksum);
 
     for (size_t i = 0; i < len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && len > 256) {
+            genius_plasticity_bridge_heartbeat("genius_plast_loop",
+                             (float)(i + 1) / (float)len);
+        }
+
         hash ^= data[i];
         hash *= 16777619u;
     }
@@ -1039,6 +1253,10 @@ uint32_t genius_plasticity_compute_checksum(const genius_plasticity_serialized_t
 bool genius_plasticity_verify_checksum(const genius_plasticity_serialized_t* serialized) {
     if (!serialized) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_ve", 0.0f);
+
+
     uint32_t computed = genius_plasticity_compute_checksum(serialized);
     return computed == serialized->checksum;
 }
@@ -1048,6 +1266,10 @@ bool genius_plasticity_verify_checksum(const genius_plasticity_serialized_t* ser
 //=============================================================================
 
 kg_module_wiring_t* genius_plasticity_create_kg_wiring(void) {
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_cr", 0.0f);
+
+
     kg_module_wiring_t* wiring = kg_module_wiring_create(
         KG_GENIUS_PLASTICITY_MODULE_NAME,
         KG_GENIUS_PLASTICITY_MODULE_TYPE
@@ -1099,5 +1321,9 @@ kg_module_wiring_t* genius_plasticity_create_kg_wiring(void) {
 
 kg_module_wiring_t* genius_plasticity_get_kg_wiring(genius_plasticity_bridge_t* bridge) {
     if (!bridge) return NULL;
+    /* Phase 8: Heartbeat at operation start */
+    genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_ge", 0.0f);
+
+
     return bridge->kg_wiring;
 }

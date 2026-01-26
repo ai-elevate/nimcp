@@ -50,7 +50,7 @@ static nimcp_health_agent_t* g_knowledge_health_agent = NULL;
  * @brief Set health agent for knowledge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void knowledge_set_health_agent(nimcp_health_agent_t* agent) {
+void knowledge_set_health_agent(nimcp_health_agent_t* agent) {
     g_knowledge_health_agent = agent;
 }
 
@@ -393,6 +393,12 @@ static void knowledge_hash_table_destroy(knowledge_hash_table_t* table)
 
     if (table->entries) {
         for (uint32_t i = 0; i < table->size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && table->size > 256) {
+                knowledge_heartbeat("knowledge_loop",
+                                 (float)(i + 1) / (float)table->size);
+            }
+
             hash_entry_t* entry = table->entries[i];
             while (entry) {
                 hash_entry_t* next = entry->next;
@@ -552,6 +558,12 @@ static void repository_destroy(knowledge_repository_t* repo)
 
     if (repo->items) {
         for (uint32_t i = 0; i < repo->num_items; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && repo->num_items > 256) {
+                knowledge_heartbeat("knowledge_loop",
+                                 (float)(i + 1) / (float)repo->num_items);
+            }
+
             if (repo->items[i].examples) {
                 for (uint32_t j = 0; j < repo->items[i].num_examples; j++) {
                     nimcp_free(repo->items[i].examples[j]);
@@ -737,6 +749,12 @@ static char** deep_copy_string_array(char** src, uint32_t count)
         return NULL;
 
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            knowledge_heartbeat("knowledge_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         dest[i] = NULL;
         if (!src[i])
             continue;
@@ -796,6 +814,12 @@ static bool strategy_learn_narrative(void* system, const void* data)
     new_story->moral_lessons = deep_copy_string_array(story->moral_lessons, story->num_lessons);
 
     for (uint32_t i = 0; i < story->num_lessons; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && story->num_lessons > 256) {
+            knowledge_heartbeat("knowledge_loop",
+                             (float)(i + 1) / (float)story->num_lessons);
+        }
+
         knowledge_item_t item = {0};
         snprintf(item.concept_name, sizeof(item.concept_name), "lesson_from_%s_%u", story->title, i);
         item.domain = KNOWLEDGE_DOMAIN_ETHICS;
@@ -849,6 +873,12 @@ static bool strategy_learn_aesthetic(void* system, const void* data)
     new_art->aesthetic_qualities = deep_copy_string_array(art->aesthetic_qualities, art->num_qualities);
 
     for (uint32_t i = 0; i < art->num_qualities; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && art->num_qualities > 256) {
+            knowledge_heartbeat("knowledge_loop",
+                             (float)(i + 1) / (float)art->num_qualities);
+        }
+
         knowledge_item_t item = {0};
         strncpy(item.concept_name, art->aesthetic_qualities[i], sizeof(item.concept_name) - 1);
         item.domain = KNOWLEDGE_DOMAIN_ART;
@@ -1028,6 +1058,12 @@ static int knowledge_wiring_handler_callback(
 
     int registered = 0;
     for (uint32_t i = 0; i < message_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && message_count > 256) {
+            knowledge_heartbeat("knowledge_loop",
+                             (float)(i + 1) / (float)message_count);
+        }
+
         switch (message_types[i]) {
             case BIO_MSG_KNOWLEDGE_QUERY:
                 bio_router_register_handler(ctx, message_types[i], handle_knowledge_query);
@@ -1119,6 +1155,10 @@ knowledge_system_t knowledge_system_create(const char* learner_name)
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_heartbeat("knowledge_system_create", 0.0f);
+
+
     knowledge_system_t system = nimcp_calloc(1, sizeof(struct knowledge_system_struct));
     if (!system) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_system_create: failed to allocate system");
@@ -1148,6 +1188,12 @@ knowledge_system_t knowledge_system_create(const char* learner_name)
 
     // Initialize domain statistics (no brains needed - they were never used!)
     for (int i = 0; i < 11; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 11 > 256) {
+            knowledge_heartbeat("knowledge_loop",
+                             (float)(i + 1) / (float)11);
+        }
+
         initialize_domain_stats(&system->domain_stats[i], (knowledge_domain_t) i);
     }
 
@@ -1240,6 +1286,12 @@ static void free_narratives(narrative_knowledge_t* narratives, uint32_t num_narr
         return;
 
     for (uint32_t i = 0; i < num_narratives; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_narratives > 256) {
+            knowledge_heartbeat("knowledge_loop",
+                             (float)(i + 1) / (float)num_narratives);
+        }
+
         if (narratives[i].characters) {
             for (uint32_t j = 0; j < narratives[i].num_characters; j++) {
                 nimcp_free(narratives[i].characters[j]);
@@ -1276,6 +1328,12 @@ static void free_artworks(aesthetic_knowledge_t* artworks, uint32_t num_artworks
         return;
 
     for (uint32_t i = 0; i < num_artworks; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_artworks > 256) {
+            knowledge_heartbeat("knowledge_loop",
+                             (float)(i + 1) / (float)num_artworks);
+        }
+
         if (artworks[i].aesthetic_qualities) {
             for (uint32_t j = 0; j < artworks[i].num_qualities; j++) {
                 nimcp_free(artworks[i].aesthetic_qualities[j]);
@@ -1300,6 +1358,12 @@ static void free_history(historical_knowledge_t* history, uint32_t num_history)
         return;
 
     for (uint32_t i = 0; i < num_history; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_history > 256) {
+            knowledge_heartbeat("knowledge_loop",
+                             (float)(i + 1) / (float)num_history);
+        }
+
         if (history[i].key_people) {
             for (uint32_t j = 0; j < history[i].num_people; j++) {
                 nimcp_free(history[i].key_people[j]);
@@ -1331,6 +1395,10 @@ static void free_history(historical_knowledge_t* history, uint32_t num_history)
 void knowledge_system_destroy(knowledge_system_t system)
 {
     if (!system)
+        /* Phase 8: Heartbeat at operation start */
+        knowledge_heartbeat("knowledge_system_destroy", 0.0f);
+
+
         return;
 
     // Unregister from bio-async router
@@ -1462,6 +1530,10 @@ uint32_t knowledge_learn_from_text(knowledge_system_t system, const char* text,
                                    knowledge_domain_t domain)
 {
     if (!system || !text)
+        /* Phase 8: Heartbeat at operation start */
+        knowledge_heartbeat("knowledge_learn_from_text", 0.0f);
+
+
         return 0;
 
     char concepts[100][256];
@@ -1469,6 +1541,12 @@ uint32_t knowledge_learn_from_text(knowledge_system_t system, const char* text,
     uint32_t learned = 0;
 
     for (uint32_t i = 0; i < num_concepts; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_concepts > 256) {
+            knowledge_heartbeat("knowledge_loop",
+                             (float)(i + 1) / (float)num_concepts);
+        }
+
         if (process_concept(system, concepts[i], text, domain)) {
             learned++;
         }
@@ -1501,6 +1579,10 @@ uint32_t knowledge_learn_from_text(knowledge_system_t system, const char* text,
 bool knowledge_learn_from_story(knowledge_system_t system, const narrative_knowledge_t* story)
 {
     if (!system || !story)
+        /* Phase 8: Heartbeat at operation start */
+        knowledge_heartbeat("knowledge_learn_from_story", 0.0f);
+
+
         return false;
     return strategy_learn_narrative(system, story);
 }
@@ -1518,6 +1600,10 @@ bool knowledge_learn_from_story(knowledge_system_t system, const narrative_knowl
 bool knowledge_learn_from_art(knowledge_system_t system, const aesthetic_knowledge_t* art_piece)
 {
     if (!system || !art_piece)
+        /* Phase 8: Heartbeat at operation start */
+        knowledge_heartbeat("knowledge_learn_from_art", 0.0f);
+
+
         return false;
     return strategy_learn_aesthetic(system, art_piece);
 }
@@ -1535,6 +1621,10 @@ bool knowledge_learn_from_art(knowledge_system_t system, const aesthetic_knowled
 bool knowledge_learn_from_history(knowledge_system_t system, const historical_knowledge_t* event)
 {
     if (!system || !event)
+        /* Phase 8: Heartbeat at operation start */
+        knowledge_heartbeat("knowledge_learn_from_history", 0.0f);
+
+
         return false;
     return strategy_learn_historical(system, event);
 }
@@ -1557,6 +1647,10 @@ uint32_t knowledge_learn_from_conversation(knowledge_system_t system, const char
                                            const char** participants, uint32_t num_participants)
 {
     if (!system || !dialogue || !participants || num_participants == 0)
+        /* Phase 8: Heartbeat at operation start */
+        knowledge_heartbeat("knowledge_learn_from_conversat", 0.0f);
+
+
         return 0;
     return knowledge_learn_from_text(system, dialogue, KNOWLEDGE_DOMAIN_SOCIAL);
 }
@@ -1579,6 +1673,10 @@ bool knowledge_learn_from_demonstration(knowledge_system_t system, const char* w
                                         const char** steps, uint32_t num_steps)
 {
     if (!system || !what_demonstrated || !steps)
+        /* Phase 8: Heartbeat at operation start */
+        knowledge_heartbeat("knowledge_learn_from_demonstra", 0.0f);
+
+
         return false;
 
     knowledge_item_t item = {0};
@@ -1625,6 +1723,10 @@ bool knowledge_learn_from_demonstration(knowledge_system_t system, const char* w
 bool knowledge_retrieve(knowledge_system_t system, const char* concept_str, knowledge_item_t* item)
 {
     if (!system || !concept_str || !item)
+        /* Phase 8: Heartbeat at operation start */
+        knowledge_heartbeat("knowledge_retrieve", 0.0f);
+
+
         return false;
 
     int32_t idx = repository_find(system->repository, concept_str);
@@ -1658,6 +1760,10 @@ uint32_t knowledge_understand(knowledge_system_t system, const char* concept_str
                               char* explanation, uint32_t max_length)
 {
     if (!system || !concept_str || !explanation)
+        /* Phase 8: Heartbeat at operation start */
+        knowledge_heartbeat("knowledge_understand", 0.0f);
+
+
         return 0;
 
     knowledge_item_t item;
@@ -1694,6 +1800,10 @@ uint32_t knowledge_explain_simply(knowledge_system_t system, const char* concept
                                   uint32_t target_age, char* explanation, uint32_t max_length)
 {
     if (!system || !concept_str || !explanation)
+        /* Phase 8: Heartbeat at operation start */
+        knowledge_heartbeat("knowledge_explain_simply", 0.0f);
+
+
         return 0;
 
     knowledge_item_t item;
@@ -1764,6 +1874,10 @@ uint32_t knowledge_find_connections(knowledge_system_t system, const char* conce
                                     knowledge_item_t* connections, uint32_t max_connections)
 {
     if (!system || !concept_str || !connections)
+        /* Phase 8: Heartbeat at operation start */
+        knowledge_heartbeat("knowledge_find_connections", 0.0f);
+
+
         return 0;
 
     int32_t idx = repository_find(system->repository, concept_str);
@@ -1813,6 +1927,10 @@ bool knowledge_transfer_learning(knowledge_system_t system, knowledge_domain_t s
                                  char* application, uint32_t max_length)
 {
     if (!system || !situation || !application)
+        /* Phase 8: Heartbeat at operation start */
+        knowledge_heartbeat("knowledge_transfer_learning", 0.0f);
+
+
         return false;
 
     snprintf(application, max_length, "Applying knowledge from %s to %s domain for situation: %s",
@@ -1843,6 +1961,10 @@ bool knowledge_build_on(knowledge_system_t system, const char* new_concept,
                         const char* based_on_concept, const char* differences)
 {
     if (!system || !new_concept || !based_on_concept)
+        /* Phase 8: Heartbeat at operation start */
+        knowledge_heartbeat("knowledge_build_on", 0.0f);
+
+
         return false;
 
     int32_t base_idx = repository_find(system->repository, based_on_concept);
@@ -1883,6 +2005,10 @@ bool knowledge_build_on(knowledge_system_t system, const char* new_concept,
 bool knowledge_reinforce(knowledge_system_t system, const char* concept_str, const char* new_example)
 {
     if (!system || !concept_str)
+        /* Phase 8: Heartbeat at operation start */
+        knowledge_heartbeat("knowledge_reinforce", 0.0f);
+
+
         return false;
 
     int32_t idx = repository_find(system->repository, concept_str);
@@ -1948,6 +2074,10 @@ bool knowledge_reinforce(knowledge_system_t system, const char* concept_str, con
 bool knowledge_organize_domain(knowledge_system_t system, knowledge_domain_t domain)
 {
     if (!system)
+        /* Phase 8: Heartbeat at operation start */
+        knowledge_heartbeat("knowledge_organize_domain", 0.0f);
+
+
         return false;
     update_domain_stats(system, domain);
     return true;
@@ -1971,6 +2101,10 @@ uint32_t knowledge_get_map(knowledge_system_t system, knowledge_domain_t domain,
                            uint32_t max_nodes)
 {
     if (!system)
+        /* Phase 8: Heartbeat at operation start */
+        knowledge_heartbeat("knowledge_get_map", 0.0f);
+
+
         return 0;
 
     uint32_t count = 0;
@@ -2008,6 +2142,10 @@ uint32_t knowledge_read_book(knowledge_system_t system, const char* book_title,
                              const char* book_text, uint32_t reading_speed)
 {
     if (!system || !book_title || !book_text)
+        /* Phase 8: Heartbeat at operation start */
+        knowledge_heartbeat("knowledge_read_book", 0.0f);
+
+
         return 0;
     if (system->num_reading >= system->reading_capacity)
         return 0;
@@ -2043,9 +2181,19 @@ uint32_t knowledge_continue_reading(knowledge_system_t system, const char* book_
                                     bool continue_reading)
 {
     if (!system || !book_title)
+        /* Phase 8: Heartbeat at operation start */
+        knowledge_heartbeat("knowledge_continue_reading", 0.0f);
+
+
         return 0;
 
     for (uint32_t i = 0; i < system->num_reading; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->num_reading > 256) {
+            knowledge_heartbeat("knowledge_loop",
+                             (float)(i + 1) / (float)system->num_reading);
+        }
+
         if (strcmp(system->reading_list[i].book_title, book_title) == 0) {
             // Guard clause: Prevent divide by zero
             if (system->reading_list[i].total_pages == 0)
@@ -2075,6 +2223,10 @@ uint32_t knowledge_get_reading_list(knowledge_system_t system, knowledge_domain_
                                     char** recommendations, uint32_t max_recommendations)
 {
     if (!system || !recommendations)
+        /* Phase 8: Heartbeat at operation start */
+        knowledge_heartbeat("knowledge_get_reading_list", 0.0f);
+
+
         return 0;
 
     static const char* suggestions[] = {"The Very Hungry Caterpillar", "Where the Wild Things Are",
@@ -2086,6 +2238,12 @@ uint32_t knowledge_get_reading_list(knowledge_system_t system, knowledge_domain_
         (num_suggestions < max_recommendations) ? num_suggestions : max_recommendations;
 
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            knowledge_heartbeat("knowledge_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         recommendations[i] = (char*) suggestions[i];
     }
 
@@ -2111,6 +2269,10 @@ bool knowledge_assess_domain(knowledge_system_t system, knowledge_domain_t domai
                              domain_knowledge_t* assessment)
 {
     if (!system || !assessment)
+        /* Phase 8: Heartbeat at operation start */
+        knowledge_heartbeat("knowledge_assess_domain", 0.0f);
+
+
         return false;
 
     *assessment = system->domain_stats[domain];
@@ -2140,11 +2302,21 @@ uint32_t knowledge_get_summary(knowledge_system_t system, domain_knowledge_t* al
                                uint32_t max_domains)
 {
     if (!system || !all_domains)
+        /* Phase 8: Heartbeat at operation start */
+        knowledge_heartbeat("knowledge_get_summary", 0.0f);
+
+
         return 0;
 
     uint32_t count = (11 < max_domains) ? 11 : max_domains;
 
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            knowledge_heartbeat("knowledge_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         knowledge_assess_domain(system, (knowledge_domain_t) i, &all_domains[i]);
     }
 
@@ -2184,6 +2356,10 @@ const char* knowledge_domain_name(knowledge_domain_t domain)
 void knowledge_print_item(const knowledge_item_t* item)
 {
     if (!item)
+        /* Phase 8: Heartbeat at operation start */
+        knowledge_heartbeat("knowledge_print_item", 0.0f);
+
+
         return;
 
     printf("Concept: %s\n", item->concept_name);
@@ -2204,6 +2380,10 @@ void knowledge_print_item(const knowledge_item_t* item)
 void knowledge_print_assessment(const domain_knowledge_t* assessment)
 {
     if (!assessment)
+        /* Phase 8: Heartbeat at operation start */
+        knowledge_heartbeat("knowledge_print_assessment", 0.0f);
+
+
         return;
 
     printf("Domain: %s\n", knowledge_domain_name(assessment->domain));
@@ -2228,6 +2408,10 @@ void knowledge_print_assessment(const domain_knowledge_t* assessment)
 bool knowledge_save(knowledge_system_t system, const char* filepath)
 {
     if (!system || !filepath)
+        /* Phase 8: Heartbeat at operation start */
+        knowledge_heartbeat("knowledge_save", 0.0f);
+
+
         return false;
 
     FILE* file = fopen(filepath, "wb");
@@ -2266,6 +2450,10 @@ bool knowledge_save(knowledge_system_t system, const char* filepath)
 knowledge_system_t knowledge_load(const char* filepath)
 {
     if (!filepath)
+        /* Phase 8: Heartbeat at operation start */
+        knowledge_heartbeat("knowledge_load", 0.0f);
+
+
         return NULL;
 
     FILE* file = fopen(filepath, "rb");
@@ -2331,6 +2519,10 @@ uint32_t knowledge_get_by_confidence_range(knowledge_system_t system,
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_heartbeat("knowledge_get_by_confidence_ra", 0.0f);
+
+
     if (min_confidence > max_confidence) {
         *results_out = NULL;
         return 0;
@@ -2382,6 +2574,12 @@ uint32_t knowledge_get_by_confidence_range(knowledge_system_t system,
         knowledge_item_t* final_results = nimcp_calloc(count, sizeof(knowledge_item_t));
         if (final_results) {
             for (uint32_t i = 0; i < count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && count > 256) {
+                    knowledge_heartbeat("knowledge_loop",
+                                     (float)(i + 1) / (float)count);
+                }
+
                 final_results[i] = temp_results[i];
             }
             nimcp_free(temp_results);
@@ -2411,6 +2609,10 @@ uint32_t knowledge_get_all_ordered_by_confidence(knowledge_system_t system,
         if (results_out) *results_out = NULL;
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_heartbeat("knowledge_get_all_ordered_by_c", 0.0f);
+
 
     knowledge_repository_t* repo = system->repository;
     if (!repo || repo->num_items == 0) {
@@ -2443,6 +2645,12 @@ uint32_t knowledge_get_all_ordered_by_confidence(knowledge_system_t system,
 
     // Fallback: copy in array order if B-tree unavailable
     for (uint32_t i = 0; i < repo->num_items; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && repo->num_items > 256) {
+            knowledge_heartbeat("knowledge_loop",
+                             (float)(i + 1) / (float)repo->num_items);
+        }
+
         (*results_out)[i] = repo->items[i];
     }
 
@@ -2461,6 +2669,10 @@ bool knowledge_add_item(knowledge_system_t system, const knowledge_item_t* item)
     }
 
     // repository_add will set the confidence_key with the proper format (confidence_index)
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_heartbeat("knowledge_add_item", 0.0f);
+
+
     int32_t index = repository_add(system->repository, item);
     return index >= 0;
 }
@@ -2580,6 +2792,10 @@ uint32_t knowledge_add_to_symbolic_logic(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_heartbeat("knowledge_add_to_symbolic_logi", 0.0f);
+
+
     uint32_t facts_added = 0;
 
     // Add IsA facts for each related concept
@@ -2639,9 +2855,19 @@ uint32_t knowledge_add_to_symbolic_logic(
 int knowledge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_heartbeat("knowledge_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Knowledge_System");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                knowledge_heartbeat("knowledge_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Module can access its own observations for introspection */
             (void)self->observations[i];
         }

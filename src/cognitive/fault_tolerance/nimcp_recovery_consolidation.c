@@ -49,7 +49,7 @@ static nimcp_health_agent_t* g_recovery_consolidation_health_agent = NULL;
  * @brief Set health agent for recovery_consolidation heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void recovery_consolidation_set_health_agent(nimcp_health_agent_t* agent) {
+void recovery_consolidation_set_health_agent(nimcp_health_agent_t* agent) {
     g_recovery_consolidation_health_agent = agent;
 }
 
@@ -224,6 +224,12 @@ static recovery_action_t find_most_common_action(
     uint32_t action_counts[10] = {0};  // Assume max 10 action types
 
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            recovery_consolidation_heartbeat("recovery_con_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (episodes[i]) {
             uint32_t action = (uint32_t)episodes[i]->recovery_action;
             if (action < 10) {
@@ -237,6 +243,12 @@ static recovery_action_t find_most_common_action(
     recovery_action_t most_common = RECOVERY_ACTION_REDUCE_LR;
 
     for (uint32_t i = 0; i < 10; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 10 > 256) {
+            recovery_consolidation_heartbeat("recovery_con_loop",
+                             (float)(i + 1) / (float)10);
+        }
+
         if (action_counts[i] > max_count) {
             max_count = action_counts[i];
             most_common = (recovery_action_t)i;
@@ -282,6 +294,10 @@ static void* background_consolidation_thread(void* arg) {
 //=============================================================================
 
 consolidation_config_t recovery_consolidation_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    recovery_consolidation_heartbeat("recovery_con_default_config", 0.0f);
+
+
     consolidation_config_t config = {
         .min_episodes_for_rule = 10,
         .min_confidence_threshold = 0.8F,
@@ -293,6 +309,10 @@ consolidation_config_t recovery_consolidation_default_config(void) {
 }
 
 recovery_consolidation_t* recovery_consolidation_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    recovery_consolidation_heartbeat("recovery_con_create", 0.0f);
+
+
     LOG_DEBUG("Creating module");
     consolidation_config_t config = recovery_consolidation_default_config();
     return consolidation_create_custom(&config);
@@ -302,6 +322,10 @@ recovery_consolidation_t* consolidation_create_custom(
     const consolidation_config_t* config
 ) {
     // GUARD: Validate config (use defaults if NULL)
+    /* Phase 8: Heartbeat at operation start */
+    recovery_consolidation_heartbeat("recovery_con_consolidation_create", 0.0f);
+
+
     consolidation_config_t actual_config;
     if (config) {
         actual_config = *config;
@@ -391,6 +415,10 @@ return cons;
 }
 
 void recovery_consolidation_destroy(recovery_consolidation_t* consolidation) {
+    /* Phase 8: Heartbeat at operation start */
+    recovery_consolidation_heartbeat("recovery_con_destroy", 0.0f);
+
+
     LOG_DEBUG("Destroying module");
     // GUARD: NULL check
     if (!consolidation) return;
@@ -446,6 +474,10 @@ bool recovery_consolidation_add_episode(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    recovery_consolidation_heartbeat("recovery_con_add_episode", 0.0f);
+
+
     nimcp_mutex_lock(&consolidation->mutex);
 
     // GUARD: Check capacity
@@ -474,6 +506,10 @@ uint32_t consolidation_get_episodes_pending(
     const recovery_consolidation_t* consolidation
 ) {
     if (!consolidation) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    recovery_consolidation_heartbeat("recovery_con_consolidation_get_ep", 0.0f);
+
+
     return consolidation->episode_count;
 }
 
@@ -492,12 +528,22 @@ void consolidation_extract_patterns(
     }
 
     // RESET: Clear previous patterns
+    /* Phase 8: Heartbeat at operation start */
+    recovery_consolidation_heartbeat("recovery_con_consolidation_extrac", 0.0f);
+
+
     consolidation->pattern_count = 0;
 
     // GROUP: Episodes by error signature
     // For each unique (type, layer_id) pair, count occurrences
 
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            recovery_consolidation_heartbeat("recovery_con_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         error_type_t type = episodes[i].error_sig.type;
         uint32_t layer = episodes[i].error_sig.layer_id;
 
@@ -506,6 +552,12 @@ void consolidation_extract_patterns(
         bool found = false;
 
         for (uint32_t p = 0; p < consolidation->pattern_count; p++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((p & 0xFF) == 0 && consolidation->pattern_count > 256) {
+                recovery_consolidation_heartbeat("recovery_con_loop",
+                                 (float)(p + 1) / (float)consolidation->pattern_count);
+            }
+
             if (consolidation->patterns[p].pattern.type == type &&
                 consolidation->patterns[p].pattern.layer_id == layer) {
                 pattern_idx = p;
@@ -542,6 +594,10 @@ uint32_t consolidation_get_pattern_count(
     const recovery_consolidation_t* consolidation
 ) {
     if (!consolidation) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    recovery_consolidation_heartbeat("recovery_con_consolidation_get_pa", 0.0f);
+
+
     return consolidation->pattern_count;
 }
 
@@ -554,6 +610,10 @@ semantic_rule_t consolidation_create_rule(
     const recovery_episode_t** episodes,
     uint32_t count
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    recovery_consolidation_heartbeat("recovery_con_consolidation_create", 0.0f);
+
+
     semantic_rule_t rule;
     memset(&rule, 0, sizeof(semantic_rule_t));
 
@@ -573,6 +633,12 @@ semantic_rule_t consolidation_create_rule(
     // COMPUTE: Success rate
     uint32_t success_count = 0;
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            recovery_consolidation_heartbeat("recovery_con_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (episodes[i]->success) {
             success_count++;
         }
@@ -611,10 +677,20 @@ bool consolidation_add_rule(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    recovery_consolidation_heartbeat("recovery_con_consolidation_add_ru", 0.0f);
+
+
     nimcp_mutex_lock(&consolidation->mutex);
 
     // CHECK: If rule already exists, update it
     for (uint32_t i = 0; i < consolidation->rule_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && consolidation->rule_count > 256) {
+            recovery_consolidation_heartbeat("recovery_con_loop",
+                             (float)(i + 1) / (float)consolidation->rule_count);
+        }
+
         if (patterns_match(&consolidation->rules[i].pattern, &rule->pattern)) {
             // Update existing rule
             memcpy(&consolidation->rules[i], rule, sizeof(semantic_rule_t));
@@ -667,7 +743,17 @@ semantic_rule_t* recovery_consolidation_get_rule(
 
     // SEARCH: Linear search through rules
     // (Could be optimized with hash table in production)
+    /* Phase 8: Heartbeat at operation start */
+    recovery_consolidation_heartbeat("recovery_con_get_rule", 0.0f);
+
+
     for (uint32_t i = 0; i < consolidation->rule_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && consolidation->rule_count > 256) {
+            recovery_consolidation_heartbeat("recovery_con_loop",
+                             (float)(i + 1) / (float)consolidation->rule_count);
+        }
+
         if (patterns_match(&consolidation->rules[i].pattern, pattern)) {
             return &consolidation->rules[i];
         }
@@ -680,6 +766,10 @@ uint32_t consolidation_get_rule_count(
     const recovery_consolidation_t* consolidation
 ) {
     if (!consolidation) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    recovery_consolidation_heartbeat("recovery_con_consolidation_get_ru", 0.0f);
+
+
     return consolidation->rule_count;
 }
 
@@ -689,6 +779,10 @@ uint32_t consolidation_get_rule_count(
 
 void recovery_consolidation_run(recovery_consolidation_t* consolidation) {
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    recovery_consolidation_heartbeat("recovery_con_run", 0.0f);
+
+
     if (consolidation && consolidation->bio_async_enabled && consolidation->bio_ctx) {
         bio_router_process_inbox(consolidation->bio_ctx, 5);
     }
@@ -723,6 +817,12 @@ void recovery_consolidation_run(recovery_consolidation_t* consolidation) {
 
     // CREATE: Rules from patterns
     for (uint32_t p = 0; p < consolidation->pattern_count; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && consolidation->pattern_count > 256) {
+            recovery_consolidation_heartbeat("recovery_con_loop",
+                             (float)(p + 1) / (float)consolidation->pattern_count);
+        }
+
         extracted_pattern_t* pattern = &consolidation->patterns[p];
 
         // GUARD: Need minimum episodes for reliable rule
@@ -735,6 +835,12 @@ void recovery_consolidation_run(recovery_consolidation_t* consolidation) {
         uint32_t match_count = 0;
 
         for (uint32_t i = 0; i < consolidation->episode_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && consolidation->episode_count > 256) {
+                recovery_consolidation_heartbeat("recovery_con_loop",
+                                 (float)(i + 1) / (float)consolidation->episode_count);
+            }
+
             if (consolidation->episodes[i].error_sig.type == pattern->pattern.type &&
                 consolidation->episodes[i].error_sig.layer_id == pattern->pattern.layer_id) {
                 matching_episodes[match_count++] = &consolidation->episodes[i];
@@ -769,6 +875,12 @@ void recovery_consolidation_run(recovery_consolidation_t* consolidation) {
     if (consolidation->rule_count > 0) {
         float total_confidence = 0.0F;
         for (uint32_t i = 0; i < consolidation->rule_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && consolidation->rule_count > 256) {
+                recovery_consolidation_heartbeat("recovery_con_loop",
+                                 (float)(i + 1) / (float)consolidation->rule_count);
+            }
+
             total_confidence += consolidation->rules[i].confidence;
         }
         consolidation->stats.average_confidence =
@@ -787,6 +899,10 @@ bool consolidation_is_active(
     const recovery_consolidation_t* consolidation
 ) {
     if (!consolidation) return false;
+    /* Phase 8: Heartbeat at operation start */
+    recovery_consolidation_heartbeat("recovery_con_consolidation_is_act", 0.0f);
+
+
     return consolidation->consolidation_active;
 }
 
@@ -804,6 +920,10 @@ bool consolidation_start_background(
     }
 
     // GUARD: Check if already running
+    /* Phase 8: Heartbeat at operation start */
+    recovery_consolidation_heartbeat("recovery_con_consolidation_start_", 0.0f);
+
+
     if (consolidation->background_running) {
         LOG_WARNING("Background consolidation already running");
         return false;
@@ -848,6 +968,10 @@ void consolidation_stop_background(
     }
 
     // SIGNAL: Stop thread
+    /* Phase 8: Heartbeat at operation start */
+    recovery_consolidation_heartbeat("recovery_con_consolidation_stop_b", 0.0f);
+
+
     consolidation->background_should_stop = true;
 
     // WAIT: For thread to finish
@@ -861,6 +985,10 @@ bool consolidation_is_background_running(
     const recovery_consolidation_t* consolidation
 ) {
     if (!consolidation) return false;
+    /* Phase 8: Heartbeat at operation start */
+    recovery_consolidation_heartbeat("recovery_con_consolidation_is_bac", 0.0f);
+
+
     return consolidation->background_running;
 }
 
@@ -879,6 +1007,10 @@ bool recovery_consolidation_get_stats(
     }
 
     // COPY: Statistics
+    /* Phase 8: Heartbeat at operation start */
+    recovery_consolidation_heartbeat("recovery_con_get_stats", 0.0f);
+
+
     memcpy(stats, &consolidation->stats, sizeof(consolidation_stats_t));
 
     return true;
@@ -891,9 +1023,19 @@ bool recovery_consolidation_get_stats(
 int recovery_consolidation_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    recovery_consolidation_heartbeat("recovery_con_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Recovery_Consolidation");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                recovery_consolidation_heartbeat("recovery_con_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("[KG-Self] %s", self->observations[i]);
         }
     }
@@ -901,6 +1043,12 @@ int recovery_consolidation_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Recovery_Consolidation");
     if (connections) {
         for (uint32_t i = 0; i < connections->count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && connections->count > 256) {
+                recovery_consolidation_heartbeat("recovery_con_loop",
+                                 (float)(i + 1) / (float)connections->count);
+            }
+
             LOG_DEBUG("[KG-Rel] -> %s (%s)",
                       connections->relations[i]->to,
                       connections->relations[i]->relation_type);
@@ -911,6 +1059,12 @@ int recovery_consolidation_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Recovery_Consolidation");
     if (incoming) {
         for (uint32_t i = 0; i < incoming->count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && incoming->count > 256) {
+                recovery_consolidation_heartbeat("recovery_con_loop",
+                                 (float)(i + 1) / (float)incoming->count);
+            }
+
             LOG_DEBUG("[KG-Rel] <- %s (%s)",
                       incoming->relations[i]->from,
                       incoming->relations[i]->relation_type);

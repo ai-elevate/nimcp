@@ -43,7 +43,7 @@ static nimcp_health_agent_t* g_ethics_incidents_health_agent = NULL;
  * @brief Set health agent for ethics_incidents heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void ethics_incidents_set_health_agent(nimcp_health_agent_t* agent) {
+void ethics_incidents_set_health_agent(nimcp_health_agent_t* agent) {
     g_ethics_incidents_health_agent = agent;
 }
 
@@ -118,6 +118,10 @@ bool ethics_init_incident_logging(ethics_engine_t engine)
 {
     // Guard clause: Validate input
     if (!engine)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_incidents_heartbeat("ethics_incid_ethics_init_incident", 0.0f);
+
+
         {
 
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
@@ -193,6 +197,10 @@ bool ethics_init_incident_logging(ethics_engine_t engine)
 void ethics_cleanup_incident_logging(ethics_engine_t engine)
 {
     if (!engine)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_incidents_heartbeat("ethics_incid_ethics_cleanup_incid", 0.0f);
+
+
         return;
 
     ethics_incident_storage_t* storage = ethics_engine_get_incident_storage(engine);
@@ -228,6 +236,10 @@ bool ethics_log_incident(ethics_engine_t engine, const ethics_incident_t* incide
 {
     // Guard clause: Validate inputs
     if (!engine || !incident)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_incidents_heartbeat("ethics_incid_ethics_log_incident", 0.0f);
+
+
         return false;
 
     ethics_incident_storage_t* storage = ethics_engine_get_incident_storage(engine);
@@ -290,6 +302,10 @@ uint32_t ethics_get_recent_incidents(ethics_engine_t engine, uint32_t max_incide
 {
     // Guard clause: Validate inputs
     if (!engine || !incidents_out || max_incidents == 0)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_incidents_heartbeat("ethics_incid_ethics_get_recent_in", 0.0f);
+
+
         return 0;
 
     ethics_incident_storage_t* storage = ethics_engine_get_incident_storage(engine);
@@ -316,6 +332,12 @@ uint32_t ethics_get_recent_incidents(ethics_engine_t engine, uint32_t max_incide
 
     // Copy most recent incidents (walking backwards from current index)
     for (uint32_t i = 0; i < num_to_return; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_to_return > 256) {
+            ethics_incidents_heartbeat("ethics_incid_loop",
+                             (float)(i + 1) / (float)num_to_return);
+        }
+
         uint32_t src_index = (storage->incident_index - 1 - i) % MAX_INCIDENT_HISTORY;
         (*incidents_out)[i] = storage->incident_history[src_index];
     }
@@ -333,6 +355,10 @@ uint32_t ethics_get_incidents_by_time_range(ethics_engine_t engine, uint64_t sta
 {
     // Guard clause: Validate inputs
     if (!engine || !incidents_out)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_incidents_heartbeat("ethics_incid_ethics_get_incidents", 0.0f);
+
+
         return 0;
 
     ethics_incident_storage_t* storage = ethics_engine_get_incident_storage(engine);
@@ -402,6 +428,10 @@ uint32_t ethics_get_incidents_by_violation_type(ethics_engine_t engine,
 {
     // Guard clause: Validate inputs
     if (!engine || !incidents_out)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_incidents_heartbeat("ethics_incid_ethics_get_incidents", 0.0f);
+
+
         return 0;
 
     ethics_incident_storage_t* storage = ethics_engine_get_incident_storage(engine);
@@ -413,6 +443,12 @@ uint32_t ethics_get_incidents_by_violation_type(ethics_engine_t engine,
     // Count matching incidents
     uint32_t match_count = 0;
     for (uint32_t i = 0; i < storage->incident_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && storage->incident_count > 256) {
+            ethics_incidents_heartbeat("ethics_incid_loop",
+                             (float)(i + 1) / (float)storage->incident_count);
+        }
+
         if (storage->incident_history[i].violation_type == violation_type)
             match_count++;
     }
@@ -432,6 +468,12 @@ uint32_t ethics_get_incidents_by_violation_type(ethics_engine_t engine,
     // Copy matching incidents
     uint32_t out_index = 0;
     for (uint32_t i = 0; i < storage->incident_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && storage->incident_count > 256) {
+            ethics_incidents_heartbeat("ethics_incid_loop",
+                             (float)(i + 1) / (float)storage->incident_count);
+        }
+
         if (storage->incident_history[i].violation_type == violation_type) {
             (*incidents_out)[out_index++] = storage->incident_history[i];
         }
@@ -449,6 +491,10 @@ uint32_t ethics_get_incidents_by_severity(ethics_engine_t engine, float min_seve
 {
     // Guard clause: Validate inputs
     if (!engine || !incidents_out || min_severity < 0.0F || min_severity > 1.0F)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_incidents_heartbeat("ethics_incid_ethics_get_incidents", 0.0f);
+
+
         return 0;
 
     ethics_incident_storage_t* storage = ethics_engine_get_incident_storage(engine);
@@ -460,6 +506,12 @@ uint32_t ethics_get_incidents_by_severity(ethics_engine_t engine, float min_seve
     // Count matching incidents
     uint32_t match_count = 0;
     for (uint32_t i = 0; i < storage->incident_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && storage->incident_count > 256) {
+            ethics_incidents_heartbeat("ethics_incid_loop",
+                             (float)(i + 1) / (float)storage->incident_count);
+        }
+
         if (storage->incident_history[i].severity >= min_severity)
             match_count++;
     }
@@ -479,6 +531,12 @@ uint32_t ethics_get_incidents_by_severity(ethics_engine_t engine, float min_seve
     // Copy matching incidents
     uint32_t out_index = 0;
     for (uint32_t i = 0; i < storage->incident_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && storage->incident_count > 256) {
+            ethics_incidents_heartbeat("ethics_incid_loop",
+                             (float)(i + 1) / (float)storage->incident_count);
+        }
+
         if (storage->incident_history[i].severity >= min_severity) {
             (*incidents_out)[out_index++] = storage->incident_history[i];
         }
@@ -496,6 +554,10 @@ uint32_t ethics_get_incidents_by_action(ethics_engine_t engine, ethics_action_t 
 {
     // Guard clause: Validate inputs
     if (!engine || !incidents_out)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_incidents_heartbeat("ethics_incid_ethics_get_incidents", 0.0f);
+
+
         return 0;
 
     ethics_incident_storage_t* storage = ethics_engine_get_incident_storage(engine);
@@ -507,6 +569,12 @@ uint32_t ethics_get_incidents_by_action(ethics_engine_t engine, ethics_action_t 
     // Count matching incidents
     uint32_t match_count = 0;
     for (uint32_t i = 0; i < storage->incident_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && storage->incident_count > 256) {
+            ethics_incidents_heartbeat("ethics_incid_loop",
+                             (float)(i + 1) / (float)storage->incident_count);
+        }
+
         if (storage->incident_history[i].action_taken == action)
             match_count++;
     }
@@ -526,6 +594,12 @@ uint32_t ethics_get_incidents_by_action(ethics_engine_t engine, ethics_action_t 
     // Copy matching incidents
     uint32_t out_index = 0;
     for (uint32_t i = 0; i < storage->incident_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && storage->incident_count > 256) {
+            ethics_incidents_heartbeat("ethics_incid_loop",
+                             (float)(i + 1) / (float)storage->incident_count);
+        }
+
         if (storage->incident_history[i].action_taken == action) {
             (*incidents_out)[out_index++] = storage->incident_history[i];
         }
@@ -542,6 +616,10 @@ uint32_t ethics_get_all_incidents(ethics_engine_t engine, ethics_incident_t** in
 {
     // Guard clause: Validate inputs
     if (!engine || !incidents_out)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_incidents_heartbeat("ethics_incid_ethics_get_all_incid", 0.0f);
+
+
         return 0;
 
     ethics_incident_storage_t* storage = ethics_engine_get_incident_storage(engine);
@@ -592,6 +670,10 @@ bool ethics_export_incidents(ethics_engine_t engine, const char* filepath, const
 {
     // Guard clause: Validate inputs
     if (!engine || !filepath || !format)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_incidents_heartbeat("ethics_incid_ethics_export_incide", 0.0f);
+
+
         return false;
 
     ethics_incident_storage_t* storage = ethics_engine_get_incident_storage(engine);
@@ -614,6 +696,12 @@ bool ethics_export_incidents(ethics_engine_t engine, const char* filepath, const
         // Export as JSON
         fprintf(file, "{\n  \"incidents\": [\n");
         for (uint32_t i = 0; i < count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && count > 256) {
+                ethics_incidents_heartbeat("ethics_incid_loop",
+                                 (float)(i + 1) / (float)count);
+            }
+
             fprintf(file, "    {\n");
             fprintf(file, "      \"id\": %lu,\n", incidents[i].incident_id);
             fprintf(file, "      \"timestamp\": %lu,\n", incidents[i].timestamp);
@@ -633,6 +721,12 @@ bool ethics_export_incidents(ethics_engine_t engine, const char* filepath, const
         // Export as CSV
         fprintf(file, "id,timestamp,violation_type,severity,action_taken,policy_id,policy_name,description,golden_rule_score,acting_agent,affected_agent\n");
         for (uint32_t i = 0; i < count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && count > 256) {
+                ethics_incidents_heartbeat("ethics_incid_loop",
+                                 (float)(i + 1) / (float)count);
+            }
+
             fprintf(file, "%lu,%lu,%d,%.4f,%d,%u,\"%s\",\"%s\",%.4f,%u,%u\n",
                     incidents[i].incident_id,
                     incidents[i].timestamp,
@@ -670,9 +764,19 @@ bool ethics_export_incidents(ethics_engine_t engine, const char* filepath, const
  */
 int ethics_incidents_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    ethics_incidents_heartbeat("ethics_incid_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Ethics_Incidents_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                ethics_incidents_heartbeat("ethics_incid_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Ethics incidents self-knowledge: %s", self->observations[i]);
         }
     }

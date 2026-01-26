@@ -44,7 +44,7 @@ static nimcp_health_agent_t* g_mirror_resonance_health_agent = NULL;
  * @brief Set health agent for mirror_resonance heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_resonance_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_resonance_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_resonance_health_agent = agent;
 }
 
@@ -144,6 +144,12 @@ static inline uint32_t hash_action(uint32_t action_id, uint32_t map_size) {
  */
 static bool channels_conflict(motor_resonance_t resonance, uint32_t ch_a, uint32_t ch_b) {
     for (uint32_t i = 0; i < resonance->num_conflicts; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && resonance->num_conflicts > 256) {
+            mirror_resonance_heartbeat("mirror_reson_loop",
+                             (float)(i + 1) / (float)resonance->num_conflicts);
+        }
+
         if ((resonance->conflicts[i].channel_a == ch_a &&
              resonance->conflicts[i].channel_b == ch_b) ||
             (resonance->conflicts[i].channel_a == ch_b &&
@@ -164,6 +170,12 @@ static float compute_conflict_signal(motor_resonance_t resonance, uint32_t chann
 
     // Check all other active channels for conflicts
     for (uint32_t i = 0; i < resonance->num_channels; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && resonance->num_channels > 256) {
+            mirror_resonance_heartbeat("mirror_reson_loop",
+                             (float)(i + 1) / (float)resonance->num_channels);
+        }
+
         if (i == channel_id) continue;
 
         motor_channel_t* other = &resonance->channels[i];
@@ -193,6 +205,10 @@ static float compute_conflict_signal(motor_resonance_t resonance, uint32_t chann
 //=============================================================================
 
 motor_resonance_config_t motor_resonance_get_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_resonance_heartbeat("mirror_reson_motor_resonance_get_", 0.0f);
+
+
     motor_resonance_config_t config = {
         // Resonance parameters
         .resonance_gain = NIMCP_RESONANCE_DEFAULT_GAIN,
@@ -227,6 +243,10 @@ motor_resonance_config_t motor_resonance_get_default_config(void) {
 
 motor_resonance_t motor_resonance_create(const motor_resonance_config_t* config,
                                           uint32_t max_channels) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_resonance_heartbeat("mirror_reson_motor_resonance_crea", 0.0f);
+
+
     LOG_DEBUG("Creating motor resonance system with max_channels=%u", max_channels);
 
     if (max_channels == 0 || max_channels > NIMCP_RESONANCE_MAX_CHANNELS) {
@@ -269,6 +289,12 @@ motor_resonance_t motor_resonance_create(const motor_resonance_config_t* config,
         return NULL;
     }
     for (uint32_t i = 0; i < resonance->action_map_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && resonance->action_map_size > 256) {
+            mirror_resonance_heartbeat("mirror_reson_loop",
+                             (float)(i + 1) / (float)resonance->action_map_size);
+        }
+
         resonance->action_map[i] = UINT32_MAX;
     }
 
@@ -299,6 +325,10 @@ motor_resonance_t motor_resonance_create(const motor_resonance_config_t* config,
 void motor_resonance_destroy(motor_resonance_t resonance) {
     if (!resonance) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_resonance_heartbeat("mirror_reson_motor_resonance_dest", 0.0f);
+
+
     LOG_DEBUG("Destroying motor resonance system (channels=%u)", resonance->num_channels);
 
     if (resonance->conflicts) nimcp_free(resonance->conflicts);
@@ -317,6 +347,10 @@ uint32_t motor_resonance_create_channel(motor_resonance_t resonance, uint32_t ac
     }
 
     // Find slot in action map
+    /* Phase 8: Heartbeat at operation start */
+    mirror_resonance_heartbeat("mirror_reson_motor_resonance_crea", 0.0f);
+
+
     uint32_t hash = hash_action(action_id, resonance->action_map_size);
     uint32_t slot = hash;
     uint32_t attempts = 0;
@@ -370,11 +404,19 @@ bool motor_resonance_get_channel(motor_resonance_t resonance, uint32_t channel_i
     }
 
     *out_channel = resonance->channels[channel_id];
+    /* Phase 8: Heartbeat at operation start */
+    mirror_resonance_heartbeat("mirror_reson_motor_resonance_get_", 0.0f);
+
+
     return true;
 }
 
 uint32_t motor_resonance_find_channel(motor_resonance_t resonance, uint32_t action_id) {
     if (!resonance) return UINT32_MAX;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_resonance_heartbeat("mirror_reson_motor_resonance_find", 0.0f);
+
 
     uint32_t hash = hash_action(action_id, resonance->action_map_size);
     uint32_t slot = hash;
@@ -401,6 +443,10 @@ float motor_resonance_observe(motor_resonance_t resonance, uint32_t channel_id,
     if (!resonance || channel_id >= resonance->num_channels) {
         return 0.0F;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_resonance_heartbeat("mirror_reson_motor_resonance_obse", 0.0f);
+
 
     motor_channel_t* ch = &resonance->channels[channel_id];
     const motor_resonance_config_t* cfg = &resonance->config;
@@ -450,7 +496,17 @@ void motor_resonance_observe_batch(motor_resonance_t resonance,
                                     uint64_t timestamp_us) {
     if (!resonance || !channel_ids || !strengths) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_resonance_heartbeat("mirror_reson_motor_resonance_obse", 0.0f);
+
+
     for (uint32_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            mirror_resonance_heartbeat("mirror_reson_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         motor_resonance_observe(resonance, channel_ids[i], strengths[i], timestamp_us);
     }
 }
@@ -462,10 +518,20 @@ void motor_resonance_observe_batch(motor_resonance_t resonance,
 void motor_resonance_set_bg_inhibition(motor_resonance_t resonance, float level) {
     if (!resonance) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_resonance_heartbeat("mirror_reson_motor_resonance_set_", 0.0f);
+
+
     resonance->bg_inhibition = clamp_f(level, 0.0F, 1.0F);
 
     // Update all channels with BG suppression
     for (uint32_t i = 0; i < resonance->num_channels; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && resonance->num_channels > 256) {
+            mirror_resonance_heartbeat("mirror_reson_loop",
+                             (float)(i + 1) / (float)resonance->num_channels);
+        }
+
         motor_channel_t* ch = &resonance->channels[i];
         if (ch->suppress_reason == RESONANCE_SUPPRESS_BG_TONIC ||
             ch->suppress_reason == RESONANCE_SUPPRESS_NONE) {
@@ -480,6 +546,10 @@ void motor_resonance_set_bg_inhibition(motor_resonance_t resonance, float level)
 void motor_resonance_set_pfc_suppression(motor_resonance_t resonance,
                                           uint32_t channel_id, float level) {
     if (!resonance || channel_id >= resonance->num_channels) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_resonance_heartbeat("mirror_reson_motor_resonance_set_", 0.0f);
+
 
     motor_channel_t* ch = &resonance->channels[channel_id];
 
@@ -498,6 +568,10 @@ void motor_resonance_release_for_learning(motor_resonance_t resonance,
                                            int32_t channel_id, float learning_context) {
     if (!resonance) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_resonance_heartbeat("mirror_reson_motor_resonance_rele", 0.0f);
+
+
     resonance->learning_context = clamp_f(learning_context, 0.0F, 1.0F);
 
     // Reduce suppression proportional to learning context
@@ -506,6 +580,12 @@ void motor_resonance_release_for_learning(motor_resonance_t resonance,
     if (channel_id < 0) {
         // Release all channels
         for (uint32_t i = 0; i < resonance->num_channels; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && resonance->num_channels > 256) {
+                mirror_resonance_heartbeat("mirror_reson_loop",
+                                 (float)(i + 1) / (float)resonance->num_channels);
+            }
+
             motor_channel_t* ch = &resonance->channels[i];
             ch->suppression_level -= release_amount;
             ch->suppression_level = clamp_f(ch->suppression_level, 0.0F, 1.0F);
@@ -531,12 +611,22 @@ void motor_resonance_release_for_social(motor_resonance_t resonance,
                                          int32_t channel_id, float social_strength) {
     if (!resonance || !resonance->config.enable_social_context) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_resonance_heartbeat("mirror_reson_motor_resonance_rele", 0.0f);
+
+
     resonance->social_context = clamp_f(social_strength, 0.0F, 1.0F);
 
     float release_amount = social_strength * resonance->config.bg_release_rate * 0.5F;
 
     if (channel_id < 0) {
         for (uint32_t i = 0; i < resonance->num_channels; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && resonance->num_channels > 256) {
+                mirror_resonance_heartbeat("mirror_reson_loop",
+                                 (float)(i + 1) / (float)resonance->num_channels);
+            }
+
             motor_channel_t* ch = &resonance->channels[i];
             ch->suppression_level -= release_amount;
             ch->suppression_level = clamp_f(ch->suppression_level, 0.0F, 1.0F);
@@ -566,6 +656,10 @@ float motor_resonance_get_conflict(motor_resonance_t resonance, uint32_t channel
     if (!resonance || channel_id >= resonance->num_channels) {
         return 0.0F;
     }
+    /* Phase 8: Heartbeat at operation start */
+    mirror_resonance_heartbeat("mirror_reson_motor_resonance_get_", 0.0f);
+
+
     return resonance->channels[channel_id].conflict_signal;
 }
 
@@ -576,6 +670,9 @@ void motor_resonance_set_conflict(motor_resonance_t resonance,
         channel_a == channel_b) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_resonance_heartbeat("mirror_reson_motor_resonance_set_", 0.0f);
 
     // Check if conflict already exists
     if (channels_conflict(resonance, channel_a, channel_b)) {
@@ -598,6 +695,10 @@ float motor_resonance_get_output(motor_resonance_t resonance, uint32_t channel_i
     if (!resonance || channel_id >= resonance->num_channels) {
         return -1.0F;
     }
+    /* Phase 8: Heartbeat at operation start */
+    mirror_resonance_heartbeat("mirror_reson_motor_resonance_get_", 0.0f);
+
+
     return resonance->channels[channel_id].motor_output;
 }
 
@@ -605,6 +706,10 @@ bool motor_resonance_above_threshold(motor_resonance_t resonance, uint32_t chann
     if (!resonance || channel_id >= resonance->num_channels) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    mirror_resonance_heartbeat("mirror_reson_motor_resonance_abov", 0.0f);
+
+
     return resonance->channels[channel_id].above_threshold;
 }
 
@@ -614,6 +719,10 @@ uint32_t motor_resonance_get_active_channels(motor_resonance_t resonance,
     if (!resonance || !out_channels || max_channels == 0) {
         return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_resonance_heartbeat("mirror_reson_motor_resonance_get_", 0.0f);
+
 
     uint32_t count = 0;
     for (uint32_t i = 0; i < resonance->num_channels && count < max_channels; i++) {
@@ -631,6 +740,10 @@ uint32_t motor_resonance_get_active_channels(motor_resonance_t resonance,
 void motor_resonance_step(motor_resonance_t resonance, float dt_ms) {
     if (!resonance) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_resonance_heartbeat("mirror_reson_motor_resonance_step", 0.0f);
+
+
     const motor_resonance_config_t* cfg = &resonance->config;
 
     // Compute decay factors
@@ -640,6 +753,12 @@ void motor_resonance_step(motor_resonance_t resonance, float dt_ms) {
 
     // Update all channels
     for (uint32_t i = 0; i < resonance->num_channels; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && resonance->num_channels > 256) {
+            mirror_resonance_heartbeat("mirror_reson_loop",
+                             (float)(i + 1) / (float)resonance->num_channels);
+        }
+
         motor_channel_t* ch = &resonance->channels[i];
 
         // Decay resonance toward target (or zero if no input)
@@ -720,6 +839,10 @@ void motor_resonance_step(motor_resonance_t resonance, float dt_ms) {
 bool motor_resonance_get_stats(motor_resonance_t resonance, motor_resonance_stats_t* stats) {
     if (!resonance || !stats) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_resonance_heartbeat("mirror_reson_motor_resonance_get_", 0.0f);
+
+
     memset(stats, 0, sizeof(motor_resonance_stats_t));
 
     stats->num_channels = resonance->num_channels;
@@ -730,6 +853,12 @@ bool motor_resonance_get_stats(motor_resonance_t resonance, motor_resonance_stat
     uint32_t conflict_count = 0;
 
     for (uint32_t i = 0; i < resonance->num_channels; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && resonance->num_channels > 256) {
+            mirror_resonance_heartbeat("mirror_reson_loop",
+                             (float)(i + 1) / (float)resonance->num_channels);
+        }
+
         const motor_channel_t* ch = &resonance->channels[i];
 
         sum_resonance += ch->resonance_level;
@@ -783,6 +912,10 @@ bool motor_resonance_get_stats(motor_resonance_t resonance, motor_resonance_stat
 void motor_resonance_reset_stats(motor_resonance_t resonance) {
     if (!resonance) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_resonance_heartbeat("mirror_reson_motor_resonance_rese", 0.0f);
+
+
     resonance->total_activations = 0;
     resonance->bg_suppressions = 0;
     resonance->pfc_suppressions = 0;
@@ -792,6 +925,12 @@ void motor_resonance_reset_stats(motor_resonance_t resonance) {
     resonance->voluntary_releases = 0;
 
     for (uint32_t i = 0; i < resonance->num_channels; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && resonance->num_channels > 256) {
+            mirror_resonance_heartbeat("mirror_reson_loop",
+                             (float)(i + 1) / (float)resonance->num_channels);
+        }
+
         motor_channel_t* ch = &resonance->channels[i];
         ch->activation_count = 0;
         ch->suppression_count = 0;
@@ -806,9 +945,19 @@ void motor_resonance_reset_stats(motor_resonance_t resonance) {
 
 int motor_resonance_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_resonance_heartbeat("mirror_reson_motor_resonance_quer", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Motor_Resonance");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                mirror_resonance_heartbeat("mirror_reson_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Motor resonance self-knowledge: %s", self->observations[i]);
         }
     }

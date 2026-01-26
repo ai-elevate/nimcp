@@ -37,7 +37,7 @@ static nimcp_health_agent_t* g_emotion_immune_bridge_health_agent = NULL;
  * @brief Set health agent for emotion_immune_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void emotion_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void emotion_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_emotion_immune_bridge_health_agent = agent;
 }
 
@@ -131,6 +131,10 @@ int emotion_immune_default_config(emotion_immune_config_t* config) {
     }
 
     /* All features enabled by default */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_defau", 0.0f);
+
+
     config->enable_cytokine_emotion_modulation = true;
     config->enable_inflammation_anhedonia = true;
     config->enable_emotion_immune_trigger = true;
@@ -164,6 +168,10 @@ emotion_immune_bridge_t* emotion_immune_bridge_create(
     }
 
     /* Allocate bridge */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_immune_bridge_heartbeat("emotion_immu_create", 0.0f);
+
+
     emotion_immune_bridge_t* bridge = (emotion_immune_bridge_t*)
         nimcp_malloc(sizeof(emotion_immune_bridge_t));
     if (!bridge) {
@@ -214,6 +222,10 @@ void emotion_immune_bridge_destroy(emotion_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_immune_bridge_heartbeat("emotion_immu_destroy", 0.0f);
+
+
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
     }
@@ -238,6 +250,10 @@ int emotion_immune_apply_cytokine_effects(emotion_immune_bridge_t* bridge) {
     }
     if (!bridge->enable_cytokine_emotion_modulation) return 0;
     if (!bridge->immune_system || !bridge->emotion_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_apply", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -307,6 +323,10 @@ int emotion_immune_apply_inflammation_effects(emotion_immune_bridge_t* bridge) {
     if (!bridge->enable_inflammation_anhedonia) return 0;
     if (!bridge->immune_system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_apply", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     inflammation_emotion_state_t* state = &bridge->inflammation_state;
@@ -343,6 +363,10 @@ float emotion_immune_compute_anhedonia(const emotion_immune_bridge_t* bridge) {
     if (!bridge) return 0.0f;
 
     /* Combine cytokine-induced and inflammation-induced anhedonia */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_compu", 0.0f);
+
+
     float cytokine_anhedonia = bridge->cytokine_effects.anhedonia_level;
     float inflammation_anhedonia = bridge->inflammation_state.anhedonia_severity;
 
@@ -366,6 +390,10 @@ int emotion_immune_trigger_from_stress(emotion_immune_bridge_t* bridge) {
     }
     if (!bridge->enable_emotion_immune_trigger) return 0;
     if (!bridge->emotion_system || !bridge->immune_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_trigg", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -418,6 +446,10 @@ int emotion_immune_amplify_grief_inflammation(emotion_immune_bridge_t* bridge) {
     if (!bridge->enable_grief_inflammation_coupling) return 0;
     if (!bridge->grief_system || !bridge->immune_system) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_ampli", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
     /* Check if currently grieving */
@@ -454,6 +486,10 @@ int emotion_immune_boost_from_positive_affect(emotion_immune_bridge_t* bridge) {
     }
     if (!bridge->enable_positive_immune_boost) return 0;
     if (!bridge->joy_system || !bridge->immune_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_boost", 0.0f);
+
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -517,6 +553,10 @@ int emotion_immune_bridge_update(
     /* Apply all bidirectional effects */
 
     /* Immune → Emotion */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_immune_bridge_heartbeat("emotion_immu_update", 0.0f);
+
+
     emotion_immune_apply_cytokine_effects(bridge);
     emotion_immune_apply_inflammation_effects(bridge);
 
@@ -539,6 +579,10 @@ int emotion_immune_get_cytokine_effects(
 ) {
     if (!bridge || !effects) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_get_c", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_emotion_effects_t));
     pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
@@ -552,6 +596,10 @@ int emotion_immune_get_inflammation_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_get_i", 0.0f);
+
+
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_emotion_state_t));
     pthread_mutex_unlock((pthread_mutex_t*)bridge->base.mutex);
@@ -563,11 +611,19 @@ bool emotion_immune_is_sick_behavior(const emotion_immune_bridge_t* bridge) {
     if (!bridge) return false;
 
     /* Sickness behavior threshold */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_is_si", 0.0f);
+
+
     return bridge->cytokine_effects.sickness_behavior_level >= 0.5f;
 }
 
 float emotion_immune_get_anhedonia_severity(const emotion_immune_bridge_t* bridge) {
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_get_a", 0.0f);
+
+
     return emotion_immune_compute_anhedonia(bridge);
 }
 
@@ -593,6 +649,10 @@ int emotion_immune_connect_bio_async(emotion_immune_bridge_t* bridge) {
 
     }
     if (bridge->base.bio_async_enabled) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_conne", 0.0f);
+
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_IMMUNE_EMOTION,
@@ -629,6 +689,10 @@ int emotion_immune_disconnect_bio_async(emotion_immune_bridge_t* bridge) {
     }
     if (!bridge->base.bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_disco", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -644,6 +708,10 @@ int emotion_immune_disconnect_bio_async(emotion_immune_bridge_t* bridge) {
  */
 bool emotion_immune_is_bio_async_connected(const emotion_immune_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_is_bi", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -663,9 +731,19 @@ bool emotion_immune_is_bio_async_connected(const emotion_immune_bridge_t* bridge
  */
 int emotion_immune_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_query", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Emotion_Immune_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                emotion_immune_bridge_heartbeat("emotion_immu_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Emotion immune bridge self-knowledge: %s", self->observations[i]);
         }
     }

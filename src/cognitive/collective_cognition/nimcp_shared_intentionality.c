@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_shared_intentionality_health_agent = NULL;
  * @brief Set health agent for shared_intentionality heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void shared_intentionality_set_health_agent(nimcp_health_agent_t* agent) {
+void shared_intentionality_set_health_agent(nimcp_health_agent_t* agent) {
     g_shared_intentionality_health_agent = agent;
 }
 
@@ -117,6 +117,12 @@ static si_instance_t* find_instance(
     uint32_t instance_id
 ) {
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            shared_intentionality_heartbeat("shared_inten_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (si->instances[i].active && si->instances[i].instance_id == instance_id) {
             return &si->instances[i];
         }
@@ -126,6 +132,12 @@ static si_instance_t* find_instance(
 
 static si_instance_t* find_free_instance_slot(shared_intentionality_t* si) {
     for (uint32_t i = 0; i < COLLECTIVE_MAX_INSTANCES; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_INSTANCES > 256) {
+            shared_intentionality_heartbeat("shared_inten_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_INSTANCES);
+        }
+
         if (!si->instances[i].active) {
             return &si->instances[i];
         }
@@ -142,6 +154,12 @@ static shared_goal_t* find_goal(
     uint32_t goal_id
 ) {
     for (uint32_t i = 0; i < COLLECTIVE_MAX_SHARED_GOALS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_SHARED_GOALS > 256) {
+            shared_intentionality_heartbeat("shared_inten_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_SHARED_GOALS);
+        }
+
         if (si->goals[i].goal_id == goal_id) {
             return &si->goals[i];
         }
@@ -151,6 +169,12 @@ static shared_goal_t* find_goal(
 
 static shared_goal_t* find_free_goal_slot(shared_intentionality_t* si) {
     for (uint32_t i = 0; i < COLLECTIVE_MAX_SHARED_GOALS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_SHARED_GOALS > 256) {
+            shared_intentionality_heartbeat("shared_inten_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_SHARED_GOALS);
+        }
+
         if (si->goals[i].goal_id == 0) {
             return &si->goals[i];
         }
@@ -163,6 +187,12 @@ static goal_commitment_t* find_commitment(
     uint32_t instance_id
 ) {
     for (uint32_t i = 0; i < goal->commitment_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && goal->commitment_count > 256) {
+            shared_intentionality_heartbeat("shared_inten_loop",
+                             (float)(i + 1) / (float)goal->commitment_count);
+        }
+
         if (goal->commitments[i].instance_id == instance_id) {
             return &goal->commitments[i];
         }
@@ -173,6 +203,12 @@ static goal_commitment_t* find_commitment(
 static void update_goal_total_commitment(shared_goal_t* goal) {
     goal->total_commitment = 0.0f;
     for (uint32_t i = 0; i < goal->commitment_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && goal->commitment_count > 256) {
+            shared_intentionality_heartbeat("shared_inten_loop",
+                             (float)(i + 1) / (float)goal->commitment_count);
+        }
+
         goal->total_commitment += goal->commitments[i].strength;
     }
 }
@@ -196,6 +232,12 @@ static joint_attention_t* find_attention(
     uint32_t attention_id
 ) {
     for (uint32_t i = 0; i < COLLECTIVE_MAX_JOINT_ATTENTIONS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_JOINT_ATTENTIONS > 256) {
+            shared_intentionality_heartbeat("shared_inten_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_JOINT_ATTENTIONS);
+        }
+
         if (si->attentions[i].attention_id == attention_id) {
             return &si->attentions[i];
         }
@@ -205,6 +247,12 @@ static joint_attention_t* find_attention(
 
 static joint_attention_t* find_free_attention_slot(shared_intentionality_t* si) {
     for (uint32_t i = 0; i < COLLECTIVE_MAX_JOINT_ATTENTIONS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_JOINT_ATTENTIONS > 256) {
+            shared_intentionality_heartbeat("shared_inten_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_JOINT_ATTENTIONS);
+        }
+
         if (si->attentions[i].attention_id == 0) {
             return &si->attentions[i];
         }
@@ -217,6 +265,12 @@ static bool is_attending(
     uint32_t instance_id
 ) {
     for (uint32_t i = 0; i < attention->attending_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && attention->attending_count > 256) {
+            shared_intentionality_heartbeat("shared_inten_loop",
+                             (float)(i + 1) / (float)attention->attending_count);
+        }
+
         if (attention->attending_instances[i] == instance_id) {
             return true;
         }
@@ -245,6 +299,12 @@ static void compute_we_mode_state(shared_intentionality_t* si) {
     uint32_t role_assigned_count = 0;
 
     for (uint32_t i = 0; i < COLLECTIVE_MAX_SHARED_GOALS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_SHARED_GOALS > 256) {
+            shared_intentionality_heartbeat("shared_inten_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_SHARED_GOALS);
+        }
+
         if (si->goals[i].goal_id == 0) continue;
         if (si->goals[i].state == GOAL_STATE_ACTIVE ||
             si->goals[i].state == GOAL_STATE_ACCEPTED) {
@@ -263,6 +323,12 @@ static void compute_we_mode_state(shared_intentionality_t* si) {
     float total_agreement = 0.0f;
 
     for (uint32_t i = 0; i < COLLECTIVE_MAX_JOINT_ATTENTIONS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_JOINT_ATTENTIONS > 256) {
+            shared_intentionality_heartbeat("shared_inten_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_JOINT_ATTENTIONS);
+        }
+
         if (si->attentions[i].attention_id == 0) continue;
         active_attentions++;
         total_agreement += si->attentions[i].agreement_level;
@@ -314,6 +380,10 @@ static void compute_we_mode_state(shared_intentionality_t* si) {
 shared_intentionality_t* shared_intentionality_create(
     const shared_intentionality_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_create", 0.0f);
+
+
     shared_intentionality_t* si = nimcp_malloc(sizeof(shared_intentionality_t));
     if (!si) {
 
@@ -342,6 +412,10 @@ shared_intentionality_t* shared_intentionality_create(
 
 void shared_intentionality_destroy(shared_intentionality_t* si) {
     if (!si) return;
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_destroy", 0.0f);
+
+
     nimcp_free(si);
 }
 
@@ -349,6 +423,10 @@ int shared_intentionality_reset(shared_intentionality_t* si) {
     if (!si) return -1;
 
     /* Clear instances */
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_reset", 0.0f);
+
+
     memset(si->instances, 0, sizeof(si->instances));
     si->instance_count = 0;
 
@@ -388,6 +466,10 @@ int shared_intentionality_register_instance(
     /* Check if already registered */
     if (find_instance(si, instance_id)) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_register_instance", 0.0f);
+
+
     si_instance_t* slot = find_free_instance_slot(si);
     if (!slot) return -1;
 
@@ -406,6 +488,10 @@ int shared_intentionality_unregister_instance(
 ) {
     if (!si) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_unregister_instance", 0.0f);
+
+
     si_instance_t* inst = find_instance(si, instance_id);
     if (!inst) return -1;
 
@@ -414,11 +500,23 @@ int shared_intentionality_unregister_instance(
 
     /* Remove from all goals and attentions */
     for (uint32_t i = 0; i < COLLECTIVE_MAX_SHARED_GOALS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_SHARED_GOALS > 256) {
+            shared_intentionality_heartbeat("shared_inten_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_SHARED_GOALS);
+        }
+
         if (si->goals[i].goal_id == 0) continue;
         shared_intentionality_withdraw_from_goal(si, si->goals[i].goal_id, instance_id);
     }
 
     for (uint32_t i = 0; i < COLLECTIVE_MAX_JOINT_ATTENTIONS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_JOINT_ATTENTIONS > 256) {
+            shared_intentionality_heartbeat("shared_inten_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_JOINT_ATTENTIONS);
+        }
+
         if (si->attentions[i].attention_id == 0) continue;
         shared_intentionality_leave_attention(si, si->attentions[i].attention_id, instance_id);
     }
@@ -435,6 +533,10 @@ uint32_t shared_intentionality_propose_goal(
     const shared_goal_t* goal
 ) {
     if (!si || !goal) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_propose_goal", 0.0f);
+
 
     shared_goal_t* slot = find_free_goal_slot(si);
     if (!slot) return 0;
@@ -459,6 +561,10 @@ int shared_intentionality_commit_to_goal(
     float commitment
 ) {
     if (!si) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_commit_to_goal", 0.0f);
+
 
     shared_goal_t* goal = find_goal(si, goal_id);
     if (!goal) return -1;
@@ -497,11 +603,21 @@ int shared_intentionality_withdraw_from_goal(
 ) {
     if (!si) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_withdraw_from_goal", 0.0f);
+
+
     shared_goal_t* goal = find_goal(si, goal_id);
     if (!goal) return -1;
 
     /* Find and remove commitment */
     for (uint32_t i = 0; i < goal->commitment_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && goal->commitment_count > 256) {
+            shared_intentionality_heartbeat("shared_inten_loop",
+                             (float)(i + 1) / (float)goal->commitment_count);
+        }
+
         if (goal->commitments[i].instance_id == instance_id) {
             /* Shift remaining commitments */
             for (uint32_t j = i; j < goal->commitment_count - 1; j++) {
@@ -535,6 +651,10 @@ int shared_intentionality_update_goal_progress(
 ) {
     if (!si) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_update_goal_progress", 0.0f);
+
+
     shared_goal_t* goal = find_goal(si, goal_id);
     if (!goal) return -1;
 
@@ -561,6 +681,10 @@ int shared_intentionality_complete_goal(
 ) {
     if (!si) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_complete_goal", 0.0f);
+
+
     shared_goal_t* goal = find_goal(si, goal_id);
     if (!goal) return -1;
 
@@ -585,6 +709,10 @@ int shared_intentionality_fail_goal(
 ) {
     if (!si) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_fail_goal", 0.0f);
+
+
     shared_goal_t* goal = find_goal(si, goal_id);
     if (!goal) return -1;
 
@@ -604,6 +732,10 @@ int shared_intentionality_get_goal(
 ) {
     if (!si || !goal) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_get_goal", 0.0f);
+
+
     shared_goal_t* found = find_goal((shared_intentionality_t*)si, goal_id);
     if (!found) return -1;
 
@@ -617,6 +749,10 @@ uint32_t shared_intentionality_get_active_goals(
     uint32_t max_goals
 ) {
     if (!si || !goals) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_get_active_goals", 0.0f);
+
 
     uint32_t count = 0;
     for (uint32_t i = 0; i < COLLECTIVE_MAX_SHARED_GOALS && count < max_goals; i++) {
@@ -642,6 +778,10 @@ uint32_t shared_intentionality_propose_attention(
     const joint_attention_t* attention
 ) {
     if (!si || !attention) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_propose_attention", 0.0f);
+
 
     joint_attention_t* slot = find_free_attention_slot(si);
     if (!slot) return 0;
@@ -671,6 +811,10 @@ int shared_intentionality_join_attention(
     uint32_t instance_id
 ) {
     if (!si) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_join_attention", 0.0f);
+
 
     joint_attention_t* att = find_attention(si, attention_id);
     if (!att) return -1;
@@ -703,11 +847,21 @@ int shared_intentionality_leave_attention(
 ) {
     if (!si) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_leave_attention", 0.0f);
+
+
     joint_attention_t* att = find_attention(si, attention_id);
     if (!att) return -1;
 
     /* Find and remove */
     for (uint32_t i = 0; i < att->attending_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && att->attending_count > 256) {
+            shared_intentionality_heartbeat("shared_inten_loop",
+                             (float)(i + 1) / (float)att->attending_count);
+        }
+
         if (att->attending_instances[i] == instance_id) {
             for (uint32_t j = i; j < att->attending_count - 1; j++) {
                 att->attending_instances[j] = att->attending_instances[j + 1];
@@ -739,6 +893,10 @@ int shared_intentionality_get_attention(
 ) {
     if (!si || !attention) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_get_attention", 0.0f);
+
+
     joint_attention_t* found = find_attention((shared_intentionality_t*)si, attention_id);
     if (!found) return -1;
 
@@ -752,6 +910,10 @@ uint32_t shared_intentionality_get_active_attentions(
     uint32_t max_attentions
 ) {
     if (!si || !attentions) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_get_active_attention", 0.0f);
+
 
     uint32_t count = 0;
     for (uint32_t i = 0; i < COLLECTIVE_MAX_JOINT_ATTENTIONS && count < max_attentions; i++) {
@@ -774,6 +936,10 @@ int shared_intentionality_assign_role(
 ) {
     if (!si) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_assign_role", 0.0f);
+
+
     shared_goal_t* goal = find_goal(si, goal_id);
     if (!goal) return -1;
 
@@ -792,11 +958,21 @@ int shared_intentionality_negotiate_roles(
 ) {
     if (!si) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_negotiate_roles", 0.0f);
+
+
     shared_goal_t* goal = find_goal(si, goal_id);
     if (!goal || goal->commitment_count == 0) return -1;
 
     /* Simple role assignment: first committer is leader, rest are executors */
     for (uint32_t i = 0; i < goal->commitment_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && goal->commitment_count > 256) {
+            shared_intentionality_heartbeat("shared_inten_loop",
+                             (float)(i + 1) / (float)goal->commitment_count);
+        }
+
         if (i == 0) {
             goal->commitments[i].assigned_role = ROLE_LEADER;
         } else {
@@ -817,6 +993,10 @@ int shared_intentionality_get_role(
     role_assignment_t* assignment
 ) {
     if (!si || !assignment) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_get_role", 0.0f);
+
 
     shared_goal_t* goal = find_goal((shared_intentionality_t*)si, goal_id);
     if (!goal) return -1;
@@ -845,6 +1025,10 @@ int shared_intentionality_get_we_mode(
 ) {
     if (!si || !state) return -1;
     *state = si->we_mode;
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_get_we_mode", 0.0f);
+
+
     return 0;
 }
 
@@ -852,11 +1036,19 @@ bool shared_intentionality_is_we_mode_active(
     const shared_intentionality_t* si
 ) {
     if (!si) return false;
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_is_we_mode_active", 0.0f);
+
+
     return si->we_mode.we_mode_strength >= si->config.we_mode_threshold;
 }
 
 int shared_intentionality_enter_we_mode(shared_intentionality_t* si) {
     if (!si) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_enter_we_mode", 0.0f);
+
+
     si->we_mode_forced = true;
     si->we_mode_start_us = get_timestamp_us();
     compute_we_mode_state(si);
@@ -865,6 +1057,10 @@ int shared_intentionality_enter_we_mode(shared_intentionality_t* si) {
 
 int shared_intentionality_exit_we_mode(shared_intentionality_t* si) {
     if (!si) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_exit_we_mode", 0.0f);
+
 
     if (si->we_mode_forced && si->we_mode_start_us > 0) {
         si->total_we_mode_us += get_timestamp_us() - si->we_mode_start_us;
@@ -881,6 +1077,10 @@ int shared_intentionality_exit_we_mode(shared_intentionality_t* si) {
 
 int shared_intentionality_update(shared_intentionality_t* si) {
     if (!si || !si->initialized) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_update", 0.0f);
+
 
     uint64_t now = get_timestamp_us();
 
@@ -899,6 +1099,12 @@ int shared_intentionality_update(shared_intentionality_t* si) {
 
     /* Check goal deadlines */
     for (uint32_t i = 0; i < COLLECTIVE_MAX_SHARED_GOALS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_SHARED_GOALS > 256) {
+            shared_intentionality_heartbeat("shared_inten_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_SHARED_GOALS);
+        }
+
         shared_goal_t* goal = &si->goals[i];
         if (goal->goal_id == 0) continue;
         if (goal->state != GOAL_STATE_ACTIVE &&
@@ -920,6 +1126,12 @@ int shared_intentionality_update(shared_intentionality_t* si) {
     float total_commitment = 0.0f;
     uint32_t commitment_count = 0;
     for (uint32_t i = 0; i < COLLECTIVE_MAX_SHARED_GOALS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_SHARED_GOALS > 256) {
+            shared_intentionality_heartbeat("shared_inten_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_SHARED_GOALS);
+        }
+
         if (si->goals[i].goal_id == 0) continue;
         for (uint32_t j = 0; j < si->goals[i].commitment_count; j++) {
             total_commitment += si->goals[i].commitments[j].strength;
@@ -945,6 +1157,10 @@ int shared_intentionality_set_goal_callback(
     void* user_data
 ) {
     if (!si) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_set_goal_callback", 0.0f);
+
+
     si->goal_callback = callback;
     si->goal_callback_data = user_data;
     return 0;
@@ -956,6 +1172,10 @@ int shared_intentionality_set_attention_callback(
     void* user_data
 ) {
     if (!si) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_set_attention_callba", 0.0f);
+
+
     si->attention_callback = callback;
     si->attention_callback_data = user_data;
     return 0;
@@ -971,11 +1191,19 @@ int shared_intentionality_get_stats(
 ) {
     if (!si || !stats) return -1;
     *stats = si->stats;
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_get_stats", 0.0f);
+
+
     return 0;
 }
 
 void shared_intentionality_reset_stats(shared_intentionality_t* si) {
     if (!si) return;
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_reset_stats", 0.0f);
+
+
     memset(&si->stats, 0, sizeof(si->stats));
     si->total_we_mode_us = 0;
     si->total_time_us = 0;
@@ -1020,6 +1248,10 @@ void shared_intentionality_dump(const shared_intentionality_t* si) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_dump", 0.0f);
+
+
     printf("=== Shared Intentionality State ===\n");
     printf("Initialized: %s\n", si->initialized ? "yes" : "no");
     printf("Instances: %u\n", si->instance_count);
@@ -1037,6 +1269,12 @@ void shared_intentionality_dump(const shared_intentionality_t* si) {
 
     printf("\nShared Goals:\n");
     for (uint32_t i = 0; i < COLLECTIVE_MAX_SHARED_GOALS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_SHARED_GOALS > 256) {
+            shared_intentionality_heartbeat("shared_inten_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_SHARED_GOALS);
+        }
+
         const shared_goal_t* goal = &si->goals[i];
         if (goal->goal_id == 0) continue;
 
@@ -1049,6 +1287,12 @@ void shared_intentionality_dump(const shared_intentionality_t* si) {
 
     printf("\nJoint Attentions:\n");
     for (uint32_t i = 0; i < COLLECTIVE_MAX_JOINT_ATTENTIONS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COLLECTIVE_MAX_JOINT_ATTENTIONS > 256) {
+            shared_intentionality_heartbeat("shared_inten_loop",
+                             (float)(i + 1) / (float)COLLECTIVE_MAX_JOINT_ATTENTIONS);
+        }
+
         const joint_attention_t* att = &si->attentions[i];
         if (att->attention_id == 0) continue;
 
@@ -1076,9 +1320,19 @@ void shared_intentionality_dump(const shared_intentionality_t* si) {
  */
 int shared_intentionality_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    shared_intentionality_heartbeat("shared_inten_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Shared_Intentionality");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                shared_intentionality_heartbeat("shared_inten_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             printf("Shared Intentionality self-knowledge: %s\n", self->observations[i]);
         }
     }

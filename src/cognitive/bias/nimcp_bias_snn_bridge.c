@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_bias_snn_bridge_health_agent = NULL;
  * @brief Set health agent for bias_snn_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void bias_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void bias_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_bias_snn_bridge_health_agent = agent;
 }
 
@@ -174,6 +174,10 @@ static const char* bias_type_names[] = {
 //=============================================================================
 
 bias_snn_config_t bias_snn_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_config_defa", 0.0f);
+
+
     bias_snn_config_t config = {
         .max_bias_types = BIAS_SNN_MAX_BIAS_TYPES,
         .neurons_per_type = BIAS_SNN_NEURONS_PER_TYPE,
@@ -200,6 +204,10 @@ bias_snn_bridge_t* bias_snn_create(const bias_snn_config_t* config) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_create", 0.0f);
+
+
     bias_snn_bridge_t* bridge = calloc(1, sizeof(bias_snn_bridge_t));
     if (!bridge) {
 
@@ -221,9 +229,21 @@ bias_snn_bridge_t* bias_snn_create(const bias_snn_config_t* config) {
     }
 
     for (uint32_t t = 0; t < bridge->num_types; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && bridge->num_types > 256) {
+            bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                             (float)(t + 1) / (float)bridge->num_types);
+        }
+
         bridge->bias_neurons[t] = calloc(config->neurons_per_type, sizeof(bias_neuron_t));
         if (!bridge->bias_neurons[t]) {
             for (uint32_t i = 0; i < t; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && t > 256) {
+                    bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                                     (float)(i + 1) / (float)t);
+                }
+
                 free(bridge->bias_neurons[i]);
             }
             free(bridge->bias_neurons);
@@ -231,6 +251,12 @@ bias_snn_bridge_t* bias_snn_create(const bias_snn_config_t* config) {
             return NULL;
         }
         for (uint32_t n = 0; n < config->neurons_per_type; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && config->neurons_per_type > 256) {
+                bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                                 (float)(n + 1) / (float)config->neurons_per_type);
+            }
+
             reset_neuron(&bridge->bias_neurons[t][n]);
         }
     }
@@ -243,6 +269,12 @@ bias_snn_bridge_t* bias_snn_create(const bias_snn_config_t* config) {
         return NULL;
     }
     for (uint32_t n = 0; n < bridge->num_conflict_neurons; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && bridge->num_conflict_neurons > 256) {
+            bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                             (float)(n + 1) / (float)bridge->num_conflict_neurons);
+        }
+
         reset_neuron(&bridge->conflict_neurons[n]);
     }
 
@@ -254,6 +286,12 @@ bias_snn_bridge_t* bias_snn_create(const bias_snn_config_t* config) {
         return NULL;
     }
     for (uint32_t n = 0; n < bridge->num_output_neurons; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && bridge->num_output_neurons > 256) {
+            bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                             (float)(n + 1) / (float)bridge->num_output_neurons);
+        }
+
         reset_neuron(&bridge->output_neurons[n]);
     }
 
@@ -271,8 +309,18 @@ bias_snn_bridge_t* bias_snn_create(const bias_snn_config_t* config) {
 void bias_snn_destroy(bias_snn_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_destroy", 0.0f);
+
+
     if (bridge->bias_neurons) {
         for (uint32_t t = 0; t < bridge->num_types; t++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((t & 0xFF) == 0 && bridge->num_types > 256) {
+                bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                                 (float)(t + 1) / (float)bridge->num_types);
+            }
+
             free(bridge->bias_neurons[t]);
         }
         free(bridge->bias_neurons);
@@ -287,19 +335,47 @@ void bias_snn_destroy(bias_snn_bridge_t* bridge) {
 int bias_snn_reset(bias_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_reset", 0.0f);
+
+
     bridge->state = BIAS_SNN_STATE_IDLE;
     bridge->sim_time_us = 0;
 
     // Reset all neurons
     for (uint32_t t = 0; t < bridge->num_types; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && bridge->num_types > 256) {
+            bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                             (float)(t + 1) / (float)bridge->num_types);
+        }
+
         for (uint32_t n = 0; n < bridge->config.neurons_per_type; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && bridge->config.neurons_per_type > 256) {
+                bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                                 (float)(n + 1) / (float)bridge->config.neurons_per_type);
+            }
+
             reset_neuron(&bridge->bias_neurons[t][n]);
         }
     }
     for (uint32_t n = 0; n < bridge->num_conflict_neurons; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && bridge->num_conflict_neurons > 256) {
+            bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                             (float)(n + 1) / (float)bridge->num_conflict_neurons);
+        }
+
         reset_neuron(&bridge->conflict_neurons[n]);
     }
     for (uint32_t n = 0; n < bridge->num_output_neurons; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && bridge->num_output_neurons > 256) {
+            bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                             (float)(n + 1) / (float)bridge->num_output_neurons);
+        }
+
         reset_neuron(&bridge->output_neurons[n]);
     }
 
@@ -332,6 +408,10 @@ int bias_snn_encode_evidence(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_encode_evid", 0.0f);
+
+
     bridge->state = BIAS_SNN_STATE_ENCODING;
     bridge->prior_belief = clamp(prior_belief, 0.0f, 1.0f);
 
@@ -341,11 +421,23 @@ int bias_snn_encode_evidence(
 
     if (evidence && evidence_count > 0) {
         for (uint32_t i = 0; i < evidence_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && evidence_count > 256) {
+                bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                                 (float)(i + 1) / (float)evidence_count);
+            }
+
             evidence_mean += evidence[i];
         }
         evidence_mean /= evidence_count;
 
         for (uint32_t i = 0; i < evidence_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && evidence_count > 256) {
+                bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                                 (float)(i + 1) / (float)evidence_count);
+            }
+
             float diff = evidence[i] - evidence_mean;
             evidence_var += diff * diff;
         }
@@ -356,6 +448,12 @@ int bias_snn_encode_evidence(
     float confirmation_signal = fabsf(evidence_mean - prior_belief) < 0.2f ?
                                 prior_belief * 1.5f : 0.0f;
     for (uint32_t n = 0; n < bridge->config.neurons_per_type; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && bridge->config.neurons_per_type > 256) {
+            bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                             (float)(n + 1) / (float)bridge->config.neurons_per_type);
+        }
+
         bridge->bias_neurons[BIAS_SNN_TYPE_CONFIRMATION][n].input_current = confirmation_signal;
     }
 
@@ -371,6 +469,10 @@ int bias_snn_encode_decision_context(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_encode_deci", 0.0f);
+
+
     bridge->state = BIAS_SNN_STATE_ENCODING;
     bridge->anchor_value = anchor_value;
     bridge->recent_weight = clamp(recent_evidence_weight, 0.0f, 1.0f);
@@ -379,22 +481,46 @@ int bias_snn_encode_decision_context(
     // Anchoring bias: strong anchor effect
     float anchoring_signal = fabsf(anchor_value) * 2.0f;
     for (uint32_t n = 0; n < bridge->config.neurons_per_type; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && bridge->config.neurons_per_type > 256) {
+            bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                             (float)(n + 1) / (float)bridge->config.neurons_per_type);
+        }
+
         bridge->bias_neurons[BIAS_SNN_TYPE_ANCHORING][n].input_current = anchoring_signal;
     }
 
     // Recency bias: over-weighting recent evidence
     float recency_signal = recent_evidence_weight > 0.7f ? recent_evidence_weight * 2.0f : 0.0f;
     for (uint32_t n = 0; n < bridge->config.neurons_per_type; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && bridge->config.neurons_per_type > 256) {
+            bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                             (float)(n + 1) / (float)bridge->config.neurons_per_type);
+        }
+
         bridge->bias_neurons[BIAS_SNN_TYPE_RECENCY][n].input_current = recency_signal;
     }
 
     // Optimism/Pessimism bias: based on emotional valence
     if (emotional_valence > 0.3f) {
         for (uint32_t n = 0; n < bridge->config.neurons_per_type; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && bridge->config.neurons_per_type > 256) {
+                bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                                 (float)(n + 1) / (float)bridge->config.neurons_per_type);
+            }
+
             bridge->bias_neurons[BIAS_SNN_TYPE_OPTIMISM][n].input_current = emotional_valence * 2.0f;
         }
     } else if (emotional_valence < -0.3f) {
         for (uint32_t n = 0; n < bridge->config.neurons_per_type; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && bridge->config.neurons_per_type > 256) {
+                bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                                 (float)(n + 1) / (float)bridge->config.neurons_per_type);
+            }
+
             bridge->bias_neurons[BIAS_SNN_TYPE_PESSIMISM][n].input_current = -emotional_valence * 2.0f;
         }
     }
@@ -409,6 +535,10 @@ int bias_snn_encode_prediction_error(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_encode_pred", 0.0f);
+
+
     bridge->prediction_error = prediction_error;
 
     // Large prediction errors with high confidence may indicate bias
@@ -417,6 +547,12 @@ int bias_snn_encode_prediction_error(
         // Availability bias: systematic PE in one direction
         float availability_signal = pe_magnitude * prediction_confidence;
         for (uint32_t n = 0; n < bridge->config.neurons_per_type; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && bridge->config.neurons_per_type > 256) {
+                bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                                 (float)(n + 1) / (float)bridge->config.neurons_per_type);
+            }
+
             bridge->bias_neurons[BIAS_SNN_TYPE_AVAILABILITY][n].input_current = availability_signal;
         }
     }
@@ -431,12 +567,22 @@ int bias_snn_encode_prediction_error(
 int bias_snn_simulate(bias_snn_bridge_t* bridge, float duration_ms) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_simulate", 0.0f);
+
+
     bridge->state = BIAS_SNN_STATE_SIMULATING;
 
     float dt = bridge->config.dt_ms;
     int steps = (int)(duration_ms / dt);
 
     for (int step = 0; step < steps; step++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((step & 0xFF) == 0 && steps > 256) {
+            bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                             (float)(step + 1) / (float)steps);
+        }
+
         bias_snn_step(bridge);
     }
 
@@ -447,13 +593,29 @@ int bias_snn_simulate(bias_snn_bridge_t* bridge, float duration_ms) {
 int bias_snn_step(bias_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_step", 0.0f);
+
+
     float dt = bridge->config.dt_ms;
 
     // Step all bias type neurons and track activity
     for (uint32_t t = 0; t < bridge->num_types; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && bridge->num_types > 256) {
+            bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                             (float)(t + 1) / (float)bridge->num_types);
+        }
+
         float type_activity = 0.0f;
         float membrane_activity = 0.0f;
         for (uint32_t n = 0; n < bridge->config.neurons_per_type; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && bridge->config.neurons_per_type > 256) {
+                bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                                 (float)(n + 1) / (float)bridge->config.neurons_per_type);
+            }
+
             float input = bridge->bias_neurons[t][n].input_current + bridge->config.baseline_activation;
             if (neuron_step(&bridge->bias_neurons[t][n], dt, input)) {
                 type_activity += 1.0f;
@@ -474,6 +636,12 @@ int bias_snn_step(bias_snn_bridge_t* bridge) {
         float conflict_input = 0.0f;
         int active_count = 0;
         for (uint32_t t = 0; t < bridge->num_types; t++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((t & 0xFF) == 0 && bridge->num_types > 256) {
+                bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                                 (float)(t + 1) / (float)bridge->num_types);
+            }
+
             if (bridge->type_activations[t] > 0.3f) {
                 active_count++;
                 conflict_input += bridge->type_activations[t];
@@ -484,6 +652,12 @@ int bias_snn_step(bias_snn_bridge_t* bridge) {
         }
 
         for (uint32_t n = 0; n < bridge->num_conflict_neurons; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && bridge->num_conflict_neurons > 256) {
+                bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                                 (float)(n + 1) / (float)bridge->num_conflict_neurons);
+            }
+
             if (neuron_step(&bridge->conflict_neurons[n], dt, conflict_input)) {
                 bridge->stats.total_spikes++;
             }
@@ -493,11 +667,23 @@ int bias_snn_step(bias_snn_bridge_t* bridge) {
     // Output neurons integrate all activity
     float total_input = 0.0f;
     for (uint32_t t = 0; t < bridge->num_types; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && bridge->num_types > 256) {
+            bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                             (float)(t + 1) / (float)bridge->num_types);
+        }
+
         total_input += bridge->type_activations[t];
     }
     total_input /= bridge->num_types;
 
     for (uint32_t n = 0; n < bridge->num_output_neurons; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && bridge->num_output_neurons > 256) {
+            bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                             (float)(n + 1) / (float)bridge->num_output_neurons);
+        }
+
         if (neuron_step(&bridge->output_neurons[n], dt, total_input)) {
             bridge->stats.total_spikes++;
         }
@@ -515,6 +701,10 @@ int bias_snn_forward(
     if (!bridge || !inputs) return -1;
 
     // Distribute inputs to bias type neurons
+    /* Phase 8: Heartbeat at operation start */
+    bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_forward", 0.0f);
+
+
     uint32_t inputs_per_type = input_count / bridge->num_types;
     for (uint32_t t = 0; t < bridge->num_types && t * inputs_per_type < input_count; t++) {
         float sum = 0.0f;
@@ -524,6 +714,12 @@ int bias_snn_forward(
         sum /= inputs_per_type;
 
         for (uint32_t n = 0; n < bridge->config.neurons_per_type; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && bridge->config.neurons_per_type > 256) {
+                bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                                 (float)(n + 1) / (float)bridge->config.neurons_per_type);
+            }
+
             bridge->bias_neurons[t][n].input_current = sum;
         }
     }
@@ -541,6 +737,10 @@ int bias_snn_detect_biases(
 ) {
     if (!bridge || !output) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_detect_bias", 0.0f);
+
+
     bridge->state = BIAS_SNN_STATE_DETECTING;
 
     // Copy per-type activations to output
@@ -549,6 +749,12 @@ int bias_snn_detect_biases(
     float total_activation = 0.0f;
 
     for (uint32_t t = 0; t < BIAS_SNN_TYPE_COUNT; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && BIAS_SNN_TYPE_COUNT > 256) {
+            bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                             (float)(t + 1) / (float)BIAS_SNN_TYPE_COUNT);
+        }
+
         output->bias_magnitudes[t] = bridge->type_activations[t];
         total_activation += bridge->type_activations[t];
 
@@ -565,6 +771,12 @@ int bias_snn_detect_biases(
     // Compute conflict level
     float conflict_activity = 0.0f;
     for (uint32_t n = 0; n < bridge->num_conflict_neurons; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && bridge->num_conflict_neurons > 256) {
+            bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                             (float)(n + 1) / (float)bridge->num_conflict_neurons);
+        }
+
         conflict_activity += bridge->conflict_neurons[n].membrane_potential;
     }
     output->conflict_level = clamp(conflict_activity / bridge->num_conflict_neurons, 0.0f, 1.0f);
@@ -621,21 +833,37 @@ int bias_snn_detect_biases(
 
 float bias_snn_get_bias_level(bias_snn_bridge_t* bridge, bias_snn_type_t type) {
     if (!bridge || type >= BIAS_SNN_TYPE_COUNT) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_get_bias_le", 0.0f);
+
+
     return bridge->type_activations[type];
 }
 
 float bias_snn_get_overall_bias(bias_snn_bridge_t* bridge) {
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_get_overall", 0.0f);
+
+
     return bridge->last_output.overall_bias_level;
 }
 
 float bias_snn_get_conflict_level(bias_snn_bridge_t* bridge) {
     if (!bridge) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_get_conflic", 0.0f);
+
+
     return bridge->last_output.conflict_level;
 }
 
 bias_snn_type_t bias_snn_get_dominant_bias(bias_snn_bridge_t* bridge) {
     if (!bridge) return BIAS_SNN_TYPE_CONFIRMATION;
+    /* Phase 8: Heartbeat at operation start */
+    bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_get_dominan", 0.0f);
+
+
     return bridge->last_output.dominant_bias;
 }
 
@@ -650,6 +878,10 @@ int bias_snn_get_type_state(
 ) {
     if (!bridge || !state || type >= BIAS_SNN_TYPE_COUNT) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_get_type_st", 0.0f);
+
+
     state->type = type;
     state->activation = bridge->type_activations[type];
     state->confidence = bridge->type_confidences[type];
@@ -657,6 +889,12 @@ int bias_snn_get_type_state(
     // Compute spike count and rate
     uint32_t total_spikes = 0;
     for (uint32_t n = 0; n < bridge->config.neurons_per_type; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && bridge->config.neurons_per_type > 256) {
+            bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                             (float)(n + 1) / (float)bridge->config.neurons_per_type);
+        }
+
         total_spikes += bridge->bias_neurons[type][n].spike_count;
     }
     state->spike_count = total_spikes;
@@ -673,11 +911,21 @@ int bias_snn_get_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_get_state", 0.0f);
+
+
     state->state = bridge->state;
 
     // Compute total activity
     float total = 0.0f;
     for (uint32_t t = 0; t < bridge->num_types; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && bridge->num_types > 256) {
+            bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                             (float)(t + 1) / (float)bridge->num_types);
+        }
+
         total += bridge->type_activations[t];
     }
     state->total_activity = total;
@@ -690,6 +938,12 @@ int bias_snn_get_state(
     // Count active biases
     uint32_t active = 0;
     for (uint32_t t = 0; t < bridge->num_types; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && bridge->num_types > 256) {
+            bias_snn_bridge_heartbeat("bias_snn_bri_loop",
+                             (float)(t + 1) / (float)bridge->num_types);
+        }
+
         if (bridge->type_activations[t] > 0.3f) active++;
     }
     state->active_biases = active;
@@ -700,11 +954,19 @@ int bias_snn_get_state(
 int bias_snn_get_stats(bias_snn_bridge_t* bridge, bias_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_get_stats", 0.0f);
+
+
     return 0;
 }
 
 int bias_snn_reset_stats(bias_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_reset_stats", 0.0f);
+
+
     memset(&bridge->stats, 0, sizeof(bias_snn_stats_t));
     return 0;
 }
@@ -719,6 +981,10 @@ int bias_snn_register_detection_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_register_de", 0.0f);
+
+
     bridge->detection_callback = callback;
     bridge->detection_callback_data = user_data;
     return 0;
@@ -730,6 +996,10 @@ int bias_snn_register_conflict_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_register_co", 0.0f);
+
+
     bridge->conflict_callback = callback;
     bridge->conflict_callback_data = user_data;
     return 0;
@@ -742,18 +1012,30 @@ int bias_snn_register_conflict_callback(
 int bias_snn_bio_async_connect(bias_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_bio_async_c", 0.0f);
+
+
     bridge->bio_async_connected = true;
     return 0;
 }
 
 int bias_snn_bio_async_disconnect(bias_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_bio_async_d", 0.0f);
+
+
     bridge->bio_async_connected = false;
     return 0;
 }
 
 bool bias_snn_is_bio_async_connected(bias_snn_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_is_bio_asyn", 0.0f);
+
+
     return bridge->bio_async_connected;
 }
 

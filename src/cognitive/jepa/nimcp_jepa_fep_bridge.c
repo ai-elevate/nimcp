@@ -41,7 +41,7 @@ static nimcp_health_agent_t* g_jepa_fep_bridge_health_agent = NULL;
  * @brief Set health agent for jepa_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void jepa_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void jepa_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_jepa_fep_bridge_health_agent = agent;
 }
 
@@ -237,6 +237,10 @@ static void update_stats(jepa_fep_bridge_t* bridge, uint64_t update_time_us) {
  *===========================================================================*/
 
 jepa_fep_config_t jepa_fep_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_fep_bridge_heartbeat("jepa_fep_bri_jepa_fep_config_defa", 0.0f);
+
+
     jepa_fep_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -260,6 +264,10 @@ jepa_fep_config_t jepa_fep_config_default(void) {
 }
 
 jepa_fep_bridge_t* jepa_fep_bridge_create(const jepa_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_fep_bridge_heartbeat("jepa_fep_bri_create", 0.0f);
+
+
     jepa_fep_bridge_t* bridge = nimcp_calloc(1, sizeof(jepa_fep_bridge_t));
     if (!bridge) {
 
@@ -313,6 +321,10 @@ void jepa_fep_bridge_destroy(jepa_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Unregister if still registered */
+    /* Phase 8: Heartbeat at operation start */
+    jepa_fep_bridge_heartbeat("jepa_fep_bri_destroy", 0.0f);
+
+
     if (bridge->registered) {
         jepa_fep_bridge_unregister(bridge);
     }
@@ -324,6 +336,10 @@ void jepa_fep_bridge_destroy(jepa_fep_bridge_t* bridge) {
 }
 
 int jepa_fep_bridge_reset(jepa_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_fep_bridge_heartbeat("jepa_fep_bri_reset", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -368,6 +384,10 @@ int jepa_fep_bridge_register(
     jepa_predictor_t* predictor,
     uint32_t* bridge_id_out
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_fep_bridge_heartbeat("jepa_fep_bri_register", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && orchestrator, -1, "bridge or orchestrator is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -417,6 +437,10 @@ int jepa_fep_bridge_register(
 }
 
 int jepa_fep_bridge_unregister(jepa_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_fep_bridge_heartbeat("jepa_fep_bri_unregister", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -444,6 +468,10 @@ int jepa_fep_bridge_unregister(jepa_fep_bridge_t* bridge) {
 bool jepa_fep_bridge_is_registered(const jepa_fep_bridge_t* bridge) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_fep_bridge_heartbeat("jepa_fep_bri_is_registered", 0.0f);
+
+
     nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->base.mutex);
     bool registered = bridge->registered;
     nimcp_mutex_unlock(((jepa_fep_bridge_t*)bridge)->base.mutex);
@@ -453,6 +481,10 @@ bool jepa_fep_bridge_is_registered(const jepa_fep_bridge_t* bridge) {
 
 uint32_t jepa_fep_bridge_get_id(const jepa_fep_bridge_t* bridge) {
     if (!bridge) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    jepa_fep_bridge_heartbeat("jepa_fep_bri_get_id", 0.0f);
+
 
     nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->base.mutex);
     uint32_t id = bridge->registered ? bridge->bridge_id : 0;
@@ -466,6 +498,10 @@ uint32_t jepa_fep_bridge_get_id(const jepa_fep_bridge_t* bridge) {
  *===========================================================================*/
 
 int jepa_fep_update_callback(void* handle) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_fep_bridge_heartbeat("jepa_fep_bri_jepa_fep_update_call", 0.0f);
+
+
     jepa_fep_bridge_t* bridge = (jepa_fep_bridge_t*)handle;
     NIMCP_CHECK_THROW(bridge, -1, "bridge handle is NULL");
 
@@ -514,6 +550,10 @@ int jepa_fep_update_callback(void* handle) {
 
 void jepa_fep_destroy_callback(void* handle) {
     /* No-op: Bridge is destroyed separately via jepa_fep_bridge_destroy() */
+    /* Phase 8: Heartbeat at operation start */
+    jepa_fep_bridge_heartbeat("jepa_fep_bri_jepa_fep_destroy_cal", 0.0f);
+
+
     (void)handle;
 }
 
@@ -522,10 +562,18 @@ void jepa_fep_destroy_callback(void* handle) {
  *===========================================================================*/
 
 int jepa_fep_bridge_update(jepa_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_fep_bridge_heartbeat("jepa_fep_bri_update", 0.0f);
+
+
     return jepa_fep_update_callback(bridge);
 }
 
 int jepa_fep_bridge_force_update(jepa_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_fep_bridge_heartbeat("jepa_fep_bri_force_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -568,6 +616,10 @@ int jepa_fep_bridge_get_stats(
     const jepa_fep_bridge_t* bridge,
     jepa_fep_stats_t* stats_out
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_fep_bridge_heartbeat("jepa_fep_bri_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats_out, -1, "bridge or stats_out is NULL");
 
     nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->base.mutex);
@@ -578,6 +630,10 @@ int jepa_fep_bridge_get_stats(
 }
 
 int jepa_fep_bridge_reset_stats(jepa_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_fep_bridge_heartbeat("jepa_fep_bri_reset_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -592,6 +648,10 @@ int jepa_fep_bridge_reset_stats(jepa_fep_bridge_t* bridge) {
 float jepa_fep_bridge_get_free_energy_contribution(const jepa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_fep_bridge_heartbeat("jepa_fep_bri_get_free_energy_cont", 0.0f);
+
+
     nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->base.mutex);
     float fe = bridge->current_free_energy;
     nimcp_mutex_unlock(((jepa_fep_bridge_t*)bridge)->base.mutex);
@@ -601,6 +661,10 @@ float jepa_fep_bridge_get_free_energy_contribution(const jepa_fep_bridge_t* brid
 
 float jepa_fep_bridge_get_embedding_prediction_error(const jepa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    jepa_fep_bridge_heartbeat("jepa_fep_bri_get_embedding_predic", 0.0f);
+
 
     nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->base.mutex);
     float error = bridge->embedding_prediction_error;
@@ -612,6 +676,10 @@ float jepa_fep_bridge_get_embedding_prediction_error(const jepa_fep_bridge_t* br
 float jepa_fep_bridge_get_representation_quality(const jepa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_fep_bridge_heartbeat("jepa_fep_bri_get_representation_q", 0.0f);
+
+
     nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->base.mutex);
     float quality = bridge->representation_quality;
     nimcp_mutex_unlock(((jepa_fep_bridge_t*)bridge)->base.mutex);
@@ -622,6 +690,10 @@ float jepa_fep_bridge_get_representation_quality(const jepa_fep_bridge_t* bridge
 jepa_fep_state_t jepa_fep_bridge_get_state(const jepa_fep_bridge_t* bridge) {
     if (!bridge) return JEPA_FEP_STATE_ERROR;
 
+    /* Phase 8: Heartbeat at operation start */
+    jepa_fep_bridge_heartbeat("jepa_fep_bri_get_state", 0.0f);
+
+
     nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->base.mutex);
     jepa_fep_state_t state = bridge->state;
     nimcp_mutex_unlock(((jepa_fep_bridge_t*)bridge)->base.mutex);
@@ -631,6 +703,10 @@ jepa_fep_state_t jepa_fep_bridge_get_state(const jepa_fep_bridge_t* bridge) {
 
 bool jepa_fep_bridge_is_degraded(const jepa_fep_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    jepa_fep_bridge_heartbeat("jepa_fep_bri_is_degraded", 0.0f);
+
 
     nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->base.mutex);
     bool degraded = (bridge->state == JEPA_FEP_STATE_DEGRADED);
@@ -647,6 +723,10 @@ int jepa_fep_bridge_record_prediction_error(
     jepa_fep_bridge_t* bridge,
     float prediction_error
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_fep_bridge_heartbeat("jepa_fep_bri_record_prediction_er", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
     NIMCP_CHECK_THROW(prediction_error >= 0.0f, -1, "prediction_error must be non-negative");
 
@@ -670,6 +750,10 @@ int jepa_fep_bridge_record_representation_quality(
     jepa_fep_bridge_t* bridge,
     float quality
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_fep_bridge_heartbeat("jepa_fep_bri_record_representatio", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
     NIMCP_CHECK_THROW(quality >= 0.0f && quality <= 1.0f, -1, "quality must be in range [0,1]");
 
@@ -704,6 +788,10 @@ int jepa_fep_bridge_set_high_fe_callback(
     jepa_fep_high_fe_callback_t callback,
     void* user_data
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_fep_bridge_heartbeat("jepa_fep_bri_set_high_fe_callback", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -719,6 +807,10 @@ int jepa_fep_bridge_set_collapse_callback(
     jepa_fep_collapse_callback_t callback,
     void* user_data
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_fep_bridge_heartbeat("jepa_fep_bri_set_collapse_callbac", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -737,6 +829,10 @@ int jepa_fep_bridge_set_config(
     jepa_fep_bridge_t* bridge,
     const jepa_fep_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_fep_bridge_heartbeat("jepa_fep_bri_set_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && config, -1, "bridge or config is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -750,6 +846,10 @@ int jepa_fep_bridge_get_config(
     const jepa_fep_bridge_t* bridge,
     jepa_fep_config_t* config_out
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    jepa_fep_bridge_heartbeat("jepa_fep_bri_get_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && config_out, -1, "bridge or config_out is NULL");
 
     nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->base.mutex);

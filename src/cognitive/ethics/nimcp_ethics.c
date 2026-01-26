@@ -64,7 +64,7 @@ static nimcp_health_agent_t* g_ethics_health_agent = NULL;
  * @brief Set health agent for ethics heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void ethics_set_health_agent(nimcp_health_agent_t* agent) {
+void ethics_set_health_agent(nimcp_health_agent_t* agent) {
     g_ethics_health_agent = agent;
 }
 
@@ -129,6 +129,12 @@ static int ethics_wiring_handler_callback(
              message_count);
 
     for (uint32_t i = 0; i < message_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && message_count > 256) {
+            ethics_heartbeat("ethics_loop",
+                             (float)(i + 1) / (float)message_count);
+        }
+
         switch (message_types[i]) {
             case BIO_MSG_ETHICS_EVALUATION_REQUEST:
                 bio_router_register_handler(ctx, message_types[i], handle_ethics_request);
@@ -171,6 +177,12 @@ static float* acquire_buffer(feature_buffer_pool_t* pool)
 
     // Guard clause: Check for pool exhaustion
     for (uint32_t i = 0; i < OBJECT_POOL_SIZE; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && OBJECT_POOL_SIZE > 256) {
+            ethics_heartbeat("ethics_loop",
+                             (float)(i + 1) / (float)OBJECT_POOL_SIZE);
+        }
+
         uint32_t idx = (pool->next_available + i) % OBJECT_POOL_SIZE;
         if (!pool->in_use[idx]) {
             pool->in_use[idx] = true;
@@ -192,6 +204,12 @@ static void release_buffer(feature_buffer_pool_t* pool, float* buffer)
 
     // Guard clause: Validate buffer belongs to pool
     for (uint32_t i = 0; i < OBJECT_POOL_SIZE; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && OBJECT_POOL_SIZE > 256) {
+            ethics_heartbeat("ethics_loop",
+                             (float)(i + 1) / (float)OBJECT_POOL_SIZE);
+        }
+
         if (pool->buffers[i] == buffer) {
             pool->in_use[i] = false;
             return;
@@ -411,6 +429,10 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_heartbeat("ethics_engine_create", 0.0f);
+
+
     ethics_engine_t engine = nimcp_calloc(1, sizeof(struct ethics_engine_struct));
     if (!engine) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ethics_engine_create: failed to allocate engine");
@@ -550,6 +572,10 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
 void ethics_engine_destroy(ethics_engine_t engine)
 {
     if (!engine)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_heartbeat("ethics_engine_destroy", 0.0f);
+
+
         return;
 
     // Unregister from bio-async router
@@ -776,6 +802,10 @@ static void update_learning(ethics_engine_t engine, const action_context_t* acti
 ethics_evaluation_t ethics_engine_evaluate_action(ethics_engine_t engine,
                                                   const action_context_t* action)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_heartbeat("ethics_engine_evaluate_acti", 0.0f);
+
+
     ethics_evaluation_t result = {0};
 
     // Step 1: Validate inputs
@@ -872,6 +902,10 @@ ethics_evaluation_t ethics_engine_evaluate_action(ethics_engine_t engine,
 void ethics_print_evaluation(const ethics_evaluation_t* eval)
 {
     if (!eval)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_heartbeat("ethics_print_evaluation", 0.0f);
+
+
         return;
 
     printf("Ethics Evaluation:\n");
@@ -890,6 +924,10 @@ void ethics_print_evaluation(const ethics_evaluation_t* eval)
 bool ethics_get_statistics(ethics_engine_t engine, ethics_statistics_t* stats)
 {
     if (!engine || !stats)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_heartbeat("ethics_get_statistics", 0.0f);
+
+
         return false;
 
     /* Thread-safe reads of atomically-updated counters */
@@ -908,40 +946,76 @@ bool ethics_get_statistics(ethics_engine_t engine, ethics_statistics_t* stats)
 //=============================================================================
 
 brain_t ethics_engine_get_golden_rule_net(ethics_engine_t engine) {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_heartbeat("ethics_engine_get_golden_ru", 0.0f);
+
+
     return engine ? engine->golden_rule_evaluator : NULL;
 }
 
 empathy_network_t ethics_engine_get_empathy_net(ethics_engine_t engine) {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_heartbeat("ethics_engine_get_empathy_n", 0.0f);
+
+
     return engine ? engine->empathy_net : NULL;
 }
 
 asimov_config_t* ethics_engine_get_asimov_config(ethics_engine_t engine) {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_heartbeat("ethics_engine_get_asimov_co", 0.0f);
+
+
     return engine ? &engine->asimov_config : NULL;
 }
 
 float ethics_engine_get_threshold(ethics_engine_t engine) {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_heartbeat("ethics_engine_get_threshold", 0.0f);
+
+
     return engine ? engine->golden_rule_threshold : 0.0F;
 }
 
 bool ethics_engine_is_learning_enabled(ethics_engine_t engine) {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_heartbeat("ethics_engine_is_learning_e", 0.0f);
+
+
     return engine ? engine->enable_learning : false;
 }
 
 uint32_t ethics_engine_get_num_policies(ethics_engine_t engine) {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_heartbeat("ethics_engine_get_num_polic", 0.0f);
+
+
     return engine ? engine->num_policies : 0;
 }
 
 const ethics_policy_t* ethics_engine_get_policy(ethics_engine_t engine, uint32_t index) {
     if (!engine || index >= engine->num_policies)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_heartbeat("ethics_engine_get_policy", 0.0f);
+
+
         return NULL;
     return &engine->policies[index];
 }
 
 const policy_strategy_table_t* ethics_engine_get_strategy_table(ethics_engine_t engine) {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_heartbeat("ethics_engine_get_strategy_", 0.0f);
+
+
     return engine ? &engine->strategy_table : NULL;
 }
 
 ethics_incident_storage_t* ethics_engine_get_incident_storage(ethics_engine_t engine) {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_heartbeat("ethics_engine_get_incident_", 0.0f);
+
+
     return engine ? &engine->incident_storage : NULL;
 }
 
@@ -950,28 +1024,48 @@ float* ethics_engine_acquire_buffer(ethics_engine_t engine) {
 }
 
 void ethics_engine_release_buffer(ethics_engine_t engine, float* buffer) {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_heartbeat("ethics_engine_release_buffe", 0.0f);
+
+
     if (engine) {
         release_buffer(&engine->buffer_pool, buffer);
     }
 }
 
 void ethics_engine_increment_violations_detected(ethics_engine_t engine) {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_heartbeat("ethics_engine_increment_vio", 0.0f);
+
+
     if (engine) {
         __atomic_fetch_add(&engine->violations_detected, 1, __ATOMIC_RELAXED);
     }
 }
 
 void ethics_engine_increment_asimov_violations(ethics_engine_t engine) {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_heartbeat("ethics_engine_increment_asi", 0.0f);
+
+
     if (engine) {
         __atomic_fetch_add(&engine->asimov_violations, 1, __ATOMIC_RELAXED);
     }
 }
 
 bool ethics_engine_is_asimov_locked(ethics_engine_t engine) {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_heartbeat("ethics_engine_is_asimov_loc", 0.0f);
+
+
     return engine ? engine->asimov_laws_locked : false;
 }
 
 void ethics_engine_set_asimov_locked(ethics_engine_t engine, bool locked) {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_heartbeat("ethics_engine_set_asimov_lo", 0.0f);
+
+
     if (engine) {
         engine->asimov_laws_locked = locked;
     }
@@ -982,6 +1076,10 @@ const uint8_t* ethics_engine_get_asimov_hash(ethics_engine_t engine) {
 }
 
 void ethics_engine_set_asimov_hash(ethics_engine_t engine, const uint8_t* hash) {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_heartbeat("ethics_engine_set_asimov_ha", 0.0f);
+
+
     if (engine && hash) {
         memcpy(engine->asimov_laws_hash, hash, 32);
     }
@@ -990,6 +1088,10 @@ void ethics_engine_set_asimov_hash(ethics_engine_t engine, const uint8_t* hash) 
 bool ethics_engine_add_policy_internal(ethics_engine_t engine, const ethics_policy_t* policy)
 {
     if (!engine || !policy)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_heartbeat("ethics_engine_add_policy_in", 0.0f);
+
+
         return false;
 
     // Check if array needs expansion
@@ -1021,11 +1123,21 @@ bool ethics_engine_add_policy_internal(ethics_engine_t engine, const ethics_poli
 bool ethics_engine_remove_policy_internal(ethics_engine_t engine, uint32_t policy_id)
 {
     if (!engine)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_heartbeat("ethics_engine_remove_policy", 0.0f);
+
+
         return false;
 
     // Search for policy with matching policy_id
     int found_index = -1;
     for (uint32_t i = 0; i < engine->num_policies; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && engine->num_policies > 256) {
+            ethics_heartbeat("ethics_loop",
+                             (float)(i + 1) / (float)engine->num_policies);
+        }
+
         if (engine->policies[i].policy_id == policy_id) {
             found_index = (int) i;
             break;
@@ -1067,10 +1179,20 @@ int ethics_engine_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
     /* Query our own entity from the knowledge graph */
+    /* Phase 8: Heartbeat at operation start */
+    ethics_heartbeat("ethics_engine_query_self_kn", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Ethics_Engine_Module");
     if (self) {
         /* Module now knows its own capabilities from KG */
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                ethics_heartbeat("ethics_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Ethics engine self-knowledge: %s", self->observations[i]);
         }
     }

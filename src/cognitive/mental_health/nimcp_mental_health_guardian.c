@@ -62,7 +62,7 @@ static nimcp_health_agent_t* g_mental_health_guardian_health_agent = NULL;
  * @brief Set health agent for mental_health_guardian heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mental_health_guardian_set_health_agent(nimcp_health_agent_t* agent) {
+void mental_health_guardian_set_health_agent(nimcp_health_agent_t* agent) {
     g_mental_health_guardian_health_agent = agent;
 }
 
@@ -168,6 +168,10 @@ struct mental_health_guardian {
 //=============================================================================
 
 mental_health_guardian_config_t mental_health_guardian_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_guardian_heartbeat("mental_healt_default_config", 0.0f);
+
+
     mental_health_guardian_config_t config = {
         .monitoring_interval_ms = 100,
         .observe_threshold = 0.0f,
@@ -739,6 +743,12 @@ static guardian_intervention_level_t perform_health_check(
     float threshold = 0.3f;  /* Minimum severity to count as active */
 
     for (int i = 0; i < DISORDER_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && DISORDER_COUNT > 256) {
+            mental_health_guardian_heartbeat("mental_healt_loop",
+                             (float)(i + 1) / (float)DISORDER_COUNT);
+        }
+
         if (i != (int)report.primary_disorder &&
             report.disorder_scores[i] >= threshold &&
             report.disorder_scores[i] > secondary_score) {
@@ -823,6 +833,10 @@ mental_health_guardian_t* mental_health_guardian_create(
     void* brain_ptr,  /* brain_t */
     const mental_health_guardian_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_guardian_heartbeat("mental_healt_create", 0.0f);
+
+
     brain_t brain = (brain_t)brain_ptr;
     if (!brain) {
         GUARDIAN_LOG("ERROR: NULL brain provided");
@@ -923,6 +937,10 @@ void mental_health_guardian_destroy(mental_health_guardian_t* guardian) {
     }
 
     /* Stop thread if running */
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_guardian_heartbeat("mental_healt_destroy", 0.0f);
+
+
     if (atomic_load(&guardian->running)) {
         mental_health_guardian_stop(guardian);
     }
@@ -951,6 +969,10 @@ bool mental_health_guardian_start(mental_health_guardian_t* guardian) {
     if (!guardian) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_guardian_heartbeat("mental_healt_start", 0.0f);
+
 
     if (atomic_load(&guardian->running)) {
         return true;  /* Already running */
@@ -1001,6 +1023,10 @@ bool mental_health_guardian_stop(mental_health_guardian_t* guardian) {
     }
 
     /* Signal thread to stop */
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_guardian_heartbeat("mental_healt_stop", 0.0f);
+
+
     atomic_store(&guardian->running, false);
 
     /* Wait for thread to exit */
@@ -1020,6 +1046,10 @@ bool mental_health_guardian_pause(mental_health_guardian_t* guardian) {
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_guardian_heartbeat("mental_healt_pause", 0.0f);
+
+
     atomic_store(&guardian->paused, true);
     guardian->state = GUARDIAN_STATE_PAUSED;
 
@@ -1031,6 +1061,10 @@ bool mental_health_guardian_resume(mental_health_guardian_t* guardian) {
     if (!guardian) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_guardian_heartbeat("mental_healt_resume", 0.0f);
+
 
     atomic_store(&guardian->paused, false);
     guardian->state = GUARDIAN_STATE_RUNNING;
@@ -1050,6 +1084,10 @@ bool mental_health_guardian_get_status(
     if (!guardian || !status) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_guardian_heartbeat("mental_healt_get_status", 0.0f);
+
 
     nimcp_mutex_lock(guardian->lock);
 
@@ -1080,6 +1118,12 @@ bool mental_health_guardian_get_status(
         mental_health_report_t report;
         mental_health_get_report(guardian->brain->mental_health_monitor, &report);
         for (int i = 0; i < DISORDER_COUNT; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && DISORDER_COUNT > 256) {
+                mental_health_guardian_heartbeat("mental_healt_loop",
+                                 (float)(i + 1) / (float)DISORDER_COUNT);
+            }
+
             if (report.disorder_severities[i] > DISORDER_SEVERITY_NONE) {
                 status->active_disorders++;
             }
@@ -1094,6 +1138,10 @@ bool mental_health_guardian_reset_stats(mental_health_guardian_t* guardian) {
     if (!guardian) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_guardian_heartbeat("mental_healt_reset_stats", 0.0f);
+
 
     nimcp_mutex_lock(guardian->lock);
 
@@ -1121,6 +1169,10 @@ guardian_intervention_level_t mental_health_guardian_force_check(
         return GUARDIAN_LEVEL_OBSERVE;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_guardian_heartbeat("mental_healt_force_check", 0.0f);
+
+
     nimcp_mutex_lock(guardian->lock);
     guardian_intervention_level_t level = perform_health_check(guardian);
     nimcp_mutex_unlock(guardian->lock);
@@ -1135,6 +1187,10 @@ bool mental_health_guardian_set_level(
     if (!guardian) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_guardian_heartbeat("mental_healt_set_level", 0.0f);
+
 
     nimcp_mutex_lock(guardian->lock);
     guardian->current_level = level;
@@ -1157,6 +1213,10 @@ bool mental_health_guardian_update_config(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_guardian_heartbeat("mental_healt_update_config", 0.0f);
+
+
     nimcp_mutex_lock(guardian->lock);
     guardian->config = *config;
     nimcp_mutex_unlock(guardian->lock);
@@ -1173,6 +1233,10 @@ bool mental_health_guardian_get_config(
     if (!guardian || !config) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_guardian_heartbeat("mental_healt_get_config", 0.0f);
+
 
     nimcp_mutex_lock(guardian->lock);
     *config = guardian->config;
@@ -1193,6 +1257,10 @@ bool mental_health_guardian_connect_immune(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_guardian_heartbeat("mental_healt_connect_immune", 0.0f);
+
+
     nimcp_mutex_lock(guardian->lock);
     guardian->immune_system = immune;
     nimcp_mutex_unlock(guardian->lock);
@@ -1209,6 +1277,10 @@ bool mental_health_guardian_connect_kg(
     if (!guardian || !kg) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_guardian_heartbeat("mental_healt_connect_kg", 0.0f);
+
 
     nimcp_mutex_lock(guardian->lock);
     guardian->internal_kg = kg;
@@ -1227,6 +1299,10 @@ bool mental_health_guardian_connect_bio_async(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_guardian_heartbeat("mental_healt_connect_bio_async", 0.0f);
+
+
     nimcp_mutex_lock(guardian->lock);
     guardian->bio_context = (bio_module_context_t)bio_context;
     guardian->bio_async_connected = true;
@@ -1244,6 +1320,10 @@ bool mental_health_guardian_connect_neuromod(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_guardian_heartbeat("mental_healt_connect_neuromod", 0.0f);
+
+
     nimcp_mutex_lock(guardian->lock);
     guardian->neuromod_field = (spatial_neuromod_field_t*)neuromod;
     nimcp_mutex_unlock(guardian->lock);
@@ -1259,6 +1339,10 @@ bool mental_health_guardian_connect_brainstem(
     if (!guardian || !medulla) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_guardian_heartbeat("mental_healt_connect_brainstem", 0.0f);
+
 
     nimcp_mutex_lock(guardian->lock);
     guardian->medulla = medulla;  /* Stored as void* anyway */
@@ -1276,6 +1360,10 @@ bool mental_health_guardian_connect_sleep(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_guardian_heartbeat("mental_healt_connect_sleep", 0.0f);
+
+
     nimcp_mutex_lock(guardian->lock);
     guardian->sleep_system = sleep;  /* Stored as void* anyway */
     nimcp_mutex_unlock(guardian->lock);
@@ -1291,6 +1379,10 @@ bool mental_health_guardian_connect_plasticity(
     if (!guardian || !plasticity) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_guardian_heartbeat("mental_healt_connect_plasticity", 0.0f);
+
 
     nimcp_mutex_lock(guardian->lock);
     guardian->plasticity = plasticity;  /* Stored as void* anyway */
@@ -1319,6 +1411,10 @@ int mental_health_guardian_fep_update(void* handle) {
 
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_guardian_heartbeat("mental_healt_fep_update", 0.0f);
+
 
     mental_health_guardian_t* guardian = (mental_health_guardian_t*)handle;
 
@@ -1356,6 +1452,10 @@ bool mental_health_guardian_register_fep(
     if (!guardian || !orchestrator) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_guardian_heartbeat("mental_healt_register_fep", 0.0f);
+
 
     if (guardian->fep_registered) {
         GUARDIAN_LOG("Already registered with FEP orchestrator");
@@ -1400,6 +1500,10 @@ bool mental_health_guardian_unregister_fep(mental_health_guardian_t* guardian) {
         return true;  /* Not registered, nothing to do */
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_guardian_heartbeat("mental_healt_unregister_fep", 0.0f);
+
+
     fep_orchestrator_t* fep_orch = (fep_orchestrator_t*)guardian->fep_orchestrator;
     if (fep_orch) {
         int result = fep_orchestrator_unregister_bridge(fep_orch, guardian->fep_bridge_id);
@@ -1431,6 +1535,10 @@ bool mental_health_guardian_connect_working_memory(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_guardian_heartbeat("mental_healt_connect_working_memo", 0.0f);
+
+
     nimcp_mutex_lock(guardian->lock);
     guardian->working_memory = working_memory;
     nimcp_mutex_unlock(guardian->lock);
@@ -1446,6 +1554,10 @@ bool mental_health_guardian_connect_executive(
     if (!guardian || !executive) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_guardian_heartbeat("mental_healt_connect_executive", 0.0f);
+
 
     nimcp_mutex_lock(guardian->lock);
     guardian->executive = executive;
@@ -1497,10 +1609,20 @@ int mental_health_guardian_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
     /* Query our own entity from the knowledge graph */
+    /* Phase 8: Heartbeat at operation start */
+    mental_health_guardian_heartbeat("mental_healt_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Mental_Health_Guardian_Module");
     if (self) {
         /* Module now knows its own capabilities from KG */
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                mental_health_guardian_heartbeat("mental_healt_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             GUARDIAN_LOG("Self-knowledge: %s", self->observations[i]);
         }
     }

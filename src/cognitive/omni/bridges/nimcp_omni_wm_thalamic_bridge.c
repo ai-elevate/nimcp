@@ -62,7 +62,7 @@ static nimcp_health_agent_t* g_omni_wm_thalamic_bridge_health_agent = NULL;
  * @brief Set health agent for omni_wm_thalamic_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void omni_wm_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void omni_wm_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_omni_wm_thalamic_bridge_health_agent = agent;
 }
 
@@ -358,6 +358,12 @@ static nimcp_error_t apply_gating(omni_wm_thalamic_bridge_t* bridge,
     /* Apply gating */
     uint32_t copy_dim = input_dim < output_dim ? input_dim : output_dim;
     for (uint32_t i = 0; i < copy_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && copy_dim > 256) {
+            omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_loop",
+                             (float)(i + 1) / (float)copy_dim);
+        }
+
         output[i] = input[i] * gate;
     }
 
@@ -380,6 +386,12 @@ static nimcp_error_t update_thalamus_to_wm_effects(omni_wm_thalamic_bridge_t* br
     /* Update global attention */
     float total_attention = 0.0f;
     for (int i = 0; i < WM_THAL_NUCLEUS_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && WM_THAL_NUCLEUS_COUNT > 256) {
+            omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_loop",
+                             (float)(i + 1) / (float)WM_THAL_NUCLEUS_COUNT);
+        }
+
         effects->nucleus_activity[i] = bridge->config.nucleus_attention[i];
         total_attention += effects->nucleus_activity[i];
     }
@@ -513,6 +525,10 @@ static nimcp_error_t handle_prediction_error(const void* msg, size_t msg_size,
 nimcp_error_t omni_wm_thalamic_bridge_default_config(
     omni_wm_thalamic_bridge_config_t* config) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(omni_wm_thalamic_bridge_config_t));
@@ -554,6 +570,12 @@ nimcp_error_t omni_wm_thalamic_bridge_default_config(
 
     /* Initialize per-nucleus attention to baseline */
     for (int i = 0; i < WM_THAL_NUCLEUS_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && WM_THAL_NUCLEUS_COUNT > 256) {
+            omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_loop",
+                             (float)(i + 1) / (float)WM_THAL_NUCLEUS_COUNT);
+        }
+
         config->nucleus_attention[i] = config->attention_baseline;
     }
 
@@ -567,6 +589,10 @@ omni_wm_thalamic_bridge_t* omni_wm_thalamic_bridge_create(
     const omni_wm_thalamic_bridge_config_t* config) {
 
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_create", 0.0f);
+
+
     omni_wm_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_wm_thalamic_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate WM thalamic bridge");
@@ -620,6 +646,10 @@ void omni_wm_thalamic_bridge_destroy(omni_wm_thalamic_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         omni_wm_thalamic_bridge_disconnect_bio_async(bridge);
     }
@@ -638,6 +668,10 @@ void omni_wm_thalamic_bridge_destroy(omni_wm_thalamic_bridge_t* bridge) {
 }
 
 nimcp_error_t omni_wm_thalamic_bridge_reset(omni_wm_thalamic_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_reset", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -701,6 +735,10 @@ nimcp_error_t omni_wm_thalamic_bridge_connect(
     thalamus_t* thalamus,
     thalamic_router_t* router) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_connect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_INVALID_PARAM, "world_model is required");
 
@@ -729,6 +767,10 @@ nimcp_error_t omni_wm_thalamic_bridge_connect_world_model(
     omni_wm_thalamic_bridge_t* bridge,
     omni_world_model_t* world_model) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_connect_world_model", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_NULL_POINTER, "world_model is NULL");
 
@@ -746,6 +788,10 @@ nimcp_error_t omni_wm_thalamic_bridge_connect_thalamus(
     omni_wm_thalamic_bridge_t* bridge,
     thalamus_t* thalamus) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_connect_thalamus", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(thalamus, NIMCP_ERROR_NULL_POINTER, "thalamus is NULL");
 
@@ -762,6 +808,10 @@ nimcp_error_t omni_wm_thalamic_bridge_connect_router(
     omni_wm_thalamic_bridge_t* bridge,
     thalamic_router_t* router) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_connect_router", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(router, NIMCP_ERROR_NULL_POINTER, "router is NULL");
 
@@ -774,6 +824,10 @@ nimcp_error_t omni_wm_thalamic_bridge_connect_router(
 
 bool omni_wm_thalamic_bridge_is_connected(const omni_wm_thalamic_bridge_t* bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_is_connected", 0.0f);
+
+
     return bridge->world_model != NULL;
 }
 
@@ -784,6 +838,10 @@ bool omni_wm_thalamic_bridge_is_connected(const omni_wm_thalamic_bridge_t* bridg
 nimcp_error_t omni_wm_thalamic_bridge_update(
     omni_wm_thalamic_bridge_t* bridge,
     float dt) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_update", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_modulation) return NIMCP_SUCCESS;
@@ -828,6 +886,10 @@ nimcp_error_t omni_wm_thalamic_bridge_set_arousal(
     omni_wm_thalamic_bridge_t* bridge,
     float arousal) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_set_arousal", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Clamp to valid range */
@@ -866,6 +928,10 @@ nimcp_error_t omni_wm_thalamic_bridge_gate_input(
     float* gated_output,
     uint32_t output_dim,
     float* attention_applied) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_gate_input", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(input, NIMCP_ERROR_NULL_POINTER, "input is NULL");
@@ -936,6 +1002,10 @@ nimcp_error_t omni_wm_thalamic_bridge_gate_visual(
     float* gated_output,
     uint32_t output_dim) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_gate_visual", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->config.gate_visual) {
@@ -957,6 +1027,10 @@ nimcp_error_t omni_wm_thalamic_bridge_gate_auditory(
     float* gated_output,
     uint32_t output_dim) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_gate_auditory", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->config.gate_auditory) {
@@ -976,6 +1050,10 @@ nimcp_error_t omni_wm_thalamic_bridge_gate_motor(
     uint32_t input_dim,
     float* gated_output,
     uint32_t output_dim) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_gate_motor", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -997,6 +1075,10 @@ nimcp_error_t omni_wm_thalamic_bridge_gate_executive(
     uint32_t input_dim,
     float* gated_output,
     uint32_t output_dim) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_gate_executive", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -1020,6 +1102,10 @@ nimcp_error_t omni_wm_thalamic_bridge_set_attention_bias(
     const float* attention_bias,
     uint32_t bias_dim,
     float confidence) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_set_attention_bias", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(attention_bias, NIMCP_ERROR_INVALID_PARAM, "attention_bias is NULL");
@@ -1052,6 +1138,10 @@ nimcp_error_t omni_wm_thalamic_bridge_set_nucleus_attention(
     wm_thal_nucleus_type_t nucleus,
     float attention) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_set_nucleus_attentio", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(nucleus < WM_THAL_NUCLEUS_COUNT, NIMCP_ERROR_INVALID_PARAM, "nucleus out of range");
 
@@ -1073,6 +1163,10 @@ float omni_wm_thalamic_bridge_get_nucleus_attention(
     if (!bridge) return -1.0f;
     if (nucleus >= WM_THAL_NUCLEUS_COUNT) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_get_nucleus_attentio", 0.0f);
+
+
     return bridge->config.nucleus_attention[nucleus];
 }
 
@@ -1080,6 +1174,10 @@ nimcp_error_t omni_wm_thalamic_bridge_set_pulvinar_attention(
     omni_wm_thalamic_bridge_t* bridge,
     const float* attention_weights,
     uint32_t weights_dim) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_set_pulvinar_attenti", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(attention_weights, NIMCP_ERROR_INVALID_PARAM, "attention_weights is NULL");
@@ -1095,6 +1193,12 @@ nimcp_error_t omni_wm_thalamic_bridge_set_pulvinar_attention(
     /* Update pulvinar focus strength (max attention weight) */
     float max_attn = 0.0f;
     for (uint32_t i = 0; i < copy_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && copy_dim > 256) {
+            omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_loop",
+                             (float)(i + 1) / (float)copy_dim);
+        }
+
         if (attention_weights[i] > max_attn) {
             max_attn = attention_weights[i];
         }
@@ -1116,6 +1220,10 @@ nimcp_error_t omni_wm_thalamic_bridge_predict_salience(
     float* salience_out,
     uint32_t salience_dim) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_predict_salience", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(salience_out, NIMCP_ERROR_INVALID_PARAM, "salience_out is NULL");
     NIMCP_CHECK_THROW(salience_dim > 0, NIMCP_ERROR_INVALID_PARAM, "salience_dim must be greater than 0");
@@ -1133,6 +1241,12 @@ nimcp_error_t omni_wm_thalamic_bridge_predict_salience(
                         salience_dim : bridge->wm_to_thal.pe_dim;
 
     for (uint32_t i = 0; i < copy_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && copy_dim > 256) {
+            omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_loop",
+                             (float)(i + 1) / (float)copy_dim);
+        }
+
         /* High PE = high salience (surprising = salient) */
         float pe = bridge->wm_to_thal.prediction_errors[i];
         salience_out[i] = 1.0f / (1.0f + expf(-pe)); /* Sigmoid of PE */
@@ -1163,6 +1277,10 @@ nimcp_error_t omni_wm_thalamic_bridge_apply_trn_inhibition(
     omni_wm_thalamic_bridge_t* bridge,
     wm_thal_nucleus_type_t nucleus,
     float inhibition_strength) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_apply_trn_inhibition", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(nucleus < WM_THAL_NUCLEUS_COUNT, NIMCP_ERROR_INVALID_PARAM, "nucleus out of range");
@@ -1199,6 +1317,10 @@ nimcp_error_t omni_wm_thalamic_bridge_apply_selective_inhibition(
     const float* inhibition_map,
     uint32_t map_dim) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_apply_selective_inhi", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(inhibition_map, NIMCP_ERROR_INVALID_PARAM, "inhibition_map is NULL");
     NIMCP_CHECK_THROW(map_dim > 0, NIMCP_ERROR_INVALID_PARAM, "map_dim must be greater than 0");
@@ -1221,6 +1343,12 @@ nimcp_error_t omni_wm_thalamic_bridge_apply_selective_inhibition(
     /* Compute global inhibition */
     float sum_inhib = 0.0f;
     for (uint32_t i = 0; i < copy_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && copy_dim > 256) {
+            omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_loop",
+                             (float)(i + 1) / (float)copy_dim);
+        }
+
         sum_inhib += inhibition_map[i];
     }
     bridge->thal_to_wm.global_inhibition = sum_inhib / (float)copy_dim;
@@ -1235,6 +1363,10 @@ nimcp_error_t omni_wm_thalamic_bridge_apply_selective_inhibition(
 nimcp_error_t omni_wm_thalamic_bridge_release_trn_inhibition(
     omni_wm_thalamic_bridge_t* bridge,
     wm_thal_nucleus_type_t nucleus) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_release_trn_inhibiti", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(nucleus < WM_THAL_NUCLEUS_COUNT, NIMCP_ERROR_INVALID_PARAM, "nucleus out of range");
@@ -1260,6 +1392,10 @@ nimcp_error_t omni_wm_thalamic_bridge_release_trn_inhibition(
 nimcp_error_t omni_wm_thalamic_bridge_modulate_trn_from_confidence(
     omni_wm_thalamic_bridge_t* bridge,
     float prediction_confidence) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_modulate_trn_from_co", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_trn_inhibition) return NIMCP_SUCCESS;
@@ -1295,6 +1431,10 @@ nimcp_error_t omni_wm_thalamic_bridge_prediction_error_feedback(
     const float* prediction_errors,
     uint32_t pe_dim,
     float mean_pe) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_prediction_error_fee", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(prediction_errors, NIMCP_ERROR_INVALID_PARAM, "prediction_errors is NULL");
@@ -1337,6 +1477,10 @@ nimcp_error_t omni_wm_thalamic_bridge_update_from_gated_input(
     const float* gated_input,
     uint32_t input_dim) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_update_from_gated_in", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(gated_input, NIMCP_ERROR_INVALID_PARAM, "gated_input is NULL");
     NIMCP_CHECK_THROW(input_dim > 0, NIMCP_ERROR_INVALID_PARAM, "input_dim must be greater than 0");
@@ -1374,6 +1518,10 @@ const thalamus_to_omni_wm_effects_t* omni_wm_thalamic_bridge_get_thalamic_effect
 
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_get_thalamic_effects", 0.0f);
+
+
     return &bridge->thal_to_wm;
 }
 
@@ -1390,12 +1538,20 @@ const omni_wm_to_thalamus_effects_t* omni_wm_thalamic_bridge_get_wm_effects(
 
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_get_wm_effects", 0.0f);
+
+
     return &bridge->wm_to_thal;
 }
 
 nimcp_error_t omni_wm_thalamic_bridge_get_stats(
     const omni_wm_thalamic_bridge_t* bridge,
     omni_wm_thalamic_bridge_stats_t* stats) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_get_stats", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
@@ -1409,6 +1565,10 @@ nimcp_error_t omni_wm_thalamic_bridge_get_stats(
 
 nimcp_error_t omni_wm_thalamic_bridge_reset_stats(
     omni_wm_thalamic_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_reset_stats", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -1425,6 +1585,10 @@ nimcp_error_t omni_wm_thalamic_bridge_reset_stats(
 
 nimcp_error_t omni_wm_thalamic_bridge_connect_bio_async(
     omni_wm_thalamic_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_connect_bio_async", 0.0f);
+
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_bio_async) return NIMCP_SUCCESS;
@@ -1473,6 +1637,10 @@ nimcp_error_t omni_wm_thalamic_bridge_connect_bio_async(
 nimcp_error_t omni_wm_thalamic_bridge_disconnect_bio_async(
     omni_wm_thalamic_bridge_t* bridge) {
 
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_disconnect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
@@ -1489,6 +1657,10 @@ nimcp_error_t omni_wm_thalamic_bridge_disconnect_bio_async(
 
 bool omni_wm_thalamic_bridge_is_bio_async_connected(
     const omni_wm_thalamic_bridge_t* bridge) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_is_bio_async_connect", 0.0f);
+
 
     return bridge_base_is_bio_async_connected(bridge ? &bridge->base : NULL);
 }
@@ -1541,6 +1713,10 @@ const char* omni_wm_thalamic_msg_type_to_string(omni_wm_thalamic_msg_type_t msg_
 
 nimcp_error_t omni_wm_thalamic_bridge_validate_config(
     const omni_wm_thalamic_bridge_config_t* config) {
+
+    /* Phase 8: Heartbeat at operation start */
+    omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_validate_config", 0.0f);
+
 
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
@@ -1618,6 +1794,12 @@ nimcp_error_t omni_wm_thalamic_bridge_validate_config(
 
     /* Validate per-nucleus attention */
     for (int i = 0; i < WM_THAL_NUCLEUS_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && WM_THAL_NUCLEUS_COUNT > 256) {
+            omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_loop",
+                             (float)(i + 1) / (float)WM_THAL_NUCLEUS_COUNT);
+        }
+
         if (config->nucleus_attention[i] < 0.0f ||
             config->nucleus_attention[i] > 1.0f) {
             NIMCP_LOGGING_WARN("Invalid nucleus_attention[%d]: %.2f",

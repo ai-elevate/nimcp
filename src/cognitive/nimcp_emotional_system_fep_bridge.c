@@ -44,7 +44,7 @@ static nimcp_health_agent_t* g_emotional_system_fep_bridge_health_agent = NULL;
  * @brief Set health agent for emotional_system_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void emotional_system_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void emotional_system_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_emotional_system_fep_bridge_health_agent = agent;
 }
 
@@ -64,6 +64,10 @@ int emotional_system_fep_default_config(emotional_system_fep_config_t* config) {
     if (!config) return NIMCP_ERROR_NULL_POINTER;
 
     /* FEP -> Emotional System */
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_fep_bridge_heartbeat("emotional_sy_emotional_system_fep", 0.0f);
+
+
     config->pe_emotional_state_gain = 1.0f;
     config->precision_regulation_threshold = 0.7f;
     config->enable_pe_emotional_update = true;
@@ -89,6 +93,10 @@ int emotional_system_fep_default_config(emotional_system_fep_config_t* config) {
 emotional_system_fep_bridge_t* emotional_system_fep_create(
     const emotional_system_fep_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_fep_bridge_heartbeat("emotional_sy_emotional_system_fep", 0.0f);
+
+
     emotional_system_fep_bridge_t* bridge = nimcp_malloc(sizeof(emotional_system_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate emotional system FEP bridge");
@@ -127,6 +135,10 @@ void emotional_system_fep_destroy(emotional_system_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_fep_bridge_heartbeat("emotional_sy_emotional_system_fep", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         emotional_system_fep_disconnect_bio_async(bridge);
     }
@@ -150,6 +162,10 @@ int emotional_system_fep_connect_fep(
 ) {
     if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_fep_bridge_heartbeat("emotional_sy_emotional_system_fep", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -164,6 +180,10 @@ int emotional_system_fep_connect_emotional_system(
 ) {
     if (!bridge || !system) return NIMCP_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_fep_bridge_heartbeat("emotional_sy_emotional_system_fep", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->emotional_system = system;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -174,6 +194,10 @@ int emotional_system_fep_connect_emotional_system(
 
 int emotional_system_fep_disconnect(emotional_system_fep_bridge_t* bridge) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_fep_bridge_heartbeat("emotional_sy_emotional_system_fep", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -194,6 +218,10 @@ int emotional_system_fep_update_from_pe(
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_pe_emotional_update) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_fep_bridge_heartbeat("emotional_sy_emotional_system_fep", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -246,6 +274,10 @@ int emotional_system_fep_modulate_precision(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->config.enable_emotional_precision) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_fep_bridge_heartbeat("emotional_sy_emotional_system_fep", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Emotional state modulates precision weighting
@@ -290,6 +322,10 @@ int emotional_system_fep_update(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
 
     /* Modulate precision based on current emotional state */
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_fep_bridge_heartbeat("emotional_sy_emotional_system_fep", 0.0f);
+
+
     emotional_system_fep_modulate_precision(bridge);
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -318,6 +354,10 @@ int emotional_system_fep_get_state(
 ) {
     if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_fep_bridge_heartbeat("emotional_sy_emotional_system_fep", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -330,6 +370,10 @@ int emotional_system_fep_get_stats(
     emotional_system_fep_stats_t* stats
 ) {
     if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_fep_bridge_heartbeat("emotional_sy_emotional_system_fep", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -347,6 +391,10 @@ int emotional_system_fep_connect_bio_async(
 ) {
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (bridge->base.bio_async_enabled) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_fep_bridge_heartbeat("emotional_sy_emotional_system_fep", 0.0f);
+
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_EMOTIONS_BRIDGE,
@@ -372,6 +420,10 @@ int emotional_system_fep_disconnect_bio_async(
     if (!bridge) return NIMCP_ERROR_NULL_POINTER;
     if (!bridge->base.bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_fep_bridge_heartbeat("emotional_sy_emotional_system_fep", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -386,6 +438,10 @@ int emotional_system_fep_disconnect_bio_async(
 bool emotional_system_fep_is_bio_async_connected(
     const emotional_system_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_fep_bridge_heartbeat("emotional_sy_emotional_system_fep", 0.0f);
+
+
     return bridge ? bridge->base.bio_async_enabled : false;
 }
 
@@ -396,9 +452,19 @@ bool emotional_system_fep_is_bio_async_connected(
 int emotional_system_fep_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_fep_bridge_heartbeat("emotional_sy_emotional_system_fep", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Emotional_System_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                emotional_system_fep_bridge_heartbeat("emotional_sy_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

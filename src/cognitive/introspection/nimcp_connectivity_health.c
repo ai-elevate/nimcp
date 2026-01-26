@@ -54,7 +54,7 @@ static nimcp_health_agent_t* g_connectivity_health_health_agent = NULL;
  * @brief Set health agent for connectivity_health heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void connectivity_health_set_health_agent(nimcp_health_agent_t* agent) {
+void connectivity_health_set_health_agent(nimcp_health_agent_t* agent) {
     g_connectivity_health_health_agent = agent;
 }
 
@@ -197,6 +197,10 @@ static inline uint32_t brain_get_synapse_count(brain_t brain) {
  */
 connectivity_health_config_t connectivity_health_default_config(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    connectivity_health_heartbeat("connectivity_default_config", 0.0f);
+
+
     connectivity_health_config_t config = {
         /* Community structure thresholds */
         .min_modularity = CONNECTIVITY_MIN_MODULARITY,
@@ -261,6 +265,10 @@ float calculate_community_balance(
         return 0.0F;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    connectivity_health_heartbeat("connectivity_calculate_community_", 0.0f);
+
+
     if (num_communities == 1) {
         return 1.0F;  /* Single community is trivially balanced */
     }
@@ -268,6 +276,12 @@ float calculate_community_balance(
     /* Calculate total neurons */
     uint32_t total = 0;
     for (uint32_t i = 0; i < num_communities; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_communities > 256) {
+            connectivity_health_heartbeat("connectivity_loop",
+                             (float)(i + 1) / (float)num_communities);
+        }
+
         total += community_sizes[i];
     }
 
@@ -280,6 +294,12 @@ float calculate_community_balance(
     float inv_total = 1.0F / (float)total;
 
     for (uint32_t i = 0; i < num_communities; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_communities > 256) {
+            connectivity_health_heartbeat("connectivity_loop",
+                             (float)(i + 1) / (float)num_communities);
+        }
+
         float p = (float)community_sizes[i] * inv_total;
         if (p > LOG2_EPSILON) {
             entropy -= p * safe_log2f(p);
@@ -308,6 +328,10 @@ bool is_neuron_in_region(
     }
 
     /* Get neuron's region from brain topology (cast to int to avoid type issues) */
+    /* Phase 8: Heartbeat at operation start */
+    connectivity_health_heartbeat("connectivity_is_neuron_in_region", 0.0f);
+
+
     int neuron_region = (int)brain_get_neuron_region(brain, neuron_id);
     return (neuron_region == region);
 }
@@ -327,6 +351,12 @@ static uint32_t count_hubs_in_region(
 
     uint32_t count = 0;
     for (uint32_t i = 0; i < num_hubs; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_hubs > 256) {
+            connectivity_health_heartbeat("connectivity_loop",
+                             (float)(i + 1) / (float)num_hubs);
+        }
+
         if (is_neuron_in_region(brain, hub_ids[i], region)) {
             count++;
         }
@@ -345,6 +375,10 @@ community_health_t introspection_assess_community_health(
     introspection_context_t introspection,
     const connectivity_health_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    connectivity_health_heartbeat("connectivity_introspection_assess", 0.0f);
+
+
     community_health_t health = {0};
 
     if (!introspection) {
@@ -380,6 +414,12 @@ community_health_t introspection_assess_community_health(
             uint32_t total = 0;
             uint32_t largest = 0;
             for (uint32_t i = 0; i < health.num_communities; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && health.num_communities > 256) {
+                    connectivity_health_heartbeat("connectivity_loop",
+                                     (float)(i + 1) / (float)health.num_communities);
+                }
+
                 total += sizes[i];
                 if (sizes[i] > largest) {
                     largest = sizes[i];
@@ -404,6 +444,10 @@ hub_health_t introspection_assess_hub_health(
     introspection_context_t introspection,
     const connectivity_health_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    connectivity_health_heartbeat("connectivity_introspection_assess", 0.0f);
+
+
     hub_health_t health = {0};
 
     if (!introspection) {
@@ -432,6 +476,12 @@ hub_health_t introspection_assess_hub_health(
 
         /* Copy hub data */
         for (uint32_t i = 0; i < health.num_hubs; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && health.num_hubs > 256) {
+                connectivity_health_heartbeat("connectivity_loop",
+                                 (float)(i + 1) / (float)health.num_hubs);
+            }
+
             health.hub_neuron_ids[i] = hub_ids[i];
             if (centrality) {
                 health.hub_centrality[i] = centrality[i];
@@ -442,6 +492,12 @@ hub_health_t introspection_assess_hub_health(
         if (centrality) {
             float sum = 0.0F;
             for (uint32_t i = 0; i < health.num_hubs; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && health.num_hubs > 256) {
+                    connectivity_health_heartbeat("connectivity_loop",
+                                     (float)(i + 1) / (float)health.num_hubs);
+                }
+
                 sum += health.hub_centrality[i];
             }
             health.avg_hub_centrality = sum / (float)health.num_hubs;
@@ -457,6 +513,12 @@ hub_health_t introspection_assess_hub_health(
 
         /* Count hubs per region */
         for (int r = 0; r < 16; r++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((r & 0xFF) == 0 && 16 > 256) {
+                connectivity_health_heartbeat("connectivity_loop",
+                                 (float)(r + 1) / (float)16);
+            }
+
             health.hubs_per_region[r] =
                 count_hubs_in_region(brain, hub_ids, num_hubs, r);
         }
@@ -464,6 +526,12 @@ hub_health_t introspection_assess_hub_health(
         /* Calculate hub distribution entropy */
         uint32_t regions_with_hubs = 0;
         for (int r = 0; r < 16; r++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((r & 0xFF) == 0 && 16 > 256) {
+                connectivity_health_heartbeat("connectivity_loop",
+                                 (float)(r + 1) / (float)16);
+            }
+
             if (health.hubs_per_region[r] > 0) {
                 regions_with_hubs++;
             }
@@ -494,6 +562,10 @@ topology_health_t introspection_assess_topology_health(
     introspection_context_t introspection,
     const connectivity_health_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    connectivity_health_heartbeat("connectivity_introspection_assess", 0.0f);
+
+
     topology_health_t health = {0};
 
     if (!introspection) {
@@ -558,6 +630,10 @@ information_flow_health_t introspection_assess_flow_health(
     introspection_context_t introspection,
     const connectivity_health_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    connectivity_health_heartbeat("connectivity_introspection_assess", 0.0f);
+
+
     information_flow_health_t health = {0};
 
     if (!introspection) {
@@ -608,6 +684,10 @@ brain_connectivity_health_t introspection_assess_connectivity_health(
     introspection_context_t introspection,
     const connectivity_health_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    connectivity_health_heartbeat("connectivity_introspection_assess", 0.0f);
+
+
     brain_connectivity_health_t health = {0};
     uint64_t start_time = nimcp_get_time_ms();
 
@@ -719,6 +799,10 @@ float introspection_quick_connectivity_check(
     introspection_context_t introspection,
     bool* is_healthy)
 {
+    /* Phase 8: Heartbeat at operation start */
+    connectivity_health_heartbeat("connectivity_introspection_quick_", 0.0f);
+
+
     if (is_healthy) {
         *is_healthy = false;
     }
@@ -786,6 +870,10 @@ bool brain_enable_connectivity_monitoring(
     }
 
     /* Store configuration */
+    /* Phase 8: Heartbeat at operation start */
+    connectivity_health_heartbeat("connectivity_brain_enable_connect", 0.0f);
+
+
     connectivity_health_config_t cfg = config ? *config : connectivity_health_default_config();
 
     /* Enable monitoring flag in brain */
@@ -812,6 +900,10 @@ void brain_disable_connectivity_monitoring(brain_t brain)
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    connectivity_health_heartbeat("connectivity_brain_disable_connec", 0.0f);
+
+
     brain->enable_connectivity_monitoring = false;
     brain->connectivity_health_callback = NULL;
     brain->connectivity_health_callback_context = NULL;
@@ -825,6 +917,10 @@ bool brain_is_connectivity_monitoring_enabled(brain_t brain)
     if (!brain) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    connectivity_health_heartbeat("connectivity_brain_is_connectivit", 0.0f);
+
+
     return brain->enable_connectivity_monitoring;
 }
 
@@ -839,6 +935,10 @@ bool brain_get_connectivity_health(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    connectivity_health_heartbeat("connectivity_brain_get_connectivi", 0.0f);
+
+
     if (brain->last_connectivity_assessment_time_ms == 0) {
         return false;  /* Never assessed */
     }
@@ -852,6 +952,10 @@ bool brain_get_connectivity_health(
  */
 brain_connectivity_health_t brain_assess_connectivity_now(brain_t brain)
 {
+    /* Phase 8: Heartbeat at operation start */
+    connectivity_health_heartbeat("connectivity_brain_assess_connect", 0.0f);
+
+
     brain_connectivity_health_t health = {0};
 
     if (!brain) {
@@ -940,6 +1044,10 @@ void connectivity_health_free(brain_connectivity_health_t* health)
 {
     /* Currently no dynamic allocation in health struct */
     /* This function exists for future extensibility */
+    /* Phase 8: Heartbeat at operation start */
+    connectivity_health_heartbeat("connectivity_free", 0.0f);
+
+
     (void)health;
 }
 
@@ -959,10 +1067,20 @@ int connectivity_health_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
     /* Query our own entity from the knowledge graph */
+    /* Phase 8: Heartbeat at operation start */
+    connectivity_health_heartbeat("connectivity_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Connectivity_Health_Module");
     if (self) {
         /* Module now knows its own capabilities from KG */
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                connectivity_health_heartbeat("connectivity_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Connectivity health self-knowledge: %s", self->observations[i]);
         }
     }

@@ -39,7 +39,7 @@ static nimcp_health_agent_t* g_joy_fep_bridge_health_agent = NULL;
  * @brief Set health agent for joy_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void joy_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void joy_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_joy_fep_bridge_health_agent = agent;
 }
 
@@ -56,6 +56,10 @@ static inline void joy_fep_bridge_heartbeat(const char* operation, float progres
  * ============================================================================ */
 
 int joy_fep_default_config(joy_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    joy_fep_bridge_heartbeat("joy_fep_brid_joy_fep_default_conf", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* FEP -> Joy */
@@ -84,6 +88,10 @@ int joy_fep_default_config(joy_fep_config_t* config) {
 joy_fep_bridge_t* joy_fep_create(
     const joy_fep_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    joy_fep_bridge_heartbeat("joy_fep_brid_joy_fep_create", 0.0f);
+
+
     joy_fep_bridge_t* bridge = nimcp_malloc(sizeof(joy_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate joy FEP bridge");
@@ -122,6 +130,10 @@ void joy_fep_destroy(joy_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    joy_fep_bridge_heartbeat("joy_fep_brid_joy_fep_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         joy_fep_disconnect_bio_async(bridge);
     }
@@ -143,6 +155,10 @@ int joy_fep_connect_fep(
     joy_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    joy_fep_bridge_heartbeat("joy_fep_brid_joy_fep_connect_fep", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -157,6 +173,10 @@ int joy_fep_connect_joy(
     joy_fep_bridge_t* bridge,
     joy_system_t* joy
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    joy_fep_bridge_heartbeat("joy_fep_brid_joy_fep_connect_joy", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && joy, NIMCP_ERROR_NULL_POINTER, "bridge or joy is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -168,6 +188,10 @@ int joy_fep_connect_joy(
 }
 
 int joy_fep_disconnect(joy_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    joy_fep_bridge_heartbeat("joy_fep_brid_joy_fep_disconnect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -187,6 +211,10 @@ int joy_fep_process_positive_pe(
     joy_fep_bridge_t* bridge,
     float pe_magnitude
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    joy_fep_bridge_heartbeat("joy_fep_brid_joy_fep_process_posi", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_positive_pe_joy) return 0;
 
@@ -245,6 +273,10 @@ int joy_fep_process_positive_pe(
 int joy_fep_boost_learning_rate(
     joy_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    joy_fep_bridge_heartbeat("joy_fep_brid_joy_fep_boost_learni", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_joy_learning_boost) return 0;
 
@@ -282,6 +314,10 @@ int joy_fep_update(
     joy_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    joy_fep_bridge_heartbeat("joy_fep_brid_joy_fep_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Apply learning rate boost */
@@ -316,6 +352,10 @@ int joy_fep_get_state(
     const joy_fep_bridge_t* bridge,
     joy_fep_state_t* state
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    joy_fep_bridge_heartbeat("joy_fep_brid_joy_fep_get_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -329,6 +369,10 @@ int joy_fep_get_stats(
     const joy_fep_bridge_t* bridge,
     joy_fep_stats_t* stats
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    joy_fep_bridge_heartbeat("joy_fep_brid_joy_fep_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -345,6 +389,10 @@ int joy_fep_get_stats(
 int joy_fep_connect_bio_async(
     joy_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    joy_fep_bridge_heartbeat("joy_fep_brid_joy_fep_connect_bio_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
@@ -369,6 +417,10 @@ int joy_fep_connect_bio_async(
 int joy_fep_disconnect_bio_async(
     joy_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    joy_fep_bridge_heartbeat("joy_fep_brid_joy_fep_disconnect_b", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return 0;
 
@@ -386,6 +438,10 @@ int joy_fep_disconnect_bio_async(
 bool joy_fep_is_bio_async_connected(
     const joy_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    joy_fep_bridge_heartbeat("joy_fep_brid_joy_fep_is_bio_async", 0.0f);
+
+
     return bridge ? bridge->base.bio_async_enabled : false;
 }
 
@@ -396,9 +452,19 @@ bool joy_fep_is_bio_async_connected(
 int joy_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    joy_fep_bridge_heartbeat("joy_fep_brid_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Joy_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                joy_fep_bridge_heartbeat("joy_fep_brid_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

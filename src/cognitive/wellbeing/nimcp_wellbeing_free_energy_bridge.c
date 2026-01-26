@@ -41,7 +41,7 @@ static nimcp_health_agent_t* g_wellbeing_free_energy_bridge_health_agent = NULL;
  * @brief Set health agent for wellbeing_free_energy_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void wellbeing_free_energy_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void wellbeing_free_energy_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_wellbeing_free_energy_bridge_health_agent = agent;
 }
 
@@ -67,6 +67,10 @@ int free_energy_bridge_default_config(free_energy_bridge_config_t* config) {
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_free_energy_bridge_heartbeat("wellbeing_fr_free_energy_bridge_d", 0.0f);
+
+
     config->enable_prediction_error_effects = true;
     config->enable_precision_effects = true;
     config->enable_model_coherence_effects = true;
@@ -91,6 +95,10 @@ int free_energy_bridge_default_config(free_energy_bridge_config_t* config) {
 free_energy_bridge_t* free_energy_bridge_create(
     const free_energy_bridge_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_free_energy_bridge_heartbeat("wellbeing_fr_free_energy_bridge_c", 0.0f);
+
+
     free_energy_bridge_t* bridge = nimcp_malloc(sizeof(free_energy_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate free energy bridge");
@@ -147,6 +155,10 @@ void free_energy_bridge_destroy(free_energy_bridge_t* bridge) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_free_energy_bridge_heartbeat("wellbeing_fr_free_energy_bridge_d", 0.0f);
+
+
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
     }
@@ -172,6 +184,10 @@ int free_energy_bridge_set_state(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_free_energy_bridge_heartbeat("wellbeing_fr_free_energy_bridge_s", 0.0f);
+
+
     if (bridge->base.mutex) {
         nimcp_mutex_lock(bridge->base.mutex);
     }
@@ -194,6 +210,10 @@ int free_energy_bridge_update_effects(free_energy_bridge_t* bridge) {
     if (!bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_free_energy_bridge_heartbeat("wellbeing_fr_free_energy_bridge_u", 0.0f);
+
 
     if (bridge->base.mutex) {
         nimcp_mutex_lock(bridge->base.mutex);
@@ -282,6 +302,10 @@ int free_energy_bridge_update_coherence(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_free_energy_bridge_heartbeat("wellbeing_fr_free_energy_bridge_u", 0.0f);
+
+
     if (bridge->base.mutex) {
         nimcp_mutex_lock(bridge->base.mutex);
     }
@@ -330,6 +354,10 @@ int free_energy_bridge_update_coherence(
  * HOW:  Map prediction error to distress with sensitivity scaling
  */
 float compute_prediction_error_distress(float prediction_error, float sensitivity) {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_free_energy_bridge_heartbeat("wellbeing_fr_compute_prediction_e", 0.0f);
+
+
     if (prediction_error <= 0.0f) {
         return 0.0f;
     }
@@ -354,6 +382,10 @@ float compute_precision_uncertainty(
     float threshold,
     float sensitivity
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_free_energy_bridge_heartbeat("wellbeing_fr_compute_precision_un", 0.0f);
+
+
     if (precision >= threshold) {
         return 0.0f;
     }
@@ -377,6 +409,10 @@ float compute_coherence_identity_effect(
     float coherence,
     float critical_threshold
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_free_energy_bridge_heartbeat("wellbeing_fr_compute_coherence_id", 0.0f);
+
+
     if (coherence >= 0.8f) {
         return 1.0f;  /* Fully stable identity */
     }
@@ -402,6 +438,10 @@ float compute_epistemic_wellbeing(
     float prediction_success_rate
 ) {
     /* Low free energy contributes to wellbeing */
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_free_energy_bridge_heartbeat("wellbeing_fr_compute_epistemic_we", 0.0f);
+
+
     float fe_contribution = 1.0f - free_energy;
 
     /* High precision contributes to wellbeing */
@@ -435,6 +475,10 @@ int free_energy_bridge_get_effects(
         return NIMCP_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_free_energy_bridge_heartbeat("wellbeing_fr_free_energy_bridge_g", 0.0f);
+
+
     if (bridge->base.mutex) {
         nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     }
@@ -457,6 +501,10 @@ float free_energy_bridge_get_coherence(const free_energy_bridge_t* bridge) {
     if (!bridge) {
         return 0.0f;
     }
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_free_energy_bridge_heartbeat("wellbeing_fr_free_energy_bridge_g", 0.0f);
+
+
     return bridge->model_coherence;
 }
 
@@ -471,6 +519,10 @@ float free_energy_bridge_get_identity_stability(
     if (!bridge) {
         return 0.0f;
     }
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_free_energy_bridge_heartbeat("wellbeing_fr_free_energy_bridge_g", 0.0f);
+
+
     return bridge->identity_stability;
 }
 
@@ -485,6 +537,10 @@ float free_energy_bridge_get_epistemic_wellbeing(
     if (!bridge) {
         return 0.0f;
     }
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_free_energy_bridge_heartbeat("wellbeing_fr_free_energy_bridge_g", 0.0f);
+
+
     return bridge->effects.epistemic_wellbeing;
 }
 
@@ -497,6 +553,10 @@ bool free_energy_bridge_is_high_uncertainty(const free_energy_bridge_t* bridge) 
     if (!bridge) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_free_energy_bridge_heartbeat("wellbeing_fr_free_energy_bridge_i", 0.0f);
+
+
     return bridge->fe_state.precision < bridge->config.low_precision_threshold;
 }
 
@@ -509,6 +569,10 @@ bool free_energy_bridge_is_identity_at_risk(const free_energy_bridge_t* bridge) 
     if (!bridge) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_free_energy_bridge_heartbeat("wellbeing_fr_free_energy_bridge_i", 0.0f);
+
+
     return bridge->model_coherence < bridge->config.critical_coherence_threshold;
 }
 
@@ -527,6 +591,10 @@ int free_energy_bridge_get_stats(
     if (!bridge) {
         return NIMCP_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_free_energy_bridge_heartbeat("wellbeing_fr_free_energy_bridge_g", 0.0f);
+
 
     if (total_updates) *total_updates = bridge->total_updates;
     if (high_fe_events) *high_fe_events = bridge->high_fe_events;
@@ -547,9 +615,19 @@ int free_energy_bridge_get_stats(
  */
 int free_energy_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_free_energy_bridge_heartbeat("wellbeing_fr_free_energy_bridge_q", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Free_Energy_Wellbeing_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                wellbeing_free_energy_bridge_heartbeat("wellbeing_fr_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Free Energy Wellbeing Bridge self-knowledge: %s", self->observations[i]);
         }
     }

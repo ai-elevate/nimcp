@@ -37,7 +37,7 @@ static nimcp_health_agent_t* g_pr_speech_bridge_health_agent = NULL;
  * @brief Set health agent for pr_speech_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void pr_speech_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void pr_speech_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_pr_speech_bridge_health_agent = agent;
 }
 
@@ -107,6 +107,10 @@ static pr_speech_error_t pr_speech_finalize_word(pr_speech_bridge_t* bridge);
 //=============================================================================
 
 pr_speech_bridge_config_t pr_speech_bridge_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_config_default", 0.0f);
+
+
     pr_speech_bridge_config_t config = {
         // Signature generation
         .position_encoding_bits = 4,
@@ -146,6 +150,10 @@ bool pr_speech_bridge_config_validate(const pr_speech_bridge_config_t* config) {
     }
 
     // Validate position encoding bits (1-8)
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_config_validate", 0.0f);
+
+
     if (config->position_encoding_bits < 1 || config->position_encoding_bits > 8) {
         return false;
     }
@@ -206,6 +214,10 @@ bool pr_speech_bridge_config_validate(const pr_speech_bridge_config_t* config) {
 
 pr_speech_bridge_t* pr_speech_bridge_create(const pr_speech_bridge_config_t* config) {
     // Use default config if none provided
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_create", 0.0f);
+
+
     pr_speech_bridge_config_t cfg;
     if (config) {
         if (!pr_speech_bridge_config_validate(config)) {
@@ -269,6 +281,10 @@ void pr_speech_bridge_destroy(pr_speech_bridge_t* bridge) {
     }
 
     // Free word signatures cache
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_destroy", 0.0f);
+
+
     if (bridge->word_signatures) {
         free(bridge->word_signatures);
         bridge->word_signatures = NULL;
@@ -287,6 +303,10 @@ pr_speech_error_t pr_speech_bridge_reset(pr_speech_bridge_t* bridge) {
     }
 
     // Clear phoneme buffer
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_reset", 0.0f);
+
+
     memset(bridge->state.phoneme_buffer, 0, sizeof(bridge->state.phoneme_buffer));
     bridge->state.buffer_pos = 0;
 
@@ -334,6 +354,10 @@ pr_speech_error_t pr_speech_bridge_connect_speech_cortex(
         return PR_SPEECH_ERROR_NULL_POINTER;
     }
     // cortex can be NULL to disconnect
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_connect_speech_corte", 0.0f);
+
+
     bridge->speech_cortex = cortex;
     return PR_SPEECH_SUCCESS;
 }
@@ -346,6 +370,10 @@ pr_speech_error_t pr_speech_bridge_connect_fep_bridge(
         return PR_SPEECH_ERROR_NULL_POINTER;
     }
     // fep_bridge can be NULL to disconnect
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_connect_fep_bridge", 0.0f);
+
+
     bridge->fep_bridge = fep_bridge;
     return PR_SPEECH_SUCCESS;
 }
@@ -357,6 +385,10 @@ pr_speech_error_t pr_speech_bridge_connect_node_manager(
     if (!bridge) {
         return PR_SPEECH_ERROR_NULL_POINTER;
     }
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_connect_node_manager", 0.0f);
+
+
     bridge->node_manager = manager;
     return PR_SPEECH_SUCCESS;
 }
@@ -368,6 +400,10 @@ pr_speech_error_t pr_speech_bridge_connect_entanglement(
     if (!bridge) {
         return PR_SPEECH_ERROR_NULL_POINTER;
     }
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_connect_entanglement", 0.0f);
+
+
     bridge->entanglement_graph = graph;
     return PR_SPEECH_SUCCESS;
 }
@@ -379,6 +415,10 @@ pr_speech_error_t pr_speech_bridge_connect_theta_gamma(
     if (!bridge) {
         return PR_SPEECH_ERROR_NULL_POINTER;
     }
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_connect_theta_gamma", 0.0f);
+
+
     bridge->theta_gamma = theta_gamma;
     return PR_SPEECH_SUCCESS;
 }
@@ -400,6 +440,10 @@ pr_speech_error_t pr_speech_bridge_process_phoneme(
     }
 
     // Validate phoneme
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_process_phoneme", 0.0f);
+
+
     if (event->phoneme < 0 || event->phoneme >= PHONEME_COUNT) {
         return PR_SPEECH_ERROR_INVALID_PHONEME;
     }
@@ -470,8 +514,18 @@ size_t pr_speech_bridge_process_phonemes(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_process_phonemes", 0.0f);
+
+
     size_t processed = 0;
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_speech_bridge_heartbeat("pr_speech_br_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         pr_speech_error_t err = pr_speech_bridge_process_phoneme(bridge, &events[i]);
         if (err != PR_SPEECH_SUCCESS) {
             break;
@@ -491,6 +545,10 @@ pr_memory_node_t* pr_speech_bridge_process_word(
     if (!bridge || !phonemes || phoneme_count == 0) {
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_process_word", 0.0f);
+
 
     if (phoneme_count > PR_SPEECH_MAX_WORD_PHONEMES) {
         phoneme_count = PR_SPEECH_MAX_WORD_PHONEMES;
@@ -542,6 +600,10 @@ pr_speech_error_t pr_speech_bridge_compute_phoneme_prime_sig(
         return PR_SPEECH_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_compute_phoneme_prim", 0.0f);
+
+
     if (count == 0) {
         return PR_SPEECH_ERROR_INVALID_CONFIG;
     }
@@ -551,11 +613,23 @@ pr_speech_error_t pr_speech_bridge_compute_phoneme_prime_sig(
 
     // Copy prime values
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            pr_speech_bridge_heartbeat("pr_speech_br_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         signature->primes[i] = PHONEME_PRIMES[i];
     }
 
     // Process each phoneme with position encoding
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_speech_bridge_heartbeat("pr_speech_br_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         phoneme_t p = phonemes[i];
 
         // Skip invalid phonemes
@@ -582,6 +656,12 @@ pr_speech_error_t pr_speech_bridge_compute_phoneme_prime_sig(
     // Recount factors and compute hash
     signature->num_factors = 0;
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            pr_speech_bridge_heartbeat("pr_speech_br_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         if (signature->exponents[i] > 0) {
             signature->num_factors++;
         }
@@ -590,6 +670,12 @@ pr_speech_error_t pr_speech_bridge_compute_phoneme_prime_sig(
     // Simple FNV-1a hash of exponents
     uint64_t hash = 14695981039346656037ULL;
     for (size_t i = 0; i < PRIME_SIG_DIM; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PRIME_SIG_DIM > 256) {
+            pr_speech_bridge_heartbeat("pr_speech_br_loop",
+                             (float)(i + 1) / (float)PRIME_SIG_DIM);
+        }
+
         hash ^= signature->exponents[i];
         hash *= 1099511628211ULL;
     }
@@ -612,6 +698,10 @@ pr_speech_error_t pr_speech_bridge_compute_word_prime_sig(
     if (!bridge || !phonemes || !word_sig) {
         return PR_SPEECH_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_compute_word_prime_s", 0.0f);
+
 
     memset(word_sig, 0, sizeof(pr_word_signature_t));
 
@@ -636,6 +726,12 @@ pr_speech_error_t pr_speech_bridge_compute_word_prime_sig(
                               ? PR_SPEECH_MAX_WORD_PHONEMES
                               : (uint32_t)count;
     for (uint32_t i = 0; i < word_sig->phoneme_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && word_sig->phoneme_count > 256) {
+            pr_speech_bridge_heartbeat("pr_speech_br_loop",
+                             (float)(i + 1) / (float)word_sig->phoneme_count);
+        }
+
         word_sig->phonemes[i] = phonemes[i];
     }
 
@@ -660,6 +756,12 @@ pr_speech_error_t pr_speech_bridge_compute_word_prime_sig(
     // Estimate syllable count (rough: one per vowel)
     word_sig->syllable_count = 0;
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            pr_speech_bridge_heartbeat("pr_speech_br_loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         if (phonemes[i] >= 0 && phonemes[i] < PR_SPEECH_NUM_PHONEMES &&
             PHONEME_IS_VOWEL[phonemes[i]]) {
             word_sig->syllable_count++;
@@ -682,6 +784,10 @@ uint64_t pr_speech_bridge_get_phoneme_prime(
     if (!bridge || phoneme < 0 || phoneme >= PR_SPEECH_NUM_PHONEMES) {
         return 0;
     }
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_get_phoneme_prime", 0.0f);
+
+
     return bridge->phoneme_to_prime[phoneme].prime;
 }
 
@@ -699,6 +805,10 @@ nimcp_quaternion_t pr_speech_bridge_compute_speech_quaternion(
     if (!bridge) {
         return quat_identity();
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_compute_speech_quate", 0.0f);
+
 
     nimcp_quaternion_t q;
 
@@ -792,6 +902,10 @@ pr_speech_error_t pr_speech_bridge_update_prosody(
         return PR_SPEECH_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_update_prosody", 0.0f);
+
+
     pr_prosody_features_t* acc = &bridge->state.current_prosody;
     uint32_t n = bridge->state.prosody_sample_count;
 
@@ -851,6 +965,10 @@ pr_speech_error_t pr_speech_bridge_get_current_prosody(
     }
 
     *prosody = bridge->state.current_prosody;
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_get_current_prosody", 0.0f);
+
+
     return PR_SPEECH_SUCCESS;
 }
 
@@ -873,6 +991,10 @@ pr_memory_node_t* pr_speech_bridge_encode_word_memory(
     }
 
     // Check theta-gamma phase if enabled
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_encode_word_memory", 0.0f);
+
+
     if (bridge->config.enable_theta_gamma && !pr_speech_bridge_can_encode(bridge)) {
         // Not in encoding window - could queue or return NULL
         // For now, we'll proceed anyway but note it in stats
@@ -944,6 +1066,10 @@ pr_memory_node_t* pr_speech_bridge_flush_word_buffer(pr_speech_bridge_t* bridge)
     }
 
     // Process the buffered word
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_flush_word_buffer", 0.0f);
+
+
     pr_memory_node_t* node = pr_speech_bridge_process_word(
         bridge,
         NULL,  // No text
@@ -978,6 +1104,10 @@ pr_speech_error_t pr_speech_bridge_retrieve_similar_words(
 
     *result_count = 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_retrieve_similar_wor", 0.0f);
+
+
     if (count == 0 || max_results == 0) {
         return PR_SPEECH_SUCCESS;
     }
@@ -1009,6 +1139,12 @@ pr_speech_error_t pr_speech_bridge_retrieve_similar_words(
     // Score all cached words
     size_t valid_count = 0;
     for (size_t i = 0; i < bridge->word_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->word_count > 256) {
+            pr_speech_bridge_heartbeat("pr_speech_br_loop",
+                             (float)(i + 1) / (float)bridge->word_count);
+        }
+
         float sim = prime_sig_jaccard(&query_sig, &bridge->word_signatures[i].signature);
         if (sim >= bridge->config.retrieval_threshold) {
             scored[valid_count].index = i;
@@ -1020,6 +1156,12 @@ pr_speech_error_t pr_speech_bridge_retrieve_similar_words(
     // Simple selection sort for top-k (could use partial_sort for large k)
     size_t num_results = (valid_count < max_results) ? valid_count : max_results;
     for (size_t i = 0; i < num_results; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_results > 256) {
+            pr_speech_bridge_heartbeat("pr_speech_br_loop",
+                             (float)(i + 1) / (float)num_results);
+        }
+
         size_t max_idx = i;
         for (size_t j = i + 1; j < valid_count; j++) {
             if (scored[j].score > scored[max_idx].score) {
@@ -1060,6 +1202,10 @@ pr_speech_error_t pr_speech_bridge_retrieve_by_text(
     }
 
     *result_count = 0;
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_retrieve_by_text", 0.0f);
+
+
     size_t pattern_len = strlen(text_pattern);
 
     for (size_t i = 0; i < bridge->word_count && *result_count < max_results; i++) {
@@ -1091,6 +1237,10 @@ pr_speech_error_t pr_speech_bridge_find_rhymes(
 
     *result_count = 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_find_rhymes", 0.0f);
+
+
     if (count == 0 || max_results == 0) {
         return PR_SPEECH_SUCCESS;
     }
@@ -1107,6 +1257,12 @@ pr_speech_error_t pr_speech_bridge_find_rhymes(
         // Compare ending phonemes
         bool match = true;
         for (size_t j = 0; j < count; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && count > 256) {
+                pr_speech_bridge_heartbeat("pr_speech_br_loop",
+                                 (float)(j + 1) / (float)count);
+            }
+
             size_t ws_idx = ws->phoneme_count - count + j;
             if (ws->phonemes[ws_idx] != phonemes[j]) {
                 match = false;
@@ -1140,6 +1296,10 @@ pr_speech_error_t pr_speech_bridge_update_from_fep(
     }
 
     // Update PE state
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_update_from_fep", 0.0f);
+
+
     bridge->state.current_pe = prediction_error;
 
     // Update running average (exponential moving average)
@@ -1170,6 +1330,10 @@ bool pr_speech_bridge_detect_word_boundary(pr_speech_bridge_t* bridge) {
 
     // Word boundary detected when PE spikes above threshold
     // relative to the running average
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_detect_word_boundary", 0.0f);
+
+
     float threshold = bridge->config.word_boundary_pe_threshold;
     float relative_pe = bridge->state.current_pe - bridge->state.avg_pe;
 
@@ -1193,6 +1357,10 @@ pr_speech_error_t pr_speech_bridge_update_theta_gamma(
     }
 
     // Convert ms to seconds
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_update_theta_gamma", 0.0f);
+
+
     float dt_s = dt_ms / 1000.0f;
 
     // Update theta phase
@@ -1225,6 +1393,10 @@ bool pr_speech_bridge_can_encode(const pr_speech_bridge_t* bridge) {
     }
 
     // Encoding allowed at theta trough (0° to 90°)
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_can_encode", 0.0f);
+
+
     float phase_deg = bridge->state.theta_phase * 180.0f / (float)M_PI;
     return (phase_deg >= 0.0f && phase_deg < 90.0f) ||
            (phase_deg >= 315.0f && phase_deg <= 360.0f);
@@ -1236,6 +1408,10 @@ bool pr_speech_bridge_can_retrieve(const pr_speech_bridge_t* bridge) {
     }
 
     // Retrieval allowed at theta peak (180° to 270°)
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_can_retrieve", 0.0f);
+
+
     float phase_deg = bridge->state.theta_phase * 180.0f / (float)M_PI;
     return (phase_deg >= 135.0f && phase_deg < 270.0f);
 }
@@ -1246,6 +1422,10 @@ float pr_speech_bridge_get_encode_strength(const pr_speech_bridge_t* bridge) {
     }
 
     // Encoding strength follows cosine profile with peak at 45°
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_get_encode_strength", 0.0f);
+
+
     float optimal_phase = (float)M_PI / 4.0f;  // 45°
     float phase_diff = fabsf(bridge->state.theta_phase - optimal_phase);
     if (phase_diff > (float)M_PI) {
@@ -1269,6 +1449,10 @@ pr_speech_error_t pr_speech_bridge_get_state(
     }
 
     *state = bridge->state;
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_get_state", 0.0f);
+
+
     return PR_SPEECH_SUCCESS;
 }
 
@@ -1281,6 +1465,10 @@ pr_speech_error_t pr_speech_bridge_get_stats(
     }
 
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_get_stats", 0.0f);
+
+
     return PR_SPEECH_SUCCESS;
 }
 
@@ -1288,6 +1476,10 @@ pr_speech_error_t pr_speech_bridge_reset_stats(pr_speech_bridge_t* bridge) {
     if (!bridge) {
         return PR_SPEECH_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_reset_stats", 0.0f);
+
 
     memset(&bridge->stats, 0, sizeof(pr_speech_bridge_stats_t));
     return PR_SPEECH_SUCCESS;
@@ -1299,6 +1491,10 @@ nimcp_quaternion_t pr_speech_bridge_get_current_quaternion(
     if (!bridge) {
         return quat_identity();
     }
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_get_current_quaterni", 0.0f);
+
+
     return bridge->state.current_speech_quat;
 }
 
@@ -1339,6 +1535,10 @@ pr_speech_error_t pr_speech_bridge_init_phoneme_primes(pr_speech_bridge_t* bridg
         return PR_SPEECH_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_init_phoneme_primes", 0.0f);
+
+
     for (int i = 0; i < PR_SPEECH_NUM_PHONEMES && i < 64; i++) {
         bridge->phoneme_to_prime[i].phoneme = (phoneme_t)i;
         bridge->phoneme_to_prime[i].prime = PHONEME_PRIMES[i];
@@ -1354,6 +1554,10 @@ float pr_speech_bridge_position_weight(
     uint32_t word_length,
     float decay_factor
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_position_weight", 0.0f);
+
+
     if (word_length == 0) {
         return 1.0f;
     }
@@ -1368,6 +1572,10 @@ void pr_speech_bridge_print_state(const pr_speech_bridge_t* bridge) {
         printf("PR Speech Bridge: NULL\n");
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_print_state", 0.0f);
+
 
     printf("=== PR Speech Bridge State ===\n");
     printf("Initialized: %s\n", bridge->initialized ? "yes" : "no");
@@ -1400,12 +1608,22 @@ void pr_speech_word_signature_print(const pr_word_signature_t* word_sig) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    pr_speech_bridge_heartbeat("pr_speech_br_pr_speech_word_signa", 0.0f);
+
+
     printf("=== Word Signature ===\n");
     printf("ID: 0x%016lx\n", (unsigned long)word_sig->word_id);
     printf("Text: \"%s\"\n", word_sig->word_text);
     printf("Phoneme count: %u\n", word_sig->phoneme_count);
     printf("Phonemes: [");
     for (uint32_t i = 0; i < word_sig->phoneme_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && word_sig->phoneme_count > 256) {
+            pr_speech_bridge_heartbeat("pr_speech_br_loop",
+                             (float)(i + 1) / (float)word_sig->phoneme_count);
+        }
+
         printf("%d%s", word_sig->phonemes[i], (i < word_sig->phoneme_count - 1) ? ", " : "");
     }
     printf("]\n");

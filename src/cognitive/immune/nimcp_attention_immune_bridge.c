@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_attention_immune_bridge_health_agent = NULL;
  * @brief Set health agent for attention_immune_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void attention_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void attention_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_attention_immune_bridge_health_agent = agent;
 }
 
@@ -102,6 +102,10 @@ int attention_immune_default_config(attention_immune_config_t* config) {
     }
 
     /* Enable all features by default */
+    /* Phase 8: Heartbeat at operation start */
+    attention_immune_bridge_heartbeat("attention_im_attention_immune_def", 0.0f);
+
+
     config->enable_cytokine_attention_impairment = true;
     config->enable_inflammation_narrowing = true;
     config->enable_threat_attention_immune_boost = true;
@@ -134,6 +138,10 @@ attention_immune_bridge_t* attention_immune_bridge_create(
     }
 
     /* Allocate bridge */
+    /* Phase 8: Heartbeat at operation start */
+    attention_immune_bridge_heartbeat("attention_im_create", 0.0f);
+
+
     attention_immune_bridge_t* bridge = nimcp_malloc(sizeof(attention_immune_bridge_t));
     if (!bridge) {
         LOG_ERROR("attention_immune_bridge_create: allocation failed");
@@ -176,6 +184,10 @@ void attention_immune_bridge_destroy(attention_immune_bridge_t* bridge) {
     }
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    attention_immune_bridge_heartbeat("attention_im_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         attention_immune_disconnect_bio_async(bridge);
     }
@@ -201,6 +213,10 @@ int attention_immune_apply_cytokine_effects(attention_immune_bridge_t* bridge) {
     if (!bridge->enable_cytokine_attention_impairment) {
         return 0;  /* Feature disabled */
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_immune_bridge_heartbeat("attention_im_attention_immune_app", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -253,6 +269,10 @@ int attention_immune_apply_inflammation_effects(attention_immune_bridge_t* bridg
         return 0;  /* Feature disabled */
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_immune_bridge_heartbeat("attention_im_attention_immune_app", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get immune stats */
@@ -300,6 +320,10 @@ float attention_immune_compute_capacity(const attention_immune_bridge_t* bridge)
     }
 
     /* Combine cytokine and inflammation effects */
+    /* Phase 8: Heartbeat at operation start */
+    attention_immune_bridge_heartbeat("attention_im_attention_immune_com", 0.0f);
+
+
     float cytokine_reduction = bridge->cytokine_effects.total_capacity_reduction;
     float inflammation_factor = bridge->inflammation_state.capacity_factor;
 
@@ -314,6 +338,10 @@ float attention_immune_compute_narrowing(const attention_immune_bridge_t* bridge
     }
 
     /* Combine cytokine and inflammation narrowing */
+    /* Phase 8: Heartbeat at operation start */
+    attention_immune_bridge_heartbeat("attention_im_attention_immune_com", 0.0f);
+
+
     float cytokine_narrowing = bridge->cytokine_effects.narrowing_factor;
     float inflammation_narrowing = bridge->inflammation_state.width_narrowing;
 
@@ -335,6 +363,10 @@ int attention_immune_boost_from_threat_focus(attention_immune_bridge_t* bridge) 
     if (!bridge->enable_threat_attention_immune_boost) {
         return 0;  /* Feature disabled */
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_immune_bridge_heartbeat("attention_im_attention_immune_boo", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -374,6 +406,10 @@ int attention_immune_trigger_hypervigilance_inflammation(attention_immune_bridge
         return 0;  /* Feature disabled */
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_immune_bridge_heartbeat("attention_im_attention_immune_tri", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Check vigilance level */
@@ -410,6 +446,10 @@ int attention_immune_release_il10_from_mindfulness(attention_immune_bridge_t* br
     if (!bridge->enable_mindful_attention_benefits) {
         return 0;  /* Feature disabled */
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    attention_immune_bridge_heartbeat("attention_im_attention_immune_rel", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -461,6 +501,10 @@ int attention_immune_bridge_update(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_immune_bridge_heartbeat("attention_im_update", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Update timing */
@@ -502,6 +546,10 @@ int attention_immune_get_cytokine_effects(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_immune_bridge_heartbeat("attention_im_attention_immune_get", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_attention_effects_t));
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -517,6 +565,10 @@ int attention_immune_get_inflammation_state(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_immune_bridge_heartbeat("attention_im_attention_immune_get", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_attention_state_t));
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -529,15 +581,27 @@ bool attention_immune_has_attention_deficit(const attention_immune_bridge_t* bri
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_immune_bridge_heartbeat("attention_im_attention_immune_has", 0.0f);
+
+
     float capacity = attention_immune_compute_capacity(bridge);
     return capacity < 0.7f;  /* >30% capacity loss */
 }
 
 float attention_immune_get_capacity_factor(const attention_immune_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    attention_immune_bridge_heartbeat("attention_im_attention_immune_get", 0.0f);
+
+
     return attention_immune_compute_capacity(bridge);
 }
 
 float attention_immune_get_narrowing_factor(const attention_immune_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    attention_immune_bridge_heartbeat("attention_im_attention_immune_get", 0.0f);
+
+
     return attention_immune_compute_narrowing(bridge);
 }
 
@@ -562,6 +626,10 @@ int attention_immune_connect_bio_async(attention_immune_bridge_t* bridge) {
     }
 
     /* Guard: already connected */
+    /* Phase 8: Heartbeat at operation start */
+    attention_immune_bridge_heartbeat("attention_im_attention_immune_con", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         LOG_MODULE_WARN(ATTENTION_IMMUNE_MODULE_NAME, "Already connected to bio-async");
         return 0;
@@ -610,6 +678,10 @@ int attention_immune_disconnect_bio_async(attention_immune_bridge_t* bridge) {
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    attention_immune_bridge_heartbeat("attention_im_attention_immune_dis", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Unregister */
@@ -632,6 +704,10 @@ bool attention_immune_is_bio_async_connected(const attention_immune_bridge_t* br
     if (!bridge) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    attention_immune_bridge_heartbeat("attention_im_attention_immune_is_", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -651,9 +727,19 @@ bool attention_immune_is_bio_async_connected(const attention_immune_bridge_t* br
  */
 int attention_immune_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    attention_immune_bridge_heartbeat("attention_im_attention_immune_que", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Attention_Immune_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                attention_immune_bridge_heartbeat("attention_im_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Attention immune bridge self-knowledge: %s", self->observations[i]);
         }
     }

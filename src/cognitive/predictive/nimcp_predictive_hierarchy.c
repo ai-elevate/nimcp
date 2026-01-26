@@ -29,7 +29,7 @@ static nimcp_health_agent_t* g_predictive_hierarchy_health_agent = NULL;
  * @brief Set health agent for predictive_hierarchy heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void predictive_hierarchy_set_health_agent(nimcp_health_agent_t* agent) {
+void predictive_hierarchy_set_health_agent(nimcp_health_agent_t* agent) {
     g_predictive_hierarchy_health_agent = agent;
 }
 
@@ -83,6 +83,12 @@ static pred_level_t* create_level(const pred_level_config_t* config,
     }
 
     for (uint32_t i = 0; i < config->dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && config->dim > 256) {
+            predictive_hierarchy_heartbeat("predictive_h_loop",
+                             (float)(i + 1) / (float)config->dim);
+        }
+
         level->precision[i] = config->initial_precision;
     }
 
@@ -98,6 +104,12 @@ static pred_level_t* create_level(const pred_level_config_t* config,
         }
 
         for (uint32_t i = 0; i < config->dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && config->dim > 256) {
+                predictive_hierarchy_heartbeat("predictive_h_loop",
+                                 (float)(i + 1) / (float)config->dim);
+            }
+
             level->gen_weights[i * config->dim + i] = 1.0f;
         }
     }
@@ -162,8 +174,20 @@ static void apply_generative_model(pred_level_t* from_level,
     }
 
     for (uint32_t i = 0; i < to_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && to_dim > 256) {
+            predictive_hierarchy_heartbeat("predictive_h_loop",
+                             (float)(i + 1) / (float)to_dim);
+        }
+
         float sum = from_level->gen_bias ? from_level->gen_bias[i] : 0.0f;
         for (uint32_t j = 0; j < from_dim; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && from_dim > 256) {
+                predictive_hierarchy_heartbeat("predictive_h_loop",
+                                 (float)(j + 1) / (float)from_dim);
+            }
+
             sum += from_level->gen_weights[i * from_dim + j] * from_level->state[j];
         }
         to_level->prediction[i] = sum;
@@ -180,6 +204,12 @@ static void compute_prediction_error(pred_level_t* level) {
 
     float error_sum = 0.0f;
     for (uint32_t i = 0; i < level->dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && level->dim > 256) {
+            predictive_hierarchy_heartbeat("predictive_h_loop",
+                             (float)(i + 1) / (float)level->dim);
+        }
+
         float error = level->state[i] - level->prediction[i];
         level->prediction_error[i] = error;
         error_sum += error * error;
@@ -199,6 +229,12 @@ static float compute_level_free_energy(const pred_level_t* level) {
 
     float fe = 0.0f;
     for (uint32_t i = 0; i < level->dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && level->dim > 256) {
+            predictive_hierarchy_heartbeat("predictive_h_loop",
+                             (float)(i + 1) / (float)level->dim);
+        }
+
         float error = level->prediction_error[i];
         fe += level->precision[i] * error * error;
     }
@@ -214,6 +250,10 @@ int pred_hier_default_config(pred_hier_config_t* config) {
     if (!config) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_default_co", 0.0f);
+
 
     memset(config, 0, sizeof(*config));
 
@@ -244,6 +284,10 @@ int pred_hier_simple_config(pred_hier_config_t* config,
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_simple_con", 0.0f);
+
+
     pred_hier_default_config(config);
     config->num_levels = num_levels;
 
@@ -253,6 +297,12 @@ int pred_hier_simple_config(pred_hier_config_t* config,
     }
 
     for (uint32_t i = 0; i < num_levels; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_levels > 256) {
+            predictive_hierarchy_heartbeat("predictive_h_loop",
+                             (float)(i + 1) / (float)num_levels);
+        }
+
         config->level_configs[i].dim = dims[i];
         config->level_configs[i].gen_hidden_dim = dims[i];
         config->level_configs[i].gen_type = PRED_HIER_GEN_LINEAR;
@@ -268,6 +318,10 @@ void pred_hier_free_config(pred_hier_config_t* config) {
     if (!config) {
         return;
     }
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_free_confi", 0.0f);
+
+
     if (config->level_configs) {
         nimcp_free(config->level_configs);
         config->level_configs = NULL;
@@ -283,6 +337,10 @@ predictive_hierarchy_t* pred_hier_create(const pred_hier_config_t* config) {
         NIMCP_LOG_ERROR("Invalid configuration");
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_create", 0.0f);
+
 
     predictive_hierarchy_t* hier = nimcp_calloc(1, sizeof(predictive_hierarchy_t));
     if (!hier) {
@@ -309,6 +367,12 @@ predictive_hierarchy_t* pred_hier_create(const pred_hier_config_t* config) {
     }
 
     for (uint32_t i = 0; i < config->num_levels; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && config->num_levels > 256) {
+            predictive_hierarchy_heartbeat("predictive_h_loop",
+                             (float)(i + 1) / (float)config->num_levels);
+        }
+
         hier->levels[i] = create_level(&config->level_configs[i], i);
         if (!hier->levels[i]) {
             NIMCP_LOG_ERROR("Failed to create level %u", i);
@@ -317,6 +381,12 @@ predictive_hierarchy_t* pred_hier_create(const pred_hier_config_t* config) {
     }
 
     for (uint32_t i = 0; i < config->num_levels; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && config->num_levels > 256) {
+            predictive_hierarchy_heartbeat("predictive_h_loop",
+                             (float)(i + 1) / (float)config->num_levels);
+        }
+
         if (i > 0) {
             hier->levels[i]->below = hier->levels[i - 1];
         }
@@ -368,8 +438,18 @@ void pred_hier_destroy(predictive_hierarchy_t* hier) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_destroy", 0.0f);
+
+
     if (hier->levels) {
         for (uint32_t i = 0; i < hier->num_levels; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && hier->num_levels > 256) {
+                predictive_hierarchy_heartbeat("predictive_h_loop",
+                                 (float)(i + 1) / (float)hier->num_levels);
+            }
+
             destroy_level(hier->levels[i]);
         }
         nimcp_free(hier->levels);
@@ -400,15 +480,31 @@ int pred_hier_reset(predictive_hierarchy_t* hier) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_reset", 0.0f);
+
+
     nimcp_mutex_lock(hier->mutex);
 
     for (uint32_t i = 0; i < hier->num_levels; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hier->num_levels > 256) {
+            predictive_hierarchy_heartbeat("predictive_h_loop",
+                             (float)(i + 1) / (float)hier->num_levels);
+        }
+
         pred_level_t* level = hier->levels[i];
         memset(level->state, 0, level->dim * sizeof(float));
         memset(level->prediction, 0, level->dim * sizeof(float));
         memset(level->prediction_error, 0, level->dim * sizeof(float));
 
         for (uint32_t j = 0; j < level->dim; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && level->dim > 256) {
+                predictive_hierarchy_heartbeat("predictive_h_loop",
+                                 (float)(j + 1) / (float)level->dim);
+            }
+
             level->precision[j] = PRED_HIER_DEFAULT_PRECISION;
         }
 
@@ -436,6 +532,12 @@ static int forward_unlocked(predictive_hierarchy_t* hier, const float* input) {
     memcpy(hier->bottom->state, input, hier->bottom->dim * sizeof(float));
 
     for (uint32_t i = 0; i < hier->num_levels; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hier->num_levels > 256) {
+            predictive_hierarchy_heartbeat("predictive_h_loop",
+                             (float)(i + 1) / (float)hier->num_levels);
+        }
+
         pred_level_t* level = hier->levels[i];
 
         if (level->above && level->above->gen_weights) {
@@ -475,6 +577,10 @@ int pred_hier_forward(predictive_hierarchy_t* hier,
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_forward", 0.0f);
+
+
     nimcp_mutex_lock(hier->mutex);
     int ret = forward_unlocked(hier, input);
     nimcp_mutex_unlock(hier->mutex);
@@ -486,6 +592,10 @@ int pred_hier_backward(predictive_hierarchy_t* hier) {
     if (!hier) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_backward", 0.0f);
+
 
     nimcp_mutex_lock(hier->mutex);
     int ret = backward_unlocked(hier);
@@ -516,6 +626,12 @@ static int update_unlocked(predictive_hierarchy_t* hier,
         pred_level_t* below = level->below;
 
         for (uint32_t j = 0; j < level->dim; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && level->dim > 256) {
+                predictive_hierarchy_heartbeat("predictive_h_loop",
+                                 (float)(j + 1) / (float)level->dim);
+            }
+
             float bottom_up = 0.0f;
             if (below) {
                 bottom_up = below->precision[j] * below->prediction_error[j];
@@ -540,6 +656,12 @@ static int update_unlocked(predictive_hierarchy_t* hier,
         result->num_levels = hier->num_levels;
 
         for (uint32_t i = 0; i < hier->num_levels; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && hier->num_levels > 256) {
+                predictive_hierarchy_heartbeat("predictive_h_loop",
+                                 (float)(i + 1) / (float)hier->num_levels);
+            }
+
             if (result->level_results) {
                 pred_level_t* level = hier->levels[i];
                 result->level_results[i].free_energy = compute_level_free_energy(level);
@@ -559,6 +681,10 @@ int pred_hier_update(predictive_hierarchy_t* hier,
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_update", 0.0f);
+
+
     nimcp_mutex_lock(hier->mutex);
     int ret = update_unlocked(hier, input, result);
     nimcp_mutex_unlock(hier->mutex);
@@ -573,6 +699,10 @@ int pred_hier_get_prediction(const predictive_hierarchy_t* hier,
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_get_predic", 0.0f);
+
+
     memcpy(prediction, hier->levels[level_index]->prediction,
            hier->levels[level_index]->dim * sizeof(float));
     return NIMCP_SUCCESS;
@@ -584,6 +714,10 @@ int pred_hier_get_error(const predictive_hierarchy_t* hier,
     if (!hier || !error || level_index >= hier->num_levels) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_get_error", 0.0f);
+
 
     memcpy(error, hier->levels[level_index]->prediction_error,
            hier->levels[level_index]->dim * sizeof(float));
@@ -597,6 +731,10 @@ int pred_hier_get_state(const predictive_hierarchy_t* hier,
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_get_state", 0.0f);
+
+
     memcpy(state, hier->levels[level_index]->state,
            hier->levels[level_index]->dim * sizeof(float));
     return NIMCP_SUCCESS;
@@ -608,6 +746,10 @@ int pred_hier_set_state(predictive_hierarchy_t* hier,
     if (!hier || !state || level_index >= hier->num_levels) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_set_state", 0.0f);
+
 
     nimcp_mutex_lock(hier->mutex);
     memcpy(hier->levels[level_index]->state, state,
@@ -625,11 +767,21 @@ float pred_hier_compute_free_energy(predictive_hierarchy_t* hier) {
         return NAN;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_compute_fr", 0.0f);
+
+
     float total_fe = 0.0f;
     float accuracy = 0.0f;
     float complexity = 0.0f;
 
     for (uint32_t i = 0; i < hier->num_levels; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hier->num_levels > 256) {
+            predictive_hierarchy_heartbeat("predictive_h_loop",
+                             (float)(i + 1) / (float)hier->num_levels);
+        }
+
         float level_fe = compute_level_free_energy(hier->levels[i]);
         total_fe += level_fe;
         accuracy += level_fe;
@@ -654,6 +806,10 @@ float pred_hier_get_level_free_energy(const predictive_hierarchy_t* hier,
     if (!hier || level_index >= hier->num_levels) {
         return NAN;
     }
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_get_level_", 0.0f);
+
+
     return compute_level_free_energy(hier->levels[level_index]);
 }
 
@@ -664,10 +820,20 @@ int pred_hier_set_precision(predictive_hierarchy_t* hier,
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_set_precis", 0.0f);
+
+
     nimcp_mutex_lock(hier->mutex);
     pred_level_t* level = hier->levels[level_index];
 
     for (uint32_t i = 0; i < level->dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && level->dim > 256) {
+            predictive_hierarchy_heartbeat("predictive_h_loop",
+                             (float)(i + 1) / (float)level->dim);
+        }
+
         float p = precision[i];
         p = fmaxf(p, PRED_HIER_MIN_PRECISION);
         p = fminf(p, PRED_HIER_MAX_PRECISION);
@@ -685,6 +851,10 @@ int pred_hier_get_precision(const predictive_hierarchy_t* hier,
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_get_precis", 0.0f);
+
+
     memcpy(precision, hier->levels[level_index]->precision,
            hier->levels[level_index]->dim * sizeof(float));
     return NIMCP_SUCCESS;
@@ -699,6 +869,10 @@ int pred_hier_set_training(predictive_hierarchy_t* hier, bool training) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_set_traini", 0.0f);
+
+
     nimcp_mutex_lock(hier->mutex);
     hier->training_mode = training;
     nimcp_mutex_unlock(hier->mutex);
@@ -712,6 +886,10 @@ int pred_hier_learn_step(predictive_hierarchy_t* hier,
     if (!hier || !input) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_learn_step", 0.0f);
+
 
     nimcp_mutex_lock(hier->mutex);
 
@@ -738,10 +916,22 @@ int pred_hier_learn_step(predictive_hierarchy_t* hier,
             }
 
             for (uint32_t j = 0; j < below->dim; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && below->dim > 256) {
+                    predictive_hierarchy_heartbeat("predictive_h_loop",
+                                     (float)(j + 1) / (float)below->dim);
+                }
+
                 float error = below->prediction_error[j];
                 float prec = below->precision[j];
 
                 for (uint32_t k = 0; k < level->dim; k++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((k & 0xFF) == 0 && level->dim > 256) {
+                        predictive_hierarchy_heartbeat("predictive_h_loop",
+                                         (float)(k + 1) / (float)level->dim);
+                    }
+
                     float grad = prec * error * level->state[k];
                     level->gen_weights[j * level->dim + k] += lr * grad;
                 }
@@ -766,14 +956,30 @@ int pred_hier_update_precision(predictive_hierarchy_t* hier) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_update_pre", 0.0f);
+
+
     nimcp_mutex_lock(hier->mutex);
 
     float alpha = hier->config.precision_lr;
 
     for (uint32_t i = 0; i < hier->num_levels; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && hier->num_levels > 256) {
+            predictive_hierarchy_heartbeat("predictive_h_loop",
+                             (float)(i + 1) / (float)hier->num_levels);
+        }
+
         pred_level_t* level = hier->levels[i];
 
         for (uint32_t j = 0; j < level->dim; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && level->dim > 256) {
+                predictive_hierarchy_heartbeat("predictive_h_loop",
+                                 (float)(j + 1) / (float)level->dim);
+            }
+
             float error = level->prediction_error[j];
             float error_sq = error * error + 1e-8f;
             float new_prec = 1.0f / error_sq;
@@ -787,6 +993,12 @@ int pred_hier_update_precision(predictive_hierarchy_t* hier) {
 
         float avg_prec = 0.0f;
         for (uint32_t j = 0; j < level->dim; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && level->dim > 256) {
+                predictive_hierarchy_heartbeat("predictive_h_loop",
+                                 (float)(j + 1) / (float)level->dim);
+            }
+
             avg_prec += level->precision[j];
         }
         level->avg_precision = avg_prec / level->dim;
@@ -811,6 +1023,10 @@ int pred_hier_init_gpu(predictive_hierarchy_t* hier,
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_init_gpu", 0.0f);
+
+
     if (gpu_ctx) {
         hier->gpu_ctx = gpu_ctx;
     } else {
@@ -826,6 +1042,10 @@ int pred_hier_init_gpu(predictive_hierarchy_t* hier,
 }
 
 bool pred_hier_has_gpu(const predictive_hierarchy_t* hier) {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_has_gpu", 0.0f);
+
+
     return hier && hier->gpu_initialized;
 }
 #endif
@@ -839,6 +1059,10 @@ int pred_hier_get_stats(const predictive_hierarchy_t* hier,
     if (!hier || !stats) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_get_stats", 0.0f);
+
 
     stats->forward_passes = hier->stats.forward_passes;
     stats->backward_passes = hier->stats.backward_passes;
@@ -855,6 +1079,10 @@ int pred_hier_reset_stats(predictive_hierarchy_t* hier) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_reset_stat", 0.0f);
+
+
     nimcp_mutex_lock(hier->mutex);
 
     hier->stats.forward_passes = 0;
@@ -869,6 +1097,10 @@ int pred_hier_reset_stats(predictive_hierarchy_t* hier) {
 }
 
 uint32_t pred_hier_num_levels(const predictive_hierarchy_t* hier) {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_num_levels", 0.0f);
+
+
     return hier ? hier->num_levels : 0;
 }
 
@@ -877,6 +1109,10 @@ uint32_t pred_hier_level_dim(const predictive_hierarchy_t* hier,
     if (!hier || level_index >= hier->num_levels) {
         return 0;
     }
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_level_dim", 0.0f);
+
+
     return hier->levels[level_index]->dim;
 }
 
@@ -888,6 +1124,10 @@ int pred_hier_connect_bio_async(predictive_hierarchy_t* hier) {
     if (!hier) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_connect_bi", 0.0f);
+
+
     NIMCP_LOG_INFO("Bio-async connection (stub)");
     return NIMCP_SUCCESS;
 }
@@ -896,6 +1136,10 @@ int pred_hier_disconnect_bio_async(predictive_hierarchy_t* hier) {
     if (!hier) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_disconnect", 0.0f);
+
+
     return NIMCP_SUCCESS;
 }
 
@@ -905,6 +1149,10 @@ int pred_hier_disconnect_bio_async(predictive_hierarchy_t* hier) {
 
 pred_hier_result_t* pred_hier_result_create(uint32_t num_levels,
                                              const uint32_t* dims) {
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_result_cre", 0.0f);
+
+
     if (num_levels == 0 || !dims) {
         return NULL;
     }
@@ -923,6 +1171,12 @@ pred_hier_result_t* pred_hier_result_create(uint32_t num_levels,
     }
 
     for (uint32_t i = 0; i < num_levels; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_levels > 256) {
+            predictive_hierarchy_heartbeat("predictive_h_loop",
+                             (float)(i + 1) / (float)num_levels);
+        }
+
         result->level_results[i].prediction = nimcp_calloc(dims[i], sizeof(float));
         result->level_results[i].error = nimcp_calloc(dims[i], sizeof(float));
 
@@ -941,8 +1195,18 @@ void pred_hier_result_destroy(pred_hier_result_t* result) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    predictive_hierarchy_heartbeat("predictive_h_pred_hier_result_des", 0.0f);
+
+
     if (result->level_results) {
         for (uint32_t i = 0; i < result->num_levels; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && result->num_levels > 256) {
+                predictive_hierarchy_heartbeat("predictive_h_loop",
+                                 (float)(i + 1) / (float)result->num_levels);
+            }
+
             if (result->level_results[i].prediction) {
                 nimcp_free(result->level_results[i].prediction);
             }

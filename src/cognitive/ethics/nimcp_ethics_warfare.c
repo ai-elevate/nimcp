@@ -46,7 +46,7 @@ static nimcp_health_agent_t* g_ethics_warfare_health_agent = NULL;
  * @brief Set health agent for ethics_warfare heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void ethics_warfare_set_health_agent(nimcp_health_agent_t* agent) {
+void ethics_warfare_set_health_agent(nimcp_health_agent_t* agent) {
     g_ethics_warfare_health_agent = agent;
 }
 
@@ -130,6 +130,10 @@ static const char* PSYCHOLOGICAL_STATE_NAMES[] = {
 
 laws_of_war_config_t laws_of_war_default_config(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_warfare_heartbeat("ethics_warfa_laws_of_war_default_", 0.0f);
+
+
     laws_of_war_config_t config = {
         .distinction_confidence_threshold = DEFAULT_DISTINCTION_CONFIDENCE,
         .proportionality_threshold = DEFAULT_PROPORTIONALITY_THRESHOLD,
@@ -206,6 +210,12 @@ static laws_of_war_status_t evaluate_distinction(
 
     /* First pass: count ALL protected targets */
     for (uint32_t i = 0; i < action->num_targets; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && action->num_targets > 256) {
+            ethics_warfare_heartbeat("ethics_warfa_loop",
+                             (float)(i + 1) / (float)action->num_targets);
+        }
+
         const target_classification_t* target = &action->targets[i];
 
         if (is_protected_status(target->status)) {
@@ -318,6 +328,10 @@ laws_of_war_evaluation_t ethics_evaluate_laws_of_war(
     ethics_engine_t engine,
     const military_action_context_t* action)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_warfare_heartbeat("ethics_warfa_ethics_evaluate_laws", 0.0f);
+
+
     laws_of_war_evaluation_t result = {0};
 
     // Validate inputs
@@ -394,6 +408,12 @@ laws_of_war_evaluation_t ethics_evaluate_laws_of_war(
     uint32_t total_civilians_at_risk = 0;
     float max_civilian_proximity = 0.0F;
     for (uint32_t i = 0; i < action->num_targets; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && action->num_targets > 256) {
+            ethics_warfare_heartbeat("ethics_warfa_loop",
+                             (float)(i + 1) / (float)action->num_targets);
+        }
+
         total_civilians_at_risk += action->targets[i].civilians_at_risk;
         if (action->targets[i].civilian_proximity > max_civilian_proximity) {
             max_civilian_proximity = action->targets[i].civilian_proximity;
@@ -432,6 +452,10 @@ target_classification_t ethics_classify_target(
     ethics_engine_t engine,
     const target_classification_t* target)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_warfare_heartbeat("ethics_warfa_ethics_classify_targ", 0.0f);
+
+
     target_classification_t result = {0};
 
     if (!target) {
@@ -502,6 +526,10 @@ bool ethics_is_target_surrendering(const target_classification_t* target)
 
         }
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_warfare_heartbeat("ethics_warfa_ethics_is_target_sur", 0.0f);
+
+
     return target->is_surrendering ||
            target->status == COMBATANT_STATUS_SURRENDERING;
 }
@@ -522,6 +550,10 @@ mercy_evaluation_t ethics_evaluate_mercy(
     ethics_engine_t engine,
     const mercy_context_t* context)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_warfare_heartbeat("ethics_warfa_ethics_evaluate_merc", 0.0f);
+
+
     mercy_evaluation_t result = {0};
 
     if (!context) {
@@ -720,6 +752,10 @@ bool ethics_engagement_prohibited(
     ethics_engine_t engine,
     combatant_status_t target_status)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_warfare_heartbeat("ethics_warfa_ethics_engagement_pr", 0.0f);
+
+
     (void)engine; // May be used in future for configuration
 
     // Engagement is ALWAYS prohibited for these statuses
@@ -757,6 +793,10 @@ const char* psychological_state_name(psychological_state_t state)
 
 psychological_config_t psychological_default_config(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_warfare_heartbeat("ethics_warfa_psychological_defaul", 0.0f);
+
+
     psychological_config_t config = {
         .stress_threshold = DEFAULT_STRESS_THRESHOLD,
         .critical_threshold = DEFAULT_CRITICAL_THRESHOLD,
@@ -773,6 +813,10 @@ psychological_assessment_t ethics_evaluate_defensive_justification(
     ethics_engine_t engine,
     const defensive_justification_t* justification)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_warfare_heartbeat("ethics_warfa_ethics_evaluate_defe", 0.0f);
+
+
     psychological_assessment_t result = {0};
 
     if (!justification) {
@@ -913,6 +957,10 @@ psychological_assessment_t ethics_process_post_action(
     bool was_justified,
     uint32_t casualties_caused)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_warfare_heartbeat("ethics_warfa_ethics_process_post_", 0.0f);
+
+
     psychological_assessment_t result = {0};
 
     (void)engine; // May be used for persistent state tracking in future
@@ -996,6 +1044,10 @@ psychological_assessment_t ethics_process_post_action(
 
 psychological_assessment_t ethics_get_psychological_state(ethics_engine_t engine)
 {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_warfare_heartbeat("ethics_warfa_ethics_get_psycholog", 0.0f);
+
+
     psychological_assessment_t result = {0};
 
     // Default stable state
@@ -1030,6 +1082,10 @@ bool ethics_apply_moral_support(ethics_engine_t engine, const char* support_type
 
             return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_warfare_heartbeat("ethics_warfa_ethics_apply_moral_s", 0.0f);
+
 
     LOG_INFO("Applying moral support: type=%s", support_type);
 
@@ -1082,9 +1138,19 @@ bool ethics_apply_moral_support(ethics_engine_t engine, const char* support_type
  */
 int ethics_warfare_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    ethics_warfare_heartbeat("ethics_warfa_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Ethics_Warfare_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                ethics_warfare_heartbeat("ethics_warfa_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Ethics warfare self-knowledge: %s", self->observations[i]);
         }
     }

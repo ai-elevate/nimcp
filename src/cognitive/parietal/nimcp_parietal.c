@@ -37,7 +37,7 @@ static nimcp_health_agent_t* g_parietal_health_agent = NULL;
  * @brief Set health agent for parietal heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void parietal_set_health_agent(nimcp_health_agent_t* agent) {
+void parietal_set_health_agent(nimcp_health_agent_t* agent) {
     g_parietal_health_agent = agent;
 }
 
@@ -239,6 +239,12 @@ static physics_nn_t* physics_nn_create(uint32_t state_dim, uint32_t hidden_size,
     uint32_t sizes[] = {state_dim, hidden_size, hidden_size, state_dim};
 
     for (uint32_t i = 0; i < nn->num_layers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && nn->num_layers > 256) {
+            parietal_heartbeat("parietal_loop",
+                             (float)(i + 1) / (float)nn->num_layers);
+        }
+
         physics_nn_layer_t* layer = &nn->layers[i];
         layer->input_size = sizes[i];
         layer->output_size = sizes[i + 1];
@@ -273,6 +279,12 @@ static void physics_nn_destroy(physics_nn_t* nn) {
     if (!nn) return;
 
     for (uint32_t i = 0; i < nn->num_layers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && nn->num_layers > 256) {
+            parietal_heartbeat("parietal_loop",
+                             (float)(i + 1) / (float)nn->num_layers);
+        }
+
         free(nn->layers[i].weights);
         free(nn->layers[i].biases);
     }
@@ -292,6 +304,12 @@ static float physics_nn_forward(physics_nn_t* nn, const float* input, float* out
     /* Find max layer size for buffer allocation */
     uint32_t max_size = nn->state_dim;
     for (uint32_t i = 0; i < nn->num_layers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && nn->num_layers > 256) {
+            parietal_heartbeat("parietal_loop",
+                             (float)(i + 1) / (float)nn->num_layers);
+        }
+
         if (nn->layers[i].input_size > max_size) max_size = nn->layers[i].input_size;
         if (nn->layers[i].output_size > max_size) max_size = nn->layers[i].output_size;
     }
@@ -310,11 +328,29 @@ static float physics_nn_forward(physics_nn_t* nn, const float* input, float* out
 
     /* Forward pass through layers */
     for (uint32_t l = 0; l < nn->num_layers; l++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((l & 0xFF) == 0 && nn->num_layers > 256) {
+            parietal_heartbeat("parietal_loop",
+                             (float)(l + 1) / (float)nn->num_layers);
+        }
+
         physics_nn_layer_t* layer = &nn->layers[l];
 
         for (uint32_t j = 0; j < layer->output_size; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && layer->output_size > 256) {
+                parietal_heartbeat("parietal_loop",
+                                 (float)(j + 1) / (float)layer->output_size);
+            }
+
             float sum = layer->biases[j];
             for (uint32_t i = 0; i < layer->input_size; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && layer->input_size > 256) {
+                    parietal_heartbeat("parietal_loop",
+                                     (float)(i + 1) / (float)layer->input_size);
+                }
+
                 sum += current[i] * layer->weights[i * layer->output_size + j];
             }
 
@@ -340,6 +376,12 @@ static float physics_nn_forward(physics_nn_t* nn, const float* input, float* out
         /* Simplified: H = sum(q*p) for canonical coordinates */
         uint32_t half = nn->state_dim / 2;
         for (uint32_t i = 0; i < half; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && half > 256) {
+                parietal_heartbeat("parietal_loop",
+                                 (float)(i + 1) / (float)half);
+            }
+
             float q = input[i];
             float p = input[half + i];
             hamiltonian += p * p / 2.0f;  /* Kinetic */
@@ -367,6 +409,12 @@ static float physics_nn_train_step(physics_nn_t* nn, const float* state,
     /* Compute loss (MSE) */
     float loss = 0.0f;
     for (uint32_t i = 0; i < nn->state_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && nn->state_dim > 256) {
+            parietal_heartbeat("parietal_loop",
+                             (float)(i + 1) / (float)nn->state_dim);
+        }
+
         float diff = predicted[i] - target_derivative[i];
         loss += diff * diff;
         nn->gradients[i] = 2.0f * diff / (float)nn->state_dim;
@@ -376,7 +424,19 @@ static float physics_nn_train_step(physics_nn_t* nn, const float* state,
     /* Simplified backprop (just update last layer for now) */
     physics_nn_layer_t* last = &nn->layers[nn->num_layers - 1];
     for (uint32_t j = 0; j < last->output_size; j++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((j & 0xFF) == 0 && last->output_size > 256) {
+            parietal_heartbeat("parietal_loop",
+                             (float)(j + 1) / (float)last->output_size);
+        }
+
         for (uint32_t i = 0; i < last->input_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && last->input_size > 256) {
+                parietal_heartbeat("parietal_loop",
+                                 (float)(i + 1) / (float)last->input_size);
+            }
+
             last->weights[i * last->output_size + j] -=
                 nn->learning_rate * nn->gradients[j] * state[i % nn->state_dim];
         }
@@ -396,6 +456,10 @@ static float physics_nn_train_step(physics_nn_t* nn, const float* state,
  * ============================================================================ */
 
 parietal_config_t parietal_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_default_config", 0.0f);
+
+
     parietal_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -451,6 +515,10 @@ parietal_config_t parietal_default_config(void) {
 bool parietal_validate_config(const parietal_config_t* config) {
     if (!config) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_validate_config", 0.0f);
+
+
     if (config->nn_hidden_size == 0 || config->nn_hidden_size > 4096) {
         set_parietal_error("Invalid NN hidden size");
         return false;
@@ -470,10 +538,18 @@ bool parietal_validate_config(const parietal_config_t* config) {
 }
 
 parietal_lobe_t* parietal_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_create", 0.0f);
+
+
     return parietal_create_custom(NULL);
 }
 
 parietal_lobe_t* parietal_create_custom(const parietal_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_create_custom", 0.0f);
+
+
     parietal_config_t cfg;
 
     if (config) {
@@ -578,6 +654,10 @@ void parietal_destroy(parietal_lobe_t* parietal) {
     if (!parietal) return;
 
     /* Destroy core submodules */
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_destroy", 0.0f);
+
+
     number_sense_destroy(parietal->number_sense);
     spatial_reasoning_destroy(parietal->spatial);
     math_intuition_destroy(parietal->math_intuition);
@@ -622,6 +702,10 @@ int parietal_attach_to_brain(parietal_lobe_t* parietal, brain_module_t* brain,
                               uint32_t num_neurons) {
     if (!parietal || !brain) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_attach_to_brain", 0.0f);
+
+
     nimcp_mutex_lock(parietal->lock);
 
     parietal->brain = brain;
@@ -645,12 +729,20 @@ brain_region_t* parietal_get_brain_region(parietal_lobe_t* parietal) {
         return NULL;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_get_brain_region", 0.0f);
+
+
     return parietal->brain_region;
 }
 
 int parietal_connect_to_region(parietal_lobe_t* parietal, uint32_t target_region_id,
                                 float connection_strength) {
     if (!parietal || !parietal->brain) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_connect_to_region", 0.0f);
+
 
     (void)target_region_id;
     (void)connection_strength;
@@ -667,6 +759,10 @@ int parietal_attach_immune(parietal_lobe_t* parietal, code_immune_system_t* immu
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_attach_immune", 0.0f);
+
+
     nimcp_mutex_lock(parietal->lock);
     parietal->immune = immune;
     nimcp_mutex_unlock(parietal->lock);
@@ -679,6 +775,10 @@ int parietal_attach_thalamus(parietal_lobe_t* parietal, thalamic_router_t* thala
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_attach_thalamus: parietal is NULL");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_attach_thalamus", 0.0f);
+
 
     nimcp_mutex_lock(parietal->lock);
     parietal->thalamus = thalamus;
@@ -693,6 +793,10 @@ int parietal_attach_substrate(parietal_lobe_t* parietal, substrate_interface_t* 
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_attach_substrate", 0.0f);
+
+
     nimcp_mutex_lock(parietal->lock);
     parietal->substrate = substrate;
     nimcp_mutex_unlock(parietal->lock);
@@ -705,6 +809,10 @@ int parietal_attach_fep(parietal_lobe_t* parietal, fep_brain_t* fep) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_attach_fep: parietal is NULL");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_attach_fep", 0.0f);
+
 
     nimcp_mutex_lock(parietal->lock);
     parietal->fep = fep;
@@ -719,6 +827,10 @@ int parietal_attach_working_memory(parietal_lobe_t* parietal, working_memory_t* 
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_attach_working_memor", 0.0f);
+
+
     nimcp_mutex_lock(parietal->lock);
     parietal->working_memory = wm;
     nimcp_mutex_unlock(parietal->lock);
@@ -731,6 +843,10 @@ int parietal_attach_logic_gates(parietal_lobe_t* parietal, logic_gate_network_t*
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_attach_logic_gates: parietal is NULL");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_attach_logic_gates", 0.0f);
+
 
     nimcp_mutex_lock(parietal->lock);
     parietal->logic_gates = logic;
@@ -745,6 +861,10 @@ int parietal_attach_training(parietal_lobe_t* parietal, training_engine_t* train
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_attach_training", 0.0f);
+
+
     nimcp_mutex_lock(parietal->lock);
     parietal->training = training;
     nimcp_mutex_unlock(parietal->lock);
@@ -757,6 +877,10 @@ int parietal_attach_perception(parietal_lobe_t* parietal, perception_system_t* p
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_attach_perception: parietal is NULL");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_attach_perception", 0.0f);
+
 
     nimcp_mutex_lock(parietal->lock);
     parietal->perception = perception;
@@ -771,6 +895,10 @@ int parietal_attach_sleep(parietal_lobe_t* parietal, sleep_system_t* sleep) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_attach_sleep", 0.0f);
+
+
     nimcp_mutex_lock(parietal->lock);
     parietal->sleep = sleep;
     nimcp_mutex_unlock(parietal->lock);
@@ -784,6 +912,10 @@ int parietal_attach_sleep(parietal_lobe_t* parietal, sleep_system_t* sleep) {
 
 parietal_result_t parietal_process(parietal_lobe_t* parietal,
                                     const parietal_request_t* request) {
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_process", 0.0f);
+
+
     parietal_result_t result;
     memset(&result, 0, sizeof(result));
 
@@ -1272,6 +1404,10 @@ uint64_t parietal_process_async(parietal_lobe_t* parietal,
                                  void* user_data) {
     if (!parietal || !request) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_process_async", 0.0f);
+
+
     nimcp_mutex_lock(parietal->lock);
 
     if (parietal->num_pending >= PARIETAL_MAX_PENDING_REQUESTS) {
@@ -1297,9 +1433,19 @@ int parietal_poll_result(parietal_lobe_t* parietal, uint64_t request_id,
                           parietal_result_t* result) {
     if (!parietal || !result) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_poll_result", 0.0f);
+
+
     nimcp_mutex_lock(parietal->lock);
 
     for (uint32_t i = 0; i < parietal->num_pending; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && parietal->num_pending > 256) {
+            parietal_heartbeat("parietal_loop",
+                             (float)(i + 1) / (float)parietal->num_pending);
+        }
+
         if (parietal->pending_requests[i].request.request_id == request_id) {
             if (parietal->pending_requests[i].completed) {
                 *result = parietal->pending_requests[i].result;
@@ -1318,6 +1464,10 @@ int parietal_poll_result(parietal_lobe_t* parietal, uint64_t request_id,
 int parietal_wait_result(parietal_lobe_t* parietal, uint64_t request_id,
                           uint32_t timeout_ms, parietal_result_t* result) {
     if (!parietal || !result) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_wait_result", 0.0f);
+
 
     uint64_t start = get_time_us();
     uint64_t timeout_us = (uint64_t)timeout_ms * 1000ULL;
@@ -1347,13 +1497,29 @@ float parietal_train_physics_nn(parietal_lobe_t* parietal,
         return -1.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_train_physics_nn", 0.0f);
+
+
     nimcp_mutex_lock(parietal->lock);
 
     float total_loss = 0.0f;
 
     for (uint32_t epoch = 0; epoch < epochs; epoch++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((epoch & 0xFF) == 0 && epochs > 256) {
+            parietal_heartbeat("parietal_loop",
+                             (float)(epoch + 1) / (float)epochs);
+        }
+
         float epoch_loss = 0.0f;
         for (uint32_t i = 0; i < num_samples; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_samples > 256) {
+                parietal_heartbeat("parietal_loop",
+                                 (float)(i + 1) / (float)num_samples);
+            }
+
             epoch_loss += physics_nn_train_step(parietal->physics_nn,
                                                  states[i], derivatives[i]);
         }
@@ -1375,6 +1541,10 @@ int parietal_predict_dynamics(parietal_lobe_t* parietal,
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_predict_dynamics", 0.0f);
+
+
     nimcp_mutex_lock(parietal->lock);
 
     float* current = malloc(state_dim * sizeof(float));
@@ -1390,11 +1560,23 @@ int parietal_predict_dynamics(parietal_lobe_t* parietal,
     memcpy(current, initial_state, state_dim * sizeof(float));
 
     for (uint32_t step = 0; step < steps; step++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((step & 0xFF) == 0 && steps > 256) {
+            parietal_heartbeat("parietal_loop",
+                             (float)(step + 1) / (float)steps);
+        }
+
         /* Get derivative from NN */
         physics_nn_forward(parietal->physics_nn, current, derivative);
 
         /* Euler integration (could use RK4 for better accuracy) */
         for (uint32_t i = 0; i < state_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && state_dim > 256) {
+                parietal_heartbeat("parietal_loop",
+                                 (float)(i + 1) / (float)state_dim);
+            }
+
             current[i] += derivative[i] * dt;
         }
 
@@ -1419,6 +1601,10 @@ float parietal_compute_hamiltonian(parietal_lobe_t* parietal,
         return 0.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_compute_hamiltonian", 0.0f);
+
+
     nimcp_mutex_lock(parietal->lock);
 
     float* output = malloc(state_dim * sizeof(float));
@@ -1437,6 +1623,10 @@ float parietal_compute_hamiltonian(parietal_lobe_t* parietal,
 number_estimate_t parietal_estimate_quantity(parietal_lobe_t* parietal,
                                               const float* values,
                                               uint32_t num_values) {
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_estimate_quantity", 0.0f);
+
+
     parietal_request_t req = {0};
     req.type = PARIETAL_ESTIMATE_QUANTITY;
     req.input.quantity_input.values = (float*)values;
@@ -1449,6 +1639,10 @@ number_estimate_t parietal_estimate_quantity(parietal_lobe_t* parietal,
 detected_pattern_t parietal_detect_pattern(parietal_lobe_t* parietal,
                                             const float* sequence,
                                             uint32_t length) {
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_detect_pattern", 0.0f);
+
+
     parietal_request_t req = {0};
     req.type = PARIETAL_PATTERN_DETECT;
     req.input.pattern_input.sequence = (float*)sequence;
@@ -1461,6 +1655,10 @@ detected_pattern_t parietal_detect_pattern(parietal_lobe_t* parietal,
 expr_node_t* parietal_differentiate_expression(parietal_lobe_t* parietal,
                                                 const char* expr_string,
                                                 const char* variable) {
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_differentiate_expres", 0.0f);
+
+
     parietal_request_t req = {0};
     req.type = PARIETAL_DIFFERENTIATE;
     strncpy(req.input.equation_input.expression, expr_string, 511);
@@ -1473,6 +1671,10 @@ expr_node_t* parietal_differentiate_expression(parietal_lobe_t* parietal,
 rotation_result_t parietal_mental_rotate_compare(parietal_lobe_t* parietal,
                                           const spatial_object_t* object_a,
                                           const spatial_object_t* object_b) {
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_mental_rotate_compar", 0.0f);
+
+
     parietal_request_t req = {0};
     req.type = PARIETAL_MENTAL_ROTATION;
     req.input.rotation_input.object_a = (spatial_object_t*)object_a;
@@ -1488,6 +1690,10 @@ rotation_result_t parietal_mental_rotate_compare(parietal_lobe_t* parietal,
 
 int parietal_set_inflammation(parietal_lobe_t* parietal, float level) {
     if (!parietal) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_set_inflammation", 0.0f);
+
 
     level = clamp01(level);
 
@@ -1532,6 +1738,10 @@ int parietal_set_inflammation(parietal_lobe_t* parietal, float level) {
 
 int parietal_set_fatigue(parietal_lobe_t* parietal, float level) {
     if (!parietal) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_set_fatigue", 0.0f);
+
 
     level = clamp01(level);
 
@@ -1579,6 +1789,10 @@ int parietal_update_from_sleep(parietal_lobe_t* parietal) {
     /* float quality = sleep_get_quality(parietal->sleep); */
     /* parietal_set_fatigue(parietal, 1.0f - quality); */
 
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_update_from_sleep", 0.0f);
+
+
     return 0;
 }
 
@@ -1589,6 +1803,10 @@ int parietal_update_from_immune(parietal_lobe_t* parietal) {
     /* float inflammation = code_immune_get_inflammation(parietal->immune); */
     /* parietal_set_inflammation(parietal, inflammation); */
 
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_update_from_immune", 0.0f);
+
+
     return 0;
 }
 
@@ -1598,6 +1816,10 @@ int parietal_update_from_immune(parietal_lobe_t* parietal) {
 
 int parietal_step(parietal_lobe_t* parietal, uint64_t delta_t) {
     if (!parietal) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_step", 0.0f);
+
 
     (void)delta_t;
 
@@ -1614,11 +1836,21 @@ int parietal_step(parietal_lobe_t* parietal, uint64_t delta_t) {
 uint32_t parietal_process_pending(parietal_lobe_t* parietal) {
     if (!parietal) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_process_pending", 0.0f);
+
+
     nimcp_mutex_lock(parietal->lock);
 
     uint32_t processed = 0;
 
     for (uint32_t i = 0; i < parietal->num_pending; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && parietal->num_pending > 256) {
+            parietal_heartbeat("parietal_loop",
+                             (float)(i + 1) / (float)parietal->num_pending);
+        }
+
         pending_request_t* pending = &parietal->pending_requests[i];
 
         if (!pending->completed) {
@@ -1643,6 +1875,12 @@ uint32_t parietal_process_pending(parietal_lobe_t* parietal) {
     /* Remove completed requests */
     uint32_t write_idx = 0;
     for (uint32_t i = 0; i < parietal->num_pending; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && parietal->num_pending > 256) {
+            parietal_heartbeat("parietal_loop",
+                             (float)(i + 1) / (float)parietal->num_pending);
+        }
+
         if (!parietal->pending_requests[i].completed) {
             if (write_idx != i) {
                 parietal->pending_requests[write_idx] = parietal->pending_requests[i];
@@ -1662,42 +1900,82 @@ uint32_t parietal_process_pending(parietal_lobe_t* parietal) {
  * ============================================================================ */
 
 number_sense_t* parietal_get_number_sense(parietal_lobe_t* parietal) {
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_get_number_sense", 0.0f);
+
+
     return parietal ? parietal->number_sense : NULL;
 }
 
 spatial_reasoning_t* parietal_get_spatial(parietal_lobe_t* parietal) {
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_get_spatial", 0.0f);
+
+
     return parietal ? parietal->spatial : NULL;
 }
 
 math_intuition_t* parietal_get_math_intuition(parietal_lobe_t* parietal) {
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_get_math_intuition", 0.0f);
+
+
     return parietal ? parietal->math_intuition : NULL;
 }
 
 scientific_reasoning_t* parietal_get_scientific(parietal_lobe_t* parietal) {
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_get_scientific", 0.0f);
+
+
     return parietal ? parietal->scientific : NULL;
 }
 
 equation_engine_t* parietal_get_equation_engine(parietal_lobe_t* parietal) {
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_get_equation_engine", 0.0f);
+
+
     return parietal ? parietal->equation : NULL;
 }
 
 parietal_quantum_bridge_t* parietal_get_quantum_bridge(parietal_lobe_t* parietal) {
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_get_quantum_bridge", 0.0f);
+
+
     return parietal ? parietal->quantum_bridge : NULL;
 }
 
 fep_parietal_bridge_t* parietal_get_fep_bridge(parietal_lobe_t* parietal) {
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_get_fep_bridge", 0.0f);
+
+
     return parietal ? parietal->fep_parietal_bridge : NULL;
 }
 
 electrical_eng_t* parietal_get_electrical(parietal_lobe_t* parietal) {
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_get_electrical", 0.0f);
+
+
     return parietal ? parietal->electrical_eng : NULL;
 }
 
 mechanical_eng_t* parietal_get_mechanical(parietal_lobe_t* parietal) {
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_get_mechanical", 0.0f);
+
+
     return parietal ? parietal->mechanical_eng : NULL;
 }
 
 civil_eng_t* parietal_get_civil(parietal_lobe_t* parietal) {
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_get_civil", 0.0f);
+
+
     return parietal ? parietal->civil_eng : NULL;
 }
 
@@ -1708,6 +1986,10 @@ civil_eng_t* parietal_get_civil(parietal_lobe_t* parietal) {
 int parietal_set_quantum_enabled(parietal_lobe_t* parietal, bool enabled) {
     if (!parietal || !parietal->quantum_bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_set_quantum_enabled", 0.0f);
+
+
     nimcp_mutex_lock(parietal->lock);
     int result = parietal_quantum_set_enabled(parietal->quantum_bridge, enabled);
     nimcp_mutex_unlock(parietal->lock);
@@ -1717,6 +1999,10 @@ int parietal_set_quantum_enabled(parietal_lobe_t* parietal, bool enabled) {
 
 bool parietal_quantum_available(const parietal_lobe_t* parietal) {
     if (!parietal || !parietal->quantum_bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_quantum_available", 0.0f);
+
+
     return parietal_quantum_is_available(parietal->quantum_bridge);
 }
 
@@ -1729,6 +2015,10 @@ int parietal_lobe_quantum_optimize(parietal_lobe_t* parietal,
         set_parietal_error("Quantum bridge not available");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_lobe_quantum_optimiz", 0.0f);
+
 
     nimcp_mutex_lock(parietal->lock);
 
@@ -1753,6 +2043,10 @@ int parietal_lobe_quantum_vqe(parietal_lobe_t* parietal,
         set_parietal_error("Quantum bridge not available");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_lobe_quantum_vqe", 0.0f);
+
 
     nimcp_mutex_lock(parietal->lock);
 
@@ -1783,6 +2077,10 @@ int parietal_get_stats(const parietal_lobe_t* parietal, parietal_stats_t* stats)
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_get_stats: stats is NULL");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_get_stats", 0.0f);
+
 
     nimcp_mutex_lock(((parietal_lobe_t*)parietal)->lock);
 
@@ -1859,6 +2157,10 @@ int parietal_get_stats(const parietal_lobe_t* parietal, parietal_stats_t* stats)
 void parietal_reset_stats(parietal_lobe_t* parietal) {
     if (!parietal) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(parietal->lock);
 
     memset(parietal->requests_by_type, 0, sizeof(parietal->requests_by_type));
@@ -1929,6 +2231,10 @@ imagination_scenario_t* parietal_mental_rotate(
 
     /* TODO: Integrate with imagination engine for visualization */
     /* This is a stub for the new imagination-integrated API */
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_mental_rotate", 0.0f);
+
+
     (void)angle_x;
     (void)angle_y;
     (void)angle_z;
@@ -1945,6 +2251,10 @@ imagination_scenario_t* parietal_spatial_transform(
 
     /* TODO: Integrate with imagination engine for spatial transformation */
     /* This is a stub for the new imagination-integrated API */
+
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_spatial_transform", 0.0f);
+
 
     return NULL;
 }
@@ -1974,9 +2284,19 @@ int parietal_handle_bio_msg(parietal_lobe_t* parietal, uint32_t msg_type,
 int parietal_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    parietal_heartbeat("parietal_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Parietal_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                parietal_heartbeat("parietal_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Parietal self-knowledge: %s", self->observations[i]);
         }
     }

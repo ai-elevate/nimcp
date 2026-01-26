@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_semantic_memory_health_agent = NULL;
  * @brief Set health agent for semantic_memory heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void semantic_memory_set_health_agent(nimcp_health_agent_t* agent) {
+void semantic_memory_set_health_agent(nimcp_health_agent_t* agent) {
     g_semantic_memory_health_agent = agent;
 }
 
@@ -119,6 +119,12 @@ static int semantic_memory_wiring_handler_callback(
              message_count);
 
     for (uint32_t i = 0; i < message_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && message_count > 256) {
+            semantic_memory_heartbeat("semantic_mem_loop",
+                             (float)(i + 1) / (float)message_count);
+        }
+
         switch (message_types[i]) {
             case BIO_MSG_KNOWLEDGE_QUERY:
                 bio_router_register_handler(ctx, message_types[i], handle_knowledge_query);
@@ -152,6 +158,12 @@ static float compute_similarity(const float* a, const float* b, uint32_t dim) {
     float mag_b = 0.0F;
 
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            semantic_memory_heartbeat("semantic_mem_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         dot += a[i] * b[i];
         mag_a += a[i] * a[i];
         mag_b += b[i] * b[i];
@@ -175,6 +187,12 @@ static semantic_concept_t* find_concept_by_id(
     if (!system || id == 0) return NULL;
 
     for (uint32_t i = 0; i < system->concept_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->concept_count > 256) {
+            semantic_memory_heartbeat("semantic_mem_loop",
+                             (float)(i + 1) / (float)system->concept_count);
+        }
+
         if (system->concepts[i] && system->concepts[i]->id == id) {
             return system->concepts[i];
         }
@@ -216,6 +234,10 @@ static uint64_t generate_relation_id(semantic_memory_system_t* system) {
  * HOW:  Allocate pools, set defaults, initialize stats
  */
 semantic_memory_system_t* semantic_memory_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    semantic_memory_heartbeat("semantic_mem_create", 0.0f);
+
+
     LOG_INFO("Creating semantic memory system");
 
     semantic_memory_system_t* system =
@@ -453,8 +475,18 @@ void semantic_memory_destroy(semantic_memory_system_t* system) {
     if (!system) return;
 
     // Free all concepts (individual concept objects)
+    /* Phase 8: Heartbeat at operation start */
+    semantic_memory_heartbeat("semantic_mem_destroy", 0.0f);
+
+
     if (system->concepts) {
         for (uint32_t i = 0; i < system->concept_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && system->concept_count > 256) {
+                semantic_memory_heartbeat("semantic_mem_loop",
+                                 (float)(i + 1) / (float)system->concept_count);
+            }
+
             free_concept(system->concepts[i]);
         }
         // Free concepts array (unified memory or direct)
@@ -470,6 +502,12 @@ void semantic_memory_destroy(semantic_memory_system_t* system) {
     // Free all relations
     if (system->relations) {
         for (uint32_t i = 0; i < system->relation_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && system->relation_count > 256) {
+                semantic_memory_heartbeat("semantic_mem_loop",
+                                 (float)(i + 1) / (float)system->relation_count);
+            }
+
             nimcp_free(system->relations[i]);
         }
         nimcp_free(system->relations);
@@ -529,7 +567,17 @@ void semantic_memory_reset(semantic_memory_system_t* system) {
     if (!system) return;
 
     // Free all concepts
+    /* Phase 8: Heartbeat at operation start */
+    semantic_memory_heartbeat("semantic_mem_reset", 0.0f);
+
+
     for (uint32_t i = 0; i < system->concept_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->concept_count > 256) {
+            semantic_memory_heartbeat("semantic_mem_loop",
+                             (float)(i + 1) / (float)system->concept_count);
+        }
+
         free_concept(system->concepts[i]);
         system->concepts[i] = NULL;
     }
@@ -537,6 +585,12 @@ void semantic_memory_reset(semantic_memory_system_t* system) {
 
     // Free all relations
     for (uint32_t i = 0; i < system->relation_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->relation_count > 256) {
+            semantic_memory_heartbeat("semantic_mem_loop",
+                             (float)(i + 1) / (float)system->relation_count);
+        }
+
         nimcp_free(system->relations[i]);
         system->relations[i] = NULL;
     }
@@ -569,6 +623,10 @@ void semantic_memory_set_consolidation(
     void* consolidation)
 {
     if (!system) return;
+    /* Phase 8: Heartbeat at operation start */
+    semantic_memory_heartbeat("semantic_mem_set_consolidation", 0.0f);
+
+
     system->systems_consolidation = consolidation;
 }
 
@@ -595,6 +653,10 @@ uint64_t semantic_memory_create_concept(
     if (system->concept_count >= system->concept_capacity) return 0;
 
     // Allocate concept
+    /* Phase 8: Heartbeat at operation start */
+    semantic_memory_heartbeat("semantic_mem_create_concept", 0.0f);
+
+
     semantic_concept_t* concept =
         (semantic_concept_t*)nimcp_calloc(1, sizeof(semantic_concept_t));
 
@@ -646,7 +708,17 @@ const semantic_concept_t* semantic_memory_get_concept(
 {
     if (!system || concept_id == 0) return NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    semantic_memory_heartbeat("semantic_mem_get_concept", 0.0f);
+
+
     for (uint32_t i = 0; i < system->concept_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->concept_count > 256) {
+            semantic_memory_heartbeat("semantic_mem_loop",
+                             (float)(i + 1) / (float)system->concept_count);
+        }
+
         if (system->concepts[i] && system->concepts[i]->id == concept_id) {
             system->concepts[i]->access_count++;
             return system->concepts[i];
@@ -681,6 +753,10 @@ semantic_query_result_t* semantic_memory_find_similar(
     if (system->concept_count == 0) return NULL;
 
     // Allocate result
+    /* Phase 8: Heartbeat at operation start */
+    semantic_memory_heartbeat("semantic_mem_find_similar", 0.0f);
+
+
     semantic_query_result_t* result =
         (semantic_query_result_t*)nimcp_calloc(1, sizeof(semantic_query_result_t));
 
@@ -713,6 +789,12 @@ semantic_query_result_t* semantic_memory_find_similar(
     // Compute similarities
     uint32_t match_count = 0;
     for (uint32_t i = 0; i < system->concept_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->concept_count > 256) {
+            semantic_memory_heartbeat("semantic_mem_loop",
+                             (float)(i + 1) / (float)system->concept_count);
+        }
+
         semantic_concept_t* concept = system->concepts[i];
         if (!concept) continue;
 
@@ -776,6 +858,10 @@ uint64_t semantic_memory_create_relation(
     if (!find_concept_by_id(system, target_id)) return 0;
 
     // Allocate relation
+    /* Phase 8: Heartbeat at operation start */
+    semantic_memory_heartbeat("semantic_mem_create_relation", 0.0f);
+
+
     semantic_relation_t* relation =
         (semantic_relation_t*)nimcp_calloc(1, sizeof(semantic_relation_t));
 
@@ -815,6 +901,10 @@ uint32_t semantic_memory_get_relations(
     // Guard clauses
     if (!system || concept_id == 0) return 0;
     if (!relation_ids || max_relations == 0) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    semantic_memory_heartbeat("semantic_mem_get_relations", 0.0f);
+
 
     uint32_t found = 0;
 
@@ -938,6 +1028,12 @@ static void spread_activation_bfs(
         float next_activation = current.activation * system->spread_params.decay_rate;
 
         for (uint32_t i = 0; i < neighbor_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && neighbor_count > 256) {
+                semantic_memory_heartbeat("semantic_mem_loop",
+                                 (float)(i + 1) / (float)neighbor_count);
+            }
+
             semantic_concept_t* neighbor = find_concept_by_id(system, neighbors[i]);
             if (!neighbor) continue;
 
@@ -975,6 +1071,10 @@ semantic_query_result_t* semantic_memory_activate(
     if (!system || concept_id == 0) return NULL;
 
     // Find concept
+    /* Phase 8: Heartbeat at operation start */
+    semantic_memory_heartbeat("semantic_mem_activate", 0.0f);
+
+
     semantic_concept_t* concept = find_concept_by_id(system, concept_id);
     if (!concept) {
 
@@ -986,6 +1086,12 @@ semantic_query_result_t* semantic_memory_activate(
 
     // Clear previous activations
     for (uint32_t i = 0; i < system->concept_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->concept_count > 256) {
+            semantic_memory_heartbeat("semantic_mem_loop",
+                             (float)(i + 1) / (float)system->concept_count);
+        }
+
         if (system->concepts[i]) {
             system->concepts[i]->activation = 0.0F;
         }
@@ -997,6 +1103,12 @@ semantic_query_result_t* semantic_memory_activate(
     // Collect activated concepts above threshold
     uint32_t activated_count = 0;
     for (uint32_t i = 0; i < system->concept_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->concept_count > 256) {
+            semantic_memory_heartbeat("semantic_mem_loop",
+                             (float)(i + 1) / (float)system->concept_count);
+        }
+
         if (system->concepts[i] &&
             system->concepts[i]->activation >= system->spread_params.threshold) {
             activated_count++;
@@ -1066,6 +1178,10 @@ semantic_query_result_t* semantic_memory_query(
     if (!features || feature_dim == 0) return NULL;
 
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    semantic_memory_heartbeat("semantic_mem_query", 0.0f);
+
+
     if (system->bio_async_enabled && system->bio_ctx) {
         bio_router_process_inbox(system->bio_ctx, 5);
     }
@@ -1110,6 +1226,10 @@ semantic_query_result_t* semantic_memory_query(
 void semantic_memory_free_result(semantic_query_result_t* result) {
     if (!result) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    semantic_memory_heartbeat("semantic_mem_free_result", 0.0f);
+
+
     if (result->concept_ids) nimcp_free(result->concept_ids);
     if (result->activation_levels) nimcp_free(result->activation_levels);
     nimcp_free(result);
@@ -1133,6 +1253,10 @@ uint32_t semantic_memory_extract_from_consolidation(
     if (!system->systems_consolidation) return 0;
 
     // Cast to systems consolidation system
+    /* Phase 8: Heartbeat at operation start */
+    semantic_memory_heartbeat("semantic_mem_extract_from_consoli", 0.0f);
+
+
     systems_consolidation_system_t* m2_sys =
         (systems_consolidation_system_t*)system->systems_consolidation;
 
@@ -1140,6 +1264,12 @@ uint32_t semantic_memory_extract_from_consolidation(
 
     // Iterate through cortical nodes
     for (uint32_t i = 0; i < m2_sys->node_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && m2_sys->node_count > 256) {
+            semantic_memory_heartbeat("semantic_mem_loop",
+                             (float)(i + 1) / (float)m2_sys->node_count);
+        }
+
         cortical_memory_node_t* node = m2_sys->cortical_nodes[i];
         if (!node) continue;
 
@@ -1152,6 +1282,12 @@ uint32_t semantic_memory_extract_from_consolidation(
         // Check if concept already exists for this node
         bool already_exists = false;
         for (uint32_t j = 0; j < system->concept_count; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && system->concept_count > 256) {
+                semantic_memory_heartbeat("semantic_mem_loop",
+                                 (float)(j + 1) / (float)system->concept_count);
+            }
+
             if (system->concepts[j] &&
                 system->concepts[j]->source_count > 0 &&
                 system->concepts[j]->source_memory_ids[0] == node->id) {
@@ -1206,6 +1342,10 @@ void semantic_memory_set_spread_params(
     const spreading_activation_params_t* params)
 {
     if (!system || !params) return;
+    /* Phase 8: Heartbeat at operation start */
+    semantic_memory_heartbeat("semantic_mem_set_spread_params", 0.0f);
+
+
     system->spread_params = *params;
 }
 
@@ -1221,6 +1361,10 @@ void semantic_memory_get_spread_params(
 {
     if (!system || !params_out) return;
     *params_out = system->spread_params;
+    /* Phase 8: Heartbeat at operation start */
+    semantic_memory_heartbeat("semantic_mem_get_spread_params", 0.0f);
+
+
 }
 
 //=============================================================================
@@ -1239,6 +1383,10 @@ void semantic_memory_get_statistics(
 {
     if (!system || !stats_out) return;
     *stats_out = system->stats;
+    /* Phase 8: Heartbeat at operation start */
+    semantic_memory_heartbeat("semantic_mem_get_statistics", 0.0f);
+
+
 }
 
 //=============================================================================
@@ -1252,6 +1400,10 @@ void semantic_memory_get_statistics(
  * HOW:  Return struct with literature-based values
  */
 spreading_activation_params_t semantic_memory_get_default_spread_params(void) {
+    /* Phase 8: Heartbeat at operation start */
+    semantic_memory_heartbeat("semantic_mem_get_default_spread_p", 0.0f);
+
+
     spreading_activation_params_t params = {
         .decay_rate = 0.8F,        // 20% decay per hop (Collins & Loftus, 1975)
         .threshold = 0.3F,         // 30% activation threshold
@@ -1274,9 +1426,19 @@ spreading_activation_params_t semantic_memory_get_default_spread_params(void) {
 int semantic_memory_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    semantic_memory_heartbeat("semantic_mem_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Semantic_Memory_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                semantic_memory_heartbeat("semantic_mem_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Semantic memory self-knowledge: %s", self->observations[i]);
         }
     }

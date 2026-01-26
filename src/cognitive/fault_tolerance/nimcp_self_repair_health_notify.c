@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_self_repair_health_notify_health_agent = NULL;
  * @brief Set health agent for self_repair_health_notify heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void self_repair_health_notify_set_health_agent(nimcp_health_agent_t* agent) {
+void self_repair_health_notify_set_health_agent(nimcp_health_agent_t* agent) {
     g_self_repair_health_notify_health_agent = agent;
 }
 
@@ -109,6 +109,12 @@ static failure_tracking_entry_t* find_failure_entry(
     uint64_t diagnostic_id
 ) {
     for (uint32_t i = 0; i < bridge->failure_tracking_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->failure_tracking_count > 256) {
+            self_repair_health_notify_heartbeat("self_repair__loop",
+                             (float)(i + 1) / (float)bridge->failure_tracking_count);
+        }
+
         if (bridge->failure_tracking[i].diagnostic_id == diagnostic_id) {
             return &bridge->failure_tracking[i];
         }
@@ -328,6 +334,10 @@ int self_repair_health_notify_default_config(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_health_notify_heartbeat("self_repair__default_config", 0.0f);
+
+
     memset(config, 0, sizeof(*config));
 
     config->notify_on_failure = true;
@@ -357,6 +367,10 @@ self_repair_health_notify_bridge_t* self_repair_health_notify_create(
 
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_health_notify_heartbeat("self_repair__create", 0.0f);
+
 
     self_repair_health_notify_bridge_t* bridge = nimcp_calloc(
         1, sizeof(self_repair_health_notify_bridge_t));
@@ -405,6 +419,10 @@ void self_repair_health_notify_destroy(
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_health_notify_heartbeat("self_repair__destroy", 0.0f);
+
+
     if (bridge->magic != SELF_REPAIR_HEALTH_NOTIFY_MAGIC) {
         return;
     }
@@ -434,6 +452,10 @@ int self_repair_health_notify_connect(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_health_notify_heartbeat("self_repair__connect", 0.0f);
+
+
     nimcp_mutex_lock(bridge->mutex);
     bridge->health_agent = health_agent;
     nimcp_mutex_unlock(bridge->mutex);
@@ -456,6 +478,10 @@ int self_repair_health_notify_set_callback(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_health_notify_heartbeat("self_repair__set_callback", 0.0f);
+
+
     nimcp_mutex_lock(bridge->mutex);
     bridge->failure_callback = callback;
     bridge->callback_user_data = user_data;
@@ -476,6 +502,10 @@ int self_repair_health_notify_result(
     if (!bridge || !result || !bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_health_notify_heartbeat("self_repair__result", 0.0f);
+
 
     (void)repair_id; /* repair_id is in result->record */
 
@@ -586,6 +616,10 @@ int self_repair_health_notify_send(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_health_notify_heartbeat("self_repair__send", 0.0f);
+
+
     nimcp_mutex_lock(bridge->mutex);
 
     /* Update statistics */
@@ -643,6 +677,10 @@ repair_intervention_t self_repair_suggest_intervention(
     }
 
     /* Success case */
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_health_notify_heartbeat("self_repair__self_repair_suggest_", 0.0f);
+
+
     if (result->success) {
         return REPAIR_INTERVENTION_NONE;
     }
@@ -700,6 +738,10 @@ int self_repair_health_notify_get_stats(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_health_notify_heartbeat("self_repair__get_stats", 0.0f);
+
+
     self_repair_health_notify_bridge_t* mutable_bridge =
         (self_repair_health_notify_bridge_t*)bridge;
 
@@ -717,6 +759,10 @@ void self_repair_health_notify_reset_stats(
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_health_notify_heartbeat("self_repair__reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     nimcp_mutex_unlock(bridge->mutex);
@@ -728,6 +774,10 @@ bool self_repair_health_notify_is_ready(
     if (!bridge) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_health_notify_heartbeat("self_repair__is_ready", 0.0f);
+
+
     return bridge->initialized && bridge->magic == SELF_REPAIR_HEALTH_NOTIFY_MAGIC;
 }
 
@@ -744,6 +794,10 @@ int self_repair_health_notify_broadcast(
     }
 
     /* Bio-async broadcast implementation will be connected in Phase 5 */
+    /* Phase 8: Heartbeat at operation start */
+    self_repair_health_notify_heartbeat("self_repair__broadcast", 0.0f);
+
+
     (void)notification;
 
     return 0;

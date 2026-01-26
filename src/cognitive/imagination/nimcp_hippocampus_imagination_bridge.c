@@ -36,7 +36,7 @@ static nimcp_health_agent_t* g_hippocampus_imagination_bridge_health_agent = NUL
  * @brief Set health agent for hippocampus_imagination_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void hippocampus_imagination_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void hippocampus_imagination_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_hippocampus_imagination_bridge_health_agent = agent;
 }
 
@@ -69,6 +69,10 @@ int hippocampus_imagination_default_config(hippocampus_imagination_config_t* con
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
+
+
     config->relevance_threshold = HIPP_IMAG_DEFAULT_RELEVANCE_THRESHOLD;
     config->max_memories_per_request = 4;
     config->pattern_completion_weight = 0.5f;
@@ -97,6 +101,10 @@ int hippocampus_imagination_validate_config(const hippocampus_imagination_config
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
+
 
     if (config->relevance_threshold < 0.0f || config->relevance_threshold > 1.0f) {
         return -1;
@@ -131,6 +139,10 @@ int hippocampus_imagination_validate_config(const hippocampus_imagination_config
 hippocampus_imagination_bridge_t* hippocampus_imagination_bridge_create(
     const hippocampus_imagination_config_t* config)
 {
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__create", 0.0f);
+
+
     hippocampus_imagination_bridge_t* bridge = nimcp_calloc(
         1, sizeof(hippocampus_imagination_bridge_t));
     if (!bridge) {
@@ -191,6 +203,10 @@ void hippocampus_imagination_bridge_destroy(hippocampus_imagination_bridge_t* br
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         hippocampus_imagination_disconnect_bio_async(bridge);
     }
@@ -228,6 +244,10 @@ int hippocampus_imagination_reset(hippocampus_imagination_bridge_t* bridge) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Clear effects */
@@ -264,6 +284,10 @@ int hippocampus_imagination_connect_hippocampus(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->hippocampus = hippocampus;
@@ -291,6 +315,10 @@ int hippocampus_imagination_connect_imagination(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->imagination = imagination;
@@ -309,12 +337,20 @@ int hippocampus_imagination_connect_imagination(
 int hippocampus_imagination_disconnect_hippocampus(
     hippocampus_imagination_bridge_t* bridge)
 {
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
+
+
     return hippocampus_imagination_connect_hippocampus(bridge, NULL);
 }
 
 int hippocampus_imagination_disconnect_imagination(
     hippocampus_imagination_bridge_t* bridge)
 {
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
+
+
     return hippocampus_imagination_connect_imagination(bridge, NULL);
 }
 
@@ -322,6 +358,10 @@ bool hippocampus_imagination_is_connected(
     const hippocampus_imagination_bridge_t* bridge)
 {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
+
+
     return bridge->base.bridge_active;
 }
 
@@ -341,6 +381,10 @@ int hippocampus_imagination_update(
 
     }
     if (!bridge->base.bridge_active) return 0;  /* Nothing to do */
+
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -377,6 +421,10 @@ int hippocampus_imagination_compute_hipp_effects(
     /* In a full implementation, this would call hippocampus adapter APIs */
 
     /* Default: low-level effects when no active imagination */
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
+
+
     bridge->hipp_to_imag.memory_relevance = 0.0f;
     bridge->hipp_to_imag.pattern_completion_strength = 0.0f;
     bridge->hipp_to_imag.spatial_context_strength = 0.0f;
@@ -403,6 +451,10 @@ int hippocampus_imagination_compute_imag_effects(
     /* In a full implementation, this would call imagination engine APIs */
 
     /* Default: no consolidation signals */
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
+
+
     bridge->imag_to_hipp.consolidation_priority = 0.0f;
     bridge->imag_to_hipp.encoding_strength = 0.0f;
     bridge->imag_to_hipp.trigger_replay = false;
@@ -424,6 +476,10 @@ int hippocampus_imagination_apply_effects(hippocampus_imagination_bridge_t* brid
     }
 
     /* Apply hippocampus effects to imagination */
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
+
+
     if (bridge->imagination && bridge->hipp_to_imag.num_retrieved_memories > 0) {
         /* Would call imagination APIs to inject memory content */
         bridge->stats.memories_retrieved += bridge->hipp_to_imag.num_retrieved_memories;
@@ -458,6 +514,10 @@ uint32_t hippocampus_imagination_request_memory_imagination(
 {
     if (!bridge || !memory_cue || !goal) return 0;
     if (!bridge->base.bridge_active) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -497,6 +557,10 @@ uint32_t hippocampus_imagination_request_spatial_imagination(
     if (!bridge->base.bridge_active) return 0;
     if (!bridge->config.enable_spatial_imagination) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Store starting position for spatial context */
@@ -533,6 +597,10 @@ int hippocampus_imagination_encode_as_memory(
     if (!bridge->hippocampus) return -1;
     if (!bridge->config.enable_pseudo_memory_encoding) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Set up encoding signal */
@@ -560,6 +628,10 @@ int hippocampus_imagination_trigger_replay(
     if (!bridge->hippocampus) return -1;
     if (!bridge->config.enable_replay_triggering) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Signal replay request */
@@ -582,6 +654,10 @@ int hippocampus_imagination_get_memory_effects(
     if (!bridge || !effects) return -1;
 
     *effects = bridge->hipp_to_imag;
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
+
+
     return 0;
 }
 
@@ -592,6 +668,10 @@ int hippocampus_imagination_get_imagination_effects(
     if (!bridge || !effects) return -1;
 
     *effects = bridge->imag_to_hipp;
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
+
+
     return 0;
 }
 
@@ -606,6 +686,10 @@ int hippocampus_imagination_get_stats(
     if (!bridge || !stats) return -1;
 
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
+
+
     return 0;
 }
 
@@ -618,6 +702,10 @@ int hippocampus_imagination_reset_stats(hippocampus_imagination_bridge_t* bridge
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -629,6 +717,10 @@ uint32_t hippocampus_imagination_get_active_scenario_count(
     const hippocampus_imagination_bridge_t* bridge)
 {
     if (!bridge) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
+
+
     return bridge->num_active_scenarios;
 }
 
@@ -649,6 +741,10 @@ int hippocampus_imagination_connect_bio_async(
     if (bridge->base.bio_async_enabled) return 0;  /* Already connected */
 
     /* Use bridge base helper if available */
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
+
+
     int result = bridge_base_connect_bio_async(&bridge->base);
     if (result == 0) {
         NIMCP_LOG_INFO("Hippocampus-imagination bridge connected to bio-async");
@@ -669,6 +765,10 @@ int hippocampus_imagination_disconnect_bio_async(
     }
     if (!bridge->base.bio_async_enabled) return 0;  /* Already disconnected */
 
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
+
+
     int result = bridge_base_disconnect_bio_async(&bridge->base);
     if (result == 0) {
         NIMCP_LOG_INFO("Hippocampus-imagination bridge disconnected from bio-async");
@@ -681,6 +781,10 @@ bool hippocampus_imagination_is_bio_async_connected(
     const hippocampus_imagination_bridge_t* bridge)
 {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -704,6 +808,10 @@ int hippocampus_imagination_process_messages(
      * - BIO_MSG_CONSOLIDATION_REQUEST
      */
 
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
+
+
     return 0;
 }
 
@@ -718,9 +826,19 @@ int hippocampus_imagination_process_messages(
  */
 int hippocampus_imagination_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    hippocampus_imagination_bridge_heartbeat("hippocampus__query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Hippocampus_Imagination_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                hippocampus_imagination_bridge_heartbeat("hippocampus__loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOG_DEBUG("Hippocampus Imagination Bridge self-knowledge: %s", self->observations[i]);
         }
     }

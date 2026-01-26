@@ -38,7 +38,7 @@ static nimcp_health_agent_t* g_ethics_snn_bridge_health_agent = NULL;
  * @brief Set health agent for ethics_snn_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void ethics_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void ethics_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_ethics_snn_bridge_health_agent = agent;
 }
 
@@ -109,12 +109,24 @@ static void softmax(float* values, uint32_t n) {
 
     float sum = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            ethics_snn_bridge_heartbeat("ethics_snn_b_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         values[i] = expf(values[i] - max_val);
         sum += values[i];
     }
 
     if (sum > 0.0f) {
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                ethics_snn_bridge_heartbeat("ethics_snn_b_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             values[i] /= sum;
         }
     }
@@ -125,6 +137,10 @@ static void softmax(float* values, uint32_t n) {
 //=============================================================================
 
 ethics_snn_config_t ethics_snn_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_config_de", 0.0f);
+
+
     ethics_snn_config_t config = {
         .num_dimensions = ETHICS_DIM_COUNT,
         .neurons_per_dim = ETHICS_SNN_NEURONS_PER_DIM,
@@ -160,6 +176,10 @@ ethics_snn_config_t ethics_snn_config_default(void) {
 }
 
 ethics_snn_bridge_t* ethics_snn_create(const ethics_snn_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_create", 0.0f);
+
+
     ethics_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(ethics_snn_bridge_t));
     if (!bridge) {
 
@@ -217,6 +237,12 @@ ethics_snn_bridge_t* ethics_snn_create(const ethics_snn_config_t* config) {
 
     /* Initialize dimension states */
     for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            ethics_snn_bridge_heartbeat("ethics_snn_b_loop",
+                             (float)(i + 1) / (float)bridge->config.num_dimensions);
+        }
+
         bridge->dim_states[i].activation = 0.0f;
         bridge->dim_states[i].accumulated_evidence = 0.0f;
         bridge->dim_states[i].spike_count = 0;
@@ -244,6 +270,10 @@ ethics_snn_bridge_t* ethics_snn_create(const ethics_snn_config_t* config) {
 void ethics_snn_destroy(ethics_snn_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_destroy", 0.0f);
+
+
     if (bridge->snn) snn_network_destroy(bridge->snn);
     if (bridge->encoding_buffer) nimcp_free(bridge->encoding_buffer);
     if (bridge->output_buffer) nimcp_free(bridge->output_buffer);
@@ -255,6 +285,10 @@ void ethics_snn_destroy(ethics_snn_bridge_t* bridge) {
 
 int ethics_snn_reset(ethics_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_reset", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -271,6 +305,12 @@ int ethics_snn_reset(ethics_snn_bridge_t* bridge) {
 
     /* Reset dimension states */
     for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            ethics_snn_bridge_heartbeat("ethics_snn_b_loop",
+                             (float)(i + 1) / (float)bridge->config.num_dimensions);
+        }
+
         bridge->dim_states[i].activation = 0.0f;
         bridge->dim_states[i].accumulated_evidence = 0.0f;
         bridge->dim_states[i].spike_count = 0;
@@ -307,6 +347,10 @@ int ethics_snn_encode_context(
 {
     if (!bridge || !dimensions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_encode_co", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ETHICS_SNN_STATE_ENCODING;
@@ -317,6 +361,12 @@ int ethics_snn_encode_context(
     /* Encode each dimension as population activity */
     int total_spikes = 0;
     for (uint32_t d = 0; d < n; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && n > 256) {
+            ethics_snn_bridge_heartbeat("ethics_snn_b_loop",
+                             (float)(d + 1) / (float)n);
+        }
+
         float value = clamp_f(dimensions[d], 0.0f, 1.0f);
         bridge->dim_states[d].activation = value;
 
@@ -336,6 +386,12 @@ int ethics_snn_encode_context(
         /* Encode into buffer */
         uint32_t base_idx = d * bridge->config.neurons_per_dim;
         for (uint32_t n_idx = 0; n_idx < bridge->config.neurons_per_dim; n_idx++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n_idx & 0xFF) == 0 && bridge->config.neurons_per_dim > 256) {
+                ethics_snn_bridge_heartbeat("ethics_snn_b_loop",
+                                 (float)(n_idx + 1) / (float)bridge->config.neurons_per_dim);
+            }
+
             float neuron_rate = rate * bridge->config.encoding_gain;
             bridge->encoding_buffer[base_idx + n_idx] = neuron_rate;
 
@@ -366,6 +422,10 @@ int ethics_snn_encode_harm(
     float urgency)
 {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_encode_ha", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -403,6 +463,12 @@ int ethics_snn_encode_harm(
     int spike_count = 0;
 
     for (uint32_t n = 0; n < bridge->config.neurons_per_dim; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && bridge->config.neurons_per_dim > 256) {
+            ethics_snn_bridge_heartbeat("ethics_snn_b_loop",
+                             (float)(n + 1) / (float)bridge->config.neurons_per_dim);
+        }
+
         bridge->encoding_buffer[base_idx + n] = rate;
         if (rate > bridge->config.baseline_rate_hz) spike_count++;
     }
@@ -421,6 +487,10 @@ int ethics_snn_encode_golden_rule(
     float empathy_level)
 {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_encode_go", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -445,6 +515,12 @@ int ethics_snn_encode_golden_rule(
     int spike_count = 0;
 
     for (uint32_t n = 0; n < bridge->config.neurons_per_dim; n++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((n & 0xFF) == 0 && bridge->config.neurons_per_dim > 256) {
+            ethics_snn_bridge_heartbeat("ethics_snn_b_loop",
+                             (float)(n + 1) / (float)bridge->config.neurons_per_dim);
+        }
+
         float gr_rate = bridge->config.baseline_rate_hz +
                        golden_rule_score * (bridge->config.max_rate_hz -
                                            bridge->config.baseline_rate_hz);
@@ -473,6 +549,10 @@ int ethics_snn_encode_golden_rule(
 int ethics_snn_simulate(ethics_snn_bridge_t* bridge, float duration_ms) {
     if (!bridge || duration_ms <= 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_simulate", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ETHICS_SNN_STATE_SIMULATING;
@@ -493,6 +573,10 @@ int ethics_snn_simulate(ethics_snn_bridge_t* bridge, float duration_ms) {
 
 int ethics_snn_step(ethics_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_step", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -518,6 +602,10 @@ int ethics_snn_forward(
     uint32_t input_count)
 {
     if (!bridge || !inputs) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_forward", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -548,6 +636,10 @@ int ethics_snn_get_judgment(
 {
     if (!bridge || !judgment) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_get_judgm", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ETHICS_SNN_STATE_DECODING;
@@ -563,6 +655,12 @@ int ethics_snn_get_judgment(
     float max_out = bridge->config.max_rate_hz;
     float min_out = bridge->config.baseline_rate_hz;
     for (int i = 0; i < 4; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 4 > 256) {
+            ethics_snn_bridge_heartbeat("ethics_snn_b_loop",
+                             (float)(i + 1) / (float)4);
+        }
+
         outputs[i] = (outputs[i] - min_out) / (max_out - min_out);
         outputs[i] = clamp_f(outputs[i], 0.0f, 1.0f);
     }
@@ -581,6 +679,12 @@ int ethics_snn_get_judgment(
                     if (outputs[i] > outputs[max_idx]) max_idx = i;
                 }
                 for (int i = 0; i < 3; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && 3 > 256) {
+                        ethics_snn_bridge_heartbeat("ethics_snn_b_loop",
+                                         (float)(i + 1) / (float)3);
+                    }
+
                     outputs[i] = (i == max_idx) ? 1.0f : 0.0f;
                 }
             }
@@ -654,12 +758,22 @@ int ethics_snn_get_activations(
 {
     if (!bridge || !activations) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_get_activ", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t n = (num_dims < bridge->config.num_dimensions) ?
                   num_dims : bridge->config.num_dimensions;
 
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            ethics_snn_bridge_heartbeat("ethics_snn_b_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         activations[i] = bridge->dim_states[i].activation;
     }
 
@@ -673,6 +787,10 @@ bool ethics_snn_check_harm(
     float* harm_level)
 {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_check_har", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -691,6 +809,10 @@ bool ethics_snn_check_conflict(
     float* conflict_level)
 {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_check_con", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -715,6 +837,10 @@ int ethics_snn_get_dim_state(
 {
     if (!bridge || !state || dim >= bridge->config.num_dimensions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_get_dim_s", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->dim_states[dim];
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -728,6 +854,10 @@ int ethics_snn_get_state(
 {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_get_state", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
@@ -739,6 +869,12 @@ int ethics_snn_get_state(
     state->active_dimensions = 0;
     state->total_activity = 0.0f;
     for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            ethics_snn_bridge_heartbeat("ethics_snn_b_loop",
+                             (float)(i + 1) / (float)bridge->config.num_dimensions);
+        }
+
         if (bridge->dim_states[i].activation > 0.1f) {
             state->active_dimensions++;
         }
@@ -753,6 +889,10 @@ int ethics_snn_get_state(
 int ethics_snn_get_stats(ethics_snn_bridge_t* bridge, ethics_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -762,6 +902,10 @@ int ethics_snn_get_stats(ethics_snn_bridge_t* bridge, ethics_snn_stats_t* stats)
 
 int ethics_snn_reset_stats(ethics_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_reset_sta", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(ethics_snn_stats_t));
@@ -773,6 +917,10 @@ int ethics_snn_reset_stats(ethics_snn_bridge_t* bridge) {
 float ethics_snn_get_confidence(ethics_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_get_confi", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float conf = bridge->last_judgment.confidence;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -783,10 +931,20 @@ float ethics_snn_get_confidence(ethics_snn_bridge_t* bridge) {
 float ethics_snn_get_total_activity(ethics_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_get_total", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float total = 0.0f;
     for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            ethics_snn_bridge_heartbeat("ethics_snn_b_loop",
+                             (float)(i + 1) / (float)bridge->config.num_dimensions);
+        }
+
         total += bridge->dim_states[i].activation;
     }
 
@@ -806,6 +964,10 @@ int ethics_snn_register_harm_callback(
 {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_register_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->harm_callback = callback;
     bridge->harm_callback_data = user_data;
@@ -821,6 +983,10 @@ int ethics_snn_register_judgment_callback(
 {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_register_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->judgment_callback = callback;
     bridge->judgment_callback_data = user_data;
@@ -835,6 +1001,10 @@ int ethics_snn_register_conflict_callback(
     void* user_data)
 {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_register_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->conflict_callback = callback;
@@ -852,6 +1022,10 @@ int ethics_snn_bio_async_connect(ethics_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_bio_async", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
@@ -863,6 +1037,10 @@ int ethics_snn_bio_async_connect(ethics_snn_bridge_t* bridge) {
 int ethics_snn_bio_async_disconnect(ethics_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_bio_async", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -872,6 +1050,10 @@ int ethics_snn_bio_async_disconnect(ethics_snn_bridge_t* bridge) {
 
 bool ethics_snn_is_bio_async_connected(ethics_snn_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_is_bio_as", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;

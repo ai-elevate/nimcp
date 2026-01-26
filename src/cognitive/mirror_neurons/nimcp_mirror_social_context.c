@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_mirror_social_context_health_agent = NULL;
  * @brief Set health agent for mirror_social_context heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_social_context_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_social_context_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_social_context_health_agent = agent;
 }
 
@@ -115,6 +115,12 @@ static int32_t find_agent_slot(const struct social_context_system* sys,
     /* Start at hash position, linear probe on collision */
     uint32_t start = hash_agent_id(agent_id);
     for (uint32_t i = 0; i < NIMCP_SOCIAL_MAX_AGENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && NIMCP_SOCIAL_MAX_AGENTS > 256) {
+            mirror_social_context_heartbeat("mirror_socia_loop",
+                             (float)(i + 1) / (float)NIMCP_SOCIAL_MAX_AGENTS);
+        }
+
         uint32_t idx = (start + i) % NIMCP_SOCIAL_MAX_AGENTS;
         if (sys->agent_slots_used[idx] && sys->agents[idx].agent_id == agent_id) {
             return (int32_t)idx;
@@ -150,6 +156,12 @@ static int32_t find_or_create_agent_slot(struct social_context_system* sys,
     /* Find empty slot starting at hash position */
     uint32_t start = hash_agent_id(agent_id);
     for (uint32_t i = 0; i < NIMCP_SOCIAL_MAX_AGENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && NIMCP_SOCIAL_MAX_AGENTS > 256) {
+            mirror_social_context_heartbeat("mirror_socia_loop",
+                             (float)(i + 1) / (float)NIMCP_SOCIAL_MAX_AGENTS);
+        }
+
         uint32_t idx = (start + i) % NIMCP_SOCIAL_MAX_AGENTS;
         if (!sys->agent_slots_used[idx]) {
             /* Initialize new agent */
@@ -254,6 +266,10 @@ static emotional_context_t emotional_to_context(float valence) {
  * ============================================================================ */
 
 social_context_t social_context_create(const social_context_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_social_context_heartbeat("mirror_socia_social_context_creat", 0.0f);
+
+
     struct social_context_system* sys = nimcp_malloc(sizeof(struct social_context_system));
     if (!sys) {
         nimcp_log(LOG_LEVEL_ERROR, "Social context: failed to allocate system");
@@ -283,12 +299,20 @@ social_context_t social_context_create(const social_context_config_t* config) {
 void social_context_destroy(social_context_t ctx) {
     if (!ctx) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_social_context_heartbeat("mirror_socia_social_context_destr", 0.0f);
+
+
     nimcp_log(LOG_LEVEL_INFO, "Social context system destroyed (tracked %u agents)",
               ctx->agent_count);
     nimcp_free(ctx);
 }
 
 social_context_config_t social_context_get_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_social_context_heartbeat("mirror_socia_social_context_get_d", 0.0f);
+
+
     social_context_config_t cfg;
 
     cfg.ingroup_weight = NIMCP_SOCIAL_INGROUP_WEIGHT;
@@ -324,6 +348,10 @@ bool social_context_set_affinity(social_context_t ctx,
                                   float confidence) {
     if (!ctx) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_social_context_heartbeat("mirror_socia_social_context_set_a", 0.0f);
+
+
     int32_t slot = find_or_create_agent_slot(ctx, agent_id);
     if (slot < 0) return false;
 
@@ -340,6 +368,10 @@ bool social_context_set_hierarchy(social_context_t ctx,
                                    float hierarchy,
                                    float confidence) {
     if (!ctx) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_social_context_heartbeat("mirror_socia_social_context_set_h", 0.0f);
+
 
     int32_t slot = find_or_create_agent_slot(ctx, agent_id);
     if (slot < 0) return false;
@@ -358,6 +390,10 @@ bool social_context_set_cultural(social_context_t ctx,
                                   float confidence) {
     if (!ctx) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_social_context_heartbeat("mirror_socia_social_context_set_c", 0.0f);
+
+
     int32_t slot = find_or_create_agent_slot(ctx, agent_id);
     if (slot < 0) return false;
 
@@ -375,6 +411,10 @@ bool social_context_set_emotional(social_context_t ctx,
                                    float confidence) {
     if (!ctx) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_social_context_heartbeat("mirror_socia_social_context_set_e", 0.0f);
+
+
     int32_t slot = find_or_create_agent_slot(ctx, agent_id);
     if (slot < 0) return false;
 
@@ -390,6 +430,10 @@ bool social_context_set_modulation(social_context_t ctx,
                                     uint32_t agent_id,
                                     const social_modulation_t* modulation) {
     if (!ctx || !modulation) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_social_context_heartbeat("mirror_socia_social_context_set_m", 0.0f);
+
 
     int32_t slot = find_or_create_agent_slot(ctx, agent_id);
     if (slot < 0) return false;
@@ -409,6 +453,10 @@ bool social_context_get_modulation(social_context_t ctx,
                                     social_modulation_t* out_modulation) {
     if (!ctx || !out_modulation) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_social_context_heartbeat("mirror_socia_social_context_get_m", 0.0f);
+
+
     ctx->stats.total_lookups++;
 
     int32_t slot = find_agent_slot(ctx, agent_id);
@@ -425,6 +473,10 @@ bool social_context_get_modulation(social_context_t ctx,
 
 float social_context_compute_gain(social_context_t ctx, uint32_t agent_id) {
     if (!ctx) return 1.0f;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_social_context_heartbeat("mirror_socia_social_context_compu", 0.0f);
+
 
     int32_t slot = find_agent_slot(ctx, agent_id);
     if (slot < 0) {
@@ -449,6 +501,10 @@ float social_context_compute_gain(social_context_t ctx, uint32_t agent_id) {
 float social_context_apply_modulation(social_context_t ctx,
                                        uint32_t agent_id,
                                        float activation) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_social_context_heartbeat("mirror_socia_social_context_apply", 0.0f);
+
+
     float gain = social_context_compute_gain(ctx, agent_id);
     return clamp_f(activation * gain, 0.0f, 1.0f);
 }
@@ -462,6 +518,10 @@ bool social_context_learn_interaction(social_context_t ctx,
                                        float outcome,
                                        uint32_t interaction_type) {
     if (!ctx) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_social_context_heartbeat("mirror_socia_social_context_learn", 0.0f);
+
 
     int32_t slot = find_or_create_agent_slot(ctx, agent_id);
     if (slot < 0) return false;
@@ -497,6 +557,10 @@ bool social_context_update_competence(social_context_t ctx,
                                        float demonstrated_skill) {
     if (!ctx) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_social_context_heartbeat("mirror_socia_social_context_updat", 0.0f);
+
+
     int32_t slot = find_or_create_agent_slot(ctx, agent_id);
     if (slot < 0) return false;
 
@@ -523,10 +587,20 @@ bool social_context_update_competence(social_context_t ctx,
 bool social_context_decay(social_context_t ctx, uint32_t delta_time_ms) {
     if (!ctx) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_social_context_heartbeat("mirror_socia_social_context_decay", 0.0f);
+
+
     float decay_factor = expf(-(float)delta_time_ms / (float)DECAY_TIME_CONSTANT_MS *
                                ctx->config.decay_rate);
 
     for (uint32_t i = 0; i < NIMCP_SOCIAL_MAX_AGENTS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && NIMCP_SOCIAL_MAX_AGENTS > 256) {
+            mirror_social_context_heartbeat("mirror_socia_loop",
+                             (float)(i + 1) / (float)NIMCP_SOCIAL_MAX_AGENTS);
+        }
+
         if (!ctx->agent_slots_used[i]) continue;
 
         agent_social_context_t* agent = &ctx->agents[i];
@@ -567,6 +641,10 @@ bool social_context_get_agent(social_context_t ctx,
                                agent_social_context_t* out_context) {
     if (!ctx || !out_context) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_social_context_heartbeat("mirror_socia_social_context_get_a", 0.0f);
+
+
     int32_t slot = find_agent_slot(ctx, agent_id);
     if (slot < 0) return false;
 
@@ -579,6 +657,10 @@ bool social_context_get_stats(social_context_t ctx,
     if (!ctx || !out_stats) return false;
 
     /* Update computed stats */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_social_context_heartbeat("mirror_socia_social_context_get_s", 0.0f);
+
+
     if (ctx->agent_count > 0) {
         float sum_gain = 0.0f;
         float sum_affinity = 0.0f;
@@ -586,6 +668,12 @@ bool social_context_get_stats(social_context_t ctx,
         uint32_t count = 0;
 
         for (uint32_t i = 0; i < NIMCP_SOCIAL_MAX_AGENTS; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && NIMCP_SOCIAL_MAX_AGENTS > 256) {
+                mirror_social_context_heartbeat("mirror_socia_loop",
+                                 (float)(i + 1) / (float)NIMCP_SOCIAL_MAX_AGENTS);
+            }
+
             if (!ctx->agent_slots_used[i]) continue;
 
             sum_gain += social_context_compute_gain(ctx, ctx->agents[i].agent_id);
@@ -607,6 +695,10 @@ bool social_context_get_stats(social_context_t ctx,
 
 bool social_context_has_agent(social_context_t ctx, uint32_t agent_id) {
     if (!ctx) return false;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_social_context_heartbeat("mirror_socia_social_context_has_a", 0.0f);
+
+
     return find_agent_slot(ctx, agent_id) >= 0;
 }
 
@@ -618,6 +710,10 @@ bool social_context_connect_mirror(social_context_t ctx,
                                     mirror_neurons_t mirror) {
     if (!ctx) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_social_context_heartbeat("mirror_socia_social_context_conne", 0.0f);
+
+
     ctx->connected_mirror = mirror;
     nimcp_log(LOG_LEVEL_INFO, "Social context connected to mirror neuron system");
     return true;
@@ -627,6 +723,10 @@ bool social_context_observe_agent(social_context_t ctx,
                                    uint32_t agent_id,
                                    uint64_t timestamp) {
     if (!ctx) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_social_context_heartbeat("mirror_socia_social_context_obser", 0.0f);
+
 
     int32_t slot = find_or_create_agent_slot(ctx, agent_id);
     if (slot < 0) return false;
@@ -693,6 +793,10 @@ const char* emotional_context_name(emotional_context_t type) {
 }
 
 social_modulation_t social_modulation_init(void) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_social_context_heartbeat("mirror_socia_social_modulation_in", 0.0f);
+
+
     social_modulation_t mod;
     memset(&mod, 0, sizeof(mod));
 
@@ -720,6 +824,10 @@ social_modulation_t social_modulation_init(void) {
 void social_modulation_print(const social_modulation_t* modulation,
                              const char* prefix) {
     if (!modulation) return;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_social_context_heartbeat("mirror_socia_social_modulation_pr", 0.0f);
+
+
     const char* pfx = prefix ? prefix : "";
 
     nimcp_log(LOG_LEVEL_DEBUG, "%sSocial Modulation:", pfx);

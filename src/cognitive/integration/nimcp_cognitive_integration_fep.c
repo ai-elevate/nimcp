@@ -52,7 +52,7 @@ static nimcp_health_agent_t* g_cognitive_integration_fep_health_agent = NULL;
  * @brief Set health agent for cognitive_integration_fep heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void cognitive_integration_fep_set_health_agent(nimcp_health_agent_t* agent) {
+void cognitive_integration_fep_set_health_agent(nimcp_health_agent_t* agent) {
     g_cognitive_integration_fep_health_agent = agent;
 }
 
@@ -146,6 +146,10 @@ static void update_metrics(
  * ============================================================================ */
 
 int cognitive_hub_fep_update(void* handle) {
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_fep_heartbeat("cognitive_in_cognitive_hub_fep_up", 0.0f);
+
+
     cognitive_integration_hub_t hub = (cognitive_integration_hub_t)handle;
     if (!hub) {
 
@@ -177,6 +181,10 @@ int cognitive_hub_fep_update(void* handle) {
 }
 
 int emotion_memory_bridge_fep_update(void* handle) {
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_fep_heartbeat("cognitive_in_emotion_memory_bridg", 0.0f);
+
+
     emotion_memory_bridge_t* bridge = (emotion_memory_bridge_t*)handle;
     if (!bridge) {
 
@@ -207,6 +215,10 @@ int emotion_memory_bridge_fep_update(void* handle) {
 }
 
 int attention_wm_bridge_fep_update(void* handle) {
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_fep_heartbeat("cognitive_in_attention_wm_bridge_", 0.0f);
+
+
     attention_wm_bridge_t* bridge = (attention_wm_bridge_t*)handle;
     if (!bridge) {
 
@@ -238,6 +250,10 @@ int attention_wm_bridge_fep_update(void* handle) {
 }
 
 int curiosity_reasoning_bridge_fep_update(void* handle) {
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_fep_heartbeat("cognitive_in_curiosity_reasoning_", 0.0f);
+
+
     curiosity_reasoning_bridge_t* bridge = (curiosity_reasoning_bridge_t*)handle;
     if (!bridge) {
 
@@ -269,6 +285,10 @@ int curiosity_reasoning_bridge_fep_update(void* handle) {
 }
 
 int ethics_executive_bridge_fep_update(void* handle) {
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_fep_heartbeat("cognitive_in_ethics_executive_bri", 0.0f);
+
+
     ethics_executive_bridge_t* bridge = (ethics_executive_bridge_t*)handle;
     if (!bridge) {
 
@@ -299,6 +319,10 @@ int ethics_executive_bridge_fep_update(void* handle) {
 }
 
 int tom_social_bridge_fep_update(void* handle) {
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_fep_heartbeat("cognitive_in_tom_social_bridge_fe", 0.0f);
+
+
     tom_social_bridge_t* bridge = (tom_social_bridge_t*)handle;
     if (!bridge) {
 
@@ -328,6 +352,10 @@ int tom_social_bridge_fep_update(void* handle) {
 }
 
 int self_introspection_bridge_fep_update(void* handle) {
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_fep_heartbeat("cognitive_in_self_introspection_b", 0.0f);
+
+
     self_introspection_bridge_t* bridge = (self_introspection_bridge_t*)handle;
     if (!bridge) {
 
@@ -356,6 +384,10 @@ int self_introspection_bridge_fep_update(void* handle) {
 }
 
 int emotion_executive_bridge_fep_update(void* handle) {
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_fep_heartbeat("cognitive_in_emotion_executive_br", 0.0f);
+
+
     emotion_executive_bridge_t* bridge = (emotion_executive_bridge_t*)handle;
     if (!bridge) {
 
@@ -386,6 +418,10 @@ int emotion_executive_bridge_fep_update(void* handle) {
 }
 
 int gw_cognitive_bridge_fep_update(void* handle) {
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_fep_heartbeat("cognitive_in_gw_cognitive_bridge_", 0.0f);
+
+
     gw_cognitive_bridge_t* bridge = (gw_cognitive_bridge_t*)handle;
     if (!bridge) {
 
@@ -428,6 +464,10 @@ int cognitive_hub_fep_register(
     if (!orchestrator || !hub) return -1;
 
     if (ensure_initialized() != 0) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_fep_heartbeat("cognitive_in_cognitive_hub_fep_re", 0.0f);
+
 
     nimcp_mutex_lock(g_cog_integ_fep_state.mutex);
 
@@ -472,6 +512,10 @@ int emotion_memory_bridge_fep_register(
 
     if (ensure_initialized() != 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_fep_heartbeat("cognitive_in_emotion_memory_bridg", 0.0f);
+
+
     nimcp_mutex_lock(g_cog_integ_fep_state.mutex);
 
     if (g_cog_integ_fep_state.registered[COG_INTEG_FEP_EMOTION_MEMORY]) {
@@ -511,6 +555,10 @@ int attention_wm_bridge_fep_register(
     if (!orchestrator || !bridge) return -1;
 
     if (ensure_initialized() != 0) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_fep_heartbeat("cognitive_in_attention_wm_bridge_", 0.0f);
+
 
     nimcp_mutex_lock(g_cog_integ_fep_state.mutex);
 
@@ -552,6 +600,10 @@ int curiosity_reasoning_bridge_fep_register(
 
     if (ensure_initialized() != 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_fep_heartbeat("cognitive_in_curiosity_reasoning_", 0.0f);
+
+
     nimcp_mutex_lock(g_cog_integ_fep_state.mutex);
 
     if (g_cog_integ_fep_state.registered[COG_INTEG_FEP_CURIOSITY_REASONING]) {
@@ -591,6 +643,10 @@ int ethics_executive_bridge_fep_register(
     if (!orchestrator || !bridge) return -1;
 
     if (ensure_initialized() != 0) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_fep_heartbeat("cognitive_in_ethics_executive_bri", 0.0f);
+
 
     nimcp_mutex_lock(g_cog_integ_fep_state.mutex);
 
@@ -632,6 +688,10 @@ int tom_social_bridge_fep_register(
 
     if (ensure_initialized() != 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_fep_heartbeat("cognitive_in_tom_social_bridge_fe", 0.0f);
+
+
     nimcp_mutex_lock(g_cog_integ_fep_state.mutex);
 
     if (g_cog_integ_fep_state.registered[COG_INTEG_FEP_TOM_SOCIAL]) {
@@ -671,6 +731,10 @@ int self_introspection_bridge_fep_register(
     if (!orchestrator || !bridge) return -1;
 
     if (ensure_initialized() != 0) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_fep_heartbeat("cognitive_in_self_introspection_b", 0.0f);
+
 
     nimcp_mutex_lock(g_cog_integ_fep_state.mutex);
 
@@ -712,6 +776,10 @@ int emotion_executive_bridge_fep_register(
 
     if (ensure_initialized() != 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_fep_heartbeat("cognitive_in_emotion_executive_br", 0.0f);
+
+
     nimcp_mutex_lock(g_cog_integ_fep_state.mutex);
 
     if (g_cog_integ_fep_state.registered[COG_INTEG_FEP_EMOTION_EXECUTIVE]) {
@@ -751,6 +819,10 @@ int gw_cognitive_bridge_fep_register(
     if (!orchestrator || !bridge) return -1;
 
     if (ensure_initialized() != 0) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_fep_heartbeat("cognitive_in_gw_cognitive_bridge_", 0.0f);
+
 
     nimcp_mutex_lock(g_cog_integ_fep_state.mutex);
 
@@ -800,6 +872,10 @@ int cognitive_integration_fep_register_all(
     gw_cognitive_bridge_t* gw_cognitive
 ) {
     if (!orchestrator || !hub) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_fep_heartbeat("cognitive_in_register_all", 0.0f);
+
 
     int registered_count = 0;
 
@@ -857,11 +933,21 @@ int cognitive_integration_fep_unregister_all(fep_orchestrator_t* orchestrator) {
 
     if (!g_cog_integ_fep_state.initialized) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_fep_heartbeat("cognitive_in_unregister_all", 0.0f);
+
+
     nimcp_mutex_lock(g_cog_integ_fep_state.mutex);
 
     int unregistered_count = 0;
 
     for (int i = 0; i < COG_INTEG_FEP_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COG_INTEG_FEP_COUNT > 256) {
+            cognitive_integration_fep_heartbeat("cognitive_in_loop",
+                             (float)(i + 1) / (float)COG_INTEG_FEP_COUNT);
+        }
+
         if (g_cog_integ_fep_state.registered[i]) {
             int ret = fep_orchestrator_unregister_bridge(
                 orchestrator,
@@ -894,6 +980,10 @@ int cognitive_integration_fep_get_metrics(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_fep_heartbeat("cognitive_in_get_metrics", 0.0f);
+
+
     nimcp_mutex_lock(g_cog_integ_fep_state.mutex);
     *metrics_out = g_cog_integ_fep_state.metrics[bridge_type];
     nimcp_mutex_unlock(g_cog_integ_fep_state.mutex);
@@ -912,6 +1002,10 @@ int cognitive_integration_fep_get_stats(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_fep_heartbeat("cognitive_in_get_stats", 0.0f);
+
+
     memset(stats_out, 0, sizeof(cognitive_integration_fep_stats_t));
 
     if (!g_cog_integ_fep_state.initialized) {
@@ -927,6 +1021,12 @@ int cognitive_integration_fep_get_stats(
     uint64_t total_updates = 0;
 
     for (int i = 0; i < COG_INTEG_FEP_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COG_INTEG_FEP_COUNT > 256) {
+            cognitive_integration_fep_heartbeat("cognitive_in_loop",
+                             (float)(i + 1) / (float)COG_INTEG_FEP_COUNT);
+        }
+
         stats_out->bridges[i] = g_cog_integ_fep_state.metrics[i];
 
         if (g_cog_integ_fep_state.registered[i]) {
@@ -962,6 +1062,10 @@ uint32_t cognitive_integration_fep_get_bridge_id(
     if (bridge_type >= COG_INTEG_FEP_COUNT) return (uint32_t)-1;
 
     if (!g_cog_integ_fep_state.initialized) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    cognitive_integration_fep_heartbeat("cognitive_in_get_bridge_id", 0.0f);
+
 
     nimcp_mutex_lock(g_cog_integ_fep_state.mutex);
 

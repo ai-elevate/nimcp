@@ -163,3 +163,7 @@ set_tests_properties(e2e_fault_tolerance_test_fault_tolerance_exception_e2e PROP
 # Health Workflow E2E Tests (Phase 8: Complete Training Workflow with Health Monitoring)
 add_e2e_fault_tolerance_test(test_health_workflow_e2e)
 set_tests_properties(e2e_fault_tolerance_test_health_workflow_e2e PROPERTIES TIMEOUT 600)
+
+# Heartbeat B01 Memory Core E2E Tests (Phase 8: Per-Batch Heartbeat Testing)
+add_e2e_fault_tolerance_test(test_heartbeat_B01_memory_core_e2e)
+set_tests_properties(e2e_fault_tolerance_test_heartbeat_B01_memory_core_e2e PROPERTIES TIMEOUT 300)

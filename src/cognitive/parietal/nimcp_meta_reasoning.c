@@ -29,7 +29,7 @@ static nimcp_health_agent_t* g_meta_reasoning_health_agent = NULL;
  * @brief Set health agent for meta_reasoning heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void meta_reasoning_set_health_agent(nimcp_health_agent_t* agent) {
+void meta_reasoning_set_health_agent(nimcp_health_agent_t* agent) {
     g_meta_reasoning_health_agent = agent;
 }
 
@@ -65,6 +65,10 @@ static float apply_mod(const meta_engine_t* e, float v) {
 }
 
 meta_config_t meta_engine_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    meta_reasoning_heartbeat("meta_reasoni_meta_engine_default_", 0.0f);
+
+
     return (meta_config_t){
         .confidence_calibration_strength = 0.5f,
         .strategy_adaptation_rate = 0.1f,
@@ -77,12 +81,20 @@ meta_config_t meta_engine_default_config(void) {
 }
 
 meta_engine_t* meta_engine_create(void) {
+    /* Phase 8: Heartbeat at operation start */
+    meta_reasoning_heartbeat("meta_reasoni_meta_engine_create", 0.0f);
+
+
     meta_config_t c = meta_engine_default_config();
     return meta_engine_create_custom(&c);
 }
 
 meta_engine_t* meta_engine_create_custom(const meta_config_t* config) {
     if (!config) { set_error("NULL config"); return NULL; }
+    /* Phase 8: Heartbeat at operation start */
+    meta_reasoning_heartbeat("meta_reasoni_meta_engine_create_c", 0.0f);
+
+
     meta_engine_t* e = nimcp_calloc(1, sizeof(meta_engine_t));
     if (!e) {
 
@@ -96,6 +108,12 @@ meta_engine_t* meta_engine_create_custom(const meta_config_t* config) {
 
     /* Initialize strategy success rates */
     for (int i = 0; i < 8; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 8 > 256) {
+            meta_reasoning_heartbeat("meta_reasoni_loop",
+                             (float)(i + 1) / (float)8);
+        }
+
         e->strategy_success[i] = 0.5f;
         e->strategy_uses[i] = 0;
     }
@@ -104,11 +122,19 @@ meta_engine_t* meta_engine_create_custom(const meta_config_t* config) {
 }
 
 void meta_engine_destroy(meta_engine_t* engine) {
+    /* Phase 8: Heartbeat at operation start */
+    meta_reasoning_heartbeat("meta_reasoni_meta_engine_destroy", 0.0f);
+
+
     if (engine) nimcp_free(engine);
 }
 
 meta_strategy_t* meta_select_strategy(meta_engine_t* engine, const meta_problem_t* problem) {
     if (!engine || !problem) return NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    meta_reasoning_heartbeat("meta_reasoni_meta_select_strategy", 0.0f);
+
 
     meta_strategy_t* s = nimcp_calloc(1, sizeof(meta_strategy_t));
     if (!s) {
@@ -126,6 +152,12 @@ meta_strategy_t* meta_select_strategy(meta_engine_t* engine, const meta_problem_
     meta_strategy_type_t best_type = META_STRATEGY_ANALYTICAL;
 
     for (int i = 0; i < 8; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 8 > 256) {
+            meta_reasoning_heartbeat("meta_reasoni_loop",
+                             (float)(i + 1) / (float)8);
+        }
+
         float score = engine->strategy_success[i];
 
         /* Adjust based on problem difficulty */
@@ -162,6 +194,10 @@ int meta_evaluate_strategies(meta_engine_t* engine, const meta_problem_t* proble
     if (!engine || !problem || !strategies || !num_found) return -1;
 
     *num_found = 0;
+    /* Phase 8: Heartbeat at operation start */
+    meta_reasoning_heartbeat("meta_reasoni_meta_evaluate_strate", 0.0f);
+
+
     for (int i = 0; i < 8 && *num_found < max_strategies; i++) {
         strategies[*num_found].id = *num_found + 1;
         strategies[*num_found].type = (meta_strategy_type_t)i;
@@ -183,6 +219,10 @@ int meta_switch_strategy(meta_engine_t* engine, meta_reasoning_chain_t* chain,
     if (!engine->config.enable_strategy_switching) return -1;
 
     /* Update current step with new strategy */
+    /* Phase 8: Heartbeat at operation start */
+    meta_reasoning_heartbeat("meta_reasoni_meta_switch_strategy", 0.0f);
+
+
     if (chain->num_steps > 0) {
         chain->steps[chain->num_steps - 1].strategy_used = new_strategy->type;
     }
@@ -193,6 +233,10 @@ int meta_switch_strategy(meta_engine_t* engine, meta_reasoning_chain_t* chain,
 
 float meta_calibrate_confidence(meta_engine_t* engine, const meta_reasoning_chain_t* chain) {
     if (!engine || !chain) return 0.5f;
+
+    /* Phase 8: Heartbeat at operation start */
+    meta_reasoning_heartbeat("meta_reasoni_meta_calibrate_confi", 0.0f);
+
 
     float calibrated = chain->overall_confidence;
 
@@ -207,12 +251,20 @@ float meta_estimate_accuracy(meta_engine_t* engine, float stated_confidence) {
     if (!engine) return stated_confidence;
 
     /* Adjust for known calibration bias */
+    /* Phase 8: Heartbeat at operation start */
+    meta_reasoning_heartbeat("meta_reasoni_meta_estimate_accura", 0.0f);
+
+
     float adjusted = stated_confidence - engine->calibration_bias;
     return apply_mod(engine, fmaxf(0.0f, fminf(1.0f, adjusted)));
 }
 
 int meta_update_calibration(meta_engine_t* engine, float prediction, float actual) {
     if (!engine) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    meta_reasoning_heartbeat("meta_reasoni_meta_update_calibrat", 0.0f);
+
 
     float error = prediction - actual;
     engine->calibration_bias += engine->config.strategy_adaptation_rate * error;
@@ -232,6 +284,10 @@ int meta_monitor_reasoning(meta_engine_t* engine, const meta_reasoning_chain_t* 
     *num_found = 0;
 
     /* Check for confidence drops */
+    /* Phase 8: Heartbeat at operation start */
+    meta_reasoning_heartbeat("meta_reasoni_meta_monitor_reasoni", 0.0f);
+
+
     for (uint32_t i = 1; i < chain->num_steps && *num_found < max_anomalies; i++) {
         float drop = chain->steps[i-1].confidence - chain->steps[i].confidence;
         if (drop > 0.3f) {
@@ -267,6 +323,10 @@ int meta_get_state(meta_engine_t* engine, const meta_reasoning_chain_t* chain,
     meta_state_t* state) {
     if (!engine || !chain || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    meta_reasoning_heartbeat("meta_reasoni_meta_get_state", 0.0f);
+
+
     memset(state, 0, sizeof(meta_state_t));
     state->confidence = meta_calibrate_confidence(engine, chain);
     state->progress = (chain->num_steps > 0) ?
@@ -277,12 +337,20 @@ int meta_get_state(meta_engine_t* engine, const meta_reasoning_chain_t* chain,
 
 float meta_estimate_progress(meta_engine_t* engine, const meta_reasoning_chain_t* chain) {
     if (!engine || !chain || chain->num_steps == 0) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    meta_reasoning_heartbeat("meta_reasoni_meta_estimate_progre", 0.0f);
+
+
     return apply_mod(engine, chain->steps[chain->num_steps - 1].progress);
 }
 
 int meta_learn_from_outcome(meta_engine_t* engine, const meta_problem_t* problem,
     const meta_strategy_t* strategy, bool success, float performance) {
     if (!engine || !problem || !strategy) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    meta_reasoning_heartbeat("meta_reasoni_meta_learn_from_outc", 0.0f);
+
 
     int type = (int)strategy->type;
     if (type < 0 || type >= 8) return -1;
@@ -308,29 +376,49 @@ int meta_learn_from_chain(meta_engine_t* engine, const meta_reasoning_chain_t* c
     if (!engine || !chain) return -1;
 
     /* Update calibration based on overall outcome */
+    /* Phase 8: Heartbeat at operation start */
+    meta_reasoning_heartbeat("meta_reasoni_meta_learn_from_chai", 0.0f);
+
+
     meta_update_calibration(engine, chain->overall_confidence, success ? 1.0f : 0.0f);
 
     return 0;
 }
 
 void meta_free_strategy(meta_strategy_t* strategy) {
+    /* Phase 8: Heartbeat at operation start */
+    meta_reasoning_heartbeat("meta_reasoni_meta_free_strategy", 0.0f);
+
+
     if (strategy) nimcp_free(strategy);
 }
 
 void meta_free_chain(meta_reasoning_chain_t* chain) {
     if (!chain) return;
+    /* Phase 8: Heartbeat at operation start */
+    meta_reasoning_heartbeat("meta_reasoni_meta_free_chain", 0.0f);
+
+
     if (chain->steps) nimcp_free(chain->steps);
     nimcp_free(chain);
 }
 
 int meta_set_inflammation(meta_engine_t* engine, float level) {
     if (!engine) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    meta_reasoning_heartbeat("meta_reasoni_meta_set_inflammatio", 0.0f);
+
+
     engine->inflammation = fmaxf(0, fminf(1, level));
     return 0;
 }
 
 int meta_set_fatigue(meta_engine_t* engine, float level) {
     if (!engine) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    meta_reasoning_heartbeat("meta_reasoni_meta_set_fatigue", 0.0f);
+
+
     engine->fatigue = fmaxf(0, fminf(1, level));
     return 0;
 }
@@ -338,10 +426,18 @@ int meta_set_fatigue(meta_engine_t* engine, float level) {
 int meta_get_stats(const meta_engine_t* engine, meta_stats_t* stats) {
     if (!engine || !stats) return -1;
     *stats = engine->stats;
+    /* Phase 8: Heartbeat at operation start */
+    meta_reasoning_heartbeat("meta_reasoni_meta_get_stats", 0.0f);
+
+
     return 0;
 }
 
 void meta_reset_stats(meta_engine_t* engine) {
+    /* Phase 8: Heartbeat at operation start */
+    meta_reasoning_heartbeat("meta_reasoni_meta_reset_stats", 0.0f);
+
+
     if (engine) memset(&engine->stats, 0, sizeof(engine->stats));
 }
 
@@ -367,9 +463,19 @@ const char* meta_strategy_name(meta_strategy_type_t type) {
 
 int meta_reasoning_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    meta_reasoning_heartbeat("meta_reasoni_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Meta_Reasoning");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                meta_reasoning_heartbeat("meta_reasoni_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Module self-knowledge logged */
         }
     }

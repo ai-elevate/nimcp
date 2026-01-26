@@ -31,7 +31,7 @@ static nimcp_health_agent_t* g_introspection_sleep_bridge_health_agent = NULL;
  * @brief Set health agent for introspection_sleep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void introspection_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void introspection_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_introspection_sleep_bridge_health_agent = agent;
 }
 
@@ -116,6 +116,10 @@ static void introspection_on_sleep_state_change(sleep_state_t new_state, void* u
 
 int introspection_sleep_default_config(introspection_sleep_config_t* config) {
     if (!config) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    introspection_sleep_bridge_heartbeat("introspectio_introspection_sleep_", 0.0f);
+
+
     config->enable_metacognition_modulation = true;
     config->enable_consciousness_modulation = true;
     config->modulation_strength = 1.0f;
@@ -133,6 +137,10 @@ introspection_sleep_bridge_t introspection_sleep_bridge_create(
         return NULL;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    introspection_sleep_bridge_heartbeat("introspectio_create", 0.0f);
+
 
     struct introspection_sleep_bridge_struct* bridge =
         (struct introspection_sleep_bridge_struct*)nimcp_malloc(sizeof(struct introspection_sleep_bridge_struct));
@@ -183,6 +191,10 @@ void introspection_sleep_bridge_destroy(introspection_sleep_bridge_t bridge) {
     if (!bridge) return;
 
     /* Unregister callback if it was registered */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_sleep_bridge_heartbeat("introspectio_destroy", 0.0f);
+
+
     if (bridge->callback_registered && bridge->sleep_system) {
         bool unregistered = sleep_unregister_state_callback(
             bridge->sleep_system,
@@ -200,6 +212,10 @@ void introspection_sleep_bridge_destroy(introspection_sleep_bridge_t bridge) {
 
 int introspection_sleep_update(introspection_sleep_bridge_t bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    introspection_sleep_bridge_heartbeat("introspectio_introspection_sleep_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -248,6 +264,10 @@ int introspection_sleep_update(introspection_sleep_bridge_t bridge) {
 
 int introspection_sleep_get_effects(const introspection_sleep_bridge_t bridge, introspection_sleep_effects_t* effects) {
     if (!bridge || !effects) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    introspection_sleep_bridge_heartbeat("introspectio_introspection_sleep_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -256,6 +276,10 @@ int introspection_sleep_get_effects(const introspection_sleep_bridge_t bridge, i
 
 float introspection_sleep_get_metacognitive_accuracy(const introspection_sleep_bridge_t bridge) {
     if (!bridge) return 1.0f;
+    /* Phase 8: Heartbeat at operation start */
+    introspection_sleep_bridge_heartbeat("introspectio_introspection_sleep_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.metacognitive_accuracy_factor;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -264,6 +288,10 @@ float introspection_sleep_get_metacognitive_accuracy(const introspection_sleep_b
 
 bool introspection_sleep_is_offline(const introspection_sleep_bridge_t bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    introspection_sleep_bridge_heartbeat("introspectio_introspection_sleep_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.introspection_offline;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -271,6 +299,10 @@ bool introspection_sleep_is_offline(const introspection_sleep_bridge_t bridge) {
 }
 
 float introspection_sleep_metacognition_for_state(sleep_state_t state) {
+    /* Phase 8: Heartbeat at operation start */
+    introspection_sleep_bridge_heartbeat("introspectio_introspection_sleep_", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return INTROSPECTION_SLEEP_METACOG_AWAKE;
         case SLEEP_STATE_DROWSY:     return INTROSPECTION_SLEEP_METACOG_DROWSY;
@@ -282,6 +314,10 @@ float introspection_sleep_metacognition_for_state(sleep_state_t state) {
 }
 
 float introspection_sleep_consciousness_for_state(sleep_state_t state) {
+    /* Phase 8: Heartbeat at operation start */
+    introspection_sleep_bridge_heartbeat("introspectio_introspection_sleep_", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return INTROSPECTION_SLEEP_CONSCIOUSNESS_AWAKE;
         case SLEEP_STATE_DROWSY:     return INTROSPECTION_SLEEP_CONSCIOUSNESS_DROWSY;
@@ -308,10 +344,20 @@ int introspection_sleep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
     /* Query our own entity from the knowledge graph */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_sleep_bridge_heartbeat("introspectio_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Introspection_Sleep_Bridge");
     if (self) {
         /* Module now knows its own capabilities from KG */
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                introspection_sleep_bridge_heartbeat("introspectio_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Introspection sleep bridge self-knowledge: %s", self->observations[i]);
         }
     }

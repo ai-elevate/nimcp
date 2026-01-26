@@ -38,7 +38,7 @@ static nimcp_health_agent_t* g_rcog_snn_bridge_health_agent = NULL;
  * @brief Set health agent for rcog_snn_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void rcog_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void rcog_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_rcog_snn_bridge_health_agent = agent;
 }
 
@@ -113,12 +113,24 @@ static void softmax(float* values, uint32_t n) {
 
     float sum = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            rcog_snn_bridge_heartbeat("rcog_snn_bri_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         values[i] = expf(values[i] - max_val);
         sum += values[i];
     }
 
     if (sum > 0.0f) {
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                rcog_snn_bridge_heartbeat("rcog_snn_bri_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             values[i] /= sum;
         }
     }
@@ -129,6 +141,10 @@ static void softmax(float* values, uint32_t n) {
 //=============================================================================
 
 rcog_snn_config_t rcog_snn_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_config_defa", 0.0f);
+
+
     rcog_snn_config_t config = {
         .num_dimensions = RCOG_DIM_COUNT,
         .neurons_per_dim = RCOG_SNN_NEURONS_PER_DIM,
@@ -164,6 +180,10 @@ rcog_snn_config_t rcog_snn_config_default(void) {
 }
 
 rcog_snn_bridge_t* rcog_snn_create(const rcog_snn_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_create", 0.0f);
+
+
     rcog_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(rcog_snn_bridge_t));
     if (!bridge) {
 
@@ -224,6 +244,12 @@ rcog_snn_bridge_t* rcog_snn_create(const rcog_snn_config_t* config) {
 
     /* Initialize dimension states */
     for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            rcog_snn_bridge_heartbeat("rcog_snn_bri_loop",
+                             (float)(i + 1) / (float)bridge->config.num_dimensions);
+        }
+
         bridge->dim_states[i].activation = 0.0f;
         bridge->dim_states[i].accumulated_evidence = 0.0f;
         bridge->dim_states[i].spike_count = 0;
@@ -256,6 +282,10 @@ rcog_snn_bridge_t* rcog_snn_create(const rcog_snn_config_t* config) {
 void rcog_snn_destroy(rcog_snn_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_destroy", 0.0f);
+
+
     if (bridge->snn) {
         snn_network_destroy(bridge->snn);
     }
@@ -272,6 +302,10 @@ void rcog_snn_destroy(rcog_snn_bridge_t* bridge) {
 int rcog_snn_reset(rcog_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_reset", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset SNN network */
@@ -281,6 +315,12 @@ int rcog_snn_reset(rcog_snn_bridge_t* bridge) {
 
     /* Reset dimension states */
     for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            rcog_snn_bridge_heartbeat("rcog_snn_bri_loop",
+                             (float)(i + 1) / (float)bridge->config.num_dimensions);
+        }
+
         bridge->dim_states[i].activation = 0.0f;
         bridge->dim_states[i].accumulated_evidence = 0.0f;
         bridge->dim_states[i].spike_count = 0;
@@ -322,6 +362,10 @@ int rcog_snn_encode_state(
     if (!bridge || !dimensions) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_encode_stat", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = RCOG_SNN_STATE_ENCODING;
 
@@ -330,6 +374,12 @@ int rcog_snn_encode_state(
 
     /* Hierarchical population encoding for each dimension */
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            rcog_snn_bridge_heartbeat("rcog_snn_bri_loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         float value = clamp_f(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
@@ -340,6 +390,12 @@ int rcog_snn_encode_state(
 
         /* Hierarchical encoding: different neurons for different value ranges */
         for (uint32_t n = 0; n < neurons_per_dim; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && neurons_per_dim > 256) {
+                rcog_snn_bridge_heartbeat("rcog_snn_bri_loop",
+                                 (float)(n + 1) / (float)neurons_per_dim);
+            }
+
             float preferred = (float)n / (neurons_per_dim - 1);
             float diff = value - preferred;
             /* Hierarchical tuning: sharper for recursion depth, broader for others */
@@ -357,6 +413,12 @@ int rcog_snn_encode_state(
     /* Detect state change */
     float change_magnitude = 0.0f;
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            rcog_snn_bridge_heartbeat("rcog_snn_bri_loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         float diff = dimensions[d] - bridge->prev_state[d];
         change_magnitude += diff * diff;
         bridge->prev_state[d] = dimensions[d];
@@ -379,6 +441,10 @@ int rcog_snn_encode_depth(
     uint32_t max_depth
 ) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_encode_dept", 0.0f);
+
+
     if (max_depth == 0) max_depth = 1;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -405,6 +471,10 @@ int rcog_snn_encode_meta_cognitive(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_encode_meta", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[RCOG_DIM_COUNT] = {0};
@@ -425,6 +495,10 @@ int rcog_snn_encode_self_reference(
     uint32_t loop_depth
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_encode_self", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -454,6 +528,10 @@ int rcog_snn_encode_hierarchy(
     uint32_t total_levels
 ) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_encode_hier", 0.0f);
+
+
     if (total_levels == 0) total_levels = 1;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -477,6 +555,10 @@ int rcog_snn_simulate(rcog_snn_bridge_t* bridge, float duration_ms) {
     if (!bridge) return -1;
     if (duration_ms <= 0.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_simulate", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = RCOG_SNN_STATE_SIMULATING;
 
@@ -490,6 +572,12 @@ int rcog_snn_simulate(rcog_snn_bridge_t* bridge, float duration_ms) {
     }
 
     for (uint32_t s = 0; s < steps; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && steps > 256) {
+            rcog_snn_bridge_heartbeat("rcog_snn_bri_loop",
+                             (float)(s + 1) / (float)steps);
+        }
+
         if (bridge->snn) {
             snn_network_step(bridge->snn, dt);
         }
@@ -497,6 +585,12 @@ int rcog_snn_simulate(rcog_snn_bridge_t* bridge, float duration_ms) {
         /* Update evidence integration */
         float decay = expf(-dt / bridge->config.integration_tau_ms);
         for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+                rcog_snn_bridge_heartbeat("rcog_snn_bri_loop",
+                                 (float)(d + 1) / (float)bridge->config.num_dimensions);
+            }
+
             bridge->dim_states[d].accumulated_evidence *= decay;
             bridge->dim_states[d].accumulated_evidence +=
                 bridge->dim_states[d].activation * dt / bridge->config.integration_tau_ms;
@@ -553,6 +647,10 @@ int rcog_snn_simulate(rcog_snn_bridge_t* bridge, float duration_ms) {
 
 int rcog_snn_step(rcog_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_step", 0.0f);
+
+
     return rcog_snn_simulate(bridge, bridge->config.dt_ms);
 }
 
@@ -562,6 +660,10 @@ int rcog_snn_forward(
     uint32_t input_count
 ) {
     if (!bridge || !inputs) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_forward", 0.0f);
+
 
     int spike_count = rcog_snn_encode_state(bridge, inputs, input_count);
     if (spike_count < 0) return -1;
@@ -583,6 +685,10 @@ int rcog_snn_get_cognitive_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_get_cogniti", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->last_cognitive_state;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -598,8 +704,18 @@ int rcog_snn_get_activations(
     if (!bridge || !activations) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_get_activat", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            rcog_snn_bridge_heartbeat("rcog_snn_bri_loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         activations[d] = bridge->dim_states[d].activation;
     }
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -612,6 +728,10 @@ bool rcog_snn_check_deep_recursion(
     float* depth_level
 ) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_check_deep_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_cognitive_state.recursion_depth;
@@ -630,6 +750,10 @@ bool rcog_snn_check_self_reference(
 ) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_check_self_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_cognitive_state.self_reference_intensity;
     if (intensity) {
@@ -647,10 +771,20 @@ bool rcog_snn_check_state_change(
 ) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_check_state", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     /* Calculate magnitude from prev_state differences */
     float mag = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            rcog_snn_bridge_heartbeat("rcog_snn_bri_loop",
+                             (float)(d + 1) / (float)bridge->config.num_dimensions);
+        }
+
         float diff = bridge->dim_states[d].activation - bridge->prev_state[d];
         mag += diff * diff;
     }
@@ -677,6 +811,10 @@ int rcog_snn_get_dim_state(
     if (!bridge || !state) return -1;
     if (dim >= bridge->config.num_dimensions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_get_dim_sta", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->dim_states[dim];
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -690,6 +828,10 @@ int rcog_snn_get_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_get_state", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
@@ -701,6 +843,12 @@ int rcog_snn_get_state(
     state->active_dimensions = 0;
     state->total_activity = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            rcog_snn_bridge_heartbeat("rcog_snn_bri_loop",
+                             (float)(d + 1) / (float)bridge->config.num_dimensions);
+        }
+
         if (bridge->dim_states[d].activation > 0.1f) {
             state->active_dimensions++;
         }
@@ -714,6 +862,10 @@ int rcog_snn_get_state(
 int rcog_snn_get_stats(rcog_snn_bridge_t* bridge, rcog_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -723,6 +875,10 @@ int rcog_snn_get_stats(rcog_snn_bridge_t* bridge, rcog_snn_stats_t* stats) {
 
 int rcog_snn_reset_stats(rcog_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_reset_stats", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(rcog_snn_stats_t));
@@ -734,6 +890,10 @@ int rcog_snn_reset_stats(rcog_snn_bridge_t* bridge) {
 float rcog_snn_get_depth(rcog_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_get_depth", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float depth = bridge->last_cognitive_state.recursion_depth;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -744,9 +904,19 @@ float rcog_snn_get_depth(rcog_snn_bridge_t* bridge) {
 float rcog_snn_get_total_activity(rcog_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_get_total_a", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float total = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            rcog_snn_bridge_heartbeat("rcog_snn_bri_loop",
+                             (float)(d + 1) / (float)bridge->config.num_dimensions);
+        }
+
         total += bridge->dim_states[d].activation;
     }
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -765,6 +935,10 @@ int rcog_snn_register_depth_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_register_de", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->depth_callback = callback;
     bridge->depth_callback_data = user_data;
@@ -780,6 +954,10 @@ int rcog_snn_register_state_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_register_st", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state_callback = callback;
     bridge->state_callback_data = user_data;
@@ -794,6 +972,10 @@ int rcog_snn_register_self_ref_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_register_se", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->self_ref_callback = callback;
@@ -811,6 +993,10 @@ int rcog_snn_bio_async_connect(rcog_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_bio_async_c", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
@@ -822,6 +1008,10 @@ int rcog_snn_bio_async_connect(rcog_snn_bridge_t* bridge) {
 int rcog_snn_bio_async_disconnect(rcog_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_bio_async_d", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -831,6 +1021,10 @@ int rcog_snn_bio_async_disconnect(rcog_snn_bridge_t* bridge) {
 
 bool rcog_snn_is_bio_async_connected(rcog_snn_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_is_bio_asyn", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;

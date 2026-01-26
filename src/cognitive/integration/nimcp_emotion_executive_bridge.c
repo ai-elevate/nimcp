@@ -37,7 +37,7 @@ static nimcp_health_agent_t* g_emotion_executive_bridge_health_agent = NULL;
  * @brief Set health agent for emotion_executive_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void emotion_executive_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void emotion_executive_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_emotion_executive_bridge_health_agent = agent;
 }
 
@@ -125,6 +125,12 @@ static uint64_t get_timestamp_ms(void) {
 static decision_record_t* find_decision_unlocked(emotion_executive_bridge_t* bridge,
                                                   uint32_t decision_id) {
     for (size_t i = 0; i < bridge->decision_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->decision_count > 256) {
+            emotion_executive_bridge_heartbeat("emotion_exec_loop",
+                             (float)(i + 1) / (float)bridge->decision_count);
+        }
+
         if (bridge->decisions[i].decision_id == decision_id) {
             return &bridge->decisions[i];
         }
@@ -143,6 +149,10 @@ int emotion_executive_default_config(emotion_executive_config_t* config) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_executive_bridge_heartbeat("emotion_exec_emotion_executive_de", 0.0f);
+
+
     config->emotion_influence_weight = DEFAULT_INFLUENCE_WEIGHT;
     config->regulation_strength = DEFAULT_REGULATION_STRENGTH;
     config->decision_threshold = DEFAULT_DECISION_THRESHOLD;
@@ -158,6 +168,10 @@ emotion_executive_bridge_t* emotion_executive_bridge_create(
     const emotion_executive_config_t* config
 ) {
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_executive_bridge_heartbeat("emotion_exec_create", 0.0f);
+
+
     emotion_executive_bridge_t* bridge = nimcp_malloc(sizeof(emotion_executive_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -210,6 +224,10 @@ void emotion_executive_bridge_destroy(emotion_executive_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_executive_bridge_heartbeat("emotion_exec_destroy", 0.0f);
+
+
     if (bridge->base.mutex) {
         nimcp_platform_mutex_destroy(bridge->base.mutex);
         bridge->base.mutex = NULL;
@@ -243,6 +261,10 @@ int emotion_executive_influence_decision(
     if (!bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_executive_bridge_heartbeat("emotion_exec_emotion_executive_in", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -330,6 +352,10 @@ int emotion_executive_on_decision(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_executive_bridge_heartbeat("emotion_exec_emotion_executive_on", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Find decision record */
@@ -387,6 +413,10 @@ int emotion_executive_regulate_emotion(
     if (!bridge->initialized) {
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    emotion_executive_bridge_heartbeat("emotion_exec_emotion_executive_re", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -463,6 +493,10 @@ int emotion_executive_get_emotional_state(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotion_executive_bridge_heartbeat("emotion_exec_emotion_executive_ge", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Copy current state to output */
@@ -525,6 +559,10 @@ int emotion_executive_get_stats(
     }
 
     /* Cast away const for mutex lock (stats read is still logically const) */
+    /* Phase 8: Heartbeat at operation start */
+    emotion_executive_bridge_heartbeat("emotion_exec_emotion_executive_ge", 0.0f);
+
+
     emotion_executive_bridge_t* mutable_bridge = (emotion_executive_bridge_t*)bridge;
 
     nimcp_platform_mutex_lock(mutable_bridge->base.mutex);

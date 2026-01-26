@@ -97,7 +97,7 @@ static nimcp_health_agent_t* g_salience_fep_bridge_health_agent = NULL;
  * @brief Set health agent for salience_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void salience_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void salience_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_salience_fep_bridge_health_agent = agent;
 }
 
@@ -152,6 +152,10 @@ int salience_fep_bridge_default_config(salience_fep_config_t* config) {
     }
 
     /* Initialize salience → FEP modulation */
+    /* Phase 8: Heartbeat at operation start */
+    salience_fep_bridge_heartbeat("salience_fep_default_config", 0.0f);
+
+
     config->salience_precision_gain = 1.5f;         /* Salient stimuli get 1.5x precision */
     config->surprise_salience_weight = 0.4f;        /* Surprise weighs heavily in salience */
     config->novelty_precision_boost = 1.3f;         /* Novel stimuli boost precision */
@@ -177,6 +181,10 @@ int salience_fep_bridge_default_config(salience_fep_config_t* config) {
  */
 salience_fep_bridge_t* salience_fep_bridge_create(const salience_fep_config_t* config) {
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    salience_fep_bridge_heartbeat("salience_fep_create", 0.0f);
+
+
     salience_fep_bridge_t* bridge = (salience_fep_bridge_t*)nimcp_calloc(
         1, sizeof(salience_fep_bridge_t));
     if (!bridge) {
@@ -236,6 +244,10 @@ void salience_fep_bridge_destroy(salience_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    salience_fep_bridge_heartbeat("salience_fep_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         salience_fep_bridge_disconnect_bio_async(bridge);
     }
@@ -270,6 +282,10 @@ int salience_fep_bridge_connect_fep(
     }
 
     /* Thread-safe connection */
+    /* Phase 8: Heartbeat at operation start */
+    salience_fep_bridge_heartbeat("salience_fep_connect_fep", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -294,6 +310,10 @@ int salience_fep_bridge_connect_salience(
     }
 
     /* Thread-safe connection */
+    /* Phase 8: Heartbeat at operation start */
+    salience_fep_bridge_heartbeat("salience_fep_connect_salience", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->salience_evaluator = salience;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -330,6 +350,10 @@ int salience_fep_modulate_precision_by_salience(salience_fep_bridge_t* bridge) {
     if (!bridge->fep_system || !bridge->salience_evaluator) {
         return 0;  /* Components not connected yet */
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_fep_bridge_heartbeat("salience_fep_salience_fep_modulat", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -394,6 +418,10 @@ int salience_fep_compute_salience_from_pe(salience_fep_bridge_t* bridge) {
         return 0;  /* FEP not connected */
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_fep_bridge_heartbeat("salience_fep_salience_fep_compute", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     fep_system_t* fep = bridge->fep_system;
@@ -404,11 +432,23 @@ int salience_fep_compute_salience_from_pe(salience_fep_bridge_t* bridge) {
     uint32_t count = 0;
 
     for (uint32_t l = 0; l < fep->num_levels; l++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((l & 0xFF) == 0 && fep->num_levels > 256) {
+            salience_fep_bridge_heartbeat("salience_fep_loop",
+                             (float)(l + 1) / (float)fep->num_levels);
+        }
+
         fep_hierarchy_level_t* level = &fep->levels[l];
         total_pe += level->errors.magnitude;
 
         /* Sum precision values */
         for (uint32_t i = 0; i < level->errors.dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && level->errors.dim > 256) {
+                salience_fep_bridge_heartbeat("salience_fep_loop",
+                                 (float)(i + 1) / (float)level->errors.dim);
+            }
+
             total_precision += level->errors.precision[i];
             count++;
         }
@@ -485,6 +525,10 @@ int salience_fep_gate_by_salience(salience_fep_bridge_t* bridge) {
         return 0;  /* Feature disabled */
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_fep_bridge_heartbeat("salience_fep_salience_fep_gate_by", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Get current salience */
@@ -525,6 +569,10 @@ int salience_fep_bridge_update(
     }
 
     /* FEP → Salience: Compute salience from prediction errors */
+    /* Phase 8: Heartbeat at operation start */
+    salience_fep_bridge_heartbeat("salience_fep_update", 0.0f);
+
+
     salience_fep_compute_salience_from_pe(bridge);
 
     /* Salience → FEP: Modulate precision based on salience */
@@ -555,6 +603,10 @@ int salience_fep_bridge_get_state(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_fep_bridge_heartbeat("salience_fep_get_state", 0.0f);
+
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -576,6 +628,10 @@ int salience_fep_bridge_get_stats(
         NIMCP_LOGGING_ERROR("NULL pointer in get_stats");
         return -1;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_fep_bridge_heartbeat("salience_fep_get_stats", 0.0f);
+
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -601,6 +657,10 @@ int salience_fep_bridge_connect_bio_async(salience_fep_bridge_t* bridge) {
     }
 
     /* Already connected */
+    /* Phase 8: Heartbeat at operation start */
+    salience_fep_bridge_heartbeat("salience_fep_connect_bio_async", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         return 0;
     }
@@ -642,6 +702,10 @@ int salience_fep_bridge_disconnect_bio_async(salience_fep_bridge_t* bridge) {
     }
 
     /* Unregister from router */
+    /* Phase 8: Heartbeat at operation start */
+    salience_fep_bridge_heartbeat("salience_fep_disconnect_bio_async", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -659,6 +723,10 @@ int salience_fep_bridge_disconnect_bio_async(salience_fep_bridge_t* bridge) {
  * HOW:  Return bio_async_enabled flag
  */
 bool salience_fep_bridge_is_bio_async_connected(const salience_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    salience_fep_bridge_heartbeat("salience_fep_is_bio_async_connect", 0.0f);
+
+
     return bridge ? bridge->base.bio_async_enabled : false;
 }
 
@@ -669,9 +737,19 @@ bool salience_fep_bridge_is_bio_async_connected(const salience_fep_bridge_t* bri
 int salience_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    salience_fep_bridge_heartbeat("salience_fep_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Salience_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                salience_fep_bridge_heartbeat("salience_fep_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

@@ -46,7 +46,7 @@ static nimcp_health_agent_t* g_imagination_engine_health_agent = NULL;
  * @brief Set health agent for imagination_engine heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void imagination_engine_set_health_agent(nimcp_health_agent_t* agent) {
+void imagination_engine_set_health_agent(nimcp_health_agent_t* agent) {
     g_imagination_engine_health_agent = agent;
 }
 
@@ -157,6 +157,12 @@ static void apply_noise(nimcp_tensor_t* tensor, float noise_level) {
     size_t size = nimcp_tensor_size(tensor);
 
     for (size_t i = 0; i < size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && size > 256) {
+            imagination_engine_heartbeat("imagination__loop",
+                             (float)(i + 1) / (float)size);
+        }
+
         data[i] += gaussian_noise(noise_level);
     }
 }
@@ -177,6 +183,12 @@ static float compute_coherence(const nimcp_tensor_t* a, const nimcp_tensor_t* b)
     /* Cosine similarity */
     float dot = 0.0f, norm_a = 0.0f, norm_b = 0.0f;
     for (size_t i = 0; i < size_a; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && size_a > 256) {
+            imagination_engine_heartbeat("imagination__loop",
+                             (float)(i + 1) / (float)size_a);
+        }
+
         dot += data_a[i] * data_b[i];
         norm_a += data_a[i] * data_a[i];
         norm_b += data_b[i] * data_b[i];
@@ -199,6 +211,12 @@ static float tensor_norm(const nimcp_tensor_t* t) {
 
     float sum = 0.0f;
     for (size_t i = 0; i < size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && size > 256) {
+            imagination_engine_heartbeat("imagination__loop",
+                             (float)(i + 1) / (float)size);
+        }
+
         sum += data[i] * data[i];
     }
     return sqrtf(sum);
@@ -224,6 +242,12 @@ static int blend_tensors(nimcp_tensor_t* result,
 
     float beta = 1.0f - alpha;
     for (size_t i = 0; i < size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && size > 256) {
+            imagination_engine_heartbeat("imagination__loop",
+                             (float)(i + 1) / (float)size);
+        }
+
         r[i] = alpha * da[i] + beta * db[i];
     }
 
@@ -235,6 +259,10 @@ static int blend_tensors(nimcp_tensor_t* result,
  *============================================================================*/
 
 imagination_engine_config_t imagination_engine_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__default_config", 0.0f);
+
+
     imagination_engine_config_t config = {
         /* Capacity */
         .max_concurrent_scenarios = IMAGINATION_MAX_SCENARIOS,
@@ -289,6 +317,10 @@ bool imagination_engine_validate_config(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__validate_config", 0.0f);
+
+
     if (config->max_concurrent_scenarios == 0 ||
         config->max_concurrent_scenarios > 64) {
         if (error_msg && error_msg_len > 0) {
@@ -331,6 +363,10 @@ bool imagination_engine_validate_config(
 
 imagination_engine_t* imagination_engine_create(
     const imagination_engine_config_t* config) {
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__create", 0.0f);
+
 
     imagination_engine_config_t cfg;
     if (config) {
@@ -404,9 +440,19 @@ void imagination_engine_destroy(imagination_engine_t* engine) {
     if (!engine) return;
 
     /* End all active scenarios */
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__destroy", 0.0f);
+
+
     if (engine->active_scenarios) {
         size_t count = nimcp_darray_size(engine->active_scenarios);
         for (size_t i = 0; i < count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && count > 256) {
+                imagination_engine_heartbeat("imagination__loop",
+                                 (float)(i + 1) / (float)count);
+            }
+
             imagination_scenario_t** ptr =
                 (imagination_scenario_t**)nimcp_darray_at(engine->active_scenarios, i);
             imagination_scenario_t* scenario = ptr ? *ptr : NULL;
@@ -446,12 +492,22 @@ void imagination_engine_destroy(imagination_engine_t* engine) {
 int imagination_engine_reset(imagination_engine_t* engine) {
     if (!engine) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__reset", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
 
     /* End all active scenarios */
     if (engine->active_scenarios) {
         size_t count = nimcp_darray_size(engine->active_scenarios);
         for (size_t i = 0; i < count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && count > 256) {
+                imagination_engine_heartbeat("imagination__loop",
+                                 (float)(i + 1) / (float)count);
+            }
+
             imagination_scenario_t** ptr =
                 (imagination_scenario_t**)nimcp_darray_at(engine->active_scenarios, i);
             imagination_scenario_t* scenario = ptr ? *ptr : NULL;
@@ -501,6 +557,10 @@ int imagination_engine_init_for_brain(
     if (!brain) return -1;
 
     /* Create engine */
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__init_for_brain", 0.0f);
+
+
     imagination_engine_t* engine = imagination_engine_create(config);
     if (!engine) return -1;
 
@@ -523,6 +583,10 @@ imagination_engine_t* brain_get_imagination_engine(brain_t brain) {
     }
     /* Implementation depends on brain structure */
     /* Would typically be: return brain->imagination_engine; */
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__brain_get_imaginatio", 0.0f);
+
+
     return NULL;
 }
 
@@ -535,6 +599,10 @@ int imagination_engine_connect_world_model(
     jepa_predictor_t* jepa) {
 
     if (!engine) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_world_model", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
     engine->world_model = jepa;
@@ -549,6 +617,10 @@ int imagination_engine_connect_hippocampus(
 
     if (!engine) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_hippocampus", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
     engine->hippocampus = hipp;
     nimcp_mutex_unlock(engine->mutex);
@@ -561,6 +633,10 @@ int imagination_engine_connect_visual(
     visual_cortex_t* visual) {
 
     if (!engine) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_visual", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
     engine->visual_cortex = visual;
@@ -575,6 +651,10 @@ int imagination_engine_connect_audio(
 
     if (!engine) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_audio", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
     engine->audio_cortex = audio;
     nimcp_mutex_unlock(engine->mutex);
@@ -587,6 +667,10 @@ int imagination_engine_connect_prefrontal(
     prefrontal_adapter_t* pfc) {
 
     if (!engine) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_prefrontal", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
     engine->prefrontal = pfc;
@@ -601,6 +685,10 @@ int imagination_engine_connect_global_workspace(
 
     if (!engine) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_global_works", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
     engine->global_workspace = gw;
     nimcp_mutex_unlock(engine->mutex);
@@ -613,6 +701,10 @@ int imagination_engine_connect_tom(
     theory_of_mind_t* tom) {
 
     if (!engine) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_tom", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
     engine->tom = tom;
@@ -627,6 +719,10 @@ int imagination_engine_connect_curiosity(
 
     if (!engine) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_curiosity", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
     engine->curiosity = curiosity;
     nimcp_mutex_unlock(engine->mutex);
@@ -639,6 +735,10 @@ int imagination_engine_connect_sleep(
     sleep_wake_cycle_t* sleep) {
 
     if (!engine) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_sleep", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
     engine->sleep = sleep;
@@ -657,6 +757,10 @@ int imagination_engine_connect_bio_async(
 
     if (!engine) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_bio_async", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
     engine->bio_context = bio_ctx;
     nimcp_mutex_unlock(engine->mutex);
@@ -669,6 +773,10 @@ int imagination_engine_connect_immune(
     brain_immune_system_t* immune) {
 
     if (!engine) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_immune", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
     engine->immune = immune;
@@ -683,6 +791,10 @@ int imagination_engine_connect_substrate(
 
     if (!engine) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_substrate", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
     engine->substrate = substrate;
     nimcp_mutex_unlock(engine->mutex);
@@ -695,6 +807,10 @@ int imagination_engine_connect_thalamic(
     thalamic_router_t* thalamic) {
 
     if (!engine) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_thalamic", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
     engine->thalamic = thalamic;
@@ -709,6 +825,10 @@ int imagination_engine_connect_training(
 
     if (!engine) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_training", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
     engine->training = training;
     nimcp_mutex_unlock(engine->mutex);
@@ -722,6 +842,10 @@ int imagination_engine_connect_logic(
 
     if (!engine) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_logic", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
     engine->logic = logic;
     nimcp_mutex_unlock(engine->mutex);
@@ -734,6 +858,10 @@ int imagination_engine_init_gpu(
     int device_id) {
 
     if (!engine) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__init_gpu", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -757,6 +885,10 @@ int imagination_engine_connect_parietal(
 
     if (!engine) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_parietal", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
     engine->parietal = parietal;
     nimcp_mutex_unlock(engine->mutex);
@@ -769,6 +901,10 @@ int imagination_engine_connect_spatial(
     spatial_transform_t* spatial) {
 
     if (!engine) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_spatial", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
     engine->spatial = spatial;
@@ -783,6 +919,10 @@ int imagination_engine_connect_number_sense(
 
     if (!engine) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_number_sense", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
     engine->number_sense = number_sense;
     nimcp_mutex_unlock(engine->mutex);
@@ -796,6 +936,10 @@ int imagination_engine_connect_math_intuition(
 
     if (!engine) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_math_intuiti", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
     engine->math_intuition = math;
     nimcp_mutex_unlock(engine->mutex);
@@ -808,6 +952,10 @@ int imagination_engine_connect_scientific(
     scientific_reasoning_t* scientific) {
 
     if (!engine) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_scientific", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
     engine->scientific = scientific;
@@ -826,6 +974,10 @@ int imagination_engine_connect_chemistry(
 
     if (!engine) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_chemistry", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
     engine->chemistry = chemistry;
     nimcp_mutex_unlock(engine->mutex);
@@ -838,6 +990,10 @@ int imagination_engine_connect_biology(
     biology_context_t* biology) {
 
     if (!engine) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_biology", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
     engine->biology = biology;
@@ -852,6 +1008,10 @@ int imagination_engine_connect_physics(
 
     if (!engine) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_physics", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
     engine->physics = physics;
     nimcp_mutex_unlock(engine->mutex);
@@ -865,6 +1025,10 @@ int imagination_engine_connect_software(
 
     if (!engine) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_software", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
     engine->software = software;
     nimcp_mutex_unlock(engine->mutex);
@@ -877,6 +1041,10 @@ int imagination_engine_connect_equations(
     equation_manipulation_context_t* equations) {
 
     if (!engine) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_equations", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
     engine->equations = equations;
@@ -895,6 +1063,10 @@ int imagination_engine_connect_quantum_kb(
 
     if (!engine) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_quantum_kb", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
     engine->quantum_kb = kb;
     nimcp_mutex_unlock(engine->mutex);
@@ -907,6 +1079,10 @@ int imagination_engine_init_quantum_state(
     size_t num_qubits) {
 
     if (!engine || num_qubits == 0 || num_qubits > 32) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__init_quantum_state", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -924,6 +1100,10 @@ int imagination_engine_set_quantum_enabled(
     bool enabled) {
 
     if (!engine) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__set_quantum_enabled", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
     engine->quantum_enabled = enabled;
@@ -952,6 +1132,10 @@ imagination_scenario_t* imagination_begin_scenario(
 
     }
     if (mode < 0 || mode >= IMAGINATION_MODE_COUNT) return NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_begin_sc", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -1064,6 +1248,10 @@ int imagination_step_scenario(
 
     if (!engine || !scenario) return -1;
     if (!scenario->is_active || scenario->is_paused) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_step_sce", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -1180,6 +1368,10 @@ int imagination_end_scenario(
 
     if (!engine || !scenario) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_end_scen", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
 
     /* Mark as inactive */
@@ -1196,6 +1388,12 @@ int imagination_end_scenario(
     /* Remove from active list */
     size_t count = nimcp_darray_size(engine->active_scenarios);
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            imagination_engine_heartbeat("imagination__loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         imagination_scenario_t** ptr =
             (imagination_scenario_t**)nimcp_darray_at(engine->active_scenarios, i);
         if (ptr && *ptr == scenario) {
@@ -1217,6 +1415,12 @@ int imagination_end_scenario(
     if (scenario->trajectory) {
         size_t traj_count = nimcp_darray_size(scenario->trajectory);
         for (size_t i = 0; i < traj_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && traj_count > 256) {
+                imagination_engine_heartbeat("imagination__loop",
+                                 (float)(i + 1) / (float)traj_count);
+            }
+
             nimcp_tensor_t** state_ptr =
                 (nimcp_tensor_t**)nimcp_darray_at(scenario->trajectory, i);
             if (state_ptr && *state_ptr) nimcp_tensor_destroy(*state_ptr);
@@ -1227,6 +1431,12 @@ int imagination_end_scenario(
     if (scenario->elements) {
         size_t elem_count = nimcp_darray_size(scenario->elements);
         for (size_t i = 0; i < elem_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && elem_count > 256) {
+                imagination_engine_heartbeat("imagination__loop",
+                                 (float)(i + 1) / (float)elem_count);
+            }
+
             imagination_element_t** elem_ptr =
                 (imagination_element_t**)nimcp_darray_at(scenario->elements, i);
             if (elem_ptr && *elem_ptr) {
@@ -1262,6 +1472,10 @@ int imagination_pause_scenario(
 
     if (!engine || !scenario) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_pause_sc", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
     scenario->is_paused = true;
     nimcp_mutex_unlock(engine->mutex);
@@ -1274,6 +1488,10 @@ int imagination_resume_scenario(
     imagination_scenario_t* scenario) {
 
     if (!engine || !scenario) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_resume_s", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
     scenario->is_paused = false;
@@ -1292,6 +1510,10 @@ int imagination_generate_visual(
     imagination_scenario_t* scenario) {
 
     if (!engine || !scenario) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_generate", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -1314,6 +1536,12 @@ int imagination_generate_visual(
 
     /* Simple projection with modulation by vividness */
     for (size_t i = 0; i < visual_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && visual_size > 256) {
+            imagination_engine_heartbeat("imagination__loop",
+                             (float)(i + 1) / (float)visual_size);
+        }
+
         size_t li = i % latent_size;
         visual_data[i] = latent_data[li] * scenario->vividness;
         /* Clamp to valid range */
@@ -1335,6 +1563,10 @@ int imagination_generate_audio(
 
     if (!engine || !scenario) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_generate", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
 
     /* Create audio buffer if needed */
@@ -1355,6 +1587,12 @@ int imagination_generate_audio(
 
     /* Simple oscillatory projection */
     for (size_t i = 0; i < audio_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && audio_size > 256) {
+            imagination_engine_heartbeat("imagination__loop",
+                             (float)(i + 1) / (float)audio_size);
+        }
+
         size_t li = i % latent_size;
         float phase = (float)i / (float)audio_size * 2.0f * 3.14159f;
         audio_data[i] = latent_data[li] * sinf(phase * (1.0f + li * 0.1f));
@@ -1375,6 +1613,10 @@ int imagination_generate_multimodal(
 
     if (!engine || !scenario) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_generate", 0.0f);
+
+
     int result = imagination_generate_visual(engine, scenario);
     if (result != 0) return result;
 
@@ -1392,6 +1634,10 @@ int imagination_transform_scene(
     const imagination_transform_t* transform) {
 
     if (!engine || !scenario || !transform) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_transfor", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -1442,6 +1688,10 @@ uint64_t imagination_inject_element(
     const imagination_element_t* element) {
 
     if (!engine || !scenario || !element) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_inject_e", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -1494,12 +1744,22 @@ int imagination_remove_element(
 
     if (!engine || !scenario || element_id == 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_remove_e", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
 
     bool found = false;
     size_t count = nimcp_darray_size(scenario->elements);
 
     for (size_t i = 0; i < count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count > 256) {
+            imagination_engine_heartbeat("imagination__loop",
+                             (float)(i + 1) / (float)count);
+        }
+
         imagination_element_t** elem_ptr =
             (imagination_element_t**)nimcp_darray_at(scenario->elements, i);
         if (!elem_ptr) continue;
@@ -1540,6 +1800,10 @@ imagination_scenario_t* imagination_blend_scenarios(
     float alpha) {
 
     if (!engine || !scenario_a || !scenario_b) return NULL;
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_blend_sc", 0.0f);
+
+
     if (alpha < 0.0f) alpha = 0.0f;
     if (alpha > 1.0f) alpha = 1.0f;
 
@@ -1585,6 +1849,10 @@ imagination_scenario_t* imagination_counterfactual(
     if (!engine || !memory || !query) return NULL;
 
     /* Create counterfactual scenario */
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_counterf", 0.0f);
+
+
     imagination_goal_t goal = {
         .mode = IMAGINATION_MODE_COUNTERFACTUAL,
         .target_features = NULL,
@@ -1632,6 +1900,12 @@ imagination_scenario_t* imagination_counterfactual(
     nimcp_mutex_unlock(engine->mutex);
 
     for (size_t i = 0; i < query->steps_forward; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && query->steps_forward > 256) {
+            imagination_engine_heartbeat("imagination__loop",
+                             (float)(i + 1) / (float)query->steps_forward);
+        }
+
         imagination_step_scenario(engine, scenario);
     }
 
@@ -1646,6 +1920,10 @@ imagination_scenario_t* imagination_simulate_future(
     size_t steps_ahead) {
 
     if (!engine || !current_state) return NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_simulate", 0.0f);
+
 
     imagination_scenario_t* scenario = imagination_begin_scenario(
         engine, IMAGINATION_MODE_PROSPECTIVE, NULL);
@@ -1678,6 +1956,12 @@ imagination_scenario_t* imagination_simulate_future(
 
     /* Simulate forward */
     for (size_t i = 0; i < steps_ahead; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && steps_ahead > 256) {
+            imagination_engine_heartbeat("imagination__loop",
+                             (float)(i + 1) / (float)steps_ahead);
+        }
+
         imagination_step_scenario(engine, scenario);
     }
 
@@ -1699,6 +1983,10 @@ imagination_scenario_t* imagination_simulate_agent(
 
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_simulate", 0.0f);
+
 
     imagination_scenario_t* scenario = imagination_begin_scenario(
         engine, IMAGINATION_MODE_SOCIAL, NULL);
@@ -1734,6 +2022,10 @@ imagination_scenario_t* imagination_creative_recombine(
 
     if (!engine || !seed_memories || num_memories == 0) return NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_creative", 0.0f);
+
+
     imagination_scenario_t* scenario = imagination_begin_scenario(
         engine, IMAGINATION_MODE_CREATIVE, NULL);
     if (!scenario) {
@@ -1751,6 +2043,12 @@ imagination_scenario_t* imagination_creative_recombine(
 
     float weight = 1.0f / (float)num_memories;
     for (size_t i = 0; i < num_memories; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_memories > 256) {
+            imagination_engine_heartbeat("imagination__loop",
+                             (float)(i + 1) / (float)num_memories);
+        }
+
         if (seed_memories[i]) {
             blend_tensors(scenario->latent_state,
                           scenario->latent_state,
@@ -1778,6 +2076,10 @@ int imagination_mental_rotate(
     float angle_radians) {
 
     if (!engine || !scenario || !rotation_axis) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_mental_r", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -1818,6 +2120,10 @@ imagination_scenario_t* imagination_numerical(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_numerica", 0.0f);
+
+
     imagination_scenario_t* scenario = imagination_begin_scenario(
         engine, IMAGINATION_MODE_MATHEMATICAL, NULL);
     if (!scenario) {
@@ -1839,6 +2145,12 @@ imagination_scenario_t* imagination_numerical(
     float sign = quantity >= 0 ? 1.0f : -1.0f;
 
     for (size_t i = 0; i < size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && size > 256) {
+            imagination_engine_heartbeat("imagination__loop",
+                             (float)(i + 1) / (float)size);
+        }
+
         latent[i] = encoded * sign * (1.0f + 0.1f * gaussian_noise(0.1f));
         latent[i] *= (float)scale;
     }
@@ -1864,6 +2176,10 @@ imagination_scenario_t* imagination_mathematical(
 
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_mathemat", 0.0f);
+
 
     imagination_scenario_t* scenario = imagination_begin_scenario(
         engine, IMAGINATION_MODE_MATHEMATICAL, NULL);
@@ -1914,6 +2230,10 @@ imagination_scenario_t* imagination_scientific_simulate(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_scientif", 0.0f);
+
+
     imagination_scenario_t* scenario = imagination_begin_scenario(
         engine, IMAGINATION_MODE_SCIENTIFIC, NULL);
     if (!scenario) {
@@ -1943,6 +2263,12 @@ imagination_scenario_t* imagination_scientific_simulate(
 
     /* Run simulation steps */
     for (size_t i = 0; i < steps; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && steps > 256) {
+            imagination_engine_heartbeat("imagination__loop",
+                             (float)(i + 1) / (float)steps);
+        }
+
         imagination_step_scenario(engine, scenario);
     }
 
@@ -1968,6 +2294,10 @@ imagination_scenario_t* imagination_simulate_chemistry(
 
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_simulate", 0.0f);
+
 
     imagination_scenario_t* scenario = imagination_begin_scenario(
         engine, IMAGINATION_MODE_DOMAIN_SIMULATION, NULL);
@@ -2014,6 +2344,10 @@ imagination_scenario_t* imagination_simulate_biology(
 
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_simulate", 0.0f);
+
 
     imagination_scenario_t* scenario = imagination_begin_scenario(
         engine, IMAGINATION_MODE_DOMAIN_SIMULATION, NULL);
@@ -2063,6 +2397,10 @@ imagination_scenario_t* imagination_simulate_physics(
 
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_simulate", 0.0f);
+
 
     imagination_scenario_t* scenario = imagination_begin_scenario(
         engine, IMAGINATION_MODE_DOMAIN_SIMULATION, NULL);
@@ -2114,6 +2452,10 @@ imagination_scenario_t* imagination_simulate_software(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_simulate", 0.0f);
+
+
     imagination_scenario_t* scenario = imagination_begin_scenario(
         engine, IMAGINATION_MODE_DOMAIN_SIMULATION, NULL);
     if (!scenario) {
@@ -2134,6 +2476,12 @@ imagination_scenario_t* imagination_simulate_software(
 
     /* Execute steps */
     for (size_t i = 0; i < execution_steps; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && execution_steps > 256) {
+            imagination_engine_heartbeat("imagination__loop",
+                             (float)(i + 1) / (float)execution_steps);
+        }
+
         imagination_step_scenario(engine, scenario);
     }
 
@@ -2152,6 +2500,10 @@ imagination_scenario_t* imagination_quantum_superpose(
 
     if (!engine || !possibilities || num_possibilities == 0) return NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_quantum_", 0.0f);
+
+
     imagination_scenario_t* scenario = imagination_begin_scenario(
         engine, IMAGINATION_MODE_QUANTUM_SEARCH, NULL);
     if (!scenario) {
@@ -2169,6 +2521,12 @@ imagination_scenario_t* imagination_quantum_superpose(
 
     float total_amp = 0.0f;
     for (size_t i = 0; i < num_possibilities; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_possibilities > 256) {
+            imagination_engine_heartbeat("imagination__loop",
+                             (float)(i + 1) / (float)num_possibilities);
+        }
+
         float amp = amplitudes ? amplitudes[i] : 1.0f / (float)num_possibilities;
         total_amp += amp * amp;  /* Probability is amplitude squared */
     }
@@ -2177,6 +2535,12 @@ imagination_scenario_t* imagination_quantum_superpose(
         float norm = 1.0f / sqrtf(total_amp);
 
         for (size_t i = 0; i < num_possibilities; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_possibilities > 256) {
+                imagination_engine_heartbeat("imagination__loop",
+                                 (float)(i + 1) / (float)num_possibilities);
+            }
+
             if (possibilities[i]) {
                 float amp = amplitudes ? amplitudes[i] * norm :
                             norm / sqrtf((float)num_possibilities);
@@ -2204,6 +2568,10 @@ int imagination_quantum_solve(
     /* This would implement Grover-inspired search */
     /* For now, return placeholder result */
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_quantum_", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
 
     /* Simple constraint satisfaction placeholder */
@@ -2219,6 +2587,10 @@ imagination_scenario_t* imagination_quantum_collapse(
     imagination_scenario_t* scenario) {
 
     if (!engine || !scenario) return NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_quantum_", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -2244,6 +2616,10 @@ int imagination_evaluate(
     imagination_evaluation_t* result) {
 
     if (!engine || !scenario || !result) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_evaluate", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -2282,6 +2658,10 @@ float imagination_check_plausibility(
 
     if (!engine || !scenario) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_check_pl", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
 
     float norm = tensor_norm(scenario->latent_state);
@@ -2297,6 +2677,10 @@ float imagination_reality_distance(
     imagination_scenario_t* scenario) {
 
     if (!engine || !scenario) return 0.0f;
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_reality_", 0.0f);
+
+
     return scenario->reality_distance;
 }
 
@@ -2313,6 +2697,10 @@ uint32_t imagination_process_bio_messages(
     /* Bio-async message processing would go here */
     /* For now, return 0 messages processed */
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_process_", 0.0f);
+
+
     return 0;
 }
 
@@ -2327,6 +2715,10 @@ int imagination_broadcast_to_workspace(
     /* Global workspace broadcast would go here */
     /* For now, return success */
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_broadcas", 0.0f);
+
+
     return 0;
 }
 
@@ -2340,6 +2732,10 @@ int imagination_update_immune_modulation(imagination_engine_t* engine) {
     /* Immune modulation update would go here */
     /* Reads inflammation level from immune system and adjusts capacity */
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_update_i", 0.0f);
+
+
     return 0;
 }
 
@@ -2350,6 +2746,10 @@ float imagination_get_immune_modulation(const imagination_engine_t* engine) {
     /* Would query immune system for inflammation level */
     /* Return modulation factor (1.0 = healthy, lower = impaired) */
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_get_immu", 0.0f);
+
+
     return 1.0f;
 }
 
@@ -2359,6 +2759,10 @@ float imagination_get_immune_modulation(const imagination_engine_t* engine) {
 
 bool imagination_gpu_available(const imagination_engine_t* engine) {
     if (!engine) return false;
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_gpu_avai", 0.0f);
+
+
     return engine->gpu_available;
 }
 
@@ -2373,6 +2777,10 @@ int imagination_generate_visual_gpu(
     }
 
     /* GPU generation would go here */
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_generate", 0.0f);
+
+
     return imagination_generate_visual(engine, scenario);
 }
 
@@ -2385,7 +2793,17 @@ int imagination_batch_generate_gpu(
 
     /* Batch GPU generation would go here */
     /* For now, process sequentially */
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_batch_ge", 0.0f);
+
+
     for (size_t i = 0; i < num_scenarios; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_scenarios > 256) {
+            imagination_engine_heartbeat("imagination__loop",
+                             (float)(i + 1) / (float)num_scenarios);
+        }
+
         if (scenarios[i]) {
             imagination_generate_visual(engine, scenarios[i]);
         }
@@ -2404,6 +2822,10 @@ int imagination_get_stats(
 
     if (!engine || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_get_stat", 0.0f);
+
+
     imagination_engine_t* e = (imagination_engine_t*)engine;
     nimcp_mutex_lock(e->mutex);
     *stats = engine->stats;
@@ -2414,6 +2836,10 @@ int imagination_get_stats(
 
 int imagination_reset_stats(imagination_engine_t* engine) {
     if (!engine) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_reset_st", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
     memset(&engine->stats, 0, sizeof(imagination_stats_t));
@@ -2430,6 +2856,10 @@ void imagination_print_state(
         printf("Imagination Engine: NULL\n");
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_print_st", 0.0f);
+
 
     printf("=== Imagination Engine State ===\n");
     printf("Initialized: %s\n", engine->base.bridge_active ? "yes" : "no");
@@ -2500,6 +2930,10 @@ int imagination_engine_connect_collective(
 
     if (!engine) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__connect_collective", 0.0f);
+
+
     nimcp_mutex_lock(engine->mutex);
     engine->collective = collective;
     nimcp_mutex_unlock(engine->mutex);
@@ -2513,6 +2947,10 @@ int imagination_broadcast_to_collective(
 
     if (!engine || !scenario) return -1;
     if (!engine->collective) return -1;  /* No collective connected */
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_broadcas", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -2531,6 +2969,10 @@ int imagination_receive_collective_insights(
 
     if (!engine || !scenario) return -1;
     if (!engine->collective) return -1;  /* No collective connected */
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_receive_", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -2552,6 +2994,10 @@ int imagination_engine_register_with_kg(
     brain_kg_t* kg) {
 
     if (!engine || !kg) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__register_with_kg", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -2718,9 +3164,19 @@ int imagination_engine_register_with_kg(
  */
 int imagination_engine_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Imagination_Engine");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                imagination_engine_heartbeat("imagination__loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Imagination Engine self-knowledge: %s", self->observations[i]);
         }
     }
@@ -2808,6 +3264,12 @@ static void* imag_mcts_apply_action(const void* state, uint32_t action, void* us
         case IMAG_ACTION_STEP:
             /* Apply small noise to simulate a step */
             for (uint32_t i = 0; i < new_state->latent_size; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && new_state->latent_size > 256) {
+                    imagination_engine_heartbeat("imagination__loop",
+                                     (float)(i + 1) / (float)new_state->latent_size);
+                }
+
                 new_state->latent_copy[i] += gaussian_noise(noise_level * 0.5f);
             }
             break;
@@ -2815,6 +3277,12 @@ static void* imag_mcts_apply_action(const void* state, uint32_t action, void* us
         case IMAG_ACTION_ADD_NOISE:
             /* Add more creative noise */
             for (uint32_t i = 0; i < new_state->latent_size; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && new_state->latent_size > 256) {
+                    imagination_engine_heartbeat("imagination__loop",
+                                     (float)(i + 1) / (float)new_state->latent_size);
+                }
+
                 new_state->latent_copy[i] += gaussian_noise(noise_level * 2.0f);
             }
             break;
@@ -2841,6 +3309,12 @@ static void* imag_mcts_apply_action(const void* state, uint32_t action, void* us
                 uint32_t min_size = new_state->latent_size < ud->goal_size ?
                                     new_state->latent_size : ud->goal_size;
                 for (uint32_t i = 0; i < min_size; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && min_size > 256) {
+                        imagination_engine_heartbeat("imagination__loop",
+                                         (float)(i + 1) / (float)min_size);
+                    }
+
                     new_state->latent_copy[i] = (1.0f - alpha) * new_state->latent_copy[i]
                                               + alpha * ud->goal_features[i];
                 }
@@ -2857,6 +3331,12 @@ static void* imag_mcts_apply_action(const void* state, uint32_t action, void* us
         uint32_t min_size = new_state->latent_size < ud->goal_size ?
                             new_state->latent_size : ud->goal_size;
         for (uint32_t i = 0; i < min_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && min_size > 256) {
+                imagination_engine_heartbeat("imagination__loop",
+                                 (float)(i + 1) / (float)min_size);
+            }
+
             dot += new_state->latent_copy[i] * ud->goal_features[i];
             norm_l += new_state->latent_copy[i] * new_state->latent_copy[i];
             norm_g += ud->goal_features[i] * ud->goal_features[i];
@@ -2873,6 +3353,12 @@ static void* imag_mcts_apply_action(const void* state, uint32_t action, void* us
     /* Calculate coherence with previous state */
     float dot = 0.0f, norm_old = 0.0f, norm_new = 0.0f;
     for (uint32_t i = 0; i < new_state->latent_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && new_state->latent_size > 256) {
+            imagination_engine_heartbeat("imagination__loop",
+                             (float)(i + 1) / (float)new_state->latent_size);
+        }
+
         dot += s->latent_copy[i] * new_state->latent_copy[i];
         norm_old += s->latent_copy[i] * s->latent_copy[i];
         norm_new += new_state->latent_copy[i] * new_state->latent_copy[i];
@@ -2969,6 +3455,10 @@ int imagination_search_goal_mcts(
 ) {
     if (!engine || !scenario || !goal) return -1;
     if (!scenario->is_active || scenario->is_paused) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_engine_heartbeat("imagination__imagination_search_g", 0.0f);
+
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -3074,6 +3564,12 @@ int imagination_search_goal_mcts(
                 float alpha = 0.2f;
                 size_t min_size = latent_size < goal_size ? latent_size : goal_size;
                 for (size_t i = 0; i < min_size; i++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((i & 0xFF) == 0 && min_size > 256) {
+                        imagination_engine_heartbeat("imagination__loop",
+                                         (float)(i + 1) / (float)min_size);
+                    }
+
                     latent_data[i] = (1.0f - alpha) * latent_data[i]
                                    + alpha * goal_features[i];
                 }

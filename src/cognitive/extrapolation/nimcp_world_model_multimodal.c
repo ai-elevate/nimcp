@@ -26,7 +26,7 @@ static nimcp_health_agent_t* g_world_model_multimodal_health_agent = NULL;
  * @brief Set health agent for world_model_multimodal heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void world_model_multimodal_set_health_agent(nimcp_health_agent_t* agent) {
+void world_model_multimodal_set_health_agent(nimcp_health_agent_t* agent) {
     g_world_model_multimodal_health_agent = agent;
 }
 
@@ -57,6 +57,12 @@ static void init_modality_encoders(nimcp_world_model_t* wm) {
     };
 
     for (int i = 0; i < WM_MODALITY_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && WM_MODALITY_COUNT > 256) {
+            world_model_multimodal_heartbeat("world_model__loop",
+                             (float)(i + 1) / (float)WM_MODALITY_COUNT);
+        }
+
         wm->encoder_dims[i] = default_dims[i];
         wm->modality_encoders[i] = calloc(default_dims[i], sizeof(float));
         wm->modality_active[i] = false;
@@ -72,6 +78,12 @@ static void compute_cross_modal_attention(nimcp_world_model_t* wm) {
 
     /* Compute attention weights based on recent activity */
     for (int i = 0; i < WM_MODALITY_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && WM_MODALITY_COUNT > 256) {
+            world_model_multimodal_heartbeat("world_model__loop",
+                             (float)(i + 1) / (float)WM_MODALITY_COUNT);
+        }
+
         if (wm->modality_active[i]) {
             float activity = 0.0f;
             for (uint32_t j = 0; j < wm->encoder_dims[i]; j++) {
@@ -87,6 +99,12 @@ static void compute_cross_modal_attention(nimcp_world_model_t* wm) {
     /* Normalize */
     if (total > 0.0f) {
         for (int i = 0; i < WM_MODALITY_COUNT; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && WM_MODALITY_COUNT > 256) {
+                world_model_multimodal_heartbeat("world_model__loop",
+                                 (float)(i + 1) / (float)WM_MODALITY_COUNT);
+            }
+
             wm->attention.modality_weights[i] /= total;
         }
     }
@@ -94,6 +112,12 @@ static void compute_cross_modal_attention(nimcp_world_model_t* wm) {
     /* Find dominant modality */
     float max_weight = 0.0f;
     for (int i = 0; i < WM_MODALITY_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && WM_MODALITY_COUNT > 256) {
+            world_model_multimodal_heartbeat("world_model__loop",
+                             (float)(i + 1) / (float)WM_MODALITY_COUNT);
+        }
+
         if (wm->attention.modality_weights[i] > max_weight) {
             max_weight = wm->attention.modality_weights[i];
             wm->attention.dominant_modality = i;
@@ -104,6 +128,12 @@ static void compute_cross_modal_attention(nimcp_world_model_t* wm) {
     float variance = 0.0f;
     float mean = 1.0f / WM_MODALITY_COUNT;
     for (int i = 0; i < WM_MODALITY_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && WM_MODALITY_COUNT > 256) {
+            world_model_multimodal_heartbeat("world_model__loop",
+                             (float)(i + 1) / (float)WM_MODALITY_COUNT);
+        }
+
         float diff = wm->attention.modality_weights[i] - mean;
         variance += diff * diff;
     }
@@ -114,6 +144,12 @@ static void update_entities(nimcp_world_model_t* wm, float dt_ms) {
     float dt_sec = dt_ms / 1000.0f;
 
     for (uint32_t i = 0; i < wm->num_entities; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && wm->num_entities > 256) {
+            world_model_multimodal_heartbeat("world_model__loop",
+                             (float)(i + 1) / (float)wm->num_entities);
+        }
+
         wm_entity_t* e = &wm->entities[i];
 
         /* Update position based on velocity */
@@ -137,6 +173,12 @@ static void update_entities(nimcp_world_model_t* wm, float dt_ms) {
     /* Compact entity array */
     uint32_t write_idx = 0;
     for (uint32_t read_idx = 0; read_idx < wm->num_entities; read_idx++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((read_idx & 0xFF) == 0 && wm->num_entities > 256) {
+            world_model_multimodal_heartbeat("world_model__loop",
+                             (float)(read_idx + 1) / (float)wm->num_entities);
+        }
+
         if (wm->entities[read_idx].entity_id != UINT32_MAX) {
             if (write_idx != read_idx) {
                 wm->entities[write_idx] = wm->entities[read_idx];
@@ -152,6 +194,10 @@ static void update_entities(nimcp_world_model_t* wm, float dt_ms) {
  *===========================================================================*/
 
 wm_config_t wm_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    world_model_multimodal_heartbeat("world_model__wm_default_config", 0.0f);
+
+
     wm_config_t config = {
         .latent_dim = WM_LATENT_DIM,
         .context_size = WM_CONTEXT_SIZE,
@@ -170,6 +216,10 @@ wm_config_t wm_default_config(void) {
 }
 
 nimcp_world_model_t* wm_create(const wm_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    world_model_multimodal_heartbeat("world_model__wm_create", 0.0f);
+
+
     nimcp_world_model_t* wm = calloc(1, sizeof(nimcp_world_model_t));
     if (!wm) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_create: failed to allocate world model");
@@ -239,8 +289,18 @@ wm_error_t wm_init(nimcp_world_model_t* wm) {
     if (!wm) return WM_ERR_NULL_PTR;
 
     /* Initialize attention matrix */
+    /* Phase 8: Heartbeat at operation start */
+    world_model_multimodal_heartbeat("world_model__wm_init", 0.0f);
+
+
     memset(&wm->attention, 0, sizeof(wm_cross_modal_attention_t));
     for (int i = 0; i < WM_MODALITY_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && WM_MODALITY_COUNT > 256) {
+            world_model_multimodal_heartbeat("world_model__loop",
+                             (float)(i + 1) / (float)WM_MODALITY_COUNT);
+        }
+
         wm->attention.modality_weights[i] = 1.0f / WM_MODALITY_COUNT;
     }
 
@@ -255,6 +315,10 @@ wm_error_t wm_reset(nimcp_world_model_t* wm) {
     if (!wm) return WM_ERR_NULL_PTR;
 
     /* Clear state */
+    /* Phase 8: Heartbeat at operation start */
+    world_model_multimodal_heartbeat("world_model__wm_reset", 0.0f);
+
+
     memset(wm->global_state, 0, wm->global_state_dim * sizeof(float));
     memset(wm->context_buffer, 0,
            wm->config.context_size * wm->config.latent_dim * sizeof(float));
@@ -278,12 +342,22 @@ wm_error_t wm_reset(nimcp_world_model_t* wm) {
 void wm_destroy(nimcp_world_model_t* wm) {
     if (!wm) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    world_model_multimodal_heartbeat("world_model__wm_destroy", 0.0f);
+
+
     free(wm->global_state);
     free(wm->context_buffer);
     free(wm->entities);
     free(wm->prediction_buffer);
 
     for (int i = 0; i < WM_MODALITY_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && WM_MODALITY_COUNT > 256) {
+            world_model_multimodal_heartbeat("world_model__loop",
+                             (float)(i + 1) / (float)WM_MODALITY_COUNT);
+        }
+
         free(wm->modality_encoders[i]);
     }
 
@@ -301,6 +375,10 @@ wm_error_t wm_process_modality(
     if (!wm || !input) return WM_ERR_NULL_PTR;
     if (!wm->initialized) return WM_ERR_NOT_INITIALIZED;
     if (input->modality >= WM_MODALITY_COUNT) return WM_ERR_INVALID_MODALITY;
+
+    /* Phase 8: Heartbeat at operation start */
+    world_model_multimodal_heartbeat("world_model__wm_process_modality", 0.0f);
+
 
     wm->status = WM_STATUS_PROCESSING;
 
@@ -326,7 +404,17 @@ wm_error_t wm_process_multimodal(
 {
     if (!wm || !inputs) return WM_ERR_NULL_PTR;
 
+    /* Phase 8: Heartbeat at operation start */
+    world_model_multimodal_heartbeat("world_model__wm_process_multimoda", 0.0f);
+
+
     for (uint32_t i = 0; i < num_inputs; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_inputs > 256) {
+            world_model_multimodal_heartbeat("world_model__loop",
+                             (float)(i + 1) / (float)num_inputs);
+        }
+
         wm_error_t err = wm_process_modality(wm, &inputs[i]);
         if (err != WM_OK) return err;
     }
@@ -342,6 +430,10 @@ wm_error_t wm_set_modality_active(
     if (!wm) return WM_ERR_NULL_PTR;
     if (modality >= WM_MODALITY_COUNT) return WM_ERR_INVALID_MODALITY;
 
+    /* Phase 8: Heartbeat at operation start */
+    world_model_multimodal_heartbeat("world_model__wm_set_modality_acti", 0.0f);
+
+
     wm->modality_active[modality] = active;
     return WM_OK;
 }
@@ -356,6 +448,10 @@ wm_error_t wm_get_modality_encoding(
     if (modality >= WM_MODALITY_COUNT) return WM_ERR_INVALID_MODALITY;
 
     *dim = wm->encoder_dims[modality];
+    /* Phase 8: Heartbeat at operation start */
+    world_model_multimodal_heartbeat("world_model__wm_get_modality_enco", 0.0f);
+
+
     memcpy(encoding, wm->modality_encoders[modality], *dim * sizeof(float));
 
     return WM_OK;
@@ -369,6 +465,10 @@ wm_error_t wm_fuse_modalities(nimcp_world_model_t* wm) {
     if (!wm) return WM_ERR_NULL_PTR;
     if (!wm->initialized) return WM_ERR_NOT_INITIALIZED;
 
+    /* Phase 8: Heartbeat at operation start */
+    world_model_multimodal_heartbeat("world_model__wm_fuse_modalities", 0.0f);
+
+
     wm->status = WM_STATUS_FUSING;
 
     /* Compute cross-modal attention */
@@ -378,6 +478,12 @@ wm_error_t wm_fuse_modalities(nimcp_world_model_t* wm) {
     memset(wm->global_state, 0, wm->global_state_dim * sizeof(float));
 
     for (int m = 0; m < WM_MODALITY_COUNT; m++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((m & 0xFF) == 0 && WM_MODALITY_COUNT > 256) {
+            world_model_multimodal_heartbeat("world_model__loop",
+                             (float)(m + 1) / (float)WM_MODALITY_COUNT);
+        }
+
         if (!wm->modality_active[m]) continue;
 
         float weight = wm->attention.modality_weights[m];
@@ -385,6 +491,12 @@ wm_error_t wm_fuse_modalities(nimcp_world_model_t* wm) {
                       ? wm->encoder_dims[m] : wm->global_state_dim;
 
         for (uint32_t i = 0; i < dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && dim > 256) {
+                world_model_multimodal_heartbeat("world_model__loop",
+                                 (float)(i + 1) / (float)dim);
+            }
+
             wm->global_state[i] += weight * wm->modality_encoders[m][i];
         }
     }
@@ -408,6 +520,10 @@ wm_error_t wm_get_attention(
     if (!wm || !attention) return WM_ERR_NULL_PTR;
 
     *attention = wm->attention;
+    /* Phase 8: Heartbeat at operation start */
+    world_model_multimodal_heartbeat("world_model__wm_get_attention", 0.0f);
+
+
     return WM_OK;
 }
 
@@ -419,7 +535,17 @@ wm_error_t wm_set_fusion_weights(
     if (!wm || !weights) return WM_ERR_NULL_PTR;
     if (num_weights > WM_MODALITY_COUNT) return WM_ERR_CAPACITY_EXCEEDED;
 
+    /* Phase 8: Heartbeat at operation start */
+    world_model_multimodal_heartbeat("world_model__wm_set_fusion_weight", 0.0f);
+
+
     for (uint32_t i = 0; i < num_weights; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_weights > 256) {
+            world_model_multimodal_heartbeat("world_model__loop",
+                             (float)(i + 1) / (float)num_weights);
+        }
+
         wm->attention.modality_weights[i] = weights[i];
     }
 
@@ -438,6 +564,10 @@ wm_error_t wm_predict(
     if (!wm || !prediction) return WM_ERR_NULL_PTR;
     if (!wm->initialized) return WM_ERR_NOT_INITIALIZED;
     if (horizon_steps > wm->config.max_prediction_steps) return WM_ERR_INVALID_HORIZON;
+
+    /* Phase 8: Heartbeat at operation start */
+    world_model_multimodal_heartbeat("world_model__wm_predict", 0.0f);
+
 
     wm->status = WM_STATUS_PREDICTING;
 
@@ -475,12 +605,24 @@ wm_error_t wm_predict(
     /* Simple autoregressive prediction */
     float uncertainty = 0.1f;
     for (uint32_t t = 0; t < horizon_steps; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && horizon_steps > 256) {
+            world_model_multimodal_heartbeat("world_model__loop",
+                             (float)(t + 1) / (float)horizon_steps);
+        }
+
         /* Copy current state to predictions */
         memcpy(&prediction->predicted_states[t * wm->global_state_dim],
                current, wm->global_state_dim * sizeof(float));
 
         /* Simple decay model (real impl would use learned dynamics) */
         for (uint32_t i = 0; i < wm->global_state_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && wm->global_state_dim > 256) {
+                world_model_multimodal_heartbeat("world_model__loop",
+                                 (float)(i + 1) / (float)wm->global_state_dim);
+            }
+
             current[i] *= wm->config.prediction_decay;
         }
 
@@ -510,8 +652,18 @@ wm_error_t wm_predict_entity(
     if (!wm || !trajectory || !confidence) return WM_ERR_NULL_PTR;
 
     /* Find entity */
+    /* Phase 8: Heartbeat at operation start */
+    world_model_multimodal_heartbeat("world_model__wm_predict_entity", 0.0f);
+
+
     wm_entity_t* entity = NULL;
     for (uint32_t i = 0; i < wm->num_entities; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && wm->num_entities > 256) {
+            world_model_multimodal_heartbeat("world_model__loop",
+                             (float)(i + 1) / (float)wm->num_entities);
+        }
+
         if (wm->entities[i].entity_id == entity_id) {
             entity = &wm->entities[i];
             break;
@@ -525,6 +677,12 @@ wm_error_t wm_predict_entity(
     memcpy(pos, entity->position, 3 * sizeof(float));
 
     for (uint32_t t = 0; t < horizon_steps; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && horizon_steps > 256) {
+            world_model_multimodal_heartbeat("world_model__loop",
+                             (float)(t + 1) / (float)horizon_steps);
+        }
+
         trajectory[t * 3 + 0] = pos[0] + entity->velocity[0] * t;
         trajectory[t * 3 + 1] = pos[1] + entity->velocity[1] * t;
         trajectory[t * 3 + 2] = pos[2] + entity->velocity[2] * t;
@@ -542,10 +700,20 @@ wm_error_t wm_update_prediction_error(
 {
     if (!wm || !actual_state) return WM_ERR_NULL_PTR;
 
+    /* Phase 8: Heartbeat at operation start */
+    world_model_multimodal_heartbeat("world_model__wm_update_prediction", 0.0f);
+
+
     uint32_t dim = state_dim < wm->global_state_dim ? state_dim : wm->global_state_dim;
 
     float error = 0.0f;
     for (uint32_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            world_model_multimodal_heartbeat("world_model__loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         float diff = actual_state[i] - wm->global_state[i];
         error += diff * diff;
     }
@@ -570,6 +738,10 @@ wm_error_t wm_add_entity(
     if (!wm || !entity || !entity_id) return WM_ERR_NULL_PTR;
     if (wm->num_entities >= wm->entity_capacity) return WM_ERR_CAPACITY_EXCEEDED;
 
+    /* Phase 8: Heartbeat at operation start */
+    world_model_multimodal_heartbeat("world_model__wm_add_entity", 0.0f);
+
+
     wm_entity_t* new_entity = &wm->entities[wm->num_entities];
     *new_entity = *entity;
     new_entity->entity_id = wm->num_entities;
@@ -589,7 +761,17 @@ wm_error_t wm_update_entity(
 {
     if (!wm || !update) return WM_ERR_NULL_PTR;
 
+    /* Phase 8: Heartbeat at operation start */
+    world_model_multimodal_heartbeat("world_model__wm_update_entity", 0.0f);
+
+
     for (uint32_t i = 0; i < wm->num_entities; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && wm->num_entities > 256) {
+            world_model_multimodal_heartbeat("world_model__loop",
+                             (float)(i + 1) / (float)wm->num_entities);
+        }
+
         if (wm->entities[i].entity_id == entity_id) {
             wm->entities[i] = *update;
             wm->entities[i].entity_id = entity_id;
@@ -607,7 +789,17 @@ wm_error_t wm_get_entity(
 {
     if (!wm || !entity) return WM_ERR_NULL_PTR;
 
+    /* Phase 8: Heartbeat at operation start */
+    world_model_multimodal_heartbeat("world_model__wm_get_entity", 0.0f);
+
+
     for (uint32_t i = 0; i < wm->num_entities; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && wm->num_entities > 256) {
+            world_model_multimodal_heartbeat("world_model__loop",
+                             (float)(i + 1) / (float)wm->num_entities);
+        }
+
         if (wm->entities[i].entity_id == entity_id) {
             *entity = wm->entities[i];
             return WM_OK;
@@ -623,7 +815,17 @@ wm_error_t wm_remove_entity(
 {
     if (!wm) return WM_ERR_NULL_PTR;
 
+    /* Phase 8: Heartbeat at operation start */
+    world_model_multimodal_heartbeat("world_model__wm_remove_entity", 0.0f);
+
+
     for (uint32_t i = 0; i < wm->num_entities; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && wm->num_entities > 256) {
+            world_model_multimodal_heartbeat("world_model__loop",
+                             (float)(i + 1) / (float)wm->num_entities);
+        }
+
         if (wm->entities[i].entity_id == entity_id) {
             /* Shift remaining entities */
             for (uint32_t j = i; j < wm->num_entities - 1; j++) {
@@ -646,6 +848,10 @@ wm_error_t wm_get_entities(
 {
     if (!wm || !entities || !count) return WM_ERR_NULL_PTR;
 
+    /* Phase 8: Heartbeat at operation start */
+    world_model_multimodal_heartbeat("world_model__wm_get_entities", 0.0f);
+
+
     memcpy(entities, wm->entities, wm->num_entities * sizeof(wm_entity_t));
     *count = wm->num_entities;
 
@@ -663,6 +869,10 @@ wm_error_t wm_get_global_state(
 {
     if (!wm || !state || !dim) return WM_ERR_NULL_PTR;
 
+    /* Phase 8: Heartbeat at operation start */
+    world_model_multimodal_heartbeat("world_model__wm_get_global_state", 0.0f);
+
+
     memcpy(state, wm->global_state, wm->global_state_dim * sizeof(float));
     *dim = wm->global_state_dim;
 
@@ -674,6 +884,10 @@ wm_error_t wm_update(nimcp_world_model_t* wm, float dt_ms) {
     if (!wm->initialized) return WM_ERR_NOT_INITIALIZED;
 
     /* Update entity states */
+    /* Phase 8: Heartbeat at operation start */
+    world_model_multimodal_heartbeat("world_model__wm_update", 0.0f);
+
+
     update_entities(wm, dt_ms);
 
     /* Update coherence */
@@ -690,6 +904,10 @@ wm_error_t wm_get_stats(
     if (!wm || !stats) return WM_ERR_NULL_PTR;
 
     *stats = wm->stats;
+    /* Phase 8: Heartbeat at operation start */
+    world_model_multimodal_heartbeat("world_model__wm_get_stats", 0.0f);
+
+
     return WM_OK;
 }
 
@@ -698,10 +916,18 @@ wm_error_t wm_get_stats(
  *===========================================================================*/
 
 wm_status_t wm_get_status(nimcp_world_model_t* wm) {
+    /* Phase 8: Heartbeat at operation start */
+    world_model_multimodal_heartbeat("world_model__wm_get_status", 0.0f);
+
+
     return wm ? wm->status : WM_STATUS_ERROR;
 }
 
 wm_error_t wm_get_last_error(nimcp_world_model_t* wm) {
+    /* Phase 8: Heartbeat at operation start */
+    world_model_multimodal_heartbeat("world_model__wm_get_last_error", 0.0f);
+
+
     return wm ? wm->last_error : WM_ERR_NULL_PTR;
 }
 

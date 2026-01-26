@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_rcog_health_health_agent = NULL;
  * @brief Set health agent for rcog_health heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void rcog_health_set_health_agent(nimcp_health_agent_t* agent) {
+void rcog_health_set_health_agent(nimcp_health_agent_t* agent) {
     g_rcog_health_health_agent = agent;
 }
 
@@ -257,6 +257,10 @@ static rcog_health_tool_t builtin_tools[RCOG_TOOL_ID_COUNT] = {
  * ============================================================================ */
 
 rcog_health_config_t rcog_health_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_health_heartbeat("rcog_health_default_config", 0.0f);
+
+
     rcog_health_config_t config = {
         .confidence_threshold = RCOG_HEALTH_DEFAULT_CONFIDENCE,
         .default_timeout_ms = RCOG_HEALTH_DEFAULT_TIMEOUT_MS,
@@ -280,6 +284,10 @@ rcog_health_integration_t* rcog_health_create(
     nimcp_health_agent_t* health_agent,
     const rcog_health_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_health_heartbeat("rcog_health_create", 0.0f);
+
+
     rcog_health_integration_t* integration = calloc(1, sizeof(rcog_health_integration_t));
     if (!integration) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "integration is NULL");
@@ -347,6 +355,10 @@ void rcog_health_destroy(rcog_health_integration_t* integration) {
     if (!integration) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_health_heartbeat("rcog_health_destroy", 0.0f);
+
 
     free(integration->pending_goals);
     free(integration->cache);
@@ -573,6 +585,10 @@ int rcog_health_submit_goal(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_health_heartbeat("rcog_health_submit_goal", 0.0f);
+
+
     integration->stats.goals_submitted++;
 
     /* Check cache first */
@@ -580,6 +596,12 @@ int rcog_health_submit_goal(
         uint64_t now = get_time_us();
 
         for (uint32_t i = 0; i < integration->cache_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && integration->cache_size > 256) {
+                rcog_health_heartbeat("rcog_health_loop",
+                                 (float)(i + 1) / (float)integration->cache_size);
+            }
+
             cached_diagnosis_t* entry = &integration->cache[i];
 
             if (entry->anomaly_type == goal->anomaly_type &&
@@ -644,6 +666,10 @@ int rcog_health_submit_goal_async(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_health_heartbeat("rcog_health_submit_goal_async", 0.0f);
+
+
     if (integration->num_pending >= integration->max_pending) {
         return -1;  /* Queue full */
     }
@@ -674,10 +700,20 @@ int rcog_health_get_answer(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_health_heartbeat("rcog_health_get_answer", 0.0f);
+
+
     (void)timeout_ms;  /* Not used in this implementation */
 
     /* Find the pending goal */
     for (uint32_t i = 0; i < integration->num_pending; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && integration->num_pending > 256) {
+            rcog_health_heartbeat("rcog_health_loop",
+                             (float)(i + 1) / (float)integration->num_pending);
+        }
+
         if (integration->pending_goals[i].goal_id == goal_id) {
             pending_health_goal_t* pending = &integration->pending_goals[i];
 
@@ -719,7 +755,17 @@ bool rcog_health_is_complete(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_health_heartbeat("rcog_health_is_complete", 0.0f);
+
+
     for (uint32_t i = 0; i < integration->num_pending; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && integration->num_pending > 256) {
+            rcog_health_heartbeat("rcog_health_loop",
+                             (float)(i + 1) / (float)integration->num_pending);
+        }
+
         if (integration->pending_goals[i].goal_id == goal_id) {
             return integration->pending_goals[i].complete;
         }
@@ -738,7 +784,17 @@ int rcog_health_cancel_goal(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_health_heartbeat("rcog_health_cancel_goal", 0.0f);
+
+
     for (uint32_t i = 0; i < integration->num_pending; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && integration->num_pending > 256) {
+            rcog_health_heartbeat("rcog_health_loop",
+                             (float)(i + 1) / (float)integration->num_pending);
+        }
+
         if (integration->pending_goals[i].goal_id == goal_id) {
             /* Remove from pending */
             if (i < integration->num_pending - 1) {
@@ -772,6 +828,10 @@ int rcog_health_diagnose_anomaly(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_health_heartbeat("rcog_health_diagnose_anomaly", 0.0f);
+
+
     rcog_health_goal_t goal;
     rcog_health_init_goal(&goal);
 
@@ -799,6 +859,10 @@ int rcog_health_plan_recovery(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_health_heartbeat("rcog_health_plan_recovery", 0.0f);
+
+
     rcog_health_answer_t answer;
     int result = rcog_health_diagnose_anomaly(integration, anomaly_type, source, severity, &answer);
 
@@ -820,6 +884,10 @@ int rcog_health_predict_failure(
     }
 
     /* Simulated prediction based on source */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_health_heartbeat("rcog_health_predict_failure", 0.0f);
+
+
     switch (source) {
         case HEALTH_SOURCE_MEMORY:
             *failure_probability = 0.15f;
@@ -853,6 +921,10 @@ int rcog_health_register_builtin_tools(rcog_health_integration_t* integration) {
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_health_heartbeat("rcog_health_register_builtin_too", 0.0f);
+
+
     if (integration->builtin_tools_registered) {
         return 0;  /* Already registered */
     }
@@ -873,6 +945,10 @@ int rcog_health_register_tool(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_health_heartbeat("rcog_health_register_tool", 0.0f);
+
+
     if (integration->num_custom_tools >= integration->max_custom_tools) {
         return -1;  /* No room */
     }
@@ -891,7 +967,17 @@ int rcog_health_unregister_tool(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_health_heartbeat("rcog_health_unregister_tool", 0.0f);
+
+
     for (uint32_t i = 0; i < integration->num_custom_tools; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && integration->num_custom_tools > 256) {
+            rcog_health_heartbeat("rcog_health_loop",
+                             (float)(i + 1) / (float)integration->num_custom_tools);
+        }
+
         if (strcmp(integration->custom_tools[i].tool_name, tool_name) == 0) {
             /* Remove tool */
             if (i < integration->num_custom_tools - 1) {
@@ -908,6 +994,10 @@ int rcog_health_unregister_tool(
 }
 
 const rcog_health_tool_t* rcog_health_get_builtin_tool(rcog_health_tool_id_t tool_id) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_health_heartbeat("rcog_health_get_builtin_tool", 0.0f);
+
+
     if (tool_id >= RCOG_TOOL_ID_COUNT) {
         return NULL;
     }
@@ -928,6 +1018,10 @@ int rcog_health_get_stats(
     }
 
     *stats = integration->stats;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_health_heartbeat("rcog_health_get_stats", 0.0f);
+
+
     return 0;
 }
 
@@ -935,6 +1029,10 @@ void rcog_health_reset_stats(rcog_health_integration_t* integration) {
     if (!integration) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_health_heartbeat("rcog_health_reset_stats", 0.0f);
+
 
     memset(&integration->stats, 0, sizeof(rcog_health_stats_t));
 }
@@ -978,6 +1076,10 @@ void rcog_health_init_goal(rcog_health_goal_t* goal) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_health_heartbeat("rcog_health_init_goal", 0.0f);
+
+
     memset(goal, 0, sizeof(rcog_health_goal_t));
     goal->base_type = RCOG_GOAL_REASONING;
     goal->health_type = RCOG_HEALTH_GOAL_DIAGNOSE;
@@ -993,6 +1095,10 @@ void rcog_health_init_answer(rcog_health_answer_t* answer) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_health_heartbeat("rcog_health_init_answer", 0.0f);
+
+
     memset(answer, 0, sizeof(rcog_health_answer_t));
     answer->success = false;
     answer->overall_confidence = 0.0f;
@@ -1000,6 +1106,10 @@ void rcog_health_init_answer(rcog_health_answer_t* answer) {
 
 void rcog_health_free_answer(rcog_health_answer_t* answer) {
     /* No dynamic allocations in current implementation */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_health_heartbeat("rcog_health_free_answer", 0.0f);
+
+
     (void)answer;
 }
 
@@ -1007,6 +1117,10 @@ void rcog_health_dump_answer(const rcog_health_answer_t* answer) {
     if (!answer) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_health_heartbeat("rcog_health_dump_answer", 0.0f);
+
 
     printf("=== RCOG Health Answer ===\n");
     printf("Success: %s\n", answer->success ? "yes" : "no");

@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_pr_logging_bridge_health_agent = NULL;
  * @brief Set health agent for pr_logging_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void pr_logging_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void pr_logging_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_pr_logging_bridge_health_agent = agent;
 }
 
@@ -1054,6 +1054,12 @@ NIMCP_EXPORT pr_log_error_t pr_logging_bridge_export_to_file(
     }
 
     for (size_t i = 0; i < bridge->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->count > 256) {
+            pr_logging_bridge_heartbeat("pr_logging_b_loop",
+                             (float)(i + 1) / (float)bridge->count);
+        }
+
         pr_log_entry_t* entry = &bridge->entries[read_idx];
         read_idx = (read_idx + 1) % bridge->capacity;
 
@@ -1145,6 +1151,12 @@ NIMCP_EXPORT pr_log_error_t pr_logging_bridge_export_to_buffer(
     }
 
     for (size_t i = 0; i < bridge->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->count > 256) {
+            pr_logging_bridge_heartbeat("pr_logging_b_loop",
+                             (float)(i + 1) / (float)bridge->count);
+        }
+
         pr_log_entry_t* entry = &bridge->entries[read_idx];
         read_idx = (read_idx + 1) % bridge->capacity;
 
@@ -1272,6 +1284,12 @@ NIMCP_EXPORT pr_log_error_t pr_logging_bridge_get_recent(
 
     /* Read most recent entries (backwards from write pointer) */
     for (size_t i = 0; i < to_copy; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && to_copy > 256) {
+            pr_logging_bridge_heartbeat("pr_logging_b_loop",
+                             (float)(i + 1) / (float)to_copy);
+        }
+
         size_t idx = (bridge->write_idx + bridge->capacity - to_copy + i)
                      % bridge->capacity;
         entries[i] = bridge->entries[idx];
@@ -1306,6 +1324,12 @@ NIMCP_EXPORT size_t pr_logging_bridge_count_entries(
     }
 
     for (size_t i = 0; i < bridge->count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->count > 256) {
+            pr_logging_bridge_heartbeat("pr_logging_b_loop",
+                             (float)(i + 1) / (float)bridge->count);
+        }
+
         pr_log_entry_t* entry = &bridge->entries[read_idx];
         read_idx = (read_idx + 1) % bridge->capacity;
 
@@ -1483,6 +1507,12 @@ NIMCP_EXPORT void pr_logging_bridge_print_summary(const pr_logging_bridge_t brid
 
     printf("\nBy Level:\n");
     for (int i = 0; i < PR_LOG_LEVEL_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_LOG_LEVEL_COUNT > 256) {
+            pr_logging_bridge_heartbeat("pr_logging_b_loop",
+                             (float)(i + 1) / (float)PR_LOG_LEVEL_COUNT);
+        }
+
         if (stats.entries_by_level[i] > 0) {
             printf("  %s: %lu\n", pr_log_level_name((pr_log_level_t)i),
                    (unsigned long)stats.entries_by_level[i]);
@@ -1491,6 +1521,12 @@ NIMCP_EXPORT void pr_logging_bridge_print_summary(const pr_logging_bridge_t brid
 
     printf("\nBy Category:\n");
     for (int i = 0; i < PR_LOG_CAT_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && PR_LOG_CAT_COUNT > 256) {
+            pr_logging_bridge_heartbeat("pr_logging_b_loop",
+                             (float)(i + 1) / (float)PR_LOG_CAT_COUNT);
+        }
+
         if (stats.entries_by_category[i] > 0) {
             printf("  %s: %lu\n", pr_log_category_name((pr_log_category_t)i),
                    (unsigned long)stats.entries_by_category[i]);

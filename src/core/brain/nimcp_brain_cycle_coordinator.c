@@ -24,6 +24,10 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
+#include "cognitive/immune/nimcp_brain_immune.h"
+#include "core/brain/nimcp_kg_io_dispatcher.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -157,6 +161,38 @@ struct brain_cycle_coordinator {
     /* Thread safety */
     nimcp_mutex_t* mutex;
 };
+
+//=============================================================================
+// Bio-Async Message Payloads (file-local)
+//=============================================================================
+
+typedef struct {
+    bio_message_header_t header;
+    uint32_t cycle_type;       /* brain_cycle_type_t */
+    uint32_t old_health;       /* brain_cycle_health_t */
+    uint32_t new_health;       /* brain_cycle_health_t */
+} bio_msg_cycle_health_changed_t;
+
+typedef struct {
+    bio_message_header_t header;
+    uint32_t cycle_type;
+    uint64_t stall_duration_ms;
+} bio_msg_cycle_stall_detected_t;
+
+typedef struct {
+    bio_message_header_t header;
+    uint32_t dependent_type;
+    uint32_t dependency_type;
+} bio_msg_cycle_dependency_violated_t;
+
+typedef struct {
+    bio_message_header_t header;
+    float    overall_health;
+    uint32_t healthy_count;
+    uint32_t degraded_count;
+    uint32_t stalled_count;
+    uint64_t uptime_ms;
+} bio_msg_cycle_coordinator_stats_t;
 
 //=============================================================================
 // Static Helpers
@@ -349,6 +385,23 @@ static void update_category_stats(brain_cycle_coordinator_t* coord) {
 }
 
 //=============================================================================
+// Forward Declarations - Integration Helpers
+//=============================================================================
+
+static void publish_bio_health_changed(brain_cycle_coordinator_t* coord,
+    brain_cycle_type_t type, brain_cycle_health_t old_h, brain_cycle_health_t new_h);
+static void publish_bio_stall(brain_cycle_coordinator_t* coord,
+    brain_cycle_type_t type, uint64_t stall_ms);
+static void publish_bio_dependency_violated(brain_cycle_coordinator_t* coord,
+    brain_cycle_type_t dependent, brain_cycle_type_t dependency);
+static void publish_bio_stats(brain_cycle_coordinator_t* coord);
+static void report_immune_stall(brain_cycle_coordinator_t* coord,
+    brain_cycle_type_t type, uint64_t stall_ms);
+static void report_immune_health_change(brain_cycle_coordinator_t* coord,
+    brain_cycle_type_t type, brain_cycle_health_t old_h, brain_cycle_health_t new_h);
+static float read_immune_inflammation_sensitivity(brain_cycle_coordinator_t* coord);
+
+//=============================================================================
 // Callback Firing Helpers
 //=============================================================================
 
@@ -364,6 +417,8 @@ static void fire_health_changed_callbacks(
                 type, old_h, new_h, coord->callbacks[i].user_data);
         }
     }
+    publish_bio_health_changed(coord, type, old_h, new_h);
+    report_immune_health_change(coord, type, old_h, new_h);
 }
 
 static void fire_stall_detected_callbacks(
@@ -377,6 +432,8 @@ static void fire_stall_detected_callbacks(
                 type, stall_duration_ms, coord->callbacks[i].user_data);
         }
     }
+    publish_bio_stall(coord, type, stall_duration_ms);
+    report_immune_stall(coord, type, stall_duration_ms);
 }
 
 static void fire_dependency_violated_callbacks(
@@ -390,6 +447,7 @@ static void fire_dependency_violated_callbacks(
                 dependent, dependency, coord->callbacks[i].user_data);
         }
     }
+    publish_bio_dependency_violated(coord, dependent, dependency);
 }
 
 static void fire_overall_health_changed_callbacks(
@@ -403,7 +461,170 @@ static void fire_overall_health_changed_callbacks(
                 old_h, new_h, coord->callbacks[i].user_data);
         }
     }
+    publish_bio_stats(coord);
 }
+
+//=============================================================================
+// Integration Helpers - Bio-Async Publishing
+//=============================================================================
+
+static void publish_bio_health_changed(
+    brain_cycle_coordinator_t* coord,
+    brain_cycle_type_t type,
+    brain_cycle_health_t old_h,
+    brain_cycle_health_t new_h)
+{
+    if (!coord->bio_context) return;
+
+    bio_msg_cycle_health_changed_t msg;
+    memset(&msg, 0, sizeof(msg));
+    bio_msg_init_header(&msg.header, BIO_MSG_CYCLE_HEALTH_CHANGED,
+                        BIO_MODULE_CYCLE_COORDINATOR, 0,
+                        sizeof(msg) - sizeof(bio_message_header_t));
+    msg.cycle_type = (uint32_t)type;
+    msg.old_health = (uint32_t)old_h;
+    msg.new_health = (uint32_t)new_h;
+    bio_router_broadcast(*coord->bio_context, &msg, sizeof(msg));
+}
+
+static void publish_bio_stall(
+    brain_cycle_coordinator_t* coord,
+    brain_cycle_type_t type,
+    uint64_t stall_ms)
+{
+    if (!coord->bio_context) return;
+
+    bio_msg_cycle_stall_detected_t msg;
+    memset(&msg, 0, sizeof(msg));
+    bio_msg_init_header(&msg.header, BIO_MSG_CYCLE_STALL_DETECTED,
+                        BIO_MODULE_CYCLE_COORDINATOR, 0,
+                        sizeof(msg) - sizeof(bio_message_header_t));
+    msg.cycle_type = (uint32_t)type;
+    msg.stall_duration_ms = stall_ms;
+    bio_router_broadcast(*coord->bio_context, &msg, sizeof(msg));
+}
+
+static void publish_bio_dependency_violated(
+    brain_cycle_coordinator_t* coord,
+    brain_cycle_type_t dependent,
+    brain_cycle_type_t dependency)
+{
+    if (!coord->bio_context) return;
+
+    bio_msg_cycle_dependency_violated_t msg;
+    memset(&msg, 0, sizeof(msg));
+    bio_msg_init_header(&msg.header, BIO_MSG_CYCLE_DEPENDENCY_VIOLATED,
+                        BIO_MODULE_CYCLE_COORDINATOR, 0,
+                        sizeof(msg) - sizeof(bio_message_header_t));
+    msg.dependent_type = (uint32_t)dependent;
+    msg.dependency_type = (uint32_t)dependency;
+    bio_router_broadcast(*coord->bio_context, &msg, sizeof(msg));
+}
+
+static void publish_bio_stats(brain_cycle_coordinator_t* coord)
+{
+    if (!coord->bio_context) return;
+
+    bio_msg_cycle_coordinator_stats_t msg;
+    memset(&msg, 0, sizeof(msg));
+    bio_msg_init_header(&msg.header, BIO_MSG_CYCLE_COORDINATOR_STATS,
+                        BIO_MODULE_CYCLE_COORDINATOR, 0,
+                        sizeof(msg) - sizeof(bio_message_header_t));
+    msg.overall_health = coord->stats.overall_health;
+    msg.healthy_count = coord->stats.total_cycles_healthy;
+    msg.degraded_count = coord->stats.total_cycles_degraded;
+    msg.stalled_count = coord->stats.total_cycles_stalled;
+    msg.uptime_ms = coord->stats.coordinator_uptime_ms;
+    bio_router_broadcast(*coord->bio_context, &msg, sizeof(msg));
+}
+
+//=============================================================================
+// Integration Helpers - Immune System Reporting
+//=============================================================================
+
+static void report_immune_stall(
+    brain_cycle_coordinator_t* coord,
+    brain_cycle_type_t type,
+    uint64_t stall_ms)
+{
+    if (!coord->immune_system) return;
+
+    const char* name = get_cycle_name(type);
+    uint32_t severity = (uint32_t)(stall_ms / 1000 + 3);
+    if (severity > 10) severity = 10;
+
+    uint32_t antigen_id = 0;
+    brain_immune_present_antigen(
+        coord->immune_system,
+        ANTIGEN_SOURCE_ANOMALY,
+        (const uint8_t*)name,
+        strlen(name),
+        severity,
+        (uint32_t)type,
+        &antigen_id);
+}
+
+static void report_immune_health_change(
+    brain_cycle_coordinator_t* coord,
+    brain_cycle_type_t type,
+    brain_cycle_health_t old_h,
+    brain_cycle_health_t new_h)
+{
+    if (!coord->immune_system) return;
+
+    brain_cytokine_type_t ctype;
+    float concentration;
+
+    if (new_h == BRAIN_CYCLE_HEALTH_DEGRADED && old_h == BRAIN_CYCLE_HEALTH_HEALTHY) {
+        /* Degradation: pro-inflammatory */
+        ctype = BRAIN_CYTOKINE_IL1;
+        concentration = 0.5f;
+    } else if (new_h == BRAIN_CYCLE_HEALTH_STALLED || new_h == BRAIN_CYCLE_HEALTH_ERROR) {
+        /* Stalled/error: stronger pro-inflammatory */
+        ctype = BRAIN_CYTOKINE_IL1;
+        concentration = 0.3f;
+    } else if (new_h == BRAIN_CYCLE_HEALTH_HEALTHY &&
+               (old_h == BRAIN_CYCLE_HEALTH_DEGRADED || old_h == BRAIN_CYCLE_HEALTH_STALLED ||
+                old_h == BRAIN_CYCLE_HEALTH_ERROR)) {
+        /* Recovery: anti-inflammatory */
+        ctype = BRAIN_CYTOKINE_IL10;
+        concentration = -0.2f;
+    } else {
+        return; /* No immune-relevant transition */
+    }
+
+    uint32_t cytokine_id = 0;
+    brain_immune_release_cytokine(
+        coord->immune_system,
+        ctype,
+        (uint32_t)type,  /* source_cell = cycle type */
+        concentration,
+        0,               /* target_region = 0 (broadcast) */
+        &cytokine_id);
+}
+
+static float read_immune_inflammation_sensitivity(brain_cycle_coordinator_t* coord)
+{
+    if (!coord->immune_system) return 1.0f;
+
+    brain_inflammation_level_t level =
+        brain_immune_get_inflammation_level(coord->immune_system);
+
+    /* Higher inflammation = more sensitive stall detection (higher divisor
+     * in threshold = interval * multiplier / sensitivity).
+     * Returns 0.5 - 2.0: STORM=2.0 (most sensitive), NONE=0.5 (least). */
+    switch (level) {
+    case INFLAMMATION_STORM:    return 2.0f;
+    case INFLAMMATION_SYSTEMIC: return 1.5f;
+    case INFLAMMATION_REGIONAL: return 1.0f;
+    case INFLAMMATION_LOCAL:    return 0.75f;
+    case INFLAMMATION_NONE:
+    default:                    return 0.5f;
+    }
+}
+
+/* Forward declaration for KG flush (Phase 4) */
+static int flush_to_kg_unlocked(brain_cycle_coordinator_t* coord);
 
 //=============================================================================
 // Public API - Lifecycle
@@ -714,8 +935,9 @@ int brain_cycle_coordinator_check_health(brain_cycle_coordinator_t* coord) {
         /* Check for stall (only for cycles with expected intervals) */
         if (coord->config.enable_timing_checks && e->expected_interval_us > 0) {
             uint64_t elapsed = now - e->last_tick_us;
-            uint64_t stall_threshold = e->expected_interval_us *
-                coord->config.stall_threshold_multiplier;
+            float sensitivity = read_immune_inflammation_sensitivity(coord);
+            uint64_t stall_threshold = (uint64_t)(e->expected_interval_us *
+                coord->config.stall_threshold_multiplier / sensitivity);
 
             if (elapsed > stall_threshold && e->ticks_executed > 0) {
                 new_health = BRAIN_CYCLE_HEALTH_STALLED;
@@ -804,6 +1026,14 @@ int brain_cycle_coordinator_check_health(brain_cycle_coordinator_t* coord) {
 
     /* Track health pattern */
     track_health_pattern(coord);
+
+    /* Auto-flush cycle stats to KG at configured interval */
+    if (coord->kg_dispatcher && coord->config.kg_write_interval_ms > 0) {
+        uint64_t kg_elapsed_ms = (now - coord->last_kg_write_us) / 1000;
+        if (kg_elapsed_ms >= coord->config.kg_write_interval_ms) {
+            flush_to_kg_unlocked(coord);
+        }
+    }
 
     /* Update uptime */
     coord->stats.coordinator_uptime_ms = (now - coord->created_time_us) / 1000;
@@ -908,9 +1138,23 @@ int brain_cycle_coordinator_get_stats(
         return -1;
     }
 
-    nimcp_mutex_lock(((brain_cycle_coordinator_t*)coord)->mutex);
+    brain_cycle_coordinator_t* mutable_coord =
+        (brain_cycle_coordinator_t*)coord;
+    nimcp_mutex_lock(mutable_coord->mutex);
+
+    /* Refresh category stats before returning */
+    update_category_stats(mutable_coord);
+
+    /* Recompute overall health */
+    mutable_coord->stats.overall_health = compute_overall_health(coord);
+
+    /* Refresh uptime */
+    uint64_t now = get_timestamp_us();
+    mutable_coord->stats.coordinator_uptime_ms =
+        (now - mutable_coord->created_time_us) / 1000;
+
     *stats = coord->stats;
-    nimcp_mutex_unlock(((brain_cycle_coordinator_t*)coord)->mutex);
+    nimcp_mutex_unlock(mutable_coord->mutex);
     return 0;
 }
 
@@ -1208,6 +1452,42 @@ CONNECT_IMPL(brain_cycle_coordinator_connect_world_model, world_model,
 // Public API - Persistence
 //=============================================================================
 
+/**
+ * @brief Internal KG flush (must be called with mutex held)
+ */
+static int flush_to_kg_unlocked(brain_cycle_coordinator_t* coord) {
+    if (!coord->kg_dispatcher) return -1;
+
+    coord->last_kg_write_us = get_timestamp_us();
+
+    /* Format ILP lines for each registered cycle and write to KG */
+    char line_buf[512];
+    for (int i = 0; i < BRAIN_CYCLE_COUNT; i++) {
+        const cycle_entry_t* e = &coord->cycles[i];
+        if (!e->registered) continue;
+
+        int len = snprintf(line_buf, sizeof(line_buf),
+            "%s,cycle=%s health=%di,ticks=%luu,avg_duration=%.2f,max_duration=%luu %lu",
+            coord->kg_table_name,
+            get_cycle_name(e->type),
+            (int)e->health,
+            (unsigned long)e->ticks_executed,
+            e->avg_duration_us,
+            (unsigned long)e->max_duration_us,
+            (unsigned long)(coord->last_kg_write_us / 1000));
+        if (len > 0) {
+            kg_io_write_async(coord->kg_dispatcher, coord->kg_table_name,
+                              line_buf, (size_t)len, NULL, NULL);
+        }
+    }
+
+    if (coord->config.enable_debug_logging) {
+        LOG_MODULE_DEBUG(CYCLE_COORD_LOG_MODULE, "Flushed cycle stats to KG");
+    }
+
+    return 0;
+}
+
 int brain_cycle_coordinator_flush_to_kg(brain_cycle_coordinator_t* coord) {
     if (!coord) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
@@ -1219,34 +1499,10 @@ int brain_cycle_coordinator_flush_to_kg(brain_cycle_coordinator_t* coord) {
     }
 
     nimcp_mutex_lock(coord->mutex);
-    coord->last_kg_write_us = get_timestamp_us();
-
-    /* Format ILP lines for each registered cycle */
-    char line_buf[512];
-    for (int i = 0; i < BRAIN_CYCLE_COUNT; i++) {
-        const cycle_entry_t* e = &coord->cycles[i];
-        if (!e->registered) continue;
-
-        snprintf(line_buf, sizeof(line_buf),
-            "%s,cycle=%s health=%di,ticks=%luu,avg_duration=%.2f,max_duration=%luu %lu",
-            coord->kg_table_name,
-            get_cycle_name(e->type),
-            (int)e->health,
-            (unsigned long)e->ticks_executed,
-            e->avg_duration_us,
-            (unsigned long)e->max_duration_us,
-            (unsigned long)(coord->last_kg_write_us / 1000));
-        /* Actual KG write would call kg_io_dispatcher API here */
-        (void)line_buf;
-    }
-
+    int rc = flush_to_kg_unlocked(coord);
     nimcp_mutex_unlock(coord->mutex);
 
-    if (coord->config.enable_debug_logging) {
-        LOG_MODULE_DEBUG(CYCLE_COORD_LOG_MODULE, "Flushed cycle stats to KG");
-    }
-
-    return 0;
+    return rc;
 }
 
 //=============================================================================

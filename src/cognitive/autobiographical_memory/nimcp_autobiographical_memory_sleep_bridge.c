@@ -31,7 +31,7 @@ static nimcp_health_agent_t* g_autobiographical_memory_sleep_bridge_health_agent
  * @brief Set health agent for autobiographical_memory_sleep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void autobiographical_memory_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void autobiographical_memory_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_autobiographical_memory_sleep_bridge_health_agent = agent;
 }
 
@@ -117,6 +117,10 @@ static void autobio_on_sleep_state_change(sleep_state_t new_state, void* user_da
 
 int autobio_sleep_default_config(autobio_sleep_config_t* config) {
     if (!config) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_sleep_bridge_heartbeat("autobiograph_autobio_sleep_defaul", 0.0f);
+
+
     config->enable_encoding_modulation = true;
     config->enable_consolidation_modulation = true;
     config->modulation_strength = 1.0f;
@@ -134,6 +138,10 @@ autobio_sleep_bridge_t autobio_sleep_bridge_create(
         return NULL;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_sleep_bridge_heartbeat("autobiograph_autobio_sleep_bridge", 0.0f);
+
 
     struct autobio_sleep_bridge_struct* bridge =
         (struct autobio_sleep_bridge_struct*)nimcp_malloc(sizeof(struct autobio_sleep_bridge_struct));
@@ -184,6 +192,10 @@ void autobio_sleep_bridge_destroy(autobio_sleep_bridge_t bridge) {
     if (!bridge) return;
 
     /* Unregister callback if it was registered */
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_sleep_bridge_heartbeat("autobiograph_autobio_sleep_bridge", 0.0f);
+
+
     if (bridge->callback_registered && bridge->sleep_system) {
         bool unregistered = sleep_unregister_state_callback(
             bridge->sleep_system,
@@ -201,6 +213,10 @@ void autobio_sleep_bridge_destroy(autobio_sleep_bridge_t bridge) {
 
 int autobio_sleep_update(autobio_sleep_bridge_t bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_sleep_bridge_heartbeat("autobiograph_autobio_sleep_update", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -246,6 +262,10 @@ int autobio_sleep_update(autobio_sleep_bridge_t bridge) {
 
 int autobio_sleep_get_effects(const autobio_sleep_bridge_t bridge, autobio_sleep_effects_t* effects) {
     if (!bridge || !effects) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_sleep_bridge_heartbeat("autobiograph_autobio_sleep_get_ef", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -254,6 +274,10 @@ int autobio_sleep_get_effects(const autobio_sleep_bridge_t bridge, autobio_sleep
 
 float autobio_sleep_get_encoding_efficiency(const autobio_sleep_bridge_t bridge) {
     if (!bridge) return 1.0f;
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_sleep_bridge_heartbeat("autobiograph_autobio_sleep_get_en", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.encoding_efficiency_factor;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -262,6 +286,10 @@ float autobio_sleep_get_encoding_efficiency(const autobio_sleep_bridge_t bridge)
 
 bool autobio_sleep_is_consolidation_active(const autobio_sleep_bridge_t bridge) {
     if (!bridge) return false;
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_sleep_bridge_heartbeat("autobiograph_autobio_sleep_is_con", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.consolidation_active;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -269,6 +297,10 @@ bool autobio_sleep_is_consolidation_active(const autobio_sleep_bridge_t bridge) 
 }
 
 float autobio_sleep_encoding_for_state(sleep_state_t state) {
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_sleep_bridge_heartbeat("autobiograph_autobio_sleep_encodi", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return AUTOBIO_SLEEP_ENCODING_AWAKE;
         case SLEEP_STATE_DROWSY:     return AUTOBIO_SLEEP_ENCODING_DROWSY;
@@ -280,6 +312,10 @@ float autobio_sleep_encoding_for_state(sleep_state_t state) {
 }
 
 float autobio_sleep_consolidation_for_state(sleep_state_t state) {
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_sleep_bridge_heartbeat("autobiograph_autobio_sleep_consol", 0.0f);
+
+
     switch (state) {
         case SLEEP_STATE_AWAKE:      return AUTOBIO_SLEEP_CONSOLIDATION_AWAKE;
         case SLEEP_STATE_DROWSY:     return AUTOBIO_SLEEP_CONSOLIDATION_DROWSY;
@@ -297,9 +333,19 @@ float autobio_sleep_consolidation_for_state(sleep_state_t state) {
 int autobio_sleep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    autobiographical_memory_sleep_bridge_heartbeat("autobiograph_autobio_sleep_bridge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Autobiographical_Sleep_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                autobiographical_memory_sleep_bridge_heartbeat("autobiograph_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

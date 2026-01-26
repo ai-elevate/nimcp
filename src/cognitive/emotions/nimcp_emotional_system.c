@@ -67,7 +67,7 @@ static nimcp_health_agent_t* g_emotional_system_health_agent = NULL;
  * @brief Set health agent for emotional_system heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void emotional_system_set_health_agent(nimcp_health_agent_t* agent) {
+void emotional_system_set_health_agent(nimcp_health_agent_t* agent) {
     g_emotional_system_health_agent = agent;
 }
 
@@ -160,6 +160,12 @@ static int emotional_system_wiring_handler_callback(
              message_count);
 
     for (uint32_t i = 0; i < message_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && message_count > 256) {
+            emotional_system_heartbeat("emotional_sy_loop",
+                             (float)(i + 1) / (float)message_count);
+        }
+
         switch (message_types[i]) {
             case BIO_MSG_SALIENCE_QUERY:
                 bio_router_register_handler(ctx, message_types[i], handle_salience_query);
@@ -394,6 +400,10 @@ static float calculate_stability(float current_valence, float current_arousal,
 //=============================================================================
 
 emotion_config_t emotion_system_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_heartbeat("emotional_sy_emotion_system_defau", 0.0f);
+
+
     emotion_config_t config = {0};
 
     // Core features enabled by default
@@ -423,6 +433,10 @@ emotion_config_t emotion_system_default_config(void) {
 }
 
 emotional_system_t* emotion_system_create(const emotion_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_heartbeat("emotional_sy_emotion_system_creat", 0.0f);
+
+
     LOG_DEBUG(LOG_MODULE, "emotion_system_create called");
 
     // Allocate system with unified memory
@@ -545,6 +559,10 @@ void emotion_system_destroy(emotional_system_t* system) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_heartbeat("emotional_sy_emotion_system_destr", 0.0f);
+
+
     LOG_DEBUG(LOG_MODULE, "Destroying emotional system");
 
     // Destroy SNN bridge
@@ -595,6 +613,10 @@ bool emotion_system_get_state(const emotional_system_t* system, emotion_state_t*
     }
 
     // Lock mutex for thread-safe access (cast away const for mutex operations)
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_heartbeat("emotional_sy_emotion_system_get_s", 0.0f);
+
+
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&system->mutex);
 
     *state = system->state;
@@ -609,6 +631,10 @@ bool emotion_system_get_tag(const emotional_system_t* system, emotional_tag_t* t
     }
 
     // Lock mutex for thread-safe access (cast away const for mutex operations)
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_heartbeat("emotional_sy_emotion_system_get_t", 0.0f);
+
+
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&system->mutex);
 
     // Convert emotional state to tag
@@ -626,6 +652,10 @@ bool emotion_system_is_active(const emotional_system_t* system, uint32_t emotion
     }
 
     // Lock mutex for thread-safe access (cast away const for mutex operations)
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_heartbeat("emotional_sy_emotion_system_is_ac", 0.0f);
+
+
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&system->mutex);
 
     // Check if the specified emotion is dominant with sufficient confidence
@@ -646,6 +676,10 @@ bool emotion_system_set_state(emotional_system_t* system, float valence, float a
         LOG_ERROR(LOG_MODULE, "emotion_system_set_state called with NULL system");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_heartbeat("emotional_sy_emotion_system_set_s", 0.0f);
+
 
     LOG_DEBUG(LOG_MODULE, "Setting emotional state: valence=%.3f, arousal=%.3f", valence, arousal);
 
@@ -713,6 +747,10 @@ bool emotion_system_decay(emotional_system_t* system, float delta_time,
     }
 
     // Lock mutex for thread-safe state modification
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_heartbeat("emotional_sy_emotion_system_decay", 0.0f);
+
+
     nimcp_platform_mutex_lock(&system->mutex);
 
     // Apply exponential decay to arousal
@@ -742,6 +780,10 @@ bool emotion_system_update_multimodal(emotional_system_t* system,
     }
 
     // Process pending bio-async messages before update
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_heartbeat("emotional_sy_emotion_system_updat", 0.0f);
+
+
     if (system->bio_async_enabled && system->bio_ctx) {
         bio_router_process_inbox(system->bio_ctx, 10);  // Process up to 10 messages
     }
@@ -830,6 +872,10 @@ bool emotion_system_regulate(emotional_system_t* system, uint32_t strategy) {
     }
 
     // Lock mutex for thread-safe state modification
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_heartbeat("emotional_sy_emotion_system_regul", 0.0f);
+
+
     nimcp_platform_mutex_lock(&system->mutex);
 
     bool result = emotion_system_regulate_unlocked(system, strategy);
@@ -848,6 +894,10 @@ bool emotion_system_auto_regulate(emotional_system_t* system) {
     }
 
     // Lock mutex for thread-safe state access and modification
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_heartbeat("emotional_sy_emotion_system_auto_", 0.0f);
+
+
     nimcp_platform_mutex_lock(&system->mutex);
 
     // Check if regulation is needed
@@ -976,6 +1026,10 @@ float emotion_system_get_salience_boost(const emotional_system_t* system) {
     }
 
     // Lock mutex for thread-safe access (cast away const for mutex operations)
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_heartbeat("emotional_sy_emotion_system_get_s", 0.0f);
+
+
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&system->mutex);
 
     // High arousal increases salience
@@ -993,6 +1047,10 @@ float emotion_system_get_memory_priority(const emotional_system_t* system) {
     }
 
     // Lock mutex for thread-safe access (cast away const for mutex operations)
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_heartbeat("emotional_sy_emotion_system_get_m", 0.0f);
+
+
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&system->mutex);
 
     // Memory priority based on emotional intensity
@@ -1013,6 +1071,10 @@ float emotion_system_get_mental_health_impact(const emotional_system_t* system) 
     }
 
     // Lock mutex for thread-safe access (cast away const for mutex operations)
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_heartbeat("emotional_sy_emotion_system_get_m", 0.0f);
+
+
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&system->mutex);
 
     // Mental health impact based on:
@@ -1052,6 +1114,10 @@ bool emotion_system_get_stats(const emotional_system_t* system, emotion_stats_t*
     }
 
     // Lock mutex for thread-safe access (cast away const for mutex operations)
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_heartbeat("emotional_sy_emotion_system_get_s", 0.0f);
+
+
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&system->mutex);
 
     *stats = system->stats;
@@ -1067,9 +1133,19 @@ bool emotion_system_get_stats(const emotional_system_t* system, emotion_stats_t*
 int emotional_system_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotional_system_heartbeat("emotional_sy_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Emotional_System");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                emotional_system_heartbeat("emotional_sy_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

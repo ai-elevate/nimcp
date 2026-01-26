@@ -53,7 +53,7 @@ static nimcp_health_agent_t* g_mirror_stdp_health_agent = NULL;
  * @brief Set health agent for mirror_stdp heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_stdp_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_stdp_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_stdp_health_agent = agent;
 }
 
@@ -331,6 +331,12 @@ static int mirror_stdp_wiring_handler_callback(
         message_count);
 
     for (uint32_t i = 0; i < message_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && message_count > 256) {
+            mirror_stdp_heartbeat("mirror_stdp_loop",
+                             (float)(i + 1) / (float)message_count);
+        }
+
         switch (message_types[i]) {
             case BIO_MSG_MIRROR_NEURON_ACTIVATION:
                 bio_router_register_handler(ctx, message_types[i], handle_mirror_neuron_activation);
@@ -359,6 +365,10 @@ static int mirror_stdp_wiring_handler_callback(
 //=============================================================================
 
 mirror_stdp_config_t mirror_stdp_get_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_stdp_heartbeat("mirror_stdp_get_default_config", 0.0f);
+
+
     mirror_stdp_config_t config = {
         // Timing windows
         .ltp_window_ms = NIMCP_STDP_LTP_WINDOW_MS,
@@ -401,6 +411,10 @@ mirror_stdp_config_t mirror_stdp_get_default_config(void) {
 }
 
 mirror_stdp_t mirror_stdp_create(const mirror_stdp_config_t* config, uint32_t max_synapses) {
+    /* Phase 8: Heartbeat at operation start */
+    mirror_stdp_heartbeat("mirror_stdp_create", 0.0f);
+
+
     LOG_TRACE("mirror_stdp_create: entered with max_synapses=%u", max_synapses);
 
     if (max_synapses == 0) {
@@ -444,6 +458,12 @@ mirror_stdp_t mirror_stdp_create(const mirror_stdp_config_t* config, uint32_t ma
     }
     // Initialize map to invalid
     for (uint32_t i = 0; i < stdp->action_map_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && stdp->action_map_size > 256) {
+            mirror_stdp_heartbeat("mirror_stdp_loop",
+                             (float)(i + 1) / (float)stdp->action_map_size);
+        }
+
         stdp->action_map[i] = UINT32_MAX;
     }
 
@@ -506,6 +526,10 @@ mirror_stdp_t mirror_stdp_create(const mirror_stdp_config_t* config, uint32_t ma
 void mirror_stdp_destroy(mirror_stdp_t stdp) {
     if (!stdp) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_stdp_heartbeat("mirror_stdp_destroy", 0.0f);
+
+
     LOG_TRACE("mirror_stdp_destroy: destroying STDP system");
 
     // Unregister from bio-async router
@@ -536,6 +560,10 @@ uint32_t mirror_stdp_create_synapse(mirror_stdp_t stdp, uint32_t action_id, floa
     }
 
     // Find slot in action map
+    /* Phase 8: Heartbeat at operation start */
+    mirror_stdp_heartbeat("mirror_stdp_create_synapse", 0.0f);
+
+
     uint32_t hash = hash_action(action_id, stdp->action_map_size);
     uint32_t slot = hash;
     uint32_t attempts = 0;
@@ -600,6 +628,10 @@ bool mirror_stdp_get_synapse(mirror_stdp_t stdp, uint32_t synapse_id, mirror_std
     }
 
     *out_synapse = stdp->synapses[synapse_id];
+    /* Phase 8: Heartbeat at operation start */
+    mirror_stdp_heartbeat("mirror_stdp_get_synapse", 0.0f);
+
+
     return true;
 }
 
@@ -607,11 +639,19 @@ float mirror_stdp_get_weight(mirror_stdp_t stdp, uint32_t synapse_id) {
     if (!stdp || synapse_id >= stdp->num_synapses) {
         return -1.0F;
     }
+    /* Phase 8: Heartbeat at operation start */
+    mirror_stdp_heartbeat("mirror_stdp_get_weight", 0.0f);
+
+
     return stdp->synapses[synapse_id].weight;
 }
 
 uint32_t mirror_stdp_find_synapse(mirror_stdp_t stdp, uint32_t action_id) {
     if (!stdp) return UINT32_MAX;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_stdp_heartbeat("mirror_stdp_find_synapse", 0.0f);
+
 
     uint32_t hash = hash_action(action_id, stdp->action_map_size);
     uint32_t slot = hash;
@@ -636,6 +676,10 @@ uint32_t mirror_stdp_find_synapse(mirror_stdp_t stdp, uint32_t action_id) {
 float mirror_stdp_compute_delta_w(mirror_stdp_t stdp, float delta_t_ms, float current_weight,
                                    float dopamine_level, float ach_level) {
     if (!stdp) return 0.0F;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_stdp_heartbeat("mirror_stdp_compute_delta_w", 0.0f);
+
 
     const mirror_stdp_config_t* cfg = &stdp->config;
     float delta_w = 0.0F;
@@ -677,6 +721,10 @@ float mirror_stdp_observation_spike(mirror_stdp_t stdp, uint32_t synapse_id,
     if (!stdp || synapse_id >= stdp->num_synapses) {
         return 0.0F;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_stdp_heartbeat("mirror_stdp_observation_spike", 0.0f);
+
 
     mirror_stdp_synapse_t* syn = &stdp->synapses[synapse_id];
     const mirror_stdp_config_t* cfg = &stdp->config;
@@ -754,6 +802,10 @@ float mirror_stdp_execution_spike(mirror_stdp_t stdp, uint32_t synapse_id,
     if (!stdp || synapse_id >= stdp->num_synapses) {
         return 0.0F;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_stdp_heartbeat("mirror_stdp_execution_spike", 0.0f);
+
 
     mirror_stdp_synapse_t* syn = &stdp->synapses[synapse_id];
     const mirror_stdp_config_t* cfg = &stdp->config;
@@ -842,6 +894,10 @@ float mirror_stdp_execution_spike(mirror_stdp_t stdp, uint32_t synapse_id,
 void mirror_stdp_update_traces(mirror_stdp_t stdp, float dt_ms) {
     if (!stdp) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_stdp_heartbeat("mirror_stdp_update_traces", 0.0f);
+
+
     const mirror_stdp_config_t* cfg = &stdp->config;
 
     // Compute decay factors
@@ -850,6 +906,12 @@ void mirror_stdp_update_traces(mirror_stdp_t stdp, float dt_ms) {
 
     // Update all synapse traces
     for (uint32_t i = 0; i < stdp->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && stdp->num_synapses > 256) {
+            mirror_stdp_heartbeat("mirror_stdp_loop",
+                             (float)(i + 1) / (float)stdp->num_synapses);
+        }
+
         mirror_stdp_synapse_t* syn = &stdp->synapses[i];
 
         // Decay fast traces
@@ -868,6 +930,10 @@ float mirror_stdp_get_obs_trace(mirror_stdp_t stdp, uint32_t synapse_id) {
     if (!stdp || synapse_id >= stdp->num_synapses) {
         return 0.0F;
     }
+    /* Phase 8: Heartbeat at operation start */
+    mirror_stdp_heartbeat("mirror_stdp_get_obs_trace", 0.0f);
+
+
     return stdp->synapses[synapse_id].r1;
 }
 
@@ -875,6 +941,10 @@ float mirror_stdp_get_exec_trace(mirror_stdp_t stdp, uint32_t synapse_id) {
     if (!stdp || synapse_id >= stdp->num_synapses) {
         return 0.0F;
     }
+    /* Phase 8: Heartbeat at operation start */
+    mirror_stdp_heartbeat("mirror_stdp_get_exec_trace", 0.0f);
+
+
     return stdp->synapses[synapse_id].o1;
 }
 
@@ -885,11 +955,21 @@ float mirror_stdp_get_exec_trace(mirror_stdp_t stdp, uint32_t synapse_id) {
 void mirror_stdp_apply_homeostasis(mirror_stdp_t stdp, float dt_ms) {
     if (!stdp || !stdp->config.enable_homeostasis) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_stdp_heartbeat("mirror_stdp_apply_homeostasis", 0.0f);
+
+
     const mirror_stdp_config_t* cfg = &stdp->config;
 
     // Compute global average rate
     float total_rate = 0.0F;
     for (uint32_t i = 0; i < stdp->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && stdp->num_synapses > 256) {
+            mirror_stdp_heartbeat("mirror_stdp_loop",
+                             (float)(i + 1) / (float)stdp->num_synapses);
+        }
+
         total_rate += stdp->synapses[i].avg_exec_rate;
     }
     float avg_rate = (stdp->num_synapses > 0) ? total_rate / stdp->num_synapses : 0.0F;
@@ -906,6 +986,12 @@ void mirror_stdp_apply_homeostasis(mirror_stdp_t stdp, float dt_ms) {
 
     // Apply scaling to all synapses
     for (uint32_t i = 0; i < stdp->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && stdp->num_synapses > 256) {
+            mirror_stdp_heartbeat("mirror_stdp_loop",
+                             (float)(i + 1) / (float)stdp->num_synapses);
+        }
+
         mirror_stdp_synapse_t* syn = &stdp->synapses[i];
 
         // Multiplicative scaling (preserves relative weights)
@@ -921,10 +1007,20 @@ void mirror_stdp_apply_homeostasis(mirror_stdp_t stdp, float dt_ms) {
 void mirror_stdp_update_metaplasticity(mirror_stdp_t stdp, float dt_ms) {
     if (!stdp || !stdp->config.enable_metaplasticity) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_stdp_heartbeat("mirror_stdp_update_metaplasticit", 0.0f);
+
+
     const mirror_stdp_config_t* cfg = &stdp->config;
     float decay = exp_decay(dt_ms, cfg->meta_tau);
 
     for (uint32_t i = 0; i < stdp->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && stdp->num_synapses > 256) {
+            mirror_stdp_heartbeat("mirror_stdp_loop",
+                             (float)(i + 1) / (float)stdp->num_synapses);
+        }
+
         mirror_stdp_synapse_t* syn = &stdp->synapses[i];
 
         // BCM-like sliding threshold
@@ -944,11 +1040,19 @@ void mirror_stdp_update_metaplasticity(mirror_stdp_t stdp, float dt_ms) {
 
 void mirror_stdp_set_dopamine(mirror_stdp_t stdp, float level) {
     if (!stdp) return;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_stdp_heartbeat("mirror_stdp_set_dopamine", 0.0f);
+
+
     stdp->dopamine_level = clamp_f(level, 0.0F, 1.0F);
 }
 
 void mirror_stdp_set_acetylcholine(mirror_stdp_t stdp, float level) {
     if (!stdp) return;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_stdp_heartbeat("mirror_stdp_set_acetylcholine", 0.0f);
+
+
     stdp->ach_level = clamp_f(level, 0.0F, 1.0F);
 }
 
@@ -958,6 +1062,10 @@ void mirror_stdp_set_acetylcholine(mirror_stdp_t stdp, float level) {
 
 bool mirror_stdp_get_stats(mirror_stdp_t stdp, mirror_stdp_stats_t* stats) {
     if (!stdp || !stats) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_stdp_heartbeat("mirror_stdp_get_stats", 0.0f);
+
 
     memset(stats, 0, sizeof(mirror_stdp_stats_t));
 
@@ -974,6 +1082,12 @@ bool mirror_stdp_get_stats(mirror_stdp_t stdp, mirror_stdp_stats_t* stats) {
     uint64_t activity_threshold_us = stdp->current_time_us - 1000000;  // 1 second
 
     for (uint32_t i = 0; i < stdp->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && stdp->num_synapses > 256) {
+            mirror_stdp_heartbeat("mirror_stdp_loop",
+                             (float)(i + 1) / (float)stdp->num_synapses);
+        }
+
         const mirror_stdp_synapse_t* syn = &stdp->synapses[i];
 
         // Check if active
@@ -1029,11 +1143,21 @@ bool mirror_stdp_get_weight_histogram(mirror_stdp_t stdp, uint32_t* bins, uint32
     if (!stdp || !bins || num_bins == 0) return false;
 
     // Clear bins
+    /* Phase 8: Heartbeat at operation start */
+    mirror_stdp_heartbeat("mirror_stdp_get_weight_histogram", 0.0f);
+
+
     memset(bins, 0, num_bins * sizeof(uint32_t));
 
     float bin_width = (stdp->config.w_max - stdp->config.w_min) / num_bins;
 
     for (uint32_t i = 0; i < stdp->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && stdp->num_synapses > 256) {
+            mirror_stdp_heartbeat("mirror_stdp_loop",
+                             (float)(i + 1) / (float)stdp->num_synapses);
+        }
+
         float weight = stdp->synapses[i].weight;
         uint32_t bin = (uint32_t)((weight - stdp->config.w_min) / bin_width);
 
@@ -1048,6 +1172,10 @@ bool mirror_stdp_get_weight_histogram(mirror_stdp_t stdp, uint32_t* bins, uint32
 
 void mirror_stdp_step(mirror_stdp_t stdp, float dt_ms) {
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    mirror_stdp_heartbeat("mirror_stdp_step", 0.0f);
+
+
     if (stdp && stdp->bio_ctx) {
         bio_router_process_inbox(stdp->bio_ctx, 5);
     }
@@ -1076,6 +1204,10 @@ void mirror_stdp_reset_stats(mirror_stdp_t stdp) {
     if (!stdp) return;
 
     // Reset global statistics
+    /* Phase 8: Heartbeat at operation start */
+    mirror_stdp_heartbeat("mirror_stdp_reset_stats", 0.0f);
+
+
     stdp->total_ltp_events = 0;
     stdp->total_ltd_events = 0;
     stdp->sum_ltp_magnitude = 0.0F;
@@ -1086,6 +1218,12 @@ void mirror_stdp_reset_stats(mirror_stdp_t stdp) {
 
     // Reset per-synapse statistics
     for (uint32_t i = 0; i < stdp->num_synapses; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && stdp->num_synapses > 256) {
+            mirror_stdp_heartbeat("mirror_stdp_loop",
+                             (float)(i + 1) / (float)stdp->num_synapses);
+        }
+
         mirror_stdp_synapse_t* syn = &stdp->synapses[i];
         syn->ltp_events = 0;
         syn->ltd_events = 0;
@@ -1100,9 +1238,19 @@ void mirror_stdp_reset_stats(mirror_stdp_t stdp) {
 
 int mirror_stdp_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_stdp_heartbeat("mirror_stdp_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Mirror_STDP");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                mirror_stdp_heartbeat("mirror_stdp_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Mirror STDP self-knowledge: %s", self->observations[i]);
         }
     }

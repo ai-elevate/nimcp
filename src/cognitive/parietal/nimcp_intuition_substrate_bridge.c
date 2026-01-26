@@ -31,7 +31,7 @@ static nimcp_health_agent_t* g_intuition_substrate_bridge_health_agent = NULL;
  * @brief Set health agent for intuition_substrate_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void intuition_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void intuition_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_intuition_substrate_bridge_health_agent = agent;
 }
 
@@ -56,6 +56,10 @@ struct intuition_substrate_bridge {
 };
 
 intuition_substrate_config_t intuition_substrate_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    intuition_substrate_bridge_heartbeat("intuition_su_intuition_substrate_", 0.0f);
+
+
     intuition_substrate_config_t cfg = {
         .enable_atp_modulation = true,
         .enable_fatigue_modulation = true,
@@ -81,6 +85,10 @@ intuition_substrate_bridge_t* intuition_substrate_bridge_create(
         return NULL;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    intuition_substrate_bridge_heartbeat("intuition_su_create", 0.0f);
+
+
     intuition_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(intuition_substrate_bridge_t));
     if (!bridge) {
 
@@ -105,11 +113,19 @@ intuition_substrate_bridge_t* intuition_substrate_bridge_create(
 }
 
 void intuition_substrate_bridge_destroy(intuition_substrate_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    intuition_substrate_bridge_heartbeat("intuition_su_destroy", 0.0f);
+
+
     if (bridge) nimcp_free(bridge);
 }
 
 int intuition_substrate_bridge_reset(intuition_substrate_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    intuition_substrate_bridge_heartbeat("intuition_su_reset", 0.0f);
+
+
     bridge->effects.insight_depth = 1.0f;
     bridge->effects.intuition_accuracy = 1.0f;
     bridge->effects.processing_speed = 1.0f;
@@ -124,6 +140,10 @@ int intuition_substrate_bridge_reset(intuition_substrate_bridge_t* bridge) {
 
 int intuition_substrate_bridge_update(intuition_substrate_bridge_t* bridge) {
     if (!bridge || !bridge->substrate) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    intuition_substrate_bridge_heartbeat("intuition_su_update", 0.0f);
+
 
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
@@ -204,11 +224,19 @@ int intuition_substrate_bridge_get_effects(
 ) {
     if (!bridge || !effects) return -1;
     *effects = bridge->effects;
+    /* Phase 8: Heartbeat at operation start */
+    intuition_substrate_bridge_heartbeat("intuition_su_get_effects", 0.0f);
+
+
     return 0;
 }
 
 int intuition_substrate_bridge_apply_effects(intuition_substrate_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    intuition_substrate_bridge_heartbeat("intuition_su_apply_effects", 0.0f);
+
+
     bridge->stats.effects_applied++;
     return 0;
 }
@@ -218,6 +246,10 @@ int intuition_substrate_bridge_register_bio_async(
     bio_router_t* router
 ) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    intuition_substrate_bridge_heartbeat("intuition_su_register_bio_async", 0.0f);
+
+
     bridge->router = router;
     bridge->bio_async_connected = (router != NULL);
     return 0;
@@ -238,10 +270,18 @@ int intuition_substrate_bridge_get_stats(
 ) {
     if (!bridge || !stats) return -1;
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    intuition_substrate_bridge_heartbeat("intuition_su_get_stats", 0.0f);
+
+
     return 0;
 }
 
 void intuition_substrate_bridge_reset_stats(intuition_substrate_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    intuition_substrate_bridge_heartbeat("intuition_su_reset_stats", 0.0f);
+
+
     if (bridge) {
         memset(&bridge->stats, 0, sizeof(bridge->stats));
     }
@@ -253,9 +293,19 @@ void intuition_substrate_bridge_reset_stats(intuition_substrate_bridge_t* bridge
 
 int intuition_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    intuition_substrate_bridge_heartbeat("intuition_su_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Intuition_Substrate_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                intuition_substrate_bridge_heartbeat("intuition_su_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Module self-knowledge logged */
         }
     }

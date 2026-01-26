@@ -37,7 +37,7 @@ static nimcp_health_agent_t* g_fep_planning_health_agent = NULL;
  * @brief Set health agent for fep_planning heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void fep_planning_set_health_agent(nimcp_health_agent_t* agent) {
+void fep_planning_set_health_agent(nimcp_health_agent_t* agent) {
     g_fep_planning_health_agent = agent;
 }
 
@@ -116,6 +116,10 @@ static void free_node(mcts_node_t* node) {
 void fep_planning_default_config(fep_planning_config_t* config) {
     if (!config) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_planning_heartbeat("fep_planning_default_config", 0.0f);
+
+
     config->method = PLANNING_MCTS;
     config->planning_horizon = FEP_PLANNING_DEFAULT_HORIZON;
     config->num_simulations = FEP_PLANNING_DEFAULT_SIMULATIONS;
@@ -132,6 +136,10 @@ void fep_planning_default_config(fep_planning_config_t* config) {
 }
 
 fep_planning_system_t* fep_planning_create(const fep_planning_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_planning_heartbeat("fep_planning_create", 0.0f);
+
+
     fep_planning_system_t* sys = (fep_planning_system_t*)nimcp_calloc(
         1, sizeof(fep_planning_system_t));
     NIMCP_API_CHECK_ALLOC(sys, "Failed to allocate planning system");
@@ -175,6 +183,10 @@ fep_planning_system_t* fep_planning_create(const fep_planning_config_t* config) 
 void fep_planning_destroy(fep_planning_system_t* sys) {
     if (!sys) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_planning_heartbeat("fep_planning_destroy", 0.0f);
+
+
     if (sys->bio_async_enabled) {
         fep_planning_disconnect_bio_async(sys);
     }
@@ -182,6 +194,12 @@ void fep_planning_destroy(fep_planning_system_t* sys) {
     /* Free all tree nodes */
     if (sys->tree_nodes) {
         for (uint32_t i = 0; i < sys->num_nodes; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && sys->num_nodes > 256) {
+                fep_planning_heartbeat("fep_planning_loop",
+                                 (float)(i + 1) / (float)sys->num_nodes);
+            }
+
             free_node(sys->tree_nodes[i]);
         }
         nimcp_free(sys->tree_nodes);
@@ -200,6 +218,10 @@ void fep_planning_destroy(fep_planning_system_t* sys) {
 
 int fep_planning_reset(fep_planning_system_t* sys) {
     if (!sys) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    fep_planning_heartbeat("fep_planning_reset", 0.0f);
+
 
     nimcp_platform_mutex_lock(sys->mutex);
 
@@ -235,6 +257,10 @@ int fep_planning_reset(fep_planning_system_t* sys) {
 int fep_planning_connect(fep_planning_system_t* planning, fep_system_t* fep) {
     if (!planning || !fep) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_planning_heartbeat("fep_planning_connect", 0.0f);
+
+
     nimcp_platform_mutex_lock(planning->mutex);
     planning->fep = fep;
     planning->fep_connected = true;
@@ -246,6 +272,10 @@ int fep_planning_connect(fep_planning_system_t* planning, fep_system_t* fep) {
 
 int fep_planning_disconnect(fep_planning_system_t* planning) {
     if (!planning) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    fep_planning_heartbeat("fep_planning_disconnect", 0.0f);
+
 
     nimcp_platform_mutex_lock(planning->mutex);
     planning->fep = NULL;
@@ -262,6 +292,10 @@ int fep_planning_disconnect(fep_planning_system_t* planning) {
 int fep_mcts_select(fep_planning_system_t* sys, uint32_t node_id, uint32_t* action) {
     if (!sys || !action || node_id >= sys->num_nodes) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_planning_heartbeat("fep_planning_fep_mcts_select", 0.0f);
+
+
     mcts_node_t* node = sys->tree_nodes[node_id];
     if (!node || node->num_children == 0) return -1;
 
@@ -271,6 +305,12 @@ int fep_mcts_select(fep_planning_system_t* sys, uint32_t node_id, uint32_t* acti
     uint32_t best_action = 0;
 
     for (uint32_t i = 0; i < node->num_children; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && node->num_children > 256) {
+            fep_planning_heartbeat("fep_planning_loop",
+                             (float)(i + 1) / (float)node->num_children);
+        }
+
         uint32_t child_id = node->children_ids[i];
         if (child_id >= sys->num_nodes) continue;
 
@@ -292,6 +332,10 @@ int fep_mcts_select(fep_planning_system_t* sys, uint32_t node_id, uint32_t* acti
 int fep_mcts_expand(fep_planning_system_t* sys, uint32_t node_id) {
     if (!sys || node_id >= sys->num_nodes) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_planning_heartbeat("fep_planning_fep_mcts_expand", 0.0f);
+
+
     mcts_node_t* node = sys->tree_nodes[node_id];
     if (!node) return -1;
     if (node->state_type == MCTS_NODE_TERMINAL) return 0;
@@ -309,6 +353,12 @@ int fep_mcts_expand(fep_planning_system_t* sys, uint32_t node_id) {
     /* Create child for each action */
     uint32_t created = 0;
     for (uint32_t a = 0; a < num_actions; a++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((a & 0xFF) == 0 && num_actions > 256) {
+            fep_planning_heartbeat("fep_planning_loop",
+                             (float)(a + 1) / (float)num_actions);
+        }
+
         mcts_node_t* child = alloc_node(sys);
         if (!child) break;
 
@@ -338,6 +388,10 @@ int fep_mcts_simulate(
     float* value
 ) {
     if (!sys || !value) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    fep_planning_heartbeat("fep_planning_fep_mcts_simulate", 0.0f);
+
 
     mcts_node_t* node = sys->tree_nodes[node_id];
     if (!node) return -1;
@@ -376,6 +430,10 @@ int fep_mcts_backpropagate(fep_planning_system_t* sys, uint32_t node_id, float v
     if (!sys) return -1;
 
     /* Backpropagate value up the tree */
+    /* Phase 8: Heartbeat at operation start */
+    fep_planning_heartbeat("fep_planning_fep_mcts_backpropaga", 0.0f);
+
+
     uint32_t current_id = node_id;
 
     while (current_id < sys->num_nodes) {
@@ -396,6 +454,10 @@ int fep_mcts_backpropagate(fep_planning_system_t* sys, uint32_t node_id, float v
 uint32_t fep_mcts_get_best_child(const fep_planning_system_t* sys, uint32_t node_id) {
     if (!sys || node_id >= sys->num_nodes) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_planning_heartbeat("fep_planning_fep_mcts_get_best_ch", 0.0f);
+
+
     const mcts_node_t* node = sys->tree_nodes[node_id];
     if (!node || node->num_children == 0) return 0;
 
@@ -404,6 +466,12 @@ uint32_t fep_mcts_get_best_child(const fep_planning_system_t* sys, uint32_t node
     uint32_t max_visits = 0;
 
     for (uint32_t i = 0; i < node->num_children; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && node->num_children > 256) {
+            fep_planning_heartbeat("fep_planning_loop",
+                             (float)(i + 1) / (float)node->num_children);
+        }
+
         uint32_t child_id = node->children_ids[i];
         if (child_id >= sys->num_nodes) continue;
 
@@ -429,6 +497,10 @@ int fep_planning_generate_plan(
     fep_plan_t* plan
 ) {
     if (!sys || !plan) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    fep_planning_heartbeat("fep_planning_generate_plan", 0.0f);
+
 
     nimcp_platform_mutex_lock(sys->mutex);
 
@@ -468,6 +540,12 @@ int fep_planning_generate_plan(
 
     /* Run MCTS iterations */
     for (uint32_t sim = 0; sim < sys->config.num_simulations; sim++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((sim & 0xFF) == 0 && sys->config.num_simulations > 256) {
+            fep_planning_heartbeat("fep_planning_loop",
+                             (float)(sim + 1) / (float)sys->config.num_simulations);
+        }
+
         /* Selection: traverse to leaf */
         uint32_t node_id = sys->root_id;
         uint32_t action;
@@ -538,10 +616,20 @@ int fep_planning_evaluate_plan(
 ) {
     if (!sys || !plan || !value) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_planning_heartbeat("fep_planning_evaluate_plan", 0.0f);
+
+
     float total = 0.0f;
     float discount = 1.0f;
 
     for (size_t i = 0; i < plan->sequence_length; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && plan->sequence_length > 256) {
+            fep_planning_heartbeat("fep_planning_loop",
+                             (float)(i + 1) / (float)plan->sequence_length);
+        }
+
         total += discount * plan->step_values[i];
         discount *= sys->config.discount_factor;
     }
@@ -558,6 +646,10 @@ int fep_planning_replan(
     fep_plan_t* plan
 ) {
     /* For now, just regenerate from scratch */
+    /* Phase 8: Heartbeat at operation start */
+    fep_planning_heartbeat("fep_planning_replan", 0.0f);
+
+
     return fep_planning_generate_plan(sys, fep, new_state, state_dim, plan);
 }
 
@@ -567,6 +659,10 @@ int fep_planning_replan(
 
 int fep_plan_create(fep_plan_t* plan, size_t max_length) {
     if (!plan) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    fep_planning_heartbeat("fep_planning_fep_plan_create", 0.0f);
+
 
     memset(plan, 0, sizeof(fep_plan_t));
 
@@ -585,6 +681,10 @@ int fep_plan_create(fep_plan_t* plan, size_t max_length) {
 void fep_plan_destroy(fep_plan_t* plan) {
     if (!plan) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_planning_heartbeat("fep_planning_fep_plan_destroy", 0.0f);
+
+
     if (plan->action_sequence) nimcp_free(plan->action_sequence);
     if (plan->step_values) nimcp_free(plan->step_values);
     if (plan->step_efe) nimcp_free(plan->step_efe);
@@ -597,11 +697,19 @@ int fep_plan_get_next_action(const fep_plan_t* plan, uint32_t step, uint32_t* ac
     if (step >= plan->sequence_length) return -1;
 
     *action = plan->action_sequence[step];
+    /* Phase 8: Heartbeat at operation start */
+    fep_planning_heartbeat("fep_planning_fep_plan_get_next_ac", 0.0f);
+
+
     return 0;
 }
 
 int fep_plan_copy(fep_plan_t* dest, const fep_plan_t* src) {
     if (!dest || !src) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    fep_planning_heartbeat("fep_planning_fep_plan_copy", 0.0f);
+
 
     if (dest->action_sequence) nimcp_free(dest->action_sequence);
     if (dest->step_values) nimcp_free(dest->step_values);
@@ -634,6 +742,10 @@ int fep_plan_copy(fep_plan_t* dest, const fep_plan_t* src) {
 }
 
 bool fep_plan_is_valid(const fep_plan_t* plan) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_planning_heartbeat("fep_planning_fep_plan_is_valid", 0.0f);
+
+
     return plan && plan->action_sequence && plan->sequence_length > 0;
 }
 
@@ -644,18 +756,36 @@ bool fep_plan_is_valid(const fep_plan_t* plan) {
 int fep_planning_get_stats(const fep_planning_system_t* sys, fep_planning_stats_t* stats) {
     if (!sys || !stats) return -1;
     *stats = sys->stats;
+    /* Phase 8: Heartbeat at operation start */
+    fep_planning_heartbeat("fep_planning_get_stats", 0.0f);
+
+
     return 0;
 }
 
 uint32_t fep_planning_get_tree_size(const fep_planning_system_t* sys) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_planning_heartbeat("fep_planning_get_tree_size", 0.0f);
+
+
     return sys ? sys->num_nodes : 0;
 }
 
 uint32_t fep_planning_get_tree_depth(const fep_planning_system_t* sys) {
     if (!sys) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_planning_heartbeat("fep_planning_get_tree_depth", 0.0f);
+
+
     uint32_t max_depth = 0;
     for (uint32_t i = 0; i < sys->num_nodes; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sys->num_nodes > 256) {
+            fep_planning_heartbeat("fep_planning_loop",
+                             (float)(i + 1) / (float)sys->num_nodes);
+        }
+
         if (sys->tree_nodes[i] && sys->tree_nodes[i]->depth > max_depth) {
             max_depth = sys->tree_nodes[i]->depth;
         }
@@ -670,6 +800,10 @@ uint32_t fep_planning_get_tree_depth(const fep_planning_system_t* sys) {
 int fep_planning_connect_bio_async(fep_planning_system_t* sys) {
     if (!sys) return -1;
     if (sys->bio_async_enabled) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    fep_planning_heartbeat("fep_planning_connect_bio_async", 0.0f);
+
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_PLANNING,
@@ -692,6 +826,10 @@ int fep_planning_disconnect_bio_async(fep_planning_system_t* sys) {
     if (!sys) return -1;
     if (!sys->bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_planning_heartbeat("fep_planning_disconnect_bio_async", 0.0f);
+
+
     if (sys->bio_ctx) {
         bio_router_unregister_module(sys->bio_ctx);
         sys->bio_ctx = NULL;
@@ -701,6 +839,10 @@ int fep_planning_disconnect_bio_async(fep_planning_system_t* sys) {
 }
 
 bool fep_planning_is_bio_async_connected(const fep_planning_system_t* sys) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_planning_heartbeat("fep_planning_is_bio_async_connect", 0.0f);
+
+
     return sys && sys->bio_async_enabled;
 }
 
@@ -734,9 +876,19 @@ const char* fep_planning_node_state_to_string(mcts_node_state_t state) {
 int fep_planning_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_planning_heartbeat("fep_planning_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "FEP_Planning");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                fep_planning_heartbeat("fep_planning_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("FEP Planning self-knowledge: %s", self->observations[i]);
         }
     }

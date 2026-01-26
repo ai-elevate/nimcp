@@ -54,7 +54,7 @@ static nimcp_health_agent_t* g_curiosity_fractal_health_agent = NULL;
  * @brief Set health agent for curiosity_fractal heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void curiosity_fractal_set_health_agent(nimcp_health_agent_t* agent) {
+void curiosity_fractal_set_health_agent(nimcp_health_agent_t* agent) {
     g_curiosity_fractal_health_agent = agent;
 }
 
@@ -90,6 +90,10 @@ float curiosity_fractal_boost_hub_priority(const fractal_cognitive_cache_t *cach
     }
 
     // Check if this is a hub neuron
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_fractal_heartbeat("curiosity_fr_boost_hub_priority", 0.0f);
+
+
     bool is_hub = fractal_is_hub_neuron(cache, neuron_index);
     if (is_hub) {
         return fminf(base_priority * 1.5f, 1.0f);  // 50% boost for hubs
@@ -131,6 +135,10 @@ uint32_t curiosity_fractal_next_exploration_target(neural_network_t network,
     }
 
     // Find nearest hub
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_fractal_heartbeat("curiosity_fr_next_exploration_tar", 0.0f);
+
+
     uint32_t nearest_hub = fractal_nearest_hub(network, cache, current_neuron, NULL);
     if (nearest_hub == UINT32_MAX) {
         return UINT32_MAX;
@@ -161,6 +169,12 @@ uint32_t curiosity_fractal_next_exploration_target(neural_network_t network,
     float best_score = 0.0f;
 
     for (uint32_t i = 0; i < num_candidates; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_candidates > 256) {
+            curiosity_fractal_heartbeat("curiosity_fr_loop",
+                             (float)(i + 1) / (float)num_candidates);
+        }
+
         uint32_t candidate = candidates[i];
         float centrality = fractal_get_centrality(cache, candidate);
         float level = fractal_get_hierarchical_level(cache, candidate);
@@ -242,6 +256,10 @@ float curiosity_fractal_exploration_radius(const fractal_cognitive_cache_t *cach
         return base_radius;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_fractal_heartbeat("curiosity_fr_exploration_radius", 0.0f);
+
+
     float level = fractal_get_hierarchical_level(cache, neuron_index);
 
     // Higher level (near leaves) → smaller radius
@@ -268,6 +286,10 @@ void curiosity_fractal_print_state(const fractal_cognitive_cache_t *cache,
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_fractal_heartbeat("curiosity_fr_print_state", 0.0f);
+
+
     printf("=== Curiosity Fractal State ===\n");
     printf("Neuron: %u\n", neuron_index);
     printf("Is hub: %s\n", fractal_is_hub_neuron(cache, neuron_index) ? "YES" : "no");
@@ -287,9 +309,19 @@ void curiosity_fractal_print_state(const fractal_cognitive_cache_t *cache,
 int curiosity_fractal_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_fractal_heartbeat("curiosity_fr_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Curiosity_Fractal_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                curiosity_fractal_heartbeat("curiosity_fr_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

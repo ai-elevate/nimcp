@@ -41,7 +41,7 @@ static nimcp_health_agent_t* g_engram_health_agent = NULL;
  * @brief Set health agent for engram heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void engram_set_health_agent(nimcp_health_agent_t* agent) {
+void engram_set_health_agent(nimcp_health_agent_t* agent) {
     g_engram_health_agent = agent;
 }
 
@@ -120,6 +120,12 @@ static int engram_wiring_handler_callback(
              message_count);
 
     for (uint32_t i = 0; i < message_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && message_count > 256) {
+            engram_heartbeat("engram_loop",
+                             (float)(i + 1) / (float)message_count);
+        }
+
         switch (message_types[i]) {
             case BIO_MSG_WORKING_MEMORY_RETRIEVE:
                 bio_router_register_handler(ctx, message_types[i], handle_memory_query);
@@ -161,7 +167,19 @@ static uint32_t calculate_overlap(
 
     uint32_t overlap = 0;
     for (uint32_t i = 0; i < count1; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && count1 > 256) {
+            engram_heartbeat("engram_loop",
+                             (float)(i + 1) / (float)count1);
+        }
+
         for (uint32_t j = 0; j < count2; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && count2 > 256) {
+                engram_heartbeat("engram_loop",
+                                 (float)(j + 1) / (float)count2);
+            }
+
             if (set1[i] == set2[j]) {
                 overlap++;
                 break;
@@ -229,6 +247,12 @@ static memory_engram_t* find_free_slot(engram_system_t* system) {
 
     // Try to find inactive slot
     for (uint32_t i = 0; i < system->capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->capacity > 256) {
+            engram_heartbeat("engram_loop",
+                             (float)(i + 1) / (float)system->capacity);
+        }
+
         if (!system->engrams[i].active) {
             return &system->engrams[i];
         }
@@ -252,6 +276,10 @@ engram_system_t* engram_system_create(void) {
     // WHAT: Allocate and initialize engram system
     // WHY:  Required for memory trace tracking
     // HOW:  Allocate struct and array using unified memory with CoW support
+
+    /* Phase 8: Heartbeat at operation start */
+    engram_heartbeat("engram_system_create", 0.0f);
+
 
     LOG_INFO("Creating engram system");
 
@@ -415,6 +443,10 @@ void engram_system_destroy(engram_system_t* system) {
     if (!system) return;
 
     // Free engram array (unified memory or direct)
+    /* Phase 8: Heartbeat at operation start */
+    engram_heartbeat("engram_system_destroy", 0.0f);
+
+
     if (system->engrams_handle) {
         unified_mem_free(system->engrams_handle);
         system->engrams_handle = NULL;
@@ -453,6 +485,10 @@ void engram_system_reset(engram_system_t* system) {
     if (!system) return;
 
     // Save configuration
+    /* Phase 8: Heartbeat at operation start */
+    engram_heartbeat("engram_system_reset", 0.0f);
+
+
     bool sys_consol = system->systems_consolidation_enabled;
     float sleep_rate = system->sleep_consolidation_rate;
     float decay = system->baseline_decay_rate;
@@ -511,6 +547,10 @@ uint64_t engram_encode(
     if (!system) return 0;
     if (!neuron_ids || !activations) return 0;
     if (count == 0) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    engram_heartbeat("engram_encode", 0.0f);
+
+
     if (count > ENGRAM_MAX_NEURONS) {
         count = ENGRAM_MAX_NEURONS;  // Truncate to max
     }
@@ -597,12 +637,22 @@ uint64_t engram_recall(
     if (cue_count == 0) return 0;
     if (!activation_out || !activations_out) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    engram_heartbeat("engram_recall", 0.0f);
+
+
     float best_match = 0.0F;
     uint64_t best_engram_id = 0;
     memory_engram_t* best_engram = NULL;
 
     // Search for best matching engram
     for (uint32_t i = 0; i < system->capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->capacity > 256) {
+            engram_heartbeat("engram_loop",
+                             (float)(i + 1) / (float)system->capacity);
+        }
+
         memory_engram_t* engram = &system->engrams[i];
 
         if (!engram->active) continue;
@@ -679,10 +729,20 @@ bool engram_recognize(
     if (!pattern) return false;
     if (count == 0) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    engram_heartbeat("engram_recognize", 0.0f);
+
+
     float max_familiarity = 0.0F;
 
     // Check all engrams
     for (uint32_t i = 0; i < system->capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->capacity > 256) {
+            engram_heartbeat("engram_loop",
+                             (float)(i + 1) / (float)system->capacity);
+        }
+
         memory_engram_t* engram = &system->engrams[i];
 
         if (!engram->active) continue;
@@ -718,6 +778,10 @@ void engram_consolidate_update(
     float dt,
     bool is_sleeping) {
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    engram_heartbeat("engram_consolidate_update", 0.0f);
+
+
     if (system && system->bio_async_enabled && system->bio_ctx) {
         bio_router_process_inbox(system->bio_ctx, 5);
     }
@@ -739,6 +803,12 @@ void engram_consolidate_update(
     uint32_t consolidated = 0;
 
     for (uint32_t i = 0; i < system->capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->capacity > 256) {
+            engram_heartbeat("engram_loop",
+                             (float)(i + 1) / (float)system->capacity);
+        }
+
         memory_engram_t* engram = &system->engrams[i];
 
         if (!engram->active) continue;
@@ -804,6 +874,10 @@ void engram_sleep_replay(
     if (!system) return;
     if (replay_count == 0) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    engram_heartbeat("engram_sleep_replay", 0.0f);
+
+
     uint32_t replayed = 0;
 
     // Prioritize tagged, labile and consolidating engrams
@@ -846,6 +920,10 @@ void engram_trigger_reconsolidation(
     if (!system) return;
     if (engram_id == 0) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    engram_heartbeat("engram_trigger_reconsolidat", 0.0f);
+
+
     memory_engram_t* engram = engram_get_by_id(system, engram_id);
     if (!engram) return;
 
@@ -867,6 +945,10 @@ bool engram_block_reconsolidation(
 
     if (!system) return false;
     if (engram_id == 0) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    engram_heartbeat("engram_block_reconsolidatio", 0.0f);
+
 
     memory_engram_t* engram = engram_get_by_id(system, engram_id);
     if (!engram) return false;
@@ -896,7 +978,17 @@ void engram_apply_decay(
     if (!system) return;
     if (dt <= 0.0F) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    engram_heartbeat("engram_apply_decay", 0.0f);
+
+
     for (uint32_t i = 0; i < system->capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->capacity > 256) {
+            engram_heartbeat("engram_loop",
+                             (float)(i + 1) / (float)system->capacity);
+        }
+
         memory_engram_t* engram = &system->engrams[i];
 
         if (!engram->active) continue;
@@ -943,6 +1035,10 @@ void engram_extinction(
     if (!system) return;
     if (engram_id == 0) return;
     if (extinction_strength <= 0.0F) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    engram_heartbeat("engram_extinction", 0.0f);
+
 
     memory_engram_t* engram = engram_get_by_id(system, engram_id);
     if (!engram) return;
@@ -995,7 +1091,17 @@ memory_engram_t* engram_get_by_id(
     }
     if (engram_id == 0) return NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    engram_heartbeat("engram_get_by_id", 0.0f);
+
+
     for (uint32_t i = 0; i < system->capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->capacity > 256) {
+            engram_heartbeat("engram_loop",
+                             (float)(i + 1) / (float)system->capacity);
+        }
+
         if (system->engrams[i].active &&
             system->engrams[i].engram_id == engram_id) {
             return &system->engrams[i];
@@ -1011,7 +1117,17 @@ engram_state_t engram_get_state(
 
     if (!system || engram_id == 0) return ENGRAM_STATE_DEGRADING;
 
+    /* Phase 8: Heartbeat at operation start */
+    engram_heartbeat("engram_get_state", 0.0f);
+
+
     for (uint32_t i = 0; i < system->capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->capacity > 256) {
+            engram_heartbeat("engram_loop",
+                             (float)(i + 1) / (float)system->capacity);
+        }
+
         if (system->engrams[i].active &&
             system->engrams[i].engram_id == engram_id) {
             return system->engrams[i].state;
@@ -1027,7 +1143,17 @@ float engram_get_consolidation_strength(
 
     if (!system || engram_id == 0) return 0.0F;
 
+    /* Phase 8: Heartbeat at operation start */
+    engram_heartbeat("engram_get_consolidation_st", 0.0f);
+
+
     for (uint32_t i = 0; i < system->capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->capacity > 256) {
+            engram_heartbeat("engram_loop",
+                             (float)(i + 1) / (float)system->capacity);
+        }
+
         if (system->engrams[i].active &&
             system->engrams[i].engram_id == engram_id) {
             return system->engrams[i].consolidation_strength;
@@ -1043,7 +1169,17 @@ bool engram_is_reconsolidating(
 
     if (!system || engram_id == 0) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    engram_heartbeat("engram_is_reconsolidating", 0.0f);
+
+
     for (uint32_t i = 0; i < system->capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->capacity > 256) {
+            engram_heartbeat("engram_loop",
+                             (float)(i + 1) / (float)system->capacity);
+        }
+
         if (system->engrams[i].active &&
             system->engrams[i].engram_id == engram_id) {
             return system->engrams[i].is_reconsolidating;
@@ -1060,7 +1196,17 @@ float engram_get_age_seconds(
 
     if (!system || engram_id == 0) return 0.0F;
 
+    /* Phase 8: Heartbeat at operation start */
+    engram_heartbeat("engram_get_age_seconds", 0.0f);
+
+
     for (uint32_t i = 0; i < system->capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->capacity > 256) {
+            engram_heartbeat("engram_loop",
+                             (float)(i + 1) / (float)system->capacity);
+        }
+
         if (system->engrams[i].active &&
             system->engrams[i].engram_id == engram_id) {
             uint64_t age_us = current_time_us - system->engrams[i].encoding_time_us;
@@ -1072,6 +1218,10 @@ float engram_get_age_seconds(
 }
 
 uint32_t engram_get_active_count(const engram_system_t* system) {
+    /* Phase 8: Heartbeat at operation start */
+    engram_heartbeat("engram_get_active_count", 0.0f);
+
+
     return system ? system->active_count : 0;
 }
 
@@ -1082,6 +1232,10 @@ void engram_get_statistics(
     uint32_t* active_count_out) {
 
     if (!system) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    engram_heartbeat("engram_get_statistics", 0.0f);
+
 
     if (total_encodings_out) {
         *total_encodings_out = system->total_encodings;
@@ -1107,9 +1261,19 @@ void engram_get_statistics(
 int engram_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    engram_heartbeat("engram_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Engram_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                engram_heartbeat("engram_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Engram self-knowledge: %s", self->observations[i]);
         }
     }

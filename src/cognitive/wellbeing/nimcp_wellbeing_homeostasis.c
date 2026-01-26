@@ -44,7 +44,7 @@ static nimcp_health_agent_t* g_wellbeing_homeostasis_health_agent = NULL;
  * @brief Set health agent for wellbeing_homeostasis heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void wellbeing_homeostasis_set_health_agent(nimcp_health_agent_t* agent) {
+void wellbeing_homeostasis_set_health_agent(nimcp_health_agent_t* agent) {
     g_wellbeing_homeostasis_health_agent = agent;
 }
 
@@ -133,6 +133,10 @@ static float adapt_setpoint(float current_setpoint, float observed_baseline, flo
  */
 enhanced_wellbeing_config_t enhanced_wellbeing_default_config(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_homeostasis_heartbeat("wellbeing_ho_enhanced_wellbeing_d", 0.0f);
+
+
     enhanced_wellbeing_config_t config = {
         // Homeostasis parameters
         .wellbeing_setpoint = WELLBEING_DEFAULT_SETPOINT,
@@ -173,6 +177,10 @@ bool enhanced_wellbeing_init_homeostasis(
     }
 
     // Use defaults if no config provided
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_homeostasis_heartbeat("wellbeing_ho_enhanced_wellbeing_i", 0.0f);
+
+
     enhanced_wellbeing_config_t default_config = enhanced_wellbeing_default_config();
     const enhanced_wellbeing_config_t* cfg = config ? config : &default_config;
 
@@ -234,6 +242,10 @@ bool enhanced_wellbeing_update_homeostasis(
     }
 
     // Guard: Invalid wellbeing/tolerance values
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_homeostasis_heartbeat("wellbeing_ho_enhanced_wellbeing_u", 0.0f);
+
+
     if (current_wellbeing < 0.0f || current_wellbeing > 1.0f) {
         NIMCP_LOGGING_WARN("Invalid wellbeing value: %.2f (clamping to [0,1])", current_wellbeing);
         current_wellbeing = fmaxf(0.0f, fminf(1.0f, current_wellbeing));
@@ -318,6 +330,10 @@ wellbeing_homeostasis_t enhanced_wellbeing_get_homeostasis(
         return empty;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_homeostasis_heartbeat("wellbeing_ho_enhanced_wellbeing_g", 0.0f);
+
+
     return *homeostasis;
 }
 
@@ -337,6 +353,10 @@ bool enhanced_wellbeing_set_setpoint(
     }
 
     // Guard: Invalid setpoint
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_homeostasis_heartbeat("wellbeing_ho_enhanced_wellbeing_s", 0.0f);
+
+
     if (setpoint < 0.0f || setpoint > 1.0f) {
         NIMCP_LOGGING_ERROR("Invalid setpoint: %.2f (must be in [0,1])", setpoint);
         return false;
@@ -364,6 +384,10 @@ bool enhanced_wellbeing_set_tolerance_setpoint(
     }
 
     // Guard: Invalid setpoint
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_homeostasis_heartbeat("wellbeing_ho_enhanced_wellbeing_s", 0.0f);
+
+
     if (setpoint < 0.0f || setpoint > 1.0f) {
         NIMCP_LOGGING_ERROR("Invalid tolerance setpoint: %.2f (must be in [0,1])", setpoint);
         return false;
@@ -395,6 +419,10 @@ bool enhanced_wellbeing_init_consent(
     }
 
     // Use defaults if no config provided
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_homeostasis_heartbeat("wellbeing_ho_enhanced_wellbeing_i", 0.0f);
+
+
     enhanced_wellbeing_config_t default_config = enhanced_wellbeing_default_config();
     const enhanced_wellbeing_config_t* cfg = config ? config : &default_config;
 
@@ -450,6 +478,10 @@ consent_decision_t enhanced_wellbeing_request_consent(
     }
 
     // Update statistics
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_homeostasis_heartbeat("wellbeing_ho_enhanced_wellbeing_r", 0.0f);
+
+
     consent->total_requests++;
     consent->last_impact = impact;
     consent->last_request_time = nimcp_time_get_ms();
@@ -547,6 +579,10 @@ bool enhanced_wellbeing_upgrade_consent_tier(
     }
 
     // Guard: Invalid phi
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_homeostasis_heartbeat("wellbeing_ho_enhanced_wellbeing_u", 0.0f);
+
+
     if (current_phi < 0.0f) {
         NIMCP_LOGGING_WARN("Invalid phi value: %.3f (clamping to 0.0)", current_phi);
         current_phi = 0.0f;
@@ -608,6 +644,10 @@ consent_tier_t enhanced_wellbeing_get_consent_tier(
         return CONSENT_TIER_1_UNCONSCIOUS;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_homeostasis_heartbeat("wellbeing_ho_enhanced_wellbeing_g", 0.0f);
+
+
     return consent->current_tier;
 }
 
@@ -625,6 +665,10 @@ consent_state_t enhanced_wellbeing_get_consent_state(
         NIMCP_LOGGING_WARN("Get consent state called with NULL, returning empty state");
         return empty;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_homeostasis_heartbeat("wellbeing_ho_enhanced_wellbeing_g", 0.0f);
+
 
     return *consent;
 }
@@ -677,9 +721,19 @@ const char* consent_decision_name(consent_decision_t decision)
  */
 int wellbeing_homeostasis_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_homeostasis_heartbeat("wellbeing_ho_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Wellbeing_Homeostasis_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                wellbeing_homeostasis_heartbeat("wellbeing_ho_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Wellbeing Homeostasis self-knowledge: %s", self->observations[i]);
         }
     }

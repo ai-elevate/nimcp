@@ -24,6 +24,9 @@
 #include <math.h>
 #include <time.h>
 
+/* Forward declare heartbeat helper (defined at bottom with health agent block) */
+static inline void social_memory_heartbeat(const char* operation, float progress);
+
 //=============================================================================
 // Internal Constants
 //=============================================================================
@@ -278,9 +281,21 @@ NIMCP_EXPORT social_memory_t social_memory_create(
 
     // Initialize matrix with default values
     for (size_t i = 0; i < matrix_elements; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && matrix_elements > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)matrix_elements);
+        }
+
         mem->relationship_types[i] = REL_STRANGER;
     }
     for (size_t i = 0; i < initial_matrix; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && initial_matrix > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)initial_matrix);
+        }
+
         mem->matrix_person_ids[i] = SOCIAL_MEM_INVALID_PERSON_ID;
     }
 
@@ -299,6 +314,12 @@ NIMCP_EXPORT void social_memory_destroy(social_memory_t social_mem) {
 
     // Free all persons
     for (size_t i = 0; i < mem->person_bucket_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mem->person_bucket_count > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)mem->person_bucket_count);
+        }
+
         person_entry_t* entry = mem->person_buckets[i];
         while (entry) {
             person_entry_t* next = entry->next;
@@ -311,6 +332,12 @@ NIMCP_EXPORT void social_memory_destroy(social_memory_t social_mem) {
 
     // Free all episodes
     for (size_t i = 0; i < mem->episode_bucket_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mem->episode_bucket_count > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)mem->episode_bucket_count);
+        }
+
         episode_entry_t* entry = mem->episode_buckets[i];
         while (entry) {
             episode_entry_t* next = entry->next;
@@ -342,6 +369,12 @@ NIMCP_EXPORT social_mem_error_t social_memory_clear(social_memory_t social_mem) 
 
     // Clear persons
     for (size_t i = 0; i < mem->person_bucket_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mem->person_bucket_count > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)mem->person_bucket_count);
+        }
+
         person_entry_t* entry = mem->person_buckets[i];
         while (entry) {
             person_entry_t* next = entry->next;
@@ -356,6 +389,12 @@ NIMCP_EXPORT social_mem_error_t social_memory_clear(social_memory_t social_mem) 
 
     // Clear episodes
     for (size_t i = 0; i < mem->episode_bucket_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mem->episode_bucket_count > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)mem->episode_bucket_count);
+        }
+
         episode_entry_t* entry = mem->episode_buckets[i];
         while (entry) {
             episode_entry_t* next = entry->next;
@@ -372,9 +411,21 @@ NIMCP_EXPORT social_mem_error_t social_memory_clear(social_memory_t social_mem) 
     size_t matrix_elements = mem->matrix_capacity * mem->matrix_capacity;
     memset(mem->relationship_matrix, 0, matrix_elements * sizeof(float));
     for (size_t i = 0; i < matrix_elements; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && matrix_elements > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)matrix_elements);
+        }
+
         mem->relationship_types[i] = REL_STRANGER;
     }
     for (size_t i = 0; i < mem->matrix_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mem->matrix_capacity > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)mem->matrix_capacity);
+        }
+
         mem->matrix_person_ids[i] = SOCIAL_MEM_INVALID_PERSON_ID;
     }
     mem->matrix_size = 0;
@@ -546,6 +597,12 @@ NIMCP_EXPORT social_mem_error_t social_memory_remove_person(
     int idx = get_matrix_index(mem, person_id);
     if (idx >= 0) {
         for (size_t i = 0; i < mem->matrix_size; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && mem->matrix_size > 256) {
+                social_memory_heartbeat("social_memor_loop",
+                                 (float)(i + 1) / (float)mem->matrix_size);
+            }
+
             mem->relationship_matrix[idx * mem->matrix_capacity + i] = 0.0f;
             mem->relationship_matrix[i * mem->matrix_capacity + idx] = 0.0f;
             mem->relationship_types[idx * mem->matrix_capacity + i] = REL_STRANGER;
@@ -596,6 +653,12 @@ NIMCP_EXPORT const person_node_t* social_memory_get_person_by_name(
 
     // Linear scan through all persons
     for (size_t i = 0; i < mem->person_bucket_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mem->person_bucket_count > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)mem->person_bucket_count);
+        }
+
         person_entry_t* entry = mem->person_buckets[i];
         while (entry) {
             if (entry->person->name && strcmp(entry->person->name, name) == 0) {
@@ -667,6 +730,12 @@ NIMCP_EXPORT uint64_t social_memory_identify_person(
 
     // Search through all persons
     for (size_t i = 0; i < mem->person_bucket_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mem->person_bucket_count > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)mem->person_bucket_count);
+        }
+
         person_entry_t* entry = mem->person_buckets[i];
         while (entry) {
             float score = compute_signature_match(&entry->person->identity_signature, features);
@@ -713,6 +782,12 @@ NIMCP_EXPORT uint64_t social_memory_identify_by_face(
     float best_score = 0.0f;
 
     for (size_t i = 0; i < mem->person_bucket_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mem->person_bucket_count > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)mem->person_bucket_count);
+        }
+
         person_entry_t* entry = mem->person_buckets[i];
         while (entry) {
             if (entry->person->has_face_signature) {
@@ -754,6 +829,12 @@ NIMCP_EXPORT uint64_t social_memory_identify_by_voice(
     float best_score = 0.0f;
 
     for (size_t i = 0; i < mem->person_bucket_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mem->person_bucket_count > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)mem->person_bucket_count);
+        }
+
         person_entry_t* entry = mem->person_buckets[i];
         while (entry) {
             if (entry->person->has_voice_signature) {
@@ -806,6 +887,12 @@ NIMCP_EXPORT uint64_t social_memory_identify_multimodal(
     }
 
     for (size_t i = 0; i < mem->person_bucket_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mem->person_bucket_count > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)mem->person_bucket_count);
+        }
+
         person_entry_t* entry = mem->person_buckets[i];
         while (entry) {
             float score = 0.0f;
@@ -889,6 +976,12 @@ NIMCP_EXPORT social_mem_error_t social_memory_identify_top_k(
     // Simple selection sort for top-k
     size_t result_count = (k < idx) ? k : idx;
     for (size_t i = 0; i < result_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && result_count > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)result_count);
+        }
+
         size_t max_idx = i;
         for (size_t j = i + 1; j < idx; j++) {
             if (all_results[j].match_score > all_results[max_idx].match_score) {
@@ -1176,6 +1269,12 @@ NIMCP_EXPORT size_t social_memory_decay_trust(
     size_t count = 0;
 
     for (size_t i = 0; i < mem->person_bucket_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mem->person_bucket_count > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)mem->person_bucket_count);
+        }
+
         person_entry_t* entry = mem->person_buckets[i];
         while (entry) {
             float trust = entry->person->trust_level;
@@ -1586,6 +1685,12 @@ NIMCP_EXPORT uint64_t social_memory_record_episode(
 
     // Update interaction counts for participants
     for (size_t i = 0; i < episode->num_participants; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && episode->num_participants > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)episode->num_participants);
+        }
+
         person_entry_t* entry = find_person_entry(mem, episode->participant_ids[i]);
         if (entry) {
             entry->person->interaction_count++;
@@ -1818,6 +1923,12 @@ NIMCP_EXPORT social_mem_error_t social_memory_compute_social_network(
 
         // Count connections and sum trust from others
         for (size_t j = 0; j < mem->matrix_size; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && mem->matrix_size > 256) {
+                social_memory_heartbeat("social_memor_loop",
+                                 (float)(j + 1) / (float)mem->matrix_size);
+            }
+
             if (i == j) continue;
 
             size_t offset = i * mem->matrix_capacity + j;
@@ -1870,6 +1981,12 @@ NIMCP_EXPORT float social_memory_get_centrality(
 
     size_t degree = 0;
     for (size_t j = 0; j < mem->matrix_size; j++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((j & 0xFF) == 0 && mem->matrix_size > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(j + 1) / (float)mem->matrix_size);
+        }
+
         if ((size_t)idx == j) continue;
         size_t offset = (size_t)idx * mem->matrix_capacity + j;
         if (mem->relationship_matrix[offset] > 0.0f &&
@@ -1940,6 +2057,12 @@ NIMCP_EXPORT int social_memory_degrees_of_separation(
         }
 
         for (size_t j = 0; j < mem->matrix_size; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && mem->matrix_size > 256) {
+                social_memory_heartbeat("social_memor_loop",
+                                 (float)(j + 1) / (float)mem->matrix_size);
+            }
+
             if (visited[j]) continue;
 
             size_t offset = (size_t)current * mem->matrix_capacity + j;
@@ -1983,12 +2106,24 @@ NIMCP_EXPORT social_mem_error_t social_memory_find_clusters(
     }
 
     for (size_t i = 0; i < mem->matrix_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mem->matrix_size > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)mem->matrix_size);
+        }
+
         component[i] = -1;
     }
 
     int current_cluster = 0;
 
     for (size_t start = 0; start < mem->matrix_size; start++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((start & 0xFF) == 0 && mem->matrix_size > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(start + 1) / (float)mem->matrix_size);
+        }
+
         if (component[start] >= 0) continue;
         if (mem->matrix_person_ids[start] == SOCIAL_MEM_INVALID_PERSON_ID) continue;
 
@@ -2007,6 +2142,12 @@ NIMCP_EXPORT social_mem_error_t social_memory_find_clusters(
             int current = queue[front++];
 
             for (size_t j = 0; j < mem->matrix_size; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && mem->matrix_size > 256) {
+                    social_memory_heartbeat("social_memor_loop",
+                                     (float)(j + 1) / (float)mem->matrix_size);
+                }
+
                 if (component[j] >= 0) continue;
                 if (mem->matrix_person_ids[j] == SOCIAL_MEM_INVALID_PERSON_ID) continue;
 
@@ -2276,6 +2417,12 @@ NIMCP_EXPORT social_mem_error_t social_memory_get_stats(
     size_t person_count = 0;
 
     for (size_t i = 0; i < mem->person_bucket_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mem->person_bucket_count > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)mem->person_bucket_count);
+        }
+
         person_entry_t* entry = mem->person_buckets[i];
         while (entry) {
             person_node_t* p = entry->person;
@@ -2395,6 +2542,12 @@ NIMCP_EXPORT bool social_memory_validate(social_memory_t social_mem) {
     // Verify person count matches hash table entries
     size_t actual_persons = 0;
     for (size_t i = 0; i < mem->person_bucket_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mem->person_bucket_count > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)mem->person_bucket_count);
+        }
+
         person_entry_t* entry = mem->person_buckets[i];
         while (entry) {
             actual_persons++;
@@ -2409,6 +2562,12 @@ NIMCP_EXPORT bool social_memory_validate(social_memory_t social_mem) {
     // Verify episode count
     size_t actual_episodes = 0;
     for (size_t i = 0; i < mem->episode_bucket_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mem->episode_bucket_count > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)mem->episode_bucket_count);
+        }
+
         episode_entry_t* entry = mem->episode_buckets[i];
         while (entry) {
             actual_episodes++;
@@ -2485,7 +2644,7 @@ static nimcp_health_agent_t* g_social_memory_health_agent = NULL;
  * @brief Set health agent for social_memory heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void social_memory_set_health_agent(nimcp_health_agent_t* agent) {
+void social_memory_set_health_agent(nimcp_health_agent_t* agent) {
     g_social_memory_health_agent = agent;
 }
 
@@ -2508,6 +2667,12 @@ static uint64_t hash_uint64(uint64_t key) {
     // FNV-1a hash
     uint64_t h = 14695981039346656037ULL;
     for (int i = 0; i < 8; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && 8 > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)8);
+        }
+
         h ^= (key >> (i * 8)) & 0xFF;
         h *= 1099511628211ULL;
     }
@@ -2624,6 +2789,12 @@ static bool resize_person_table(social_memory_internal_t* mem) {
 
     // Rehash all entries
     for (size_t i = 0; i < mem->person_bucket_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mem->person_bucket_count > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)mem->person_bucket_count);
+        }
+
         person_entry_t* entry = mem->person_buckets[i];
         while (entry) {
             person_entry_t* next = entry->next;
@@ -2650,6 +2821,12 @@ static bool resize_episode_table(social_memory_internal_t* mem) {
     }
 
     for (size_t i = 0; i < mem->episode_bucket_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mem->episode_bucket_count > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)mem->episode_bucket_count);
+        }
+
         episode_entry_t* entry = mem->episode_buckets[i];
         while (entry) {
             episode_entry_t* next = entry->next;
@@ -2692,18 +2869,42 @@ static bool grow_relationship_matrix(social_memory_internal_t* mem) {
 
     // Initialize new types to stranger
     for (size_t i = 0; i < new_elements; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && new_elements > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)new_elements);
+        }
+
         new_types[i] = REL_STRANGER;
     }
 
     // Initialize new IDs to invalid
     for (size_t i = 0; i < new_capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && new_capacity > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)new_capacity);
+        }
+
         new_ids[i] = SOCIAL_MEM_INVALID_PERSON_ID;
     }
 
     // Copy existing data
     for (size_t i = 0; i < mem->matrix_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mem->matrix_size > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)mem->matrix_size);
+        }
+
         new_ids[i] = mem->matrix_person_ids[i];
         for (size_t j = 0; j < mem->matrix_size; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && mem->matrix_size > 256) {
+                social_memory_heartbeat("social_memor_loop",
+                                 (float)(j + 1) / (float)mem->matrix_size);
+            }
+
             size_t old_offset = i * mem->matrix_capacity + j;
             size_t new_offset = i * new_capacity + j;
             new_matrix[new_offset] = mem->relationship_matrix[old_offset];
@@ -2725,6 +2926,12 @@ static bool grow_relationship_matrix(social_memory_internal_t* mem) {
 
 static int get_matrix_index(social_memory_internal_t* mem, uint64_t person_id) {
     for (size_t i = 0; i < mem->matrix_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && mem->matrix_size > 256) {
+            social_memory_heartbeat("social_memor_loop",
+                             (float)(i + 1) / (float)mem->matrix_size);
+        }
+
         if (mem->matrix_person_ids[i] == person_id) {
             return (int)i;
         }

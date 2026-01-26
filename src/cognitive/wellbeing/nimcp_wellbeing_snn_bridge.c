@@ -38,7 +38,7 @@ static nimcp_health_agent_t* g_wellbeing_snn_bridge_health_agent = NULL;
  * @brief Set health agent for wellbeing_snn_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void wellbeing_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void wellbeing_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_wellbeing_snn_bridge_health_agent = agent;
 }
 
@@ -112,12 +112,24 @@ static void softmax(float* values, uint32_t n) {
 
     float sum = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            wellbeing_snn_bridge_heartbeat("wellbeing_sn_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         values[i] = expf(values[i] - max_val);
         sum += values[i];
     }
 
     if (sum > 0.0f) {
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                wellbeing_snn_bridge_heartbeat("wellbeing_sn_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             values[i] /= sum;
         }
     }
@@ -128,6 +140,10 @@ static void softmax(float* values, uint32_t n) {
 //=============================================================================
 
 wellbeing_snn_config_t wellbeing_snn_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_config", 0.0f);
+
+
     wellbeing_snn_config_t config = {
         .num_dimensions = WELLBEING_DIM_COUNT,
         .neurons_per_dim = WELLBEING_SNN_NEURONS_PER_DIM,
@@ -163,6 +179,10 @@ wellbeing_snn_config_t wellbeing_snn_config_default(void) {
 }
 
 wellbeing_snn_bridge_t* wellbeing_snn_create(const wellbeing_snn_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_create", 0.0f);
+
+
     wellbeing_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(wellbeing_snn_bridge_t));
     if (!bridge) {
 
@@ -222,6 +242,12 @@ wellbeing_snn_bridge_t* wellbeing_snn_create(const wellbeing_snn_config_t* confi
 
     /* Initialize dimension states */
     for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            wellbeing_snn_bridge_heartbeat("wellbeing_sn_loop",
+                             (float)(i + 1) / (float)bridge->config.num_dimensions);
+        }
+
         bridge->dim_states[i].activation = 0.0f;
         bridge->dim_states[i].accumulated_evidence = 0.0f;
         bridge->dim_states[i].spike_count = 0;
@@ -255,6 +281,10 @@ wellbeing_snn_bridge_t* wellbeing_snn_create(const wellbeing_snn_config_t* confi
 void wellbeing_snn_destroy(wellbeing_snn_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_destro", 0.0f);
+
+
     if (bridge->snn) {
         snn_network_destroy(bridge->snn);
     }
@@ -273,6 +303,10 @@ void wellbeing_snn_destroy(wellbeing_snn_bridge_t* bridge) {
 int wellbeing_snn_reset(wellbeing_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_reset", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset SNN network */
@@ -282,6 +316,12 @@ int wellbeing_snn_reset(wellbeing_snn_bridge_t* bridge) {
 
     /* Reset dimension states */
     for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            wellbeing_snn_bridge_heartbeat("wellbeing_sn_loop",
+                             (float)(i + 1) / (float)bridge->config.num_dimensions);
+        }
+
         bridge->dim_states[i].activation = 0.0f;
         bridge->dim_states[i].accumulated_evidence = 0.0f;
         bridge->dim_states[i].spike_count = 0;
@@ -324,6 +364,10 @@ int wellbeing_snn_encode_state(
     if (!bridge || !dimensions) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_encode", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = WELLBEING_SNN_STATE_ENCODING;
 
@@ -332,6 +376,12 @@ int wellbeing_snn_encode_state(
 
     /* Population encoding for each dimension */
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            wellbeing_snn_bridge_heartbeat("wellbeing_sn_loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         float value = clamp_f(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
@@ -342,6 +392,12 @@ int wellbeing_snn_encode_state(
 
         /* Population encode */
         for (uint32_t n = 0; n < neurons_per_dim; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && neurons_per_dim > 256) {
+                wellbeing_snn_bridge_heartbeat("wellbeing_sn_loop",
+                                 (float)(n + 1) / (float)neurons_per_dim);
+            }
+
             float preferred = (float)n / (neurons_per_dim - 1);
             float diff = value - preferred;
             float tuning = expf(-diff * diff / 0.1f);
@@ -357,12 +413,24 @@ int wellbeing_snn_encode_state(
     /* Calculate balance signal (variance of dimensions) */
     float mean = 0.0f;
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            wellbeing_snn_bridge_heartbeat("wellbeing_sn_loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         mean += dimensions[d];
     }
     mean /= num_dims;
 
     float variance = 0.0f;
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            wellbeing_snn_bridge_heartbeat("wellbeing_sn_loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         float diff = dimensions[d] - mean;
         variance += diff * diff;
     }
@@ -373,6 +441,12 @@ int wellbeing_snn_encode_state(
 
     /* Store previous state */
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            wellbeing_snn_bridge_heartbeat("wellbeing_sn_loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         bridge->prev_state[d] = dimensions[d];
     }
 
@@ -388,6 +462,10 @@ int wellbeing_snn_encode_hedonic(
     float pain
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_encode", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -408,6 +486,10 @@ int wellbeing_snn_encode_eudaimonic(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_encode", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[WELLBEING_DIM_COUNT] = {0};
@@ -426,6 +508,10 @@ int wellbeing_snn_encode_stress(
     bool chronic
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_encode", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -465,6 +551,10 @@ int wellbeing_snn_encode_social(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_encode", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[WELLBEING_DIM_COUNT] = {0};
@@ -485,6 +575,10 @@ int wellbeing_snn_simulate(wellbeing_snn_bridge_t* bridge, float duration_ms) {
     if (!bridge) return -1;
     if (duration_ms <= 0.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_simula", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = WELLBEING_SNN_STATE_SIMULATING;
 
@@ -498,6 +592,12 @@ int wellbeing_snn_simulate(wellbeing_snn_bridge_t* bridge, float duration_ms) {
     }
 
     for (uint32_t s = 0; s < steps; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && steps > 256) {
+            wellbeing_snn_bridge_heartbeat("wellbeing_sn_loop",
+                             (float)(s + 1) / (float)steps);
+        }
+
         if (bridge->snn) {
             snn_network_step(bridge->snn, dt);
         }
@@ -505,6 +605,12 @@ int wellbeing_snn_simulate(wellbeing_snn_bridge_t* bridge, float duration_ms) {
         /* Update evidence integration */
         float decay = expf(-dt / bridge->config.integration_tau_ms);
         for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+                wellbeing_snn_bridge_heartbeat("wellbeing_sn_loop",
+                                 (float)(d + 1) / (float)bridge->config.num_dimensions);
+            }
+
             bridge->dim_states[d].accumulated_evidence *= decay;
             bridge->dim_states[d].accumulated_evidence +=
                 bridge->dim_states[d].activation * dt / bridge->config.integration_tau_ms;
@@ -580,6 +686,10 @@ int wellbeing_snn_simulate(wellbeing_snn_bridge_t* bridge, float duration_ms) {
 
 int wellbeing_snn_step(wellbeing_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_step", 0.0f);
+
+
     return wellbeing_snn_simulate(bridge, bridge->config.dt_ms);
 }
 
@@ -589,6 +699,10 @@ int wellbeing_snn_forward(
     uint32_t input_count
 ) {
     if (!bridge || !inputs) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_forwar", 0.0f);
+
 
     int spike_count = wellbeing_snn_encode_state(bridge, inputs, input_count);
     if (spike_count < 0) return -1;
@@ -610,6 +724,10 @@ int wellbeing_snn_get_assessment(
 ) {
     if (!bridge || !assessment) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_get_as", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *assessment = bridge->last_assessment;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -625,8 +743,18 @@ int wellbeing_snn_get_activations(
     if (!bridge || !activations) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_get_ac", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            wellbeing_snn_bridge_heartbeat("wellbeing_sn_loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         activations[d] = bridge->dim_states[d].activation;
     }
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -639,6 +767,10 @@ bool wellbeing_snn_check_stress(
     float* stress_level
 ) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_check_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_assessment.stress_level;
@@ -657,6 +789,10 @@ bool wellbeing_snn_check_flourishing(
 ) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_check_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_assessment.flourishing_score;
     if (flourishing_level) {
@@ -673,6 +809,10 @@ bool wellbeing_snn_check_balance(
     float* balance_score
 ) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_check_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     float score = bridge->balance_signal;
@@ -697,6 +837,10 @@ int wellbeing_snn_get_dim_state(
     if (!bridge || !state) return -1;
     if (dim >= bridge->config.num_dimensions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_get_di", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->dim_states[dim];
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -710,6 +854,10 @@ int wellbeing_snn_get_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_get_st", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
@@ -721,6 +869,12 @@ int wellbeing_snn_get_state(
     state->active_dimensions = 0;
     state->total_activity = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            wellbeing_snn_bridge_heartbeat("wellbeing_sn_loop",
+                             (float)(d + 1) / (float)bridge->config.num_dimensions);
+        }
+
         if (bridge->dim_states[d].activation > 0.1f) {
             state->active_dimensions++;
         }
@@ -734,6 +888,10 @@ int wellbeing_snn_get_state(
 int wellbeing_snn_get_stats(wellbeing_snn_bridge_t* bridge, wellbeing_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_get_st", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -743,6 +901,10 @@ int wellbeing_snn_get_stats(wellbeing_snn_bridge_t* bridge, wellbeing_snn_stats_
 
 int wellbeing_snn_reset_stats(wellbeing_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_reset_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(wellbeing_snn_stats_t));
@@ -754,6 +916,10 @@ int wellbeing_snn_reset_stats(wellbeing_snn_bridge_t* bridge) {
 float wellbeing_snn_get_flourishing(wellbeing_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_get_fl", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float flourishing = bridge->last_assessment.flourishing_score;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -764,9 +930,19 @@ float wellbeing_snn_get_flourishing(wellbeing_snn_bridge_t* bridge) {
 float wellbeing_snn_get_total_activity(wellbeing_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_get_to", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float total = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            wellbeing_snn_bridge_heartbeat("wellbeing_sn_loop",
+                             (float)(d + 1) / (float)bridge->config.num_dimensions);
+        }
+
         total += bridge->dim_states[d].activation;
     }
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -785,6 +961,10 @@ int wellbeing_snn_register_stress_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_regist", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->stress_callback = callback;
     bridge->stress_callback_data = user_data;
@@ -800,6 +980,10 @@ int wellbeing_snn_register_assessment_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_regist", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->assessment_callback = callback;
     bridge->assessment_callback_data = user_data;
@@ -814,6 +998,10 @@ int wellbeing_snn_register_balance_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_regist", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->balance_callback = callback;
@@ -831,6 +1019,10 @@ int wellbeing_snn_bio_async_connect(wellbeing_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_bio_as", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
@@ -842,6 +1034,10 @@ int wellbeing_snn_bio_async_connect(wellbeing_snn_bridge_t* bridge) {
 int wellbeing_snn_bio_async_disconnect(wellbeing_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_bio_as", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -851,6 +1047,10 @@ int wellbeing_snn_bio_async_disconnect(wellbeing_snn_bridge_t* bridge) {
 
 bool wellbeing_snn_is_bio_async_connected(wellbeing_snn_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_is_bio", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;

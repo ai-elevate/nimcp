@@ -44,7 +44,7 @@ static nimcp_health_agent_t* g_mirror_immune_integration_health_agent = NULL;
  * @brief Set health agent for mirror_immune_integration heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void mirror_immune_integration_set_health_agent(nimcp_health_agent_t* agent) {
+void mirror_immune_integration_set_health_agent(nimcp_health_agent_t* agent) {
     g_mirror_immune_integration_health_agent = agent;
 }
 
@@ -93,6 +93,10 @@ int mirror_immune_get_default_config(mirror_immune_config_t* config) {
     if (!config) return -1;
 
     /* Immune → Mirror modulation */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_get_de", 0.0f);
+
+
     config->cytokine_sensitivity = MIRROR_IMMUNE_CYTOKINE_SENSITIVITY;
     config->max_resonance_suppression = MIRROR_IMMUNE_MAX_SUPPRESSION;
     config->enable_sickness_behavior = true;
@@ -128,6 +132,10 @@ mirror_immune_integration_t* mirror_immune_create(
      * WHY:  Set up bidirectional coupling
      * HOW:  Allocate, copy config, init state */
     if (!mirror_system || !immune_system) return NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_create", 0.0f);
+
 
     mirror_immune_integration_t* integration = nimcp_calloc(1, sizeof(*integration));
     if (!integration) {
@@ -179,6 +187,10 @@ void mirror_immune_destroy(mirror_immune_integration_t* integration) {
      * HOW:  Destroy mutex, free struct */
     if (!integration) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_destro", 0.0f);
+
+
     if (integration->mutex) {
         nimcp_mutex_free(integration->mutex);
     }
@@ -192,6 +204,10 @@ int mirror_immune_enable(mirror_immune_integration_t* integration) {
      * WHY:  Begin bidirectional modulation
      * HOW:  Set flag, reset timers */
     if (!integration) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_enable", 0.0f);
+
 
     nimcp_mutex_lock(integration->mutex);
     integration->enabled = true;
@@ -209,6 +225,10 @@ int mirror_immune_disable(mirror_immune_integration_t* integration) {
      * WHY:  Allow independent operation
      * HOW:  Clear flag, reset modulation */
     if (!integration) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_disabl", 0.0f);
+
 
     nimcp_mutex_lock(integration->mutex);
     integration->enabled = false;
@@ -229,6 +249,10 @@ int mirror_immune_apply_immune_modulation(mirror_immune_integration_t* integrati
      * WHY:  Inflammation reduces resonance
      * HOW:  Sample cytokines, compute suppression, apply */
     if (!integration || !integration->enabled) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_apply_", 0.0f);
+
 
     nimcp_mutex_lock(integration->mutex);
 
@@ -280,6 +304,10 @@ float mirror_immune_compute_resonance_suppression(
      * HOW:  Weighted sum of cytokines */
     if (!integration) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_comput", 0.0f);
+
+
     const mirror_immune_config_t* cfg = &integration->config;
     const mirror_immune_state_t* state = &integration->state;
 
@@ -304,6 +332,10 @@ float mirror_immune_compute_empathy_threshold(
      * HOW:  Scale baseline by inflammation */
     if (!integration) return 0.5f;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_comput", 0.0f);
+
+
     float baseline = integration->config.empathy_threshold_baseline;
     float inflammation_mod = integration->state.current_inflammation * 0.5f;
 
@@ -318,6 +350,10 @@ int mirror_immune_apply_sickness_behavior(
      * WHY:  Conserve energy during illness
      * HOW:  Boost BG inhibition, raise thresholds */
     if (!integration || !integration->mirror_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_apply_", 0.0f);
+
 
     severity = clamp_f(severity, 0.0f, 1.0f);
 
@@ -345,6 +381,10 @@ int mirror_immune_restore_social_function(
      * WHY:  IL-10 resolution enables social function
      * HOW:  Reduce suppression, lower thresholds */
     if (!integration || !integration->mirror_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_restor", 0.0f);
+
 
     il10_level = clamp_f(il10_level, 0.0f, 1.0f);
 
@@ -376,6 +416,10 @@ bool mirror_immune_detect_isolation(
      * HOW:  Compare time since last observation */
     if (!integration) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_detect", 0.0f);
+
+
     uint64_t time_since_obs = current_time - integration->state.last_observation_time;
     uint64_t threshold_us = (uint64_t)(integration->config.isolation_threshold_s * 1000000);
 
@@ -389,6 +433,10 @@ int mirror_immune_trigger_isolation_response(
      * WHY:  Social isolation activates inflammation
      * HOW:  Call brain immune to release cytokine */
     if (!integration || !integration->immune_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_trigge", 0.0f);
+
 
     uint32_t cytokine_id;
     int result = brain_immune_release_cytokine(
@@ -416,6 +464,10 @@ int mirror_immune_trigger_rejection_response(
      * WHY:  Failed imitation = social rejection
      * HOW:  Count failures, release IL-6 if threshold exceeded */
     if (!integration || !integration->immune_system) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_trigge", 0.0f);
+
 
     const uint32_t FAILURE_THRESHOLD = 5;
     if (integration->state.failed_imitation_count < FAILURE_THRESHOLD) {
@@ -455,6 +507,10 @@ int mirror_immune_release_social_success_il10(
         return 0;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_releas", 0.0f);
+
+
     uint32_t cytokine_id;
     int result = brain_immune_release_cytokine(
         integration->immune_system,
@@ -481,6 +537,10 @@ int mirror_immune_update_social_state(
      * WHY:  Determine immune feedback type
      * HOW:  Analyze activity patterns */
     if (!integration) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_update", 0.0f);
+
 
     nimcp_mutex_lock(integration->mutex);
 
@@ -532,6 +592,10 @@ int mirror_immune_update(
     if (!integration || !integration->enabled) return -1;
 
     /* Check if update interval elapsed */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_update", 0.0f);
+
+
     uint64_t elapsed_ms = (current_time - integration->last_update_time) / 1000;
     if (elapsed_ms < integration->config.update_interval_ms) {
         return 0;  /* Too soon */
@@ -575,6 +639,10 @@ int mirror_immune_get_stats(
      * HOW:  Copy accumulated metrics */
     if (!integration || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_get_st", 0.0f);
+
+
     nimcp_mutex_lock(integration->mutex);
 
     memset(stats, 0, sizeof(*stats));
@@ -600,6 +668,10 @@ mirror_social_state_t mirror_immune_get_social_state(
     /* WHAT: Get current social state
      * WHY:  Query integration status
      * HOW:  Return state field */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_get_so", 0.0f);
+
+
     return integration ? integration->state.social_state : SOCIAL_STATE_ISOLATED;
 }
 
@@ -609,6 +681,10 @@ mirror_immune_effect_t mirror_immune_get_immune_effect(
     /* WHAT: Get current immune effect
      * WHY:  Query modulation type
      * HOW:  Return effect field */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_get_im", 0.0f);
+
+
     return integration ? integration->state.immune_effect : IMMUNE_EFFECT_NONE;
 }
 
@@ -618,6 +694,10 @@ float mirror_immune_get_resonance_suppression(
     /* WHAT: Get suppression factor
      * WHY:  Query modulation strength
      * HOW:  Return suppression field */
+    /* Phase 8: Heartbeat at operation start */
+    mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_get_re", 0.0f);
+
+
     return integration ? integration->state.resonance_suppression : 0.0f;
 }
 
@@ -633,6 +713,10 @@ void mirror_immune_notify_observation(
      * WHY:  Track social activity
      * HOW:  Set last observation time */
     if (!integration || !integration->enabled) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_notify", 0.0f);
+
 
     nimcp_mutex_lock(integration->mutex);
     integration->state.last_observation_time = timestamp_us;
@@ -654,6 +738,10 @@ void mirror_immune_notify_imitation_success(
      * HOW:  Update timestamp, release cytokine */
     if (!integration || !integration->enabled) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_notify", 0.0f);
+
+
     nimcp_mutex_lock(integration->mutex);
     integration->state.last_imitation_time = timestamp_us;
     integration->state.failed_imitation_count = 0;  /* Reset failures */
@@ -670,6 +758,10 @@ void mirror_immune_notify_imitation_failure(
      * WHY:  Trigger stress response on repeated failures
      * HOW:  Increment counter */
     if (!integration || !integration->enabled) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_notify", 0.0f);
+
 
     nimcp_mutex_lock(integration->mutex);
     integration->state.failed_imitation_count++;
@@ -707,9 +799,19 @@ const char* mirror_immune_effect_to_string(mirror_immune_effect_t effect) {
 
 int mirror_immune_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_query_", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Mirror_Immune_Integration");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                mirror_immune_integration_heartbeat("mirror_immun_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Mirror immune self-knowledge: %s", self->observations[i]);
         }
     }

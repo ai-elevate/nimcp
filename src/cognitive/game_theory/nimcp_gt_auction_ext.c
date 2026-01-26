@@ -37,7 +37,7 @@ static nimcp_health_agent_t* g_gt_auction_ext_health_agent = NULL;
  * @brief Set health agent for gt_auction_ext heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void gt_auction_ext_set_health_agent(nimcp_health_agent_t* agent) {
+void gt_auction_ext_set_health_agent(nimcp_health_agent_t* agent) {
     g_gt_auction_ext_health_agent = agent;
 }
 
@@ -148,6 +148,10 @@ uint32_t nimcp_bundle_count_items(uint64_t mask) {
     // WHAT: Count set bits (population count)
     // WHY:  Know how many items in bundle
     // HOW:  Brian Kernighan's algorithm
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_bundle_count_items", 0.0f);
+
+
     uint32_t count = 0;
     while (mask) {
         mask &= (mask - 1);
@@ -160,6 +164,10 @@ bool nimcp_bundles_overlap(uint64_t mask1, uint64_t mask2) {
     // WHAT: Check if bundles share items
     // WHY:  Detect conflicts in allocation
     // HOW:  Bitwise AND
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_bundles_overlap", 0.0f);
+
+
     return (mask1 & mask2) != 0;
 }
 
@@ -189,6 +197,10 @@ const char* nimcp_multi_unit_type_name(nimcp_multi_unit_type_t type) {
 //=============================================================================
 
 nimcp_combo_auction_config_t nimcp_combo_auction_default_config(uint32_t num_items) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_combo_auction_defaul", 0.0f);
+
+
     nimcp_combo_auction_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -202,6 +214,12 @@ nimcp_combo_auction_config_t nimcp_combo_auction_default_config(uint32_t num_ite
     config.time_limit_ms = 0.0f;
 
     for (uint32_t i = 0; i < NIMCP_GT_MAX_COMBO_ITEMS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && NIMCP_GT_MAX_COMBO_ITEMS > 256) {
+            gt_auction_ext_heartbeat("gt_auction_e_loop",
+                             (float)(i + 1) / (float)NIMCP_GT_MAX_COMBO_ITEMS);
+        }
+
         config.reserve_prices[i] = 0.0f;
     }
 
@@ -215,6 +233,9 @@ nimcp_combo_auction_t nimcp_combo_auction_create(
         config->num_items > NIMCP_GT_MAX_COMBO_ITEMS) {
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_combo_auction_create", 0.0f);
 
     nimcp_combo_auction_t ctx = nimcp_calloc(1, sizeof(struct nimcp_combo_auction_struct));
     if (!ctx) {
@@ -250,6 +271,10 @@ nimcp_combo_auction_t nimcp_combo_auction_create(
 void nimcp_combo_auction_destroy(nimcp_combo_auction_t ctx) {
     if (!ctx) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_combo_auction_destro", 0.0f);
+
+
     nimcp_platform_mutex_destroy(&ctx->mutex);
     nimcp_free(ctx->bids);
     nimcp_free(ctx);
@@ -264,6 +289,10 @@ nimcp_error_t nimcp_combo_auction_submit_bundle_bid(
     if (!ctx) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_combo_auction_submit", 0.0f);
+
 
     nimcp_platform_mutex_lock(&ctx->mutex);
 
@@ -296,6 +325,12 @@ nimcp_error_t nimcp_combo_auction_submit_bundle_bid(
     // Check against reserve prices
     float total_reserve = 0.0f;
     for (uint32_t i = 0; i < ctx->config.num_items; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->config.num_items > 256) {
+            gt_auction_ext_heartbeat("gt_auction_e_loop",
+                             (float)(i + 1) / (float)ctx->config.num_items);
+        }
+
         if (items_mask & ((uint64_t)1 << i)) {
             total_reserve += ctx->config.reserve_prices[i];
         }
@@ -409,6 +444,10 @@ nimcp_error_t nimcp_combo_auction_solve_optimal(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_combo_auction_solve_", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
 
     if (ctx->state == NIMCP_COMBO_STATE_CANCELLED) {
@@ -462,6 +501,12 @@ nimcp_error_t nimcp_combo_auction_solve_optimal(
         // Find max possible value (sum of all non-conflicting max bids per item)
         float max_possible = 0.0f;
         for (uint32_t i = 0; i < ctx->num_bids; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && ctx->num_bids > 256) {
+                gt_auction_ext_heartbeat("gt_auction_e_loop",
+                                 (float)(i + 1) / (float)ctx->num_bids);
+            }
+
             max_possible += ctx->bids[i].value;
         }
         result->efficiency = result->total_value / max_possible;
@@ -489,6 +534,10 @@ nimcp_error_t nimcp_combo_auction_solve_greedy(
     if (!ctx || !result) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_combo_auction_solve_", 0.0f);
+
 
     nimcp_platform_mutex_lock(&ctx->mutex);
 
@@ -544,6 +593,12 @@ nimcp_error_t nimcp_combo_auction_solve_greedy(
     if (result->total_value > 0.0f) {
         float max_possible = 0.0f;
         for (uint32_t i = 0; i < ctx->num_bids; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && ctx->num_bids > 256) {
+                gt_auction_ext_heartbeat("gt_auction_e_loop",
+                                 (float)(i + 1) / (float)ctx->num_bids);
+            }
+
             max_possible += ctx->bids[i].value;
         }
         result->efficiency = result->total_value / max_possible;
@@ -569,6 +624,10 @@ nimcp_error_t nimcp_combo_auction_get_vcg_payments(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_combo_auction_get_vc", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
 
     if (!ctx->solved || ctx->state != NIMCP_COMBO_STATE_COMPLETED) {
@@ -582,6 +641,12 @@ nimcp_error_t nimcp_combo_auction_get_vcg_payments(
     result->total_vcg_payments = 0.0f;
 
     for (uint32_t w = 0; w < result->num_winners; w++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((w & 0xFF) == 0 && result->num_winners > 256) {
+            gt_auction_ext_heartbeat("gt_auction_e_loop",
+                             (float)(w + 1) / (float)result->num_winners);
+        }
+
         nimcp_combo_winner_t* winner = &result->winners[w];
 
         // Compute sum of values of other winners
@@ -593,6 +658,12 @@ nimcp_error_t nimcp_combo_auction_get_vcg_payments(
 
         // Sort bids by value for simple optimal without one bidder
         for (uint32_t i = 0; i < ctx->num_bids; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && ctx->num_bids > 256) {
+                gt_auction_ext_heartbeat("gt_auction_e_loop",
+                                 (float)(i + 1) / (float)ctx->num_bids);
+            }
+
             nimcp_bundle_bid_t* bid = &ctx->bids[i];
 
             if (!bid->is_valid) continue;
@@ -620,11 +691,19 @@ nimcp_error_t nimcp_combo_auction_get_vcg_payments(
 
 nimcp_combo_state_t nimcp_combo_auction_get_state(const nimcp_combo_auction_t ctx) {
     if (!ctx) return NIMCP_COMBO_STATE_CREATED;
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_combo_auction_get_st", 0.0f);
+
+
     return ctx->state;
 }
 
 uint32_t nimcp_combo_auction_get_bid_count(const nimcp_combo_auction_t ctx) {
     if (!ctx) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_combo_auction_get_bi", 0.0f);
+
+
     return ctx->num_bids;
 }
 
@@ -632,6 +711,10 @@ nimcp_error_t nimcp_combo_auction_cancel(nimcp_combo_auction_t ctx) {
     if (!ctx) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_combo_auction_cancel", 0.0f);
+
 
     nimcp_platform_mutex_lock(&ctx->mutex);
     ctx->state = NIMCP_COMBO_STATE_CANCELLED;
@@ -645,6 +728,10 @@ nimcp_error_t nimcp_combo_auction_cancel(nimcp_combo_auction_t ctx) {
 //=============================================================================
 
 nimcp_double_auction_config_t nimcp_double_auction_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_double_auction_defau", 0.0f);
+
+
     nimcp_double_auction_config_t config = {
         .clearing_rule = NIMCP_CLEARING_UNIFORM,
         .max_orders = NIMCP_GT_MAX_ORDERS,
@@ -660,6 +747,10 @@ nimcp_double_auction_config_t nimcp_double_auction_default_config(void) {
 nimcp_double_auction_t nimcp_double_auction_create(
     const nimcp_double_auction_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_double_auction_creat", 0.0f);
+
+
     nimcp_double_auction_t ctx = nimcp_calloc(1, sizeof(struct nimcp_double_auction_struct));
     if (!ctx) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
@@ -716,6 +807,10 @@ nimcp_double_auction_t nimcp_double_auction_create(
 void nimcp_double_auction_destroy(nimcp_double_auction_t ctx) {
     if (!ctx) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_double_auction_destr", 0.0f);
+
+
     nimcp_platform_mutex_destroy(&ctx->mutex);
     nimcp_free(ctx->trades);
     nimcp_free(ctx->buy_orders);
@@ -732,6 +827,10 @@ nimcp_error_t nimcp_double_auction_submit_buy(
     if (!ctx) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_double_auction_submi", 0.0f);
+
 
     nimcp_platform_mutex_lock(&ctx->mutex);
 
@@ -790,6 +889,10 @@ nimcp_error_t nimcp_double_auction_submit_sell(
     if (!ctx) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_double_auction_submi", 0.0f);
+
 
     nimcp_platform_mutex_lock(&ctx->mutex);
 
@@ -882,6 +985,10 @@ nimcp_error_t nimcp_double_auction_clear(
     if (!ctx || !result) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_double_auction_clear", 0.0f);
+
 
     nimcp_platform_mutex_lock(&ctx->mutex);
 
@@ -994,6 +1101,12 @@ nimcp_error_t nimcp_double_auction_clear(
     if (ctx->config.clearing_rule == NIMCP_CLEARING_UNIFORM && ctx->num_trades > 0) {
         // Use the last matched price as uniform clearing price
         for (uint32_t i = 0; i < ctx->num_trades; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && ctx->num_trades > 256) {
+                gt_auction_ext_heartbeat("gt_auction_e_loop",
+                                 (float)(i + 1) / (float)ctx->num_trades);
+            }
+
             nimcp_trade_t* trade = &ctx->trades[i];
             float old_price = trade->trade_price;
             trade->trade_price = clearing_price;
@@ -1011,6 +1124,12 @@ nimcp_error_t nimcp_double_auction_clear(
         result->total_buyer_surplus = 0.0f;
         result->total_seller_surplus = 0.0f;
         for (uint32_t i = 0; i < ctx->num_trades; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && ctx->num_trades > 256) {
+                gt_auction_ext_heartbeat("gt_auction_e_loop",
+                                 (float)(i + 1) / (float)ctx->num_trades);
+            }
+
             result->total_buyer_surplus += ctx->trades[i].buyer_surplus;
             result->total_seller_surplus += ctx->trades[i].seller_surplus;
         }
@@ -1025,9 +1144,21 @@ nimcp_error_t nimcp_double_auction_clear(
         // Max welfare would be all possible trades at max surplus
         float max_welfare = 0.0f;
         for (uint32_t i = 0; i < ctx->num_buy_orders; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && ctx->num_buy_orders > 256) {
+                gt_auction_ext_heartbeat("gt_auction_e_loop",
+                                 (float)(i + 1) / (float)ctx->num_buy_orders);
+            }
+
             max_welfare += ctx->buy_orders[i].price * ctx->buy_orders[i].quantity;
         }
         for (uint32_t i = 0; i < ctx->num_sell_orders; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && ctx->num_sell_orders > 256) {
+                gt_auction_ext_heartbeat("gt_auction_e_loop",
+                                 (float)(i + 1) / (float)ctx->num_sell_orders);
+            }
+
             max_welfare -= ctx->sell_orders[i].price * ctx->sell_orders[i].quantity;
         }
         if (max_welfare > 0.0f) {
@@ -1061,6 +1192,10 @@ nimcp_error_t nimcp_double_auction_get_trades(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_double_auction_get_t", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
 
     if (!ctx->cleared) {
@@ -1086,6 +1221,10 @@ nimcp_error_t nimcp_double_auction_get_surplus(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_double_auction_get_s", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
 
     if (!ctx->cleared) {
@@ -1104,6 +1243,10 @@ nimcp_error_t nimcp_double_auction_get_surplus(
 
 nimcp_double_state_t nimcp_double_auction_get_state(const nimcp_double_auction_t ctx) {
     if (!ctx) return NIMCP_DOUBLE_STATE_CREATED;
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_double_auction_get_s", 0.0f);
+
+
     return ctx->state;
 }
 
@@ -1115,6 +1258,10 @@ nimcp_error_t nimcp_double_auction_get_order_counts(
     if (!ctx || !buy_orders || !sell_orders) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_double_auction_get_o", 0.0f);
+
 
     nimcp_platform_mutex_lock(&ctx->mutex);
     *buy_orders = ctx->num_buy_orders;
@@ -1129,6 +1276,10 @@ nimcp_error_t nimcp_double_auction_cancel(nimcp_double_auction_t ctx) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_double_auction_cance", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
     ctx->state = NIMCP_DOUBLE_STATE_CANCELLED;
     nimcp_platform_mutex_unlock(&ctx->mutex);
@@ -1141,6 +1292,10 @@ nimcp_error_t nimcp_double_auction_cancel(nimcp_double_auction_t ctx) {
 //=============================================================================
 
 nimcp_multi_unit_config_t nimcp_multi_unit_default_config(uint32_t total_units) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_multi_unit_default_c", 0.0f);
+
+
     nimcp_multi_unit_config_t config = {
         .type = NIMCP_MULTI_UNIT_UNIFORM,
         .total_units = total_units,
@@ -1157,6 +1312,10 @@ nimcp_multi_unit_auction_t nimcp_multi_unit_create(
     if (!config || config->total_units == 0) {
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_multi_unit_create", 0.0f);
+
 
     nimcp_multi_unit_auction_t ctx = nimcp_calloc(1, sizeof(struct nimcp_multi_unit_auction_struct));
     if (!ctx) {
@@ -1191,6 +1350,10 @@ nimcp_multi_unit_auction_t nimcp_multi_unit_create(
 void nimcp_multi_unit_destroy(nimcp_multi_unit_auction_t ctx) {
     if (!ctx) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_multi_unit_destroy", 0.0f);
+
+
     nimcp_platform_mutex_destroy(&ctx->mutex);
     nimcp_free(ctx->bids);
     nimcp_free(ctx);
@@ -1205,6 +1368,10 @@ nimcp_error_t nimcp_multi_unit_submit_bid(
     if (!ctx) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_multi_unit_submit_bi", 0.0f);
+
 
     nimcp_platform_mutex_lock(&ctx->mutex);
 
@@ -1272,6 +1439,10 @@ nimcp_error_t nimcp_multi_unit_allocate(
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_multi_unit_allocate", 0.0f);
+
+
     nimcp_platform_mutex_lock(&ctx->mutex);
 
     if (ctx->state == NIMCP_MULTI_STATE_CANCELLED) {
@@ -1319,6 +1490,12 @@ nimcp_error_t nimcp_multi_unit_allocate(
         // Find or create allocation for this bidder
         int alloc_idx = -1;
         for (uint32_t j = 0; j < num_temp_allocs; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && num_temp_allocs > 256) {
+                gt_auction_ext_heartbeat("gt_auction_e_loop",
+                                 (float)(j + 1) / (float)num_temp_allocs);
+            }
+
             if (temp_allocs[j].bidder_id == bid->bidder_id) {
                 alloc_idx = (int)j;
                 break;
@@ -1354,6 +1531,12 @@ nimcp_error_t nimcp_multi_unit_allocate(
     // Finalize allocations
     result->num_winners = num_temp_allocs;
     for (uint32_t i = 0; i < num_temp_allocs; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_temp_allocs > 256) {
+            gt_auction_ext_heartbeat("gt_auction_e_loop",
+                             (float)(i + 1) / (float)num_temp_allocs);
+        }
+
         result->allocations[i].bidder_id = temp_allocs[i].bidder_id;
         result->allocations[i].units_won = temp_allocs[i].units;
 
@@ -1386,11 +1569,19 @@ nimcp_error_t nimcp_multi_unit_allocate(
 
 nimcp_multi_unit_state_t nimcp_multi_unit_get_state(const nimcp_multi_unit_auction_t ctx) {
     if (!ctx) return NIMCP_MULTI_STATE_CREATED;
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_multi_unit_get_state", 0.0f);
+
+
     return ctx->state;
 }
 
 uint32_t nimcp_multi_unit_get_bid_count(const nimcp_multi_unit_auction_t ctx) {
     if (!ctx) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_multi_unit_get_bid_c", 0.0f);
+
+
     return ctx->num_bids;
 }
 
@@ -1398,6 +1589,10 @@ nimcp_error_t nimcp_multi_unit_cancel(nimcp_multi_unit_auction_t ctx) {
     if (!ctx) {
         return NIMCP_GT_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_multi_unit_cancel", 0.0f);
+
 
     nimcp_platform_mutex_lock(&ctx->mutex);
     ctx->state = NIMCP_MULTI_STATE_CANCELLED;
@@ -1417,9 +1612,19 @@ nimcp_error_t nimcp_multi_unit_cancel(nimcp_multi_unit_auction_t ctx) {
  */
 int gt_auction_ext_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    gt_auction_ext_heartbeat("gt_auction_e_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "GT_Auction_Extended");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                gt_auction_ext_heartbeat("gt_auction_e_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* GT Auction extended self-knowledge logged */
         }
     }

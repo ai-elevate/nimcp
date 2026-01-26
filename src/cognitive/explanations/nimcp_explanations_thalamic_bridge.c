@@ -28,7 +28,7 @@ static nimcp_health_agent_t* g_explanations_thalamic_bridge_health_agent = NULL;
  * @brief Set health agent for explanations_thalamic_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void explanations_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void explanations_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_explanations_thalamic_bridge_health_agent = agent;
 }
 
@@ -50,6 +50,10 @@ struct explanations_thalamic_bridge {
 };
 
 explanations_thalamic_config_t explanations_thalamic_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    explanations_thalamic_bridge_heartbeat("explanations_explanations_thalami", 0.0f);
+
+
     return (explanations_thalamic_config_t){
         .enable_attention_gating = true,
         .enable_complexity_routing = true,
@@ -63,6 +67,10 @@ explanations_thalamic_bridge_t* explanations_thalamic_bridge_create(
     thalamic_router_t* router,
     const explanations_thalamic_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    explanations_thalamic_bridge_heartbeat("explanations_create", 0.0f);
+
+
     explanations_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(explanations_thalamic_bridge_t));
     if (!bridge) {
 
@@ -89,6 +97,10 @@ explanations_thalamic_bridge_t* explanations_thalamic_bridge_create(
 }
 
 void explanations_thalamic_bridge_destroy(explanations_thalamic_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    explanations_thalamic_bridge_heartbeat("explanations_destroy", 0.0f);
+
+
     if (bridge) {
         if (bridge->base.mutex) {
             bridge_base_cleanup(&bridge->base);
@@ -99,6 +111,10 @@ void explanations_thalamic_bridge_destroy(explanations_thalamic_bridge_t* bridge
 
 int explanations_thalamic_bridge_reset(explanations_thalamic_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    explanations_thalamic_bridge_heartbeat("explanations_reset", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -111,6 +127,10 @@ int explanations_thalamic_route_signal(
     const explanations_thalamic_signal_t* signal
 ) {
     if (!bridge || !signal) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    explanations_thalamic_bridge_heartbeat("explanations_explanations_thalami", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -167,6 +187,10 @@ int explanations_thalamic_route_causal(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    explanations_thalamic_bridge_heartbeat("explanations_explanations_thalami", 0.0f);
+
+
     explanations_thalamic_signal_t signal = {
         .signal_type = EXPLANATION_SIGNAL_CAUSAL,
         .explanation_urgency = urgency < 0.0f ? 0.0f : (urgency > 1.0f ? 1.0f : urgency),
@@ -183,6 +207,10 @@ int explanations_thalamic_route_causal(
 
 int explanations_thalamic_set_attention(explanations_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    explanations_thalamic_bridge_heartbeat("explanations_explanations_thalami", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -191,6 +219,10 @@ int explanations_thalamic_set_attention(explanations_thalamic_bridge_t* bridge, 
 
 int explanations_thalamic_get_attention(const explanations_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    explanations_thalamic_bridge_heartbeat("explanations_explanations_thalami", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -202,6 +234,10 @@ int explanations_thalamic_bridge_get_stats(
     explanations_thalamic_stats_t* stats
 ) {
     if (!bridge || !stats) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    explanations_thalamic_bridge_heartbeat("explanations_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -215,9 +251,19 @@ int explanations_thalamic_bridge_get_stats(
 int explanations_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    explanations_thalamic_bridge_heartbeat("explanations_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Explanations_Thalamic_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                explanations_thalamic_bridge_heartbeat("explanations_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

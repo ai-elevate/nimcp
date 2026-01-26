@@ -38,7 +38,7 @@ static nimcp_health_agent_t* g_rcog_orchestrator_health_agent = NULL;
  * @brief Set health agent for rcog_orchestrator heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void rcog_orchestrator_set_health_agent(nimcp_health_agent_t* agent) {
+void rcog_orchestrator_set_health_agent(nimcp_health_agent_t* agent) {
     g_rcog_orchestrator_health_agent = agent;
 }
 
@@ -193,6 +193,12 @@ static bool task_deps_satisfied(
             uint64_t dep_id = decomp->deps->edges[i].from_task_id;
             bool found = false;
             for (size_t j = 0; j < num_completed; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && num_completed > 256) {
+                    rcog_orchestrator_heartbeat("rcog_orchest_loop",
+                                     (float)(j + 1) / (float)num_completed);
+                }
+
                 if (completed[j] == dep_id) {
                     found = true;
                     break;
@@ -220,6 +226,12 @@ static bool detect_cycle_dfs(
     /* Find task index */
     size_t idx = SIZE_MAX;
     for (size_t i = 0; i < num_subtasks; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_subtasks > 256) {
+            rcog_orchestrator_heartbeat("rcog_orchest_loop",
+                             (float)(i + 1) / (float)num_subtasks);
+        }
+
         if (subtasks[i].task_id == task_id) {
             idx = i;
             break;
@@ -235,6 +247,12 @@ static bool detect_cycle_dfs(
 
     /* Visit all tasks that depend on this one */
     for (size_t i = 0; i < deps->num_edges; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && deps->num_edges > 256) {
+            rcog_orchestrator_heartbeat("rcog_orchest_loop",
+                             (float)(i + 1) / (float)deps->num_edges);
+        }
+
         if (deps->edges[i].from_task_id == task_id) {
             if (detect_cycle_dfs(deps, subtasks, num_subtasks,
                                  deps->edges[i].to_task_id, visited, in_stack)) {
@@ -279,6 +297,10 @@ static void apply_modulation_to_limits(rcog_orchestrator_t* orch) {
  *===========================================================================*/
 
 rcog_orchestrator_config_t rcog_orchestrator_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_default_config", 0.0f);
+
+
     rcog_orchestrator_config_t config = {0};
 
     config.max_recursion_depth = RCOG_DEFAULT_MAX_DEPTH;
@@ -306,6 +328,10 @@ rcog_orchestrator_config_t rcog_orchestrator_default_config(void) {
 rcog_orchestrator_t* rcog_orchestrator_create(
     const rcog_orchestrator_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_create", 0.0f);
+
+
     rcog_orchestrator_t* orch = nimcp_calloc(1, sizeof(rcog_orchestrator_t));
     if (!orch) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "orch is NULL");
@@ -357,6 +383,10 @@ rcog_orchestrator_t* rcog_orchestrator_create(
 }
 
 rcog_orchestrator_t* rcog_orchestrator_create_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_create_default", 0.0f);
+
+
     return rcog_orchestrator_create(NULL);
 }
 
@@ -366,7 +396,17 @@ void rcog_orchestrator_destroy(rcog_orchestrator_t* orch) {
     }
 
     /* Free active decompositions */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_destroy", 0.0f);
+
+
     for (size_t i = 0; i < RCOG_ORCH_MAX_ACTIVE_DECOMPOSITIONS; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && RCOG_ORCH_MAX_ACTIVE_DECOMPOSITIONS > 256) {
+            rcog_orchestrator_heartbeat("rcog_orchest_loop",
+                             (float)(i + 1) / (float)RCOG_ORCH_MAX_ACTIVE_DECOMPOSITIONS);
+        }
+
         if (orch->active_decomps[i].in_use && orch->active_decomps[i].decomp) {
             rcog_orchestrator_free_decomposition(orch->active_decomps[i].decomp);
         }
@@ -396,6 +436,10 @@ int rcog_orchestrator_connect_context_store(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_connect_context_stor", 0.0f);
+
+
     nimcp_mutex_lock(orch->mutex);
     orch->context_store = store;
     nimcp_mutex_unlock(orch->mutex);
@@ -410,6 +454,10 @@ int rcog_orchestrator_connect_answer_refiner(
     if (!orch || !refiner) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_connect_answer_refin", 0.0f);
+
 
     nimcp_mutex_lock(orch->mutex);
     orch->answer_refiner = refiner;
@@ -426,6 +474,10 @@ int rcog_orchestrator_connect_delegation_pool(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_connect_delegation_p", 0.0f);
+
+
     nimcp_mutex_lock(orch->mutex);
     orch->delegation_pool = pool;
     nimcp_mutex_unlock(orch->mutex);
@@ -440,6 +492,10 @@ int rcog_orchestrator_connect_imagination(
     if (!orch || !imagination) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_connect_imagination", 0.0f);
+
 
     nimcp_mutex_lock(orch->mutex);
     orch->imagination = imagination;
@@ -456,6 +512,10 @@ int rcog_orchestrator_connect_immune(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_connect_immune", 0.0f);
+
+
     nimcp_mutex_lock(orch->mutex);
     orch->immune = immune;
     nimcp_mutex_unlock(orch->mutex);
@@ -470,6 +530,10 @@ int rcog_orchestrator_connect_engine(
     if (!orch || !engine) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_connect_engine", 0.0f);
+
 
     nimcp_mutex_lock(orch->mutex);
     orch->engine = engine;
@@ -524,6 +588,12 @@ static int decompose_sequential(
 
     /* Create subtasks */
     for (size_t i = 0; i < num_subtasks; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_subtasks > 256) {
+            rcog_orchestrator_heartbeat("rcog_orchest_loop",
+                             (float)(i + 1) / (float)num_subtasks);
+        }
+
         rcog_subtask_t* subtask = &result->subtasks[i];
         subtask->task_id = generate_task_id(orch);
         subtask->goal = *goal;  /* Copy goal */
@@ -600,6 +670,12 @@ static int decompose_parallel(
 
     /* Create independent subtasks */
     for (size_t i = 0; i < num_subtasks; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_subtasks > 256) {
+            rcog_orchestrator_heartbeat("rcog_orchest_loop",
+                             (float)(i + 1) / (float)num_subtasks);
+        }
+
         rcog_subtask_t* subtask = &result->subtasks[i];
         subtask->task_id = generate_task_id(orch);
         subtask->goal = *goal;
@@ -662,6 +738,12 @@ static int decompose_hierarchical(
 
     /* Create workers */
     for (size_t i = 0; i < num_workers; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_workers > 256) {
+            rcog_orchestrator_heartbeat("rcog_orchest_loop",
+                             (float)(i + 1) / (float)num_workers);
+        }
+
         rcog_subtask_t* worker = &result->subtasks[1 + i];
         worker->task_id = generate_task_id(orch);
         worker->goal = *goal;
@@ -996,6 +1078,10 @@ int rcog_orchestrator_decompose(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_decompose", 0.0f);
+
+
     nimcp_mutex_lock(orch->mutex);
 
     /* Check depth limit */
@@ -1065,6 +1151,10 @@ int rcog_orchestrator_decompose_with_strategy(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_decompose_with_strat", 0.0f);
+
+
     nimcp_mutex_lock(orch->mutex);
 
     if (orch->current_depth >= orch->effective_max_depth) {
@@ -1117,6 +1207,10 @@ int rcog_orchestrator_decompose_with_hints(
     }
 
     /* Select strategy based on hints */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_decompose_with_hints", 0.0f);
+
+
     rcog_decomposition_strategy_t strategy;
     if (hints->prefer_parallel) {
         strategy = RCOG_DECOMP_PARALLEL;
@@ -1133,6 +1227,10 @@ void rcog_orchestrator_free_decomposition(rcog_decomposition_t* decomp) {
     if (!decomp) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_free_decomposition", 0.0f);
+
 
     if (decomp->subtasks) {
         nimcp_free(decomp->subtasks);
@@ -1159,6 +1257,10 @@ int rcog_orchestrator_dispatch(
     if (!orch || !decomp || !handle) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_dispatch", 0.0f);
+
 
     nimcp_mutex_lock(orch->mutex);
 
@@ -1189,6 +1291,10 @@ int rcog_orchestrator_dispatch_subtask(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_dispatch_subtask", 0.0f);
+
+
     nimcp_mutex_lock(orch->mutex);
 
     subtask->status = RCOG_SUBTASK_QUEUED;
@@ -1212,6 +1318,10 @@ int rcog_orchestrator_await_batch(
     }
 
     /* In full implementation, would wait for delegation pool */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_await_batch", 0.0f);
+
+
     (void)timeout_ms;
 
     return RCOG_OK;
@@ -1232,6 +1342,10 @@ int rcog_orchestrator_aggregate(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_aggregate", 0.0f);
+
+
     nimcp_mutex_lock(orch->mutex);
 
     /* Aggregate confidence from subtask results */
@@ -1239,6 +1353,12 @@ int rcog_orchestrator_aggregate(
     size_t successful = 0;
 
     for (size_t i = 0; i < num_results; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_results > 256) {
+            rcog_orchestrator_heartbeat("rcog_orchest_loop",
+                             (float)(i + 1) / (float)num_results);
+        }
+
         if (results[i].success) {
             total_confidence += results[i].confidence;
             successful++;
@@ -1280,6 +1400,10 @@ int rcog_orchestrator_refine(
     if (!orch || !answer) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_refine", 0.0f);
+
 
     (void)context;  /* Would use for additional queries in full implementation */
 
@@ -1324,6 +1448,10 @@ bool rcog_orchestrator_is_answer_ready(
     if (!orch || !answer) {
         return false;
     }
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_is_answer_ready", 0.0f);
+
+
     return answer->ready || answer->confidence >= orch->config.ready_threshold;
 }
 
@@ -1333,11 +1461,19 @@ bool rcog_orchestrator_is_answer_ready(
 
 uint32_t rcog_orchestrator_get_current_depth(const rcog_orchestrator_t* orch) {
     if (!orch) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_get_current_depth", 0.0f);
+
+
     return orch->current_depth;
 }
 
 uint32_t rcog_orchestrator_get_max_depth(const rcog_orchestrator_t* orch) {
     if (!orch) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_get_max_depth", 0.0f);
+
+
     return orch->effective_max_depth;
 }
 
@@ -1346,6 +1482,10 @@ bool rcog_orchestrator_would_exceed_depth(
     uint32_t additional_depth
 ) {
     if (!orch) return true;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_would_exceed_depth", 0.0f);
+
+
     return (orch->current_depth + additional_depth) > orch->effective_max_depth;
 }
 
@@ -1353,6 +1493,10 @@ int rcog_orchestrator_push_depth(rcog_orchestrator_t* orch) {
     if (!orch) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_push_depth", 0.0f);
+
 
     nimcp_mutex_lock(orch->mutex);
 
@@ -1375,6 +1519,10 @@ int rcog_orchestrator_push_depth(rcog_orchestrator_t* orch) {
 void rcog_orchestrator_pop_depth(rcog_orchestrator_t* orch) {
     if (!orch) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_pop_depth", 0.0f);
+
+
     nimcp_mutex_lock(orch->mutex);
     if (orch->current_depth > 0) {
         orch->current_depth--;
@@ -1393,6 +1541,10 @@ int rcog_orchestrator_apply_immune_modulation(
     if (!orch || !modulation) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_apply_immune_modulat", 0.0f);
+
 
     nimcp_mutex_lock(orch->mutex);
 
@@ -1416,6 +1568,10 @@ int rcog_orchestrator_get_effective_limits(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_get_effective_limits", 0.0f);
+
+
     nimcp_mutex_lock(((rcog_orchestrator_t*)orch)->mutex);
     *max_depth = orch->effective_max_depth;
     *max_parallel = orch->effective_max_parallel;
@@ -1437,6 +1593,10 @@ int rcog_orchestrator_select_strategy(
     if (!orch || !goal || !strategy) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_select_strategy", 0.0f);
+
 
     (void)context;
 
@@ -1478,6 +1638,10 @@ int rcog_orchestrator_recommend_strategies(
     if (!orch || !goal || !strategies || !confidences || !num_strategies) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_recommend_strategies", 0.0f);
+
 
     nimcp_mutex_lock(orch->mutex);
 
@@ -1531,6 +1695,10 @@ int rcog_orchestrator_spawn_sub(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_spawn_sub", 0.0f);
+
+
     nimcp_mutex_lock(orch->mutex);
 
     /* Check depth limit */
@@ -1573,6 +1741,10 @@ void rcog_orchestrator_destroy_sub(
     rcog_orchestrator_t* orch,
     rcog_orchestrator_t* sub_orch
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_destroy_sub", 0.0f);
+
+
     (void)orch;  /* Parent reference not needed for cleanup */
     rcog_orchestrator_destroy(sub_orch);
 }
@@ -1588,6 +1760,10 @@ int rcog_orchestrator_get_stats(
     if (!orch || !stats) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_get_stats", 0.0f);
+
 
     nimcp_mutex_lock(((rcog_orchestrator_t*)orch)->mutex);
     *stats = orch->stats;
@@ -1606,6 +1782,10 @@ int rcog_orchestrator_get_stats(
 void rcog_orchestrator_reset_stats(rcog_orchestrator_t* orch) {
     if (!orch) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(orch->mutex);
     memset(&orch->stats, 0, sizeof(rcog_orchestrator_stats_t));
     nimcp_mutex_unlock(orch->mutex);
@@ -1618,6 +1798,10 @@ int rcog_orchestrator_get_trace(
     if (!orch || !trace) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_get_trace", 0.0f);
+
 
     nimcp_mutex_lock(((rcog_orchestrator_t*)orch)->mutex);
 
@@ -1657,6 +1841,10 @@ int rcog_orchestrator_get_trace(
 void rcog_orchestrator_free_trace(rcog_trace_t* trace) {
     if (!trace) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_free_trace", 0.0f);
+
+
     if (trace->entries) {
         nimcp_free(trace->entries);
     }
@@ -1665,6 +1853,10 @@ void rcog_orchestrator_free_trace(rcog_trace_t* trace) {
 
 void rcog_orchestrator_clear_trace(rcog_orchestrator_t* orch) {
     if (!orch) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_clear_trace", 0.0f);
+
 
     nimcp_mutex_lock(orch->mutex);
     if (orch->trace) {
@@ -1721,6 +1913,12 @@ static uint32_t rcog_get_dep(uint32_t node_index, uint32_t dep_index, void* user
                 /* Found the edge, now find the index of the source task */
                 uint64_t from_id = decomp->deps->edges[i].from_task_id;
                 for (size_t j = 0; j < decomp->num_subtasks; j++) {
+                    /* Phase 8: Loop progress heartbeat */
+                    if ((j & 0xFF) == 0 && decomp->num_subtasks > 256) {
+                        rcog_orchestrator_heartbeat("rcog_orchest_loop",
+                                         (float)(j + 1) / (float)decomp->num_subtasks);
+                    }
+
                     if (decomp->subtasks[j].task_id == from_id) {
                         return (uint32_t)j;
                     }
@@ -1748,6 +1946,10 @@ int rcog_orchestrator_validate_decomposition(const rcog_decomposition_t* decomp)
     }
 
     /* Check for cycles if dependencies exist */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_validate_decompositi", 0.0f);
+
+
     if (decomp->deps && decomp->deps->num_edges > 0) {
         bool* visited = nimcp_calloc(decomp->num_subtasks, sizeof(bool));
         bool* in_stack = nimcp_calloc(decomp->num_subtasks, sizeof(bool));
@@ -1789,6 +1991,10 @@ int rcog_orchestrator_get_topological_order(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_get_topological_orde", 0.0f);
+
+
     if (decomp->num_subtasks > max_order) {
         return RCOG_ERROR_CONTEXT_FULL;
     }
@@ -1796,6 +2002,12 @@ int rcog_orchestrator_get_topological_order(
     /* Simple case: no dependencies */
     if (!decomp->deps || decomp->deps->num_edges == 0) {
         for (size_t i = 0; i < decomp->num_subtasks; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && decomp->num_subtasks > 256) {
+                rcog_orchestrator_heartbeat("rcog_orchest_loop",
+                                 (float)(i + 1) / (float)decomp->num_subtasks);
+            }
+
             order[i] = decomp->subtasks[i].task_id;
         }
         *num_order = decomp->num_subtasks;
@@ -1811,6 +2023,12 @@ int rcog_orchestrator_get_topological_order(
     for (size_t i = 0; i < decomp->deps->num_edges; i++) {
         uint64_t to_id = decomp->deps->edges[i].to_task_id;
         for (size_t j = 0; j < decomp->num_subtasks; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && decomp->num_subtasks > 256) {
+                rcog_orchestrator_heartbeat("rcog_orchest_loop",
+                                 (float)(j + 1) / (float)decomp->num_subtasks);
+            }
+
             if (decomp->subtasks[j].task_id == to_id) {
                 in_degrees[j]++;
                 break;
@@ -1846,6 +2064,12 @@ int rcog_orchestrator_get_topological_order(
 
     /* Map indices back to task IDs */
     for (uint32_t i = 0; i < sorted_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && sorted_count > 256) {
+            rcog_orchestrator_heartbeat("rcog_orchest_loop",
+                             (float)(i + 1) / (float)sorted_count);
+        }
+
         uint32_t idx = sorted_indices[i];
         if (idx < decomp->num_subtasks) {
             order[i] = decomp->subtasks[idx].task_id;
@@ -1879,11 +2103,21 @@ int rcog_orchestrator_get_ready_subtasks(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_get_ready_subtasks", 0.0f);
+
+
     size_t n = 0;
     for (size_t i = 0; i < decomp->num_subtasks && n < max_ready; i++) {
         /* Skip already completed */
         bool is_completed = false;
         for (size_t j = 0; j < num_completed; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && num_completed > 256) {
+                rcog_orchestrator_heartbeat("rcog_orchest_loop",
+                                 (float)(j + 1) / (float)num_completed);
+            }
+
             if (completed[j] == decomp->subtasks[i].task_id) {
                 is_completed = true;
                 break;
@@ -1911,6 +2145,10 @@ int rcog_orchestrator_estimate_complexity(
     if (!orch || !goal || !complexity) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_estimate_complexity", 0.0f);
+
 
     (void)context;
 
@@ -1955,9 +2193,19 @@ int rcog_orchestrator_estimate_complexity(
 
 int rcog_orchestrator_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_orchestrator_heartbeat("rcog_orchest_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Recursive_Cognition_Orchestrator_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                rcog_orchestrator_heartbeat("rcog_orchest_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Log self-knowledge observations */
         }
     }

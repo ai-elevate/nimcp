@@ -38,7 +38,7 @@ static nimcp_health_agent_t* g_imagination_workspace_health_agent = NULL;
  * @brief Set health agent for imagination_workspace heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void imagination_workspace_set_health_agent(nimcp_health_agent_t* agent) {
+void imagination_workspace_set_health_agent(nimcp_health_agent_t* agent) {
     g_imagination_workspace_health_agent = agent;
 }
 
@@ -62,6 +62,12 @@ static inline void nimcp_tensor_fill(nimcp_tensor_t* t, float value) {
     float* data = (float*)nimcp_tensor_data(t);
     size_t numel = nimcp_tensor_numel(t);
     for (size_t i = 0; i < numel; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && numel > 256) {
+            imagination_workspace_heartbeat("imagination__loop",
+                             (float)(i + 1) / (float)numel);
+        }
+
         data[i] = value;
     }
 }
@@ -191,6 +197,12 @@ static void slot_cleanup(scenario_slot_t* slot) {
     /* Free trajectory history */
     if (slot->trajectory) {
         for (size_t i = 0; i < slot->trajectory_len; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && slot->trajectory_len > 256) {
+                imagination_workspace_heartbeat("imagination__loop",
+                                 (float)(i + 1) / (float)slot->trajectory_len);
+            }
+
             if (slot->trajectory[i]) {
                 nimcp_tensor_destroy(slot->trajectory[i]);
             }
@@ -219,6 +231,12 @@ static void slot_reset(scenario_slot_t* slot) {
     /* Clear trajectory */
     if (slot->trajectory) {
         for (size_t i = 0; i < slot->trajectory_len; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && slot->trajectory_len > 256) {
+                imagination_workspace_heartbeat("imagination__loop",
+                                 (float)(i + 1) / (float)slot->trajectory_len);
+            }
+
             if (slot->trajectory[i]) {
                 nimcp_tensor_destroy(slot->trajectory[i]);
                 slot->trajectory[i] = NULL;
@@ -242,6 +260,12 @@ static scenario_slot_t* find_slot(imagination_workspace_t* workspace,
 
     scenario_slot_t* slots = (scenario_slot_t*)workspace->scenarios;
     for (size_t i = 0; i < workspace->config.max_scenarios; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && workspace->config.max_scenarios > 256) {
+            imagination_workspace_heartbeat("imagination__loop",
+                             (float)(i + 1) / (float)workspace->config.max_scenarios);
+        }
+
         if (slots[i].id == id && slots[i].active) {
             return &slots[i];
         }
@@ -257,6 +281,12 @@ static scenario_slot_t* find_empty_slot(imagination_workspace_t* workspace) {
 
     scenario_slot_t* slots = (scenario_slot_t*)workspace->scenarios;
     for (size_t i = 0; i < workspace->config.max_scenarios; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && workspace->config.max_scenarios > 256) {
+            imagination_workspace_heartbeat("imagination__loop",
+                             (float)(i + 1) / (float)workspace->config.max_scenarios);
+        }
+
         if (!slots[i].active) {
             return &slots[i];
         }
@@ -269,6 +299,10 @@ static scenario_slot_t* find_empty_slot(imagination_workspace_t* workspace) {
  *============================================================================*/
 
 imagination_workspace_config_t imagination_workspace_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    imagination_workspace_heartbeat("imagination__default_config", 0.0f);
+
+
     imagination_workspace_config_t config = {
         .max_scenarios = IMAGINATION_MAX_SCENARIOS,
         .latent_dim = IMAGINATION_DEFAULT_LATENT_DIM,
@@ -288,6 +322,10 @@ imagination_workspace_config_t imagination_workspace_default_config(void) {
 
 imagination_workspace_t* imagination_workspace_create(
     const imagination_workspace_config_t* config) {
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_workspace_heartbeat("imagination__create", 0.0f);
+
 
     imagination_workspace_config_t cfg;
     if (config) {
@@ -328,6 +366,12 @@ imagination_workspace_t* imagination_workspace_create(
     /* Initialize each slot */
     scenario_slot_t* slots = (scenario_slot_t*)workspace->scenarios;
     for (size_t i = 0; i < cfg.max_scenarios; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && cfg.max_scenarios > 256) {
+            imagination_workspace_heartbeat("imagination__loop",
+                             (float)(i + 1) / (float)cfg.max_scenarios);
+        }
+
         if (slot_init(&slots[i], &cfg) != 0) goto error;
     }
 
@@ -362,9 +406,19 @@ void imagination_workspace_destroy(imagination_workspace_t* workspace) {
     if (!workspace) return;
 
     /* Cleanup scenario slots */
+    /* Phase 8: Heartbeat at operation start */
+    imagination_workspace_heartbeat("imagination__destroy", 0.0f);
+
+
     if (workspace->scenarios) {
         scenario_slot_t* slots = (scenario_slot_t*)workspace->scenarios;
         for (size_t i = 0; i < workspace->config.max_scenarios; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && workspace->config.max_scenarios > 256) {
+                imagination_workspace_heartbeat("imagination__loop",
+                                 (float)(i + 1) / (float)workspace->config.max_scenarios);
+            }
+
             slot_cleanup(&slots[i]);
         }
         free(workspace->scenarios);
@@ -384,12 +438,22 @@ void imagination_workspace_destroy(imagination_workspace_t* workspace) {
 int imagination_workspace_reset(imagination_workspace_t* workspace) {
     if (!workspace) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_workspace_heartbeat("imagination__reset", 0.0f);
+
+
     nimcp_mutex_lock(workspace->mutex);
 
     /* Reset all slots */
     if (workspace->scenarios) {
         scenario_slot_t* slots = (scenario_slot_t*)workspace->scenarios;
         for (size_t i = 0; i < workspace->config.max_scenarios; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && workspace->config.max_scenarios > 256) {
+                imagination_workspace_heartbeat("imagination__loop",
+                                 (float)(i + 1) / (float)workspace->config.max_scenarios);
+            }
+
             slot_reset(&slots[i]);
         }
     }
@@ -419,6 +483,10 @@ scenario_id_t imagination_workspace_allocate_scenario(
     imagination_workspace_t* workspace) {
 
     if (!workspace) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_workspace_heartbeat("imagination__allocate_scenario", 0.0f);
+
 
     nimcp_mutex_lock(workspace->mutex);
 
@@ -456,6 +524,10 @@ int imagination_workspace_release_scenario(
 
     if (!workspace || id == 0) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_workspace_heartbeat("imagination__release_scenario", 0.0f);
+
+
     nimcp_mutex_lock(workspace->mutex);
 
     scenario_slot_t* slot = find_slot(workspace, id);
@@ -491,6 +563,10 @@ bool imagination_workspace_has_scenario(
     if (!workspace || id == 0) return false;
 
     /* Cast away const for mutex - safe since we're only reading */
+    /* Phase 8: Heartbeat at operation start */
+    imagination_workspace_heartbeat("imagination__has_scenario", 0.0f);
+
+
     imagination_workspace_t* ws = (imagination_workspace_t*)workspace;
 
     nimcp_mutex_lock(ws->mutex);
@@ -504,6 +580,10 @@ size_t imagination_workspace_active_count(
     const imagination_workspace_t* workspace) {
 
     if (!workspace) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    imagination_workspace_heartbeat("imagination__active_count", 0.0f);
+
+
     return workspace->scenario_count;
 }
 
@@ -516,6 +596,10 @@ nimcp_tensor_t* imagination_workspace_get_latent(
     scenario_id_t id) {
 
     if (!workspace || id == 0) return NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_workspace_heartbeat("imagination__get_latent", 0.0f);
+
 
     nimcp_mutex_lock(workspace->mutex);
     scenario_slot_t* slot = find_slot(workspace, id);
@@ -531,6 +615,10 @@ nimcp_tensor_t* imagination_workspace_get_visual(
 
     if (!workspace || id == 0) return NULL;
 
+    /* Phase 8: Heartbeat at operation start */
+    imagination_workspace_heartbeat("imagination__get_visual", 0.0f);
+
+
     nimcp_mutex_lock(workspace->mutex);
     scenario_slot_t* slot = find_slot(workspace, id);
     nimcp_tensor_t* result = slot ? slot->visual : NULL;
@@ -544,6 +632,10 @@ nimcp_tensor_t* imagination_workspace_get_audio(
     scenario_id_t id) {
 
     if (!workspace || id == 0) return NULL;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_workspace_heartbeat("imagination__get_audio", 0.0f);
+
 
     nimcp_mutex_lock(workspace->mutex);
     scenario_slot_t* slot = find_slot(workspace, id);
@@ -566,6 +658,10 @@ nimcp_tensor_t* imagination_workspace_get_temp_latent(
 
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    imagination_workspace_heartbeat("imagination__get_temp_latent", 0.0f);
+
+
     return workspace->temp_latent;
 }
 
@@ -582,6 +678,10 @@ nimcp_tensor_t* imagination_workspace_get_temp_visual(
 
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    imagination_workspace_heartbeat("imagination__get_temp_visual", 0.0f);
+
+
     return workspace->temp_visual;
 }
 
@@ -596,6 +696,10 @@ int imagination_workspace_get_stats(
     if (!workspace || !stats) return -1;
 
     /* Cast away const for mutex - safe since we're only reading */
+    /* Phase 8: Heartbeat at operation start */
+    imagination_workspace_heartbeat("imagination__get_stats", 0.0f);
+
+
     imagination_workspace_t* ws = (imagination_workspace_t*)workspace;
 
     nimcp_mutex_lock(ws->mutex);
@@ -607,6 +711,10 @@ int imagination_workspace_get_stats(
 
 int imagination_workspace_reset_stats(imagination_workspace_t* workspace) {
     if (!workspace) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    imagination_workspace_heartbeat("imagination__reset_stats", 0.0f);
+
 
     nimcp_mutex_lock(workspace->mutex);
 
@@ -631,9 +739,19 @@ int imagination_workspace_reset_stats(imagination_workspace_t* workspace) {
  */
 int imagination_workspace_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    imagination_workspace_heartbeat("imagination__query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Imagination_Workspace");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                imagination_workspace_heartbeat("imagination__loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Use basic logging since no LOG_MODULE defined */
         }
     }

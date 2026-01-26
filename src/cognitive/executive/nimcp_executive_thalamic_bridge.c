@@ -28,7 +28,7 @@ static nimcp_health_agent_t* g_executive_thalamic_bridge_health_agent = NULL;
  * @brief Set health agent for executive_thalamic_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void executive_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void executive_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_executive_thalamic_bridge_health_agent = agent;
 }
 
@@ -51,6 +51,10 @@ struct executive_thalamic_bridge {
 };
 
 executive_thalamic_config_t executive_thalamic_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    executive_thalamic_bridge_heartbeat("executive_th_executive_thalamic_d", 0.0f);
+
+
     return (executive_thalamic_config_t){
         .enable_attention_gating = true,
         .enable_load_routing = true,
@@ -66,6 +70,10 @@ executive_thalamic_bridge_t* executive_thalamic_bridge_create(
     thalamic_router_t* router,
     const executive_thalamic_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    executive_thalamic_bridge_heartbeat("executive_th_create", 0.0f);
+
+
     executive_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(executive_thalamic_bridge_t));
     if (!bridge) {
 
@@ -93,6 +101,10 @@ executive_thalamic_bridge_t* executive_thalamic_bridge_create(
 }
 
 void executive_thalamic_bridge_destroy(executive_thalamic_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    executive_thalamic_bridge_heartbeat("executive_th_destroy", 0.0f);
+
+
     if (bridge) {
         if (bridge->base.mutex) {
             bridge_base_cleanup(&bridge->base);
@@ -103,6 +115,10 @@ void executive_thalamic_bridge_destroy(executive_thalamic_bridge_t* bridge) {
 
 int executive_thalamic_bridge_reset(executive_thalamic_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    executive_thalamic_bridge_heartbeat("executive_th_reset", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     bridge->accumulated_switch_cost = 0.0f;
@@ -116,6 +132,10 @@ int executive_thalamic_route_signal(
     const executive_thalamic_signal_t* signal
 ) {
     if (!bridge || !signal) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    executive_thalamic_bridge_heartbeat("executive_th_executive_thalamic_r", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -189,6 +209,10 @@ int executive_thalamic_route_inhibition(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    executive_thalamic_bridge_heartbeat("executive_th_executive_thalamic_r", 0.0f);
+
+
     executive_thalamic_signal_t signal = {
         .signal_type = EXECUTIVE_SIGNAL_INHIBITION,
         .control_urgency = urgency < 0.0f ? 0.0f : (urgency > 1.0f ? 1.0f : urgency),
@@ -210,6 +234,10 @@ int executive_thalamic_route_switch(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    executive_thalamic_bridge_heartbeat("executive_th_executive_thalamic_r", 0.0f);
+
+
     executive_thalamic_signal_t signal = {
         .signal_type = EXECUTIVE_SIGNAL_SWITCHING,
         .control_urgency = urgency < 0.0f ? 0.0f : (urgency > 1.0f ? 1.0f : urgency),
@@ -226,6 +254,10 @@ int executive_thalamic_route_switch(
 
 int executive_thalamic_set_attention(executive_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    executive_thalamic_bridge_heartbeat("executive_th_executive_thalamic_s", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -234,6 +266,10 @@ int executive_thalamic_set_attention(executive_thalamic_bridge_t* bridge, float 
 
 int executive_thalamic_get_attention(const executive_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    executive_thalamic_bridge_heartbeat("executive_th_executive_thalamic_g", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -245,6 +281,10 @@ int executive_thalamic_bridge_get_stats(
     executive_thalamic_stats_t* stats
 ) {
     if (!bridge || !stats) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    executive_thalamic_bridge_heartbeat("executive_th_get_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -262,9 +302,19 @@ int executive_thalamic_bridge_get_stats(
  */
 int executive_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    executive_thalamic_bridge_heartbeat("executive_th_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Executive_Thalamic_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                executive_thalamic_bridge_heartbeat("executive_th_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Executive Thalamic Bridge self-knowledge: %s", self->observations[i]);
         }
     }

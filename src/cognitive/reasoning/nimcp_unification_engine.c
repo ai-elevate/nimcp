@@ -50,7 +50,7 @@ static nimcp_health_agent_t* g_unification_engine_health_agent = NULL;
  * @brief Set health agent for unification_engine heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void unification_engine_set_health_agent(nimcp_health_agent_t* agent) {
+void unification_engine_set_health_agent(nimcp_health_agent_t* agent) {
     g_unification_engine_health_agent = agent;
 }
 
@@ -93,6 +93,9 @@ bool brain_unify_terms(
         set_error("NULL parameter");
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    unification_engine_heartbeat("unification_brain_unify_terms", 0.0f);
 
     // Delegate to symbolic logic unification
     // Note: symbolic_logic_unify returns unification_t* rather than taking output param
@@ -138,6 +141,9 @@ bool brain_apply_substitution(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    unification_engine_heartbeat("unification_brain_apply_substitution", 0.0f);
+
     // Delegate to symbolic logic substitution
     // Note: symbolic_logic_substitute takes (term, subst) and returns new term
     (void)brain; // Brain reference not needed for current API
@@ -150,6 +156,12 @@ bool brain_apply_substitution(
     }
 
     for (uint32_t i = 0; i < bindings->num_bindings; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bindings->num_bindings > 256) {
+            unification_engine_heartbeat("unification__loop",
+                             (float)(i + 1) / (float)bindings->num_bindings);
+        }
+
         if (bindings->bindings[i]) {
             logical_term_t* substituted = symbolic_logic_substitute(
                 current,
@@ -170,6 +182,10 @@ void unification_free_result(unification_t* result)
 {
     if (!result) return;
     // Free implementation
+    /* Phase 8: Heartbeat at operation start */
+    unification_engine_heartbeat("unification__unification_free_res", 0.0f);
+
+
     memset(result, 0, sizeof(unification_t));
 }
 
@@ -179,9 +195,19 @@ void unification_free_result(unification_t* result)
 
 int unification_engine_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    unification_engine_heartbeat("unification__query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Unification_Engine");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                unification_engine_heartbeat("unification__loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Unification_Engine self-knowledge: %s", self->observations[i]);
         }
     }

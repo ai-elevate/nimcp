@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_regulatory_tcells_health_agent = NULL;
  * @brief Set health agent for regulatory_tcells heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void regulatory_tcells_set_health_agent(nimcp_health_agent_t* agent) {
+void regulatory_tcells_set_health_agent(nimcp_health_agent_t* agent) {
     g_regulatory_tcells_health_agent = agent;
 }
 
@@ -103,6 +103,12 @@ static brain_inflammation_level_t get_max_inflammation(
     /* Check each inflammation site for maximum level */
     brain_inflammation_level_t max_level = INFLAMMATION_NONE;
     for (size_t i = 0; i < immune->inflammation_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && immune->inflammation_count > 256) {
+            regulatory_tcells_heartbeat("regulatory_t_loop",
+                             (float)(i + 1) / (float)immune->inflammation_count);
+        }
+
         if (immune->inflammation_sites[i].level > max_level) {
             max_level = immune->inflammation_sites[i].level;
         }
@@ -170,6 +176,10 @@ int treg_default_config(treg_config_t* config)
     }
 
     /* Set default thresholds */
+    /* Phase 8: Heartbeat at operation start */
+    regulatory_tcells_heartbeat("regulatory_t_treg_default_config", 0.0f);
+
+
     config->activation_threshold = TREG_ACTIVATION_THRESHOLD;
     config->storm_threshold = TREG_STORM_THRESHOLD;
     config->exhaustion_threshold = 0.95f;
@@ -208,6 +218,10 @@ treg_system_t* treg_create(
     brain_immune_system_t* immune_system)
 {
     /* Guard: validate immune system */
+    /* Phase 8: Heartbeat at operation start */
+    regulatory_tcells_heartbeat("regulatory_t_treg_create", 0.0f);
+
+
     NIMCP_API_CHECK_NULL_RET_NULL(immune_system, "NULL brain immune system in treg_create");
 
     /* Allocate system */
@@ -285,6 +299,10 @@ void treg_destroy(treg_system_t* system)
     if (!system) return;
 
     /* Mark inactive */
+    /* Phase 8: Heartbeat at operation start */
+    regulatory_tcells_heartbeat("regulatory_t_treg_destroy", 0.0f);
+
+
     system->active = false;
 
     /* Destroy mutex */
@@ -316,6 +334,10 @@ int treg_update(treg_system_t* system, uint64_t delta_ms)
     }
 
     /* Lock for thread safety */
+    /* Phase 8: Heartbeat at operation start */
+    regulatory_tcells_heartbeat("regulatory_t_treg_update", 0.0f);
+
+
     if (nimcp_mutex_lock(system->mutex) != 0) {
         return -1;
     }
@@ -371,6 +393,12 @@ int treg_update(treg_system_t* system, uint64_t delta_ms)
     /* Update active checkpoints - decay or expire */
     uint64_t current_time = nimcp_time_get_current_time_ms();
     for (size_t i = 0; i < system->checkpoint_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->checkpoint_count > 256) {
+            regulatory_tcells_heartbeat("regulatory_t_loop",
+                             (float)(i + 1) / (float)system->checkpoint_count);
+        }
+
         treg_checkpoint_t* cp = &system->checkpoints[i];
         if (!cp->active) continue;
 
@@ -383,6 +411,12 @@ int treg_update(treg_system_t* system, uint64_t delta_ms)
 
     /* Update active cytokines - decay over time */
     for (size_t i = 0; i < system->cytokine_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->cytokine_count > 256) {
+            regulatory_tcells_heartbeat("regulatory_t_loop",
+                             (float)(i + 1) / (float)system->cytokine_count);
+        }
+
         treg_suppressive_cytokine_t* cyt = &system->cytokines[i];
 
         /* Decay concentration */
@@ -415,6 +449,10 @@ int treg_suppress_inflammation(treg_system_t* system, uint32_t site_id)
     }
 
     /* Lock for thread safety */
+    /* Phase 8: Heartbeat at operation start */
+    regulatory_tcells_heartbeat("regulatory_t_treg_suppress_inflam", 0.0f);
+
+
     if (nimcp_mutex_lock(system->mutex) != 0) {
         return -1;
     }
@@ -462,6 +500,10 @@ float treg_get_suppression_factor(const treg_system_t* system)
     /* Guard: validate system */
     if (!system) return 0.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    regulatory_tcells_heartbeat("regulatory_t_treg_get_suppression", 0.0f);
+
+
     return system->current_suppression_factor;
 }
 
@@ -482,6 +524,10 @@ int treg_checkpoint_activate(
     }
 
     /* Check if checkpoint type is enabled */
+    /* Phase 8: Heartbeat at operation start */
+    regulatory_tcells_heartbeat("regulatory_t_treg_checkpoint_acti", 0.0f);
+
+
     if (type == CHECKPOINT_PD1_PDL1 && !system->config.enable_pd1_pathway) {
         return -1;
     }
@@ -554,12 +600,22 @@ int treg_checkpoint_release(treg_system_t* system, uint32_t checkpoint_id)
     }
 
     /* Lock for thread safety */
+    /* Phase 8: Heartbeat at operation start */
+    regulatory_tcells_heartbeat("regulatory_t_treg_checkpoint_rele", 0.0f);
+
+
     if (nimcp_mutex_lock(system->mutex) != 0) {
         return -1;
     }
 
     /* Find checkpoint */
     for (size_t i = 0; i < system->checkpoint_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->checkpoint_count > 256) {
+            regulatory_tcells_heartbeat("regulatory_t_loop",
+                             (float)(i + 1) / (float)system->checkpoint_count);
+        }
+
         treg_checkpoint_t* cp = &system->checkpoints[i];
         if (cp->id == checkpoint_id && cp->active) {
             cp->active = false;
@@ -582,8 +638,18 @@ float treg_get_checkpoint_inhibition(
     if (!system) return 0.0f;
 
     /* Sum inhibition from all active checkpoints targeting this cell */
+    /* Phase 8: Heartbeat at operation start */
+    regulatory_tcells_heartbeat("regulatory_t_treg_get_checkpoint_", 0.0f);
+
+
     float total_inhibition = 0.0f;
     for (size_t i = 0; i < system->checkpoint_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->checkpoint_count > 256) {
+            regulatory_tcells_heartbeat("regulatory_t_loop",
+                             (float)(i + 1) / (float)system->checkpoint_count);
+        }
+
         const treg_checkpoint_t* cp = &system->checkpoints[i];
         if (cp->active && cp->target_cell_id == cell_id) {
             total_inhibition += cp->inhibition_strength;
@@ -611,6 +677,10 @@ int treg_release_cytokine(
     }
 
     /* Check if cytokine production is enabled */
+    /* Phase 8: Heartbeat at operation start */
+    regulatory_tcells_heartbeat("regulatory_t_treg_release_cytokin", 0.0f);
+
+
     if (type == TREG_CYTOKINE_IL10 && !system->config.enable_il10_production) {
         return -1;
     }
@@ -692,6 +762,10 @@ int treg_set_activation_callback(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    regulatory_tcells_heartbeat("regulatory_t_treg_set_activation_", 0.0f);
+
+
     system->on_activation = callback;
     system->callback_user_data = user_data;
     return 0;
@@ -709,6 +783,10 @@ int treg_set_checkpoint_callback(
         return -1;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    regulatory_tcells_heartbeat("regulatory_t_treg_set_checkpoint_", 0.0f);
+
 
     system->on_checkpoint = callback;
     system->callback_user_data = user_data;
@@ -728,6 +806,10 @@ int treg_set_cytokine_callback(
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    regulatory_tcells_heartbeat("regulatory_t_treg_set_cytokine_ca", 0.0f);
+
+
     system->on_cytokine = callback;
     system->callback_user_data = user_data;
     return 0;
@@ -745,6 +827,10 @@ int treg_get_stats(const treg_system_t* system, treg_stats_t* stats)
     }
 
     /* Copy stats */
+    /* Phase 8: Heartbeat at operation start */
+    regulatory_tcells_heartbeat("regulatory_t_treg_get_stats", 0.0f);
+
+
     memcpy(stats, &system->stats, sizeof(treg_stats_t));
     return 0;
 }
@@ -752,12 +838,20 @@ int treg_get_stats(const treg_system_t* system, treg_stats_t* stats)
 treg_state_t treg_get_state(const treg_system_t* system)
 {
     if (!system) return TREG_STATE_NAIVE;
+    /* Phase 8: Heartbeat at operation start */
+    regulatory_tcells_heartbeat("regulatory_t_treg_get_state", 0.0f);
+
+
     return system->state;
 }
 
 bool treg_is_active(const treg_system_t* system)
 {
     if (!system) return false;
+    /* Phase 8: Heartbeat at operation start */
+    regulatory_tcells_heartbeat("regulatory_t_treg_is_active", 0.0f);
+
+
     return system->state == TREG_STATE_SUPPRESSING ||
            system->state == TREG_STATE_ACTIVE;
 }
@@ -815,9 +909,19 @@ const char* treg_cytokine_to_string(treg_cytokine_type_t type)
  */
 int treg_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    regulatory_tcells_heartbeat("regulatory_t_treg_query_self_know", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Regulatory_TCells");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                regulatory_tcells_heartbeat("regulatory_t_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Treg self-knowledge: %s", self->observations[i]);
         }
     }

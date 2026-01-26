@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_genius_gauss_health_agent = NULL;
  * @brief Set health agent for genius_gauss heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void genius_gauss_set_health_agent(nimcp_health_agent_t* agent) {
+void genius_gauss_set_health_agent(nimcp_health_agent_t* agent) {
     g_genius_gauss_health_agent = agent;
 }
 
@@ -55,6 +55,10 @@ nimcp_error_t genius_gauss_analyze_impl(
     mathematical_genius_t* genius,
     const math_problem_t* problem,
     genius_result_t* result) {
+
+    /* Phase 8: Heartbeat at operation start */
+    genius_gauss_heartbeat("genius_gauss_analyze_impl", 0.0f);
+
 
     (void)genius;  /* Suppress unused warning for now */
 
@@ -93,6 +97,10 @@ nimcp_error_t genius_gauss_discover_pattern_impl(
     const float* sequence,
     uint32_t length,
     conjecture_t* conjecture) {
+
+    /* Phase 8: Heartbeat at operation start */
+    genius_gauss_heartbeat("genius_gauss_discover_pattern_imp", 0.0f);
+
 
     (void)genius;
 

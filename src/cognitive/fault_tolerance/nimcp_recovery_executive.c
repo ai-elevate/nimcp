@@ -57,7 +57,7 @@ static nimcp_health_agent_t* g_recovery_executive_health_agent = NULL;
  * @brief Set health agent for recovery_executive heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void recovery_executive_set_health_agent(nimcp_health_agent_t* agent) {
+void recovery_executive_set_health_agent(nimcp_health_agent_t* agent) {
     g_recovery_executive_health_agent = agent;
 }
 
@@ -503,6 +503,12 @@ static float calculate_plan_confidence(
     // Multiply step success probabilities (independence assumption)
     float combined_success = 1.0F;
     for (uint32_t i = 0; i < step_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && step_count > 256) {
+            recovery_executive_heartbeat("recovery_exe_loop",
+                             (float)(i + 1) / (float)step_count);
+        }
+
         combined_success *= steps[i].expected_success_rate;
     }
 
@@ -529,6 +535,12 @@ static uint32_t estimate_plan_time(
 ) {
     uint32_t total_time = 0;
     for (uint32_t i = 0; i < step_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && step_count > 256) {
+            recovery_executive_heartbeat("recovery_exe_loop",
+                             (float)(i + 1) / (float)step_count);
+        }
+
         total_time += steps[i].timeout_ms;
     }
     return total_time;
@@ -539,6 +551,10 @@ static uint32_t estimate_plan_time(
 //=============================================================================
 
 recovery_executive_config_t recovery_executive_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    recovery_executive_heartbeat("recovery_exe_default_config", 0.0f);
+
+
     recovery_executive_config_t config;
 
     config.max_subgoals = 5;
@@ -561,6 +577,10 @@ recovery_executive_config_t recovery_executive_default_config(void) {
 recovery_executive_t* recovery_executive_create(
     const recovery_executive_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    recovery_executive_heartbeat("recovery_exe_create", 0.0f);
+
+
     LOG_DEBUG("Creating module");
     // GUARD: NULL config check
     if (!config) {
@@ -635,6 +655,10 @@ return exec;
 }
 
 void recovery_executive_destroy(recovery_executive_t* exec) {
+    /* Phase 8: Heartbeat at operation start */
+    recovery_executive_heartbeat("recovery_exe_destroy", 0.0f);
+
+
     LOG_DEBUG("Destroying module");
     // GUARD: NULL check
     if (!exec) {
@@ -664,6 +688,10 @@ bool recovery_executive_is_ready(const recovery_executive_t* exec) {
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    recovery_executive_heartbeat("recovery_exe_is_ready", 0.0f);
+
+
     return exec->initialized;
 }
 
@@ -688,6 +716,10 @@ bool recovery_executive_decompose_goal(
     // WHAT: Decompose based on goal type
     // WHY:  Different goals have different decomposition strategies
     // HOW:  Switch on goal type, delegate to specialized functions
+    /* Phase 8: Heartbeat at operation start */
+    recovery_executive_heartbeat("recovery_exe_decompose_goal", 0.0f);
+
+
     switch (goal) {
         case RECOVERY_GOAL_FULL_RECOVERY:
             decompose_restore_functionality(subgoals, subgoal_count);
@@ -730,6 +762,10 @@ recovery_plan_t* recovery_executive_create_plan(
     const diagnostic_result_t* diagnosis,
     recovery_goal_t goal
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    recovery_executive_heartbeat("recovery_exe_create_plan", 0.0f);
+
+
     return recovery_executive_create_plan_with_brain_input(
         exec, diagnosis, goal, NULL);
 }
@@ -752,6 +788,10 @@ recovery_plan_t* recovery_executive_create_plan_with_brain_input(
     }
 
     // WHAT: Allocate plan structure
+    /* Phase 8: Heartbeat at operation start */
+    recovery_executive_heartbeat("recovery_exe_create_plan_with_bra", 0.0f);
+
+
     recovery_plan_t* plan = (recovery_plan_t*)nimcp_malloc(sizeof(recovery_plan_t));
     if (!plan) {
         LOG_ERROR("Failed to allocate recovery plan");
@@ -818,6 +858,10 @@ recovery_plan_t* recovery_executive_create_plan_with_brain_input(
 }
 
 void recovery_executive_free_plan(recovery_plan_t* plan) {
+    /* Phase 8: Heartbeat at operation start */
+    recovery_executive_heartbeat("recovery_exe_free_plan", 0.0f);
+
+
     if (plan) {
         nimcp_free(plan);
     }
@@ -831,6 +875,10 @@ recovery_execution_result_t recovery_executive_execute_plan(
     recovery_executive_t* exec,
     const recovery_plan_t* plan
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    recovery_executive_heartbeat("recovery_exe_execute_plan", 0.0f);
+
+
     recovery_execution_result_t result;
     memset(&result, 0, sizeof(result));
 
@@ -876,6 +924,12 @@ recovery_execution_result_t recovery_executive_execute_plan(
     result.failed_step = -1;
 
     for (uint32_t i = 0; i < plan->step_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && plan->step_count > 256) {
+            recovery_executive_heartbeat("recovery_exe_loop",
+                             (float)(i + 1) / (float)plan->step_count);
+        }
+
         exec->current_step = i;
 
         LOG_DEBUG("Executing plan step %u: %s",
@@ -953,6 +1007,10 @@ bool recovery_executive_is_plan_working(const recovery_executive_t* exec) {
         return true;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    recovery_executive_heartbeat("recovery_exe_is_plan_working", 0.0f);
+
+
     return exec->monitoring.plan_working;
 }
 
@@ -965,6 +1023,10 @@ bool recovery_executive_get_monitoring_state(
     }
 
     *state = exec->monitoring;
+    /* Phase 8: Heartbeat at operation start */
+    recovery_executive_heartbeat("recovery_exe_get_monitoring_state", 0.0f);
+
+
     return true;
 }
 
@@ -993,6 +1055,10 @@ recovery_plan_t* recovery_executive_replan(
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    recovery_executive_heartbeat("recovery_exe_replan", 0.0f);
+
+
     LOG_INFO("Replanning: %s", reason);
 
     // Update statistics
@@ -1019,6 +1085,10 @@ recovery_plan_t* recovery_executive_replan_with_goal(
         return NULL;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    recovery_executive_heartbeat("recovery_exe_replan_with_goal", 0.0f);
+
+
     LOG_INFO("Replanning with new goal %s: %s",
              recovery_executive_get_goal_name(new_goal), reason);
 
@@ -1042,6 +1112,10 @@ recovery_plan_t* recovery_executive_replan_with_brain_input(
         LOG_ERROR("No stored diagnosis for replanning");
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    recovery_executive_heartbeat("recovery_exe_replan_with_brain_in", 0.0f);
+
 
     LOG_INFO("Replanning with brain input: %s", reason);
 
@@ -1068,6 +1142,10 @@ bool recovery_executive_set_decision_criteria(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    recovery_executive_heartbeat("recovery_exe_set_decision_criteri", 0.0f);
+
+
     exec->criteria = *criteria;
     return true;
 }
@@ -1081,6 +1159,10 @@ bool recovery_executive_get_decision_criteria(
     }
 
     *criteria = exec->criteria;
+    /* Phase 8: Heartbeat at operation start */
+    recovery_executive_heartbeat("recovery_exe_get_decision_criteri", 0.0f);
+
+
     return true;
 }
 
@@ -1097,6 +1179,10 @@ bool recovery_executive_get_config(
     }
 
     *config = exec->config;
+    /* Phase 8: Heartbeat at operation start */
+    recovery_executive_heartbeat("recovery_exe_get_config", 0.0f);
+
+
     return true;
 }
 
@@ -1107,6 +1193,10 @@ bool recovery_executive_update_config(
     if (!exec || !config) {
         return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    recovery_executive_heartbeat("recovery_exe_update_config", 0.0f);
+
 
     exec->config = *config;
     return true;
@@ -1125,6 +1215,10 @@ bool recovery_executive_get_stats(
     }
 
     *stats = exec->stats;
+    /* Phase 8: Heartbeat at operation start */
+    recovery_executive_heartbeat("recovery_exe_get_stats", 0.0f);
+
+
     return true;
 }
 
@@ -1132,6 +1226,10 @@ void recovery_executive_reset_stats(recovery_executive_t* exec) {
     if (!exec) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    recovery_executive_heartbeat("recovery_exe_reset_stats", 0.0f);
+
 
     memset(&exec->stats, 0, sizeof(recovery_executive_stats_t));
 }
@@ -1179,9 +1277,19 @@ const char* recovery_executive_get_action_name(recovery_exec_action_t action) {
 int recovery_executive_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    recovery_executive_heartbeat("recovery_exe_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Recovery_Executive");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                recovery_executive_heartbeat("recovery_exe_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("[KG-Self] %s", self->observations[i]);
         }
     }
@@ -1189,6 +1297,12 @@ int recovery_executive_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* connections = kg_reader_get_relations_from(kg, "Recovery_Executive");
     if (connections) {
         for (uint32_t i = 0; i < connections->count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && connections->count > 256) {
+                recovery_executive_heartbeat("recovery_exe_loop",
+                                 (float)(i + 1) / (float)connections->count);
+            }
+
             LOG_DEBUG("[KG-Rel] -> %s (%s)",
                       connections->relations[i]->to,
                       connections->relations[i]->relation_type);
@@ -1199,6 +1313,12 @@ int recovery_executive_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Recovery_Executive");
     if (incoming) {
         for (uint32_t i = 0; i < incoming->count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && incoming->count > 256) {
+                recovery_executive_heartbeat("recovery_exe_loop",
+                                 (float)(i + 1) / (float)incoming->count);
+            }
+
             LOG_DEBUG("[KG-Rel] <- %s (%s)",
                       incoming->relations[i]->from,
                       incoming->relations[i]->relation_type);

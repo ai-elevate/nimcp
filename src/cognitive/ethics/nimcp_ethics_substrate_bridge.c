@@ -34,7 +34,7 @@ static nimcp_health_agent_t* g_ethics_substrate_bridge_health_agent = NULL;
  * @brief Set health agent for ethics_substrate_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void ethics_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void ethics_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_ethics_substrate_bridge_health_agent = agent;
 }
 
@@ -58,6 +58,10 @@ struct ethics_substrate_bridge {
 };
 
 ethics_substrate_config_t ethics_substrate_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_substrate_bridge_heartbeat("ethics_subst_ethics_substrate_def", 0.0f);
+
+
     ethics_substrate_config_t cfg = {
         .enable_atp_modulation = true,
         .enable_fatigue_modulation = true,
@@ -77,6 +81,10 @@ ethics_substrate_bridge_t* ethics_substrate_bridge_create(void* ethics, neural_s
         return NULL;
 
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_substrate_bridge_heartbeat("ethics_subst_create", 0.0f);
+
 
     ethics_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(ethics_substrate_bridge_t));
     if (!bridge) {
@@ -101,11 +109,19 @@ ethics_substrate_bridge_t* ethics_substrate_bridge_create(void* ethics, neural_s
 }
 
 void ethics_substrate_bridge_destroy(ethics_substrate_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    ethics_substrate_bridge_heartbeat("ethics_subst_destroy", 0.0f);
+
+
     if (bridge) nimcp_free(bridge);
 }
 
 int ethics_substrate_bridge_update(ethics_substrate_bridge_t* bridge) {
     if (!bridge || !bridge->substrate) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_substrate_bridge_heartbeat("ethics_subst_update", 0.0f);
+
 
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
@@ -136,16 +152,28 @@ int ethics_substrate_bridge_update(ethics_substrate_bridge_t* bridge) {
 int ethics_substrate_bridge_get_effects(const ethics_substrate_bridge_t* bridge, ethics_substrate_effects_t* effects) {
     if (!bridge || !effects) return -1;
     *effects = bridge->effects;
+    /* Phase 8: Heartbeat at operation start */
+    ethics_substrate_bridge_heartbeat("ethics_subst_get_effects", 0.0f);
+
+
     return 0;
 }
 
 int ethics_substrate_bridge_apply_effects(ethics_substrate_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    ethics_substrate_bridge_heartbeat("ethics_subst_apply_effects", 0.0f);
+
+
     return 0;
 }
 
 int ethics_substrate_bridge_register_bio_async(ethics_substrate_bridge_t* bridge, bio_router_t* router) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    ethics_substrate_bridge_heartbeat("ethics_subst_register_bio_async", 0.0f);
+
+
     bridge->router = router;
     bridge->bio_async_connected = (router != NULL);
     return 0;
@@ -162,9 +190,19 @@ int ethics_substrate_bridge_register_bio_async(ethics_substrate_bridge_t* bridge
  */
 int ethics_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    ethics_substrate_bridge_heartbeat("ethics_subst_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Ethics_Substrate_Bridge_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                ethics_substrate_bridge_heartbeat("ethics_subst_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Ethics substrate bridge self-knowledge: %s", self->observations[i]);
         }
     }

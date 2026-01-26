@@ -38,7 +38,7 @@ static nimcp_health_agent_t* g_knowledge_snn_bridge_health_agent = NULL;
  * @brief Set health agent for knowledge_snn_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void knowledge_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void knowledge_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_knowledge_snn_bridge_health_agent = agent;
 }
 
@@ -112,12 +112,24 @@ static void softmax(float* values, uint32_t n) {
 
     float sum = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n > 256) {
+            knowledge_snn_bridge_heartbeat("knowledge_sn_loop",
+                             (float)(i + 1) / (float)n);
+        }
+
         values[i] = expf(values[i] - max_val);
         sum += values[i];
     }
 
     if (sum > 0.0f) {
         for (uint32_t i = 0; i < n; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && n > 256) {
+                knowledge_snn_bridge_heartbeat("knowledge_sn_loop",
+                                 (float)(i + 1) / (float)n);
+            }
+
             values[i] /= sum;
         }
     }
@@ -128,6 +140,10 @@ static void softmax(float* values, uint32_t n) {
 //=============================================================================
 
 knowledge_snn_config_t knowledge_snn_config_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_config", 0.0f);
+
+
     knowledge_snn_config_t config = {
         .num_dimensions = KNOWLEDGE_DIM_COUNT,
         .neurons_per_dim = KNOWLEDGE_SNN_NEURONS_PER_DIM,
@@ -163,6 +179,10 @@ knowledge_snn_config_t knowledge_snn_config_default(void) {
 }
 
 knowledge_snn_bridge_t* knowledge_snn_create(const knowledge_snn_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_create", 0.0f);
+
+
     knowledge_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(knowledge_snn_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_snn_create: failed to allocate bridge");
@@ -223,6 +243,12 @@ knowledge_snn_bridge_t* knowledge_snn_create(const knowledge_snn_config_t* confi
 
     /* Initialize dimension states */
     for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            knowledge_snn_bridge_heartbeat("knowledge_sn_loop",
+                             (float)(i + 1) / (float)bridge->config.num_dimensions);
+        }
+
         bridge->dim_states[i].activation = 0.0f;
         bridge->dim_states[i].accumulated_evidence = 0.0f;
         bridge->dim_states[i].spike_count = 0;
@@ -254,6 +280,10 @@ knowledge_snn_bridge_t* knowledge_snn_create(const knowledge_snn_config_t* confi
 void knowledge_snn_destroy(knowledge_snn_bridge_t* bridge) {
     if (!bridge) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_destro", 0.0f);
+
+
     if (bridge->snn) {
         snn_network_destroy(bridge->snn);
     }
@@ -269,6 +299,10 @@ void knowledge_snn_destroy(knowledge_snn_bridge_t* bridge) {
 int knowledge_snn_reset(knowledge_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_reset", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset SNN network */
@@ -278,6 +312,12 @@ int knowledge_snn_reset(knowledge_snn_bridge_t* bridge) {
 
     /* Reset dimension states */
     for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            knowledge_snn_bridge_heartbeat("knowledge_sn_loop",
+                             (float)(i + 1) / (float)bridge->config.num_dimensions);
+        }
+
         bridge->dim_states[i].activation = 0.0f;
         bridge->dim_states[i].accumulated_evidence = 0.0f;
         bridge->dim_states[i].spike_count = 0;
@@ -318,6 +358,10 @@ int knowledge_snn_encode_state(
     if (!bridge || !dimensions) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_encode", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = KNOWLEDGE_SNN_STATE_ENCODING;
 
@@ -326,6 +370,12 @@ int knowledge_snn_encode_state(
 
     /* Population encoding for each dimension */
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            knowledge_snn_bridge_heartbeat("knowledge_sn_loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         float value = clamp_f(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
@@ -336,6 +386,12 @@ int knowledge_snn_encode_state(
 
         /* Population encode */
         for (uint32_t n = 0; n < neurons_per_dim; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && neurons_per_dim > 256) {
+                knowledge_snn_bridge_heartbeat("knowledge_sn_loop",
+                                 (float)(n + 1) / (float)neurons_per_dim);
+            }
+
             float preferred = (float)n / (neurons_per_dim - 1);
             float diff = value - preferred;
             float tuning = expf(-diff * diff / 0.1f);
@@ -351,6 +407,12 @@ int knowledge_snn_encode_state(
     /* Detect state change */
     float change_magnitude = 0.0f;
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            knowledge_snn_bridge_heartbeat("knowledge_sn_loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         float diff = dimensions[d] - bridge->prev_state[d];
         change_magnitude += diff * diff;
         bridge->prev_state[d] = dimensions[d];
@@ -374,6 +436,10 @@ int knowledge_snn_encode_semantic(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_encode", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[KNOWLEDGE_DIM_COUNT] = {0};
@@ -395,6 +461,10 @@ int knowledge_snn_encode_retrieval(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_encode", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[KNOWLEDGE_DIM_COUNT] = {0};
@@ -412,6 +482,10 @@ int knowledge_snn_encode_association(
     uint32_t association_type
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_encode", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -445,6 +519,10 @@ int knowledge_snn_simulate(knowledge_snn_bridge_t* bridge, float duration_ms) {
     if (!bridge) return -1;
     if (duration_ms <= 0.0f) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_simula", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = KNOWLEDGE_SNN_STATE_SIMULATING;
 
@@ -458,6 +536,12 @@ int knowledge_snn_simulate(knowledge_snn_bridge_t* bridge, float duration_ms) {
     }
 
     for (uint32_t s = 0; s < steps; s++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((s & 0xFF) == 0 && steps > 256) {
+            knowledge_snn_bridge_heartbeat("knowledge_sn_loop",
+                             (float)(s + 1) / (float)steps);
+        }
+
         if (bridge->snn) {
             snn_network_step(bridge->snn, dt);
         }
@@ -465,6 +549,12 @@ int knowledge_snn_simulate(knowledge_snn_bridge_t* bridge, float duration_ms) {
         /* Update evidence integration */
         float decay = expf(-dt / bridge->config.integration_tau_ms);
         for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+                knowledge_snn_bridge_heartbeat("knowledge_sn_loop",
+                                 (float)(d + 1) / (float)bridge->config.num_dimensions);
+            }
+
             bridge->dim_states[d].accumulated_evidence *= decay;
             bridge->dim_states[d].accumulated_evidence +=
                 bridge->dim_states[d].activation * dt / bridge->config.integration_tau_ms;
@@ -514,6 +604,10 @@ int knowledge_snn_simulate(knowledge_snn_bridge_t* bridge, float duration_ms) {
 
 int knowledge_snn_step(knowledge_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_step", 0.0f);
+
+
     return knowledge_snn_simulate(bridge, bridge->config.dt_ms);
 }
 
@@ -523,6 +617,10 @@ int knowledge_snn_forward(
     uint32_t input_count
 ) {
     if (!bridge || !inputs) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_forwar", 0.0f);
+
 
     int spike_count = knowledge_snn_encode_state(bridge, inputs, input_count);
     if (spike_count < 0) return -1;
@@ -544,6 +642,10 @@ int knowledge_snn_get_retrieval(
 ) {
     if (!bridge || !retrieval) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_get_re", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *retrieval = bridge->last_retrieval;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -559,8 +661,18 @@ int knowledge_snn_get_activations(
     if (!bridge || !activations) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_get_ac", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     for (uint32_t d = 0; d < num_dims; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && num_dims > 256) {
+            knowledge_snn_bridge_heartbeat("knowledge_sn_loop",
+                             (float)(d + 1) / (float)num_dims);
+        }
+
         activations[d] = bridge->dim_states[d].activation;
     }
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -573,6 +685,10 @@ bool knowledge_snn_check_activation(
     float* activation_level
 ) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_check_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_retrieval.activation_level;
@@ -591,6 +707,10 @@ bool knowledge_snn_check_retrieval(
 ) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_check_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_retrieval.retrieval_strength;
     if (retrieval_level) {
@@ -608,10 +728,20 @@ bool knowledge_snn_check_state_change(
 ) {
     if (!bridge) return false;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_check_", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     /* Calculate magnitude from prev_state differences */
     float mag = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            knowledge_snn_bridge_heartbeat("knowledge_sn_loop",
+                             (float)(d + 1) / (float)bridge->config.num_dimensions);
+        }
+
         float diff = bridge->dim_states[d].activation - bridge->prev_state[d];
         mag += diff * diff;
     }
@@ -638,6 +768,10 @@ int knowledge_snn_get_dim_state(
     if (!bridge || !state) return -1;
     if (dim >= bridge->config.num_dimensions) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_get_di", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->dim_states[dim];
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -651,6 +785,10 @@ int knowledge_snn_get_state(
 ) {
     if (!bridge || !state) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_get_st", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
@@ -662,6 +800,12 @@ int knowledge_snn_get_state(
     state->active_dimensions = 0;
     state->total_activity = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            knowledge_snn_bridge_heartbeat("knowledge_sn_loop",
+                             (float)(d + 1) / (float)bridge->config.num_dimensions);
+        }
+
         if (bridge->dim_states[d].activation > 0.1f) {
             state->active_dimensions++;
         }
@@ -675,6 +819,10 @@ int knowledge_snn_get_state(
 int knowledge_snn_get_stats(knowledge_snn_bridge_t* bridge, knowledge_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_get_st", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -684,6 +832,10 @@ int knowledge_snn_get_stats(knowledge_snn_bridge_t* bridge, knowledge_snn_stats_
 
 int knowledge_snn_reset_stats(knowledge_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_reset_", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(knowledge_snn_stats_t));
@@ -695,6 +847,10 @@ int knowledge_snn_reset_stats(knowledge_snn_bridge_t* bridge) {
 float knowledge_snn_get_activation(knowledge_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_get_ac", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float activation = bridge->last_retrieval.activation_level;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -705,9 +861,19 @@ float knowledge_snn_get_activation(knowledge_snn_bridge_t* bridge) {
 float knowledge_snn_get_total_activity(knowledge_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_get_to", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float total = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((d & 0xFF) == 0 && bridge->config.num_dimensions > 256) {
+            knowledge_snn_bridge_heartbeat("knowledge_sn_loop",
+                             (float)(d + 1) / (float)bridge->config.num_dimensions);
+        }
+
         total += bridge->dim_states[d].activation;
     }
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -726,6 +892,10 @@ int knowledge_snn_register_activation_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_regist", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->activation_callback = callback;
     bridge->activation_callback_data = user_data;
@@ -741,6 +911,10 @@ int knowledge_snn_register_retrieval_callback(
 ) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_regist", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->retrieval_callback = callback;
     bridge->retrieval_callback_data = user_data;
@@ -755,6 +929,10 @@ int knowledge_snn_register_association_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
+
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_regist", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->association_callback = callback;
@@ -772,6 +950,10 @@ int knowledge_snn_bio_async_connect(knowledge_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_bio_as", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
@@ -783,6 +965,10 @@ int knowledge_snn_bio_async_connect(knowledge_snn_bridge_t* bridge) {
 int knowledge_snn_bio_async_disconnect(knowledge_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_bio_as", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -792,6 +978,10 @@ int knowledge_snn_bio_async_disconnect(knowledge_snn_bridge_t* bridge) {
 
 bool knowledge_snn_is_bio_async_connected(knowledge_snn_bridge_t* bridge) {
     if (!bridge) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_is_bio", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;

@@ -43,7 +43,7 @@ static nimcp_health_agent_t* g_self_model_health_agent = NULL;
  * @brief Set health agent for self_model heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void self_model_set_health_agent(nimcp_health_agent_t* agent) {
+void self_model_set_health_agent(nimcp_health_agent_t* agent) {
     g_self_model_health_agent = agent;
 }
 
@@ -97,6 +97,10 @@ self_model_system_t self_model_create(const char* name,
                                       const char* purpose)
 {
     // Guard: NULL checks
+    /* Phase 8: Heartbeat at operation start */
+    self_model_heartbeat("self_model_create", 0.0f);
+
+
     NIMCP_API_CHECK_NULL_RET_NULL(name, "NULL name in self_model_create");
     NIMCP_API_CHECK_NULL_RET_NULL(role, "NULL role in self_model_create");
     NIMCP_API_CHECK_NULL_RET_NULL(purpose, "NULL purpose in self_model_create");
@@ -235,6 +239,10 @@ self_model_system_t self_model_create(const char* name,
 
 void self_model_destroy(self_model_system_t system)
 {
+    /* Phase 8: Heartbeat at operation start */
+    self_model_heartbeat("self_model_destroy", 0.0f);
+
+
     LOG_DEBUG("Destroying module");
     if (!system) {
         return;
@@ -258,6 +266,10 @@ void self_model_destroy(self_model_system_t system)
 bool self_model_get(self_model_system_t system, self_model_t* model)
 {
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    self_model_heartbeat("self_model_get", 0.0f);
+
+
     if (system && system->bio_ctx) {
         bio_router_process_inbox(system->bio_ctx, 5);
     }
@@ -294,6 +306,10 @@ bool self_model_add_belief(self_model_system_t system, const self_belief_t* beli
 
             return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    self_model_heartbeat("self_model_add_belief", 0.0f);
+
 
     nimcp_mutex_lock(&system->mutex);
 
@@ -332,10 +348,20 @@ bool self_model_update_belief(self_model_system_t system,
             return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_model_heartbeat("self_model_update_belief", 0.0f);
+
+
     nimcp_mutex_lock(&system->mutex);
 
     bool found = false;
     for (uint32_t i = 0; i < system->model.num_beliefs; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->model.num_beliefs > 256) {
+            self_model_heartbeat("self_model_loop",
+                             (float)(i + 1) / (float)system->model.num_beliefs);
+        }
+
         if (strcmp(system->model.beliefs[i].content, belief_content) == 0) {
             system->model.beliefs[i].certainty = new_certainty;
             system->model.beliefs[i].confidence = new_confidence;
@@ -363,11 +389,21 @@ bool self_model_update_capability(self_model_system_t system,
             return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_model_heartbeat("self_model_update_capability", 0.0f);
+
+
     nimcp_mutex_lock(&system->mutex);
 
     // Check if capability exists
     bool found = false;
     for (uint32_t i = 0; i < system->model.num_capabilities; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->model.num_capabilities > 256) {
+            self_model_heartbeat("self_model_loop",
+                             (float)(i + 1) / (float)system->model.num_capabilities);
+        }
+
         if (strcmp(system->model.capabilities[i].capability_name,
                   capability->capability_name) == 0) {
             memcpy(&system->model.capabilities[i], capability,
@@ -404,10 +440,20 @@ bool self_model_record_performance(self_model_system_t system,
             return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_model_heartbeat("self_model_record_performance", 0.0f);
+
+
     nimcp_mutex_lock(&system->mutex);
 
     bool found = false;
     for (uint32_t i = 0; i < system->model.num_capabilities; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->model.num_capabilities > 256) {
+            self_model_heartbeat("self_model_loop",
+                             (float)(i + 1) / (float)system->model.num_capabilities);
+        }
+
         if (strcmp(system->model.capabilities[i].capability_name,
                   capability_name) == 0) {
             capability_assessment_t* cap = &system->model.capabilities[i];
@@ -458,6 +504,10 @@ bool self_model_update_state(self_model_system_t system,
             return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_model_heartbeat("self_model_update_state", 0.0f);
+
+
     nimcp_mutex_lock(&system->mutex);
 
     memcpy(&system->model.current_state, state, sizeof(self_mental_state_t));
@@ -480,11 +530,21 @@ bool self_model_set_boundary(self_model_system_t system,
             return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_model_heartbeat("self_model_set_boundary", 0.0f);
+
+
     nimcp_mutex_lock(&system->mutex);
 
     // Check if boundary exists
     bool found = false;
     for (uint32_t i = 0; i < system->model.num_boundaries; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->model.num_boundaries > 256) {
+            self_model_heartbeat("self_model_loop",
+                             (float)(i + 1) / (float)system->model.num_boundaries);
+        }
+
         if (system->model.boundaries[i].entity_id == boundary->entity_id) {
             memcpy(&system->model.boundaries[i], boundary, sizeof(self_boundary_t));
             found = true;
@@ -515,10 +575,20 @@ bool self_model_is_part_of_self(self_model_system_t system, uint32_t entity_id)
             return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_model_heartbeat("self_model_is_part_of_self", 0.0f);
+
+
     nimcp_mutex_lock(&system->mutex);
 
     bool is_self = false;
     for (uint32_t i = 0; i < system->model.num_boundaries; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->model.num_boundaries > 256) {
+            self_model_heartbeat("self_model_loop",
+                             (float)(i + 1) / (float)system->model.num_boundaries);
+        }
+
         if (system->model.boundaries[i].entity_id == entity_id) {
             is_self = (system->model.boundaries[i].boundary_type == SELF ||
                       system->model.boundaries[i].boundary_type == PART_OF_SELF);
@@ -543,6 +613,10 @@ bool self_model_generate_summary(self_model_system_t system,
 
             return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    self_model_heartbeat("self_model_generate_summary", 0.0f);
+
 
     nimcp_mutex_lock(&system->mutex);
 
@@ -614,6 +688,10 @@ bool self_model_check_coherence(self_model_system_t system,
             return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_model_heartbeat("self_model_check_coherence", 0.0f);
+
+
     nimcp_mutex_lock(&system->mutex);
 
     float incoherence = 0.0F;
@@ -621,6 +699,12 @@ bool self_model_check_coherence(self_model_system_t system,
 
     // Check for contradictory beliefs
     for (uint32_t i = 0; i < system->model.num_beliefs; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && system->model.num_beliefs > 256) {
+            self_model_heartbeat("self_model_loop",
+                             (float)(i + 1) / (float)system->model.num_beliefs);
+        }
+
         for (uint32_t j = i + 1; j < system->model.num_beliefs; j++) {
             // Simple heuristic: check if beliefs explicitly contradict
             // (would need NLP for deeper analysis)
@@ -660,6 +744,10 @@ bool self_model_reflect(self_model_system_t system,
             return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_model_heartbeat("self_model_reflect", 0.0f);
+
+
     nimcp_mutex_lock(&system->mutex);
 
     // Update last introspection timestamp
@@ -692,6 +780,10 @@ bool self_model_set_personality(self_model_system_t system,
             return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_model_heartbeat("self_model_set_personality", 0.0f);
+
+
     nimcp_mutex_lock(&system->mutex);
 
     // Wire personality into self-model
@@ -716,6 +808,10 @@ bool self_model_connect_internal_kg(self_model_system_t system, brain_t brain)
 
             return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    self_model_heartbeat("self_model_connect_internal_kg", 0.0f);
+
 
     nimcp_mutex_lock(&system->mutex);
 
@@ -748,6 +844,10 @@ void self_model_disconnect_internal_kg(self_model_system_t system)
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    self_model_heartbeat("self_model_disconnect_internal_", 0.0f);
+
+
     nimcp_mutex_lock(&system->mutex);
 
     system->kg_context.kg = NULL;
@@ -769,6 +869,10 @@ bool self_model_update_topology_awareness(self_model_system_t system)
 
             return false;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    self_model_heartbeat("self_model_update_topology_awar", 0.0f);
+
 
     nimcp_mutex_lock(&system->mutex);
 
@@ -809,6 +913,10 @@ int self_model_get_boundary_from_kg(
     if (!system || !entity_name) {
         return SELF_BOUNDARY_OTHER;  /* Default to OTHER for safety */
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    self_model_heartbeat("self_model_get_boundary_from_kg", 0.0f);
+
 
     nimcp_mutex_lock(&system->mutex);
 
@@ -854,6 +962,10 @@ uint32_t self_model_discover_capabilities_from_kg(self_model_system_t system)
 
             return 0;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    self_model_heartbeat("self_model_discover_capabilitie", 0.0f);
+
 
     nimcp_mutex_lock(&system->mutex);
 
@@ -922,10 +1034,20 @@ int self_model_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
     /* Query our own entity from the knowledge graph */
+    /* Phase 8: Heartbeat at operation start */
+    self_model_heartbeat("self_model_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Self_Model_Module");
     if (self) {
         /* Module now knows its own capabilities from KG */
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                self_model_heartbeat("self_model_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Self-model self-knowledge: %s", self->observations[i]);
         }
     }

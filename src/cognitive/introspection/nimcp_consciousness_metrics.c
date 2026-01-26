@@ -64,7 +64,7 @@ static nimcp_health_agent_t* g_consciousness_metrics_health_agent = NULL;
  * @brief Set health agent for consciousness_metrics heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void consciousness_metrics_set_health_agent(nimcp_health_agent_t* agent) {
+void consciousness_metrics_set_health_agent(nimcp_health_agent_t* agent) {
     g_consciousness_metrics_health_agent = agent;
 }
 
@@ -147,6 +147,12 @@ static float compute_entropy(const float* probs, uint32_t size) {
 
     float entropy = 0.0f;
     for (uint32_t i = 0; i < size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && size > 256) {
+            consciousness_metrics_heartbeat("consciousnes_loop",
+                             (float)(i + 1) / (float)size);
+        }
+
         if (probs[i] > 1e-10f) {
             entropy -= probs[i] * log2f(probs[i]);
         }
@@ -236,6 +242,12 @@ static transition_probability_matrix_t* build_tpm(
      * HOW: Use uniform prior, could be improved with actual sampling */
     float uniform_prob = 1.0f / (float)tpm->num_states;
     for (uint32_t i = 0; i < tpm_size; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && tpm_size > 256) {
+            consciousness_metrics_heartbeat("consciousnes_loop",
+                             (float)(i + 1) / (float)tpm_size);
+        }
+
         tpm->probabilities[i] = uniform_prob;
     }
 
@@ -287,9 +299,21 @@ static uint32_t generate_partitions(
 
     /* WHAT: Generate binary partitions */
     for (uint32_t p = 0; p < total_partitions; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && total_partitions > 256) {
+            consciousness_metrics_heartbeat("consciousnes_loop",
+                             (float)(p + 1) / (float)total_partitions);
+        }
+
         /* Count elements in each subset */
         uint32_t count_a = 0;
         for (uint32_t i = 0; i < num_elements; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_elements > 256) {
+                consciousness_metrics_heartbeat("consciousnes_loop",
+                                 (float)(i + 1) / (float)num_elements);
+            }
+
             if (p & (1 << i)) {
                 count_a++;
             }
@@ -305,6 +329,12 @@ static uint32_t generate_partitions(
         /* Fill subsets */
         uint32_t idx_a = 0, idx_b = 0;
         for (uint32_t i = 0; i < num_elements; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && num_elements > 256) {
+                consciousness_metrics_heartbeat("consciousnes_loop",
+                                 (float)(i + 1) / (float)num_elements);
+            }
+
             if (p & (1 << i)) {
                 partitions[p].subset_a[idx_a++] = i;
             } else {
@@ -339,6 +369,12 @@ static phi_partition_t* find_mip_internal(
 
     /* WHAT: Evaluate each partition */
     for (uint32_t p = 0; p < num_partitions; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && num_partitions > 256) {
+            consciousness_metrics_heartbeat("consciousnes_loop",
+                             (float)(p + 1) / (float)num_partitions);
+        }
+
         /* WHAT: Compute information loss across this partition */
         /* HOW: I(subset_a; subset_b) = mutual information */
 
@@ -400,6 +436,10 @@ static phi_partition_t* find_mip_internal(
  * HOW: Adaptive method, standard thresholds
  */
 consciousness_phi_config_t consciousness_phi_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    consciousness_metrics_heartbeat("consciousnes_consciousness_phi_de", 0.0f);
+
+
     consciousness_phi_config_t config = {
         .method = PHI_METHOD_ADAPTIVE,
         .min_phi_threshold = CONSCIOUSNESS_PHI_THRESHOLD,
@@ -420,6 +460,10 @@ consciousness_phi_config_t consciousness_phi_default_config(void) {
  * HOW: Fast method, minimal computation
  */
 consciousness_phi_config_t consciousness_phi_fast_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    consciousness_metrics_heartbeat("consciousnes_consciousness_phi_fa", 0.0f);
+
+
     consciousness_phi_config_t config = consciousness_phi_default_config();
     config.method = PHI_METHOD_FAST;
     config.sample_size = 50;  /* Smaller sample */
@@ -434,6 +478,10 @@ consciousness_phi_config_t consciousness_phi_fast_config(void) {
  * HOW: Exact method when possible, full constellation
  */
 consciousness_phi_config_t consciousness_phi_accurate_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    consciousness_metrics_heartbeat("consciousnes_consciousness_phi_ac", 0.0f);
+
+
     consciousness_phi_config_t config = consciousness_phi_default_config();
     config.method = PHI_METHOD_EXACT;
     config.max_network_size_exact = 15;  /* Higher limit */
@@ -461,6 +509,10 @@ consciousness_phi_result_t* introspection_compute_phi(
     }
 
     /* WHAT: Use default config if not provided */
+    /* Phase 8: Heartbeat at operation start */
+    consciousness_metrics_heartbeat("consciousnes_introspection_comput", 0.0f);
+
+
     consciousness_phi_config_t default_config = consciousness_phi_default_config();
     if (!config) {
         config = &default_config;
@@ -620,6 +672,12 @@ consciousness_phi_result_t* introspection_compute_phi(
 
     /* WHAT: Clean up temporary structures */
     for (uint32_t i = 0; i < num_partitions; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_partitions > 256) {
+            consciousness_metrics_heartbeat("consciousnes_loop",
+                             (float)(i + 1) / (float)num_partitions);
+        }
+
         nimcp_free(partitions[i].subset_a);
         nimcp_free(partitions[i].subset_b);
     }
@@ -638,6 +696,10 @@ consciousness_phi_result_t* introspection_compute_phi_fast(
     introspection_context_t context,
     const consciousness_phi_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    consciousness_metrics_heartbeat("consciousnes_introspection_comput", 0.0f);
+
+
     consciousness_phi_config_t fast_config = config ? *config : consciousness_phi_fast_config();
     fast_config.method = PHI_METHOD_FAST;
     fast_config.compute_constellation = false;
@@ -655,6 +717,10 @@ phi_partition_t* introspection_get_mip(
     const consciousness_phi_config_t* config
 ) {
     /* WHAT: Compute full Φ to get MIP */
+    /* Phase 8: Heartbeat at operation start */
+    consciousness_metrics_heartbeat("consciousnes_introspection_get_mi", 0.0f);
+
+
     consciousness_phi_result_t* result = introspection_compute_phi(context, config);
     if (!result) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
@@ -686,6 +752,10 @@ conceptual_structure_t* introspection_get_conceptual_structure(
     }
 
     /* WHAT: Allocate structure */
+    /* Phase 8: Heartbeat at operation start */
+    consciousness_metrics_heartbeat("consciousnes_introspection_get_co", 0.0f);
+
+
     conceptual_structure_t* structure =
         (conceptual_structure_t*)nimcp_calloc(1, sizeof(conceptual_structure_t));
     if (!structure) {
@@ -834,6 +904,10 @@ bool brain_enable_consciousness_monitoring(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    consciousness_metrics_heartbeat("consciousnes_brain_enable_conscio", 0.0f);
+
+
     if (interval_ms == 0) {
         interval_ms = CONSCIOUSNESS_DEFAULT_MONITOR_INTERVAL_MS;
     }
@@ -912,6 +986,10 @@ void brain_disable_consciousness_monitoring(brain_t brain) {
     }
 
     /* NOTE: Simplified implementation - full version would access brain's monitor */
+    /* Phase 8: Heartbeat at operation start */
+    consciousness_metrics_heartbeat("consciousnes_brain_disable_consci", 0.0f);
+
+
     LOG_INFO("Consciousness monitoring disabled");
 }
 
@@ -926,6 +1004,10 @@ float brain_get_consciousness_level(brain_t brain) {
     }
 
     /* NOTE: Simplified - would access brain's monitor */
+    /* Phase 8: Heartbeat at operation start */
+    consciousness_metrics_heartbeat("consciousnes_brain_get_consciousn", 0.0f);
+
+
     return 0.0f;
 }
 
@@ -935,6 +1017,10 @@ float brain_get_consciousness_level(brain_t brain) {
  * HOW: Compare Φ to threshold
  */
 bool brain_is_conscious(brain_t brain, float threshold) {
+    /* Phase 8: Heartbeat at operation start */
+    consciousness_metrics_heartbeat("consciousnes_brain_is_conscious", 0.0f);
+
+
     if (threshold == 0.0f) {
         threshold = CONSCIOUSNESS_PHI_THRESHOLD;
     }
@@ -957,6 +1043,10 @@ bool brain_get_consciousness_stats(
     }
 
     /* NOTE: Simplified - would access brain's monitor */
+    /* Phase 8: Heartbeat at operation start */
+    consciousness_metrics_heartbeat("consciousnes_brain_get_consciousn", 0.0f);
+
+
     memset(stats, 0, sizeof(consciousness_monitoring_stats_t));
     return false;
 }
@@ -975,6 +1065,10 @@ void consciousness_phi_result_free(consciousness_phi_result_t* result) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    consciousness_metrics_heartbeat("consciousnes_consciousness_phi_re", 0.0f);
+
+
     phi_partition_free(result->mip);
     conceptual_structure_free(result->constellation);
     nimcp_free(result->interpretation);
@@ -991,6 +1085,10 @@ void phi_partition_free(phi_partition_t* partition) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    consciousness_metrics_heartbeat("consciousnes_phi_partition_free", 0.0f);
+
+
     nimcp_free(partition->subset_a);
     nimcp_free(partition->subset_b);
     nimcp_free(partition);
@@ -1006,7 +1104,17 @@ void conceptual_structure_free(conceptual_structure_t* structure) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    consciousness_metrics_heartbeat("consciousnes_conceptual_structure", 0.0f);
+
+
     for (uint32_t i = 0; i < structure->num_concepts; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && structure->num_concepts > 256) {
+            consciousness_metrics_heartbeat("consciousnes_loop",
+                             (float)(i + 1) / (float)structure->num_concepts);
+        }
+
         consciousness_concept_free(&structure->concepts[i]);
     }
     nimcp_free(structure->concepts);
@@ -1022,6 +1130,10 @@ void consciousness_concept_free(consciousness_concept_t* iit_concept) {
     if (!iit_concept) {
         return;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    consciousness_metrics_heartbeat("consciousnes_consciousness_concep", 0.0f);
+
 
     nimcp_free(iit_concept->mechanism);
     nimcp_free(iit_concept->cause_repertoire);
@@ -1057,6 +1169,10 @@ const char* consciousness_state_name(consciousness_state_t state) {
  * HOW: Apply thresholds
  */
 consciousness_state_t consciousness_classify_phi(float phi) {
+    /* Phase 8: Heartbeat at operation start */
+    consciousness_metrics_heartbeat("consciousnes_consciousness_classi", 0.0f);
+
+
     if (phi < 0.1f) {
         return CONSCIOUSNESS_STATE_UNCONSCIOUS;
     } else if (phi < 0.3f) {
@@ -1086,10 +1202,20 @@ int consciousness_metrics_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
     /* Query our own entity from the knowledge graph */
+    /* Phase 8: Heartbeat at operation start */
+    consciousness_metrics_heartbeat("consciousnes_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Consciousness_Metrics_Module");
     if (self) {
         /* Module now knows its own capabilities from KG */
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                consciousness_metrics_heartbeat("consciousnes_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Consciousness metrics self-knowledge: %s", self->observations[i]);
         }
     }

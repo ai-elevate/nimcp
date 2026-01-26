@@ -55,7 +55,7 @@ static nimcp_health_agent_t* g_introspection_substrate_bridge_health_agent = NUL
  * @brief Set health agent for introspection_substrate_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void introspection_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void introspection_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_introspection_substrate_bridge_health_agent = agent;
 }
 
@@ -202,6 +202,10 @@ void introspection_substrate_default_config(introspection_substrate_config_t* co
     }
 
     /* Feature enables */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_substrate_bridge_heartbeat("introspectio_introspection_substr", 0.0f);
+
+
     config->enable_atp_modulation = true;
     config->enable_fatigue_effects = true;
     config->enable_metabolic_monitoring = true;
@@ -241,6 +245,10 @@ introspection_substrate_bridge_t* introspection_substrate_bridge_create(
     }
 
     /* Allocate bridge structure */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_substrate_bridge_heartbeat("introspectio_create", 0.0f);
+
+
     introspection_substrate_bridge_t* bridge =
         (introspection_substrate_bridge_t*)nimcp_malloc(sizeof(introspection_substrate_bridge_t));
     if (!bridge) {
@@ -312,6 +320,10 @@ void introspection_substrate_bridge_destroy(introspection_substrate_bridge_t* br
     }
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_substrate_bridge_heartbeat("introspectio_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         introspection_substrate_disconnect_bio_async(bridge);
     }
@@ -336,6 +348,10 @@ int introspection_substrate_connect_bio_async(introspection_substrate_bridge_t* 
     }
 
     /* Guard: check if already connected */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_substrate_bridge_heartbeat("introspectio_introspection_substr", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         NIMCP_LOGGING_DEBUG("Bio-async already connected");
         return NIMCP_SUCCESS;
@@ -374,6 +390,10 @@ int introspection_substrate_disconnect_bio_async(introspection_substrate_bridge_
     }
 
     /* Unregister from bio-async router */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_substrate_bridge_heartbeat("introspectio_introspection_substr", 0.0f);
+
+
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
         bridge->base.bio_ctx = NULL;
@@ -392,6 +412,10 @@ bool introspection_substrate_is_bio_async_connected(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    introspection_substrate_bridge_heartbeat("introspectio_introspection_substr", 0.0f);
+
+
     return bridge->base.bio_async_enabled;
 }
 
@@ -403,6 +427,10 @@ int introspection_substrate_update(introspection_substrate_bridge_t* bridge) {
     }
 
     /* Lock mutex for thread safety */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_substrate_bridge_heartbeat("introspectio_introspection_substr", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Query substrate metabolic state */
@@ -531,6 +559,10 @@ float introspection_substrate_get_self_awareness_depth(
     }
 
     /* Lock mutex for thread safety */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_substrate_bridge_heartbeat("introspectio_introspection_substr", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float depth = bridge->effects.self_awareness_depth;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -548,6 +580,10 @@ float introspection_substrate_get_metacognitive_accuracy(
     }
 
     /* Lock mutex for thread safety */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_substrate_bridge_heartbeat("introspectio_introspection_substr", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float accuracy = bridge->effects.metacognitive_accuracy;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -565,6 +601,10 @@ float introspection_substrate_get_monitoring_capacity(
     }
 
     /* Lock mutex for thread safety */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_substrate_bridge_heartbeat("introspectio_introspection_substr", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float capacity = bridge->effects.monitoring_capacity;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -582,6 +622,10 @@ float introspection_substrate_get_uncertainty_estimation(
     }
 
     /* Lock mutex for thread safety */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_substrate_bridge_heartbeat("introspectio_introspection_substr", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     float estimation = bridge->effects.uncertainty_estimation;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -605,6 +649,10 @@ int introspection_substrate_get_effects(
     }
 
     /* Lock mutex for thread safety */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_substrate_bridge_heartbeat("introspectio_introspection_substr", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Copy effects structure */
@@ -623,6 +671,10 @@ bool introspection_substrate_is_impaired(const introspection_substrate_bridge_t*
     }
 
     /* Lock mutex for thread safety */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_substrate_bridge_heartbeat("introspectio_introspection_substr", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bool impaired = bridge->effects.is_impaired;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -646,6 +698,10 @@ int introspection_substrate_get_stats(
     }
 
     /* Lock mutex for thread safety */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_substrate_bridge_heartbeat("introspectio_introspection_substr", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Copy statistics structure */
@@ -673,10 +729,20 @@ int introspection_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
     /* Query our own entity from the knowledge graph */
+    /* Phase 8: Heartbeat at operation start */
+    introspection_substrate_bridge_heartbeat("introspectio_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Introspection_Substrate_Bridge");
     if (self) {
         /* Module now knows its own capabilities from KG */
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                introspection_substrate_bridge_heartbeat("introspectio_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Introspection substrate bridge self-knowledge: %s", self->observations[i]);
         }
     }

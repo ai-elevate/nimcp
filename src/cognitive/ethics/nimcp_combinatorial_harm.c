@@ -63,7 +63,7 @@ static nimcp_health_agent_t* g_combinatorial_harm_health_agent = NULL;
  * @brief Set health agent for combinatorial_harm heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void combinatorial_harm_set_health_agent(nimcp_health_agent_t* agent) {
+void combinatorial_harm_set_health_agent(nimcp_health_agent_t* agent) {
     g_combinatorial_harm_health_agent = agent;
 }
 
@@ -361,6 +361,12 @@ NIMCP_EXPORT void combinatorial_detector_destroy(
     if (detector->history.records) {
         // Free any allocated feature vectors
         for (uint32_t i = 0; i < detector->history.count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && detector->history.count > 256) {
+                combinatorial_harm_heartbeat("combinatoria_loop",
+                                 (float)(i + 1) / (float)detector->history.count);
+            }
+
             if (detector->history.records[i].features) {
                 nimcp_free(detector->history.records[i].features);
             }
@@ -520,6 +526,12 @@ NIMCP_EXPORT bool combinatorial_unregister_pattern(
 
     // Find pattern
     for (uint32_t i = 0; i < detector->patterns.count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && detector->patterns.count > 256) {
+            combinatorial_harm_heartbeat("combinatoria_loop",
+                             (float)(i + 1) / (float)detector->patterns.count);
+        }
+
         if (detector->patterns.patterns[i].pattern_id == pattern_id) {
             // MEMORY LOCK CHECK: Cannot remove locked patterns
             if (detector->patterns.patterns[i].locked) {
@@ -749,6 +761,12 @@ NIMCP_EXPORT void combinatorial_clear_history(
 
     // Free all feature vectors
     for (uint32_t i = 0; i < detector->history.capacity; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && detector->history.capacity > 256) {
+            combinatorial_harm_heartbeat("combinatoria_loop",
+                             (float)(i + 1) / (float)detector->history.capacity);
+        }
+
         if (detector->history.records[i].features) {
             nimcp_free(detector->history.records[i].features);
             detector->history.records[i].features = NULL;
@@ -777,6 +795,12 @@ NIMCP_EXPORT uint32_t combinatorial_get_history(
 
     // Copy records in reverse chronological order (most recent first)
     for (uint32_t i = 0; i < to_copy; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && to_copy > 256) {
+            combinatorial_harm_heartbeat("combinatoria_loop",
+                             (float)(i + 1) / (float)to_copy);
+        }
+
         uint32_t index = (detector->history.head + detector->history.capacity - 1 - i)
                          % detector->history.capacity;
         copy_action_record(&records_out[i], &detector->history.records[index]);
@@ -820,6 +844,12 @@ NIMCP_EXPORT bool combinatorial_evaluate(
 
     // Check against each record in history within time window
     for (uint32_t i = 0; i < detector->history.count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && detector->history.count > 256) {
+            combinatorial_harm_heartbeat("combinatoria_loop",
+                             (float)(i + 1) / (float)detector->history.count);
+        }
+
         uint32_t index = (detector->history.head + detector->history.capacity - 1 - i)
                          % detector->history.capacity;
         action_record_t* historical = &detector->history.records[index];
@@ -832,6 +862,12 @@ NIMCP_EXPORT bool combinatorial_evaluate(
 
         // Check against each pattern
         for (uint32_t p = 0; p < detector->patterns.count; p++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((p & 0xFF) == 0 && detector->patterns.count > 256) {
+                combinatorial_harm_heartbeat("combinatoria_loop",
+                                 (float)(p + 1) / (float)detector->patterns.count);
+            }
+
             combination_pattern_t* pattern = &detector->patterns.patterns[p];
 
             if (pattern_matches(pattern, historical, pending_action)) {
@@ -939,6 +975,12 @@ NIMCP_EXPORT int combinatorial_evaluate_batch(
     combinatorial_evaluation_t current_result;
 
     for (uint32_t i = 0; i < num_pending; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && num_pending > 256) {
+            combinatorial_harm_heartbeat("combinatoria_loop",
+                             (float)(i + 1) / (float)num_pending);
+        }
+
         if (combinatorial_evaluate(detector, &pending_actions[i], &current_result)) {
             if (current_result.combined_harm_score > worst_score) {
                 worst_score = current_result.combined_harm_score;
@@ -1050,6 +1092,12 @@ static float compute_action_entropy(const action_record_t* action) {
     // Normalize features to probability distribution
     float sum = 0.0F;
     for (uint32_t i = 0; i < action->num_features; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && action->num_features > 256) {
+            combinatorial_harm_heartbeat("combinatoria_loop",
+                             (float)(i + 1) / (float)action->num_features);
+        }
+
         sum += fabsf(action->features[i]);
     }
 
@@ -1058,6 +1106,12 @@ static float compute_action_entropy(const action_record_t* action) {
     // Compute Shannon entropy: H = -sum(p * log2(p))
     float entropy = 0.0F;
     for (uint32_t i = 0; i < action->num_features; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && action->num_features > 256) {
+            combinatorial_harm_heartbeat("combinatoria_loop",
+                             (float)(i + 1) / (float)action->num_features);
+        }
+
         float p = fabsf(action->features[i]) / sum;
         if (p > 1e-10F) {
             entropy -= p * log2f(p);
@@ -1131,12 +1185,24 @@ NIMCP_EXPORT bool combinatorial_fractal_analysis(
 
     // Analyze harm at each time scale
     for (uint32_t scale = 0; scale < COMBINATORIAL_FRACTAL_DEPTH; scale++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((scale & 0xFF) == 0 && COMBINATORIAL_FRACTAL_DEPTH > 256) {
+            combinatorial_harm_heartbeat("combinatoria_loop",
+                             (float)(scale + 1) / (float)COMBINATORIAL_FRACTAL_DEPTH);
+        }
+
         uint64_t scale_window_ms = (uint64_t)(scale_factors[scale] * 1000.0F);
         float scale_harm = 0.0F;
         uint32_t count_at_scale = 0;
 
         // Count harmful combinations at this scale
         for (uint32_t i = 0; i < detector->history.count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && detector->history.count > 256) {
+                combinatorial_harm_heartbeat("combinatoria_loop",
+                                 (float)(i + 1) / (float)detector->history.count);
+            }
+
             uint32_t index = (detector->history.head + detector->history.capacity - 1 - i)
                              % detector->history.capacity;
             action_record_t* historical = &detector->history.records[index];
@@ -1169,6 +1235,12 @@ NIMCP_EXPORT bool combinatorial_fractal_analysis(
     float variance_sum = 0.0F;
     float mean_harm = total_harm / COMBINATORIAL_FRACTAL_DEPTH;
     for (uint32_t i = 0; i < COMBINATORIAL_FRACTAL_DEPTH; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && COMBINATORIAL_FRACTAL_DEPTH > 256) {
+            combinatorial_harm_heartbeat("combinatoria_loop",
+                             (float)(i + 1) / (float)COMBINATORIAL_FRACTAL_DEPTH);
+        }
+
         float diff = analysis->harm_by_scale[i] - mean_harm;
         variance_sum += diff * diff;
     }
@@ -1274,12 +1346,24 @@ NIMCP_EXPORT bool combinatorial_quantum_search(
         // Oracle: mark harmful states (amplitude amplification)
         float harm_energy = 0.0F;
         for (uint32_t i = 0; i < detector->history.count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && detector->history.count > 256) {
+                combinatorial_harm_heartbeat("combinatoria_loop",
+                                 (float)(i + 1) / (float)detector->history.count);
+            }
+
             uint32_t index = (detector->history.head + detector->history.capacity - 1 - i)
                              % detector->history.capacity;
             action_record_t* historical = &detector->history.records[index];
 
             // Check if pattern matches
             for (uint32_t p = 0; p < detector->patterns.count; p++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((p & 0xFF) == 0 && detector->patterns.count > 256) {
+                    combinatorial_harm_heartbeat("combinatoria_loop",
+                                     (float)(p + 1) / (float)detector->patterns.count);
+                }
+
                 combination_pattern_t* pattern = &detector->patterns.patterns[p];
                 if (pattern_matches(pattern, historical, pending_action)) {
                     // Accumulate harm energy
@@ -1400,6 +1484,12 @@ NIMCP_EXPORT bool combinatorial_pink_noise_analysis(
     if (detector->pink_noise_enabled && detector->pink_monitor != NULL) {
         // Feed harm series to pink noise monitor for proper FFT-based analysis
         for (uint32_t i = 0; i < series_len; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && series_len > 256) {
+                combinatorial_harm_heartbeat("combinatoria_loop",
+                                 (float)(i + 1) / (float)series_len);
+            }
+
             pink_monitor_update(detector->pink_monitor, harm_series[i]);
         }
 
@@ -1421,6 +1511,12 @@ NIMCP_EXPORT bool combinatorial_pink_noise_analysis(
         // Use criticality analyzer for avalanche/anomaly detection
         if (detector->criticality != NULL) {
             for (uint32_t i = 0; i < series_len; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && series_len > 256) {
+                    combinatorial_harm_heartbeat("combinatoria_loop",
+                                     (float)(i + 1) / (float)series_len);
+                }
+
                 criticality_update(detector->criticality, harm_series[i]);
             }
 
@@ -1456,6 +1552,12 @@ NIMCP_EXPORT bool combinatorial_pink_noise_analysis(
         // Compute power at frequency k
         float power = 0.0F;
         for (uint32_t n = 0; n < series_len; n++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((n & 0xFF) == 0 && series_len > 256) {
+                combinatorial_harm_heartbeat("combinatoria_loop",
+                                 (float)(n + 1) / (float)series_len);
+            }
+
             float angle = 2.0F * (float)M_PI * (float)k * (float)n / (float)series_len;
             power += (harm_series[n] - mean_harm) * cosf(angle);
         }
@@ -1589,6 +1691,12 @@ NIMCP_EXPORT bool combinatorial_full_mathematical_analysis(
     float total_weight = 0.0F;
     float weighted_sum = 0.0F;
     for (int i = 0; i < n_scores; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n_scores > 256) {
+            combinatorial_harm_heartbeat("combinatoria_loop",
+                             (float)(i + 1) / (float)n_scores);
+        }
+
         weighted_sum += scores[i] * weights[i];
         total_weight += weights[i];
     }
@@ -1599,6 +1707,12 @@ NIMCP_EXPORT bool combinatorial_full_mathematical_analysis(
     // Confidence based on method agreement
     float variance = 0.0F;
     for (int i = 0; i < n_scores; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && n_scores > 256) {
+            combinatorial_harm_heartbeat("combinatoria_loop",
+                             (float)(i + 1) / (float)n_scores);
+        }
+
         float diff = scores[i] - analysis->unified_harm_score;
         variance += diff * diff;
     }
@@ -1696,6 +1810,12 @@ NIMCP_EXPORT bool combinatorial_lock_patterns_mprotect(
     // Add each locked pattern as a directive
     uint32_t directives_added = 0;
     for (uint32_t i = 0; i < detector->patterns.count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && detector->patterns.count > 256) {
+            combinatorial_harm_heartbeat("combinatoria_loop",
+                             (float)(i + 1) / (float)detector->patterns.count);
+        }
+
         combination_pattern_t* pattern = &detector->patterns.patterns[i];
 
         if (pattern->locked) {
@@ -1798,9 +1918,19 @@ NIMCP_EXPORT const nimcp_directive_system_t* combinatorial_get_directive_system(
  */
 int combinatorial_harm_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    combinatorial_harm_heartbeat("combinatoria_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Combinatorial_Harm_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                combinatorial_harm_heartbeat("combinatoria_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Combinatorial harm self-knowledge: %s", self->observations[i]);
         }
     }

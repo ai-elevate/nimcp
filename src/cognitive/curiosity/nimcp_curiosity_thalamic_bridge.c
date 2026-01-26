@@ -27,7 +27,7 @@ static nimcp_health_agent_t* g_curiosity_thalamic_bridge_health_agent = NULL;
  * @brief Set health agent for curiosity_thalamic_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void curiosity_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void curiosity_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_curiosity_thalamic_bridge_health_agent = agent;
 }
 
@@ -49,6 +49,10 @@ struct curiosity_thalamic_bridge {
 };
 
 curiosity_thalamic_config_t curiosity_thalamic_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_thalamic_bridge_heartbeat("curiosity_th_curiosity_thalamic_d", 0.0f);
+
+
     curiosity_thalamic_config_t cfg = {
         .enable_attention_gating = true,
         .enable_novelty_boost = true,
@@ -59,6 +63,10 @@ curiosity_thalamic_config_t curiosity_thalamic_default_config(void) {
 }
 
 curiosity_thalamic_bridge_t* curiosity_thalamic_bridge_create(void* curiosity, thalamic_router_t* router, const curiosity_thalamic_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_thalamic_bridge_heartbeat("curiosity_th_create", 0.0f);
+
+
     curiosity_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(curiosity_thalamic_bridge_t));
     if (!bridge) {
 
@@ -76,11 +84,19 @@ curiosity_thalamic_bridge_t* curiosity_thalamic_bridge_create(void* curiosity, t
 }
 
 void curiosity_thalamic_bridge_destroy(curiosity_thalamic_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_thalamic_bridge_heartbeat("curiosity_th_destroy", 0.0f);
+
+
     if (bridge) nimcp_free(bridge);
 }
 
 int curiosity_thalamic_bridge_reset(curiosity_thalamic_bridge_t* bridge) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_thalamic_bridge_heartbeat("curiosity_th_reset", 0.0f);
+
+
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return 0;
@@ -88,6 +104,10 @@ int curiosity_thalamic_bridge_reset(curiosity_thalamic_bridge_t* bridge) {
 
 int curiosity_thalamic_route_novelty(curiosity_thalamic_bridge_t* bridge, const curiosity_thalamic_signal_t* signal) {
     if (!bridge || !signal) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_thalamic_bridge_heartbeat("curiosity_th_curiosity_thalamic_r", 0.0f);
+
+
     if (bridge->config.enable_attention_gating && signal->novelty_value < bridge->config.min_novelty_threshold) {
         return 0;
     }
@@ -102,6 +122,10 @@ int curiosity_thalamic_route_novelty(curiosity_thalamic_bridge_t* bridge, const 
 
 int curiosity_thalamic_route_exploration(curiosity_thalamic_bridge_t* bridge, const void* target, float drive) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_thalamic_bridge_heartbeat("curiosity_th_curiosity_thalamic_r", 0.0f);
+
+
     if (drive >= bridge->config.exploration_threshold) {
         bridge->stats.explorations_initiated++;
     }
@@ -110,6 +134,10 @@ int curiosity_thalamic_route_exploration(curiosity_thalamic_bridge_t* bridge, co
 
 int curiosity_thalamic_set_attention(curiosity_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_thalamic_bridge_heartbeat("curiosity_th_curiosity_thalamic_s", 0.0f);
+
+
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
     return 0;
 }
@@ -117,12 +145,20 @@ int curiosity_thalamic_set_attention(curiosity_thalamic_bridge_t* bridge, float 
 int curiosity_thalamic_get_attention(const curiosity_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) return -1;
     *attention = bridge->attention_weight;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_thalamic_bridge_heartbeat("curiosity_th_curiosity_thalamic_g", 0.0f);
+
+
     return 0;
 }
 
 int curiosity_thalamic_bridge_get_stats(const curiosity_thalamic_bridge_t* bridge, curiosity_thalamic_stats_t* stats) {
     if (!bridge || !stats) return -1;
     *stats = bridge->stats;
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_thalamic_bridge_heartbeat("curiosity_th_get_stats", 0.0f);
+
+
     return 0;
 }
 
@@ -133,9 +169,19 @@ int curiosity_thalamic_bridge_get_stats(const curiosity_thalamic_bridge_t* bridg
 int curiosity_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    curiosity_thalamic_bridge_heartbeat("curiosity_th_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Curiosity_Thalamic_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                curiosity_thalamic_bridge_heartbeat("curiosity_th_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

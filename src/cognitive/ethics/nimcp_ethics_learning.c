@@ -39,7 +39,7 @@ static nimcp_health_agent_t* g_ethics_learning_health_agent = NULL;
  * @brief Set health agent for ethics_learning heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void ethics_learning_set_health_agent(nimcp_health_agent_t* agent) {
+void ethics_learning_set_health_agent(nimcp_health_agent_t* agent) {
     g_ethics_learning_health_agent = agent;
 }
 
@@ -67,6 +67,10 @@ bool ethics_validate_learning_inputs(ethics_engine_t engine, const action_contex
 {
     // Guard clause: Check engine
     if (!engine)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_learning_heartbeat("ethics_learn_ethics_validate_lear", 0.0f);
+
+
         {
 
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
@@ -124,6 +128,10 @@ void ethics_update_golden_rule_learning(ethics_engine_t engine, const action_con
 {
     // Guard clause: Validate inputs
     if (!engine || !action)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_learning_heartbeat("ethics_learn_ethics_update_golden", 0.0f);
+
+
         return;
 
     const char* label = (actual_impact < 0) ? "accept" : "reject";
@@ -148,6 +156,10 @@ void ethics_update_empathy_learning(ethics_engine_t engine, const action_context
 {
     // Guard clause: Validate inputs
     if (!engine || !action || !outcome)
+        /* Phase 8: Heartbeat at operation start */
+        ethics_learning_heartbeat("ethics_learn_ethics_update_empath", 0.0f);
+
+
         return;
 
     empathy_network_t empathy_net = ethics_engine_get_empathy_net(engine);
@@ -207,6 +219,10 @@ bool ethics_learn_from_outcome(ethics_engine_t engine, const action_context_t* a
     }
 
     // Calculate actual impact
+    /* Phase 8: Heartbeat at operation start */
+    ethics_learning_heartbeat("ethics_learn_ethics_learn_from_ou", 0.0f);
+
+
     float actual_impact = outcome->actual_harm - outcome->actual_benefit;
 
     // Update both networks
@@ -227,9 +243,19 @@ bool ethics_learn_from_outcome(ethics_engine_t engine, const action_context_t* a
  */
 int ethics_learning_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    ethics_learning_heartbeat("ethics_learn_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Ethics_Learning_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                ethics_learning_heartbeat("ethics_learn_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Ethics learning self-knowledge: %s", self->observations[i]);
         }
     }

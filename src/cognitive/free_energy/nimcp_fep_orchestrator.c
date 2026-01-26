@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_fep_orchestrator_health_agent = NULL;
  * @brief Set health agent for fep_orchestrator heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void fep_orchestrator_set_health_agent(nimcp_health_agent_t* agent) {
+void fep_orchestrator_set_health_agent(nimcp_health_agent_t* agent) {
     g_fep_orchestrator_health_agent = agent;
 }
 
@@ -90,6 +90,12 @@ static fep_bridge_entry_t* find_bridge_by_id(
 
     }
     for (uint32_t i = 0; i < orchestrator->bridge_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && orchestrator->bridge_count > 256) {
+            fep_orchestrator_heartbeat("fep_orchestr_loop",
+                             (float)(i + 1) / (float)orchestrator->bridge_count);
+        }
+
         if (orchestrator->bridges[i].bridge_id == bridge_id) {
             return &orchestrator->bridges[i];
         }
@@ -151,6 +157,10 @@ static int update_single_bridge(
  * ============================================================================ */
 
 int fep_orchestrator_default_config(fep_orchestrator_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     
     memset(config, 0, sizeof(fep_orchestrator_config_t));
@@ -205,6 +215,10 @@ int fep_orchestrator_default_config(fep_orchestrator_config_t* config) {
 }
 
 fep_orchestrator_t* fep_orchestrator_create(const fep_orchestrator_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_create", 0.0f);
+
+
     fep_orchestrator_t* orchestrator = (fep_orchestrator_t*)nimcp_calloc(1, sizeof(fep_orchestrator_t));
     NIMCP_API_CHECK_ALLOC(orchestrator, "Failed to allocate FEP orchestrator");
     
@@ -254,6 +268,10 @@ void fep_orchestrator_destroy(fep_orchestrator_t* orchestrator) {
     if (!orchestrator) return;
     
     /* Stop if running */
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_destroy", 0.0f);
+
+
     if (orchestrator->state == FEP_ORCHESTRATOR_RUNNING) {
         fep_orchestrator_stop(orchestrator);
     }
@@ -268,6 +286,12 @@ void fep_orchestrator_destroy(fep_orchestrator_t* orchestrator) {
     
     /* Destroy bridges if destroy_fn provided */
     for (uint32_t i = 0; i < orchestrator->bridge_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && orchestrator->bridge_count > 256) {
+            fep_orchestrator_heartbeat("fep_orchestr_loop",
+                             (float)(i + 1) / (float)orchestrator->bridge_count);
+        }
+
         fep_bridge_entry_t* entry = &orchestrator->bridges[i];
         if (entry->destroy_fn && entry->handle) {
             entry->destroy_fn(entry->handle);
@@ -291,6 +315,10 @@ void fep_orchestrator_destroy(fep_orchestrator_t* orchestrator) {
 }
 
 int fep_orchestrator_start(fep_orchestrator_t* orchestrator) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_start", 0.0f);
+
+
     NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
@@ -306,6 +334,12 @@ int fep_orchestrator_start(fep_orchestrator_t* orchestrator) {
     
     /* Initialize category last update times */
     for (int i = 0; i < FEP_BRIDGE_CATEGORY_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && FEP_BRIDGE_CATEGORY_COUNT > 256) {
+            fep_orchestrator_heartbeat("fep_orchestr_loop",
+                             (float)(i + 1) / (float)FEP_BRIDGE_CATEGORY_COUNT);
+        }
+
         orchestrator->config.categories[i].last_update_time = orchestrator->start_time;
     }
     
@@ -320,6 +354,10 @@ int fep_orchestrator_start(fep_orchestrator_t* orchestrator) {
 }
 
 int fep_orchestrator_stop(fep_orchestrator_t* orchestrator) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_stop", 0.0f);
+
+
     NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
@@ -341,6 +379,10 @@ int fep_orchestrator_stop(fep_orchestrator_t* orchestrator) {
 }
 
 int fep_orchestrator_pause(fep_orchestrator_t* orchestrator) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_pause", 0.0f);
+
+
     NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
@@ -361,6 +403,10 @@ int fep_orchestrator_pause(fep_orchestrator_t* orchestrator) {
 }
 
 int fep_orchestrator_resume(fep_orchestrator_t* orchestrator) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_resume", 0.0f);
+
+
     NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
@@ -373,6 +419,12 @@ int fep_orchestrator_resume(fep_orchestrator_t* orchestrator) {
     /* Reset last update times to prevent immediate burst of updates */
     uint64_t now = nimcp_platform_time_monotonic_ms();
     for (int i = 0; i < FEP_BRIDGE_CATEGORY_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && FEP_BRIDGE_CATEGORY_COUNT > 256) {
+            fep_orchestrator_heartbeat("fep_orchestr_loop",
+                             (float)(i + 1) / (float)FEP_BRIDGE_CATEGORY_COUNT);
+        }
+
         orchestrator->config.categories[i].last_update_time = now;
     }
     
@@ -402,6 +454,10 @@ int fep_orchestrator_register_bridge(
     if (!orchestrator || !name || !handle || !update_fn) {
         return NIMCP_ERROR_NULL_POINTER;
     }
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_register_bridge", 0.0f);
+
+
     if (category >= FEP_BRIDGE_CATEGORY_COUNT) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -448,6 +504,10 @@ int fep_orchestrator_unregister_bridge(
     fep_orchestrator_t* orchestrator,
     uint32_t bridge_id
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_unregister_bridge", 0.0f);
+
+
     NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
@@ -455,6 +515,12 @@ int fep_orchestrator_unregister_bridge(
     /* Find bridge */
     int found_idx = -1;
     for (uint32_t i = 0; i < orchestrator->bridge_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && orchestrator->bridge_count > 256) {
+            fep_orchestrator_heartbeat("fep_orchestr_loop",
+                             (float)(i + 1) / (float)orchestrator->bridge_count);
+        }
+
         if (orchestrator->bridges[i].bridge_id == bridge_id) {
             found_idx = (int)i;
             break;
@@ -495,6 +561,10 @@ int fep_orchestrator_set_bridge_enabled(
     uint32_t bridge_id,
     bool enabled
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_set_bridge_enabled", 0.0f);
+
+
     NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
@@ -530,7 +600,17 @@ const fep_bridge_entry_t* fep_orchestrator_get_bridge(
 
     }
     
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_get_bridge", 0.0f);
+
+
     for (uint32_t i = 0; i < orchestrator->bridge_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && orchestrator->bridge_count > 256) {
+            fep_orchestrator_heartbeat("fep_orchestr_loop",
+                             (float)(i + 1) / (float)orchestrator->bridge_count);
+        }
+
         if (orchestrator->bridges[i].bridge_id == bridge_id) {
             return &orchestrator->bridges[i];
         }
@@ -546,6 +626,10 @@ uint32_t fep_orchestrator_get_bridges_by_category(
 ) {
     if (!orchestrator || !bridges || category >= FEP_BRIDGE_CATEGORY_COUNT) return 0;
     
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_get_bridges_by_categ", 0.0f);
+
+
     uint32_t count = 0;
     for (uint32_t i = 0; i < orchestrator->bridge_count && count < max_bridges; i++) {
         if (orchestrator->bridges[i].category == category) {
@@ -563,6 +647,10 @@ int fep_orchestrator_update(
     fep_orchestrator_t* orchestrator,
     uint64_t current_time_ms
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
@@ -583,12 +671,24 @@ int fep_orchestrator_update(
     
     /* Update each category that is due */
     for (int cat = 0; cat < FEP_BRIDGE_CATEGORY_COUNT; cat++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((cat & 0xFF) == 0 && FEP_BRIDGE_CATEGORY_COUNT > 256) {
+            fep_orchestrator_heartbeat("fep_orchestr_loop",
+                             (float)(cat + 1) / (float)FEP_BRIDGE_CATEGORY_COUNT);
+        }
+
         if (!category_needs_update(orchestrator, (fep_bridge_category_t)cat, current_time_ms)) {
             continue;
         }
         
         /* Update all bridges in this category */
         for (uint32_t i = 0; i < orchestrator->bridge_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && orchestrator->bridge_count > 256) {
+                fep_orchestrator_heartbeat("fep_orchestr_loop",
+                                 (float)(i + 1) / (float)orchestrator->bridge_count);
+            }
+
             fep_bridge_entry_t* entry = &orchestrator->bridges[i];
             if (entry->category != cat) continue;
             
@@ -635,6 +735,10 @@ int fep_orchestrator_update_category(
     fep_bridge_category_t category,
     uint64_t current_time_ms
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_update_category", 0.0f);
+
+
     NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
     NIMCP_CHECK_THROW(category < FEP_BRIDGE_CATEGORY_COUNT, NIMCP_ERROR_INVALID_PARAM, "invalid bridge category");
     
@@ -647,6 +751,12 @@ int fep_orchestrator_update_category(
     
     int updated = 0;
     for (uint32_t i = 0; i < orchestrator->bridge_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && orchestrator->bridge_count > 256) {
+            fep_orchestrator_heartbeat("fep_orchestr_loop",
+                             (float)(i + 1) / (float)orchestrator->bridge_count);
+        }
+
         fep_bridge_entry_t* entry = &orchestrator->bridges[i];
         if (entry->category != category) continue;
         
@@ -668,6 +778,10 @@ int fep_orchestrator_update_bridge(
     fep_orchestrator_t* orchestrator,
     uint32_t bridge_id
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_update_bridge", 0.0f);
+
+
     NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
@@ -691,6 +805,10 @@ int fep_orchestrator_update_bridge(
 }
 
 int fep_orchestrator_force_update_all(fep_orchestrator_t* orchestrator) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_force_update_all", 0.0f);
+
+
     NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
@@ -706,6 +824,12 @@ int fep_orchestrator_force_update_all(fep_orchestrator_t* orchestrator) {
     int updated = 0;
 
     for (uint32_t i = 0; i < orchestrator->bridge_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && orchestrator->bridge_count > 256) {
+            fep_orchestrator_heartbeat("fep_orchestr_loop",
+                             (float)(i + 1) / (float)orchestrator->bridge_count);
+        }
+
         fep_bridge_entry_t* entry = &orchestrator->bridges[i];
         int result = update_single_bridge(orchestrator, entry, current_time_ms);
         if (result > 0) {
@@ -717,6 +841,12 @@ int fep_orchestrator_force_update_all(fep_orchestrator_t* orchestrator) {
 
     /* Reset all category timers */
     for (int i = 0; i < FEP_BRIDGE_CATEGORY_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && FEP_BRIDGE_CATEGORY_COUNT > 256) {
+            fep_orchestrator_heartbeat("fep_orchestr_loop",
+                             (float)(i + 1) / (float)FEP_BRIDGE_CATEGORY_COUNT);
+        }
+
         orchestrator->config.categories[i].last_update_time = current_time_ms;
     }
 
@@ -743,6 +873,10 @@ int fep_orchestrator_set_update_interval(
     fep_bridge_category_t category,
     uint64_t interval_ms
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_set_update_interval", 0.0f);
+
+
     NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
     NIMCP_CHECK_THROW(category < FEP_BRIDGE_CATEGORY_COUNT, NIMCP_ERROR_INVALID_PARAM, "invalid bridge category");
     
@@ -758,6 +892,10 @@ int fep_orchestrator_set_category_enabled(
     fep_bridge_category_t category,
     bool enabled
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_set_category_enabled", 0.0f);
+
+
     NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
     NIMCP_CHECK_THROW(category < FEP_BRIDGE_CATEGORY_COUNT, NIMCP_ERROR_INVALID_PARAM, "invalid bridge category");
     
@@ -773,6 +911,10 @@ int fep_orchestrator_get_category_config(
     fep_bridge_category_t category,
     fep_category_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_get_category_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(orchestrator && config, NIMCP_ERROR_NULL_POINTER, "orchestrator or config is NULL");
     NIMCP_CHECK_THROW(category < FEP_BRIDGE_CATEGORY_COUNT, NIMCP_ERROR_INVALID_PARAM, "invalid bridge category");
     
@@ -788,6 +930,10 @@ int fep_orchestrator_connect_brain_immune(
     fep_orchestrator_t* orchestrator,
     brain_immune_system_t* immune
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_connect_brain_immune", 0.0f);
+
+
     NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
@@ -804,6 +950,10 @@ int fep_orchestrator_connect_brain_immune(
 }
 
 int fep_orchestrator_disconnect_brain_immune(fep_orchestrator_t* orchestrator) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_disconnect_brain_imm", 0.0f);
+
+
     NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
@@ -820,6 +970,10 @@ int fep_orchestrator_disconnect_brain_immune(fep_orchestrator_t* orchestrator) {
 }
 
 int fep_orchestrator_connect_bio_async(fep_orchestrator_t* orchestrator) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_connect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
     
     if (!bio_router_is_initialized()) {
@@ -856,6 +1010,10 @@ int fep_orchestrator_connect_bio_async(fep_orchestrator_t* orchestrator) {
 }
 
 int fep_orchestrator_disconnect_bio_async(fep_orchestrator_t* orchestrator) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_disconnect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
@@ -882,6 +1040,10 @@ int fep_orchestrator_connect_internal_kg(
     fep_orchestrator_t* orchestrator,
     brain_t brain)
 {
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_connect_internal_kg", 0.0f);
+
+
     NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
@@ -913,6 +1075,10 @@ int fep_orchestrator_connect_internal_kg(
 }
 
 int fep_orchestrator_disconnect_internal_kg(fep_orchestrator_t* orchestrator) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_disconnect_internal_", 0.0f);
+
+
     NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
@@ -942,6 +1108,10 @@ uint32_t fep_orchestrator_get_bridges_for_module(
     }
 
     /* If KG not connected, fall back to searching all bridges by name */
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_get_bridges_for_modu", 0.0f);
+
+
     fep_orchestrator_t* mutable_orch = (fep_orchestrator_t*)orchestrator;
     nimcp_platform_mutex_lock(mutable_orch->mutex);
 
@@ -992,6 +1162,10 @@ int fep_orchestrator_get_topology_summary(
         return -1;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_get_topology_summary", 0.0f);
+
+
     fep_orchestrator_t* mutable_orch = (fep_orchestrator_t*)orchestrator;
     nimcp_platform_mutex_lock(mutable_orch->mutex);
 
@@ -1036,6 +1210,10 @@ int fep_orchestrator_get_stats(
     const fep_orchestrator_t* orchestrator,
     fep_orchestrator_stats_t* stats
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(orchestrator && stats, NIMCP_ERROR_NULL_POINTER, "orchestrator or stats is NULL");
 
     /* Thread-safe copy under lock for consistency */
@@ -1050,6 +1228,10 @@ int fep_orchestrator_get_stats(
 void fep_orchestrator_reset_stats(fep_orchestrator_t* orchestrator) {
     if (!orchestrator) return;
     
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_reset_stats", 0.0f);
+
+
     nimcp_platform_mutex_lock(orchestrator->mutex);
     
     /* Preserve bridge counts */
@@ -1057,6 +1239,12 @@ void fep_orchestrator_reset_stats(fep_orchestrator_t* orchestrator) {
     uint32_t active = orchestrator->stats.active_bridges;
     uint32_t cat_counts[FEP_BRIDGE_CATEGORY_COUNT];
     for (int i = 0; i < FEP_BRIDGE_CATEGORY_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && FEP_BRIDGE_CATEGORY_COUNT > 256) {
+            fep_orchestrator_heartbeat("fep_orchestr_loop",
+                             (float)(i + 1) / (float)FEP_BRIDGE_CATEGORY_COUNT);
+        }
+
         cat_counts[i] = orchestrator->stats.categories[i].bridge_count;
     }
     
@@ -1065,6 +1253,12 @@ void fep_orchestrator_reset_stats(fep_orchestrator_t* orchestrator) {
     orchestrator->stats.total_bridges = total;
     orchestrator->stats.active_bridges = active;
     for (int i = 0; i < FEP_BRIDGE_CATEGORY_COUNT; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && FEP_BRIDGE_CATEGORY_COUNT > 256) {
+            fep_orchestrator_heartbeat("fep_orchestr_loop",
+                             (float)(i + 1) / (float)FEP_BRIDGE_CATEGORY_COUNT);
+        }
+
         orchestrator->stats.categories[i].bridge_count = cat_counts[i];
     }
     
@@ -1074,6 +1268,10 @@ void fep_orchestrator_reset_stats(fep_orchestrator_t* orchestrator) {
 float fep_orchestrator_get_load(const fep_orchestrator_t* orchestrator) {
     if (!orchestrator) return 0.0f;
     
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_get_load", 0.0f);
+
+
     if (orchestrator->config.update_time_budget_ms <= 0) {
         return 0.0f;  /* No budget = no load metric */
     }
@@ -1086,6 +1284,10 @@ fep_orchestrator_state_t fep_orchestrator_get_state(
     const fep_orchestrator_t* orchestrator
 ) {
     if (!orchestrator) return FEP_ORCHESTRATOR_STOPPED;
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_get_state", 0.0f);
+
+
     return orchestrator->state;
 }
 
@@ -1110,9 +1312,19 @@ const char* fep_orchestrator_state_to_string(fep_orchestrator_state_t state) {
 int fep_orchestrator_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_orchestrator_heartbeat("fep_orchestr_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "FEP_Orchestrator");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                fep_orchestrator_heartbeat("fep_orchestr_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("FEP Orchestrator self-knowledge: %s", self->observations[i]);
         }
     }

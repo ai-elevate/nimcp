@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_memory_fep_bridge_health_agent = NULL;
  * @brief Set health agent for memory_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void memory_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void memory_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_memory_fep_bridge_health_agent = agent;
 }
 
@@ -45,6 +45,10 @@ static inline void memory_fep_bridge_heartbeat(const char* operation, float prog
 
 
 int memory_fep_bridge_default_config(memory_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    memory_fep_bridge_heartbeat("memory_fep_b_default_config", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->wm_capacity_factor = 1.0f;
     config->consolidation_threshold = MEMORY_FEP_CONSOLIDATION_THRESHOLD;
@@ -62,6 +66,10 @@ int memory_fep_bridge_default_config(memory_fep_config_t* config) {
 }
 
 memory_fep_bridge_t* memory_fep_bridge_create(const memory_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    memory_fep_bridge_heartbeat("memory_fep_b_create", 0.0f);
+
+
     memory_fep_bridge_t* bridge = nimcp_malloc(sizeof(memory_fep_bridge_t));
     if (!bridge) {
 
@@ -80,6 +88,10 @@ memory_fep_bridge_t* memory_fep_bridge_create(const memory_fep_config_t* config)
 
 void memory_fep_bridge_destroy(memory_fep_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    memory_fep_bridge_heartbeat("memory_fep_b_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) memory_fep_bridge_disconnect_bio_async(bridge);
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
@@ -88,6 +100,10 @@ void memory_fep_bridge_destroy(memory_fep_bridge_t* bridge) {
 }
 
 int memory_fep_bridge_connect_fep(memory_fep_bridge_t* bridge, fep_system_t* fep) {
+    /* Phase 8: Heartbeat at operation start */
+    memory_fep_bridge_heartbeat("memory_fep_b_connect_fep", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -96,6 +112,10 @@ int memory_fep_bridge_connect_fep(memory_fep_bridge_t* bridge, fep_system_t* fep
 }
 
 int memory_fep_bridge_connect_memory(memory_fep_bridge_t* bridge, semantic_memory_system_t* memory) {
+    /* Phase 8: Heartbeat at operation start */
+    memory_fep_bridge_heartbeat("memory_fep_b_connect_memory", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && memory, NIMCP_ERROR_NULL_POINTER, "bridge or memory is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->memory_system = memory;
@@ -104,6 +124,10 @@ int memory_fep_bridge_connect_memory(memory_fep_bridge_t* bridge, semantic_memor
 }
 
 int memory_fep_bridge_disconnect(memory_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    memory_fep_bridge_heartbeat("memory_fep_b_disconnect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -113,6 +137,10 @@ int memory_fep_bridge_disconnect(memory_fep_bridge_t* bridge) {
 }
 
 int memory_fep_maintain_wm_beliefs(memory_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    memory_fep_bridge_heartbeat("memory_fep_b_memory_fep_maintain_", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_wm_belief_buffer) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -123,6 +151,10 @@ int memory_fep_maintain_wm_beliefs(memory_fep_bridge_t* bridge) {
 }
 
 int memory_fep_trigger_consolidation(memory_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    memory_fep_bridge_heartbeat("memory_fep_b_memory_fep_trigger_c", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_consolidation_replay) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -136,6 +168,10 @@ int memory_fep_trigger_consolidation(memory_fep_bridge_t* bridge) {
 }
 
 int memory_fep_boost_retrieval_precision(memory_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    memory_fep_bridge_heartbeat("memory_fep_b_memory_fep_boost_ret", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_retrieval_active_inference) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -146,6 +182,10 @@ int memory_fep_boost_retrieval_precision(memory_fep_bridge_t* bridge) {
 }
 
 int memory_fep_apply_belief_priors(memory_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    memory_fep_bridge_heartbeat("memory_fep_b_memory_fep_apply_bel", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_belief_priors) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -157,6 +197,10 @@ int memory_fep_apply_belief_priors(memory_fep_bridge_t* bridge) {
 }
 
 int memory_fep_apply_trace_persistence(memory_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    memory_fep_bridge_heartbeat("memory_fep_b_memory_fep_apply_tra", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_trace_persistence) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
@@ -166,6 +210,10 @@ int memory_fep_apply_trace_persistence(memory_fep_bridge_t* bridge) {
 }
 
 int memory_fep_bridge_update(memory_fep_bridge_t* bridge, uint64_t delta_ms) {
+    /* Phase 8: Heartbeat at operation start */
+    memory_fep_bridge_heartbeat("memory_fep_b_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     memory_fep_maintain_wm_beliefs(bridge);
     memory_fep_trigger_consolidation(bridge);
@@ -176,6 +224,10 @@ int memory_fep_bridge_update(memory_fep_bridge_t* bridge, uint64_t delta_ms) {
 }
 
 int memory_fep_bridge_get_state(const memory_fep_bridge_t* bridge, memory_fep_state_t* state) {
+    /* Phase 8: Heartbeat at operation start */
+    memory_fep_bridge_heartbeat("memory_fep_b_get_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -184,6 +236,10 @@ int memory_fep_bridge_get_state(const memory_fep_bridge_t* bridge, memory_fep_st
 }
 
 int memory_fep_bridge_get_stats(const memory_fep_bridge_t* bridge, memory_fep_stats_t* stats) {
+    /* Phase 8: Heartbeat at operation start */
+    memory_fep_bridge_heartbeat("memory_fep_b_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -192,6 +248,10 @@ int memory_fep_bridge_get_stats(const memory_fep_bridge_t* bridge, memory_fep_st
 }
 
 int memory_fep_bridge_connect_bio_async(memory_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    memory_fep_bridge_heartbeat("memory_fep_b_connect_bio_async", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
@@ -207,6 +267,10 @@ int memory_fep_bridge_connect_bio_async(memory_fep_bridge_t* bridge) {
 
 int memory_fep_bridge_disconnect_bio_async(memory_fep_bridge_t* bridge) {
     if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    memory_fep_bridge_heartbeat("memory_fep_b_disconnect_bio_async", 0.0f);
+
+
     if (bridge->base.bio_ctx) bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_ctx = NULL;
     bridge->base.bio_async_enabled = false;
@@ -214,6 +278,10 @@ int memory_fep_bridge_disconnect_bio_async(memory_fep_bridge_t* bridge) {
 }
 
 bool memory_fep_bridge_is_bio_async_connected(const memory_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    memory_fep_bridge_heartbeat("memory_fep_b_is_bio_async_connect", 0.0f);
+
+
     return bridge ? bridge->base.bio_async_enabled : false;
 }
 
@@ -230,9 +298,19 @@ bool memory_fep_bridge_is_bio_async_connected(const memory_fep_bridge_t* bridge)
 int memory_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    memory_fep_bridge_heartbeat("memory_fep_b_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Memory_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                memory_fep_bridge_heartbeat("memory_fep_b_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             LOG_DEBUG("Memory FEP bridge self-knowledge: %s", self->observations[i]);
         }
     }

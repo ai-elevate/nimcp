@@ -33,7 +33,7 @@ static nimcp_health_agent_t* g_surface_immune_bridge_health_agent = NULL;
  * @brief Set health agent for surface_immune_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void surface_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void surface_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_surface_immune_bridge_health_agent = agent;
 }
 
@@ -89,6 +89,10 @@ int surface_immune_default_config(surface_immune_config_t* config) {
 
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    surface_immune_bridge_heartbeat("surface_immu_surface_immune_defau", 0.0f);
+
+
     memset(config, 0, sizeof(*config));
 
     /* Detection thresholds */
@@ -122,6 +126,10 @@ int surface_immune_default_config(surface_immune_config_t* config) {
 surface_immune_bridge_t* surface_immune_bridge_create(
     const surface_immune_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    surface_immune_bridge_heartbeat("surface_immu_create", 0.0f);
+
+
     BRIDGE_CREATE_BEGIN(surface_immune_bridge_t, bridge,
                         BIO_MODULE_SURFACE_IMMUNE, MODULE_NAME);
 
@@ -173,6 +181,10 @@ void surface_immune_bridge_destroy(surface_immune_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Free antigens */
+    /* Phase 8: Heartbeat at operation start */
+    surface_immune_bridge_heartbeat("surface_immu_destroy", 0.0f);
+
+
     if (bridge->active_antigens) {
         nimcp_free(bridge->active_antigens);
     }
@@ -186,6 +198,10 @@ void surface_immune_bridge_destroy(surface_immune_bridge_t* bridge) {
 }
 
 int surface_immune_bridge_reset(surface_immune_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    surface_immune_bridge_heartbeat("surface_immu_reset", 0.0f);
+
+
     BRIDGE_NULL_CHECK(bridge);
 
     BRIDGE_LOCK(bridge);
@@ -221,6 +237,10 @@ int surface_immune_bridge_connect_geometry(
     surface_immune_bridge_t* bridge,
     void* ctx
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    surface_immune_bridge_heartbeat("surface_immu_connect_geometry", 0.0f);
+
+
     BRIDGE_NULL_CHECK(bridge);
     BRIDGE_NULL_CHECK(ctx);
 
@@ -233,6 +253,10 @@ int surface_immune_bridge_connect_immune(
     surface_immune_bridge_t* bridge,
     void* immune
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    surface_immune_bridge_heartbeat("surface_immu_connect_immune", 0.0f);
+
+
     BRIDGE_NULL_CHECK(bridge);
 
     /* Note: bridge_base_connect_b handles its own locking */
@@ -241,6 +265,10 @@ int surface_immune_bridge_connect_immune(
 }
 
 bool surface_immune_bridge_is_connected(const surface_immune_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    surface_immune_bridge_heartbeat("surface_immu_is_connected", 0.0f);
+
+
     BRIDGE_NULL_CHECK_BOOL(bridge);
     return bridge_base_is_connected(&bridge->base);
 }
@@ -299,6 +327,12 @@ static surface_antigen_t* find_antigen(
     uint32_t antigen_id
 ) {
     for (uint32_t i = 0; i < bridge->max_antigens; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_antigens > 256) {
+            surface_immune_bridge_heartbeat("surface_immu_loop",
+                             (float)(i + 1) / (float)bridge->max_antigens);
+        }
+
         if (bridge->active_antigens[i].id == antigen_id &&
             bridge->active_antigens[i].active) {
             return &bridge->active_antigens[i];
@@ -313,6 +347,12 @@ static surface_antigen_t* find_similar_antigen(
     uint32_t branch_point_id
 ) {
     for (uint32_t i = 0; i < bridge->max_antigens; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_antigens > 256) {
+            surface_immune_bridge_heartbeat("surface_immu_loop",
+                             (float)(i + 1) / (float)bridge->max_antigens);
+        }
+
         surface_antigen_t* ag = &bridge->active_antigens[i];
         if (ag->active && ag->type == type &&
             ag->branch_point_id == branch_point_id) {
@@ -326,6 +366,12 @@ static surface_antigen_t* find_empty_antigen_slot(
     surface_immune_bridge_t* bridge
 ) {
     for (uint32_t i = 0; i < bridge->max_antigens; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_antigens > 256) {
+            surface_immune_bridge_heartbeat("surface_immu_loop",
+                             (float)(i + 1) / (float)bridge->max_antigens);
+        }
+
         if (!bridge->active_antigens[i].active) {
             return &bridge->active_antigens[i];
         }
@@ -338,6 +384,12 @@ static surface_antibody_t* find_antibody(
     uint32_t antibody_id
 ) {
     for (uint32_t i = 0; i < bridge->max_antibodies; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_antibodies > 256) {
+            surface_immune_bridge_heartbeat("surface_immu_loop",
+                             (float)(i + 1) / (float)bridge->max_antibodies);
+        }
+
         if (bridge->antibodies[i].id == antibody_id &&
             bridge->antibodies[i].active) {
             return &bridge->antibodies[i];
@@ -351,6 +403,12 @@ static surface_antibody_t* find_antibody_for_type(
     surface_antigen_type_t type
 ) {
     for (uint32_t i = 0; i < bridge->max_antibodies; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_antibodies > 256) {
+            surface_immune_bridge_heartbeat("surface_immu_loop",
+                             (float)(i + 1) / (float)bridge->max_antibodies);
+        }
+
         if (bridge->antibodies[i].active &&
             bridge->antibodies[i].target_type == type) {
             return &bridge->antibodies[i];
@@ -369,6 +427,10 @@ int surface_immune_validate_geometry(
     bool* is_valid,
     surface_antigen_type_t* violation_type
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    surface_immune_bridge_heartbeat("surface_immu_surface_immune_valid", 0.0f);
+
+
     BRIDGE_NULL_CHECK(bridge);
     BRIDGE_NULL_CHECK(params);
     BRIDGE_NULL_CHECK(is_valid);
@@ -419,6 +481,10 @@ int surface_immune_validate_branch(
     bool* is_valid,
     uint32_t* antigen_id
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    surface_immune_bridge_heartbeat("surface_immu_surface_immune_valid", 0.0f);
+
+
     BRIDGE_NULL_CHECK(bridge);
     BRIDGE_NULL_CHECK(branch);
     BRIDGE_NULL_CHECK(is_valid);
@@ -514,6 +580,10 @@ int surface_immune_present_anomaly(
     float actual,
     uint32_t* antigen_id
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    surface_immune_bridge_heartbeat("surface_immu_surface_immune_prese", 0.0f);
+
+
     BRIDGE_NULL_CHECK(bridge);
 
     if (antigen_id) *antigen_id = 0;
@@ -589,6 +659,10 @@ int surface_immune_acknowledge_antigen(
     surface_immune_bridge_t* bridge,
     uint32_t antigen_id
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    surface_immune_bridge_heartbeat("surface_immu_surface_immune_ackno", 0.0f);
+
+
     BRIDGE_NULL_CHECK(bridge);
 
     BRIDGE_LOCK(bridge);
@@ -606,6 +680,10 @@ int surface_immune_resolve_antigen(
     surface_immune_bridge_t* bridge,
     uint32_t antigen_id
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    surface_immune_bridge_heartbeat("surface_immu_surface_immune_resol", 0.0f);
+
+
     BRIDGE_NULL_CHECK(bridge);
 
     BRIDGE_LOCK(bridge);
@@ -629,6 +707,10 @@ int surface_immune_get_active_antigens(
     uint32_t max_antigens,
     uint32_t* num_antigens
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    surface_immune_bridge_heartbeat("surface_immu_surface_immune_get_a", 0.0f);
+
+
     BRIDGE_NULL_CHECK(bridge);
     BRIDGE_NULL_CHECK(antigens);
     BRIDGE_NULL_CHECK(num_antigens);
@@ -670,6 +752,12 @@ static int produce_antibody_unlocked(
     /* Find empty slot */
     surface_antibody_t* ab = NULL;
     for (uint32_t i = 0; i < bridge->max_antibodies; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->max_antibodies > 256) {
+            surface_immune_bridge_heartbeat("surface_immu_loop",
+                             (float)(i + 1) / (float)bridge->max_antibodies);
+        }
+
         if (!bridge->antibodies[i].active) {
             ab = &bridge->antibodies[i];
             break;
@@ -703,6 +791,10 @@ int surface_immune_produce_antibody(
     surface_antigen_type_t target_type,
     uint32_t* antibody_id
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    surface_immune_bridge_heartbeat("surface_immu_surface_immune_produ", 0.0f);
+
+
     BRIDGE_NULL_CHECK(bridge);
 
     BRIDGE_LOCK(bridge);
@@ -717,6 +809,10 @@ int surface_immune_apply_antibody(
     surface_geometry_params_t* params,
     bool* success
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    surface_immune_bridge_heartbeat("surface_immu_surface_immune_apply", 0.0f);
+
+
     BRIDGE_NULL_CHECK(bridge);
     BRIDGE_NULL_CHECK(params);
     BRIDGE_NULL_CHECK(success);
@@ -817,6 +913,10 @@ int surface_immune_release_cytokine(
     uint32_t antigen_id,
     const char* message
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    surface_immune_bridge_heartbeat("surface_immu_surface_immune_relea", 0.0f);
+
+
     BRIDGE_NULL_CHECK(bridge);
 
     BRIDGE_LOCK(bridge);
@@ -853,6 +953,10 @@ int surface_immune_activate_b_cell(
     surface_immune_bridge_t* bridge,
     uint32_t antigen_id
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    surface_immune_bridge_heartbeat("surface_immu_surface_immune_activ", 0.0f);
+
+
     BRIDGE_NULL_CHECK(bridge);
 
     BRIDGE_LOCK(bridge);
@@ -869,6 +973,10 @@ int surface_immune_get_stats(
     const surface_immune_bridge_t* bridge,
     surface_immune_stats_t* stats
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    surface_immune_bridge_heartbeat("surface_immu_surface_immune_get_s", 0.0f);
+
+
     BRIDGE_NULL_CHECK(bridge);
     BRIDGE_NULL_CHECK(stats);
 
@@ -877,6 +985,10 @@ int surface_immune_get_stats(
 }
 
 int surface_immune_reset_stats(surface_immune_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    surface_immune_bridge_heartbeat("surface_immu_surface_immune_reset", 0.0f);
+
+
     BRIDGE_NULL_CHECK(bridge);
 
     BRIDGE_LOCK(bridge);

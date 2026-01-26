@@ -41,7 +41,7 @@ static nimcp_health_agent_t* g_gt_global_workspace_health_agent = NULL;
  * @brief Set health agent for gt_global_workspace heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void gt_global_workspace_set_health_agent(nimcp_health_agent_t* agent) {
+void gt_global_workspace_set_health_agent(nimcp_health_agent_t* agent) {
     g_gt_global_workspace_health_agent = agent;
 }
 
@@ -114,6 +114,12 @@ static int find_module_state(
     cognitive_module_t module
 ) {
     for (uint32_t i = 0; i < ctx->num_modules; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->num_modules > 256) {
+            gt_global_workspace_heartbeat("gt_global_wo_loop",
+                             (float)(i + 1) / (float)ctx->num_modules);
+        }
+
         if (ctx->module_states[i].module == module) {
             return (int)i;
         }
@@ -168,6 +174,10 @@ static void update_winner_state(
 //=============================================================================
 
 gt_gw_config_t gt_gw_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_global_workspace_heartbeat("gt_global_wo_gt_gw_default_config", 0.0f);
+
+
     gt_gw_config_t config = {
         .strategy = GT_GW_STRATEGY_SECOND_PRICE,
         .reserve_price = 0.1f,
@@ -190,6 +200,10 @@ gt_gw_auction_ctx_t gt_gw_create(
 
         return NULL;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    gt_global_workspace_heartbeat("gt_global_wo_gt_gw_create", 0.0f);
+
 
     gt_gw_auction_ctx_t ctx = nimcp_calloc(1, sizeof(struct gt_gw_auction_ctx_struct));
     if (!ctx) {
@@ -235,7 +249,17 @@ void gt_gw_destroy(gt_gw_auction_ctx_t ctx) {
     }
 
     // Free any pending bid content
+    /* Phase 8: Heartbeat at operation start */
+    gt_global_workspace_heartbeat("gt_global_wo_gt_gw_destroy", 0.0f);
+
+
     for (uint32_t i = 0; i < ctx->num_pending_bids; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->num_pending_bids > 256) {
+            gt_global_workspace_heartbeat("gt_global_wo_loop",
+                             (float)(i + 1) / (float)ctx->num_pending_bids);
+        }
+
         if (ctx->pending_bids[i].content) {
             nimcp_free(ctx->pending_bids[i].content);
         }
@@ -259,6 +283,10 @@ nimcp_error_t gt_gw_bid(
     uint32_t content_dim,
     float bid
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_global_workspace_heartbeat("gt_global_wo_gt_gw_bid", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx && content && content_dim > 0, NIMCP_ERROR_INVALID_PARAM, "ctx, content is NULL or content_dim is 0");
     NIMCP_CHECK_THROW(ctx->active, NIMCP_GT_ERROR_GAME_OVER, "ctx is not active");
     NIMCP_CHECK_THROW(bid >= 0.0f, NIMCP_GT_ERROR_INVALID_BID, "bid is negative");
@@ -321,6 +349,10 @@ nimcp_error_t gt_gw_resolve(
     gt_gw_auction_ctx_t ctx,
     gt_gw_round_result_t* result
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_global_workspace_heartbeat("gt_global_wo_gt_gw_resolve", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx && result, NIMCP_ERROR_INVALID_PARAM, "ctx or result is NULL");
     NIMCP_CHECK_THROW(ctx->active, NIMCP_GT_ERROR_GAME_OVER, "ctx is not active");
 
@@ -349,6 +381,12 @@ nimcp_error_t gt_gw_resolve(
     // Calculate total bids
     float total_bids = 0.0f;
     for (uint32_t i = 0; i < ctx->num_pending_bids; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->num_pending_bids > 256) {
+            gt_global_workspace_heartbeat("gt_global_wo_loop",
+                             (float)(i + 1) / (float)ctx->num_pending_bids);
+        }
+
         total_bids += ctx->pending_bids[i].bid;
     }
     result->total_bids = total_bids;
@@ -369,6 +407,12 @@ nimcp_error_t gt_gw_resolve(
 
         // Broadcast winner's content to global workspace
         for (uint32_t i = 0; i < ctx->num_pending_bids; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && ctx->num_pending_bids > 256) {
+                gt_global_workspace_heartbeat("gt_global_wo_loop",
+                                 (float)(i + 1) / (float)ctx->num_pending_bids);
+            }
+
             if (ctx->pending_bids[i].module == result->winner && ctx->pending_bids[i].valid) {
                 // Would call global_workspace_broadcast() here
                 break;
@@ -380,6 +424,12 @@ nimcp_error_t gt_gw_resolve(
 
     // Clear pending bids for next round
     for (uint32_t i = 0; i < ctx->num_pending_bids; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->num_pending_bids > 256) {
+            gt_global_workspace_heartbeat("gt_global_wo_loop",
+                             (float)(i + 1) / (float)ctx->num_pending_bids);
+        }
+
         if (ctx->pending_bids[i].content) {
             nimcp_free(ctx->pending_bids[i].content);
             ctx->pending_bids[i].content = NULL;
@@ -413,6 +463,10 @@ bool gt_gw_compete(
     }
 
     // Submit bid
+    /* Phase 8: Heartbeat at operation start */
+    gt_global_workspace_heartbeat("gt_global_wo_gt_gw_compete", 0.0f);
+
+
     nimcp_error_t err = gt_gw_bid(ctx, module, content, content_dim, bid);
     if (err != NIMCP_SUCCESS) {
         return false;
@@ -433,9 +487,19 @@ void gt_gw_replenish_budgets(gt_gw_auction_ctx_t ctx, float amount) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_global_workspace_heartbeat("gt_global_wo_gt_gw_replenish_budg", 0.0f);
+
+
     float replenish = (amount > 0.0f) ? amount : ctx->config.budget_replenish_rate;
 
     for (uint32_t i = 0; i < ctx->num_modules; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->num_modules > 256) {
+            gt_global_workspace_heartbeat("gt_global_wo_loop",
+                             (float)(i + 1) / (float)ctx->num_modules);
+        }
+
         ctx->module_states[i].current_budget += replenish;
 
         // Cap at initial budget
@@ -452,7 +516,17 @@ void gt_gw_reset_budgets(gt_gw_auction_ctx_t ctx) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_global_workspace_heartbeat("gt_global_wo_gt_gw_reset_budgets", 0.0f);
+
+
     for (uint32_t i = 0; i < ctx->num_modules; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && ctx->num_modules > 256) {
+            gt_global_workspace_heartbeat("gt_global_wo_loop",
+                             (float)(i + 1) / (float)ctx->num_modules);
+        }
+
         ctx->module_states[i].current_budget = ctx->config.initial_budget;
     }
 }
@@ -466,6 +540,10 @@ nimcp_error_t gt_gw_get_module_state(
     cognitive_module_t module,
     gt_gw_module_state_t* state
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_global_workspace_heartbeat("gt_global_wo_gt_gw_get_module_sta", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx && state, NIMCP_ERROR_INVALID_PARAM, "ctx or state is NULL");
 
     int idx = find_module_state((gt_gw_auction_ctx_t)ctx, module);
@@ -478,14 +556,26 @@ nimcp_error_t gt_gw_get_module_state(
 }
 
 nimcp_auction_t gt_gw_get_auction(const gt_gw_auction_ctx_t ctx) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_global_workspace_heartbeat("gt_global_wo_gt_gw_get_auction", 0.0f);
+
+
     return ctx ? ctx->auction : NULL;
 }
 
 global_workspace_t* gt_gw_get_workspace(const gt_gw_auction_ctx_t ctx) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_global_workspace_heartbeat("gt_global_wo_gt_gw_get_workspace", 0.0f);
+
+
     return ctx ? ctx->workspace : NULL;
 }
 
 bool gt_gw_is_auction_active(const gt_gw_auction_ctx_t ctx) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_global_workspace_heartbeat("gt_global_wo_gt_gw_is_auction_act", 0.0f);
+
+
     return ctx ? ctx->active : false;
 }
 
@@ -493,6 +583,10 @@ nimcp_error_t gt_gw_get_stats(
     const gt_gw_auction_ctx_t ctx,
     nimcp_game_stats_t* stats
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    gt_global_workspace_heartbeat("gt_global_wo_gt_gw_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(ctx && stats, NIMCP_ERROR_INVALID_PARAM, "ctx or stats is NULL");
 
     memset(stats, 0, sizeof(nimcp_game_stats_t));
@@ -508,6 +602,12 @@ nimcp_error_t gt_gw_get_stats(
         float sum_wins = 0.0f;
         float sum_sq_wins = 0.0f;
         for (uint32_t i = 0; i < ctx->num_modules; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && ctx->num_modules > 256) {
+                gt_global_workspace_heartbeat("gt_global_wo_loop",
+                                 (float)(i + 1) / (float)ctx->num_modules);
+            }
+
             float wins = (float)ctx->module_states[i].wins;
             sum_wins += wins;
             sum_sq_wins += wins * wins;
@@ -531,9 +631,19 @@ nimcp_error_t gt_gw_get_stats(
 int gt_global_workspace_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    gt_global_workspace_heartbeat("gt_global_wo_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Game_Theory_Global_Workspace");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                gt_global_workspace_heartbeat("gt_global_wo_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

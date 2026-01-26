@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_rcog_immune_bridge_health_agent = NULL;
  * @brief Set health agent for rcog_immune_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void rcog_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void rcog_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_rcog_immune_bridge_health_agent = agent;
 }
 
@@ -84,6 +84,10 @@ struct rcog_immune_bridge {
  *===========================================================================*/
 
 rcog_immune_bridge_config_t rcog_immune_bridge_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_immune_bridge_heartbeat("rcog_immune__default_config", 0.0f);
+
+
     rcog_immune_bridge_config_t config = {0};
 
     config.il1_sensitivity = 1.0f;
@@ -108,6 +112,10 @@ rcog_immune_bridge_config_t rcog_immune_bridge_default_config(void) {
 rcog_immune_bridge_t* rcog_immune_bridge_create(
     const rcog_immune_bridge_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_immune_bridge_heartbeat("rcog_immune__create", 0.0f);
+
+
     rcog_immune_bridge_t* bridge = nimcp_calloc(1, sizeof(rcog_immune_bridge_t));
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
@@ -140,6 +148,10 @@ rcog_immune_bridge_t* rcog_immune_bridge_create(
 }
 
 rcog_immune_bridge_t* rcog_immune_bridge_create_default(void) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_immune_bridge_heartbeat("rcog_immune__create_default", 0.0f);
+
+
     return rcog_immune_bridge_create(NULL);
 }
 
@@ -149,6 +161,10 @@ void rcog_immune_bridge_destroy(rcog_immune_bridge_t* bridge) {
     }
 
     /* Cleanup base bridge infrastructure */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_immune_bridge_heartbeat("rcog_immune__destroy", 0.0f);
+
+
     bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
@@ -166,6 +182,10 @@ int rcog_immune_bridge_connect(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_immune_bridge_heartbeat("rcog_immune__connect", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->immune = immune;
     bridge->connected = (bridge->immune != NULL && bridge->engine != NULL);
@@ -182,6 +202,10 @@ int rcog_immune_bridge_connect_engine(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_immune_bridge_heartbeat("rcog_immune__connect_engine", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->engine = engine;
     bridge->connected = (bridge->immune != NULL && bridge->engine != NULL);
@@ -191,6 +215,10 @@ int rcog_immune_bridge_connect_engine(
 }
 
 bool rcog_immune_bridge_is_connected(const rcog_immune_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    rcog_immune_bridge_heartbeat("rcog_immune__is_connected", 0.0f);
+
+
     return bridge && bridge->connected;
 }
 
@@ -206,11 +234,21 @@ int rcog_immune_bridge_update(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_immune_bridge_heartbeat("rcog_immune__update", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Decay quarantine strength over time */
     float decay = delta_time_ms / 1000.0f * bridge->config.quarantine_decay_rate;
     for (size_t i = 0; i < bridge->num_quarantined; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_quarantined > 256) {
+            rcog_immune_bridge_heartbeat("rcog_immune__loop",
+                             (float)(i + 1) / (float)bridge->num_quarantined);
+        }
+
         bridge->quarantine[i].quarantine_strength -= decay;
         if (bridge->quarantine[i].quarantine_strength < 0) {
             bridge->quarantine[i].quarantine_strength = 0;
@@ -253,6 +291,10 @@ int rcog_immune_bridge_get_modulation(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_immune_bridge_heartbeat("rcog_immune__get_modulation", 0.0f);
+
+
     nimcp_mutex_lock(((rcog_immune_bridge_t*)bridge)->base.mutex);
     *modulation = bridge->current_modulation;
     nimcp_mutex_unlock(((rcog_immune_bridge_t*)bridge)->base.mutex);
@@ -267,6 +309,10 @@ int rcog_immune_bridge_apply_modulation(
     if (!bridge || !orchestrator) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_immune_bridge_heartbeat("rcog_immune__apply_modulation", 0.0f);
+
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -284,6 +330,10 @@ rcog_inflammation_level_t rcog_immune_bridge_get_inflammation_level(
     if (!bridge) {
         return RCOG_INFLAMMATION_NONE;
     }
+    /* Phase 8: Heartbeat at operation start */
+    rcog_immune_bridge_heartbeat("rcog_immune__get_inflammation_lev", 0.0f);
+
+
     return bridge->inflammation_level;
 }
 
@@ -294,6 +344,10 @@ int rcog_immune_bridge_get_cytokines(
     if (!bridge || !cytokines) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_immune_bridge_heartbeat("rcog_immune__get_cytokines", 0.0f);
+
 
     nimcp_mutex_lock(((rcog_immune_bridge_t*)bridge)->base.mutex);
     *cytokines = bridge->cytokines;
@@ -313,6 +367,12 @@ static uint64_t hash_pattern(const void* data, size_t len) {
     uint64_t hash = 14695981039346656037ULL;
     const uint8_t* bytes = (const uint8_t*)data;
     for (size_t i = 0; i < len; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && len > 256) {
+            rcog_immune_bridge_heartbeat("rcog_immune__loop",
+                             (float)(i + 1) / (float)len);
+        }
+
         hash ^= bytes[i];
         hash *= 1099511628211ULL;
     }
@@ -328,6 +388,10 @@ int rcog_immune_bridge_report_failure(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_immune_bridge_heartbeat("rcog_immune__report_failure", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Hash the subtask to identify the pattern */
@@ -336,6 +400,12 @@ int rcog_immune_bridge_report_failure(
     /* Find or create quarantine entry */
     rcog_quarantine_entry_t* entry = NULL;
     for (size_t i = 0; i < bridge->num_quarantined; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_quarantined > 256) {
+            rcog_immune_bridge_heartbeat("rcog_immune__loop",
+                             (float)(i + 1) / (float)bridge->num_quarantined);
+        }
+
         if (bridge->quarantine[i].pattern_hash == pattern_hash) {
             entry = &bridge->quarantine[i];
             break;
@@ -384,6 +454,10 @@ int rcog_immune_bridge_report_pattern_failure(
     }
 
     /* Use the decomposition pointer as pattern identifier */
+    /* Phase 8: Heartbeat at operation start */
+    rcog_immune_bridge_heartbeat("rcog_immune__report_pattern_failu", 0.0f);
+
+
     uint64_t pattern_hash = hash_pattern(&decomposition, sizeof(void*));
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -409,11 +483,21 @@ bool rcog_immune_bridge_is_quarantined(
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_immune_bridge_heartbeat("rcog_immune__is_quarantined", 0.0f);
+
+
     uint64_t pattern_hash = hash_pattern(&decomposition, sizeof(void*));
 
     nimcp_mutex_lock(((rcog_immune_bridge_t*)bridge)->base.mutex);
 
     for (size_t i = 0; i < bridge->num_quarantined; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_quarantined > 256) {
+            rcog_immune_bridge_heartbeat("rcog_immune__loop",
+                             (float)(i + 1) / (float)bridge->num_quarantined);
+        }
+
         if (bridge->quarantine[i].pattern_hash == pattern_hash &&
             bridge->quarantine[i].quarantine_strength > 0.5f) {
             ((rcog_immune_bridge_t*)bridge)->stats.patterns_blocked++;
@@ -434,11 +518,21 @@ float rcog_immune_bridge_get_quarantine_strength(
         return 0.0f;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_immune_bridge_heartbeat("rcog_immune__get_quarantine_stren", 0.0f);
+
+
     uint64_t pattern_hash = hash_pattern(&decomposition, sizeof(void*));
 
     nimcp_mutex_lock(((rcog_immune_bridge_t*)bridge)->base.mutex);
 
     for (size_t i = 0; i < bridge->num_quarantined; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_quarantined > 256) {
+            rcog_immune_bridge_heartbeat("rcog_immune__loop",
+                             (float)(i + 1) / (float)bridge->num_quarantined);
+        }
+
         if (bridge->quarantine[i].pattern_hash == pattern_hash) {
             float strength = bridge->quarantine[i].quarantine_strength;
             nimcp_mutex_unlock(((rcog_immune_bridge_t*)bridge)->base.mutex);
@@ -459,6 +553,10 @@ int rcog_immune_bridge_get_quarantine_list(
     if (!bridge || !entries || !num_entries) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_immune_bridge_heartbeat("rcog_immune__get_quarantine_list", 0.0f);
+
 
     nimcp_mutex_lock(((rcog_immune_bridge_t*)bridge)->base.mutex);
 
@@ -483,9 +581,19 @@ int rcog_immune_bridge_clear_quarantine(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_immune_bridge_heartbeat("rcog_immune__clear_quarantine", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     for (size_t i = 0; i < bridge->num_quarantined; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && bridge->num_quarantined > 256) {
+            rcog_immune_bridge_heartbeat("rcog_immune__loop",
+                             (float)(i + 1) / (float)bridge->num_quarantined);
+        }
+
         if (bridge->quarantine[i].pattern_hash == pattern_hash) {
             /* Shift remaining entries */
             memmove(&bridge->quarantine[i], &bridge->quarantine[i + 1],
@@ -512,6 +620,10 @@ int rcog_immune_bridge_get_outgoing_effects(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_immune_bridge_heartbeat("rcog_immune__get_outgoing_effects", 0.0f);
+
+
     nimcp_mutex_lock(((rcog_immune_bridge_t*)bridge)->base.mutex);
     *effects = bridge->outgoing_effects;
     nimcp_mutex_unlock(((rcog_immune_bridge_t*)bridge)->base.mutex);
@@ -526,6 +638,10 @@ int rcog_immune_bridge_get_incoming_effects(
     if (!bridge || !effects) {
         return RCOG_ERROR_NULL_POINTER;
     }
+
+    /* Phase 8: Heartbeat at operation start */
+    rcog_immune_bridge_heartbeat("rcog_immune__get_incoming_effects", 0.0f);
+
 
     nimcp_mutex_lock(((rcog_immune_bridge_t*)bridge)->base.mutex);
     *effects = bridge->incoming_effects;
@@ -546,6 +662,10 @@ int rcog_immune_bridge_get_stats(
         return RCOG_ERROR_NULL_POINTER;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_immune_bridge_heartbeat("rcog_immune__get_stats", 0.0f);
+
+
     nimcp_mutex_lock(((rcog_immune_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(((rcog_immune_bridge_t*)bridge)->base.mutex);
@@ -558,6 +678,10 @@ void rcog_immune_bridge_reset_stats(rcog_immune_bridge_t* bridge) {
         return;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    rcog_immune_bridge_heartbeat("rcog_immune__reset_stats", 0.0f);
+
+
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(rcog_immune_bridge_stats_t));
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -569,9 +693,19 @@ void rcog_immune_bridge_reset_stats(rcog_immune_bridge_t* bridge) {
 
 int rcog_immune_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    rcog_immune_bridge_heartbeat("rcog_immune__query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Recursive_Cognition_Immune_Bridge_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                rcog_immune_bridge_heartbeat("rcog_immune__loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             /* Log self-knowledge observations */
         }
     }

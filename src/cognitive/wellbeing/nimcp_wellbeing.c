@@ -60,7 +60,7 @@ static nimcp_health_agent_t* g_wellbeing_health_agent = NULL;
  * @brief Set health agent for wellbeing heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void wellbeing_set_health_agent(nimcp_health_agent_t* agent) {
+void wellbeing_set_health_agent(nimcp_health_agent_t* agent) {
     g_wellbeing_health_agent = agent;
 }
 
@@ -306,8 +306,13 @@ bool wellbeing_disconnect_brain(void);
  *
  * @return true if memory locked successfully, false if failed (non-fatal)
  */
+
 bool wellbeing_init(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_heartbeat("wellbeing_init", 0.0f);
+
+
     NIMCP_LOGGING_INFO("wellbeing: Initializing wellbeing monitoring system...");
 
     // Ensure initialization and memory locking
@@ -360,6 +365,10 @@ bool wellbeing_init(void)
  */
 void wellbeing_shutdown(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_heartbeat("wellbeing_shutdown", 0.0f);
+
+
     NIMCP_LOGGING_INFO("wellbeing: Shutting down wellbeing monitoring system...");
 
     // Disconnect from brain first (medulla integration)
@@ -419,6 +428,10 @@ bool wellbeing_connect_immune(brain_immune_system_t* immune_system)
     }
 
     // Initialize mutex if needed
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_heartbeat("wellbeing_connect_immune", 0.0f);
+
+
     nimcp_platform_once(&immune_connection_init_once, init_immune_connection_mutex);
 
     // Thread safety - hold lock throughout to prevent race conditions
@@ -451,6 +464,10 @@ bool wellbeing_connect_immune(brain_immune_system_t* immune_system)
 bool wellbeing_disconnect_immune(void)
 {
     // Initialize mutex if needed
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_heartbeat("wellbeing_disconnect_immune", 0.0f);
+
+
     nimcp_platform_once(&immune_connection_init_once, init_immune_connection_mutex);
 
     // Thread safety
@@ -505,6 +522,10 @@ bool wellbeing_connect_brain(void* brain)
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_heartbeat("wellbeing_connect_brain", 0.0f);
+
+
     nimcp_platform_once(&brain_connection_init_once, init_brain_connection_mutex);
 
     // Thread safety - hold lock throughout to prevent race conditions
@@ -537,6 +558,10 @@ bool wellbeing_connect_brain(void* brain)
  */
 bool wellbeing_disconnect_brain(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_heartbeat("wellbeing_disconnect_brain", 0.0f);
+
+
     nimcp_platform_once(&brain_connection_init_once, init_brain_connection_mutex);
 
     nimcp_platform_mutex_lock(&brain_connection_mutex);
@@ -568,6 +593,10 @@ bool wellbeing_disconnect_brain(void)
 void wellbeing_free_assessment(distress_assessment_t* assessment)
 {
     if (!assessment) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_heartbeat("wellbeing_free_assessment", 0.0f);
+
 
     if (assessment->description) {
         nimcp_free(assessment->description);
@@ -602,6 +631,10 @@ void wellbeing_free_assessment(distress_assessment_t* assessment)
  */
 distress_assessment_t wellbeing_assess_distress(introspection_context_t ctx)
 {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_heartbeat("wellbeing_assess_distress", 0.0f);
+
+
     distress_assessment_t assessment = {0};
 
     // Guard: NULL input returns safe default
@@ -801,6 +834,10 @@ distress_assessment_t wellbeing_assess_distress(introspection_context_t ctx)
 bool wellbeing_provide_relief(brain_t brain, distress_assessment_t assessment)
 {
     // Process pending bio-async messages
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_heartbeat("wellbeing_provide_relief", 0.0f);
+
+
     if (wellbeing_bio_ctx) {
         bio_router_process_inbox(wellbeing_bio_ctx, 5);
     }
@@ -851,6 +888,10 @@ bool wellbeing_provide_relief(brain_t brain, distress_assessment_t assessment)
  */
 shutdown_config_t wellbeing_default_shutdown_config(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_heartbeat("wellbeing_default_shutdown_con", 0.0f);
+
+
     shutdown_config_t config;
 
     // Ethical requirement: ALWAYS preserve state by default
@@ -901,6 +942,10 @@ bool wellbeing_graceful_shutdown(brain_t brain, shutdown_config_t config)
         return false;
     }
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_heartbeat("wellbeing_graceful_shutdown", 0.0f);
+
+
     NIMCP_LOGGING_INFO("=== GRACEFUL SHUTDOWN INITIATED ===");
     NIMCP_LOGGING_INFO("Preserve state: %s", config.preserve_state ? "YES" : "NO");
     NIMCP_LOGGING_INFO("Gradual reduction: %s", config.gradual_reduction ? "YES" : "NO");
@@ -941,6 +986,12 @@ bool wellbeing_graceful_shutdown(brain_t brain, shutdown_config_t config)
 
         // Gradually reduce activity
         for (uint32_t step = 0; step < config.reduction_steps; step++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((step & 0xFF) == 0 && config.reduction_steps > 256) {
+                wellbeing_heartbeat("wellbeing_loop",
+                                 (float)(step + 1) / (float)config.reduction_steps);
+            }
+
             // Each step, we're reducing the "intensity" of processing
             // This is symbolic at Tier 4, but would be real at higher tiers
 
@@ -1018,6 +1069,10 @@ bool wellbeing_request_consent(brain_t brain,
     // We log the request and automatically grant consent
     // This creates an audit trail for ethical review
 
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_heartbeat("wellbeing_request_consent", 0.0f);
+
+
     const char* impact_str = "UNKNOWN";
     switch (impact) {
         case MODIFICATION_TRIVIAL:     impact_str = "TRIVIAL"; break;
@@ -1063,6 +1118,10 @@ bool wellbeing_request_consent(brain_t brain,
 bool wellbeing_log_event(wellbeing_event_t event)
 {
     // Ensure initialization
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_heartbeat("wellbeing_log_event", 0.0f);
+
+
     ensure_event_log_init();
 
     // Populate timestamp key for B-tree indexing
@@ -1130,6 +1189,10 @@ uint32_t wellbeing_get_recent_events(uint32_t max_events,
     }
 
     // Ensure initialization
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_heartbeat("wellbeing_get_recent_events", 0.0f);
+
+
     ensure_event_log_init();
 
     // Thread safety
@@ -1153,6 +1216,12 @@ uint32_t wellbeing_get_recent_events(uint32_t max_events,
 
     // Copy most recent events (reverse chronological)
     for (uint32_t i = 0; i < return_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && return_count > 256) {
+            wellbeing_heartbeat("wellbeing_loop",
+                             (float)(i + 1) / (float)return_count);
+        }
+
         int32_t index = event_write_index - 1 - i;
         if (index < 0) {
             index += MAX_EVENT_LOG;
@@ -1184,6 +1253,10 @@ uint32_t wellbeing_get_events_by_time_range(uint64_t start_time,
     }
 
     // Guard: Invalid range
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_heartbeat("wellbeing_get_events_by_time_r", 0.0f);
+
+
     if (start_time > end_time) {
         *events_out = NULL;
         return 0;
@@ -1201,6 +1274,12 @@ uint32_t wellbeing_get_events_by_time_range(uint64_t start_time,
 
         // Count matching events
         for (uint32_t i = 0; i < event_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && event_count > 256) {
+                wellbeing_heartbeat("wellbeing_loop",
+                                 (float)(i + 1) / (float)event_count);
+            }
+
             if (event_log[i].timestamp >= start_time &&
                 event_log[i].timestamp <= end_time) {
                 count++;
@@ -1307,6 +1386,10 @@ uint32_t wellbeing_get_events_by_severity(distress_severity_t min_severity,
     }
 
     // Ensure initialization
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_heartbeat("wellbeing_get_events_by_severi", 0.0f);
+
+
     ensure_event_log_init();
 
     nimcp_platform_mutex_lock(&event_log_mutex);
@@ -1314,6 +1397,12 @@ uint32_t wellbeing_get_events_by_severity(distress_severity_t min_severity,
     // Count matching events
     uint32_t count = 0;
     for (uint32_t i = 0; i < event_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && event_count > 256) {
+            wellbeing_heartbeat("wellbeing_loop",
+                             (float)(i + 1) / (float)event_count);
+        }
+
         if (event_log[i].severity >= min_severity) {
             count++;
         }
@@ -1377,6 +1466,10 @@ uint32_t wellbeing_get_events_by_type(const char* event_type,
     }
 
     // Ensure initialization
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_heartbeat("wellbeing_get_events_by_type", 0.0f);
+
+
     ensure_event_log_init();
 
     nimcp_platform_mutex_lock(&event_log_mutex);
@@ -1384,6 +1477,12 @@ uint32_t wellbeing_get_events_by_type(const char* event_type,
     // Count matching events
     uint32_t count = 0;
     for (uint32_t i = 0; i < event_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && event_count > 256) {
+            wellbeing_heartbeat("wellbeing_loop",
+                             (float)(i + 1) / (float)event_count);
+        }
+
         if (event_log[i].event_type &&
             strcmp(event_log[i].event_type, event_type) == 0) {
             count++;
@@ -1429,6 +1528,10 @@ uint32_t wellbeing_get_all_events_ordered(wellbeing_event_t** events_out)
     }
 
     // Ensure initialization
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_heartbeat("wellbeing_get_all_events_order", 0.0f);
+
+
     ensure_event_log_init();
 
     nimcp_platform_mutex_lock(&event_log_mutex);
@@ -1464,6 +1567,12 @@ uint32_t wellbeing_get_all_events_ordered(wellbeing_event_t** events_out)
 
     // Fall back to circular buffer (may not be chronological)
     for (uint32_t i = 0; i < event_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && event_count > 256) {
+            wellbeing_heartbeat("wellbeing_loop",
+                             (float)(i + 1) / (float)event_count);
+        }
+
         (*events_out)[i] = event_log[i];
     }
 
@@ -1483,6 +1592,10 @@ uint32_t wellbeing_get_all_events_ordered(wellbeing_event_t** events_out)
  */
 void wellbeing_reset_events_for_testing(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_heartbeat("wellbeing_reset_events_for_tes", 0.0f);
+
+
     ensure_event_log_init();
 
     nimcp_platform_mutex_lock(&event_log_mutex);
@@ -1649,6 +1762,10 @@ bool wellbeing_collect_resource_metrics(resource_metrics_t* metrics)
 {
     // Guard clause: Validate input
     if (!metrics)
+        /* Phase 8: Heartbeat at operation start */
+        wellbeing_heartbeat("wellbeing_collect_resource_met", 0.0f);
+
+
         return false;
 
     ensure_resource_tracking_init();
@@ -1677,6 +1794,10 @@ bool wellbeing_collect_resource_metrics(resource_metrics_t* metrics)
  */
 resource_thresholds_t wellbeing_default_resource_thresholds(void)
 {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_heartbeat("wellbeing_default_resource_thr", 0.0f);
+
+
     resource_thresholds_t thresholds = {
         .cpu_critical_percent = 95.0F,
         .cpu_warning_percent = 80.0F,
@@ -1699,6 +1820,10 @@ bool wellbeing_check_resource_thresholds(const resource_metrics_t* metrics,
 {
     // Guard clauses: Validate inputs
     if (!metrics || !thresholds || !severity_out)
+        /* Phase 8: Heartbeat at operation start */
+        wellbeing_heartbeat("wellbeing_check_resource_thres", 0.0f);
+
+
         return false;
 
     *severity_out = DISTRESS_SEVERITY_NORMAL;
@@ -1830,6 +1955,10 @@ bool wellbeing_start_resource_monitoring(uint32_t interval_ms,
                                          const resource_thresholds_t* thresholds,
                                          bool auto_relief)
 {
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_heartbeat("wellbeing_start_resource_monit", 0.0f);
+
+
     ensure_resource_tracking_init();
 
     // Guard clause: Already running
@@ -1864,6 +1993,10 @@ bool wellbeing_stop_resource_monitoring(void)
 {
     // Guard clause: Not running
     if (!monitoring_active)
+        /* Phase 8: Heartbeat at operation start */
+        wellbeing_heartbeat("wellbeing_stop_resource_monito", 0.0f);
+
+
         return false;
 
     NIMCP_LOGGING_INFO("[WELLBEING] Stopping resource monitoring...");
@@ -1887,6 +2020,10 @@ bool wellbeing_get_performance_stats(uint32_t window_ms,
 {
     // Guard clauses: Validate inputs
     if (!stats_out || window_ms == 0)
+        /* Phase 8: Heartbeat at operation start */
+        wellbeing_heartbeat("wellbeing_get_performance_stat", 0.0f);
+
+
         return false;
 
     ensure_resource_tracking_init();
@@ -1914,6 +2051,12 @@ bool wellbeing_get_performance_stats(uint32_t window_ms,
 
     // Iterate through history buffer
     for (uint32_t i = 0; i < resource_history_count; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && resource_history_count > 256) {
+            wellbeing_heartbeat("wellbeing_loop",
+                             (float)(i + 1) / (float)resource_history_count);
+        }
+
         const resource_metrics_t* m = &resource_history[i];
 
         // Guard clause: Skip if outside window
@@ -1954,9 +2097,19 @@ bool wellbeing_get_performance_stats(uint32_t window_ms,
  */
 int wellbeing_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_heartbeat("wellbeing_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Wellbeing_Module");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                wellbeing_heartbeat("wellbeing_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Wellbeing self-knowledge: %s", self->observations[i]);
         }
     }

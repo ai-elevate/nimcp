@@ -40,7 +40,7 @@ static nimcp_health_agent_t* g_grief_fep_bridge_health_agent = NULL;
  * @brief Set health agent for grief_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void grief_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void grief_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_grief_fep_bridge_health_agent = agent;
 }
 
@@ -57,6 +57,10 @@ static inline void grief_fep_bridge_heartbeat(const char* operation, float progr
  * ============================================================================ */
 
 int grief_fep_default_config(grief_fep_config_t* config) {
+    /* Phase 8: Heartbeat at operation start */
+    grief_fep_bridge_heartbeat("grief_fep_br_grief_fep_default_co", 0.0f);
+
+
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* FEP -> Grief */
@@ -85,6 +89,10 @@ int grief_fep_default_config(grief_fep_config_t* config) {
 grief_fep_bridge_t* grief_fep_create(
     const grief_fep_config_t* config
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    grief_fep_bridge_heartbeat("grief_fep_br_grief_fep_create", 0.0f);
+
+
     grief_fep_bridge_t* bridge = nimcp_malloc(sizeof(grief_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate grief FEP bridge");
@@ -122,6 +130,10 @@ void grief_fep_destroy(grief_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Disconnect bio-async if connected */
+    /* Phase 8: Heartbeat at operation start */
+    grief_fep_bridge_heartbeat("grief_fep_br_grief_fep_destroy", 0.0f);
+
+
     if (bridge->base.bio_async_enabled) {
         grief_fep_disconnect_bio_async(bridge);
     }
@@ -143,6 +155,10 @@ int grief_fep_connect_fep(
     grief_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    grief_fep_bridge_heartbeat("grief_fep_br_grief_fep_connect_fe", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -157,6 +173,10 @@ int grief_fep_connect_grief(
     grief_fep_bridge_t* bridge,
     grief_system_t* grief
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    grief_fep_bridge_heartbeat("grief_fep_br_grief_fep_connect_gr", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && grief, NIMCP_ERROR_NULL_POINTER, "bridge or grief is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -168,6 +188,10 @@ int grief_fep_connect_grief(
 }
 
 int grief_fep_disconnect(grief_fep_bridge_t* bridge) {
+    /* Phase 8: Heartbeat at operation start */
+    grief_fep_bridge_heartbeat("grief_fep_br_grief_fep_disconnect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -188,6 +212,10 @@ int grief_fep_process_persistent_pe(
     float pe_magnitude,
     uint64_t duration_ms
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    grief_fep_bridge_heartbeat("grief_fep_br_grief_fep_process_pe", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_pe_grief_generation) return 0;
 
@@ -255,6 +283,10 @@ int grief_fep_process_persistent_pe(
 int grief_fep_modulate_learning_rate(
     grief_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    grief_fep_bridge_heartbeat("grief_fep_br_grief_fep_modulate_l", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_grief_learning_slowdown) return 0;
 
@@ -297,6 +329,10 @@ int grief_fep_update(
     grief_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    grief_fep_bridge_heartbeat("grief_fep_br_grief_fep_update", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Apply learning rate modulation */
@@ -328,6 +364,10 @@ int grief_fep_get_state(
     const grief_fep_bridge_t* bridge,
     grief_fep_state_t* state
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    grief_fep_bridge_heartbeat("grief_fep_br_grief_fep_get_state", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -341,6 +381,10 @@ int grief_fep_get_stats(
     const grief_fep_bridge_t* bridge,
     grief_fep_stats_t* stats
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    grief_fep_bridge_heartbeat("grief_fep_br_grief_fep_get_stats", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -357,6 +401,10 @@ int grief_fep_get_stats(
 int grief_fep_connect_bio_async(
     grief_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    grief_fep_bridge_heartbeat("grief_fep_br_grief_fep_connect_bi", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
@@ -381,6 +429,10 @@ int grief_fep_connect_bio_async(
 int grief_fep_disconnect_bio_async(
     grief_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    grief_fep_bridge_heartbeat("grief_fep_br_grief_fep_disconnect", 0.0f);
+
+
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return 0;
 
@@ -398,6 +450,10 @@ int grief_fep_disconnect_bio_async(
 bool grief_fep_is_bio_async_connected(
     const grief_fep_bridge_t* bridge
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    grief_fep_bridge_heartbeat("grief_fep_br_grief_fep_is_bio_asy", 0.0f);
+
+
     return bridge ? bridge->base.bio_async_enabled : false;
 }
 
@@ -408,9 +464,19 @@ bool grief_fep_is_bio_async_connected(
 int grief_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    grief_fep_bridge_heartbeat("grief_fep_br_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Grief_FEP_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                grief_fep_bridge_heartbeat("grief_fep_br_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

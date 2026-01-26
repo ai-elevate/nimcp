@@ -29,7 +29,7 @@ static nimcp_health_agent_t* g_emotional_tagging_substrate_bridge_health_agent =
  * @brief Set health agent for emotional_tagging_substrate_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void emotional_tagging_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void emotional_tagging_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_emotional_tagging_substrate_bridge_health_agent = agent;
 }
 
@@ -55,6 +55,10 @@ struct emotional_tagging_substrate_bridge {
 };
 
 emotional_tagging_substrate_config_t emotional_tagging_substrate_default_config(void) {
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_substrate_bridge_heartbeat("emotional_ta_emotional_tagging_su", 0.0f);
+
+
     emotional_tagging_substrate_config_t cfg = { .enable_atp_modulation = true, .enable_fatigue_modulation = true,
         .enable_bio_async = false, .atp_sensitivity = 1.0f, .fatigue_sensitivity = 1.0f, .min_capacity = 0.2f };
     return cfg;
@@ -68,6 +72,10 @@ emotional_tagging_substrate_bridge_t* emotional_tagging_substrate_bridge_create(
         return NULL;
 
     }
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_substrate_bridge_heartbeat("emotional_ta_create", 0.0f);
+
+
     emotional_tagging_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(emotional_tagging_substrate_bridge_t));
     if (!bridge) {
 
@@ -89,6 +97,10 @@ emotional_tagging_substrate_bridge_t* emotional_tagging_substrate_bridge_create(
 
 void emotional_tagging_substrate_bridge_destroy(emotional_tagging_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_substrate_bridge_heartbeat("emotional_ta_destroy", 0.0f);
+
+
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
     }
@@ -97,6 +109,10 @@ void emotional_tagging_substrate_bridge_destroy(emotional_tagging_substrate_brid
 
 int emotional_tagging_substrate_bridge_update(emotional_tagging_substrate_bridge_t* bridge) {
     if (!bridge || !bridge->substrate) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_substrate_bridge_heartbeat("emotional_ta_update", 0.0f);
+
+
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
@@ -119,12 +135,20 @@ int emotional_tagging_substrate_bridge_update(emotional_tagging_substrate_bridge
 int emotional_tagging_substrate_bridge_get_effects(const emotional_tagging_substrate_bridge_t* bridge, emotional_tagging_substrate_effects_t* effects) {
     if (!bridge || !effects) return -1;
     *effects = bridge->effects;
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_substrate_bridge_heartbeat("emotional_ta_get_effects", 0.0f);
+
+
     return 0;
 }
 
 int emotional_tagging_substrate_bridge_apply_effects(emotional_tagging_substrate_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->bio_async_connected || !bridge->ctx) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_substrate_bridge_heartbeat("emotional_ta_apply_effects", 0.0f);
+
 
     substrate_metabolic_state_t metabolic;
     float atp_level = 1.0f, fatigue_level = 0.0f;
@@ -168,6 +192,10 @@ int emotional_tagging_substrate_bridge_apply_effects(emotional_tagging_substrate
 
 int emotional_tagging_substrate_bridge_register_bio_async(emotional_tagging_substrate_bridge_t* bridge, bio_router_t* router) {
     if (!bridge) return -1;
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_substrate_bridge_heartbeat("emotional_ta_register_bio_async", 0.0f);
+
+
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
         bridge->ctx = NULL;
@@ -187,9 +215,19 @@ int emotional_tagging_substrate_bridge_register_bio_async(emotional_tagging_subs
 int emotional_tagging_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    emotional_tagging_substrate_bridge_heartbeat("emotional_ta_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Emotional_Tagging_Substrate_Bridge");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                emotional_tagging_substrate_bridge_heartbeat("emotional_ta_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             (void)self->observations[i];
         }
     }

@@ -55,7 +55,7 @@ static nimcp_health_agent_t* g_forward_chaining_health_agent = NULL;
  * @brief Set health agent for forward_chaining heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void forward_chaining_set_health_agent(nimcp_health_agent_t* agent) {
+void forward_chaining_set_health_agent(nimcp_health_agent_t* agent) {
     g_forward_chaining_health_agent = agent;
 }
 
@@ -130,6 +130,10 @@ bool brain_forward_chain(
     }
 
     // Initialize result
+    /* Phase 8: Heartbeat at operation start */
+    forward_chaining_heartbeat("forward_chai_brain_forward_chain", 0.0f);
+
+
     memset(result, 0, sizeof(forward_chain_result_t));
 
     // Cap max iterations
@@ -164,6 +168,12 @@ bool brain_forward_chain(
     if (brain->working_memory && brain->config.enable_working_memory && num_new_facts > 0) {
         int wm_count = (num_new_facts < MAX_WM_FACTS) ? num_new_facts : MAX_WM_FACTS;
         for (int i = 0; i < wm_count; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && wm_count > 256) {
+                forward_chaining_heartbeat("forward_chai_loop",
+                                 (float)(i + 1) / (float)wm_count);
+            }
+
             float fact_encoding[4] = {DEFAULT_SALIENCE, 1.0F, (float)i, 0.0F};
             working_memory_add(brain->working_memory, fact_encoding, 4, DEFAULT_SALIENCE);
         }
@@ -215,6 +225,10 @@ bool brain_forward_chain_step(
     }
 
     // Get logic engine
+    /* Phase 8: Heartbeat at operation start */
+    forward_chaining_heartbeat("forward_chai_brain_forward_chain_", 0.0f);
+
+
     symbolic_logic_t* engine = brain_get_symbolic_logic(brain);
 
     // Perform single forward chaining step
@@ -242,9 +256,19 @@ void forward_chain_free_result(forward_chain_result_t* result)
 {
     if (!result) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    forward_chaining_heartbeat("forward_chai_forward_chain_free_r", 0.0f);
+
+
     if (result->new_facts) {
         // Free each fact
         for (uint32_t i = 0; i < result->num_new_facts; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && result->num_new_facts > 256) {
+                forward_chaining_heartbeat("forward_chai_loop",
+                                 (float)(i + 1) / (float)result->num_new_facts);
+            }
+
             if (result->new_facts[i]) {
                 nimcp_free(result->new_facts[i]);
             }
@@ -269,6 +293,10 @@ bool brain_get_forward_chain_stats(
     }
 
     // Get statistics from logic engine
+    /* Phase 8: Heartbeat at operation start */
+    forward_chaining_heartbeat("forward_chai_brain_get_forward_ch", 0.0f);
+
+
     logic_stats_t stats;
     symbolic_logic_t* engine = brain_get_symbolic_logic(brain);
 
@@ -301,9 +329,19 @@ bool brain_get_forward_chain_stats(
 
 int forward_chaining_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    forward_chaining_heartbeat("forward_chai_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "Forward_Chaining");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                forward_chaining_heartbeat("forward_chai_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("Forward_Chaining self-knowledge: %s", self->observations[i]);
         }
     }

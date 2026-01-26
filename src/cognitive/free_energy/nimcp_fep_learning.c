@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_fep_learning_health_agent = NULL;
  * @brief Set health agent for fep_learning heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void fep_learning_set_health_agent(nimcp_health_agent_t* agent) {
+void fep_learning_set_health_agent(nimcp_health_agent_t* agent) {
     g_fep_learning_health_agent = agent;
 }
 
@@ -62,6 +62,12 @@ static float compute_loss(const float* target, const float* prediction, size_t d
 
     float loss = 0.0f;
     for (size_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            fep_learning_heartbeat("fep_learning_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         float diff = target[i] - prediction[i];
         loss += diff * diff;
     }
@@ -98,6 +104,10 @@ static void record_loss(fep_learning_stats_t* stats, float loss) {
 int fep_learning_default_config(fep_learning_config_t* config) {
     if (!config) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_learning_heartbeat("fep_learning_default_config", 0.0f);
+
+
     config->learning_rate = FEP_LEARNING_DEFAULT_LR;
     config->learning_rate_decay = 0.99f;
     config->min_learning_rate = FEP_LEARNING_MIN_LR;
@@ -127,6 +137,10 @@ fep_transition_learner_t* fep_transition_learner_create(
     const fep_learning_config_t* config,
     uint32_t state_dim
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_learning_heartbeat("fep_learning_fep_transition_learn", 0.0f);
+
+
     if (state_dim == 0) {
         NIMCP_LOGGING_ERROR("State dimension must be > 0");
         return NULL;
@@ -164,7 +178,19 @@ fep_transition_learner_t* fep_transition_learner_create(
 
     /* Initialize matrix to small random values (identity-ish) */
     for (uint32_t i = 0; i < state_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && state_dim > 256) {
+            fep_learning_heartbeat("fep_learning_loop",
+                             (float)(i + 1) / (float)state_dim);
+        }
+
         for (uint32_t j = 0; j < state_dim; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && state_dim > 256) {
+                fep_learning_heartbeat("fep_learning_loop",
+                                 (float)(j + 1) / (float)state_dim);
+            }
+
             uint32_t idx[2] = {i, j};
             float val = (i == j) ? 0.8f : 0.2f / (float)(state_dim - 1);
             nimcp_tensor_set(learner->matrix, idx, val);
@@ -212,6 +238,10 @@ fep_transition_learner_t* fep_transition_learner_create(
 void fep_transition_learner_destroy(fep_transition_learner_t* learner) {
     if (!learner) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_learning_heartbeat("fep_learning_fep_transition_learn", 0.0f);
+
+
     if (learner->bio_async_enabled) {
         fep_transition_learner_disconnect_bio_async(learner);
     }
@@ -237,6 +267,10 @@ fep_likelihood_learner_t* fep_likelihood_learner_create(
     uint32_t observation_dim,
     uint32_t state_dim
 ) {
+    /* Phase 8: Heartbeat at operation start */
+    fep_learning_heartbeat("fep_learning_fep_likelihood_learn", 0.0f);
+
+
     if (observation_dim == 0 || state_dim == 0) {
         NIMCP_LOGGING_ERROR("Dimensions must be > 0");
         return NULL;
@@ -275,7 +309,19 @@ fep_likelihood_learner_t* fep_likelihood_learner_create(
 
     /* Initialize matrix to small random values */
     for (uint32_t i = 0; i < observation_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && observation_dim > 256) {
+            fep_learning_heartbeat("fep_learning_loop",
+                             (float)(i + 1) / (float)observation_dim);
+        }
+
         for (uint32_t j = 0; j < state_dim; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && state_dim > 256) {
+                fep_learning_heartbeat("fep_learning_loop",
+                                 (float)(j + 1) / (float)state_dim);
+            }
+
             uint32_t idx[2] = {i, j};
             float val = 1.0f / (float)state_dim;
             nimcp_tensor_set(learner->matrix, idx, val);
@@ -323,6 +369,10 @@ fep_likelihood_learner_t* fep_likelihood_learner_create(
 void fep_likelihood_learner_destroy(fep_likelihood_learner_t* learner) {
     if (!learner) return;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_learning_heartbeat("fep_learning_fep_likelihood_learn", 0.0f);
+
+
     if (learner->bio_async_enabled) {
         fep_likelihood_learner_disconnect_bio_async(learner);
     }
@@ -357,6 +407,10 @@ int fep_learn_transition(
     if (!learner || !sys || !state_t || !state_t1) return -1;
     if (dim != learner->state_dim) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_learning_heartbeat("fep_learning_fep_learn_transition", 0.0f);
+
+
     nimcp_platform_mutex_lock(learner->mutex);
     learner->stats.state = FEP_LEARNING_ACTIVE;
 
@@ -368,8 +422,20 @@ int fep_learn_transition(
     }
 
     for (size_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            fep_learning_heartbeat("fep_learning_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         prediction[i] = 0.0f;
         for (size_t j = 0; j < dim; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && dim > 256) {
+                fep_learning_heartbeat("fep_learning_loop",
+                                 (float)(j + 1) / (float)dim);
+            }
+
             uint32_t idx[2] = {i, j};
             float a_ij = nimcp_tensor_get(learner->matrix, idx);
             prediction[i] += a_ij * state_t[j];
@@ -384,8 +450,20 @@ int fep_learn_transition(
     float reg = learner->config.l2_regularization;
 
     for (size_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            fep_learning_heartbeat("fep_learning_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         float error = state_t1[i] - prediction[i];
         for (size_t j = 0; j < dim; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && dim > 256) {
+                fep_learning_heartbeat("fep_learning_loop",
+                                 (float)(j + 1) / (float)dim);
+            }
+
             uint32_t idx[2] = {i, j};
             float current = nimcp_tensor_get(learner->matrix, idx);
             float grad = -error * state_t[j] + reg * current;
@@ -436,6 +514,10 @@ int fep_learn_transition_batch(
     if (!learner || !sys || !states || n_transitions == 0) return -1;
     if (dim != learner->state_dim) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_learning_heartbeat("fep_learning_fep_learn_transition", 0.0f);
+
+
     nimcp_platform_mutex_lock(learner->mutex);
     learner->stats.state = FEP_LEARNING_ACTIVE;
 
@@ -456,13 +538,31 @@ int fep_learn_transition_batch(
 
     /* Accumulate gradients over batch */
     for (size_t t = 0; t < n_transitions; t++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((t & 0xFF) == 0 && n_transitions > 256) {
+            fep_learning_heartbeat("fep_learning_loop",
+                             (float)(t + 1) / (float)n_transitions);
+        }
+
         const float* state_t = states + t * dim;
         const float* state_t1 = states + (t + 1) * dim;
 
         /* Compute prediction */
         for (size_t i = 0; i < dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && dim > 256) {
+                fep_learning_heartbeat("fep_learning_loop",
+                                 (float)(i + 1) / (float)dim);
+            }
+
             prediction[i] = 0.0f;
             for (size_t j = 0; j < dim; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && dim > 256) {
+                    fep_learning_heartbeat("fep_learning_loop",
+                                     (float)(j + 1) / (float)dim);
+                }
+
                 uint32_t idx[2] = {i, j};
                 float a_ij = nimcp_tensor_get(learner->matrix, idx);
                 prediction[i] += a_ij * state_t[j];
@@ -474,8 +574,20 @@ int fep_learn_transition_batch(
         /* Accumulate gradient */
         float reg = learner->config.l2_regularization;
         for (size_t i = 0; i < dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && dim > 256) {
+                fep_learning_heartbeat("fep_learning_loop",
+                                 (float)(i + 1) / (float)dim);
+            }
+
             float error = state_t1[i] - prediction[i];
             for (size_t j = 0; j < dim; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && dim > 256) {
+                    fep_learning_heartbeat("fep_learning_loop",
+                                     (float)(j + 1) / (float)dim);
+                }
+
                 uint32_t idx[2] = {i, j};
                 float current = nimcp_tensor_get(learner->matrix, idx);
                 float grad = -error * state_t[j] + reg * current;
@@ -492,7 +604,19 @@ int fep_learn_transition_batch(
     float n_inv = 1.0f / (float)n_transitions;
 
     for (size_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            fep_learning_heartbeat("fep_learning_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         for (size_t j = 0; j < dim; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && dim > 256) {
+                fep_learning_heartbeat("fep_learning_loop",
+                                 (float)(j + 1) / (float)dim);
+            }
+
             uint32_t idx[2] = {i, j};
             float grad = nimcp_tensor_get(batch_grad, idx) * n_inv;
             float current = nimcp_tensor_get(learner->matrix, idx);
@@ -520,6 +644,10 @@ int fep_learn_likelihood(
     if (!learner || !sys || !observation || !state) return -1;
     if (obs_dim != learner->observation_dim || state_dim != learner->state_dim) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_learning_heartbeat("fep_learning_fep_learn_likelihood", 0.0f);
+
+
     nimcp_platform_mutex_lock(learner->mutex);
     learner->stats.state = FEP_LEARNING_ACTIVE;
 
@@ -531,8 +659,20 @@ int fep_learn_likelihood(
     }
 
     for (size_t i = 0; i < obs_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && obs_dim > 256) {
+            fep_learning_heartbeat("fep_learning_loop",
+                             (float)(i + 1) / (float)obs_dim);
+        }
+
         prediction[i] = 0.0f;
         for (size_t j = 0; j < state_dim; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && state_dim > 256) {
+                fep_learning_heartbeat("fep_learning_loop",
+                                 (float)(j + 1) / (float)state_dim);
+            }
+
             uint32_t idx[2] = {i, j};
             float b_ij = nimcp_tensor_get(learner->matrix, idx);
             prediction[i] += b_ij * state[j];
@@ -547,8 +687,20 @@ int fep_learn_likelihood(
     float reg = learner->config.l2_regularization;
 
     for (size_t i = 0; i < obs_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && obs_dim > 256) {
+            fep_learning_heartbeat("fep_learning_loop",
+                             (float)(i + 1) / (float)obs_dim);
+        }
+
         float error = observation[i] - prediction[i];
         for (size_t j = 0; j < state_dim; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && state_dim > 256) {
+                fep_learning_heartbeat("fep_learning_loop",
+                                 (float)(j + 1) / (float)state_dim);
+            }
+
             uint32_t idx[2] = {i, j};
             float current = nimcp_tensor_get(learner->matrix, idx);
             float grad = -error * state[j] + reg * current;
@@ -587,6 +739,10 @@ int fep_learn_likelihood_batch(
     if (!learner || !observations || !states || n_pairs == 0) return -1;
     if (obs_dim != learner->observation_dim || state_dim != learner->state_dim) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_learning_heartbeat("fep_learning_fep_learn_likelihood", 0.0f);
+
+
     nimcp_platform_mutex_lock(learner->mutex);
     learner->stats.state = FEP_LEARNING_ACTIVE;
 
@@ -606,12 +762,30 @@ int fep_learn_likelihood_batch(
 
     /* Accumulate gradients */
     for (size_t p = 0; p < n_pairs; p++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((p & 0xFF) == 0 && n_pairs > 256) {
+            fep_learning_heartbeat("fep_learning_loop",
+                             (float)(p + 1) / (float)n_pairs);
+        }
+
         const float* obs = observations + p * obs_dim;
         const float* state = states + p * state_dim;
 
         for (size_t i = 0; i < obs_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && obs_dim > 256) {
+                fep_learning_heartbeat("fep_learning_loop",
+                                 (float)(i + 1) / (float)obs_dim);
+            }
+
             prediction[i] = 0.0f;
             for (size_t j = 0; j < state_dim; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && state_dim > 256) {
+                    fep_learning_heartbeat("fep_learning_loop",
+                                     (float)(j + 1) / (float)state_dim);
+                }
+
                 uint32_t idx[2] = {i, j};
                 prediction[i] += nimcp_tensor_get(learner->matrix, idx) * state[j];
             }
@@ -621,8 +795,20 @@ int fep_learn_likelihood_batch(
 
         float reg = learner->config.l2_regularization;
         for (size_t i = 0; i < obs_dim; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && obs_dim > 256) {
+                fep_learning_heartbeat("fep_learning_loop",
+                                 (float)(i + 1) / (float)obs_dim);
+            }
+
             float error = obs[i] - prediction[i];
             for (size_t j = 0; j < state_dim; j++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((j & 0xFF) == 0 && state_dim > 256) {
+                    fep_learning_heartbeat("fep_learning_loop",
+                                     (float)(j + 1) / (float)state_dim);
+                }
+
                 uint32_t idx[2] = {i, j};
                 float current = nimcp_tensor_get(learner->matrix, idx);
                 float grad = -error * state[j] + reg * current;
@@ -639,7 +825,19 @@ int fep_learn_likelihood_batch(
     float n_inv = 1.0f / (float)n_pairs;
 
     for (size_t i = 0; i < obs_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && obs_dim > 256) {
+            fep_learning_heartbeat("fep_learning_loop",
+                             (float)(i + 1) / (float)obs_dim);
+        }
+
         for (size_t j = 0; j < state_dim; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && state_dim > 256) {
+                fep_learning_heartbeat("fep_learning_loop",
+                                 (float)(j + 1) / (float)state_dim);
+            }
+
             uint32_t idx[2] = {i, j};
             float grad = nimcp_tensor_get(batch_grad, idx) * n_inv;
             float current = nimcp_tensor_get(learner->matrix, idx);
@@ -667,8 +865,24 @@ int fep_get_learned_transition(
     if (!learner || !matrix) return -1;
     if (dim != learner->state_dim) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_learning_heartbeat("fep_learning_fep_get_learned_tran", 0.0f);
+
+
     for (size_t i = 0; i < dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && dim > 256) {
+            fep_learning_heartbeat("fep_learning_loop",
+                             (float)(i + 1) / (float)dim);
+        }
+
         for (size_t j = 0; j < dim; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && dim > 256) {
+                fep_learning_heartbeat("fep_learning_loop",
+                                 (float)(j + 1) / (float)dim);
+            }
+
             uint32_t idx[2] = {i, j};
             matrix[i * dim + j] = nimcp_tensor_get(learner->matrix, idx);
         }
@@ -685,8 +899,24 @@ int fep_get_learned_likelihood(
     if (!learner || !matrix) return -1;
     if (obs_dim != learner->observation_dim || state_dim != learner->state_dim) return -1;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_learning_heartbeat("fep_learning_fep_get_learned_like", 0.0f);
+
+
     for (size_t i = 0; i < obs_dim; i++) {
+        /* Phase 8: Loop progress heartbeat */
+        if ((i & 0xFF) == 0 && obs_dim > 256) {
+            fep_learning_heartbeat("fep_learning_loop",
+                             (float)(i + 1) / (float)obs_dim);
+        }
+
         for (size_t j = 0; j < state_dim; j++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((j & 0xFF) == 0 && state_dim > 256) {
+                fep_learning_heartbeat("fep_learning_loop",
+                                 (float)(j + 1) / (float)state_dim);
+            }
+
             uint32_t idx[2] = {i, j};
             matrix[i * state_dim + j] = nimcp_tensor_get(learner->matrix, idx);
         }
@@ -705,6 +935,10 @@ int fep_apply_learned_transition(
     if (!learner || !sys) return -1;
 
     /* Apply to FEP level 0 transition matrix if available */
+    /* Phase 8: Heartbeat at operation start */
+    fep_learning_heartbeat("fep_learning_fep_apply_learned_tr", 0.0f);
+
+
     if (sys->levels && sys->num_levels > 0) {
         fep_hierarchy_level_t* level = &sys->levels[0];
         size_t dim = learner->state_dim;
@@ -726,6 +960,10 @@ int fep_apply_learned_likelihood(
     if (!learner || !sys) return -1;
 
     /* Apply to FEP level 0 likelihood matrix if available */
+    /* Phase 8: Heartbeat at operation start */
+    fep_learning_heartbeat("fep_learning_fep_apply_learned_li", 0.0f);
+
+
     if (sys->levels && sys->num_levels > 0) {
         fep_hierarchy_level_t* level = &sys->levels[0];
         size_t obs_dim = learner->observation_dim;
@@ -751,6 +989,10 @@ int fep_transition_learning_get_stats(
 ) {
     if (!learner || !stats) return -1;
     *stats = learner->stats;
+    /* Phase 8: Heartbeat at operation start */
+    fep_learning_heartbeat("fep_learning_fep_transition_learn", 0.0f);
+
+
     return 0;
 }
 
@@ -760,6 +1002,10 @@ int fep_likelihood_learning_get_stats(
 ) {
     if (!learner || !stats) return -1;
     *stats = learner->stats;
+    /* Phase 8: Heartbeat at operation start */
+    fep_learning_heartbeat("fep_learning_fep_likelihood_learn", 0.0f);
+
+
     return 0;
 }
 
@@ -767,6 +1013,10 @@ int fep_learning_reset_stats(void* learner) {
     if (!learner) return -1;
 
     /* Cast to transition learner to access stats (same offset in both structs) */
+    /* Phase 8: Heartbeat at operation start */
+    fep_learning_heartbeat("fep_learning_reset_stats", 0.0f);
+
+
     fep_transition_learner_t* t_learner = (fep_transition_learner_t*)learner;
 
     t_learner->stats.total_updates = 0;
@@ -794,6 +1044,10 @@ int fep_transition_learner_connect_bio_async(fep_transition_learner_t* learner) 
     if (!learner) return -1;
     if (learner->bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_learning_heartbeat("fep_learning_fep_transition_learn", 0.0f);
+
+
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_LEARNING_TRANSITION,
         .module_name = "fep_transition_learner",
@@ -815,6 +1069,10 @@ int fep_transition_learner_disconnect_bio_async(fep_transition_learner_t* learne
     if (!learner) return -1;
     if (!learner->bio_async_enabled) return 0;
 
+    /* Phase 8: Heartbeat at operation start */
+    fep_learning_heartbeat("fep_learning_fep_transition_learn", 0.0f);
+
+
     if (learner->bio_ctx) {
         bio_router_unregister_module(learner->bio_ctx);
         learner->bio_ctx = NULL;
@@ -826,6 +1084,10 @@ int fep_transition_learner_disconnect_bio_async(fep_transition_learner_t* learne
 int fep_likelihood_learner_connect_bio_async(fep_likelihood_learner_t* learner) {
     if (!learner) return -1;
     if (learner->bio_async_enabled) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    fep_learning_heartbeat("fep_learning_fep_likelihood_learn", 0.0f);
+
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_LEARNING_LIKELIHOOD,
@@ -847,6 +1109,10 @@ int fep_likelihood_learner_connect_bio_async(fep_likelihood_learner_t* learner) 
 int fep_likelihood_learner_disconnect_bio_async(fep_likelihood_learner_t* learner) {
     if (!learner) return -1;
     if (!learner->bio_async_enabled) return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    fep_learning_heartbeat("fep_learning_fep_likelihood_learn", 0.0f);
+
 
     if (learner->bio_ctx) {
         bio_router_unregister_module(learner->bio_ctx);
@@ -891,9 +1157,19 @@ const char* fep_learning_state_to_string(fep_learning_state_t state) {
  */
 int fep_learning_query_self_knowledge(kg_reader_t* kg) {
     if (!kg) return 0;
+    /* Phase 8: Heartbeat at operation start */
+    fep_learning_heartbeat("fep_learning_query_self_knowledge", 0.0f);
+
+
     const kg_entity_t* self = kg_reader_get_entity(kg, "FEP_Learning");
     if (self) {
         for (uint32_t i = 0; i < self->num_observations; i++) {
+            /* Phase 8: Loop progress heartbeat */
+            if ((i & 0xFF) == 0 && self->num_observations > 256) {
+                fep_learning_heartbeat("fep_learning_loop",
+                                 (float)(i + 1) / (float)self->num_observations);
+            }
+
             NIMCP_LOGGING_DEBUG("FEP Learning self-knowledge: %s", self->observations[i]);
         }
     }
