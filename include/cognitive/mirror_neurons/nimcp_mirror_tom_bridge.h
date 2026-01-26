@@ -321,6 +321,7 @@ typedef struct {
     bool enable_false_belief_detection;   /**< Enable prediction error → false belief */
     bool enable_deception_suppression;    /**< Enable ToM → mirror suppression */
     bool enable_simd_optimization;        /**< Use SIMD for similarity computations */
+    bool bio_async_enabled;              /**< Enable bio-async messaging (default: true) */
 } mirror_tom_config_t;
 
 /**

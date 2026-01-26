@@ -297,6 +297,9 @@ typedef struct {
     float default_affinity;          /**< Default in-group affinity */
     float default_hierarchy;         /**< Default hierarchy position */
     float default_cultural;          /**< Default cultural familiarity */
+
+    /* Bio-async */
+    bool bio_async_enabled;              /**< Enable bio-async messaging (default: true) */
 } social_context_config_t;
 
 /**

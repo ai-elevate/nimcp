@@ -203,6 +203,9 @@ typedef struct {
     /* Update timing */
     uint64_t update_interval_ms;         /**< Integration update rate (default: 1000ms) */
 
+    /* Bio-async */
+    bool bio_async_enabled;              /**< Enable bio-async messaging (default: true) */
+
 } mirror_immune_config_t;
 
 /**
@@ -260,6 +263,10 @@ struct mirror_immune_integration_system {
     /* Active state */
     bool enabled;
     uint64_t last_update_time;
+
+    /* Bio-async registration */
+    bool bio_async_registered;
+    uint32_t handler_id;
 };
 
 /**

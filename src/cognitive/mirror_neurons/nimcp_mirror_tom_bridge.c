@@ -16,6 +16,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/tensor/nimcp_tensor_simd.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "async/nimcp_bio_messages.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
@@ -89,6 +90,10 @@ struct mirror_tom_bridge {
 
     /* Statistics */
     mirror_tom_stats_t stats;
+
+    /* Bio-async registration */
+    bool bio_async_registered;
+    uint32_t handler_id;
 };
 
 /* ============================================================================
@@ -336,6 +341,10 @@ static void add_intention_to_history(mirror_tom_agent_state_t* agent,
     }
 }
 
+/* Forward declarations for bio-async registration */
+bool mirror_tom_register_bio_async(mirror_tom_bridge_t bridge);
+void mirror_tom_unregister_bio_async(mirror_tom_bridge_t bridge);
+
 /* ============================================================================
  * Core API - Lifecycle Management
  * ============================================================================ */
@@ -369,6 +378,11 @@ mirror_tom_bridge_t mirror_tom_create(const mirror_tom_config_t* config) {
     bridge->tom_effects.resonance_gain = 1.0f;
     bridge->tom_effects.imitation_gate = 1.0f;
 
+    /* Register with bio-async if enabled */
+    if (bridge->config.bio_async_enabled) {
+        mirror_tom_register_bio_async(bridge);
+    }
+
     nimcp_log(LOG_LEVEL_INFO, "Mirror-ToM bridge created (SIMD=%s)",
               bridge->config.enable_simd_optimization ? "enabled" : "disabled");
 
@@ -381,6 +395,9 @@ void mirror_tom_destroy(mirror_tom_bridge_t bridge) {
     /* Phase 8: Heartbeat at operation start */
     mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_destroy", 0.0f);
 
+    if (bridge->bio_async_registered) {
+        mirror_tom_unregister_bio_async(bridge);
+    }
 
     nimcp_log(LOG_LEVEL_INFO, "Mirror-ToM bridge destroyed (tracked %u agents, %u observations)",
               bridge->agent_count, bridge->stats.total_observations);
@@ -418,6 +435,7 @@ mirror_tom_config_t mirror_tom_get_default_config(void) {
     config.enable_false_belief_detection = true;
     config.enable_deception_suppression = true;
     config.enable_simd_optimization = true;
+    config.bio_async_enabled = true;
 
     return config;
 }
@@ -946,6 +964,29 @@ int mirror_tom_reset_agent(mirror_tom_bridge_t bridge, uint32_t agent_id) {
 
     nimcp_log(LOG_LEVEL_DEBUG, "Mirror-ToM: reset agent %u", agent_id);
     return 0;
+}
+
+/* ============================================================================
+ * Bio-Async Registration
+ * ============================================================================ */
+
+bool mirror_tom_register_bio_async(mirror_tom_bridge_t bridge) {
+    if (!bridge || bridge->bio_async_registered) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_tom_bridge_heartbeat("mirror_tom_register_bio_async", 0.0f);
+
+    bridge->bio_async_registered = true;
+    return true;
+}
+
+void mirror_tom_unregister_bio_async(mirror_tom_bridge_t bridge) {
+    if (!bridge || !bridge->bio_async_registered) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_tom_bridge_heartbeat("mirror_tom_unregister_bio_async", 0.0f);
+
+    bridge->bio_async_registered = false;
 }
 
 /* ============================================================================

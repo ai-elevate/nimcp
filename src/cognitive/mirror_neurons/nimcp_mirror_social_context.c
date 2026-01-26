@@ -14,6 +14,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "async/nimcp_bio_messages.h"
 #include <string.h>
 #include <math.h>
 
@@ -77,7 +78,15 @@ struct social_context_system {
 
     /* Integration */
     mirror_neurons_t connected_mirror;
+
+    /* Bio-async registration */
+    bool bio_async_registered;
+    uint32_t handler_id;
 };
+
+/* Forward declarations for bio-async */
+bool social_context_register_bio_async(social_context_t ctx);
+void social_context_unregister_bio_async(social_context_t ctx);
 
 /* ============================================================================
  * Internal Helper Functions
@@ -292,12 +301,21 @@ social_context_t social_context_create(const social_context_config_t* config) {
     sys->stats.avg_hierarchy = sys->config.default_hierarchy;
     sys->stats.last_update = nimcp_time_now_us() / 1000;
 
+    /* Register with bio-async if enabled */
+    if (sys->config.bio_async_enabled) {
+        social_context_register_bio_async(sys);
+    }
+
     nimcp_log(LOG_LEVEL_INFO, "Social context system created");
     return sys;
 }
 
 void social_context_destroy(social_context_t ctx) {
     if (!ctx) return;
+
+    if (ctx->bio_async_registered) {
+        social_context_unregister_bio_async(ctx);
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_social_context_heartbeat("mirror_socia_social_context_destr", 0.0f);
@@ -334,6 +352,8 @@ social_context_config_t social_context_get_default_config(void) {
     cfg.default_affinity = NIMCP_SOCIAL_DEFAULT_AFFINITY;
     cfg.default_hierarchy = NIMCP_SOCIAL_DEFAULT_HIERARCHY;
     cfg.default_cultural = NIMCP_SOCIAL_DEFAULT_CULTURAL;
+
+    cfg.bio_async_enabled = true;
 
     return cfg;
 }
@@ -739,6 +759,29 @@ bool social_context_observe_agent(social_context_t ctx,
     agent->last_seen = timestamp;
 
     return true;
+}
+
+/* ============================================================================
+ * Bio-Async Registration
+ * ============================================================================ */
+
+bool social_context_register_bio_async(social_context_t ctx) {
+    if (!ctx || ctx->bio_async_registered) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_social_context_heartbeat("mirror_socia_register_bio_async", 0.0f);
+
+    ctx->bio_async_registered = true;
+    return true;
+}
+
+void social_context_unregister_bio_async(social_context_t ctx) {
+    if (!ctx || !ctx->bio_async_registered) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_social_context_heartbeat("mirror_socia_unregister_bio_async", 0.0f);
+
+    ctx->bio_async_registered = false;
 }
 
 /* ============================================================================

@@ -23,6 +23,8 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
+#include "async/nimcp_bio_messages.h"
+
 #include <string.h>
 #include <math.h>
 #include <time.h>
@@ -55,6 +57,9 @@ static inline void mirror_immune_integration_heartbeat(const char* operation, fl
     }
 }
 
+/* Forward declarations for bio-async functions used before definition */
+bool mirror_immune_register_bio_async(mirror_immune_integration_t* integration);
+void mirror_immune_unregister_bio_async(mirror_immune_integration_t* integration);
 
 /* ============================================================================
  * Helper Functions
@@ -120,6 +125,8 @@ int mirror_immune_get_default_config(mirror_immune_config_t* config) {
     /* Update timing */
     config->update_interval_ms = 1000;
 
+    config->bio_async_enabled = true;
+
     return 0;
 }
 
@@ -177,6 +184,11 @@ mirror_immune_integration_t* mirror_immune_create(
     integration->enabled = false;
     integration->last_update_time = get_current_time_us();
 
+    /* Register with bio-async if enabled */
+    if (integration->config.bio_async_enabled) {
+        mirror_immune_register_bio_async(integration);
+    }
+
     NIMCP_LOGGING_INFO("Mirror-immune integration created");
     return integration;
 }
@@ -186,6 +198,10 @@ void mirror_immune_destroy(mirror_immune_integration_t* integration) {
      * WHY:  Free resources
      * HOW:  Destroy mutex, free struct */
     if (!integration) return;
+
+    if (integration->bio_async_registered) {
+        mirror_immune_unregister_bio_async(integration);
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_destro", 0.0f);
@@ -766,6 +782,29 @@ void mirror_immune_notify_imitation_failure(
     nimcp_mutex_lock(integration->mutex);
     integration->state.failed_imitation_count++;
     nimcp_mutex_unlock(integration->mutex);
+}
+
+/* ============================================================================
+ * Bio-Async Integration
+ * ============================================================================ */
+
+bool mirror_immune_register_bio_async(mirror_immune_integration_t* integration) {
+    if (!integration || integration->bio_async_registered) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_immune_integration_heartbeat("mirror_immun_register_bio_async", 0.0f);
+
+    integration->bio_async_registered = true;
+    return true;
+}
+
+void mirror_immune_unregister_bio_async(mirror_immune_integration_t* integration) {
+    if (!integration || !integration->bio_async_registered) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_immune_integration_heartbeat("mirror_immun_unregister_bio_async", 0.0f);
+
+    integration->bio_async_registered = false;
 }
 
 /* ============================================================================

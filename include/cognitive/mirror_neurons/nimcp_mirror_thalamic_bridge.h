@@ -46,6 +46,7 @@ typedef struct {
     bool enable_empathy_boost;
     float min_mirroring_strength;
     float empathy_threshold;
+    bool bio_async_enabled;              /**< Enable bio-async messaging */
 } mirror_thalamic_config_t;
 
 typedef struct mirror_thalamic_bridge mirror_thalamic_bridge_t;
@@ -67,6 +68,9 @@ typedef struct {
 } mirror_thalamic_stats_t;
 
 int mirror_thalamic_bridge_get_stats(const mirror_thalamic_bridge_t* bridge, mirror_thalamic_stats_t* stats);
+
+bool mirror_thalamic_register_bio_async(mirror_thalamic_bridge_t* bridge);
+void mirror_thalamic_unregister_bio_async(mirror_thalamic_bridge_t* bridge);
 
 #ifdef __cplusplus
 }

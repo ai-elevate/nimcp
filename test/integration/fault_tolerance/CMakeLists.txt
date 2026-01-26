@@ -322,3 +322,26 @@ set_tests_properties(integration_heartbeat_B10_fep_ft PROPERTIES
     LABELS "integration;fault_tolerance;heartbeat;B10;fep_ft"
     TIMEOUT 180
 )
+
+# Heartbeat B11 Wellbeing/Introspection Integration Tests (Phase 8: Per-Batch Heartbeat Testing)
+add_executable(integration_heartbeat_B11_wellbeing_introspection
+    test_heartbeat_B11_wellbeing_introspection_integration.cpp
+)
+target_link_libraries(integration_heartbeat_B11_wellbeing_introspection
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+)
+target_include_directories(integration_heartbeat_B11_wellbeing_introspection
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME integration_heartbeat_B11_wellbeing_introspection
+         COMMAND integration_heartbeat_B11_wellbeing_introspection)
+set_tests_properties(integration_heartbeat_B11_wellbeing_introspection PROPERTIES
+    LABELS "integration;fault_tolerance;heartbeat;B11;wellbeing_introspection"
+    TIMEOUT 180
+)

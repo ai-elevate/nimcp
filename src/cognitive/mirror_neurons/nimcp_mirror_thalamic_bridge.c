@@ -10,6 +10,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
+#include "async/nimcp_bio_messages.h"
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -47,6 +48,10 @@ struct mirror_thalamic_bridge {
     mirror_thalamic_config_t config;
     mirror_thalamic_stats_t stats;
     float attention_weight;
+
+    /* Bio-async registration */
+    bool bio_async_registered;
+    uint32_t handler_id;
 };
 
 mirror_thalamic_config_t mirror_thalamic_default_config(void) {
@@ -58,10 +63,15 @@ mirror_thalamic_config_t mirror_thalamic_default_config(void) {
         .enable_attention_gating = true,
         .enable_empathy_boost = true,
         .min_mirroring_strength = 0.3f,
-        .empathy_threshold = 0.5f
+        .empathy_threshold = 0.5f,
+        .bio_async_enabled = true,
     };
     return cfg;
 }
+
+/* Forward declarations for bio-async */
+bool mirror_thalamic_register_bio_async(mirror_thalamic_bridge_t* bridge);
+void mirror_thalamic_unregister_bio_async(mirror_thalamic_bridge_t* bridge);
 
 mirror_thalamic_bridge_t* mirror_thalamic_bridge_create(void* mirror, thalamic_router_t* router, const mirror_thalamic_config_t* config) {
     /* Phase 8: Heartbeat at operation start */
@@ -86,6 +96,12 @@ mirror_thalamic_bridge_t* mirror_thalamic_bridge_create(void* mirror, thalamic_r
     bridge->config = config ? *config : mirror_thalamic_default_config();
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+
+    /* Register with bio-async if enabled */
+    if (bridge->config.bio_async_enabled) {
+        mirror_thalamic_register_bio_async(bridge);
+    }
+
     return bridge;
 }
 
@@ -94,6 +110,9 @@ void mirror_thalamic_bridge_destroy(mirror_thalamic_bridge_t* bridge) {
     /* Phase 8: Heartbeat at operation start */
     mirror_thalamic_bridge_heartbeat("mirror_thala_destroy", 0.0f);
 
+    if (bridge->bio_async_registered) {
+        mirror_thalamic_unregister_bio_async(bridge);
+    }
 
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
@@ -208,4 +227,23 @@ int mirror_thalamic_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Mirror_Thalamic_Bridge");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+bool mirror_thalamic_register_bio_async(mirror_thalamic_bridge_t* bridge) {
+    if (!bridge || bridge->bio_async_registered) return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_thalamic_bridge_heartbeat("mirror_thala_register_bio_async", 0.0f);
+
+    bridge->bio_async_registered = true;
+    return true;
+}
+
+void mirror_thalamic_unregister_bio_async(mirror_thalamic_bridge_t* bridge) {
+    if (!bridge || !bridge->bio_async_registered) return;
+
+    /* Phase 8: Heartbeat at operation start */
+    mirror_thalamic_bridge_heartbeat("mirror_thala_unregister_bio_async", 0.0f);
+
+    bridge->bio_async_registered = false;
 }
