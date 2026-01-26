@@ -276,3 +276,26 @@ set_tests_properties(integration_heartbeat_B08_ethics_reasoning PROPERTIES
     LABELS "integration;fault_tolerance;heartbeat;B08;ethics_reasoning"
     TIMEOUT 180
 )
+
+# Heartbeat B09 Omni/Recursive Integration Tests (Phase 8: Per-Batch Heartbeat Testing)
+add_executable(integration_heartbeat_B09_omni_recursive
+    test_heartbeat_B09_omni_recursive_integration.cpp
+)
+target_link_libraries(integration_heartbeat_B09_omni_recursive
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+)
+target_include_directories(integration_heartbeat_B09_omni_recursive
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME integration_heartbeat_B09_omni_recursive
+         COMMAND integration_heartbeat_B09_omni_recursive)
+set_tests_properties(integration_heartbeat_B09_omni_recursive PROPERTIES
+    LABELS "integration;fault_tolerance;heartbeat;B09;omni_recursive"
+    TIMEOUT 180
+)

@@ -296,4 +296,33 @@ gtest_discover_tests(regression_heartbeat_B08_ethics_reasoning
         TIMEOUT 180
 )
 
+# Heartbeat B09 Omni/Recursive Regression Tests (Phase 8: Per-Batch Heartbeat Testing)
+add_executable(regression_heartbeat_B09_omni_recursive
+    test_heartbeat_B09_omni_recursive_regression.cpp
+)
+
+target_include_directories(regression_heartbeat_B09_omni_recursive PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
+)
+
+target_link_libraries(regression_heartbeat_B09_omni_recursive
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_compile_features(regression_heartbeat_B09_omni_recursive PRIVATE cxx_std_17)
+target_compile_definitions(regression_heartbeat_B09_omni_recursive PRIVATE NIMCP_TESTING)
+
+gtest_discover_tests(regression_heartbeat_B09_omni_recursive
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;fault_tolerance;heartbeat;B09;omni_recursive"
+        TIMEOUT 180
+)
+
 message(STATUS "Added fault tolerance regression tests")
