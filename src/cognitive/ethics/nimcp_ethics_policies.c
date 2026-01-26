@@ -155,11 +155,10 @@ void ethics_init_strategy_table(policy_strategy_table_t* table)
 {
     // Guard clause: Validate input
     if (!table)
-        /* Phase 8: Heartbeat at operation start */
-        ethics_policies_heartbeat("ethics_polic_ethics_init_strategy", 0.0f);
-
-
         return;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_policies_heartbeat("ethics_polic_ethics_init_strategy", 0.0f);
 
     memset(table->evaluators, 0, sizeof(table->evaluators));
 
@@ -187,11 +186,10 @@ float ethics_evaluate_policy_strategy(const policy_strategy_table_t* table,
 {
     // Guard clause: Validate inputs
     if (!table || !policy || !action)
-        /* Phase 8: Heartbeat at operation start */
-        ethics_policies_heartbeat("ethics_polic_ethics_evaluate_poli", 0.0f);
-
-
         return 0.0F;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_policies_heartbeat("ethics_polic_ethics_evaluate_poli", 0.0f);
 
     // Guard clause: Check bounds
     if (policy->violation_type >= 16)
@@ -292,11 +290,10 @@ bool ethics_add_policy(ethics_engine_t engine, const ethics_policy_t* policy)
 {
     // Guard clause: Validate inputs
     if (!engine || !policy)
-        /* Phase 8: Heartbeat at operation start */
-        ethics_policies_heartbeat("ethics_polic_ethics_add_policy", 0.0f);
-
-
         return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_policies_heartbeat("ethics_polic_ethics_add_policy", 0.0f);
 
     // Add to internal storage
     return ethics_engine_add_policy_internal(engine, policy);
@@ -315,20 +312,14 @@ bool ethics_add_policy(ethics_engine_t engine, const ethics_policy_t* policy)
 bool ethics_remove_policy(ethics_engine_t engine, uint32_t policy_id)
 {
     // Guard clause: Validate input
-    if (!engine)
-        /* Phase 8: Heartbeat at operation start */
-        ethics_policies_heartbeat("ethics_polic_ethics_remove_policy", 0.0f);
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "ethics_remove_policy: engine is NULL");
+        return false;
+    }
 
-
-        {
-
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
-
-                "ethics_remove_policy: engine is NULL");
-
-            return false;
-
-        }
+    /* Phase 8: Heartbeat at operation start */
+    ethics_policies_heartbeat("ethics_polic_ethics_remove_policy", 0.0f);
 
     return ethics_engine_remove_policy_internal(engine, policy_id);
 }
@@ -347,11 +338,10 @@ uint32_t ethics_get_policies(ethics_engine_t engine, ethics_policy_t* policies,
 {
     // Guard clause: Validate inputs
     if (!engine || !policies)
-        /* Phase 8: Heartbeat at operation start */
-        ethics_policies_heartbeat("ethics_polic_ethics_get_policies", 0.0f);
-
-
         return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_policies_heartbeat("ethics_polic_ethics_get_policies", 0.0f);
 
     uint32_t num_policies = ethics_engine_get_num_policies(engine);
     uint32_t count = (num_policies < max_policies) ? num_policies : max_policies;

@@ -1762,11 +1762,10 @@ bool wellbeing_collect_resource_metrics(resource_metrics_t* metrics)
 {
     // Guard clause: Validate input
     if (!metrics)
-        /* Phase 8: Heartbeat at operation start */
-        wellbeing_heartbeat("wellbeing_collect_resource_met", 0.0f);
-
-
         return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_heartbeat("wellbeing_collect_resource_met", 0.0f);
 
     ensure_resource_tracking_init();
 
@@ -1820,11 +1819,10 @@ bool wellbeing_check_resource_thresholds(const resource_metrics_t* metrics,
 {
     // Guard clauses: Validate inputs
     if (!metrics || !thresholds || !severity_out)
-        /* Phase 8: Heartbeat at operation start */
-        wellbeing_heartbeat("wellbeing_check_resource_thres", 0.0f);
-
-
         return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_heartbeat("wellbeing_check_resource_thres", 0.0f);
 
     *severity_out = DISTRESS_SEVERITY_NORMAL;
     bool threshold_exceeded = false;
@@ -1993,11 +1991,10 @@ bool wellbeing_stop_resource_monitoring(void)
 {
     // Guard clause: Not running
     if (!monitoring_active)
-        /* Phase 8: Heartbeat at operation start */
-        wellbeing_heartbeat("wellbeing_stop_resource_monito", 0.0f);
-
-
         return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_heartbeat("wellbeing_stop_resource_monito", 0.0f);
 
     NIMCP_LOGGING_INFO("[WELLBEING] Stopping resource monitoring...");
 
@@ -2020,11 +2017,10 @@ bool wellbeing_get_performance_stats(uint32_t window_ms,
 {
     // Guard clauses: Validate inputs
     if (!stats_out || window_ms == 0)
-        /* Phase 8: Heartbeat at operation start */
-        wellbeing_heartbeat("wellbeing_get_performance_stat", 0.0f);
-
-
         return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    wellbeing_heartbeat("wellbeing_get_performance_stat", 0.0f);
 
     ensure_resource_tracking_init();
 

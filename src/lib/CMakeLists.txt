@@ -600,6 +600,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_predictive_attention_fep_bridge.c  # Predictive-Attention FEP orchestrator bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_imagination_reasoning_fep_bridge.c  # Imagination-Reasoning FEP orchestrator bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_security_cognitive_hub_bridge.c  # Security-Cognitive Hub bridge (cross-domain security-cognitive coordination)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_cognitive_bio_async_bridge.c  # Cognitive-BioAsync integration bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/explanations/nimcp_explanations.c  # Phase 10.7: Natural Explanations
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/meta_learning/nimcp_meta_learning.c  # Phase 10.8: Meta-Learning
 

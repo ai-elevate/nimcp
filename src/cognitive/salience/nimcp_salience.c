@@ -1397,11 +1397,10 @@ salience_evaluator_t salience_evaluator_create(brain_t brain, const salience_con
 void salience_evaluator_destroy(salience_evaluator_t eval)
 {
     if (!eval)
-        /* Phase 8: Heartbeat at operation start */
-        salience_heartbeat("salience_evaluator_destroy", 0.0f);
-
-
         return;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_heartbeat("salience_evaluator_destroy", 0.0f);
 
     // Unregister from bio-async router
     if (eval->bio_async_enabled && eval->bio_ctx) {
@@ -1831,11 +1830,10 @@ bool salience_set_thresholds(salience_evaluator_t eval, float high_salience_thre
                              float high_urgency_threshold)
 {
     if (!eval)
-        /* Phase 8: Heartbeat at operation start */
-        salience_heartbeat("salience_set_thresholds", 0.0f);
-
-
         return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_heartbeat("salience_set_thresholds", 0.0f);
 
     nimcp_mutex_lock(&eval->eval_lock);
 
@@ -1853,11 +1851,10 @@ bool salience_register_callback(salience_evaluator_t eval, salience_event_callba
                                 void* context)
 {
     if (!eval)
-        /* Phase 8: Heartbeat at operation start */
-        salience_heartbeat("salience_register_callback", 0.0f);
-
-
         return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_heartbeat("salience_register_callback", 0.0f);
 
     nimcp_mutex_lock(&eval->eval_lock);
 
@@ -1872,11 +1869,10 @@ bool salience_register_callback(salience_evaluator_t eval, salience_event_callba
 bool salience_clear_history(salience_evaluator_t eval)
 {
     if (!eval || !eval->history)
-        /* Phase 8: Heartbeat at operation start */
-        salience_heartbeat("salience_clear_history", 0.0f);
-
-
         return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_heartbeat("salience_clear_history", 0.0f);
 
     history_buffer_clear(eval->history);
 
@@ -1886,11 +1882,10 @@ bool salience_clear_history(salience_evaluator_t eval)
 bool salience_get_stats(salience_evaluator_t eval, salience_stats_t* stats)
 {
     if (!eval || !stats)
-        /* Phase 8: Heartbeat at operation start */
-        salience_heartbeat("salience_get_stats", 0.0f);
-
-
         return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    salience_heartbeat("salience_get_stats", 0.0f);
 
     nimcp_mutex_lock(&eval->eval_lock);
 

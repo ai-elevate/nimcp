@@ -209,4 +209,33 @@ gtest_discover_tests(regression_heartbeat_B05_mirror_neurons
         TIMEOUT 180
 )
 
+# Heartbeat B06 Integration Regression Tests (Phase 8: Per-Batch Heartbeat Testing)
+add_executable(regression_heartbeat_B06_integration
+    test_heartbeat_B06_integration_regression.cpp
+)
+
+target_include_directories(regression_heartbeat_B06_integration PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
+)
+
+target_link_libraries(regression_heartbeat_B06_integration
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_compile_features(regression_heartbeat_B06_integration PRIVATE cxx_std_17)
+target_compile_definitions(regression_heartbeat_B06_integration PRIVATE NIMCP_TESTING)
+
+gtest_discover_tests(regression_heartbeat_B06_integration
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;fault_tolerance;heartbeat;B06;integration"
+        TIMEOUT 180
+)
+
 message(STATUS "Added fault tolerance regression tests")

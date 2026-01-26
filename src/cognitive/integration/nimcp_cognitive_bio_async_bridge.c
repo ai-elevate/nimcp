@@ -1485,9 +1485,9 @@ int cognitive_bio_bridge_get_outgoing_effects(
     cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
 
 
-    nimcp_mutex_lock(((cognitive_bio_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((cognitive_bio_bridge_t*)bridge)->base.mutex);
     *effects = bridge->outgoing_effects;
-    nimcp_mutex_unlock(((cognitive_bio_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((cognitive_bio_bridge_t*)bridge)->base.mutex);
 
     return COG_BIO_OK;
 }
@@ -1504,9 +1504,9 @@ int cognitive_bio_bridge_get_incoming_effects(
     cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
 
 
-    nimcp_mutex_lock(((cognitive_bio_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((cognitive_bio_bridge_t*)bridge)->base.mutex);
     *effects = bridge->incoming_effects;
-    nimcp_mutex_unlock(((cognitive_bio_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((cognitive_bio_bridge_t*)bridge)->base.mutex);
 
     return COG_BIO_OK;
 }
@@ -1527,9 +1527,9 @@ int cognitive_bio_bridge_get_stats(
     cognitive_bio_async_bridge_heartbeat("cognitive_bi_cognitive_bio_bridge", 0.0f);
 
 
-    nimcp_mutex_lock(((cognitive_bio_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((cognitive_bio_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(((cognitive_bio_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((cognitive_bio_bridge_t*)bridge)->base.mutex);
 
     return COG_BIO_OK;
 }

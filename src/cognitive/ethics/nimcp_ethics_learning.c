@@ -66,20 +66,14 @@ bool ethics_validate_learning_inputs(ethics_engine_t engine, const action_contex
                                      const action_outcome_t* outcome)
 {
     // Guard clause: Check engine
-    if (!engine)
-        /* Phase 8: Heartbeat at operation start */
-        ethics_learning_heartbeat("ethics_learn_ethics_validate_lear", 0.0f);
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "ethics_validate_learning_inputs: engine is NULL");
+        return false;
+    }
 
-
-        {
-
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
-
-                "ethics_validate_learning_inputs: engine is NULL");
-
-            return false;
-
-        }
+    /* Phase 8: Heartbeat at operation start */
+    ethics_learning_heartbeat("ethics_learn_ethics_validate_lear", 0.0f);
 
     // Guard clause: Check action
     if (!action)
@@ -128,11 +122,10 @@ void ethics_update_golden_rule_learning(ethics_engine_t engine, const action_con
 {
     // Guard clause: Validate inputs
     if (!engine || !action)
-        /* Phase 8: Heartbeat at operation start */
-        ethics_learning_heartbeat("ethics_learn_ethics_update_golden", 0.0f);
-
-
         return;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_learning_heartbeat("ethics_learn_ethics_update_golden", 0.0f);
 
     const char* label = (actual_impact < 0) ? "accept" : "reject";
     float confidence = fminf(fabsf(actual_impact), 1.0F);
@@ -156,11 +149,10 @@ void ethics_update_empathy_learning(ethics_engine_t engine, const action_context
 {
     // Guard clause: Validate inputs
     if (!engine || !action || !outcome)
-        /* Phase 8: Heartbeat at operation start */
-        ethics_learning_heartbeat("ethics_learn_ethics_update_empath", 0.0f);
-
-
         return;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_learning_heartbeat("ethics_learn_ethics_update_empath", 0.0f);
 
     empathy_network_t empathy_net = ethics_engine_get_empathy_net(engine);
     if (!empathy_net)

@@ -117,20 +117,14 @@ static void free_incident_data(void* data)
 bool ethics_init_incident_logging(ethics_engine_t engine)
 {
     // Guard clause: Validate input
-    if (!engine)
-        /* Phase 8: Heartbeat at operation start */
-        ethics_incidents_heartbeat("ethics_incid_ethics_init_incident", 0.0f);
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "ethics_init_incident_logging: engine is NULL");
+        return false;
+    }
 
-
-        {
-
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
-
-                "ethics_init_incident_logging: engine is NULL");
-
-            return false;
-
-        }
+    /* Phase 8: Heartbeat at operation start */
+    ethics_incidents_heartbeat("ethics_incid_ethics_init_incident", 0.0f);
 
     // Initialize incident storage
     ethics_incident_storage_t* storage = ethics_engine_get_incident_storage(engine);
@@ -197,11 +191,10 @@ bool ethics_init_incident_logging(ethics_engine_t engine)
 void ethics_cleanup_incident_logging(ethics_engine_t engine)
 {
     if (!engine)
-        /* Phase 8: Heartbeat at operation start */
-        ethics_incidents_heartbeat("ethics_incid_ethics_cleanup_incid", 0.0f);
-
-
         return;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_incidents_heartbeat("ethics_incid_ethics_cleanup_incid", 0.0f);
 
     ethics_incident_storage_t* storage = ethics_engine_get_incident_storage(engine);
     if (!storage)
@@ -236,11 +229,10 @@ bool ethics_log_incident(ethics_engine_t engine, const ethics_incident_t* incide
 {
     // Guard clause: Validate inputs
     if (!engine || !incident)
-        /* Phase 8: Heartbeat at operation start */
-        ethics_incidents_heartbeat("ethics_incid_ethics_log_incident", 0.0f);
-
-
         return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_incidents_heartbeat("ethics_incid_ethics_log_incident", 0.0f);
 
     ethics_incident_storage_t* storage = ethics_engine_get_incident_storage(engine);
     if (!storage || !storage->incident_history || !storage->incident_btree || !storage->incident_by_type)
@@ -302,11 +294,10 @@ uint32_t ethics_get_recent_incidents(ethics_engine_t engine, uint32_t max_incide
 {
     // Guard clause: Validate inputs
     if (!engine || !incidents_out || max_incidents == 0)
-        /* Phase 8: Heartbeat at operation start */
-        ethics_incidents_heartbeat("ethics_incid_ethics_get_recent_in", 0.0f);
-
-
         return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_incidents_heartbeat("ethics_incid_ethics_get_recent_in", 0.0f);
 
     ethics_incident_storage_t* storage = ethics_engine_get_incident_storage(engine);
     if (!storage || !storage->incident_history)
@@ -355,11 +346,10 @@ uint32_t ethics_get_incidents_by_time_range(ethics_engine_t engine, uint64_t sta
 {
     // Guard clause: Validate inputs
     if (!engine || !incidents_out)
-        /* Phase 8: Heartbeat at operation start */
-        ethics_incidents_heartbeat("ethics_incid_ethics_get_incidents", 0.0f);
-
-
         return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_incidents_heartbeat("ethics_incid_ethics_get_incidents", 0.0f);
 
     ethics_incident_storage_t* storage = ethics_engine_get_incident_storage(engine);
     if (!storage || !storage->incident_history || !storage->incident_btree)
@@ -428,11 +418,10 @@ uint32_t ethics_get_incidents_by_violation_type(ethics_engine_t engine,
 {
     // Guard clause: Validate inputs
     if (!engine || !incidents_out)
-        /* Phase 8: Heartbeat at operation start */
-        ethics_incidents_heartbeat("ethics_incid_ethics_get_incidents", 0.0f);
-
-
         return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_incidents_heartbeat("ethics_incid_ethics_get_incidents", 0.0f);
 
     ethics_incident_storage_t* storage = ethics_engine_get_incident_storage(engine);
     if (!storage || !storage->incident_history)
@@ -491,11 +480,10 @@ uint32_t ethics_get_incidents_by_severity(ethics_engine_t engine, float min_seve
 {
     // Guard clause: Validate inputs
     if (!engine || !incidents_out || min_severity < 0.0F || min_severity > 1.0F)
-        /* Phase 8: Heartbeat at operation start */
-        ethics_incidents_heartbeat("ethics_incid_ethics_get_incidents", 0.0f);
-
-
         return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_incidents_heartbeat("ethics_incid_ethics_get_incidents", 0.0f);
 
     ethics_incident_storage_t* storage = ethics_engine_get_incident_storage(engine);
     if (!storage || !storage->incident_history)
@@ -554,11 +542,10 @@ uint32_t ethics_get_incidents_by_action(ethics_engine_t engine, ethics_action_t 
 {
     // Guard clause: Validate inputs
     if (!engine || !incidents_out)
-        /* Phase 8: Heartbeat at operation start */
-        ethics_incidents_heartbeat("ethics_incid_ethics_get_incidents", 0.0f);
-
-
         return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_incidents_heartbeat("ethics_incid_ethics_get_incidents", 0.0f);
 
     ethics_incident_storage_t* storage = ethics_engine_get_incident_storage(engine);
     if (!storage || !storage->incident_history)
@@ -616,11 +603,10 @@ uint32_t ethics_get_all_incidents(ethics_engine_t engine, ethics_incident_t** in
 {
     // Guard clause: Validate inputs
     if (!engine || !incidents_out)
-        /* Phase 8: Heartbeat at operation start */
-        ethics_incidents_heartbeat("ethics_incid_ethics_get_all_incid", 0.0f);
-
-
         return 0;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_incidents_heartbeat("ethics_incid_ethics_get_all_incid", 0.0f);
 
     ethics_incident_storage_t* storage = ethics_engine_get_incident_storage(engine);
     if (!storage || !storage->incident_history)
@@ -670,11 +656,10 @@ bool ethics_export_incidents(ethics_engine_t engine, const char* filepath, const
 {
     // Guard clause: Validate inputs
     if (!engine || !filepath || !format)
-        /* Phase 8: Heartbeat at operation start */
-        ethics_incidents_heartbeat("ethics_incid_ethics_export_incide", 0.0f);
-
-
         return false;
+
+    /* Phase 8: Heartbeat at operation start */
+    ethics_incidents_heartbeat("ethics_incid_ethics_export_incide", 0.0f);
 
     ethics_incident_storage_t* storage = ethics_engine_get_incident_storage(engine);
     if (!storage || !storage->incident_history)
