@@ -63,6 +63,35 @@
 
 #define LOG_MODULE "BRAIN_DISTRIBUTED"
 
+//=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for brain_distributed module */
+static nimcp_health_agent_t* g_brain_distributed_health_agent = NULL;
+
+/**
+ * @brief Set health agent for brain_distributed heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void brain_distributed_set_health_agent(nimcp_health_agent_t* agent) {
+    g_brain_distributed_health_agent = agent;
+}
+
+/** @brief Send heartbeat from brain_distributed module */
+static inline void brain_distributed_heartbeat(const char* operation, float progress) {
+    if (g_brain_distributed_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_brain_distributed_health_agent, operation, progress);
+    }
+}
+
+
 // NOTE: COW Clone Synchronization is now lock-free using atomic operations.
 // The previous mutex-based approach had a race condition vulnerability.
 // See nimcp_brain_internal.h for the new atomic reference counting design.

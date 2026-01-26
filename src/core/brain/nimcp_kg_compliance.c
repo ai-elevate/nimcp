@@ -16,6 +16,35 @@
 #include <time.h>
 #include <stdio.h>
 
+//=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for kg_compliance module */
+static nimcp_health_agent_t* g_kg_compliance_health_agent = NULL;
+
+/**
+ * @brief Set health agent for kg_compliance heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void kg_compliance_set_health_agent(nimcp_health_agent_t* agent) {
+    g_kg_compliance_health_agent = agent;
+}
+
+/** @brief Send heartbeat from kg_compliance module */
+static inline void kg_compliance_heartbeat(const char* operation, float progress) {
+    if (g_kg_compliance_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_kg_compliance_health_agent, operation, progress);
+    }
+}
+
+
 /* ============================================================================
  * Static Data Structures
  * ============================================================================ */

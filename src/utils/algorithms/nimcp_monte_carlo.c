@@ -1109,54 +1109,33 @@ void mc_gpu_config_init(mc_gpu_config_t* gpu_config) {
 #ifdef NIMCP_ENABLE_CUDA
 #include "gpu/quantum/nimcp_qmc_gpu.h"
 
-bool mc_gpu_available(void) {
-    return qmc_gpu_is_available();
+#include <stddef.h>  /* for NULL */
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for monte_carlo module */
+static nimcp_health_agent_t* g_monte_carlo_health_agent = NULL;
+
+/**
+ * @brief Set health agent for monte_carlo heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void monte_carlo_set_health_agent(nimcp_health_agent_t* agent) {
+    g_monte_carlo_health_agent = agent;
 }
 
-bool mc_should_use_gpu(const mc_gpu_config_t* gpu_config, uint32_t num_samples) {
-    if (!gpu_config) return false;
-
-    switch (gpu_config->mode) {
-        case MC_GPU_DISABLED:
-            return false;
-
-        case MC_GPU_AUTO:
-            return qmc_gpu_is_available() &&
-                   num_samples >= gpu_config->min_samples_for_gpu;
-
-        case MC_GPU_PREFERRED:
-            return qmc_gpu_is_available();
-
-        case MC_GPU_REQUIRED:
-            return true;  /* Will fail later if not available */
-
-        default:
-            return false;
+/** @brief Send heartbeat from monte_carlo module */
+static inline void monte_carlo_heartbeat(const char* operation, float progress) {
+    if (g_monte_carlo_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_monte_carlo_health_agent, operation, progress);
     }
 }
 
-const char* mc_gpu_status_string(void) {
-    if (qmc_gpu_is_available()) {
-        return qmc_gpu_version();
-    } else {
-        return "GPU acceleration not available";
-    }
-}
-
-#else  /* !NIMCP_ENABLE_CUDA */
-
-bool mc_gpu_available(void) {
-    return false;
-}
-
-bool mc_should_use_gpu(const mc_gpu_config_t* gpu_config, uint32_t num_samples) {
-    (void)gpu_config;
-    (void)num_samples;
-    return false;
-}
-
-const char* mc_gpu_status_string(void) {
-    return "CUDA support not compiled in";
-}
-
-#endif /* NIMCP_ENABLE_CUDA */
+#endif
+//=============================================================================

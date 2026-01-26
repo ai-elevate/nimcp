@@ -12,6 +12,35 @@
 #include <string.h>
 #include <math.h>
 
+#include <stddef.h>  /* for NULL */
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for pfc_adapter module */
+static nimcp_health_agent_t* g_pfc_adapter_health_agent = NULL;
+
+/**
+ * @brief Set health agent for pfc_adapter heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void pfc_adapter_set_health_agent(nimcp_health_agent_t* agent) {
+    g_pfc_adapter_health_agent = agent;
+}
+
+/** @brief Send heartbeat from pfc_adapter module */
+static inline void pfc_adapter_heartbeat(const char* operation, float progress) {
+    if (g_pfc_adapter_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pfc_adapter_health_agent, operation, progress);
+    }
+}
+
+
 #define PFC_MAX_WM_SLOTS 16
 #define PFC_MAX_RULES 64
 #define PFC_WM_CONTENT_SIZE 64

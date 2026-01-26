@@ -1,0 +1,1266 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2025 NIMCP Project
+/**
+ * @file nimcp_brain_cycle_coordinator.c
+ * @brief Brain Cycle Coordinator implementation
+ *
+ * WHAT: Unified observability and coordination across all 9 brain cycle types
+ * WHY:  Single point for health tracking, stall detection, dependency validation,
+ *       and integration with immune, bio-async, KG, and other subsystems
+ * HOW:  Fixed-size registry indexed by cycle type, Welford's algorithm for stats,
+ *       FNV-1a hash for pattern fingerprinting, callback system for notifications
+ *
+ * @version 1.0.0
+ * @author NIMCP Development Team
+ * @date 2025-12-31
+ */
+
+#include "core/brain/nimcp_brain_cycle_coordinator.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "utils/platform/nimcp_platform_mutex.h"
+
+#include "utils/memory/nimcp_memory.h"
+#include "utils/time/nimcp_time.h"
+#include "utils/thread/nimcp_thread.h"
+#include "utils/error/nimcp_error_codes.h"
+
+#include <string.h>
+#include <stdio.h>
+#include <math.h>
+
+//=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for brain_cycle_coordinator module */
+static nimcp_health_agent_t* g_brain_cycle_coordinator_health_agent = NULL;
+
+/**
+ * @brief Set health agent for brain_cycle_coordinator heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void brain_cycle_coordinator_set_health_agent(nimcp_health_agent_t* agent) {
+    g_brain_cycle_coordinator_health_agent = agent;
+}
+
+/** @brief Send heartbeat from brain_cycle_coordinator module */
+static inline void brain_cycle_coordinator_heartbeat(const char* operation, float progress) {
+    if (g_brain_cycle_coordinator_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_brain_cycle_coordinator_health_agent, operation, progress);
+    }
+}
+
+
+#define CYCLE_COORD_LOG_MODULE "cycle_coordinator"
+
+//=============================================================================
+// Internal Types
+//=============================================================================
+
+/** Per-cycle dependency entry */
+typedef struct {
+    brain_cycle_type_t dependent;
+    brain_cycle_type_t dependency;
+} cycle_dependency_t;
+
+/** Health pattern fingerprint */
+typedef struct {
+    uint32_t pattern_hash;
+    uint32_t occurrence_count;
+    uint64_t last_seen_us;
+} health_pattern_t;
+
+/** Per-cycle internal entry */
+typedef struct {
+    brain_cycle_type_t      type;
+    brain_cycle_category_t  category;
+    brain_cycle_health_t    health;
+    bool                    registered;
+    bool                    enabled;
+    bool                    running;
+    void*                   cycle_handle;
+    brain_cycle_health_fn_t health_fn;
+
+    /* Timing */
+    uint64_t last_tick_us;
+    uint64_t expected_interval_us;
+    uint64_t ticks_executed;
+    uint64_t errors_encountered;
+
+    /* Duration stats (Welford's online algorithm) */
+    double   avg_duration_us;
+    uint64_t max_duration_us;
+    double   duration_mean;
+    double   duration_m2;
+    uint64_t duration_count;
+    double   duration_stddev;
+
+    /* Monitoring */
+    float    monitoring_weight;
+} cycle_entry_t;
+
+/** Internal coordinator structure */
+struct brain_cycle_coordinator {
+    /* Configuration */
+    brain_cycle_coordinator_config_t config;
+
+    /* Cycle registry */
+    cycle_entry_t cycles[BRAIN_CYCLE_COUNT];
+    uint32_t registered_count;
+
+    /* Dependencies */
+    cycle_dependency_t dependencies[BRAIN_CYCLE_COUNT * BRAIN_CYCLE_MAX_DEPENDENCIES];
+    uint32_t dependency_count;
+
+    /* Callbacks */
+    brain_cycle_coordinator_callbacks_t callbacks[BRAIN_CYCLE_MAX_CALLBACKS];
+    uint32_t callback_count;
+
+    /* Health patterns (FNV-1a fingerprints) */
+    health_pattern_t patterns[BRAIN_CYCLE_MAX_HEALTH_PATTERNS];
+    uint32_t pattern_count;
+    uint32_t mc_seed;
+
+    /* Integration references */
+    bio_module_context_t*              bio_context;
+    brain_immune_system_t*             immune_system;
+    kg_io_dispatcher_t*                kg_dispatcher;
+    introspection_context_t*           introspection_ctx;
+    hemispheric_brain_t*               hemispheric_brain;
+    oscillations_fep_bridge_t*         fep_bridge;
+    meta_learning_substrate_bridge_t*  meta_bridge;
+    sfa_pink_noise_bridge_t*           pink_noise_bridge;
+    snn_global_workspace_bridge_t*     gw_bridge;
+    snn_attention_bridge_t*            attention_bridge;
+    world_model_multimodal_t*          world_model;
+
+    /* Statistics cache */
+    brain_cycle_coordinator_stats_t stats;
+    float prev_overall_health;
+
+    /* Timing */
+    uint64_t created_time_us;
+    uint64_t last_health_check_us;
+    uint64_t last_kg_write_us;
+    uint64_t health_checks_performed;
+
+    /* KG table name storage */
+    char kg_table_name[128];
+
+    /* Thread safety */
+    nimcp_mutex_t* mutex;
+};
+
+//=============================================================================
+// Static Helpers
+//=============================================================================
+
+static uint64_t get_timestamp_us(void) {
+    return nimcp_time_monotonic_us();
+}
+
+static const char* get_cycle_name(brain_cycle_type_t type) {
+    switch (type) {
+    case BRAIN_CYCLE_IMMUNE_TICK:    return "immune_tick";
+    case BRAIN_CYCLE_HEALTH_AGENT:   return "health_agent";
+    case BRAIN_CYCLE_SLEEP_WAKE:     return "sleep_wake";
+    case BRAIN_CYCLE_CIRCADIAN:      return "circadian";
+    case BRAIN_CYCLE_AROUSAL:        return "arousal";
+    case BRAIN_CYCLE_OSCILLATIONS:   return "oscillations";
+    case BRAIN_CYCLE_GC_AGENT:       return "gc_agent";
+    case BRAIN_CYCLE_IO_DISPATCHER:  return "io_dispatcher";
+    case BRAIN_CYCLE_BRAIN_UPDATE:   return "brain_update";
+    default:                         return "unknown";
+    }
+}
+
+static brain_cycle_category_t get_cycle_category(brain_cycle_type_t type) {
+    switch (type) {
+    case BRAIN_CYCLE_IMMUNE_TICK:
+    case BRAIN_CYCLE_OSCILLATIONS:
+    case BRAIN_CYCLE_BRAIN_UPDATE:
+        return BRAIN_CYCLE_CATEGORY_FAST;
+    case BRAIN_CYCLE_HEALTH_AGENT:
+        return BRAIN_CYCLE_CATEGORY_MEDIUM;
+    case BRAIN_CYCLE_SLEEP_WAKE:
+    case BRAIN_CYCLE_CIRCADIAN:
+    case BRAIN_CYCLE_AROUSAL:
+        return BRAIN_CYCLE_CATEGORY_SLOW;
+    case BRAIN_CYCLE_GC_AGENT:
+    case BRAIN_CYCLE_IO_DISPATCHER:
+        return BRAIN_CYCLE_CATEGORY_BACKGROUND;
+    default:
+        return BRAIN_CYCLE_CATEGORY_BACKGROUND;
+    }
+}
+
+static uint64_t get_default_interval_us(brain_cycle_type_t type) {
+    switch (type) {
+    case BRAIN_CYCLE_IMMUNE_TICK:    return 50000;      /* 50ms */
+    case BRAIN_CYCLE_HEALTH_AGENT:   return 100000;     /* 100ms */
+    case BRAIN_CYCLE_OSCILLATIONS:   return 10000;      /* 10ms */
+    case BRAIN_CYCLE_BRAIN_UPDATE:   return 16000;      /* 16ms (~60fps) */
+    case BRAIN_CYCLE_GC_AGENT:       return 60000000;   /* 60s */
+    case BRAIN_CYCLE_SLEEP_WAKE:     return 0;          /* state machine */
+    case BRAIN_CYCLE_CIRCADIAN:      return 0;          /* continuous */
+    case BRAIN_CYCLE_AROUSAL:        return 0;          /* event-driven */
+    case BRAIN_CYCLE_IO_DISPATCHER:  return 0;          /* queue-driven */
+    default:                         return 0;
+    }
+}
+
+/** FNV-1a hash for health pattern fingerprinting */
+static uint32_t fnv1a_hash(const uint8_t* data, size_t len) {
+    uint32_t hash = 2166136261u;
+    for (size_t i = 0; i < len; i++) {
+        hash ^= data[i];
+        hash *= 16777619u;
+    }
+    return hash;
+}
+
+/** Update running mean/stddev using Welford's algorithm */
+static void update_welford_stats(cycle_entry_t* e, uint64_t duration_us) {
+    e->duration_count++;
+    double val = (double)duration_us;
+    double delta = val - e->duration_mean;
+    e->duration_mean += delta / (double)e->duration_count;
+    double delta2 = val - e->duration_mean;
+    e->duration_m2 += delta * delta2;
+    if (e->duration_count > 1) {
+        e->duration_stddev = sqrt(e->duration_m2 / (double)(e->duration_count - 1));
+    }
+
+    /* EMA for avg_duration_us (alpha = 0.1) */
+    if (e->ticks_executed <= 1) {
+        e->avg_duration_us = val;
+    } else {
+        e->avg_duration_us = 0.1 * val + 0.9 * e->avg_duration_us;
+    }
+
+    if (duration_us > e->max_duration_us) {
+        e->max_duration_us = duration_us;
+    }
+}
+
+/** Z-score anomaly detection */
+static bool is_duration_anomaly(const cycle_entry_t* e, uint64_t duration_us) {
+    if (e->duration_count < 10 || e->duration_stddev < 1.0) {
+        return false;
+    }
+    double z = ((double)duration_us - e->duration_mean) / e->duration_stddev;
+    return fabs(z) > 3.0;
+}
+
+/** Track recurring health patterns via FNV-1a hash */
+static void track_health_pattern(brain_cycle_coordinator_t* coord) {
+    uint8_t health_state[BRAIN_CYCLE_COUNT];
+    for (int i = 0; i < BRAIN_CYCLE_COUNT; i++) {
+        health_state[i] = (uint8_t)coord->cycles[i].health;
+    }
+    uint32_t pattern = fnv1a_hash(health_state, BRAIN_CYCLE_COUNT);
+
+    for (uint32_t i = 0; i < coord->pattern_count; i++) {
+        if (coord->patterns[i].pattern_hash == pattern) {
+            coord->patterns[i].occurrence_count++;
+            coord->patterns[i].last_seen_us = get_timestamp_us();
+            return;
+        }
+    }
+    if (coord->pattern_count < BRAIN_CYCLE_MAX_HEALTH_PATTERNS) {
+        health_pattern_t* p = &coord->patterns[coord->pattern_count++];
+        p->pattern_hash = pattern;
+        p->occurrence_count = 1;
+        p->last_seen_us = get_timestamp_us();
+    }
+}
+
+/** Compute overall health as weighted average of cycle healths */
+static float compute_overall_health(const brain_cycle_coordinator_t* coord) {
+    float total_weight = 0.0f;
+    float weighted_health = 0.0f;
+
+    for (int i = 0; i < BRAIN_CYCLE_COUNT; i++) {
+        const cycle_entry_t* e = &coord->cycles[i];
+        if (!e->registered) continue;
+
+        float w = e->monitoring_weight;
+        float h;
+        switch (e->health) {
+        case BRAIN_CYCLE_HEALTH_HEALTHY:  h = 1.0f; break;
+        case BRAIN_CYCLE_HEALTH_DEGRADED: h = 0.5f; break;
+        case BRAIN_CYCLE_HEALTH_STALLED:  h = 0.1f; break;
+        case BRAIN_CYCLE_HEALTH_ERROR:    h = 0.0f; break;
+        case BRAIN_CYCLE_HEALTH_DISABLED: continue;
+        default:                          h = 0.5f; break;
+        }
+        weighted_health += w * h;
+        total_weight += w;
+    }
+    return (total_weight > 0.0f) ? (weighted_health / total_weight) : 1.0f;
+}
+
+/** Update per-category aggregate statistics */
+static void update_category_stats(brain_cycle_coordinator_t* coord) {
+    memset(coord->stats.categories, 0, sizeof(coord->stats.categories));
+    coord->stats.total_cycles_registered = 0;
+    coord->stats.total_cycles_healthy = 0;
+    coord->stats.total_cycles_degraded = 0;
+    coord->stats.total_cycles_stalled = 0;
+
+    for (int i = 0; i < BRAIN_CYCLE_COUNT; i++) {
+        const cycle_entry_t* e = &coord->cycles[i];
+        if (!e->registered) continue;
+
+        coord->stats.total_cycles_registered++;
+        brain_cycle_category_stats_t* cs = &coord->stats.categories[e->category];
+        cs->total_cycles++;
+        cs->total_ticks += e->ticks_executed;
+
+        switch (e->health) {
+        case BRAIN_CYCLE_HEALTH_HEALTHY:
+            cs->healthy_cycles++;
+            coord->stats.total_cycles_healthy++;
+            break;
+        case BRAIN_CYCLE_HEALTH_DEGRADED:
+            cs->degraded_cycles++;
+            coord->stats.total_cycles_degraded++;
+            break;
+        case BRAIN_CYCLE_HEALTH_STALLED:
+        case BRAIN_CYCLE_HEALTH_ERROR:
+            cs->stalled_cycles++;
+            coord->stats.total_cycles_stalled++;
+            break;
+        default:
+            break;
+        }
+    }
+}
+
+//=============================================================================
+// Callback Firing Helpers
+//=============================================================================
+
+static void fire_health_changed_callbacks(
+    brain_cycle_coordinator_t* coord,
+    brain_cycle_type_t type,
+    brain_cycle_health_t old_h,
+    brain_cycle_health_t new_h)
+{
+    for (uint32_t i = 0; i < coord->callback_count; i++) {
+        if (coord->callbacks[i].on_health_changed) {
+            coord->callbacks[i].on_health_changed(
+                type, old_h, new_h, coord->callbacks[i].user_data);
+        }
+    }
+}
+
+static void fire_stall_detected_callbacks(
+    brain_cycle_coordinator_t* coord,
+    brain_cycle_type_t type,
+    uint64_t stall_duration_ms)
+{
+    for (uint32_t i = 0; i < coord->callback_count; i++) {
+        if (coord->callbacks[i].on_stall_detected) {
+            coord->callbacks[i].on_stall_detected(
+                type, stall_duration_ms, coord->callbacks[i].user_data);
+        }
+    }
+}
+
+static void fire_dependency_violated_callbacks(
+    brain_cycle_coordinator_t* coord,
+    brain_cycle_type_t dependent,
+    brain_cycle_type_t dependency)
+{
+    for (uint32_t i = 0; i < coord->callback_count; i++) {
+        if (coord->callbacks[i].on_dependency_violated) {
+            coord->callbacks[i].on_dependency_violated(
+                dependent, dependency, coord->callbacks[i].user_data);
+        }
+    }
+}
+
+static void fire_overall_health_changed_callbacks(
+    brain_cycle_coordinator_t* coord,
+    float old_h,
+    float new_h)
+{
+    for (uint32_t i = 0; i < coord->callback_count; i++) {
+        if (coord->callbacks[i].on_overall_health_changed) {
+            coord->callbacks[i].on_overall_health_changed(
+                old_h, new_h, coord->callbacks[i].user_data);
+        }
+    }
+}
+
+//=============================================================================
+// Public API - Lifecycle
+//=============================================================================
+
+void brain_cycle_coordinator_default_config(brain_cycle_coordinator_config_t* config) {
+    if (!config) return;
+    memset(config, 0, sizeof(*config));
+
+    config->enable_timing_checks = true;
+    config->stall_threshold_multiplier = BRAIN_CYCLE_DEFAULT_STALL_MULTIPLIER;
+    config->health_check_interval_ms = BRAIN_CYCLE_DEFAULT_HEALTH_CHECK_MS;
+    config->enable_auto_health_check = false;
+    config->enable_dependency_tracking = true;
+    config->enable_logging = true;
+    config->enable_debug_logging = false;
+    config->kg_table_name = "brain_cycle_stats";
+    config->kg_write_interval_ms = BRAIN_CYCLE_DEFAULT_KG_WRITE_MS;
+    config->noise_health_sensitivity = 0.5f;
+}
+
+brain_cycle_coordinator_t* brain_cycle_coordinator_create(
+    const brain_cycle_coordinator_config_t* config)
+{
+    brain_cycle_coordinator_t* coord = nimcp_malloc(sizeof(*coord));
+    if (!coord) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "brain_cycle_coordinator_create: allocation failed");
+        return NULL;
+    }
+    memset(coord, 0, sizeof(*coord));
+
+    /* Apply config */
+    if (config) {
+        coord->config = *config;
+    } else {
+        brain_cycle_coordinator_default_config(&coord->config);
+    }
+
+    /* Store KG table name */
+    if (coord->config.kg_table_name) {
+        snprintf(coord->kg_table_name, sizeof(coord->kg_table_name),
+                 "%s", coord->config.kg_table_name);
+    } else {
+        snprintf(coord->kg_table_name, sizeof(coord->kg_table_name),
+                 "brain_cycle_stats");
+    }
+
+    /* Initialize integration references from config */
+    coord->bio_context = coord->config.bio_context;
+    coord->immune_system = coord->config.immune_system;
+    coord->kg_dispatcher = coord->config.kg_dispatcher;
+    coord->introspection_ctx = coord->config.introspection_ctx;
+    coord->hemispheric_brain = coord->config.hemispheric_brain;
+    coord->fep_bridge = coord->config.fep_bridge;
+    coord->meta_bridge = coord->config.meta_bridge;
+    coord->pink_noise_bridge = coord->config.pink_noise_bridge;
+    coord->gw_bridge = coord->config.gw_bridge;
+    coord->attention_bridge = coord->config.attention_bridge;
+    coord->world_model = coord->config.world_model;
+
+    /* Initialize cycle entries with default categories and intervals */
+    for (int i = 0; i < BRAIN_CYCLE_COUNT; i++) {
+        coord->cycles[i].type = (brain_cycle_type_t)i;
+        coord->cycles[i].category = get_cycle_category((brain_cycle_type_t)i);
+        coord->cycles[i].expected_interval_us = get_default_interval_us((brain_cycle_type_t)i);
+        coord->cycles[i].health = BRAIN_CYCLE_HEALTH_UNKNOWN;
+        coord->cycles[i].monitoring_weight = 1.0f;
+    }
+
+    /* Create mutex */
+    coord->mutex = nimcp_mutex_create(NULL);
+    if (!coord->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "brain_cycle_coordinator_create: mutex creation failed");
+        nimcp_free(coord);
+        return NULL;
+    }
+
+    coord->created_time_us = get_timestamp_us();
+    coord->prev_overall_health = 1.0f;
+    coord->stats.overall_health = 1.0f;
+    coord->mc_seed = (uint32_t)(coord->created_time_us & 0xFFFFFFFF);
+
+    if (coord->config.enable_logging) {
+        LOG_MODULE_INFO(CYCLE_COORD_LOG_MODULE,
+            "Brain cycle coordinator created (timing=%s, deps=%s)",
+            coord->config.enable_timing_checks ? "on" : "off",
+            coord->config.enable_dependency_tracking ? "on" : "off");
+    }
+
+    return coord;
+}
+
+void brain_cycle_coordinator_destroy(brain_cycle_coordinator_t* coord) {
+    if (!coord) return;
+
+    if (coord->config.enable_logging) {
+        LOG_MODULE_INFO(CYCLE_COORD_LOG_MODULE,
+            "Brain cycle coordinator destroying (uptime=%lums, checks=%lu)",
+            (unsigned long)((get_timestamp_us() - coord->created_time_us) / 1000),
+            (unsigned long)coord->health_checks_performed);
+    }
+
+    if (coord->mutex) {
+        nimcp_mutex_free(coord->mutex);
+        coord->mutex = NULL;
+    }
+
+    nimcp_free(coord);
+}
+
+//=============================================================================
+// Public API - Registration
+//=============================================================================
+
+int brain_cycle_coordinator_register(
+    brain_cycle_coordinator_t* coord,
+    brain_cycle_type_t type,
+    void* cycle_handle,
+    brain_cycle_health_fn_t health_fn)
+{
+    if (!coord) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "brain_cycle_coordinator_register: coord is NULL");
+        return -1;
+    }
+    if ((int)type < 0 || (int)type >= BRAIN_CYCLE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "brain_cycle_coordinator_register: invalid cycle type %d", (int)type);
+        return -1;
+    }
+
+    nimcp_mutex_lock(coord->mutex);
+
+    cycle_entry_t* e = &coord->cycles[(int)type];
+    if (e->registered) {
+        nimcp_mutex_unlock(coord->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "brain_cycle_coordinator_register: cycle %s already registered",
+            get_cycle_name(type));
+        return -1;
+    }
+
+    e->registered = true;
+    e->enabled = true;
+    e->running = true;
+    e->cycle_handle = cycle_handle;
+    e->health_fn = health_fn;
+    e->health = BRAIN_CYCLE_HEALTH_UNKNOWN;
+    e->last_tick_us = get_timestamp_us();
+    coord->registered_count++;
+
+    nimcp_mutex_unlock(coord->mutex);
+
+    if (coord->config.enable_logging) {
+        LOG_MODULE_INFO(CYCLE_COORD_LOG_MODULE,
+            "Registered cycle '%s' (category=%s, interval=%luus)",
+            get_cycle_name(type),
+            brain_cycle_category_name(e->category),
+            (unsigned long)e->expected_interval_us);
+    }
+
+    return 0;
+}
+
+int brain_cycle_coordinator_unregister(
+    brain_cycle_coordinator_t* coord,
+    brain_cycle_type_t type)
+{
+    if (!coord) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "brain_cycle_coordinator_unregister: coord is NULL");
+        return -1;
+    }
+    if ((int)type < 0 || (int)type >= BRAIN_CYCLE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "brain_cycle_coordinator_unregister: invalid cycle type %d", (int)type);
+        return -1;
+    }
+
+    nimcp_mutex_lock(coord->mutex);
+
+    cycle_entry_t* e = &coord->cycles[(int)type];
+    if (!e->registered) {
+        nimcp_mutex_unlock(coord->mutex);
+        return -1;
+    }
+
+    e->registered = false;
+    e->enabled = false;
+    e->running = false;
+    e->cycle_handle = NULL;
+    e->health_fn = NULL;
+    coord->registered_count--;
+
+    nimcp_mutex_unlock(coord->mutex);
+
+    if (coord->config.enable_logging) {
+        LOG_MODULE_INFO(CYCLE_COORD_LOG_MODULE,
+            "Unregistered cycle '%s'", get_cycle_name(type));
+    }
+
+    return 0;
+}
+
+//=============================================================================
+// Public API - Tick Notification
+//=============================================================================
+
+int brain_cycle_coordinator_notify_tick(
+    brain_cycle_coordinator_t* coord,
+    brain_cycle_type_t type,
+    uint64_t duration_us)
+{
+    if (!coord) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "brain_cycle_coordinator_notify_tick: coord is NULL");
+        return -1;
+    }
+    if ((int)type < 0 || (int)type >= BRAIN_CYCLE_COUNT) {
+        return -1;
+    }
+
+    uint64_t now = get_timestamp_us();
+
+    nimcp_mutex_lock(coord->mutex);
+
+    cycle_entry_t* e = &coord->cycles[(int)type];
+    if (!e->registered) {
+        nimcp_mutex_unlock(coord->mutex);
+        return -1;
+    }
+
+    e->last_tick_us = now;
+    e->ticks_executed++;
+    update_welford_stats(e, duration_us);
+
+    /* Z-score anomaly detection */
+    if (coord->config.enable_timing_checks && is_duration_anomaly(e, duration_us)) {
+        coord->stats.timing_anomalies_detected++;
+        if (coord->config.enable_logging) {
+            LOG_MODULE_WARN(CYCLE_COORD_LOG_MODULE,
+                "Timing anomaly in '%s': duration=%luus (mean=%.1f, stddev=%.1f)",
+                get_cycle_name(type),
+                (unsigned long)duration_us,
+                e->duration_mean,
+                e->duration_stddev);
+        }
+    }
+
+    /* Update health from timing if no health_fn */
+    if (!e->health_fn && e->expected_interval_us > 0) {
+        brain_cycle_health_t old_health = e->health;
+        if (duration_us > e->expected_interval_us * coord->config.stall_threshold_multiplier) {
+            e->health = BRAIN_CYCLE_HEALTH_DEGRADED;
+        } else {
+            e->health = BRAIN_CYCLE_HEALTH_HEALTHY;
+        }
+        if (old_health != e->health && old_health != BRAIN_CYCLE_HEALTH_UNKNOWN) {
+            fire_health_changed_callbacks(coord, type, old_health, e->health);
+        }
+    } else if (!e->health_fn) {
+        /* Event-driven/state-machine cycles are healthy if ticking */
+        if (e->health == BRAIN_CYCLE_HEALTH_UNKNOWN) {
+            e->health = BRAIN_CYCLE_HEALTH_HEALTHY;
+        }
+    }
+
+    nimcp_mutex_unlock(coord->mutex);
+
+    return 0;
+}
+
+//=============================================================================
+// Public API - Health Check
+//=============================================================================
+
+int brain_cycle_coordinator_check_health(brain_cycle_coordinator_t* coord) {
+    if (!coord) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "brain_cycle_coordinator_check_health: coord is NULL");
+        return -1;
+    }
+
+    uint64_t now = get_timestamp_us();
+    uint32_t issues = 0;
+
+    nimcp_mutex_lock(coord->mutex);
+
+    coord->last_health_check_us = now;
+    coord->stats.last_health_check_us = now;
+    coord->health_checks_performed++;
+
+    for (int i = 0; i < BRAIN_CYCLE_COUNT; i++) {
+        cycle_entry_t* e = &coord->cycles[i];
+        if (!e->registered || !e->enabled) continue;
+
+        brain_cycle_health_t old_health = e->health;
+        brain_cycle_health_t new_health = old_health;
+
+        /* Query health function if available */
+        if (e->health_fn) {
+            new_health = e->health_fn(e->cycle_handle);
+        }
+
+        /* Check for stall (only for cycles with expected intervals) */
+        if (coord->config.enable_timing_checks && e->expected_interval_us > 0) {
+            uint64_t elapsed = now - e->last_tick_us;
+            uint64_t stall_threshold = e->expected_interval_us *
+                coord->config.stall_threshold_multiplier;
+
+            if (elapsed > stall_threshold && e->ticks_executed > 0) {
+                new_health = BRAIN_CYCLE_HEALTH_STALLED;
+                uint64_t stall_ms = elapsed / 1000;
+                issues++;
+
+                fire_stall_detected_callbacks(coord, e->type, stall_ms);
+
+                if (coord->config.enable_logging) {
+                    LOG_MODULE_ERROR(CYCLE_COORD_LOG_MODULE,
+                        "Cycle '%s' STALLED: no tick for %lums (threshold=%lums)",
+                        get_cycle_name(e->type),
+                        (unsigned long)stall_ms,
+                        (unsigned long)(stall_threshold / 1000));
+                }
+            }
+        }
+
+        /* Apply new health */
+        e->health = new_health;
+
+        /* Fire callbacks on health change */
+        if (old_health != new_health && old_health != BRAIN_CYCLE_HEALTH_UNKNOWN) {
+            fire_health_changed_callbacks(coord, e->type, old_health, new_health);
+
+            if (coord->config.enable_logging) {
+                LOG_MODULE_INFO(CYCLE_COORD_LOG_MODULE,
+                    "Cycle '%s' health: %s -> %s",
+                    get_cycle_name(e->type),
+                    brain_cycle_health_name(old_health),
+                    brain_cycle_health_name(new_health));
+            }
+        }
+
+        /* Check dependencies */
+        if (coord->config.enable_dependency_tracking) {
+            for (uint32_t d = 0; d < coord->dependency_count; d++) {
+                if (coord->dependencies[d].dependent != e->type) continue;
+
+                int dep_idx = (int)coord->dependencies[d].dependency;
+                if (dep_idx >= 0 && dep_idx < BRAIN_CYCLE_COUNT) {
+                    cycle_entry_t* dep_e = &coord->cycles[dep_idx];
+                    if (dep_e->registered &&
+                        dep_e->health != BRAIN_CYCLE_HEALTH_HEALTHY &&
+                        dep_e->health != BRAIN_CYCLE_HEALTH_UNKNOWN &&
+                        dep_e->health != BRAIN_CYCLE_HEALTH_DISABLED) {
+                        issues++;
+                        coord->stats.dependency_violations++;
+                        fire_dependency_violated_callbacks(
+                            coord, e->type, coord->dependencies[d].dependency);
+                    }
+                }
+            }
+        }
+    }
+
+    /* Update category statistics */
+    update_category_stats(coord);
+
+    /* Compute and track overall health */
+    float old_overall = coord->prev_overall_health;
+    float new_overall = compute_overall_health(coord);
+    coord->stats.overall_health = new_overall;
+
+    if (fabsf(new_overall - old_overall) > 0.01f) {
+        coord->prev_overall_health = new_overall;
+        fire_overall_health_changed_callbacks(coord, old_overall, new_overall);
+    }
+
+    /* Track health pattern */
+    track_health_pattern(coord);
+
+    /* Update uptime */
+    coord->stats.coordinator_uptime_ms = (now - coord->created_time_us) / 1000;
+
+    nimcp_mutex_unlock(coord->mutex);
+
+    return (int)issues;
+}
+
+//=============================================================================
+// Public API - Query
+//=============================================================================
+
+int brain_cycle_coordinator_get_status(
+    const brain_cycle_coordinator_t* coord,
+    brain_cycle_type_t type,
+    brain_cycle_status_t* status)
+{
+    if (!coord || !status) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "brain_cycle_coordinator_get_status: NULL argument");
+        return -1;
+    }
+    if ((int)type < 0 || (int)type >= BRAIN_CYCLE_COUNT) return -1;
+
+    /* Cast away const for mutex (read-only operation) */
+    nimcp_mutex_lock(((brain_cycle_coordinator_t*)coord)->mutex);
+
+    const cycle_entry_t* e = &coord->cycles[(int)type];
+    if (!e->registered) {
+        nimcp_mutex_unlock(((brain_cycle_coordinator_t*)coord)->mutex);
+        return -1;
+    }
+
+    memset(status, 0, sizeof(*status));
+    status->type = e->type;
+    status->name = get_cycle_name(e->type);
+    status->category = e->category;
+    status->health = e->health;
+    status->enabled = e->enabled;
+    status->running = e->running;
+    status->last_tick_us = e->last_tick_us;
+    status->expected_interval_us = e->expected_interval_us;
+    status->ticks_executed = e->ticks_executed;
+    status->errors_encountered = e->errors_encountered;
+    status->avg_duration_us = e->avg_duration_us;
+    status->max_duration_us = e->max_duration_us;
+    status->monitoring_weight = e->monitoring_weight;
+
+    nimcp_mutex_unlock(((brain_cycle_coordinator_t*)coord)->mutex);
+    return 0;
+}
+
+int brain_cycle_coordinator_get_all_status(
+    const brain_cycle_coordinator_t* coord,
+    brain_cycle_status_t* statuses,
+    uint32_t* count)
+{
+    if (!coord || !statuses || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "brain_cycle_coordinator_get_all_status: NULL argument");
+        return -1;
+    }
+
+    nimcp_mutex_lock(((brain_cycle_coordinator_t*)coord)->mutex);
+
+    uint32_t n = 0;
+    for (int i = 0; i < BRAIN_CYCLE_COUNT; i++) {
+        const cycle_entry_t* e = &coord->cycles[i];
+        if (!e->registered) continue;
+
+        brain_cycle_status_t* s = &statuses[n];
+        memset(s, 0, sizeof(*s));
+        s->type = e->type;
+        s->name = get_cycle_name(e->type);
+        s->category = e->category;
+        s->health = e->health;
+        s->enabled = e->enabled;
+        s->running = e->running;
+        s->last_tick_us = e->last_tick_us;
+        s->expected_interval_us = e->expected_interval_us;
+        s->ticks_executed = e->ticks_executed;
+        s->errors_encountered = e->errors_encountered;
+        s->avg_duration_us = e->avg_duration_us;
+        s->max_duration_us = e->max_duration_us;
+        s->monitoring_weight = e->monitoring_weight;
+        n++;
+    }
+    *count = n;
+
+    nimcp_mutex_unlock(((brain_cycle_coordinator_t*)coord)->mutex);
+    return 0;
+}
+
+int brain_cycle_coordinator_get_stats(
+    const brain_cycle_coordinator_t* coord,
+    brain_cycle_coordinator_stats_t* stats)
+{
+    if (!coord || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "brain_cycle_coordinator_get_stats: NULL argument");
+        return -1;
+    }
+
+    nimcp_mutex_lock(((brain_cycle_coordinator_t*)coord)->mutex);
+    *stats = coord->stats;
+    nimcp_mutex_unlock(((brain_cycle_coordinator_t*)coord)->mutex);
+    return 0;
+}
+
+//=============================================================================
+// Public API - Diagnostics
+//=============================================================================
+
+int brain_cycle_coordinator_diagnose(
+    const brain_cycle_coordinator_t* coord,
+    char* buffer,
+    size_t buffer_size)
+{
+    if (!coord || !buffer || buffer_size == 0) return -1;
+
+    nimcp_mutex_lock(((brain_cycle_coordinator_t*)coord)->mutex);
+
+    uint32_t issues = 0;
+    int offset = 0;
+    int remaining = (int)buffer_size;
+
+    offset += snprintf(buffer + offset, (size_t)remaining,
+        "=== Brain Cycle Coordinator Diagnostics ===\n"
+        "Uptime: %lums | Registered: %u | Health: %.2f\n\n",
+        (unsigned long)((get_timestamp_us() - coord->created_time_us) / 1000),
+        coord->stats.total_cycles_registered,
+        coord->stats.overall_health);
+    remaining = (int)buffer_size - offset;
+    if (remaining <= 0) goto done;
+
+    for (int i = 0; i < BRAIN_CYCLE_COUNT; i++) {
+        const cycle_entry_t* e = &coord->cycles[i];
+        if (!e->registered) continue;
+
+        bool is_issue = (e->health == BRAIN_CYCLE_HEALTH_STALLED ||
+                         e->health == BRAIN_CYCLE_HEALTH_ERROR);
+        if (is_issue) issues++;
+
+        int written = snprintf(buffer + offset, (size_t)remaining,
+            "[%s] %s | health=%s | ticks=%lu | avg=%.1fus | max=%luus%s\n",
+            brain_cycle_category_name(e->category),
+            get_cycle_name(e->type),
+            brain_cycle_health_name(e->health),
+            (unsigned long)e->ticks_executed,
+            e->avg_duration_us,
+            (unsigned long)e->max_duration_us,
+            is_issue ? " ***ISSUE***" : "");
+        offset += written;
+        remaining = (int)buffer_size - offset;
+        if (remaining <= 0) goto done;
+    }
+
+    if (coord->dependency_count > 0) {
+        int written = snprintf(buffer + offset, (size_t)remaining,
+            "\nDependencies (%u):\n", coord->dependency_count);
+        offset += written;
+        remaining = (int)buffer_size - offset;
+
+        for (uint32_t d = 0; d < coord->dependency_count && remaining > 0; d++) {
+            written = snprintf(buffer + offset, (size_t)remaining,
+                "  %s -> %s\n",
+                get_cycle_name(coord->dependencies[d].dependent),
+                get_cycle_name(coord->dependencies[d].dependency));
+            offset += written;
+            remaining = (int)buffer_size - offset;
+        }
+    }
+
+done:
+    nimcp_mutex_unlock(((brain_cycle_coordinator_t*)coord)->mutex);
+    return (int)issues;
+}
+
+void brain_cycle_coordinator_log_state(const brain_cycle_coordinator_t* coord) {
+    if (!coord) return;
+
+    nimcp_mutex_lock(((brain_cycle_coordinator_t*)coord)->mutex);
+
+    LOG_MODULE_INFO(CYCLE_COORD_LOG_MODULE,
+        "=== Brain Cycle State (registered=%u, health=%.2f) ===",
+        coord->stats.total_cycles_registered,
+        coord->stats.overall_health);
+
+    for (int i = 0; i < BRAIN_CYCLE_COUNT; i++) {
+        const cycle_entry_t* e = &coord->cycles[i];
+        if (!e->registered) continue;
+
+        LOG_MODULE_INFO(CYCLE_COORD_LOG_MODULE,
+            "  [%s] %s: health=%s ticks=%lu avg=%.1fus err=%lu",
+            brain_cycle_category_name(e->category),
+            get_cycle_name(e->type),
+            brain_cycle_health_name(e->health),
+            (unsigned long)e->ticks_executed,
+            e->avg_duration_us,
+            (unsigned long)e->errors_encountered);
+    }
+
+    nimcp_mutex_unlock(((brain_cycle_coordinator_t*)coord)->mutex);
+}
+
+//=============================================================================
+// Public API - Dependency Management
+//=============================================================================
+
+int brain_cycle_coordinator_add_dependency(
+    brain_cycle_coordinator_t* coord,
+    brain_cycle_type_t dependent,
+    brain_cycle_type_t dependency)
+{
+    if (!coord) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "brain_cycle_coordinator_add_dependency: coord is NULL");
+        return -1;
+    }
+    if ((int)dependent < 0 || (int)dependent >= BRAIN_CYCLE_COUNT ||
+        (int)dependency < 0 || (int)dependency >= BRAIN_CYCLE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "brain_cycle_coordinator_add_dependency: invalid cycle type");
+        return -1;
+    }
+
+    nimcp_mutex_lock(coord->mutex);
+
+    uint32_t max_deps = BRAIN_CYCLE_COUNT * BRAIN_CYCLE_MAX_DEPENDENCIES;
+    if (coord->dependency_count >= max_deps) {
+        nimcp_mutex_unlock(coord->mutex);
+        LOG_MODULE_WARN(CYCLE_COORD_LOG_MODULE,
+            "Dependency array full (%u/%u)", coord->dependency_count, max_deps);
+        return -1;
+    }
+
+    coord->dependencies[coord->dependency_count].dependent = dependent;
+    coord->dependencies[coord->dependency_count].dependency = dependency;
+    coord->dependency_count++;
+
+    nimcp_mutex_unlock(coord->mutex);
+
+    if (coord->config.enable_logging) {
+        LOG_MODULE_INFO(CYCLE_COORD_LOG_MODULE,
+            "Added dependency: %s -> %s",
+            get_cycle_name(dependent), get_cycle_name(dependency));
+    }
+
+    return 0;
+}
+
+int brain_cycle_coordinator_check_dependencies(
+    const brain_cycle_coordinator_t* coord,
+    brain_cycle_type_t type,
+    bool* satisfied)
+{
+    if (!coord || !satisfied) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "brain_cycle_coordinator_check_dependencies: NULL argument");
+        return -1;
+    }
+
+    *satisfied = true;
+
+    nimcp_mutex_lock(((brain_cycle_coordinator_t*)coord)->mutex);
+
+    for (uint32_t i = 0; i < coord->dependency_count; i++) {
+        if (coord->dependencies[i].dependent != type) continue;
+
+        int dep_idx = (int)coord->dependencies[i].dependency;
+        if (dep_idx >= 0 && dep_idx < BRAIN_CYCLE_COUNT) {
+            const cycle_entry_t* dep_e = &coord->cycles[dep_idx];
+            if (dep_e->registered &&
+                dep_e->health != BRAIN_CYCLE_HEALTH_HEALTHY &&
+                dep_e->health != BRAIN_CYCLE_HEALTH_UNKNOWN &&
+                dep_e->health != BRAIN_CYCLE_HEALTH_DISABLED) {
+                *satisfied = false;
+                break;
+            }
+        }
+    }
+
+    nimcp_mutex_unlock(((brain_cycle_coordinator_t*)coord)->mutex);
+    return 0;
+}
+
+//=============================================================================
+// Public API - Callback Registration
+//=============================================================================
+
+int brain_cycle_coordinator_register_callbacks(
+    brain_cycle_coordinator_t* coord,
+    const brain_cycle_coordinator_callbacks_t* cbs)
+{
+    if (!coord || !cbs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "brain_cycle_coordinator_register_callbacks: NULL argument");
+        return -1;
+    }
+
+    nimcp_mutex_lock(coord->mutex);
+
+    if (coord->callback_count >= BRAIN_CYCLE_MAX_CALLBACKS) {
+        nimcp_mutex_unlock(coord->mutex);
+        LOG_MODULE_WARN(CYCLE_COORD_LOG_MODULE,
+            "Callback array full (%u/%u)",
+            coord->callback_count, (uint32_t)BRAIN_CYCLE_MAX_CALLBACKS);
+        return -1;
+    }
+
+    coord->callbacks[coord->callback_count++] = *cbs;
+
+    nimcp_mutex_unlock(coord->mutex);
+
+    if (coord->config.enable_logging) {
+        LOG_MODULE_DEBUG(CYCLE_COORD_LOG_MODULE,
+            "Registered callback set (total=%u)", coord->callback_count);
+    }
+
+    return 0;
+}
+
+int brain_cycle_coordinator_unregister_callbacks(
+    brain_cycle_coordinator_t* coord,
+    void* user_data)
+{
+    if (!coord) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "brain_cycle_coordinator_unregister_callbacks: coord is NULL");
+        return -1;
+    }
+
+    nimcp_mutex_lock(coord->mutex);
+
+    bool found = false;
+    for (uint32_t i = 0; i < coord->callback_count; i++) {
+        if (coord->callbacks[i].user_data == user_data) {
+            for (uint32_t j = i; j + 1 < coord->callback_count; j++) {
+                coord->callbacks[j] = coord->callbacks[j + 1];
+            }
+            coord->callback_count--;
+            found = true;
+            break;
+        }
+    }
+
+    nimcp_mutex_unlock(coord->mutex);
+    return found ? 0 : -1;
+}
+
+//=============================================================================
+// Public API - Integration Connection Functions
+//=============================================================================
+
+#define CONNECT_IMPL(func_name, field_name, type_name, log_name) \
+int func_name( \
+    brain_cycle_coordinator_t* coord, \
+    type_name* ptr) \
+{ \
+    if (!coord) { \
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, \
+            #func_name ": coord is NULL"); \
+        return -1; \
+    } \
+    nimcp_mutex_lock(coord->mutex); \
+    coord->field_name = ptr; \
+    nimcp_mutex_unlock(coord->mutex); \
+    if (coord->config.enable_logging) { \
+        LOG_MODULE_INFO(CYCLE_COORD_LOG_MODULE, \
+            "Connected to " log_name); \
+    } \
+    return 0; \
+}
+
+CONNECT_IMPL(brain_cycle_coordinator_connect_bio_async, bio_context,
+             bio_module_context_t, "bio-async")
+CONNECT_IMPL(brain_cycle_coordinator_connect_immune, immune_system,
+             brain_immune_system_t, "immune system")
+CONNECT_IMPL(brain_cycle_coordinator_connect_kg, kg_dispatcher,
+             kg_io_dispatcher_t, "KG I/O dispatcher")
+CONNECT_IMPL(brain_cycle_coordinator_connect_introspection, introspection_ctx,
+             introspection_context_t, "introspection")
+CONNECT_IMPL(brain_cycle_coordinator_connect_hemispheric, hemispheric_brain,
+             hemispheric_brain_t, "hemispheric brain")
+CONNECT_IMPL(brain_cycle_coordinator_connect_fep, fep_bridge,
+             oscillations_fep_bridge_t, "FEP bridge")
+CONNECT_IMPL(brain_cycle_coordinator_connect_meta_learning, meta_bridge,
+             meta_learning_substrate_bridge_t, "meta-learning")
+CONNECT_IMPL(brain_cycle_coordinator_connect_pink_noise, pink_noise_bridge,
+             sfa_pink_noise_bridge_t, "pink noise")
+CONNECT_IMPL(brain_cycle_coordinator_connect_global_workspace, gw_bridge,
+             snn_global_workspace_bridge_t, "global workspace")
+CONNECT_IMPL(brain_cycle_coordinator_connect_attention, attention_bridge,
+             snn_attention_bridge_t, "attention")
+CONNECT_IMPL(brain_cycle_coordinator_connect_world_model, world_model,
+             world_model_multimodal_t, "world model")
+
+#undef CONNECT_IMPL
+
+//=============================================================================
+// Public API - Persistence
+//=============================================================================
+
+int brain_cycle_coordinator_flush_to_kg(brain_cycle_coordinator_t* coord) {
+    if (!coord) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "brain_cycle_coordinator_flush_to_kg: coord is NULL");
+        return -1;
+    }
+    if (!coord->kg_dispatcher) {
+        return -1; /* KG not connected */
+    }
+
+    nimcp_mutex_lock(coord->mutex);
+    coord->last_kg_write_us = get_timestamp_us();
+
+    /* Format ILP lines for each registered cycle */
+    char line_buf[512];
+    for (int i = 0; i < BRAIN_CYCLE_COUNT; i++) {
+        const cycle_entry_t* e = &coord->cycles[i];
+        if (!e->registered) continue;
+
+        snprintf(line_buf, sizeof(line_buf),
+            "%s,cycle=%s health=%di,ticks=%luu,avg_duration=%.2f,max_duration=%luu %lu",
+            coord->kg_table_name,
+            get_cycle_name(e->type),
+            (int)e->health,
+            (unsigned long)e->ticks_executed,
+            e->avg_duration_us,
+            (unsigned long)e->max_duration_us,
+            (unsigned long)(coord->last_kg_write_us / 1000));
+        /* Actual KG write would call kg_io_dispatcher API here */
+        (void)line_buf;
+    }
+
+    nimcp_mutex_unlock(coord->mutex);
+
+    if (coord->config.enable_debug_logging) {
+        LOG_MODULE_DEBUG(CYCLE_COORD_LOG_MODULE, "Flushed cycle stats to KG");
+    }
+
+    return 0;
+}
+
+//=============================================================================
+// Public API - Utility Functions
+//=============================================================================
+
+const char* brain_cycle_type_name(brain_cycle_type_t type) {
+    return get_cycle_name(type);
+}
+
+const char* brain_cycle_health_name(brain_cycle_health_t health) {
+    switch (health) {
+    case BRAIN_CYCLE_HEALTH_UNKNOWN:  return "UNKNOWN";
+    case BRAIN_CYCLE_HEALTH_HEALTHY:  return "HEALTHY";
+    case BRAIN_CYCLE_HEALTH_DEGRADED: return "DEGRADED";
+    case BRAIN_CYCLE_HEALTH_STALLED:  return "STALLED";
+    case BRAIN_CYCLE_HEALTH_ERROR:    return "ERROR";
+    case BRAIN_CYCLE_HEALTH_DISABLED: return "DISABLED";
+    default:                          return "UNKNOWN";
+    }
+}
+
+const char* brain_cycle_category_name(brain_cycle_category_t category) {
+    switch (category) {
+    case BRAIN_CYCLE_CATEGORY_FAST:       return "FAST";
+    case BRAIN_CYCLE_CATEGORY_MEDIUM:     return "MEDIUM";
+    case BRAIN_CYCLE_CATEGORY_SLOW:       return "SLOW";
+    case BRAIN_CYCLE_CATEGORY_BACKGROUND: return "BACKGROUND";
+    default:                              return "UNKNOWN";
+    }
+}
+
+brain_cycle_category_t brain_cycle_get_category(brain_cycle_type_t type) {
+    return get_cycle_category(type);
+}
+
+uint64_t brain_cycle_get_default_interval_us(brain_cycle_type_t type) {
+    return get_default_interval_us(type);
+}

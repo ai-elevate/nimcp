@@ -25,6 +25,35 @@
 #include <float.h>
 
 //=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for spaced_repetition module */
+static nimcp_health_agent_t* g_spaced_repetition_health_agent = NULL;
+
+/**
+ * @brief Set health agent for spaced_repetition heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void spaced_repetition_set_health_agent(nimcp_health_agent_t* agent) {
+    g_spaced_repetition_health_agent = agent;
+}
+
+/** @brief Send heartbeat from spaced_repetition module */
+static inline void spaced_repetition_heartbeat(const char* operation, float progress) {
+    if (g_spaced_repetition_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_spaced_repetition_health_agent, operation, progress);
+    }
+}
+
+
+//=============================================================================
 // Thread-Local Error State
 //=============================================================================
 

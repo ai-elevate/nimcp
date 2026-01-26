@@ -12,6 +12,35 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include <stddef.h>  /* for NULL */
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for physics_chemistry_bridge module */
+static nimcp_health_agent_t* g_physics_chemistry_bridge_health_agent = NULL;
+
+/**
+ * @brief Set health agent for physics_chemistry_bridge heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void physics_chemistry_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+    g_physics_chemistry_bridge_health_agent = agent;
+}
+
+/** @brief Send heartbeat from physics_chemistry_bridge module */
+static inline void physics_chemistry_bridge_heartbeat(const char* operation, float progress) {
+    if (g_physics_chemistry_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_physics_chemistry_bridge_health_agent, operation, progress);
+    }
+}
+
+
 struct nimcp_physics_chemistry_bridge_struct {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     nimcp_physics_chemistry_config_t config;

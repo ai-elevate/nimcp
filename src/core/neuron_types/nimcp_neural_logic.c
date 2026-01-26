@@ -26,6 +26,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/memory/nimcp_memory.h"
+#include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory_pool.h"  // Memory pool for O(1) allocations
 #include "utils/memory/nimcp_page_cow.h"     // Copy-on-Write for shallow copies
 #include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
@@ -41,6 +42,34 @@
 
 /* Logging module identifier */
 #define LOG_MODULE "NEURAL_LOGIC"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for neural_logic module */
+static nimcp_health_agent_t* g_neural_logic_health_agent = NULL;
+
+/**
+ * @brief Set health agent for neural_logic heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void neural_logic_set_health_agent(nimcp_health_agent_t* agent) {
+    g_neural_logic_health_agent = agent;
+}
+
+/** @brief Send heartbeat from neural_logic module */
+static inline void neural_logic_heartbeat(const char* operation, float progress) {
+    if (g_neural_logic_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_neural_logic_health_agent, operation, progress);
+    }
+}
+
 
 /* Forward declarations for quantum bridge (avoid circular dependencies) */
 extern void* neural_logic_quantum_bridge_create(const void* config);

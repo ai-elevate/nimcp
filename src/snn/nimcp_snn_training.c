@@ -42,7 +42,7 @@ static nimcp_health_agent_t* g_snn_training_health_agent = NULL;
  * @brief Set health agent for SNN training heartbeat monitoring
  * @param agent Health agent instance (NULL to disable)
  */
-void snn_training_set_health_agent(nimcp_health_agent_t* agent) {
+static void snn_training_set_health_agent(nimcp_health_agent_t* agent) {
     g_snn_training_health_agent = agent;
 }
 
@@ -55,6 +55,7 @@ static inline void snn_training_heartbeat(const char* operation, float progress)
     }
 }
 
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // Default Configurations
 //=============================================================================

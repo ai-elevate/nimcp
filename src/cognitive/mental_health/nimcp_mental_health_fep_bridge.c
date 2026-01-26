@@ -15,6 +15,35 @@
 
 #define LOG_MODULE "mental_health_fep_bridge"
 
+//=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for mental_health_fep_bridge module */
+static nimcp_health_agent_t* g_mental_health_fep_bridge_health_agent = NULL;
+
+/**
+ * @brief Set health agent for mental_health_fep_bridge heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void mental_health_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+    g_mental_health_fep_bridge_health_agent = agent;
+}
+
+/** @brief Send heartbeat from mental_health_fep_bridge module */
+static inline void mental_health_fep_bridge_heartbeat(const char* operation, float progress) {
+    if (g_mental_health_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_mental_health_fep_bridge_health_agent, operation, progress);
+    }
+}
+
+
 int mental_health_fep_bridge_default_config(mental_health_fep_config_t* config) {
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->aberrant_precision_threshold = MENTAL_HEALTH_FEP_ABERRANT_PRECISION_THRESHOLD;

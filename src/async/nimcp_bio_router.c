@@ -42,6 +42,7 @@
 #include <string.h>
 #include <stdio.h>
 
+#include <stddef.h>  /* for NULL */
 // Global BBB system accessor (defined in nimcp_brain_init.c)
 extern bbb_system_t nimcp_bbb_get_global_system(void);
 
@@ -57,7 +58,7 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
 /* Global health agent for bio router operations */
 static nimcp_health_agent_t* g_bio_router_health_agent = NULL;
 
-void bio_router_set_health_agent(nimcp_health_agent_t* agent) {
+static void bio_router_set_health_agent(nimcp_health_agent_t* agent) {
     g_bio_router_health_agent = agent;
 }
 

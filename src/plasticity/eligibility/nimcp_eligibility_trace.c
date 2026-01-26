@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_eligibility_trace.c - Eligibility Trace Implementation
 //=============================================================================
@@ -46,6 +47,34 @@
 #include <math.h>
 
 #define LOG_MODULE "plasticity_eligibility"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for eligibility_trace module */
+static nimcp_health_agent_t* g_eligibility_trace_health_agent = NULL;
+
+/**
+ * @brief Set health agent for eligibility_trace heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void eligibility_trace_set_health_agent(nimcp_health_agent_t* agent) {
+    g_eligibility_trace_health_agent = agent;
+}
+
+/** @brief Send heartbeat from eligibility_trace module */
+static inline void eligibility_trace_heartbeat(const char* operation, float progress) {
+    if (g_eligibility_trace_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_eligibility_trace_health_agent, operation, progress);
+    }
+}
+
 
 // Note: synapse_t and phasic_tonic_state_t forward-declared in header, full definitions needed here
 

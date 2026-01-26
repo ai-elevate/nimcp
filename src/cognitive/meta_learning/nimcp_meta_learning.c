@@ -21,6 +21,35 @@
 
 #define LOG_MODULE "meta_learning"
 
+//=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for meta_learning module */
+static nimcp_health_agent_t* g_meta_learning_health_agent = NULL;
+
+/**
+ * @brief Set health agent for meta_learning heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void meta_learning_set_health_agent(nimcp_health_agent_t* agent) {
+    g_meta_learning_health_agent = agent;
+}
+
+/** @brief Send heartbeat from meta_learning module */
+static inline void meta_learning_heartbeat(const char* operation, float progress) {
+    if (g_meta_learning_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_meta_learning_health_agent, operation, progress);
+    }
+}
+
+
 #include "cognitive/nimcp_meta_learning.h"
 #include "cognitive/meta_learning/nimcp_meta_learning_snn_bridge.h"
 #include "cognitive/meta_learning/nimcp_meta_learning_plasticity_bridge.h"

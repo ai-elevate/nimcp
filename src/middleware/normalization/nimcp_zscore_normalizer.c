@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_zscore_normalizer.c - Z-Score Normalization Implementation
 //=============================================================================
@@ -34,6 +35,34 @@
 
 #define LOG_MODULE "nimcp_zscore_normalizer"
 #define LOG_MODULE_ID 0x0523
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for zscore_normalizer module */
+static nimcp_health_agent_t* g_zscore_normalizer_health_agent = NULL;
+
+/**
+ * @brief Set health agent for zscore_normalizer heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void zscore_normalizer_set_health_agent(nimcp_health_agent_t* agent) {
+    g_zscore_normalizer_health_agent = agent;
+}
+
+/** @brief Send heartbeat from zscore_normalizer module */
+static inline void zscore_normalizer_heartbeat(const char* operation, float progress) {
+    if (g_zscore_normalizer_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_zscore_normalizer_health_agent, operation, progress);
+    }
+}
+
 
 typedef struct {
     float mean;

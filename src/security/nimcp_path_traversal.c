@@ -32,6 +32,35 @@
 
 #define LOG_MODULE "security_path_traversal"
 
+#include <stddef.h>  /* for NULL */
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for path_traversal module */
+static nimcp_health_agent_t* g_path_traversal_health_agent = NULL;
+
+/**
+ * @brief Set health agent for path_traversal heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void path_traversal_set_health_agent(nimcp_health_agent_t* agent) {
+    g_path_traversal_health_agent = agent;
+}
+
+/** @brief Send heartbeat from path_traversal module */
+static inline void path_traversal_heartbeat(const char* operation, float progress) {
+    if (g_path_traversal_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_path_traversal_health_agent, operation, progress);
+    }
+}
+
+
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>

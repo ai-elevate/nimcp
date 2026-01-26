@@ -992,6 +992,25 @@ struct brain_struct {
     bool health_agent_enabled;                             // Health agent enabled for this brain
     bool health_agent_owns_agent;                          // Whether brain owns (should destroy) the agent
 
+    // === BRAIN CYCLE COORDINATOR (Unified Cycle Observability) ===
+    //
+    // The Cycle Coordinator provides unified observability across all brain cycles:
+    // - Timing: Monotonic clock source, stall detection, anomaly tracking
+    // - Health: Per-cycle and overall health aggregation (Welford's algorithm)
+    // - Dependencies: Declarative cross-cycle dependency graph
+    // - Diagnostics: Single entry point for full system health report
+    // - Pattern Detection: FNV-1a hash fingerprinting of recurring health states
+    //
+    // Integrates with:
+    // - Immune System: Stall/degradation → antigen presentation
+    // - Bio-Async: Health change events published system-wide
+    // - KG: Statistics persistence for historical analysis
+    // - Introspection, Hemispheric, FEP, Meta-Learning, Pink Noise,
+    //   Global Workspace, Attention, World Model (bidirectional callbacks)
+    //
+    struct brain_cycle_coordinator* cycle_coordinator;     // Brain cycle coordinator
+    bool cycle_coordinator_enabled;                        // Cycle coordinator enabled for this brain
+
     // === STATE MANAGER INTEGRATION (Phase 8: Checkpointing) ===
     //
     // The State Manager provides centralized state checkpointing and recovery:

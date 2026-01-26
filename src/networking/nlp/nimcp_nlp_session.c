@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_nlp_session.c - Neural Link Protocol Session Management
 //=============================================================================
@@ -79,6 +80,34 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <limits.h>
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for nlp_session module */
+static nimcp_health_agent_t* g_nlp_session_health_agent = NULL;
+
+/**
+ * @brief Set health agent for nlp_session heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void nlp_session_set_health_agent(nimcp_health_agent_t* agent) {
+    g_nlp_session_health_agent = agent;
+}
+
+/** @brief Send heartbeat from nlp_session module */
+static inline void nlp_session_heartbeat(const char* operation, float progress) {
+    if (g_nlp_session_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_nlp_session_health_agent, operation, progress);
+    }
+}
+
 
 #if defined(NIMCP_PLATFORM_LINUX)
     #include <sys/random.h>

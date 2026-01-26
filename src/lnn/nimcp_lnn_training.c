@@ -37,7 +37,7 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
 /* Global health agent reference for LNN training */
 static nimcp_health_agent_t* g_lnn_health_agent = NULL;
 
-void lnn_training_set_health_agent(nimcp_health_agent_t* agent) {
+static void lnn_training_set_health_agent(nimcp_health_agent_t* agent) {
     g_lnn_health_agent = agent;
 }
 
@@ -110,6 +110,7 @@ static float compute_warmup_cosine_lr(
     uint64_t T_max
 ) {
     if (step < warmup_steps) {
+#include <stddef.h>  /* for NULL */
         // Linear warmup
         return base_lr * ((float)step / (float)warmup_steps);
     } else {

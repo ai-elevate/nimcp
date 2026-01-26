@@ -37,12 +37,41 @@
 #include <string.h>
 #include <math.h>
 
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // Module Logging Configuration
 //=============================================================================
 
 /** Module name for logging */
 #define LOG_MODULE "bio_async"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for bio_async module */
+static nimcp_health_agent_t* g_bio_async_health_agent = NULL;
+
+/**
+ * @brief Set health agent for bio_async heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void bio_async_set_health_agent(nimcp_health_agent_t* agent) {
+    g_bio_async_health_agent = agent;
+}
+
+/** @brief Send heartbeat from bio_async module */
+static inline void bio_async_heartbeat(const char* operation, float progress) {
+    if (g_bio_async_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_bio_async_health_agent, operation, progress);
+    }
+}
+
 #define BIO_ASYNC_MODULE "bio_async"
 
 /** Enable verbose trace logging (set to 0 for production) */

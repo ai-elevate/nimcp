@@ -24,6 +24,35 @@
 #include <math.h>
 
 //=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for code_generation module */
+static nimcp_health_agent_t* g_code_generation_health_agent = NULL;
+
+/**
+ * @brief Set health agent for code_generation heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void code_generation_set_health_agent(nimcp_health_agent_t* agent) {
+    g_code_generation_health_agent = agent;
+}
+
+/** @brief Send heartbeat from code_generation module */
+static inline void code_generation_heartbeat(const char* operation, float progress) {
+    if (g_code_generation_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_code_generation_health_agent, operation, progress);
+    }
+}
+
+
+//=============================================================================
 // Internal Structures
 //=============================================================================
 

@@ -47,6 +47,7 @@
  */
 
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
+#include <stddef.h>  /* for NULL */
 #include "plasticity/neuromodulators/nimcp_phasic_tonic.h"       // Phase C2.2 Enhancement #2
 #include "plasticity/neuromodulators/nimcp_receptor_subtypes.h"  // Phase C2.2 Enhancement #1
 #include "plasticity/neuromodulators/nimcp_vesicle_packaging.h"  // Phase C2.3 Enhancement #3
@@ -73,6 +74,34 @@
 #include <stdatomic.h>
 
 #define LOG_MODULE "plasticity_neuromodulators"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for neuromodulators module */
+static nimcp_health_agent_t* g_neuromodulators_health_agent = NULL;
+
+/**
+ * @brief Set health agent for neuromodulators heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void neuromodulators_set_health_agent(nimcp_health_agent_t* agent) {
+    g_neuromodulators_health_agent = agent;
+}
+
+/** @brief Send heartbeat from neuromodulators module */
+static inline void neuromodulators_heartbeat(const char* operation, float progress) {
+    if (g_neuromodulators_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_neuromodulators_health_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Bio-Async Integration State (Global for module registration)

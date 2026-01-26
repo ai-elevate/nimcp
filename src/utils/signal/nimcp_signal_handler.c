@@ -47,6 +47,7 @@ typedef signal_crash_context_t crash_context_t;
 #include "utils/signal/nimcp_signal_exception_queue.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // Signal-Safe Globals (accessed from signal handlers)
 //=============================================================================
@@ -151,6 +152,34 @@ static crash_context_t g_pending_crash_context;
  * HOW:  Created once, stores signal_recovery_ctx_t per thread
  */
 #include <pthread.h>
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for signal_handler module */
+static nimcp_health_agent_t* g_signal_handler_health_agent = NULL;
+
+/**
+ * @brief Set health agent for signal_handler heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void signal_handler_set_health_agent(nimcp_health_agent_t* agent) {
+    g_signal_handler_health_agent = agent;
+}
+
+/** @brief Send heartbeat from signal_handler module */
+static inline void signal_handler_heartbeat(const char* operation, float progress) {
+    if (g_signal_handler_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_signal_handler_health_agent, operation, progress);
+    }
+}
+
 
 static pthread_key_t g_recovery_ctx_key;
 static pthread_once_t g_recovery_ctx_key_once = PTHREAD_ONCE_INIT;

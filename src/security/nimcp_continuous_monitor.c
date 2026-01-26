@@ -29,6 +29,35 @@
 
 #define LOG_MODULE "security_continuous_monitor"
 
+#include <stddef.h>  /* for NULL */
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for continuous_monitor module */
+static nimcp_health_agent_t* g_continuous_monitor_health_agent = NULL;
+
+/**
+ * @brief Set health agent for continuous_monitor heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void continuous_monitor_set_health_agent(nimcp_health_agent_t* agent) {
+    g_continuous_monitor_health_agent = agent;
+}
+
+/** @brief Send heartbeat from continuous_monitor module */
+static inline void continuous_monitor_heartbeat(const char* operation, float progress) {
+    if (g_continuous_monitor_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_continuous_monitor_health_agent, operation, progress);
+    }
+}
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

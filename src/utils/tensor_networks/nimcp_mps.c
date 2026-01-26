@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_mps.c - Matrix Product States Implementation
 //=============================================================================
@@ -89,6 +90,34 @@ static inline float mps_rng_uniform(void) {
 #include "utils/tensor_networks/nimcp_svd_simple.h"  // Header is the same, implementation switches via LAPACK flag
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for mps module */
+static nimcp_health_agent_t* g_mps_health_agent = NULL;
+
+/**
+ * @brief Set health agent for mps heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void mps_set_health_agent(nimcp_health_agent_t* agent) {
+    g_mps_health_agent = agent;
+}
+
+/** @brief Send heartbeat from mps module */
+static inline void mps_heartbeat(const char* operation, float progress) {
+    if (g_mps_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_mps_health_agent, operation, progress);
+    }
+}
+
 
 #ifdef NIMCP_ENABLE_LAPACK
 // WHAT: BLAS/LAPACK FORTRAN interface for optimized operations

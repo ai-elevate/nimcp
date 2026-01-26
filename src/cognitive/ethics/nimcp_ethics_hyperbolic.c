@@ -60,6 +60,35 @@
 #define LOG_MODULE "ethics_hyperbolic"
 
 //=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for ethics_hyperbolic module */
+static nimcp_health_agent_t* g_ethics_hyperbolic_health_agent = NULL;
+
+/**
+ * @brief Set health agent for ethics_hyperbolic heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void ethics_hyperbolic_set_health_agent(nimcp_health_agent_t* agent) {
+    g_ethics_hyperbolic_health_agent = agent;
+}
+
+/** @brief Send heartbeat from ethics_hyperbolic module */
+static inline void ethics_hyperbolic_heartbeat(const char* operation, float progress) {
+    if (g_ethics_hyperbolic_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_ethics_hyperbolic_health_agent, operation, progress);
+    }
+}
+
+
+//=============================================================================
 // Hyperbolic Moral Reasoning
 //=============================================================================
 

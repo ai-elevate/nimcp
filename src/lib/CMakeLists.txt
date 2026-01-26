@@ -42,6 +42,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_state.c        # State accessors, COW (~1200 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_io.c           # Metadata, JSON I/O (~900 lines)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_multimodal.c   # Multimodal processing (~1500 lines)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/nimcp_brain_cycle_coordinator.c  # Brain cycle coordinator (unified cycle observability)
 
     # Brain modular architecture (Phase 11: SRP Modularization) - 7 extracted modules
     # ENABLED: Type conflicts resolved, modules ready for integration
@@ -86,6 +87,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_mental_health_guardian.c  # Mental Health Guardian (independent monitor)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_fault_tolerance.c    # Fault tolerance with parietal integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_health_agent.c      # Health agent autonomous monitoring
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_cycle_coordinator.c # Brain cycle coordinator init & integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_state_manager.c    # State manager for checkpointing (Phase 8)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_basal_ganglia.c     # Enhanced basal ganglia action selection
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_broca.c            # Broca's region language production

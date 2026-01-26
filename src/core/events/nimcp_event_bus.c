@@ -25,6 +25,7 @@
 #include "core/events/nimcp_event_bus.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include <stddef.h>  /* for NULL */
 #include "core/brain/factory/init/nimcp_brain_init.h"  // Phase IS-1: BBB access
 #include "security/nimcp_blood_brain_barrier.h"        // Phase IS-1: BBB perimeter defense
 #include <stdlib.h>
@@ -44,6 +45,34 @@
 #include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "event_bus"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for event_bus module */
+static nimcp_health_agent_t* g_event_bus_health_agent = NULL;
+
+/**
+ * @brief Set health agent for event_bus heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void event_bus_set_health_agent(nimcp_health_agent_t* agent) {
+    g_event_bus_health_agent = agent;
+}
+
+/** @brief Send heartbeat from event_bus module */
+static inline void event_bus_heartbeat(const char* operation, float progress) {
+    if (g_event_bus_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_event_bus_health_agent, operation, progress);
+    }
+}
+
 #define BIO_MODULE_ID 0x0131
 
 

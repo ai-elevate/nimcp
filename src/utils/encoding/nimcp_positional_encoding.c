@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_positional_encoding.c - Positional Encoding Implementation
 //=============================================================================
@@ -30,6 +31,34 @@
 //=============================================================================
 
 #define LOG_MODULE "PosEncoding"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for positional_encoding module */
+static nimcp_health_agent_t* g_positional_encoding_health_agent = NULL;
+
+/**
+ * @brief Set health agent for positional_encoding heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void positional_encoding_set_health_agent(nimcp_health_agent_t* agent) {
+    g_positional_encoding_health_agent = agent;
+}
+
+/** @brief Send heartbeat from positional_encoding module */
+static inline void positional_encoding_heartbeat(const char* operation, float progress) {
+    if (g_positional_encoding_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_positional_encoding_health_agent, operation, progress);
+    }
+}
+
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846

@@ -159,6 +159,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_comprehensive.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_comprehensive_coverage.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_coverage_boost.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_cycle_coordinator.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_edge_cases.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_error_paths.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_test_brain_exhaustive_scenarios.dir
@@ -899,6 +900,7 @@
 /home/bbrelin/nimcp/build/test/e2e/core/neural_substrate/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/test/e2e/core/neural_substrate/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/e2e/core/neural_substrate/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/test/e2e/core/brain/CMakeFiles/e2e_brain_cycle_coordinator.dir
 /home/bbrelin/nimcp/build/test/e2e/core/brain/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/core/brain/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/core/brain/CMakeFiles/rebuild_cache.dir
@@ -2237,6 +2239,7 @@
 /home/bbrelin/nimcp/build/test/integration/core/brain/CMakeFiles/integration_brain_persistence_test.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/CMakeFiles/integration_brain_coordinator_test.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/CMakeFiles/integration_kg_hierarchy_graph_algorithms_test.dir
+/home/bbrelin/nimcp/build/test/integration/core/brain/CMakeFiles/integration_brain_cycle_coordinator_test.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/core/brain/CMakeFiles/rebuild_cache.dir
@@ -2471,6 +2474,7 @@
 /home/bbrelin/nimcp/build/test/regression/core/brain/CMakeFiles/regression_core_brain_memory_tracking_regression.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/CMakeFiles/regression_core_brain_coordinator_regression.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/CMakeFiles/regression_core_brain_kg_hierarchy_graph_algorithms.dir
+/home/bbrelin/nimcp/build/test/regression/core/brain/CMakeFiles/regression_core_brain_cycle_coordinator.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/core/brain/CMakeFiles/rebuild_cache.dir

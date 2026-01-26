@@ -23,6 +23,35 @@
 
 #define LOG_MODULE "[JEPA_MASK]"
 
+//=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for jepa_masking module */
+static nimcp_health_agent_t* g_jepa_masking_health_agent = NULL;
+
+/**
+ * @brief Set health agent for jepa_masking heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void jepa_masking_set_health_agent(nimcp_health_agent_t* agent) {
+    g_jepa_masking_health_agent = agent;
+}
+
+/** @brief Send heartbeat from jepa_masking module */
+static inline void jepa_masking_heartbeat(const char* operation, float progress) {
+    if (g_jepa_masking_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_jepa_masking_health_agent, operation, progress);
+    }
+}
+
+
 /* ============================================================================
  * Internal Helpers - PRNG
  * ============================================================================ */

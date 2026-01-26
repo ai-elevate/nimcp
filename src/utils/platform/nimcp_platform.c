@@ -22,49 +22,33 @@
 #include "utils/logging/nimcp_logging.h"
 #include "api/nimcp_api_exception.h"
 
-/* ========================================================================
- * PLATFORM NAME
- * ======================================================================== */
+#include <stddef.h>  /* for NULL */
 
-const char* nimcp_platform_name(void)
-{
-#if defined(NIMCP_PLATFORM_NAME)
-    return NIMCP_PLATFORM_NAME;
-#else
-    return "Unknown";
-#endif
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for platform module */
+static nimcp_health_agent_t* g_platform_health_agent = NULL;
+
+/**
+ * @brief Set health agent for platform heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void platform_set_health_agent(nimcp_health_agent_t* agent) {
+    g_platform_health_agent = agent;
 }
 
-/* ========================================================================
- * COMPILER NAME
- * ======================================================================== */
-
-const char* nimcp_compiler_name(void)
-{
-#if defined(NIMCP_COMPILER_NAME)
-    return NIMCP_COMPILER_NAME;
-#else
-    return "Unknown";
-#endif
+/** @brief Send heartbeat from platform module */
+static inline void platform_heartbeat(const char* operation, float progress) {
+    if (g_platform_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_platform_health_agent, operation, progress);
+    }
 }
 
-/* ========================================================================
- * ARCHITECTURE NAME
- * ======================================================================== */
-
-const char* nimcp_architecture_name(void)
-{
-#if defined(NIMCP_ARCH_NAME)
-    return NIMCP_ARCH_NAME;
-#elif defined(__x86_64__) || defined(__amd64__) || defined(_M_X64)
-    return "x86_64";
-#elif defined(__i386__) || defined(_M_IX86)
-    return "x86";
-#elif defined(__aarch64__) || defined(_M_ARM64)
-    return "ARM64";
-#elif defined(__arm__) || defined(_M_ARM)
-    return "ARM";
-#else
-    return "Unknown";
-#endif
-}
+//=============================================================================

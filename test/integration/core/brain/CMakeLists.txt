@@ -91,3 +91,17 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/language")
     add_subdirectory(language)
 endif()
+
+# Test 5: Brain Cycle Coordinator Integration (Unified cycle observability)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_brain_cycle_coordinator_integration.cpp")
+    add_executable(integration_brain_cycle_coordinator_test
+        test_brain_cycle_coordinator_integration.cpp
+    )
+    target_link_libraries(integration_brain_cycle_coordinator_test
+        PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+    )
+    target_include_directories(integration_brain_cycle_coordinator_test
+        PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src
+    )
+    gtest_discover_tests(integration_brain_cycle_coordinator_test)
+endif()

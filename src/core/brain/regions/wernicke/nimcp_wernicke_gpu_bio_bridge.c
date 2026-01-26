@@ -42,6 +42,35 @@
 
 #define LOG_MODULE "WERNICKE_GPU_BIO"
 
+//=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for wernicke_gpu_bio_bridge module */
+static nimcp_health_agent_t* g_wernicke_gpu_bio_bridge_health_agent = NULL;
+
+/**
+ * @brief Set health agent for wernicke_gpu_bio_bridge heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void wernicke_gpu_bio_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+    g_wernicke_gpu_bio_bridge_health_agent = agent;
+}
+
+/** @brief Send heartbeat from wernicke_gpu_bio_bridge module */
+static inline void wernicke_gpu_bio_bridge_heartbeat(const char* operation, float progress) {
+    if (g_wernicke_gpu_bio_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_wernicke_gpu_bio_bridge_health_agent, operation, progress);
+    }
+}
+
+
 /*=============================================================================
  * Constants
  *=============================================================================*/

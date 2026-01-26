@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_buffer_pool.c - Buffer Pool Implementation with CoW Support
 //=============================================================================
@@ -50,6 +51,34 @@
 #include <string.h>
 #include <time.h>
 #include "utils/logging/nimcp_logging.h"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for buffer_pool module */
+static nimcp_health_agent_t* g_buffer_pool_health_agent = NULL;
+
+/**
+ * @brief Set health agent for buffer_pool heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void buffer_pool_set_health_agent(nimcp_health_agent_t* agent) {
+    g_buffer_pool_health_agent = agent;
+}
+
+/** @brief Send heartbeat from buffer_pool module */
+static inline void buffer_pool_heartbeat(const char* operation, float progress) {
+    if (g_buffer_pool_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_buffer_pool_health_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Internal Structures

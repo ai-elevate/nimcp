@@ -9,6 +9,35 @@
 #include <math.h>
 #include <string.h>
 
+//=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for energy_consistency_thermo_bridge module */
+static nimcp_health_agent_t* g_energy_consistency_thermo_bridge_health_agent = NULL;
+
+/**
+ * @brief Set health agent for energy_consistency_thermo_bridge heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void energy_consistency_thermo_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+    g_energy_consistency_thermo_bridge_health_agent = agent;
+}
+
+/** @brief Send heartbeat from energy_consistency_thermo_bridge module */
+static inline void energy_consistency_thermo_bridge_heartbeat(const char* operation, float progress) {
+    if (g_energy_consistency_thermo_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_energy_consistency_thermo_bridge_health_agent, operation, progress);
+    }
+}
+
+
 #define BOLTZMANN_CONSTANT 1.380649e-23f
 
 NIMCP_API energy_thermo_bridge_t* energy_thermo_bridge_create(void) {

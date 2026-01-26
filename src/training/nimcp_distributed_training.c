@@ -24,6 +24,7 @@
 
 #define LOG_MODULE "DIST_TRAINING"
 
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // Health Agent Integration (Phase 8: Heartbeat for Long Operations)
 //=============================================================================
@@ -40,7 +41,7 @@ static nimcp_health_agent_t* g_dist_health_agent = NULL;
  * @brief Set health agent for distributed training heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-void dist_set_health_agent(nimcp_health_agent_t* agent) {
+static void dist_set_health_agent(nimcp_health_agent_t* agent) {
     g_dist_health_agent = agent;
 }
 

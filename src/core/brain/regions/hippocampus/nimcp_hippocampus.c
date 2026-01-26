@@ -6,6 +6,7 @@
  */
 
 #include "core/brain/regions/hippocampus/nimcp_hippocampus.h"
+#include <stddef.h>  /* for NULL */
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
@@ -32,7 +33,7 @@ static nimcp_health_agent_t* g_hippo_health_agent = NULL;
  * @brief Set health agent for hippocampus heartbeat monitoring
  * @param agent Health agent instance (NULL to disable)
  */
-void hippo_set_health_agent(nimcp_health_agent_t* agent) {
+static void hippo_set_health_agent(nimcp_health_agent_t* agent) {
     g_hippo_health_agent = agent;
 }
 

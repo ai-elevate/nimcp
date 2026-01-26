@@ -14,14 +14,33 @@
 #include "core/logic/nimcp_neural_logic_quantum_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
+#include <stddef.h>  /* for NULL */
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for neural_logic_quantum_bridge module */
+static nimcp_health_agent_t* g_neural_logic_quantum_bridge_health_agent = NULL;
+
 /**
- * WHAT: Export default config function for C linkage
- * WHY:  Allow neural_logic.c to call without including full bridge header
- * NOTE: Different name from inline function to avoid conflict
+ * @brief Set health agent for neural_logic_quantum_bridge heartbeats
+ * @param agent Health agent (can be NULL to disable)
  */
-void neural_logic_quantum_default_config_opaque(void* config_out)
-{
-    if (!config_out) return;
-    neural_logic_quantum_config_t cfg = neural_logic_quantum_default_config();
-    memcpy(config_out, &cfg, sizeof(cfg));
+static void neural_logic_quantum_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+    g_neural_logic_quantum_bridge_health_agent = agent;
 }
+
+/** @brief Send heartbeat from neural_logic_quantum_bridge module */
+static inline void neural_logic_quantum_bridge_heartbeat(const char* operation, float progress) {
+    if (g_neural_logic_quantum_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_neural_logic_quantum_bridge_health_agent, operation, progress);
+    }
+}
+
+//=============================================================================

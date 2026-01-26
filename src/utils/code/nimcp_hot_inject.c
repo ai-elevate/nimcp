@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 // Must define _GNU_SOURCE for pthread_barrier on Linux
 #ifdef __linux__
     #define _GNU_SOURCE
@@ -51,6 +52,34 @@
 //=============================================================================
 
 #define LOG_MODULE "hot_inject"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for hot_inject module */
+static nimcp_health_agent_t* g_hot_inject_health_agent = NULL;
+
+/**
+ * @brief Set health agent for hot_inject heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void hot_inject_set_health_agent(nimcp_health_agent_t* agent) {
+    g_hot_inject_health_agent = agent;
+}
+
+/** @brief Send heartbeat from hot_inject module */
+static inline void hot_inject_heartbeat(const char* operation, float progress) {
+    if (g_hot_inject_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_hot_inject_health_agent, operation, progress);
+    }
+}
+
 
 /** @brief Maximum registered threads for barrier */
 #define HOT_INJECT_MAX_THREADS 256

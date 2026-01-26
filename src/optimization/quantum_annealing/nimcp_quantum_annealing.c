@@ -36,6 +36,7 @@
 #include <float.h>
 #include <time.h>
 
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // Health Agent Integration (Phase 8: Heartbeat for Long Operations)
 //=============================================================================
@@ -52,7 +53,7 @@ static nimcp_health_agent_t* g_qa_health_agent = NULL;
  * @brief Set health agent for quantum annealing heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-void qa_set_health_agent(nimcp_health_agent_t* agent) {
+static void qa_set_health_agent(nimcp_health_agent_t* agent) {
     g_qa_health_agent = agent;
 }
 

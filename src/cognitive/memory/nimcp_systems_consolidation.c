@@ -23,6 +23,7 @@
 #include "security/nimcp_blood_brain_barrier.h"
 
 #include "cognitive/memory/nimcp_engram.h"
+#include <stddef.h>  /* for NULL */
 #include "nimcp.h"  // For NIMCP_ERROR_* codes
 #include "utils/exception/nimcp_exception_macros.h"  // Phase 7: Exception integration
 #include "async/nimcp_bio_async.h"
@@ -49,7 +50,7 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
 /* Global health agent for consolidation operations */
 static nimcp_health_agent_t* g_consolidation_health_agent = NULL;
 
-void systems_consolidation_set_health_agent(nimcp_health_agent_t* agent) {
+static void systems_consolidation_set_health_agent(nimcp_health_agent_t* agent) {
     g_consolidation_health_agent = agent;
 }
 

@@ -29,6 +29,35 @@
 #include "async/nimcp_bio_router.h"
 
 #define LOG_MODULE "GENIUS_MATH_ORCHESTRATOR"
+
+//=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for genius_math_orchestrator module */
+static nimcp_health_agent_t* g_genius_math_orchestrator_health_agent = NULL;
+
+/**
+ * @brief Set health agent for genius_math_orchestrator heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void genius_math_orchestrator_set_health_agent(nimcp_health_agent_t* agent) {
+    g_genius_math_orchestrator_health_agent = agent;
+}
+
+/** @brief Send heartbeat from genius_math_orchestrator module */
+static inline void genius_math_orchestrator_heartbeat(const char* operation, float progress) {
+    if (g_genius_math_orchestrator_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_genius_math_orchestrator_health_agent, operation, progress);
+    }
+}
+
 #include <math.h>
 #include <string.h>
 

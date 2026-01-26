@@ -22,6 +22,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -31,6 +32,34 @@
 
 /* Logging module identifier */
 #define LOG_MODULE "NEURON_TYPES"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for neuron_types module */
+static nimcp_health_agent_t* g_neuron_types_health_agent = NULL;
+
+/**
+ * @brief Set health agent for neuron_types heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void neuron_types_set_health_agent(nimcp_health_agent_t* agent) {
+    g_neuron_types_health_agent = agent;
+}
+
+/** @brief Send heartbeat from neuron_types module */
+static inline void neuron_types_heartbeat(const char* operation, float progress) {
+    if (g_neuron_types_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_neuron_types_health_agent, operation, progress);
+    }
+}
+
 
 // Define M_PI if not already defined (for some compilers)
 #ifndef M_PI

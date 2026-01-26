@@ -43,6 +43,35 @@
 
 #define LOG_MODULE "ASTROCYTES"
 
+#include <stddef.h>  /* for NULL */
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for astrocyte_calcium module */
+static nimcp_health_agent_t* g_astrocyte_calcium_health_agent = NULL;
+
+/**
+ * @brief Set health agent for astrocyte_calcium heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void astrocyte_calcium_set_health_agent(nimcp_health_agent_t* agent) {
+    g_astrocyte_calcium_health_agent = agent;
+}
+
+/** @brief Send heartbeat from astrocyte_calcium module */
+static inline void astrocyte_calcium_heartbeat(const char* operation, float progress) {
+    if (g_astrocyte_calcium_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_astrocyte_calcium_health_agent, operation, progress);
+    }
+}
+
+
 #include "glial/astrocytes/nimcp_astrocytes.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"

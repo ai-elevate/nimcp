@@ -28,6 +28,7 @@
 #include <string.h>
 #include <math.h>
 
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
 //=============================================================================

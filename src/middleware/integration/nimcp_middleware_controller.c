@@ -24,11 +24,40 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
+#include <stddef.h>  /* for NULL */
 #include "security/nimcp_blood_brain_barrier.h"        // Phase IS-1: BBB perimeter defense
 #include "security/nimcp_security.h"                   // Security module for input validation
 #include "utils/logging/nimcp_logging.h"
 
 #define LOG_MODULE "middleware_controller"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for middleware_controller module */
+static nimcp_health_agent_t* g_middleware_controller_health_agent = NULL;
+
+/**
+ * @brief Set health agent for middleware_controller heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void middleware_controller_set_health_agent(nimcp_health_agent_t* agent) {
+    g_middleware_controller_health_agent = agent;
+}
+
+/** @brief Send heartbeat from middleware_controller module */
+static inline void middleware_controller_heartbeat(const char* operation, float progress) {
+    if (g_middleware_controller_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_middleware_controller_health_agent, operation, progress);
+    }
+}
+
 
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>

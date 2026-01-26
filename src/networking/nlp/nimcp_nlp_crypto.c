@@ -1,9 +1,38 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_nlp_crypto.c - Neural Link Protocol Encryption Implementation
 //=============================================================================
 
 #define LOG_MODULE "nlp_crypto"
 #define LOG_MODULE_ID 0x0A00
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for nlp_crypto module */
+static nimcp_health_agent_t* g_nlp_crypto_health_agent = NULL;
+
+/**
+ * @brief Set health agent for nlp_crypto heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void nlp_crypto_set_health_agent(nimcp_health_agent_t* agent) {
+    g_nlp_crypto_health_agent = agent;
+}
+
+/** @brief Send heartbeat from nlp_crypto module */
+static inline void nlp_crypto_heartbeat(const char* operation, float progress) {
+    if (g_nlp_crypto_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_nlp_crypto_health_agent, operation, progress);
+    }
+}
+
 
 /**
  * @file nimcp_nlp_crypto.c

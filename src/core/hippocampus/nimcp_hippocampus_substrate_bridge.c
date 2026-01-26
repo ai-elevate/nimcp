@@ -9,86 +9,33 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
-struct hippocampus_substrate_bridge {
-    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
-    void* hippocampus;
-    neural_substrate_t* substrate;
-    hippocampus_substrate_config_t config;
-    hippocampus_substrate_effects_t effects;
-    bio_router_t* router;
-    bool bio_async_connected;
-    uint64_t update_count;
-};
+#include <stddef.h>  /* for NULL */
 
-static float clamp_f(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
 
-hippocampus_substrate_config_t hippocampus_substrate_default_config(void) {
-    hippocampus_substrate_config_t cfg = { .enable_atp_modulation = true, .enable_fatigue_modulation = true,
-        .enable_bio_async = false, .atp_sensitivity = 1.0f, .fatigue_sensitivity = 1.0f, .min_capacity = 0.2f };
-    return cfg;
+/** Global health agent for hippocampus_substrate_bridge module */
+static nimcp_health_agent_t* g_hippocampus_substrate_bridge_health_agent = NULL;
+
+/**
+ * @brief Set health agent for hippocampus_substrate_bridge heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void hippocampus_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+    g_hippocampus_substrate_bridge_health_agent = agent;
 }
 
-hippocampus_substrate_bridge_t* hippocampus_substrate_bridge_create(void* hippocampus, neural_substrate_t* substrate, const hippocampus_substrate_config_t* config) {
-    if (!substrate) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
-
-        return NULL;
-
+/** @brief Send heartbeat from hippocampus_substrate_bridge module */
+static inline void hippocampus_substrate_bridge_heartbeat(const char* operation, float progress) {
+    if (g_hippocampus_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_hippocampus_substrate_bridge_health_agent, operation, progress);
     }
-    hippocampus_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(hippocampus_substrate_bridge_t));
-    if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-        return NULL;
-
-    }
-    bridge->hippocampus = hippocampus;
-    bridge->substrate = substrate;
-    bridge->config = config ? *config : hippocampus_substrate_default_config();
-    bridge->effects.encoding_capacity = 1.0f;
-    bridge->effects.consolidation_rate = 1.0f;
-    bridge->effects.retrieval_accuracy = 1.0f;
-    bridge->effects.spatial_processing = 1.0f;
-    bridge->effects.overall_capacity = 1.0f;
-    return bridge;
 }
 
-void hippocampus_substrate_bridge_destroy(hippocampus_substrate_bridge_t* bridge) { if (bridge) nimcp_free(bridge); }
-
-int hippocampus_substrate_bridge_update(hippocampus_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->substrate) return -1;
-    substrate_metabolic_state_t metabolic;
-    if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
-    float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
-    /* ATP is critical for memory encoding and LTP */
-    if (bridge->config.enable_atp_modulation) {
-        bridge->effects.encoding_capacity = clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.consolidation_rate = clamp_f(atp * 1.15f * bridge->config.atp_sensitivity, min_cap, 1.0f);
-    }
-    /* Fatigue affects retrieval and spatial processing */
-    if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.retrieval_accuracy = clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.spatial_processing = clamp_f(metabolic_cap * 0.9f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-    }
-    bridge->effects.overall_capacity = (bridge->effects.encoding_capacity + bridge->effects.consolidation_rate +
-                                        bridge->effects.retrieval_accuracy + bridge->effects.spatial_processing) / 4.0f;
-    bridge->update_count++;
-    return 0;
-}
-
-int hippocampus_substrate_bridge_get_effects(const hippocampus_substrate_bridge_t* bridge, hippocampus_substrate_effects_t* effects) {
-    if (!bridge || !effects) return -1;
-    *effects = bridge->effects;
-    return 0;
-}
-
-int hippocampus_substrate_bridge_apply_effects(hippocampus_substrate_bridge_t* bridge) { return bridge ? 0 : -1; }
-
-int hippocampus_substrate_bridge_register_bio_async(hippocampus_substrate_bridge_t* bridge, bio_router_t* router) {
-    if (!bridge) return -1;
-    bridge->router = router;
-    bridge->bio_async_connected = (router != NULL);
-    return 0;
-}
+//=============================================================================

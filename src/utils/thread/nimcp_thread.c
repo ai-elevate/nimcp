@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_thread.c - Thread Abstraction Layer for NIMCP
 //=============================================================================
@@ -505,6 +506,34 @@
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for thread module */
+static nimcp_health_agent_t* g_thread_health_agent = NULL;
+
+/**
+ * @brief Set health agent for thread heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void thread_set_health_agent(nimcp_health_agent_t* agent) {
+    g_thread_health_agent = agent;
+}
+
+/** @brief Send heartbeat from thread module */
+static inline void thread_heartbeat(const char* operation, float progress) {
+    if (g_thread_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_thread_health_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Thread-Local Error Storage

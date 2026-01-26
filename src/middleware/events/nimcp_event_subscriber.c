@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_event_subscriber.c - Event Subscriber Implementation
 //=============================================================================
@@ -14,6 +15,34 @@
 #include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "middleware_event_subscriber"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for event_subscriber module */
+static nimcp_health_agent_t* g_event_subscriber_health_agent = NULL;
+
+/**
+ * @brief Set health agent for event_subscriber heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void event_subscriber_set_health_agent(nimcp_health_agent_t* agent) {
+    g_event_subscriber_health_agent = agent;
+}
+
+/** @brief Send heartbeat from event_subscriber module */
+static inline void event_subscriber_heartbeat(const char* operation, float progress) {
+    if (g_event_subscriber_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_event_subscriber_health_agent, operation, progress);
+    }
+}
+
 
 #include <string.h>
 #include <stdio.h>

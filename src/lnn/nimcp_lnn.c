@@ -20,6 +20,35 @@
 #include <pthread.h>
 #include <stdatomic.h>
 
+#include <stddef.h>  /* for NULL */
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for lnn module */
+static nimcp_health_agent_t* g_lnn_health_agent = NULL;
+
+/**
+ * @brief Set health agent for lnn heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void lnn_set_health_agent(nimcp_health_agent_t* agent) {
+    g_lnn_health_agent = agent;
+}
+
+/** @brief Send heartbeat from lnn module */
+static inline void lnn_heartbeat(const char* operation, float progress) {
+    if (g_lnn_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_lnn_health_agent, operation, progress);
+    }
+}
+
+
 /* Thread-safe initialization using pthread_once */
 static pthread_once_t g_lnn_init_once = PTHREAD_ONCE_INIT;
 static pthread_once_t g_lnn_version_once = PTHREAD_ONCE_INIT;

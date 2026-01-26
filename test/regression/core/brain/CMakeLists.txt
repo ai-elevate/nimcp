@@ -151,3 +151,25 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/language")
     add_subdirectory(language)
 endif()
+
+# Brain Cycle Coordinator Regression Test
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_brain_cycle_coordinator_regression.cpp")
+    add_executable(regression_core_brain_cycle_coordinator
+        test_brain_cycle_coordinator_regression.cpp
+    )
+    target_link_libraries(regression_core_brain_cycle_coordinator
+        PRIVATE
+            GTest::GTest
+            GTest::Main
+            nimcp
+            Threads::Threads
+        )
+    target_include_directories(regression_core_brain_cycle_coordinator
+        PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+            ${CMAKE_SOURCE_DIR}/src
+    )
+    add_test(NAME regression_core_brain_cycle_coordinator
+             COMMAND regression_core_brain_cycle_coordinator)
+    set_tests_properties(regression_core_brain_cycle_coordinator PROPERTIES LABELS "regression")
+endif()

@@ -39,6 +39,35 @@
 #include "utils/memory/nimcp_unified_memory.h"
 
 #define LOG_MODULE "cognitive.fault.recovery_executive"
+
+//=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for recovery_executive module */
+static nimcp_health_agent_t* g_recovery_executive_health_agent = NULL;
+
+/**
+ * @brief Set health agent for recovery_executive heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void recovery_executive_set_health_agent(nimcp_health_agent_t* agent) {
+    g_recovery_executive_health_agent = agent;
+}
+
+/** @brief Send heartbeat from recovery_executive module */
+static inline void recovery_executive_heartbeat(const char* operation, float progress) {
+    if (g_recovery_executive_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_recovery_executive_health_agent, operation, progress);
+    }
+}
+
 #define BIO_MODULE_COGNITIVE_FAULT_RECOVERY_EXECUTIVE 0x035C
 
 

@@ -31,6 +31,35 @@
 #define LOG_MODULE "BRAIN_INIT_VALIDATION"
 
 //=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for brain_init_validation module */
+static nimcp_health_agent_t* g_brain_init_validation_health_agent = NULL;
+
+/**
+ * @brief Set health agent for brain_init_validation heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void brain_init_validation_set_health_agent(nimcp_health_agent_t* agent) {
+    g_brain_init_validation_health_agent = agent;
+}
+
+/** @brief Send heartbeat from brain_init_validation module */
+static inline void brain_init_validation_heartbeat(const char* operation, float progress) {
+    if (g_brain_init_validation_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_brain_init_validation_health_agent, operation, progress);
+    }
+}
+
+
+//=============================================================================
 // Global BBB System (Singleton with Reference Counting)
 //=============================================================================
 

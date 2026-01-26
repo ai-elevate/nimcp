@@ -12,6 +12,35 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include <stddef.h>  /* for NULL */
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for inter_layer_router module */
+static nimcp_health_agent_t* g_inter_layer_router_health_agent = NULL;
+
+/**
+ * @brief Set health agent for inter_layer_router heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void inter_layer_router_set_health_agent(nimcp_health_agent_t* agent) {
+    g_inter_layer_router_health_agent = agent;
+}
+
+/** @brief Send heartbeat from inter_layer_router module */
+static inline void inter_layer_router_heartbeat(const char* operation, float progress) {
+    if (g_inter_layer_router_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_inter_layer_router_health_agent, operation, progress);
+    }
+}
+
+
 #define MAX_PENDING_MESSAGES 1024
 #define MAX_QUEUES NIMCP_LAYER_COUNT
 

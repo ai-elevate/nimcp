@@ -9,6 +9,35 @@
 #include <math.h>
 #include <string.h>
 
+//=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for quantum_mcts_fep_bridge module */
+static nimcp_health_agent_t* g_quantum_mcts_fep_bridge_health_agent = NULL;
+
+/**
+ * @brief Set health agent for quantum_mcts_fep_bridge heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void quantum_mcts_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+    g_quantum_mcts_fep_bridge_health_agent = agent;
+}
+
+/** @brief Send heartbeat from quantum_mcts_fep_bridge module */
+static inline void quantum_mcts_fep_bridge_heartbeat(const char* operation, float progress) {
+    if (g_quantum_mcts_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_quantum_mcts_fep_bridge_health_agent, operation, progress);
+    }
+}
+
+
 NIMCP_API qmcts_fep_bridge_t* qmcts_fep_bridge_create(void) {
     qmcts_fep_bridge_t* bridge = nimcp_calloc(1, sizeof(qmcts_fep_bridge_t));
     if (!bridge) {

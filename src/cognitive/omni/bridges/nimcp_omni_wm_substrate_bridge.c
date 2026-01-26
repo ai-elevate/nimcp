@@ -44,6 +44,35 @@
 
 #define LOG_MODULE "wm_substrate_bridge"
 
+//=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for omni_wm_substrate_bridge module */
+static nimcp_health_agent_t* g_omni_wm_substrate_bridge_health_agent = NULL;
+
+/**
+ * @brief Set health agent for omni_wm_substrate_bridge heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void omni_wm_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+    g_omni_wm_substrate_bridge_health_agent = agent;
+}
+
+/** @brief Send heartbeat from omni_wm_substrate_bridge module */
+static inline void omni_wm_substrate_bridge_heartbeat(const char* operation, float progress) {
+    if (g_omni_wm_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_omni_wm_substrate_bridge_health_agent, operation, progress);
+    }
+}
+
+
 /** Alert bit flags */
 #define ALERT_BIT_LOW_ATP       (1 << 0)
 #define ALERT_BIT_HYPOXIA       (1 << 1)

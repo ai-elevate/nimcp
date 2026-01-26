@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_two_compartment.c - Two-Compartment Neuron Implementation
 //=============================================================================
@@ -38,6 +39,34 @@
 #include <pthread.h>
 
 #define LOG_MODULE "two_compartment"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for two_compartment module */
+static nimcp_health_agent_t* g_two_compartment_health_agent = NULL;
+
+/**
+ * @brief Set health agent for two_compartment heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void two_compartment_set_health_agent(nimcp_health_agent_t* agent) {
+    g_two_compartment_health_agent = agent;
+}
+
+/** @brief Send heartbeat from two_compartment module */
+static inline void two_compartment_heartbeat(const char* operation, float progress) {
+    if (g_two_compartment_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_two_compartment_health_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Bio-Async Module Context (Thread-Safe Initialization)

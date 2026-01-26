@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_svd_lapack.c - LAPACK-based SVD for TT-SVD Tensor Decomposition
 //=============================================================================
@@ -440,5 +441,33 @@ float svd_compute_error(const svd_result_t* svd, const float* A_original) {
 #include "nimcp_svd_simple.c"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for svd_lapack module */
+static nimcp_health_agent_t* g_svd_lapack_health_agent = NULL;
+
+/**
+ * @brief Set health agent for svd_lapack heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void svd_lapack_set_health_agent(nimcp_health_agent_t* agent) {
+    g_svd_lapack_health_agent = agent;
+}
+
+/** @brief Send heartbeat from svd_lapack module */
+static inline void svd_lapack_heartbeat(const char* operation, float progress) {
+    if (g_svd_lapack_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_svd_lapack_health_agent, operation, progress);
+    }
+}
+
 
 #endif  // NIMCP_ENABLE_LAPACK

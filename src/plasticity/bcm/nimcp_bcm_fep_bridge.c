@@ -16,6 +16,35 @@
 
 #define LOG_MODULE_BCM_FEP "BCM_FEP_BRIDGE"
 
+#include <stddef.h>  /* for NULL */
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for bcm_fep_bridge module */
+static nimcp_health_agent_t* g_bcm_fep_bridge_health_agent = NULL;
+
+/**
+ * @brief Set health agent for bcm_fep_bridge heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void bcm_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+    g_bcm_fep_bridge_health_agent = agent;
+}
+
+/** @brief Send heartbeat from bcm_fep_bridge module */
+static inline void bcm_fep_bridge_heartbeat(const char* operation, float progress) {
+    if (g_bcm_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_bcm_fep_bridge_health_agent, operation, progress);
+    }
+}
+
+
 int bcm_fep_bridge_default_config(bcm_fep_config_t* config) {
     NIMCP_API_CHECK_NULL(config, -1, "BCM-FEP config is NULL");
     config->complexity_threshold_gain = BCM_FEP_THRESHOLD_SCALING;

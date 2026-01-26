@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_sparse_synapse.c - Sparse Synapse Allocation Implementation
 //=============================================================================
@@ -1182,6 +1183,34 @@ void sparse_synapse_pool_print_stats(sparse_synapse_pool_t pool, bool verbose) {
 
 // Include synapse_t definition
 #include "core/neuralnet/nimcp_neuralnet.h"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for sparse_synapse module */
+static nimcp_health_agent_t* g_sparse_synapse_health_agent = NULL;
+
+/**
+ * @brief Set health agent for sparse_synapse heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void sparse_synapse_set_health_agent(nimcp_health_agent_t* agent) {
+    g_sparse_synapse_health_agent = agent;
+}
+
+/** @brief Send heartbeat from sparse_synapse module */
+static inline void sparse_synapse_heartbeat(const char* operation, float progress) {
+    if (g_sparse_synapse_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_sparse_synapse_health_agent, operation, progress);
+    }
+}
+
 
 // Default metadata pool size (5% of typical 200K synapses)
 #define SYNAPSE_METADATA_POOL_DEFAULT_SIZE 10000

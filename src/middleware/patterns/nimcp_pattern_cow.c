@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_pattern_cow.c - Copy-on-Write Pattern Data Implementation
 //=============================================================================
@@ -20,6 +21,34 @@
 
 #define LOG_MODULE "nimcp_pattern_cow"
 #define LOG_MODULE_ID 0x0525
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for pattern_cow module */
+static nimcp_health_agent_t* g_pattern_cow_health_agent = NULL;
+
+/**
+ * @brief Set health agent for pattern_cow heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void pattern_cow_set_health_agent(nimcp_health_agent_t* agent) {
+    g_pattern_cow_health_agent = agent;
+}
+
+/** @brief Send heartbeat from pattern_cow module */
+static inline void pattern_cow_heartbeat(const char* operation, float progress) {
+    if (g_pattern_cow_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pattern_cow_health_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // CoW Pattern Data Lifecycle

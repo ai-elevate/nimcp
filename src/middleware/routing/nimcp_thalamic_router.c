@@ -1,3 +1,4 @@
+#include <stddef.h>
 //=============================================================================
 // nimcp_thalamic_router.c - Attention-Gated Neural Routing
 //=============================================================================
@@ -69,7 +70,7 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
 /* Global health agent for thalamic router operations */
 static nimcp_health_agent_t* g_thalamic_router_health_agent = NULL;
 
-void thalamic_router_set_health_agent(nimcp_health_agent_t* agent) {
+static void thalamic_router_set_health_agent(nimcp_health_agent_t* agent) {
     g_thalamic_router_health_agent = agent;
 }
 

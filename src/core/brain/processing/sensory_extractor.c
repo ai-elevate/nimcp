@@ -42,6 +42,35 @@
 #define LOG_MODULE "BRAIN_PROC_SENS"
 
 //=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for sensory_extractor module */
+static nimcp_health_agent_t* g_sensory_extractor_health_agent = NULL;
+
+/**
+ * @brief Set health agent for sensory_extractor heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void sensory_extractor_set_health_agent(nimcp_health_agent_t* agent) {
+    g_sensory_extractor_health_agent = agent;
+}
+
+/** @brief Send heartbeat from sensory_extractor module */
+static inline void sensory_extractor_heartbeat(const char* operation, float progress) {
+    if (g_sensory_extractor_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_sensory_extractor_health_agent, operation, progress);
+    }
+}
+
+
+//=============================================================================
 // Internal Brain Structure Access
 //=============================================================================
 

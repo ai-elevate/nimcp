@@ -15,6 +15,35 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
+//=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for personality_thalamic_bridge module */
+static nimcp_health_agent_t* g_personality_thalamic_bridge_health_agent = NULL;
+
+/**
+ * @brief Set health agent for personality_thalamic_bridge heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void personality_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+    g_personality_thalamic_bridge_health_agent = agent;
+}
+
+/** @brief Send heartbeat from personality_thalamic_bridge module */
+static inline void personality_thalamic_bridge_heartbeat(const char* operation, float progress) {
+    if (g_personality_thalamic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_personality_thalamic_bridge_health_agent, operation, progress);
+    }
+}
+
+
 /* Source ID for personality signals in thalamic routing */
 #define PERSONALITY_THALAMIC_SOURCE_ID 0x0600
 

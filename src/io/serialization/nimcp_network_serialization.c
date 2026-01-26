@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 // nimcp_network_serialization.c
 
 #include "io/serialization/nimcp_network_serialization.h"
@@ -66,6 +67,34 @@ static void network_serialization_security_cleanup(void) {
 
 #define LOG_MODULE "nimcp_network_serialization"
 #define LOG_MODULE_ID 0x052E
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for network_serialization module */
+static nimcp_health_agent_t* g_network_serialization_health_agent = NULL;
+
+/**
+ * @brief Set health agent for network_serialization heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void network_serialization_set_health_agent(nimcp_health_agent_t* agent) {
+    g_network_serialization_health_agent = agent;
+}
+
+/** @brief Send heartbeat from network_serialization module */
+static inline void network_serialization_heartbeat(const char* operation, float progress) {
+    if (g_network_serialization_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_network_serialization_health_agent, operation, progress);
+    }
+}
+
 
 // Access to internal network structure (defined in neuralnet.c)
 // NOTE: This mirrors the internal structure for serialization access

@@ -232,6 +232,11 @@ function(add_test_binary TARGET_NAME SOURCE_FILE CATEGORY)
         return()
     endif()
 
+    # Guard: Skip if target already exists (avoid duplicate target errors)
+    if(TARGET ${TARGET_NAME})
+        return()
+    endif()
+
     # Create executable
     add_executable(${TARGET_NAME} ${SOURCE_FILE})
 

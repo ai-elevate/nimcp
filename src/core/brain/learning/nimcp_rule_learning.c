@@ -14,6 +14,35 @@
 
 #define LOG_MODULE "core_rule_learning"
 
+//=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for rule_learning module */
+static nimcp_health_agent_t* g_rule_learning_health_agent = NULL;
+
+/**
+ * @brief Set health agent for rule_learning heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void rule_learning_set_health_agent(nimcp_health_agent_t* agent) {
+    g_rule_learning_health_agent = agent;
+}
+
+/** @brief Send heartbeat from rule_learning module */
+static inline void rule_learning_heartbeat(const char* operation, float progress) {
+    if (g_rule_learning_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_rule_learning_health_agent, operation, progress);
+    }
+}
+
+
 #include <string.h>
 #include <stdio.h>
 #include <math.h>

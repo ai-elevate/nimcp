@@ -181,6 +181,15 @@ bool nimcp_brain_factory_init_fault_tolerance_subsystem(brain_t brain);
 bool nimcp_brain_factory_init_health_agent_subsystem(brain_t brain);
 void nimcp_brain_factory_destroy_health_agent_subsystem(brain_t brain);
 
+// === CYCLE COORDINATOR SUBSYSTEM (Unified Cycle Observability) ===
+// Monitors all 9 brain cycle types with health tracking, stall detection,
+// dependency management, and bidirectional integration with immune, bio-async,
+// KG, introspection, hemispheric, FEP, meta-learning, pink noise, global workspace,
+// attention, and world model subsystems
+bool nimcp_brain_factory_init_cycle_coordinator_subsystem(brain_t brain);
+void nimcp_brain_factory_destroy_cycle_coordinator_subsystem(brain_t brain);
+struct brain_cycle_coordinator* brain_get_cycle_coordinator(brain_t brain);
+
 // Health agent accessor functions
 struct nimcp_health_agent* brain_get_health_agent(brain_t brain);
 bool brain_start_health_agent(brain_t brain);

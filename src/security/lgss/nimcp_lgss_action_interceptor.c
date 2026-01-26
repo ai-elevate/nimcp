@@ -30,6 +30,35 @@
 #include <time.h>
 #include <stdatomic.h>
 
+#include <stddef.h>  /* for NULL */
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for lgss_action_interceptor module */
+static nimcp_health_agent_t* g_lgss_action_interceptor_health_agent = NULL;
+
+/**
+ * @brief Set health agent for lgss_action_interceptor heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void lgss_action_interceptor_set_health_agent(nimcp_health_agent_t* agent) {
+    g_lgss_action_interceptor_health_agent = agent;
+}
+
+/** @brief Send heartbeat from lgss_action_interceptor module */
+static inline void lgss_action_interceptor_heartbeat(const char* operation, float progress) {
+    if (g_lgss_action_interceptor_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_lgss_action_interceptor_health_agent, operation, progress);
+    }
+}
+
+
 /*=============================================================================
  * MODULE CONSTANTS
  *============================================================================*/

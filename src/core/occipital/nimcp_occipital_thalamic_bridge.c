@@ -16,6 +16,35 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
+#include <stddef.h>  /* for NULL */
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for occipital_thalamic_bridge module */
+static nimcp_health_agent_t* g_occipital_thalamic_bridge_health_agent = NULL;
+
+/**
+ * @brief Set health agent for occipital_thalamic_bridge heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void occipital_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+    g_occipital_thalamic_bridge_health_agent = agent;
+}
+
+/** @brief Send heartbeat from occipital_thalamic_bridge module */
+static inline void occipital_thalamic_bridge_heartbeat(const char* operation, float progress) {
+    if (g_occipital_thalamic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_occipital_thalamic_bridge_health_agent, operation, progress);
+    }
+}
+
+
 /**
  * Internal structure for occipital-thalamic bridge
  */

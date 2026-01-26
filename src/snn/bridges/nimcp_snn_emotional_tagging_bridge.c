@@ -15,6 +15,35 @@
 #include <math.h>
 #include <string.h>
 
+#include <stddef.h>  /* for NULL */
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for snn_emotional_tagging_bridge module */
+static nimcp_health_agent_t* g_snn_emotional_tagging_bridge_health_agent = NULL;
+
+/**
+ * @brief Set health agent for snn_emotional_tagging_bridge heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void snn_emotional_tagging_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+    g_snn_emotional_tagging_bridge_health_agent = agent;
+}
+
+/** @brief Send heartbeat from snn_emotional_tagging_bridge module */
+static inline void snn_emotional_tagging_bridge_heartbeat(const char* operation, float progress) {
+    if (g_snn_emotional_tagging_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_snn_emotional_tagging_bridge_health_agent, operation, progress);
+    }
+}
+
+
 #define BIO_MODULE_SNN_EMOTIONAL_TAGGING_BRIDGE 0x0621
 #define DEFAULT_MAX_TAGS 1024
 

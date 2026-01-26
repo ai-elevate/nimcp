@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_cortical_temporal.c - Cortical Column Temporal Dynamics Implementation
 //=============================================================================
@@ -26,6 +27,34 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for cortical_temporal module */
+static nimcp_health_agent_t* g_cortical_temporal_health_agent = NULL;
+
+/**
+ * @brief Set health agent for cortical_temporal heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void cortical_temporal_set_health_agent(nimcp_health_agent_t* agent) {
+    g_cortical_temporal_health_agent = agent;
+}
+
+/** @brief Send heartbeat from cortical_temporal module */
+static inline void cortical_temporal_heartbeat(const char* operation, float progress) {
+    if (g_cortical_temporal_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_cortical_temporal_health_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Internal Structures

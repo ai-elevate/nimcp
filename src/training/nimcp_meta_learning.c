@@ -25,6 +25,7 @@
 
 #define LOG_MODULE "META_LEARNING"
 
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // Health Agent Integration (Phase 8: Heartbeat for Long Operations)
 //=============================================================================
@@ -41,7 +42,7 @@ static nimcp_health_agent_t* g_meta_health_agent = NULL;
  * @brief Set health agent for meta-learning heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-void meta_set_health_agent(nimcp_health_agent_t* agent) {
+static void meta_set_health_agent(nimcp_health_agent_t* agent) {
     g_meta_health_agent = agent;
 }
 

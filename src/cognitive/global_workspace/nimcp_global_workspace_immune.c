@@ -32,6 +32,35 @@
 
 #define LOG_MODULE "gw_immune"
 
+//=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for global_workspace_immune module */
+static nimcp_health_agent_t* g_global_workspace_immune_health_agent = NULL;
+
+/**
+ * @brief Set health agent for global_workspace_immune heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void global_workspace_immune_set_health_agent(nimcp_health_agent_t* agent) {
+    g_global_workspace_immune_health_agent = agent;
+}
+
+/** @brief Send heartbeat from global_workspace_immune module */
+static inline void global_workspace_immune_heartbeat(const char* operation, float progress) {
+    if (g_global_workspace_immune_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_global_workspace_immune_health_agent, operation, progress);
+    }
+}
+
+
 /* ============================================================================
  * Internal Helper Functions
  * ============================================================================ */

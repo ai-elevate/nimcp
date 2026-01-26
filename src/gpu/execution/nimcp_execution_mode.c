@@ -22,6 +22,35 @@
 #define LOG_MODULE "GPU_EXEC_MODE"
 #define LOG_MODULE_ID 0x0900
 
+#include <stddef.h>  /* for NULL */
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for execution_mode module */
+static nimcp_health_agent_t* g_execution_mode_health_agent = NULL;
+
+/**
+ * @brief Set health agent for execution_mode heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void execution_mode_set_health_agent(nimcp_health_agent_t* agent) {
+    g_execution_mode_health_agent = agent;
+}
+
+/** @brief Send heartbeat from execution_mode module */
+static inline void execution_mode_heartbeat(const char* operation, float progress) {
+    if (g_execution_mode_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_execution_mode_health_agent, operation, progress);
+    }
+}
+
+
 #include "gpu/nimcp_execution_mode.h"
 #include "gpu/execution/nimcp_gpu_detect.h"
 #include "gpu/execution/nimcp_simd_detect.h"

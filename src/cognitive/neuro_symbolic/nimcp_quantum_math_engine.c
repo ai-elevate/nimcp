@@ -18,6 +18,35 @@
 #include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "QUANTUM_MATH_ENGINE"
+
+//=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for quantum_math_engine module */
+static nimcp_health_agent_t* g_quantum_math_engine_health_agent = NULL;
+
+/**
+ * @brief Set health agent for quantum_math_engine heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void quantum_math_engine_set_health_agent(nimcp_health_agent_t* agent) {
+    g_quantum_math_engine_health_agent = agent;
+}
+
+/** @brief Send heartbeat from quantum_math_engine module */
+static inline void quantum_math_engine_heartbeat(const char* operation, float progress) {
+    if (g_quantum_math_engine_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_quantum_math_engine_health_agent, operation, progress);
+    }
+}
+
 #include "async/nimcp_bio_router.h"
 #include <math.h>
 #include <string.h>

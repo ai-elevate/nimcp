@@ -39,7 +39,7 @@ static nimcp_health_agent_t* g_lnn_network_health_agent = NULL;
  * @brief Set health agent for LNN network heartbeat monitoring
  * @param agent Health agent instance (NULL to disable)
  */
-void lnn_network_set_health_agent(nimcp_health_agent_t* agent) {
+static void lnn_network_set_health_agent(nimcp_health_agent_t* agent) {
     g_lnn_network_health_agent = agent;
 }
 
@@ -52,6 +52,7 @@ static inline void lnn_network_heartbeat(const char* operation, float progress) 
     }
 }
 
+#include <stddef.h>  /* for NULL */
 // Thread-safe network ID counter
 static nimcp_atomic_uint32_t g_lnn_network_id_counter = {0};
 

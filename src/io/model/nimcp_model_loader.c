@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_model_loader.c - Pre-trained Model Loading Implementation
 //=============================================================================
@@ -61,7 +62,7 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
 /* Global health agent for model loading operations */
 static nimcp_health_agent_t* g_model_loader_health_agent = NULL;
 
-void nimcp_model_loader_set_health_agent(nimcp_health_agent_t* agent) {
+static void nimcp_model_loader_set_health_agent(nimcp_health_agent_t* agent) {
     g_model_loader_health_agent = agent;
 }
 

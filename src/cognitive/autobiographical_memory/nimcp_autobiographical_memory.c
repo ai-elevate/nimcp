@@ -11,6 +11,35 @@
 
 #define LOG_MODULE "autobiographical_memory"
 
+//=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for autobiographical_memory module */
+static nimcp_health_agent_t* g_autobiographical_memory_health_agent = NULL;
+
+/**
+ * @brief Set health agent for autobiographical_memory heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void autobiographical_memory_set_health_agent(nimcp_health_agent_t* agent) {
+    g_autobiographical_memory_health_agent = agent;
+}
+
+/** @brief Send heartbeat from autobiographical_memory module */
+static inline void autobiographical_memory_heartbeat(const char* operation, float progress) {
+    if (g_autobiographical_memory_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_autobiographical_memory_health_agent, operation, progress);
+    }
+}
+
+
 #include "cognitive/nimcp_autobiographical_memory.h"
 #include "cognitive/autobiographical_memory/nimcp_autobio_snn_bridge.h"
 #include "cognitive/autobiographical_memory/nimcp_autobio_plasticity_bridge.h"

@@ -32,6 +32,7 @@
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"
+#include <stddef.h>  /* for NULL */
 #include "utils/quantum/nimcp_quantum_shannon.h"  // Phase C4.3: Quantum-Shannon diffusion
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
@@ -46,6 +47,34 @@
 #include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "spatial_neuromod"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for spatial_neuromod module */
+static nimcp_health_agent_t* g_spatial_neuromod_health_agent = NULL;
+
+/**
+ * @brief Set health agent for spatial_neuromod heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void spatial_neuromod_set_health_agent(nimcp_health_agent_t* agent) {
+    g_spatial_neuromod_health_agent = agent;
+}
+
+/** @brief Send heartbeat from spatial_neuromod module */
+static inline void spatial_neuromod_heartbeat(const char* operation, float progress) {
+    if (g_spatial_neuromod_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_spatial_neuromod_health_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Constants

@@ -11,6 +11,35 @@
 #include "utils/logging/nimcp_logging.h"
 
 #define LOG_MODULE "portia_sensor_fusion"
+
+#include <stddef.h>  /* for NULL */
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for portia_sensor_fusion module */
+static nimcp_health_agent_t* g_portia_sensor_fusion_health_agent = NULL;
+
+/**
+ * @brief Set health agent for portia_sensor_fusion heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void portia_sensor_fusion_set_health_agent(nimcp_health_agent_t* agent) {
+    g_portia_sensor_fusion_health_agent = agent;
+}
+
+/** @brief Send heartbeat from portia_sensor_fusion module */
+static inline void portia_sensor_fusion_heartbeat(const char* operation, float progress) {
+    if (g_portia_sensor_fusion_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_portia_sensor_fusion_health_agent, operation, progress);
+    }
+}
+
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/thread/nimcp_thread.h"

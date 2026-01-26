@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_synchrony_detector.c - Synchronized Neural Activity Detection
 //=============================================================================
@@ -23,6 +24,34 @@
 
 #define LOG_MODULE "nimcp_synchrony_detector"
 #define LOG_MODULE_ID 0x0528
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for synchrony_detector module */
+static nimcp_health_agent_t* g_synchrony_detector_health_agent = NULL;
+
+/**
+ * @brief Set health agent for synchrony_detector heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void synchrony_detector_set_health_agent(nimcp_health_agent_t* agent) {
+    g_synchrony_detector_health_agent = agent;
+}
+
+/** @brief Send heartbeat from synchrony_detector module */
+static inline void synchrony_detector_heartbeat(const char* operation, float progress) {
+    if (g_synchrony_detector_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_synchrony_detector_health_agent, operation, progress);
+    }
+}
+
 
 // ============================================================================
 // CONSTANTS

@@ -31,6 +31,35 @@
 #include <math.h>
 #include "utils/logging/nimcp_logging.h"
 
+#include <stddef.h>  /* for NULL */
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for unified_pools module */
+static nimcp_health_agent_t* g_unified_pools_health_agent = NULL;
+
+/**
+ * @brief Set health agent for unified_pools heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void unified_pools_set_health_agent(nimcp_health_agent_t* agent) {
+    g_unified_pools_health_agent = agent;
+}
+
+/** @brief Send heartbeat from unified_pools module */
+static inline void unified_pools_heartbeat(const char* operation, float progress) {
+    if (g_unified_pools_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_unified_pools_health_agent, operation, progress);
+    }
+}
+
+
 //=============================================================================
 // Internal Structures
 //=============================================================================

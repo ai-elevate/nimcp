@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_checkpoint_pool.c - Checkpoint Buffer Pool Implementation
 //=============================================================================
@@ -30,6 +31,34 @@
 #include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "utils_checkpoint_pool"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for checkpoint_pool module */
+static nimcp_health_agent_t* g_checkpoint_pool_health_agent = NULL;
+
+/**
+ * @brief Set health agent for checkpoint_pool heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void checkpoint_pool_set_health_agent(nimcp_health_agent_t* agent) {
+    g_checkpoint_pool_health_agent = agent;
+}
+
+/** @brief Send heartbeat from checkpoint_pool module */
+static inline void checkpoint_pool_heartbeat(const char* operation, float progress) {
+    if (g_checkpoint_pool_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_checkpoint_pool_health_agent, operation, progress);
+    }
+}
+
 
 #include <string.h>
 #include <time.h>

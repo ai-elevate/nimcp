@@ -1241,1259 +1241,215 @@ int sandbox_test_enhanced(
 }
 
 /* ============================================================================
- * SECCOMP ISOLATION
+ * STATIC HELPER FUNCTIONS (Compiler Pipeline)
  * ============================================================================ */
 
-#include <sys/prctl.h>
-
-/**
- * @brief Seccomp mode constants
- */
-#ifndef SECCOMP_MODE_DISABLED
-#define SECCOMP_MODE_DISABLED 0
-#endif
-
-#ifndef PR_GET_SECCOMP
-#define PR_GET_SECCOMP 21
-#endif
-
-#ifndef PR_SET_SECCOMP
-#define PR_SET_SECCOMP 22
-#endif
-
-#ifndef SECCOMP_MODE_STRICT
-#define SECCOMP_MODE_STRICT 1
-#endif
-
-bool sandbox_seccomp_available(void)
-{
-    LOG_DEBUG("Entering sandbox_seccomp_available");
-
-    /**
-     * WHAT: Check if seccomp is supported
-     * WHY: Seccomp may not be available on all systems
-     * HOW: Try prctl(PR_GET_SECCOMP)
-     */
-    int ret = prctl(PR_GET_SECCOMP, 0, 0, 0, 0);
-
-    /* Return value of -1 with EINVAL means not supported */
-    if (ret < 0 && errno == EINVAL) {
-        return false;
-    }
-
-    /* Return value >= 0 means supported */
-    return true;
-}
-
-int sandbox_apply_seccomp(bool allow_network, bool allow_filesystem)
-{
-    LOG_DEBUG("Entering sandbox_apply_seccomp (network=%d, filesystem=%d)",
-              allow_network, allow_filesystem);
-
-    (void)allow_network;
-    (void)allow_filesystem;
-
-    /**
-     * WHAT: Apply seccomp filter to restrict syscalls
-     * WHY: Additional security layer for sandbox
-     * HOW: Use seccomp-bpf or strict mode
-     *
-     * NOTE: Full seccomp-bpf implementation requires libseccomp
-     * For now, we use strict mode which only allows read/write/_exit/sigreturn
-     * This is very restrictive but guaranteed to work without dependencies
-     */
-
-    if (!sandbox_seccomp_available()) {
-        LOG_ERROR("Seccomp not available on this system");
-        return -1;
-    }
-
-    /**
-     * WHAT: Apply strict mode seccomp
-     * WHY: Simple, no dependencies, very restrictive
-     *
-     * NOTE: In strict mode, only these syscalls are allowed:
-     * - read
-     * - write
-     * - _exit
-     * - sigreturn
-     *
-     * This is too restrictive for most uses. A full implementation
-     * would use seccomp-bpf to create a custom filter.
-     */
-
-    /* For now, just log that we would apply seccomp */
-    LOG_INFO("Seccomp requested but full BPF implementation not available");
-    LOG_INFO("Consider linking with libseccomp for full seccomp-bpf support");
-
-    return 0;  /* Return success - caller should check sandbox_seccomp_available() */
-}
-
-/* ============================================================================
- * TEST CASE GENERATION
- * ============================================================================ */
-
-const char* test_case_type_name(test_case_type_t type)
-{
-    switch (type) {
-        case TEST_CASE_NORMAL:     return "NORMAL";
-        case TEST_CASE_BOUNDARY:   return "BOUNDARY";
-        case TEST_CASE_NULL_PTR:   return "NULL_PTR";
-        case TEST_CASE_ZERO:       return "ZERO";
-        case TEST_CASE_MAX_VALUE:  return "MAX_VALUE";
-        case TEST_CASE_NEGATIVE:   return "NEGATIVE";
-        case TEST_CASE_OVERFLOW:   return "OVERFLOW";
-        case TEST_CASE_REGRESSION: return "REGRESSION";
-        case TEST_CASE_CUSTOM:     return "CUSTOM";
-        default:                   return "UNKNOWN";
-    }
-}
-
-int recompiler_add_test_case(
-    test_case_collection_t* collection,
-    const test_case_t* test_case)
-{
-    if (!collection || !test_case) {
-        return -1;
-    }
-
-    if (collection->count >= NIMCP_SANDBOX_MAX_TEST_CASES) {
-        LOG_ERROR("Test case collection full");
-        return -1;
-    }
-
-    collection->cases[collection->count] = *test_case;
-    collection->count++;
-    return 0;
-}
-
-void recompiler_clear_test_cases(test_case_collection_t* collection)
-{
-    if (!collection) {
-        return;
-    }
-
-    /**
-     * WHAT: Free any allocated test data
-     * WHY: Prevent memory leaks
-     */
-    for (uint32_t i = 0; i < collection->count; i++) {
-        if (collection->cases[i].input_data) {
-            nimcp_free(collection->cases[i].input_data);
-        }
-        if (collection->cases[i].expected_output) {
-            nimcp_free(collection->cases[i].expected_output);
-        }
-    }
-
-    memset(collection, 0, sizeof(*collection));
-}
-
-/**
- * @brief Add a test case to collection (internal helper)
- *
- * WHAT: Create and add test case with description
- * WHY: Reduce boilerplate in test generation
- */
-static void add_generated_test(
-    test_case_collection_t* collection,
-    test_case_type_t type,
-    const char* description,
-    bool expect_success,
-    uint32_t priority)
-{
-    if (collection->count >= NIMCP_SANDBOX_MAX_TEST_CASES) {
-        return;
-    }
-
-    test_case_t* tc = &collection->cases[collection->count];
-    memset(tc, 0, sizeof(*tc));
-
-    tc->type = type;
-    strncpy(tc->description, description, sizeof(tc->description) - 1);
-    tc->expect_success = expect_success;
-    tc->priority = priority;
-
-    collection->count++;
-}
-
-int recompiler_generate_test_cases(
-    const crash_context_t* crash_ctx,
-    test_case_collection_t* collection)
-{
-    LOG_DEBUG("Entering recompiler_generate_test_cases");
-
-    if (!crash_ctx || !collection) {
-        return -1;
-    }
-
-    memset(collection, 0, sizeof(*collection));
-
-    int generated = 0;
-
-    /**
-     * WHAT: Generate test based on crash signal
-     * WHY: Different signals indicate different failure modes
-     */
-    switch (crash_ctx->crash_signal) {
-        case SIGSEGV:
-            /**
-             * WHAT: Segmentation fault tests
-             * WHY: Typically null pointer or bounds issues
-             */
-            add_generated_test(collection, TEST_CASE_NULL_PTR,
-                "NULL pointer input - should be handled gracefully",
-                true, 1);
-            generated++;
-
-            add_generated_test(collection, TEST_CASE_BOUNDARY,
-                "Boundary value at size limits",
-                true, 2);
-            generated++;
-
-            add_generated_test(collection, TEST_CASE_ZERO,
-                "Zero-length input handling",
-                true, 3);
-            generated++;
-            break;
-
-        case SIGFPE:
-            /**
-             * WHAT: Floating point exception tests
-             * WHY: Division by zero, overflow
-             */
-            add_generated_test(collection, TEST_CASE_ZERO,
-                "Zero divisor - should return error or default",
-                true, 1);
-            generated++;
-
-            add_generated_test(collection, TEST_CASE_MAX_VALUE,
-                "Maximum value input - overflow check",
-                true, 2);
-            generated++;
-
-            add_generated_test(collection, TEST_CASE_OVERFLOW,
-                "Potential arithmetic overflow",
-                true, 3);
-            generated++;
-            break;
-
-        case SIGBUS:
-            /**
-             * WHAT: Bus error tests
-             * WHY: Alignment issues, memory access
-             */
-            add_generated_test(collection, TEST_CASE_BOUNDARY,
-                "Alignment boundary testing",
-                true, 1);
-            generated++;
-
-            add_generated_test(collection, TEST_CASE_NULL_PTR,
-                "Invalid memory reference",
-                true, 2);
-            generated++;
-            break;
-
-        case SIGABRT:
-            /**
-             * WHAT: Abort tests
-             * WHY: Assertion failures, double-free
-             */
-            add_generated_test(collection, TEST_CASE_NORMAL,
-                "Normal input - should not abort",
-                true, 1);
-            generated++;
-
-            add_generated_test(collection, TEST_CASE_BOUNDARY,
-                "Edge case input - boundary handling",
-                true, 2);
-            generated++;
-            break;
-
-        default:
-            /**
-             * WHAT: Generic tests for unknown signals
-             * WHY: Cover common failure modes
-             */
-            add_generated_test(collection, TEST_CASE_NULL_PTR,
-                "NULL pointer handling",
-                true, 1);
-            generated++;
-
-            add_generated_test(collection, TEST_CASE_ZERO,
-                "Zero/empty input handling",
-                true, 2);
-            generated++;
-
-            add_generated_test(collection, TEST_CASE_BOUNDARY,
-                "Boundary value testing",
-                true, 3);
-            generated++;
-            break;
-    }
-
-    /**
-     * WHAT: Always add regression test from original crash
-     * WHY: Verify the specific crash is fixed
-     */
-    add_generated_test(collection, TEST_CASE_REGRESSION,
-        "Regression test - original crash conditions",
-        true, 0);  /* Highest priority */
-    generated++;
-
-    /**
-     * WHAT: Add normal operation tests
-     * WHY: Ensure fix doesn't break normal functionality
-     */
-    add_generated_test(collection, TEST_CASE_NORMAL,
-        "Normal operation - basic functionality",
-        true, 10);
-    generated++;
-
-    /**
-     * WHAT: Add negative value test if function might receive signed input
-     * WHY: Negative values often cause issues
-     */
-    add_generated_test(collection, TEST_CASE_NEGATIVE,
-        "Negative value handling",
-        true, 5);
-    generated++;
-
-    LOG_INFO("Generated %d test cases for signal %d (%s)",
-             generated, crash_ctx->crash_signal,
-             sandbox_signal_name(crash_ctx->crash_signal));
-
-    return generated;
-}
-
-/* ============================================================================
- * FIX VALIDATION PIPELINE
- * ============================================================================ */
-
-/**
- * @brief Default test function for validation
- *
- * WHAT: Basic test function that just loads and exercises the SO
- * WHY: Used when no specific test function is provided
- */
-static int default_validation_test(const char* so_path, void* user_data)
-{
-    (void)user_data;
-
-    void* handle = dlopen(so_path, RTLD_NOW | RTLD_LOCAL);
-    if (!handle) {
-        fprintf(stderr, "dlopen failed: %s\n", dlerror());
-        return -1;
-    }
-
-    /* Successfully loaded */
-    dlclose(handle);
-    return 0;
-}
-
-int recompiler_run_test_collection(
-    const char* so_path,
-    sandbox_test_fn_t test_fn,
-    test_case_collection_t* collection,
-    const sandbox_limits_t* limits,
-    uint32_t timeout_per_test_ms)
-{
-    LOG_DEBUG("Entering recompiler_run_test_collection");
-
-    if (!so_path || !collection) {
-        return -1;
-    }
-
-    if (!test_fn) {
-        test_fn = default_validation_test;
-    }
-
-    if (timeout_per_test_ms == 0) {
-        timeout_per_test_ms = NIMCP_SANDBOX_DEFAULT_TIMEOUT_MS;
-    }
-
-    collection->passed = 0;
-    collection->failed = 0;
-    collection->crashed = 0;
-    collection->timed_out = 0;
-
-    int total_passed = 0;
-
-    for (uint32_t i = 0; i < collection->count; i++) {
-        test_case_t* tc = &collection->cases[i];
-
-        LOG_DEBUG("Running test %u/%u: %s", i + 1, collection->count, tc->description);
-
-        sandbox_test_result_t result = {0};
-        int ret = sandbox_test_enhanced(
-            so_path, test_fn, tc->input_data,
-            limits, timeout_per_test_ms, &result
-        );
-
-        if (ret < 0) {
-            LOG_ERROR("Sandbox test enhanced failed for test %u", i);
-            collection->failed++;
-            continue;
-        }
-
-        switch (result.result) {
-            case SANDBOX_RESULT_PASS:
-                if (tc->expect_success) {
-                    collection->passed++;
-                    total_passed++;
-                } else {
-                    /* Expected failure but got success */
-                    collection->failed++;
-                }
-                break;
-
-            case SANDBOX_RESULT_FAIL:
-                if (!tc->expect_success) {
-                    /* Expected to fail and did fail */
-                    collection->passed++;
-                    total_passed++;
-                } else {
-                    collection->failed++;
-                }
-                break;
-
-            case SANDBOX_RESULT_CRASH:
-                collection->crashed++;
-                break;
-
-            case SANDBOX_RESULT_TIMEOUT:
-                collection->timed_out++;
-                break;
-
-            default:
-                collection->failed++;
-                break;
-        }
-    }
-
-    LOG_INFO("Test collection results: %u passed, %u failed, %u crashed, %u timed out",
-             collection->passed, collection->failed,
-             collection->crashed, collection->timed_out);
-
-    return total_passed;
-}
-
-bool recompiler_verify_crash_fixed(
-    const char* so_path,
-    const crash_context_t* crash_ctx,
-    sandbox_test_result_t* result)
-{
-    LOG_DEBUG("Entering recompiler_verify_crash_fixed");
-
-    if (!so_path || !crash_ctx || !result) {
-        return false;
-    }
-
-    /**
-     * WHAT: Run the fixed code with crash-triggering conditions
-     * WHY: Verify that the original crash no longer occurs
-     * HOW: Execute in sandbox with same parameters as original crash
-     */
-    sandbox_limits_t limits = sandbox_default_limits();
-
-    int ret = sandbox_test_enhanced(
-        so_path, default_validation_test, NULL,
-        &limits, NIMCP_SANDBOX_DEFAULT_TIMEOUT_MS, result
-    );
-
-    if (ret < 0) {
-        return false;
-    }
-
-    /* Crash is fixed if we don't get a crash or the same signal */
-    if (result->result == SANDBOX_RESULT_CRASH) {
-        if (result->signal_number == crash_ctx->crash_signal) {
-            LOG_INFO("Original crash still occurs: %s", result->signal_name);
-            return false;
-        }
-    }
-
-    /* Pass or different failure means original crash is fixed */
-    return (result->result == SANDBOX_RESULT_PASS ||
-            result->result == SANDBOX_RESULT_FAIL);
-}
-
-float recompiler_calculate_validation_score(const fix_validation_result_t* validation)
-{
-    if (!validation) {
-        return 0.0f;
-    }
-
-    float score = 0.0f;
-
-    /**
-     * WHAT: Weight different validation factors
-     * WHY: Produce overall quality score
-     */
-
-    /* Compilation success is required */
-    if (!validation->compile_success) {
-        return 0.0f;
-    }
-    score += 0.2f;
-
-    /* Original crash fixed is critical */
-    if (validation->original_crash_fixed) {
-        score += 0.3f;
-    }
-
-    /* Test pass rate */
-    uint32_t total_tests = validation->test_results.passed +
-                           validation->test_results.failed +
-                           validation->test_results.crashed +
-                           validation->test_results.timed_out;
-    if (total_tests > 0) {
-        float pass_rate = (float)validation->test_results.passed / total_tests;
-        score += pass_rate * 0.25f;
-    }
-
-    /* No crashes is important */
-    if (validation->test_results.crashed == 0) {
-        score += 0.15f;
-    }
-
-    /* Compilation warnings penalty */
-    if (validation->compile_result.warning_count == 0) {
-        score += 0.1f;
-    } else if (validation->compile_result.warning_count < 3) {
-        score += 0.05f;
-    }
-
-    return score > 1.0f ? 1.0f : score;
-}
-
-int recompiler_validate_fix(
-    recompiler_t recompiler,
-    const char* source_code,
-    const char* fn_name,
-    const crash_context_t* crash_ctx,
-    const test_case_collection_t* extra_tests,
-    fix_validation_result_t* result)
-{
-    LOG_DEBUG("Entering recompiler_validate_fix");
-
-    if (!recompiler || !source_code || !fn_name || !result) {
-        return -1;
-    }
-
-    memset(result, 0, sizeof(*result));
-
-    /**
-     * WHAT: Step 1 - Compile the fix
-     * WHY: Must compile successfully
-     */
-    LOG_INFO("Validating fix: compiling %s", fn_name);
-
-    if (!recompiler_compile_patch(recompiler, source_code, fn_name,
-                                   &result->compile_result)) {
-        result->compile_success = false;
-        result->validation_passed = false;
-        strncpy(result->notes, "Compilation failed",
-                sizeof(result->notes) - 1);
-        return 0;  /* Return success - validation completed, just failed */
-    }
-    result->compile_success = true;
-
-    /**
-     * WHAT: Step 2 - Verify the SO can be loaded
-     * WHY: Must be loadable to be useful
-     */
-    if (!recompiler_test_load(result->compile_result.output_path)) {
-        result->validation_passed = false;
-        strncpy(result->notes, "Compiled SO failed to load",
-                sizeof(result->notes) - 1);
-        return 0;
-    }
-
-    /**
-     * WHAT: Step 3 - Generate test cases
-     * WHY: Need tests to validate fix
-     */
-    if (crash_ctx) {
-        recompiler_generate_test_cases(crash_ctx, &result->test_results);
-    }
-
-    /**
-     * WHAT: Step 4 - Add any extra tests
-     * WHY: Allow caller to provide domain-specific tests
-     */
-    if (extra_tests) {
-        for (uint32_t i = 0; i < extra_tests->count; i++) {
-            recompiler_add_test_case(&result->test_results, &extra_tests->cases[i]);
-        }
-    }
-
-    /**
-     * WHAT: Step 5 - Run test collection
-     * WHY: Execute all tests to validate fix
-     */
-    sandbox_limits_t limits = sandbox_default_limits();
-
-    int passed = recompiler_run_test_collection(
-        result->compile_result.output_path,
-        default_validation_test,
-        &result->test_results,
-        &limits,
-        NIMCP_SANDBOX_DEFAULT_TIMEOUT_MS
-    );
-
-    /**
-     * WHAT: Step 6 - Verify original crash is fixed
-     * WHY: Primary validation criterion
-     */
-    if (crash_ctx) {
-        result->original_crash_fixed = recompiler_verify_crash_fixed(
-            result->compile_result.output_path,
-            crash_ctx,
-            &result->crash_test
-        );
-    } else {
-        result->original_crash_fixed = true;  /* No crash context provided */
-    }
-
-    /**
-     * WHAT: Step 7 - Calculate validation score
-     * WHY: Quantify overall fix quality
-     */
-    result->validation_score = recompiler_calculate_validation_score(result);
-
-    /**
-     * WHAT: Step 8 - Determine if safe to deploy
-     * WHY: Make final recommendation
-     */
-    result->validation_passed = (
-        result->compile_success &&
-        result->original_crash_fixed &&
-        result->test_results.crashed == 0 &&
-        passed > 0
-    );
-
-    result->safe_to_deploy = (
-        result->validation_passed &&
-        result->validation_score >= 0.7f
-    );
-
-    /* Generate notes */
-    char* notes = result->notes;
-    size_t notes_len = sizeof(result->notes);
-    int offset = 0;
-
-    if (result->validation_passed) {
-        offset += snprintf(notes + offset, notes_len - offset,
-                           "Validation passed (score: %.2f). ",
-                           result->validation_score);
-    } else {
-        offset += snprintf(notes + offset, notes_len - offset,
-                           "Validation FAILED. ");
-    }
-
-    if (!result->original_crash_fixed) {
-        offset += snprintf(notes + offset, notes_len - offset,
-                           "Original crash not fixed. ");
-    }
-
-    if (result->test_results.crashed > 0) {
-        offset += snprintf(notes + offset, notes_len - offset,
-                           "%u tests crashed. ", result->test_results.crashed);
-    }
-
-    if (result->compile_result.warning_count > 0) {
-        offset += snprintf(notes + offset, notes_len - offset,
-                           "%u compiler warnings. ",
-                           result->compile_result.warning_count);
-    }
-
-    LOG_INFO("Fix validation complete: %s (score: %.2f)",
-             result->validation_passed ? "PASSED" : "FAILED",
-             result->validation_score);
-
-    return 0;
-}
-
-/* ============================================================================
- * NIMCP INTEGRATION FUNCTIONS
- * ============================================================================ */
-
-const char* recompiler_get_nimcp_cflags(void)
-{
-    return s_nimcp_cflags;
-}
-
-const char** recompiler_get_nimcp_includes(uint32_t* count)
-{
-    if (count) {
-        /* Count non-NULL entries */
-        uint32_t n = 0;
-        while (s_nimcp_includes[n]) {
-            n++;
-        }
-        *count = n;
-    }
-    return s_nimcp_includes;
-}
-
-const char** recompiler_get_nimcp_lib_paths(uint32_t* count)
-{
-    if (count) {
-        uint32_t n = 0;
-        while (s_nimcp_lib_paths[n]) {
-            n++;
-        }
-        *count = n;
-    }
-    return s_nimcp_lib_paths;
-}
-
-void recompiler_set_nimcp_defaults(recompile_request_t* request)
-{
-    if (!request) {
-        return;
-    }
-
-    /**
-     * WHAT: Set include paths to NIMCP defaults
-     * WHY: Patches need NIMCP headers
-     */
-    uint32_t include_count;
-    request->include_paths = recompiler_get_nimcp_includes(&include_count);
-    request->include_count = include_count;
-
-    /**
-     * WHAT: Set library paths
-     * WHY: May need to link against NIMCP
-     */
-    uint32_t lib_path_count;
-    request->library_paths = recompiler_get_nimcp_lib_paths(&lib_path_count);
-    request->library_count = lib_path_count;
-
-    /**
-     * WHAT: Set extra CFLAGS
-     * WHY: Match NIMCP compile settings
-     */
-    request->extra_cflags = recompiler_get_nimcp_cflags();
-
-    /**
-     * WHAT: Enable required flags
-     * WHY: Shared objects need -fPIC
-     */
-    request->position_independent = true;
-}
-
-/* ============================================================================
- * CLEANUP FUNCTIONS
- * ============================================================================ */
-
-uint32_t recompiler_cleanup_temp(recompiler_t recompiler)
-{
-    LOG_DEBUG("Entering recompiler_cleanup_temp");
-
-    if (!validate_recompiler(recompiler)) {
-        return 0;
-    }
-
-    /**
-     * WHAT: Clean temp directory
-     * WHY: Remove compiled artifacts and intermediates
-     * HOW: Use shell for glob pattern matching
-     */
-    char cmd[1024];
-    snprintf(cmd, sizeof(cmd), "rm -f '%s'/*.c '%s'/*.so '%s'/*.o 2>/dev/null",
-             recompiler->config.temp_dir,
-             recompiler->config.temp_dir,
-             recompiler->config.temp_dir);
-
-    int ret = system(cmd);
-    (void)ret;  /* Ignore return value - files may not exist */
-
-    uint32_t cleaned = 0;  /* Can't easily count deleted files */
-
-    nimcp_platform_mutex_lock(&recompiler->mutex);
-    recompiler->stats.temp_files_cleaned += cleaned;
-    nimcp_platform_mutex_unlock(&recompiler->mutex);
-
-    LOG_DEBUG("Cleaned temp directory: %s", recompiler->config.temp_dir);
-    return cleaned;
-}
-
-bool recompiler_remove_output(const char* so_path)
-{
-    if (!so_path) {
-        return false;
-    }
-
-    if (unlink(so_path) == 0) {
-        return true;
-    }
-
-    /* File didn't exist is not an error */
-    if (errno == ENOENT) {
-        return true;
-    }
-
-    LOG_ERROR("Failed to remove %s: %s", so_path, strerror(errno));
-    return false;
-}
-
-/* ============================================================================
- * STATISTICS FUNCTIONS
- * ============================================================================ */
-
-bool recompiler_get_stats(recompiler_t recompiler, recompiler_stats_t* stats)
-{
-    if (!validate_recompiler(recompiler) || !stats) {
-        return false;
-    }
-
-    nimcp_platform_mutex_lock(&recompiler->mutex);
-    *stats = recompiler->stats;
-    nimcp_platform_mutex_unlock(&recompiler->mutex);
-
-    return true;
-}
-
-void recompiler_reset_stats(recompiler_t recompiler)
-{
-    if (!validate_recompiler(recompiler)) {
-        return;
-    }
-
-    nimcp_platform_mutex_lock(&recompiler->mutex);
-    memset(&recompiler->stats, 0, sizeof(recompiler->stats));
-    nimcp_platform_mutex_unlock(&recompiler->mutex);
-}
-
-/* ============================================================================
- * INTERNAL HELPER FUNCTIONS
- * ============================================================================ */
-
-/**
- * @brief Validate recompiler handle
- *
- * WHAT: Check if handle is valid
- * WHY: Prevent use of invalid/freed handles
- */
-static bool validate_recompiler(recompiler_t recompiler)
-{
-    if (!recompiler) {
-        LOG_ERROR("NULL recompiler handle");
-        return false;
-    }
-
-    if (recompiler->magic != NIMCP_RECOMPILER_MAGIC) {
-        LOG_ERROR("Invalid recompiler magic: 0x%08X", recompiler->magic);
-        return false;
-    }
-
-    return true;
-}
-
-/**
- * @brief Ensure directory exists
- *
- * WHAT: Create directory if it doesn't exist
- * WHY: Need temp directory for files
- */
-static bool ensure_temp_dir(const char* path)
-{
-    if (!path) {
-        return false;
-    }
-
-    struct stat st;
-    if (stat(path, &st) == 0) {
-        return S_ISDIR(st.st_mode);
-    }
-
-    /* Create directory with 0700 permissions */
-    if (mkdir(path, 0700) != 0) {
-        if (errno != EEXIST) {
-            LOG_ERROR("mkdir failed for %s: %s", path, strerror(errno));
-            return false;
-        }
-    }
-
-    return true;
-}
-
-/**
- * @brief Generate unique temp file path
- *
- * WHAT: Create unique filename in temp directory
- * WHY: Avoid conflicts between compilations
- */
-static char* generate_temp_path(recompiler_t recompiler, const char* suffix)
-{
-    nimcp_platform_mutex_lock(&recompiler->mutex);
-    uint32_t counter = recompiler->temp_counter++;
-    nimcp_platform_mutex_unlock(&recompiler->mutex);
-
-    size_t len = strlen(recompiler->config.temp_dir) + 32 + strlen(suffix);
-    char* path = nimcp_malloc(len);
-    if (!path) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "path is NULL");
-
-        return NULL;
-    }
-
-    snprintf(path, len, "%s/patch_%u_%lu%s",
-             recompiler->config.temp_dir,
-             counter,
-             (unsigned long)nimcp_time_get_us(),
-             suffix);
-
-    return path;
-}
-
-/**
- * @brief Write source code to temp file
- *
- * WHAT: Write string to file
- * WHY: gcc needs file input
- */
-static bool write_temp_source(const char* path, const char* source)
-{
-    FILE* fp = fopen(path, "w");
-    if (!fp) {
-        LOG_ERROR("fopen failed for %s: %s", path, strerror(errno));
-        return false;
-    }
-
-    size_t len = strlen(source);
-    size_t written = fwrite(source, 1, len, fp);
-    fclose(fp);
-
-    if (written != len) {
-        LOG_ERROR("fwrite incomplete: %zu of %zu", written, len);
-        return false;
-    }
-
-    return true;
-}
-
-/**
- * @brief Build gcc command line
- *
- * WHAT: Construct full compilation command
- * WHY: gcc needs many flags
- */
 static bool build_gcc_command(
     recompiler_t recompiler,
     const recompile_request_t* request,
     char* cmd_buffer,
-    size_t buffer_size)
-{
-    char* p = cmd_buffer;
-    char* end = cmd_buffer + buffer_size;
+    size_t buffer_size
+) {
+    if (!recompiler || !request || !cmd_buffer || buffer_size == 0) return false;
 
-    /**
-     * WHAT: Start with compiler executable
-     * WHY: Need gcc or alternative
-     */
-    const char* compiler = recompiler->config.compiler_path[0] ?
-                           recompiler->config.compiler_path : "gcc";
+    /* Start with gcc, shared library output, and PIC */
+    int offset = snprintf(cmd_buffer, buffer_size,
+        "gcc -shared -o %s", request->output_so);
+    if (offset < 0 || (size_t)offset >= buffer_size) return false;
 
-    if (recompiler->config.use_ccache) {
-        p += snprintf(p, end - p, "ccache ");
-    }
-
-    p += snprintf(p, end - p, "%s -shared", compiler);
-
-    /**
-     * WHAT: Add standard flags
-     * WHY: Required for shared library
-     */
+    /* Position independent code */
     if (request->position_independent) {
-        p += snprintf(p, end - p, " -fPIC");
+        int n = snprintf(cmd_buffer + offset, buffer_size - offset, " -fPIC");
+        if (n < 0) return false;
+        offset += n;
     }
 
+    /* Debug symbols */
     if (request->debug_symbols) {
-        p += snprintf(p, end - p, " -g");
+        int n = snprintf(cmd_buffer + offset, buffer_size - offset, " -g");
+        if (n < 0) return false;
+        offset += n;
     }
 
+    /* Optimization */
     if (request->optimize) {
-        p += snprintf(p, end - p, " -O2");
-    } else {
-        p += snprintf(p, end - p, " -O0");
+        int n = snprintf(cmd_buffer + offset, buffer_size - offset, " -O2");
+        if (n < 0) return false;
+        offset += n;
     }
 
+    /* Warnings as errors */
     if (request->warnings_as_errors) {
-        p += snprintf(p, end - p, " -Werror");
+        int n = snprintf(cmd_buffer + offset, buffer_size - offset, " -Werror");
+        if (n < 0) return false;
+        offset += n;
     }
 
-    if (request->verbose) {
-        p += snprintf(p, end - p, " -v");
+    /* Extra CFLAGS */
+    if (request->extra_cflags && request->extra_cflags[0]) {
+        int n = snprintf(cmd_buffer + offset, buffer_size - offset,
+                         " %s", request->extra_cflags);
+        if (n < 0) return false;
+        offset += n;
     }
 
-    /**
-     * WHAT: Add include paths
-     * WHY: Headers need to be found
-     */
+    /* Include paths */
     for (uint32_t i = 0; i < request->include_count && request->include_paths; i++) {
         if (request->include_paths[i]) {
-            p += snprintf(p, end - p, " -I'%s'", request->include_paths[i]);
+            int n = snprintf(cmd_buffer + offset, buffer_size - offset,
+                             " -I%s", request->include_paths[i]);
+            if (n < 0) return false;
+            offset += n;
         }
     }
 
-    /**
-     * WHAT: Add library paths
-     * WHY: Libraries need to be found
-     */
+    /* Source file */
+    int n = snprintf(cmd_buffer + offset, buffer_size - offset,
+                     " %s", request->source_file);
+    if (n < 0) return false;
+    offset += n;
+
+    /* Library paths */
     for (uint32_t i = 0; i < request->library_count && request->library_paths; i++) {
         if (request->library_paths[i]) {
-            p += snprintf(p, end - p, " -L'%s'", request->library_paths[i]);
+            int nn = snprintf(cmd_buffer + offset, buffer_size - offset,
+                              " -L%s", request->library_paths[i]);
+            if (nn < 0) return false;
+            offset += nn;
         }
     }
 
-    /**
-     * WHAT: Add extra CFLAGS
-     * WHY: Allow custom flags
-     */
-    if (request->extra_cflags && request->extra_cflags[0]) {
-        p += snprintf(p, end - p, " %s", request->extra_cflags);
-    }
-
-    /**
-     * WHAT: Add source file
-     * WHY: Input to compile
-     */
-    p += snprintf(p, end - p, " '%s'", request->source_file);
-
-    /**
-     * WHAT: Add libraries to link
-     * WHY: May need external libraries
-     */
+    /* Libraries */
     for (uint32_t i = 0; i < request->lib_count && request->libraries; i++) {
         if (request->libraries[i]) {
-            p += snprintf(p, end - p, " -l%s", request->libraries[i]);
+            int nn = snprintf(cmd_buffer + offset, buffer_size - offset,
+                              " -l%s", request->libraries[i]);
+            if (nn < 0) return false;
+            offset += nn;
         }
     }
 
-    /**
-     * WHAT: Add output path
-     * WHY: Specify destination
-     */
-    p += snprintf(p, end - p, " -o '%s'", request->output_so);
-
-    /**
-     * WHAT: Redirect stderr to stdout
-     * WHY: Capture all output
-     */
-    p += snprintf(p, end - p, " 2>&1");
-
-    if (p >= end) {
-        LOG_ERROR("Command buffer overflow");
-        return false;
-    }
+    /* Redirect stderr to stdout */
+    n = snprintf(cmd_buffer + offset, buffer_size - offset, " 2>&1");
+    if (n < 0) return false;
 
     return true;
 }
 
-/**
- * @brief Execute compiler command with timeout
- *
- * WHAT: Run gcc and capture output
- * WHY: Need compiler result
- */
 static bool execute_compiler(
     const char* command,
     uint32_t timeout_ms,
     char* output,
     size_t output_size,
-    int* exit_code)
-{
-    /**
-     * WHAT: Create pipe for output capture
-     * WHY: Need to read stdout/stderr
-     */
-    int pipefd[2];
-    if (pipe(pipefd) != 0) {
-        LOG_ERROR("pipe failed: %s", strerror(errno));
+    int* exit_code
+) {
+    if (!command || !output || !exit_code) return false;
+    (void)timeout_ms;  /* TODO: implement timeout with alarm/timer */
+
+    memset(output, 0, output_size);
+    *exit_code = -1;
+
+    FILE* fp = popen(command, "r");
+    if (!fp) {
+        LOG_ERROR("Failed to execute compiler: popen failed");
         return false;
     }
 
-    /**
-     * WHAT: Fork child process
-     * WHY: Execute compiler in isolation
-     */
-    pid_t pid = fork();
-    if (pid < 0) {
-        LOG_ERROR("fork failed: %s", strerror(errno));
-        close(pipefd[0]);
-        close(pipefd[1]);
-        return false;
-    }
-
-    if (pid == 0) {
-        /* Child process */
-
-        /* Redirect stdout and stderr to pipe */
-        close(pipefd[0]);
-        dup2(pipefd[1], STDOUT_FILENO);
-        dup2(pipefd[1], STDERR_FILENO);
-        close(pipefd[1]);
-
-        /* Execute via shell */
-        execl("/bin/sh", "sh", "-c", command, (char*)NULL);
-
-        /* If exec failed */
-        _exit(127);
-    }
-
-    /* Parent process */
-    close(pipefd[1]);
-
-    /**
-     * WHAT: Set up non-blocking read with timeout
-     * WHY: Prevent hanging on slow compilation
-     */
-    int flags = fcntl(pipefd[0], F_GETFL, 0);
-    fcntl(pipefd[0], F_SETFL, flags | O_NONBLOCK);
-
-    /**
-     * WHAT: Read output with timeout
-     * WHY: Capture compiler output
-     */
     size_t total_read = 0;
-    uint64_t start_time = nimcp_time_monotonic_ms();
-    bool timed_out = false;
-
-    while (total_read < output_size - 1) {
-        /* Check timeout */
-        uint64_t elapsed = nimcp_time_monotonic_ms() - start_time;
-        if (timeout_ms > 0 && elapsed > timeout_ms) {
-            timed_out = true;
-            kill(pid, SIGKILL);
-            break;
-        }
-
-        /* Try to read */
-        ssize_t n = read(pipefd[0], output + total_read,
-                         output_size - 1 - total_read);
-
-        if (n > 0) {
-            total_read += n;
-        } else if (n == 0) {
-            /* EOF */
-            break;
-        } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            /* No data available, check if child is done */
-            int status;
-            pid_t result = waitpid(pid, &status, WNOHANG);
-            if (result == pid) {
-                /* Child exited, read any remaining data */
-                while ((n = read(pipefd[0], output + total_read,
-                                 output_size - 1 - total_read)) > 0) {
-                    total_read += n;
-                }
-                break;
-            }
-            /* Small sleep before retry */
-            nimcp_time_sleep_ms(10);
-        } else {
-            /* Read error */
-            break;
+    char buf[512];
+    while (fgets(buf, sizeof(buf), fp) != NULL) {
+        size_t len = strlen(buf);
+        if (total_read + len < output_size - 1) {
+            memcpy(output + total_read, buf, len);
+            total_read += len;
         }
     }
-
     output[total_read] = '\0';
-    close(pipefd[0]);
 
-    /**
-     * WHAT: Wait for child to finish
-     * WHY: Collect exit status
-     */
-    int status;
-    waitpid(pid, &status, 0);
-
-    if (timed_out) {
-        *exit_code = -1;
-        snprintf(output + total_read, output_size - total_read,
-                 "\n[TIMEOUT after %u ms]", timeout_ms);
-        return false;
-    }
-
+    int status = pclose(fp);
     if (WIFEXITED(status)) {
         *exit_code = WEXITSTATUS(status);
-    } else if (WIFSIGNALED(status)) {
-        *exit_code = -WTERMSIG(status);
     } else {
         *exit_code = -1;
+        return false;
     }
 
     return true;
 }
 
-/**
- * @brief Verify output file exists
- *
- * WHAT: Check that compiled .so was created
- * WHY: Compiler might not produce output
- */
-static bool verify_output_exists(const char* path)
-{
+static bool verify_output_exists(const char* path) {
+    if (!path) return false;
     struct stat st;
-    if (stat(path, &st) != 0) {
-        return false;
-    }
-
-    return S_ISREG(st.st_mode) && st.st_size > 0;
+    return (stat(path, &st) == 0 && S_ISREG(st.st_mode) && st.st_size > 0);
 }
 
-/**
- * @brief Parse compiler output for warnings/errors
- *
- * WHAT: Count warning and error messages
- * WHY: Provide structured diagnostics
- */
 static void parse_compiler_output(
     const char* output,
     uint32_t* warning_count,
-    uint32_t* error_count)
-{
-    *warning_count = 0;
-    *error_count = 0;
+    uint32_t* error_count
+) {
+    if (!output) return;
+    if (warning_count) *warning_count = 0;
+    if (error_count) *error_count = 0;
 
-    if (!output) {
-        return;
-    }
-
-    /**
-     * WHAT: Count occurrences of warning/error patterns
-     * WHY: Quick diagnostic summary
-     */
     const char* p = output;
     while (*p) {
-        if (strncmp(p, "warning:", 8) == 0) {
-            (*warning_count)++;
-        } else if (strncmp(p, "error:", 6) == 0) {
-            (*error_count)++;
+        if (strstr(p, " warning:") == p || (p > output && strstr(p - 1, " warning:") == p - 1)) {
+            if (warning_count) (*warning_count)++;
         }
-        p++;
+        if (strstr(p, " error:") == p || (p > output && strstr(p - 1, " error:") == p - 1)) {
+            if (error_count) (*error_count)++;
+        }
+        /* Advance to next line */
+        const char* nl = strchr(p, '\n');
+        if (nl) {
+            p = nl + 1;
+        } else {
+            break;
+        }
     }
 }
 
-/**
- * @brief Run nm to check for symbol
- *
- * WHAT: Use nm to verify symbol exists
- * WHY: Ensure function is exported
- */
-static bool run_nm_check(const char* so_path, const char* symbol_name)
-{
-    /**
-     * WHAT: Build nm command
-     * WHY: Query symbol table
-     */
-    char cmd[1024];
-    snprintf(cmd, sizeof(cmd),
-             "nm -D '%s' 2>/dev/null | grep -q ' %s$'",
-             so_path, symbol_name);
+static bool run_nm_check(const char* so_path, const char* symbol_name) {
+    if (!so_path || !symbol_name) return false;
 
+    char cmd[1024];
+    snprintf(cmd, sizeof(cmd), "nm -D %s 2>/dev/null | grep -q ' T %s'", so_path, symbol_name);
     int ret = system(cmd);
     return (ret == 0);
 }
+
+/* ============================================================================
+ * SECCOMP ISOLATION
+ * ============================================================================ */
+
+#include <sys/prctl.h>
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for recompiler module */
+static nimcp_health_agent_t* g_recompiler_health_agent = NULL;
+
+/**
+ * @brief Set health agent for recompiler heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void recompiler_set_health_agent(nimcp_health_agent_t* agent) {
+    g_recompiler_health_agent = agent;
+}
+
+/** @brief Send heartbeat from recompiler module */
+static inline void recompiler_heartbeat(const char* operation, float progress) {
+    if (g_recompiler_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_recompiler_health_agent, operation, progress);
+    }
+}
+
+//=============================================================================

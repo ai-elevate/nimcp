@@ -28,3 +28,18 @@ endif()
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/language/CMakeLists.txt)
     add_subdirectory(language)
 endif()
+
+# Brain Cycle Coordinator E2E Test (Full system health tracking)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_brain_cycle_coordinator_e2e.cpp)
+    add_executable(e2e_brain_cycle_coordinator
+        test_brain_cycle_coordinator_e2e.cpp
+    )
+    target_link_libraries(e2e_brain_cycle_coordinator
+        PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+    )
+    target_include_directories(e2e_brain_cycle_coordinator
+        PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src
+    )
+    gtest_discover_tests(e2e_brain_cycle_coordinator
+        PROPERTIES LABELS "e2e;core;brain;cycle_coordinator")
+endif()

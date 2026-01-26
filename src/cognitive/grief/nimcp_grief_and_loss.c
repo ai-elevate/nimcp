@@ -26,6 +26,35 @@
 
 #define LOG_MODULE "GRIEF"
 
+//=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for grief_and_loss module */
+static nimcp_health_agent_t* g_grief_and_loss_health_agent = NULL;
+
+/**
+ * @brief Set health agent for grief_and_loss heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void grief_and_loss_set_health_agent(nimcp_health_agent_t* agent) {
+    g_grief_and_loss_health_agent = agent;
+}
+
+/** @brief Send heartbeat from grief_and_loss module */
+static inline void grief_and_loss_heartbeat(const char* operation, float progress) {
+    if (g_grief_and_loss_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_grief_and_loss_health_agent, operation, progress);
+    }
+}
+
+
 // Thread-safe attachment ID counter
 static nimcp_atomic_uint32_t g_attachment_id_counter = {1};
 #define BIO_MODULE_GRIEF 0x0323

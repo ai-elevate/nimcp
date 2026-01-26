@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_portia_swarm_bridge.c - Portia Spider-Swarm Intelligence Integration
 //=============================================================================
@@ -34,6 +35,34 @@
 #include <pthread.h>
 #include <time.h>
 #include <math.h>
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for portia_swarm_bridge module */
+static nimcp_health_agent_t* g_portia_swarm_bridge_health_agent = NULL;
+
+/**
+ * @brief Set health agent for portia_swarm_bridge heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void portia_swarm_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+    g_portia_swarm_bridge_health_agent = agent;
+}
+
+/** @brief Send heartbeat from portia_swarm_bridge module */
+static inline void portia_swarm_bridge_heartbeat(const char* operation, float progress) {
+    if (g_portia_swarm_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_portia_swarm_bridge_health_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Module ID Definition

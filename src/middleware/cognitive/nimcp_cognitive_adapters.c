@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_cognitive_adapters.c - Cognitive Layer Middleware Adapters
 //=============================================================================
@@ -23,6 +24,34 @@
 
 #define LOG_MODULE "nimcp_cognitive_adapters"
 #define LOG_MODULE_ID 0x0515
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for cognitive_adapters module */
+static nimcp_health_agent_t* g_cognitive_adapters_health_agent = NULL;
+
+/**
+ * @brief Set health agent for cognitive_adapters heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void cognitive_adapters_set_health_agent(nimcp_health_agent_t* agent) {
+    g_cognitive_adapters_health_agent = agent;
+}
+
+/** @brief Send heartbeat from cognitive_adapters module */
+static inline void cognitive_adapters_heartbeat(const char* operation, float progress) {
+    if (g_cognitive_adapters_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_cognitive_adapters_health_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // WORKING MEMORY ADAPTER IMPLEMENTATION

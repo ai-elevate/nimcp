@@ -21,6 +21,35 @@
 
 #define LOG_MODULE "swarm_conflict"
 
+#include <stddef.h>  /* for NULL */
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for swarm_conflict module */
+static nimcp_health_agent_t* g_swarm_conflict_health_agent = NULL;
+
+/**
+ * @brief Set health agent for swarm_conflict heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void swarm_conflict_set_health_agent(nimcp_health_agent_t* agent) {
+    g_swarm_conflict_health_agent = agent;
+}
+
+/** @brief Send heartbeat from swarm_conflict module */
+static inline void swarm_conflict_heartbeat(const char* operation, float progress) {
+    if (g_swarm_conflict_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_swarm_conflict_health_agent, operation, progress);
+    }
+}
+
+
 /*=============================================================================
  * INTERNAL STRUCTURES
  *============================================================================*/

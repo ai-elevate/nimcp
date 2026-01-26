@@ -28,6 +28,35 @@
 
 #define LOG_MODULE "portia_deception"
 
+#include <stddef.h>  /* for NULL */
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for portia_deception module */
+static nimcp_health_agent_t* g_portia_deception_health_agent = NULL;
+
+/**
+ * @brief Set health agent for portia_deception heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void portia_deception_set_health_agent(nimcp_health_agent_t* agent) {
+    g_portia_deception_health_agent = agent;
+}
+
+/** @brief Send heartbeat from portia_deception module */
+static inline void portia_deception_heartbeat(const char* operation, float progress) {
+    if (g_portia_deception_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_portia_deception_health_agent, operation, progress);
+    }
+}
+
+
 //=============================================================================
 // Thread-Local Error Handling
 //=============================================================================

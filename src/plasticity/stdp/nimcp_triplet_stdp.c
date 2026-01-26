@@ -20,6 +20,35 @@
 
 #define LOG_MODULE "triplet_stdp"
 
+#include <stddef.h>  /* for NULL */
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for triplet_stdp module */
+static nimcp_health_agent_t* g_triplet_stdp_health_agent = NULL;
+
+/**
+ * @brief Set health agent for triplet_stdp heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void triplet_stdp_set_health_agent(nimcp_health_agent_t* agent) {
+    g_triplet_stdp_health_agent = agent;
+}
+
+/** @brief Send heartbeat from triplet_stdp module */
+static inline void triplet_stdp_heartbeat(const char* operation, float progress) {
+    if (g_triplet_stdp_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_triplet_stdp_health_agent, operation, progress);
+    }
+}
+
+
 /* ============================================================================
  * Configuration Presets
  * ============================================================================ */

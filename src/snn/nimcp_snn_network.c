@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_snn_network.c - SNN Network Implementation
 //=============================================================================
@@ -40,7 +41,7 @@ static nimcp_health_agent_t* g_snn_network_health_agent = NULL;
  * @brief Set health agent for SNN network heartbeat monitoring
  * @param agent Health agent instance (NULL to disable)
  */
-void snn_network_set_health_agent(nimcp_health_agent_t* agent) {
+static void snn_network_set_health_agent(nimcp_health_agent_t* agent) {
     g_snn_network_health_agent = agent;
 }
 

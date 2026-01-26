@@ -36,6 +36,35 @@
 #include "utils/memory/nimcp_unified_memory.h"
 
 #define LOG_MODULE "cognitive.fault.working_memory"
+
+//=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for fault_working_memory module */
+static nimcp_health_agent_t* g_fault_working_memory_health_agent = NULL;
+
+/**
+ * @brief Set health agent for fault_working_memory heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void fault_working_memory_set_health_agent(nimcp_health_agent_t* agent) {
+    g_fault_working_memory_health_agent = agent;
+}
+
+/** @brief Send heartbeat from fault_working_memory module */
+static inline void fault_working_memory_heartbeat(const char* operation, float progress) {
+    if (g_fault_working_memory_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_fault_working_memory_health_agent, operation, progress);
+    }
+}
+
 #define BIO_MODULE_COGNITIVE_FAULT_WORKING_MEMORY 0x0358
 
 

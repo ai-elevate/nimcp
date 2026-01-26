@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_buffer_immune.c - Buffer Immune System Integration Implementation
 //=============================================================================
@@ -15,6 +16,34 @@
 #include <math.h>
 
 #define LOG_MODULE "middleware_buffer_immune"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for buffer_immune module */
+static nimcp_health_agent_t* g_buffer_immune_health_agent = NULL;
+
+/**
+ * @brief Set health agent for buffer_immune heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void buffer_immune_set_health_agent(nimcp_health_agent_t* agent) {
+    g_buffer_immune_health_agent = agent;
+}
+
+/** @brief Send heartbeat from buffer_immune module */
+static inline void buffer_immune_heartbeat(const char* operation, float progress) {
+    if (g_buffer_immune_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_buffer_immune_health_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // INTERNAL STRUCTURES

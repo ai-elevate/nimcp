@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_pink_noise.c - 1/f Pink Noise Generator Implementation
 //=============================================================================
@@ -14,6 +15,34 @@
 #include <time.h>
 
 #define LOG_MODULE "plasticity_pink_noise"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for pink_noise module */
+static nimcp_health_agent_t* g_pink_noise_health_agent = NULL;
+
+/**
+ * @brief Set health agent for pink_noise heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void pink_noise_set_health_agent(nimcp_health_agent_t* agent) {
+    g_pink_noise_health_agent = agent;
+}
+
+/** @brief Send heartbeat from pink_noise module */
+static inline void pink_noise_heartbeat(const char* operation, float progress) {
+    if (g_pink_noise_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pink_noise_health_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Internal Constants

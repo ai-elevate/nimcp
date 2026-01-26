@@ -9,87 +9,33 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
-struct brainstem_substrate_bridge {
-    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
-    void* brainstem;
-    neural_substrate_t* substrate;
-    brainstem_substrate_config_t config;
-    brainstem_substrate_effects_t effects;
-    bio_router_t* router;
-    bool bio_async_connected;
-    uint64_t update_count;
-};
+#include <stddef.h>  /* for NULL */
 
-static float clamp_f(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
 
-brainstem_substrate_config_t brainstem_substrate_default_config(void) {
-    brainstem_substrate_config_t cfg = { .enable_atp_modulation = true, .enable_fatigue_modulation = true,
-        .enable_bio_async = false, .atp_sensitivity = 1.0f, .fatigue_sensitivity = 1.0f, .min_capacity = 0.3f };
-    return cfg;
+/** Global health agent for brainstem_substrate_bridge module */
+static nimcp_health_agent_t* g_brainstem_substrate_bridge_health_agent = NULL;
+
+/**
+ * @brief Set health agent for brainstem_substrate_bridge heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void brainstem_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+    g_brainstem_substrate_bridge_health_agent = agent;
 }
 
-brainstem_substrate_bridge_t* brainstem_substrate_bridge_create(void* brainstem, neural_substrate_t* substrate, const brainstem_substrate_config_t* config) {
-    if (!substrate) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
-
-        return NULL;
-
+/** @brief Send heartbeat from brainstem_substrate_bridge module */
+static inline void brainstem_substrate_bridge_heartbeat(const char* operation, float progress) {
+    if (g_brainstem_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_brainstem_substrate_bridge_health_agent, operation, progress);
     }
-    brainstem_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(brainstem_substrate_bridge_t));
-    if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-        return NULL;
-
-    }
-    bridge->brainstem = brainstem;
-    bridge->substrate = substrate;
-    bridge->config = config ? *config : brainstem_substrate_default_config();
-    bridge->effects.arousal_level = 1.0f;
-    bridge->effects.autonomic_balance = 0.5f; /* Balanced sympathetic/parasympathetic */
-    bridge->effects.vital_stability = 1.0f;
-    bridge->effects.reflex_speed = 1.0f;
-    bridge->effects.overall_capacity = 1.0f;
-    return bridge;
 }
 
-void brainstem_substrate_bridge_destroy(brainstem_substrate_bridge_t* bridge) { if (bridge) nimcp_free(bridge); }
-
-int brainstem_substrate_bridge_update(brainstem_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->substrate) return -1;
-    substrate_metabolic_state_t metabolic;
-    if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
-    float atp = metabolic.atp_level, fatigue = 1.0f - metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
-    /* ATP directly affects arousal and vital stability */
-    if (bridge->config.enable_atp_modulation) {
-        bridge->effects.arousal_level = clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.vital_stability = clamp_f(atp * 1.1f * bridge->config.atp_sensitivity, min_cap, 1.0f);
-    }
-    /* Fatigue modulates autonomic balance and reflex speed */
-    if (bridge->config.enable_fatigue_modulation) {
-        /* High fatigue shifts toward parasympathetic (rest) */
-        bridge->effects.autonomic_balance = clamp_f(0.5f - fatigue * 0.3f * bridge->config.fatigue_sensitivity, 0.2f, 0.8f);
-        bridge->effects.reflex_speed = clamp_f((1.0f - fatigue) * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-    }
-    bridge->effects.overall_capacity = (bridge->effects.arousal_level + bridge->effects.vital_stability +
-                                        bridge->effects.reflex_speed) / 3.0f;
-    bridge->update_count++;
-    return 0;
-}
-
-int brainstem_substrate_bridge_get_effects(const brainstem_substrate_bridge_t* bridge, brainstem_substrate_effects_t* effects) {
-    if (!bridge || !effects) return -1;
-    *effects = bridge->effects;
-    return 0;
-}
-
-int brainstem_substrate_bridge_apply_effects(brainstem_substrate_bridge_t* bridge) { return bridge ? 0 : -1; }
-
-int brainstem_substrate_bridge_register_bio_async(brainstem_substrate_bridge_t* bridge, bio_router_t* router) {
-    if (!bridge) return -1;
-    bridge->router = router;
-    bridge->bio_async_connected = (router != NULL);
-    return 0;
-}
+//=============================================================================

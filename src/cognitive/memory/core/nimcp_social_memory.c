@@ -2468,6 +2468,35 @@ NIMCP_EXPORT uint64_t social_memory_current_time_ms(void) {
 
 #include <stdarg.h>
 
+//=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for social_memory module */
+static nimcp_health_agent_t* g_social_memory_health_agent = NULL;
+
+/**
+ * @brief Set health agent for social_memory heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void social_memory_set_health_agent(nimcp_health_agent_t* agent) {
+    g_social_memory_health_agent = agent;
+}
+
+/** @brief Send heartbeat from social_memory module */
+static inline void social_memory_heartbeat(const char* operation, float progress) {
+    if (g_social_memory_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_social_memory_health_agent, operation, progress);
+    }
+}
+
+
 static void set_error(const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);

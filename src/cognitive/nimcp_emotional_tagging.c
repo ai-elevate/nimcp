@@ -31,6 +31,30 @@
 #include <string.h>
 
 //=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for emotional_tagging module */
+static nimcp_health_agent_t* g_emotional_tagging_health_agent = NULL;
+
+/* Note: emotional_tagging_set_health_agent is defined in
+ * cognitive/fault_tolerance/nimcp_emotional_tagging.c */
+
+/** @brief Send heartbeat from emotional_tagging module */
+static inline void emotional_tagging_heartbeat(const char* operation, float progress) {
+    if (g_emotional_tagging_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_emotional_tagging_health_agent, operation, progress);
+    }
+}
+
+
+//=============================================================================
 // Helper Macros
 //=============================================================================
 

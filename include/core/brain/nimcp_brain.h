@@ -1599,6 +1599,15 @@ typedef struct {
     uint32_t health_check_interval_ms;    /**< Health check interval (default: 100ms) */
     bool health_agent_auto_recovery;      /**< Enable automatic recovery (default: true) */
 
+    /**
+     * @brief Brain Cycle Coordinator Configuration
+     *
+     * WHAT: Unified observability across all 9 brain cycle types
+     * WHY:  Central health tracking, stall detection, dependency validation
+     * HOW:  Registry with timing checks, callbacks, and subsystem integration
+     */
+    bool enable_cycle_coordinator;        /**< Enable cycle coordinator (default: false) */
+
     // === GPU ACCELERATION CONFIGURATION ===
     /**
      * GPU Acceleration Configuration

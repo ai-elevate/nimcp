@@ -20,6 +20,7 @@
 #include "utils/validation/nimcp_validate.h"
 #include "utils/logging/nimcp_logging.h"
 
+#include <stddef.h>  /* for NULL */
 // === BIO-ASYNC + LOGGING + UNIFIED MEMORY INTEGRATION ===
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
@@ -29,6 +30,34 @@
 #include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "neural_logic_attachment"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for neural_logic_attachment module */
+static nimcp_health_agent_t* g_neural_logic_attachment_health_agent = NULL;
+
+/**
+ * @brief Set health agent for neural_logic_attachment heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void neural_logic_attachment_set_health_agent(nimcp_health_agent_t* agent) {
+    g_neural_logic_attachment_health_agent = agent;
+}
+
+/** @brief Send heartbeat from neural_logic_attachment module */
+static inline void neural_logic_attachment_heartbeat(const char* operation, float progress) {
+    if (g_neural_logic_attachment_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_neural_logic_attachment_health_agent, operation, progress);
+    }
+}
+
 #define BIO_MODULE_ID 0x0135
 
 

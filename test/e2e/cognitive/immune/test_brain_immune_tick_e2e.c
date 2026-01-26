@@ -45,7 +45,7 @@ static void setup_e2e(void)
     immune_config.max_b_cells = 50;
     immune_config.max_t_cells = 50;
     immune_config.max_antibodies = 100;
-    immune_config.enable_memory_formation = true;
+    // memory formation enabled by default
     g_immune = brain_immune_create(&immune_config);
     ck_assert_ptr_nonnull(g_immune);
 
@@ -121,9 +121,9 @@ START_TEST(test_full_error_recovery_cycle)
 
     /* Phase 4: Verify antigen was created */
     printf("  Phase 3: Verifying antigen...\n");
-    brain_immune_metrics_t metrics;
+    brain_immune_stats_t metrics;
     brain_immune_get_metrics(g_immune, &metrics);
-    ck_assert_uint_ge(metrics.total_antigens_presented, 1);
+    ck_assert_uint_ge(metrics.antigens_processed, 1);
 
     /* Phase 5: Run multiple ticks to allow immune response to develop */
     printf("  Phase 4: Running immune response cycle...\n");
@@ -134,12 +134,12 @@ START_TEST(test_full_error_recovery_cycle)
     /* Phase 6: Verify immune response occurred */
     brain_immune_get_metrics(g_immune, &metrics);
     printf("    Antigens: %u, B cells: %u, T cells: %u\n",
-           metrics.total_antigens_presented,
-           metrics.b_cells_activated,
-           metrics.t_cells_activated);
+           metrics.antigens_processed,
+           metrics.active_b_cells,
+           metrics.active_t_cells);
 
     /* At least some immune activity should have occurred */
-    ck_assert_uint_ge(metrics.total_antigens_presented, 1);
+    ck_assert_uint_ge(metrics.antigens_processed, 1);
 
     printf("  Test passed!\n\n");
 }
@@ -198,9 +198,9 @@ START_TEST(test_concurrent_errors_handling)
     ck_assert_uint_ge(stats.health_messages_processed, 2);
 
     /* Verify immune system handled them */
-    brain_immune_metrics_t metrics;
+    brain_immune_stats_t metrics;
     brain_immune_get_metrics(g_immune, &metrics);
-    ck_assert_uint_ge(metrics.total_antigens_presented, 5);
+    ck_assert_uint_ge(metrics.antigens_processed, 5);
 
     printf("  Test passed!\n\n");
 }
@@ -403,12 +403,12 @@ START_TEST(test_stress_multi_threaded)
     printf("    Reentrant calls blocked: %lu\n", (unsigned long)stats.reentrant_calls_blocked);
 
     /* Verify immune system is still functional */
-    brain_immune_metrics_t metrics;
+    brain_immune_stats_t metrics;
     brain_immune_get_metrics(g_immune, &metrics);
-    printf("    Antigens presented: %u\n", metrics.total_antigens_presented);
+    printf("    Antigens presented: %u\n", metrics.antigens_processed);
 
     ck_assert_uint_ge(stats.ticks_executed, STRESS_THREADS);
-    ck_assert_uint_ge(metrics.total_antigens_presented, 1);
+    ck_assert_uint_ge(metrics.antigens_processed, 1);
 
     printf("  Test passed!\n\n");
 }
@@ -451,17 +451,17 @@ START_TEST(test_recovery_and_memory_formation)
     }
 
     /* Verify immune system has learned from the pattern */
-    brain_immune_metrics_t metrics;
+    brain_immune_stats_t metrics;
     brain_immune_get_metrics(g_immune, &metrics);
 
     printf("    Final metrics:\n");
-    printf("      Antigens: %u\n", metrics.total_antigens_presented);
-    printf("      B cells activated: %u\n", metrics.b_cells_activated);
-    printf("      Antibodies produced: %u\n", metrics.antibodies_produced);
-    printf("      Memory cells: %u\n", metrics.memory_cells_formed);
+    printf("      Antigens: %u\n", metrics.antigens_processed);
+    printf("      B cells activated: %u\n", metrics.active_b_cells);
+    printf("      Antibodies produced: %u\n", metrics.active_antibodies);
+    printf("      Memory cells: %u\n", metrics.memory_cells);
 
     /* Should have processed multiple antigens */
-    ck_assert_uint_ge(metrics.total_antigens_presented, 3);
+    ck_assert_uint_ge(metrics.antigens_processed, 3);
 
     printf("  Test passed!\n\n");
 }
@@ -533,9 +533,9 @@ START_TEST(test_error_cascade_stability)
     ck_assert_uint_ge(stats.exceptions_processed + stats.health_messages_processed, 50);
 
     /* Verify immune system is still functional */
-    brain_immune_metrics_t metrics;
+    brain_immune_stats_t metrics;
     brain_immune_get_metrics(g_immune, &metrics);
-    printf("    Immune system still active: antigens=%u\n", metrics.total_antigens_presented);
+    printf("    Immune system still active: antigens=%u\n", metrics.antigens_processed);
 
     printf("  Test passed!\n\n");
 }

@@ -21,6 +21,35 @@
 #include <string.h>
 #include <stdlib.h>
 
+//=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for evolutionary_proof module */
+static nimcp_health_agent_t* g_evolutionary_proof_health_agent = NULL;
+
+/**
+ * @brief Set health agent for evolutionary_proof heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void evolutionary_proof_set_health_agent(nimcp_health_agent_t* agent) {
+    g_evolutionary_proof_health_agent = agent;
+}
+
+/** @brief Send heartbeat from evolutionary_proof module */
+static inline void evolutionary_proof_heartbeat(const char* operation, float progress) {
+    if (g_evolutionary_proof_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_evolutionary_proof_health_agent, operation, progress);
+    }
+}
+
+
 /* ============================================================================
  * Internal Structure
  * ============================================================================ */

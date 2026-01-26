@@ -23,6 +23,7 @@
  * @author NIMCP Development Team
  */
 
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // Includes
 //=============================================================================
@@ -38,6 +39,34 @@
 #include <stdio.h>
 
 #define LOG_MODULE "security_bbb"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for blood_brain_barrier module */
+static nimcp_health_agent_t* g_blood_brain_barrier_health_agent = NULL;
+
+/**
+ * @brief Set health agent for blood_brain_barrier heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void blood_brain_barrier_set_health_agent(nimcp_health_agent_t* agent) {
+    g_blood_brain_barrier_health_agent = agent;
+}
+
+/** @brief Send heartbeat from blood_brain_barrier module */
+static inline void blood_brain_barrier_heartbeat(const char* operation, float progress) {
+    if (g_blood_brain_barrier_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_blood_brain_barrier_health_agent, operation, progress);
+    }
+}
+
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>

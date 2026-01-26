@@ -7,6 +7,7 @@
  */
 
 #include "plasticity/stdp/nimcp_stdp.h"
+#include <stddef.h>  /* for NULL */
 #include "plasticity/stdp/nimcp_stdp_sleep_bridge.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "plasticity/neuromodulators/nimcp_phasic_tonic.h"

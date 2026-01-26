@@ -30,6 +30,7 @@
 
 #define LOG_MODULE "GLIAL_INTEGRATION"
 
+#include <stddef.h>  /* for NULL */
 // ============================================================================
 // Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
 // ============================================================================
@@ -43,7 +44,7 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
 /* Global health agent for glial integration operations */
 static nimcp_health_agent_t* g_glial_integration_health_agent = NULL;
 
-void glial_integration_set_health_agent(nimcp_health_agent_t* agent) {
+static void glial_integration_set_health_agent(nimcp_health_agent_t* agent) {
     g_glial_integration_health_agent = agent;
 }
 

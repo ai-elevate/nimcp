@@ -8,6 +8,7 @@
  */
 
 #include "networking/protocol/nimcp_msg_router.h"
+#include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -26,7 +27,7 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
 /* Global health agent for message router operations */
 static nimcp_health_agent_t* g_msg_router_health_agent = NULL;
 
-void nimcp_msg_router_set_health_agent(nimcp_health_agent_t* agent) {
+static void nimcp_msg_router_set_health_agent(nimcp_health_agent_t* agent) {
     g_msg_router_health_agent = agent;
 }
 

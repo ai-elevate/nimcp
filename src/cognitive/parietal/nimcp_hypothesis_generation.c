@@ -20,6 +20,35 @@
 #include "gpu/quantum/nimcp_qmc_gpu.h"
 #include "gpu/context/nimcp_gpu_context.h"
 
+//=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for hypothesis_generation module */
+static nimcp_health_agent_t* g_hypothesis_generation_health_agent = NULL;
+
+/**
+ * @brief Set health agent for hypothesis_generation heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void hypothesis_generation_set_health_agent(nimcp_health_agent_t* agent) {
+    g_hypothesis_generation_health_agent = agent;
+}
+
+/** @brief Send heartbeat from hypothesis_generation module */
+static inline void hypothesis_generation_heartbeat(const char* operation, float progress) {
+    if (g_hypothesis_generation_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_hypothesis_generation_health_agent, operation, progress);
+    }
+}
+
+
 static nimcp_gpu_context_t* g_hypogen_gpu_ctx = NULL;
 static qmc_gpu_rng_t g_hypogen_gpu_rng = NULL;
 static bool g_hypogen_gpu_init_attempted = false;

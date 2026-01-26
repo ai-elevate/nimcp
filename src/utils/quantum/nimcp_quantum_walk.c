@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_quantum_walk.c - Quantum Walk Implementation
 //=============================================================================
@@ -19,6 +20,34 @@
 #include <stdio.h>
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for quantum_walk module */
+static nimcp_health_agent_t* g_quantum_walk_health_agent = NULL;
+
+/**
+ * @brief Set health agent for quantum_walk heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void quantum_walk_set_health_agent(nimcp_health_agent_t* agent) {
+    g_quantum_walk_health_agent = agent;
+}
+
+/** @brief Send heartbeat from quantum_walk module */
+static inline void quantum_walk_heartbeat(const char* operation, float progress) {
+    if (g_quantum_walk_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_quantum_walk_health_agent, operation, progress);
+    }
+}
+
 
 /* Thread-local RNG seed for Monte Carlo operations */
 static __thread uint32_t g_qwalk_mc_seed = 0;

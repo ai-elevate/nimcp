@@ -15401,6 +15401,30 @@ __/core/brain/factory/init/nimcp_brain_init_core_directives.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_core_directives.c.s
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_core_directives.c.s
 
+__/core/brain/factory/init/nimcp_brain_init_cycle_coordinator.o: __/core/brain/factory/init/nimcp_brain_init_cycle_coordinator.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_cycle_coordinator.o
+
+# target to build an object file
+__/core/brain/factory/init/nimcp_brain_init_cycle_coordinator.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_cycle_coordinator.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_cycle_coordinator.c.o
+
+__/core/brain/factory/init/nimcp_brain_init_cycle_coordinator.i: __/core/brain/factory/init/nimcp_brain_init_cycle_coordinator.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_cycle_coordinator.i
+
+# target to preprocess a source file
+__/core/brain/factory/init/nimcp_brain_init_cycle_coordinator.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_cycle_coordinator.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_cycle_coordinator.c.i
+
+__/core/brain/factory/init/nimcp_brain_init_cycle_coordinator.s: __/core/brain/factory/init/nimcp_brain_init_cycle_coordinator.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_cycle_coordinator.s
+
+# target to generate assembly for a file
+__/core/brain/factory/init/nimcp_brain_init_cycle_coordinator.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_cycle_coordinator.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_cycle_coordinator.c.s
+
 __/core/brain/factory/init/nimcp_brain_init_dragonfly.o: __/core/brain/factory/init/nimcp_brain_init_dragonfly.c.o
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_dragonfly.o
 
@@ -16888,6 +16912,30 @@ __/core/brain/nimcp_brain_core.s: __/core/brain/nimcp_brain_core.c.s
 __/core/brain/nimcp_brain_core.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/nimcp_brain_core.c.s
 .PHONY : __/core/brain/nimcp_brain_core.c.s
+
+__/core/brain/nimcp_brain_cycle_coordinator.o: __/core/brain/nimcp_brain_cycle_coordinator.c.o
+.PHONY : __/core/brain/nimcp_brain_cycle_coordinator.o
+
+# target to build an object file
+__/core/brain/nimcp_brain_cycle_coordinator.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/nimcp_brain_cycle_coordinator.c.o
+.PHONY : __/core/brain/nimcp_brain_cycle_coordinator.c.o
+
+__/core/brain/nimcp_brain_cycle_coordinator.i: __/core/brain/nimcp_brain_cycle_coordinator.c.i
+.PHONY : __/core/brain/nimcp_brain_cycle_coordinator.i
+
+# target to preprocess a source file
+__/core/brain/nimcp_brain_cycle_coordinator.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/nimcp_brain_cycle_coordinator.c.i
+.PHONY : __/core/brain/nimcp_brain_cycle_coordinator.c.i
+
+__/core/brain/nimcp_brain_cycle_coordinator.s: __/core/brain/nimcp_brain_cycle_coordinator.c.s
+.PHONY : __/core/brain/nimcp_brain_cycle_coordinator.s
+
+# target to generate assembly for a file
+__/core/brain/nimcp_brain_cycle_coordinator.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/nimcp_brain_cycle_coordinator.c.s
+.PHONY : __/core/brain/nimcp_brain_cycle_coordinator.c.s
 
 __/core/brain/nimcp_brain_io.o: __/core/brain/nimcp_brain_io.c.o
 .PHONY : __/core/brain/nimcp_brain_io.o
@@ -46741,6 +46789,9 @@ help:
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_core_directives.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_core_directives.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_core_directives.s"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_cycle_coordinator.o"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_cycle_coordinator.i"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_cycle_coordinator.s"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_dragonfly.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_dragonfly.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_dragonfly.s"
@@ -46927,6 +46978,9 @@ help:
 	@echo "... __/core/brain/nimcp_brain_core.o"
 	@echo "... __/core/brain/nimcp_brain_core.i"
 	@echo "... __/core/brain/nimcp_brain_core.s"
+	@echo "... __/core/brain/nimcp_brain_cycle_coordinator.o"
+	@echo "... __/core/brain/nimcp_brain_cycle_coordinator.i"
+	@echo "... __/core/brain/nimcp_brain_cycle_coordinator.s"
 	@echo "... __/core/brain/nimcp_brain_io.o"
 	@echo "... __/core/brain/nimcp_brain_io.i"
 	@echo "... __/core/brain/nimcp_brain_io.s"

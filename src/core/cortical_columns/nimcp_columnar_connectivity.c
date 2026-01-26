@@ -22,9 +22,38 @@
 #include <string.h>
 #include <float.h>
 #include <pthread.h>
+#include <stddef.h>  /* for NULL */
 #include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
 
 #define LOG_MODULE "columnar_connectivity"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for columnar_connectivity module */
+static nimcp_health_agent_t* g_columnar_connectivity_health_agent = NULL;
+
+/**
+ * @brief Set health agent for columnar_connectivity heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void columnar_connectivity_set_health_agent(nimcp_health_agent_t* agent) {
+    g_columnar_connectivity_health_agent = agent;
+}
+
+/** @brief Send heartbeat from columnar_connectivity module */
+static inline void columnar_connectivity_heartbeat(const char* operation, float progress) {
+    if (g_columnar_connectivity_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_columnar_connectivity_health_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Bio-Async Module Context (Thread-Safe Initialization)

@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/nimcp_plasticity_coordinator.h"
+#include <stddef.h>  /* for NULL */
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include <string.h>
 #include <math.h>
@@ -25,7 +26,7 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
 /* Global health agent for plasticity coordinator operations */
 static nimcp_health_agent_t* g_plasticity_health_agent = NULL;
 
-void plasticity_coordinator_set_health_agent(nimcp_health_agent_t* agent) {
+static void plasticity_coordinator_set_health_agent(nimcp_health_agent_t* agent) {
     g_plasticity_health_agent = agent;
 }
 

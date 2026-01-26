@@ -32,7 +32,7 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
 /* Global health agent for dragonfly tracking */
 static nimcp_health_agent_t* g_dragonfly_health_agent = NULL;
 
-void dragonfly_tracker_set_health_agent(nimcp_health_agent_t* agent) {
+static void dragonfly_tracker_set_health_agent(nimcp_health_agent_t* agent) {
     g_dragonfly_health_agent = agent;
 }
 
@@ -42,6 +42,7 @@ static inline void dragonfly_heartbeat(const char* operation, float progress) {
     }
 }
 
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // Constants
 //=============================================================================

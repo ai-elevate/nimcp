@@ -24,6 +24,35 @@
 
 #define LOG_MODULE "engram"
 
+//=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for engram module */
+static nimcp_health_agent_t* g_engram_health_agent = NULL;
+
+/**
+ * @brief Set health agent for engram heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void engram_set_health_agent(nimcp_health_agent_t* agent) {
+    g_engram_health_agent = agent;
+}
+
+/** @brief Send heartbeat from engram module */
+static inline void engram_heartbeat(const char* operation, float progress) {
+    if (g_engram_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_engram_health_agent, operation, progress);
+    }
+}
+
+
 #include "cognitive/memory/nimcp_engram.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "security/nimcp_security.h"

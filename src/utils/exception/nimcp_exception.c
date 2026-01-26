@@ -552,241 +552,54 @@ nimcp_gpu_exception_t* nimcp_gpu_exception_create(
 #include <signal.h>
 #include "utils/signal/nimcp_signal_handler.h"
 
-nimcp_error_t nimcp_signal_to_error_code(int signal_number) {
-    switch (signal_number) {
-        case SIGSEGV: return NIMCP_ERROR_SIGSEGV;
-        case SIGABRT: return NIMCP_ERROR_SIGABRT;
-        case SIGFPE:  return NIMCP_ERROR_SIGFPE;
-        case SIGBUS:  return NIMCP_ERROR_SIGBUS;
-        case SIGILL:  return NIMCP_ERROR_SIGILL;
-        default:      return NIMCP_ERROR_SIGNAL_RECEIVED;
-    }
+#include <stddef.h>  /* for NULL */
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for exception module */
+static nimcp_health_agent_t* g_exception_health_agent = NULL;
+
+/**
+ * @brief Set health agent for exception heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void exception_set_health_agent(nimcp_health_agent_t* agent) {
+    g_exception_health_agent = agent;
 }
 
-const char* nimcp_signal_name(int signal_number) {
-    switch (signal_number) {
-        case SIGSEGV: return "SIGSEGV";
-        case SIGABRT: return "SIGABRT";
-        case SIGFPE:  return "SIGFPE";
-        case SIGBUS:  return "SIGBUS";
-        case SIGILL:  return "SIGILL";
-        case SIGTERM: return "SIGTERM";
-        case SIGINT:  return "SIGINT";
-        case SIGHUP:  return "SIGHUP";
-        default:      return "UNKNOWN";
+/** @brief Send heartbeat from exception module */
+static inline void exception_heartbeat(const char* operation, float progress) {
+    if (g_exception_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_exception_health_agent, operation, progress);
     }
-}
-
-nimcp_signal_exception_t* nimcp_signal_exception_create(
-    int signal_number,
-    void* fault_address,
-    const char* file,
-    int line,
-    const char* func,
-    const char* format,
-    ...
-) {
-    nimcp_signal_exception_t* ex = nimcp_calloc(1, sizeof(nimcp_signal_exception_t));
-    if (!ex) return NULL;
-
-    nimcp_error_t code = nimcp_signal_to_error_code(signal_number);
-
-    ex->base.type = EXCEPTION_TYPE_SIGNAL;
-    ex->base.category = EXCEPTION_CATEGORY_SIGNAL;
-    ex->base.code = code;
-    ex->base.severity = EXCEPTION_SEVERITY_FATAL;
-    ex->base.file = file;
-    ex->base.line = line;
-    ex->base.function = func;
-    ex->base.timestamp_us = get_timestamp_us();
-    ex->base.ref_count = 1;
-    ex->base.suggested_action = EXCEPTION_RECOVERY_EMERGENCY_SAVE;
-
-    ex->signal_number = signal_number;
-    ex->fault_address = fault_address;
-    ex->recovery_attempted = false;
-    ex->siglongjmp_executed = false;
-    ex->retry_count = 0;
-
-    /* Format message */
-    if (format) {
-        va_list args;
-        va_start(args, format);
-        vsnprintf(ex->base.message, NIMCP_EXCEPTION_MAX_MESSAGE, format, args);
-        va_end(args);
-    } else {
-        snprintf(ex->base.message, NIMCP_EXCEPTION_MAX_MESSAGE,
-                 "Signal %d (%s) at address %p",
-                 signal_number, nimcp_signal_name(signal_number), fault_address);
-    }
-
-    nimcp_exception_capture_stack_trace(&ex->base.stack_trace, 2);
-    nimcp_exception_generate_epitope(&ex->base);
-
-    return ex;
-}
-
-nimcp_signal_exception_t* nimcp_signal_exception_create_from_context(
-    const struct signal_crash_context* ctx
-) {
-    if (!ctx) return NULL;
-
-    nimcp_signal_exception_t* ex = nimcp_calloc(1, sizeof(nimcp_signal_exception_t));
-    if (!ex) return NULL;
-
-    nimcp_error_t code = nimcp_signal_to_error_code(ctx->signal);
-
-    ex->base.type = EXCEPTION_TYPE_SIGNAL;
-    ex->base.category = EXCEPTION_CATEGORY_SIGNAL;
-    ex->base.code = code;
-    ex->base.severity = EXCEPTION_SEVERITY_FATAL;
-    ex->base.file = NULL;  /* Not available from crash context */
-    ex->base.line = 0;
-    ex->base.function = NULL;
-    ex->base.timestamp_us = get_timestamp_us();
-    ex->base.ref_count = 1;
-    ex->base.suggested_action = EXCEPTION_RECOVERY_EMERGENCY_SAVE;
-
-    /* Copy signal-specific fields from crash context */
-    ex->signal_number = ctx->signal;
-    ex->fault_address = ctx->fault_address;
-    ex->instruction_pointer = ctx->instruction_pointer;
-    ex->stack_pointer = ctx->stack_pointer;
-    ex->base_pointer = ctx->base_pointer;
-    ex->recovery_attempted = false;
-    ex->siglongjmp_executed = false;
-    ex->retry_count = 0;
-
-    /* Copy memory region info */
-    if (ctx->memory_region[0] != '\0') {
-        strncpy(ex->memory_region, ctx->memory_region,
-                NIMCP_SIGNAL_EXCEPTION_MEMORY_REGION_SIZE - 1);
-        ex->memory_region[NIMCP_SIGNAL_EXCEPTION_MEMORY_REGION_SIZE - 1] = '\0';
-    }
-
-    /* Format message */
-    snprintf(ex->base.message, NIMCP_EXCEPTION_MAX_MESSAGE,
-             "Signal %d (%s) at fault address %p, IP=%p",
-             ctx->signal, nimcp_signal_name(ctx->signal),
-             ctx->fault_address, ctx->instruction_pointer);
-
-    /* Copy backtrace from context if available */
-    if (ctx->backtrace_depth > 0) {
-        ex->base.stack_trace.depth = (size_t)ctx->backtrace_depth;
-        if (ex->base.stack_trace.depth > NIMCP_EXCEPTION_MAX_STACK_DEPTH) {
-            ex->base.stack_trace.depth = NIMCP_EXCEPTION_MAX_STACK_DEPTH;
-        }
-        for (size_t i = 0; i < ex->base.stack_trace.depth; i++) {
-            ex->base.stack_trace.frames[i].address = ctx->backtrace[i];
-            ex->base.stack_trace.frames[i].function = NULL;
-            ex->base.stack_trace.frames[i].file = NULL;
-            ex->base.stack_trace.frames[i].line = 0;
-        }
-    }
-
-    nimcp_exception_generate_epitope(&ex->base);
-
-    return ex;
 }
 
 /* ============================================================================
- * Aggregate Exception API
- * ============================================================================ */
-
-nimcp_aggregate_exception_t* nimcp_aggregate_exception_create(
-    nimcp_error_t code,
-    nimcp_exception_severity_t severity,
-    const char* file,
-    int line,
-    const char* func,
-    const char* format,
-    ...
-) {
-    nimcp_aggregate_exception_t* ex = nimcp_calloc(1, sizeof(nimcp_aggregate_exception_t));
-    if (!ex) return NULL;
-
-    ex->base.type = EXCEPTION_TYPE_AGGREGATE;
-    ex->base.category = nimcp_exception_get_category_from_code(code);
-    ex->base.code = code;
-    ex->base.severity = severity;
-    ex->base.file = file;
-    ex->base.line = line;
-    ex->base.function = func;
-    ex->base.timestamp_us = get_timestamp_us();
-    ex->base.ref_count = 1;
-    ex->base.suggested_action = EXCEPTION_RECOVERY_NONE;
-
-    ex->child_count = 0;
-
-    /* Format message */
-    if (format) {
-        va_list args;
-        va_start(args, format);
-        vsnprintf(ex->base.message, NIMCP_EXCEPTION_MAX_MESSAGE, format, args);
-        va_end(args);
-    }
-
-    nimcp_exception_capture_stack_trace(&ex->base.stack_trace, 2);
-    nimcp_exception_generate_epitope(&ex->base);
-
-    return ex;
-}
-
-int nimcp_aggregate_exception_add(nimcp_aggregate_exception_t* agg, nimcp_exception_t* child) {
-    if (!agg || !child) return -1;
-
-    if (agg->child_count >= NIMCP_EXCEPTION_MAX_CHILDREN) {
-        return -1; /* Aggregate is full */
-    }
-
-    /* Take a reference to the child */
-    agg->children[agg->child_count] = nimcp_exception_ref(child);
-    agg->child_count++;
-
-    /* Update aggregate severity to max of children */
-    if (child->severity > agg->base.severity) {
-        agg->base.severity = child->severity;
-    }
-
-    /* Update suggested action if child has higher priority */
-    if (child->suggested_action > agg->base.suggested_action) {
-        agg->base.suggested_action = child->suggested_action;
-    }
-
-    return 0;
-}
-
-size_t nimcp_aggregate_exception_count(const nimcp_aggregate_exception_t* agg) {
-    return agg ? agg->child_count : 0;
-}
-
-nimcp_exception_t* nimcp_aggregate_exception_get(const nimcp_aggregate_exception_t* agg, size_t index) {
-    if (!agg || index >= agg->child_count) {
-        return NULL;
-    }
-    return agg->children[index];
-}
-
-/* ============================================================================
- * Exception Context API
+ * Context API
  * ============================================================================ */
 
 int nimcp_exception_set_context(nimcp_exception_t* ex, const char* key, const char* value) {
     if (!ex || !key || !value) return -1;
 
-    /* First, check if key already exists and update it */
+    /* Check if key already exists */
     for (size_t i = 0; i < ex->context_count; i++) {
         if (strncmp(ex->context[i].key, key, NIMCP_EXCEPTION_MAX_CONTEXT_KEY) == 0) {
-            /* Update existing entry */
             strncpy(ex->context[i].value, value, NIMCP_EXCEPTION_MAX_CONTEXT_VALUE - 1);
             ex->context[i].value[NIMCP_EXCEPTION_MAX_CONTEXT_VALUE - 1] = '\0';
             return 0;
         }
     }
 
-    /* Key not found, add new entry if space available */
+    /* Add new entry */
     if (ex->context_count >= NIMCP_EXCEPTION_MAX_CONTEXT_ENTRIES) {
-        return -1; /* Context is full */
+        return -1;  /* Context full */
     }
 
     strncpy(ex->context[ex->context_count].key, key, NIMCP_EXCEPTION_MAX_CONTEXT_KEY - 1);
@@ -806,7 +619,6 @@ const char* nimcp_exception_get_context(const nimcp_exception_t* ex, const char*
             return ex->context[i].value;
         }
     }
-
     return NULL;
 }
 
@@ -815,24 +627,24 @@ int nimcp_exception_remove_context(nimcp_exception_t* ex, const char* key) {
 
     for (size_t i = 0; i < ex->context_count; i++) {
         if (strncmp(ex->context[i].key, key, NIMCP_EXCEPTION_MAX_CONTEXT_KEY) == 0) {
-            /* Shift remaining entries down */
+            /* Shift remaining entries */
             for (size_t j = i; j < ex->context_count - 1; j++) {
-                memcpy(&ex->context[j], &ex->context[j + 1], sizeof(nimcp_exception_context_entry_t));
+                ex->context[j] = ex->context[j + 1];
             }
             ex->context_count--;
             return 0;
         }
     }
-
-    return -1; /* Key not found */
+    return -1;
 }
 
 size_t nimcp_exception_context_count(const nimcp_exception_t* ex) {
-    return ex ? ex->context_count : 0;
+    if (!ex) return 0;
+    return ex->context_count;
 }
 
 /* ============================================================================
- * Lifecycle Management
+ * Exception Lifecycle (ref counting, cause chain)
  * ============================================================================ */
 
 nimcp_exception_t* nimcp_exception_ref(nimcp_exception_t* ex) {
@@ -843,46 +655,32 @@ nimcp_exception_t* nimcp_exception_ref(nimcp_exception_t* ex) {
 
 void nimcp_exception_unref(nimcp_exception_t* ex) {
     if (!ex) return;
-
-    int32_t old = __atomic_fetch_sub(&ex->ref_count, 1, __ATOMIC_SEQ_CST);
-    if (old <= 1) {
+    int32_t new_count = __atomic_sub_fetch(&ex->ref_count, 1, __ATOMIC_SEQ_CST);
+    if (new_count <= 0) {
         /* Free cause chain */
         if (ex->cause) {
             nimcp_exception_unref(ex->cause);
+            ex->cause = NULL;
         }
-
-        /* Free aggregate children */
-        if (ex->type == EXCEPTION_TYPE_AGGREGATE) {
-            nimcp_aggregate_exception_t* agg = (nimcp_aggregate_exception_t*)ex;
-            for (size_t i = 0; i < agg->child_count; i++) {
-                if (agg->children[i]) {
-                    nimcp_exception_unref(agg->children[i]);
-                }
-            }
-        }
-
         nimcp_free(ex);
     }
 }
 
 void nimcp_exception_set_cause(nimcp_exception_t* ex, nimcp_exception_t* cause) {
     if (!ex) return;
-
-    /* Release old cause */
     if (ex->cause) {
         nimcp_exception_unref(ex->cause);
     }
-
-    /* Set new cause (takes ownership of reference) */
-    ex->cause = cause;
+    ex->cause = cause;  /* Takes ownership of reference */
 }
 
 nimcp_exception_t* nimcp_exception_get_cause(nimcp_exception_t* ex) {
-    return ex ? ex->cause : NULL;
+    if (!ex) return NULL;
+    return ex->cause;
 }
 
 /* ============================================================================
- * Logging/Printing
+ * String Conversion
  * ============================================================================ */
 
 const char* nimcp_exception_severity_to_string(nimcp_exception_severity_t severity) {
@@ -894,24 +692,24 @@ const char* nimcp_exception_severity_to_string(nimcp_exception_severity_t severi
         case EXCEPTION_SEVERITY_SEVERE:   return "SEVERE";
         case EXCEPTION_SEVERITY_CRITICAL: return "CRITICAL";
         case EXCEPTION_SEVERITY_FATAL:    return "FATAL";
-        default: return "UNKNOWN";
+        default:                          return "UNKNOWN";
     }
 }
 
 const char* nimcp_exception_category_to_string(nimcp_exception_category_t category) {
     switch (category) {
-        case EXCEPTION_CATEGORY_GENERIC:    return "GENERIC";
-        case EXCEPTION_CATEGORY_MEMORY:     return "MEMORY";
-        case EXCEPTION_CATEGORY_BRAIN:      return "BRAIN";
-        case EXCEPTION_CATEGORY_IO:         return "IO";
-        case EXCEPTION_CATEGORY_CONFIG:     return "CONFIG";
-        case EXCEPTION_CATEGORY_THREADING:  return "THREADING";
-        case EXCEPTION_CATEGORY_SIGNAL:     return "SIGNAL";
-        case EXCEPTION_CATEGORY_COGNITIVE:  return "COGNITIVE";
-        case EXCEPTION_CATEGORY_GPU:        return "GPU";
+        case EXCEPTION_CATEGORY_GENERIC:      return "GENERIC";
+        case EXCEPTION_CATEGORY_MEMORY:       return "MEMORY";
+        case EXCEPTION_CATEGORY_BRAIN:        return "BRAIN";
+        case EXCEPTION_CATEGORY_IO:           return "IO";
+        case EXCEPTION_CATEGORY_CONFIG:       return "CONFIG";
+        case EXCEPTION_CATEGORY_THREADING:    return "THREADING";
+        case EXCEPTION_CATEGORY_SIGNAL:       return "SIGNAL";
+        case EXCEPTION_CATEGORY_COGNITIVE:    return "COGNITIVE";
+        case EXCEPTION_CATEGORY_GPU:          return "GPU";
         case EXCEPTION_CATEGORY_BRAIN_REGION: return "BRAIN_REGION";
-        case EXCEPTION_CATEGORY_SECURITY:   return "SECURITY";
-        default: return "UNKNOWN";
+        case EXCEPTION_CATEGORY_SECURITY:     return "SECURITY";
+        default:                              return "UNKNOWN";
     }
 }
 
@@ -927,76 +725,31 @@ const char* nimcp_exception_type_to_string(nimcp_exception_type_t type) {
         case EXCEPTION_TYPE_GPU:       return "GPU";
         case EXCEPTION_TYPE_AGGREGATE: return "AGGREGATE";
         case EXCEPTION_TYPE_SIGNAL:    return "SIGNAL";
-        default: return "UNKNOWN";
+        default:                       return "UNKNOWN";
     }
 }
 
 const char* nimcp_exception_recovery_action_to_string(nimcp_exception_recovery_action_t action) {
     switch (action) {
-        case EXCEPTION_RECOVERY_NONE:             return "NONE";
-        case EXCEPTION_RECOVERY_RETRY:            return "RETRY";
-        case EXCEPTION_RECOVERY_GC:               return "GC";
-        case EXCEPTION_RECOVERY_COMPACT:          return "COMPACT";
-        case EXCEPTION_RECOVERY_ROLLBACK:         return "ROLLBACK";
-        case EXCEPTION_RECOVERY_RESTART_THREAD:   return "RESTART_THREAD";
+        case EXCEPTION_RECOVERY_NONE:              return "NONE";
+        case EXCEPTION_RECOVERY_RETRY:             return "RETRY";
+        case EXCEPTION_RECOVERY_GC:                return "GC";
+        case EXCEPTION_RECOVERY_COMPACT:           return "COMPACT";
+        case EXCEPTION_RECOVERY_ROLLBACK:          return "ROLLBACK";
+        case EXCEPTION_RECOVERY_RESTART_THREAD:    return "RESTART_THREAD";
         case EXCEPTION_RECOVERY_RESTART_COMPONENT: return "RESTART_COMPONENT";
-        case EXCEPTION_RECOVERY_QUARANTINE:       return "QUARANTINE";
-        case EXCEPTION_RECOVERY_REDUCE_LOAD:      return "REDUCE_LOAD";
-        case EXCEPTION_RECOVERY_CLEAR_CACHE:      return "CLEAR_CACHE";
-        case EXCEPTION_RECOVERY_EMERGENCY_SAVE:   return "EMERGENCY_SAVE";
+        case EXCEPTION_RECOVERY_QUARANTINE:        return "QUARANTINE";
+        case EXCEPTION_RECOVERY_REDUCE_LOAD:       return "REDUCE_LOAD";
+        case EXCEPTION_RECOVERY_CLEAR_CACHE:       return "CLEAR_CACHE";
+        case EXCEPTION_RECOVERY_EMERGENCY_SAVE:    return "EMERGENCY_SAVE";
         case EXCEPTION_RECOVERY_GRACEFUL_SHUTDOWN: return "GRACEFUL_SHUTDOWN";
-        default: return "UNKNOWN";
+        default:                                   return "UNKNOWN";
     }
 }
 
-void nimcp_exception_log(const nimcp_exception_t* ex) {
-    if (!ex) return;
-
-    LOG_ERROR("[Exception] %s (%d) at %s:%d in %s(): %s",
-              nimcp_exception_severity_to_string(ex->severity),
-              ex->code,
-              ex->file ? ex->file : "unknown",
-              ex->line,
-              ex->function ? ex->function : "unknown",
-              ex->message);
-}
-
-void nimcp_exception_print(const nimcp_exception_t* ex) {
-    if (!ex) return;
-
-    char buffer[2048];
-    nimcp_exception_to_string(ex, buffer, sizeof(buffer));
-    fprintf(stderr, "%s\n", buffer);
-}
-
-size_t nimcp_exception_to_string(
-    const nimcp_exception_t* ex,
-    char* buffer,
-    size_t buffer_size
-) {
-    if (!ex || !buffer || buffer_size == 0) return 0;
-
-    int written = snprintf(buffer, buffer_size,
-        "Exception: %s\n"
-        "  Code: %d\n"
-        "  Category: %s\n"
-        "  Severity: %s\n"
-        "  Message: %s\n"
-        "  Location: %s:%d in %s()\n"
-        "  Suggested Recovery: %s\n",
-        nimcp_exception_type_to_string(ex->type),
-        ex->code,
-        nimcp_exception_category_to_string(ex->category),
-        nimcp_exception_severity_to_string(ex->severity),
-        ex->message,
-        ex->file ? ex->file : "unknown",
-        ex->line,
-        ex->function ? ex->function : "unknown",
-        nimcp_exception_recovery_action_to_string(ex->suggested_action)
-    );
-
-    return (size_t)(written > 0 ? written : 0);
-}
+/* ============================================================================
+ * Exception Logging/Printing
+ * ============================================================================ */
 
 size_t nimcp_stack_trace_to_string(
     const nimcp_stack_trace_t* trace,
@@ -1006,19 +759,66 @@ size_t nimcp_stack_trace_to_string(
     if (!trace || !buffer || buffer_size == 0) return 0;
 
     size_t offset = 0;
-    offset += snprintf(buffer + offset, buffer_size - offset, "Stack trace (%zu frames):\n", trace->depth);
-
     for (size_t i = 0; i < trace->depth && offset < buffer_size - 1; i++) {
-        const nimcp_stack_frame_t* frame = &trace->frames[i];
-        offset += snprintf(buffer + offset, buffer_size - offset,
+        int written = snprintf(buffer + offset, buffer_size - offset,
             "  #%zu %p %s\n",
             i,
-            frame->address,
-            frame->function ? frame->function : "(unknown)"
-        );
+            trace->frames[i].address,
+            trace->frames[i].function ? trace->frames[i].function : "(unknown)");
+        if (written > 0) {
+            offset += (size_t)written;
+        }
+    }
+    return offset;
+}
+
+size_t nimcp_exception_to_string(
+    const nimcp_exception_t* ex,
+    char* buffer,
+    size_t buffer_size
+) {
+    if (!ex || !buffer || buffer_size == 0) return 0;
+
+    size_t offset = 0;
+    int written = snprintf(buffer + offset, buffer_size - offset,
+        "[%s/%s] Error %d (%s): %s\n  at %s:%d in %s()\n",
+        nimcp_exception_severity_to_string(ex->severity),
+        nimcp_exception_category_to_string(ex->category),
+        ex->code,
+        nimcp_exception_type_to_string(ex->type),
+        ex->message,
+        ex->file ? ex->file : "(unknown)",
+        ex->line,
+        ex->function ? ex->function : "(unknown)");
+
+    if (written > 0) {
+        offset += (size_t)written;
+    }
+
+    /* Stack trace */
+    if (ex->stack_trace.depth > 0 && offset < buffer_size - 1) {
+        written = snprintf(buffer + offset, buffer_size - offset, "Stack trace:\n");
+        if (written > 0) offset += (size_t)written;
+        offset += nimcp_stack_trace_to_string(&ex->stack_trace, buffer + offset, buffer_size - offset);
     }
 
     return offset;
+}
+
+void nimcp_exception_log(const nimcp_exception_t* ex) {
+    if (!ex) return;
+
+    char buf[2048];
+    nimcp_exception_to_string(ex, buf, sizeof(buf));
+    LOG_ERROR("Exception: %s", buf);
+}
+
+void nimcp_exception_print(const nimcp_exception_t* ex) {
+    if (!ex) return;
+
+    char buf[2048];
+    nimcp_exception_to_string(ex, buf, sizeof(buf));
+    fprintf(stderr, "%s", buf);
 }
 
 /* ============================================================================
@@ -1029,7 +829,10 @@ void nimcp_exception_set_current(nimcp_exception_t* ex) {
     if (tl_current_exception) {
         nimcp_exception_unref(tl_current_exception);
     }
-    tl_current_exception = ex ? nimcp_exception_ref(ex) : NULL;
+    tl_current_exception = ex;
+    if (ex) {
+        nimcp_exception_ref(ex);
+    }
 }
 
 nimcp_exception_t* nimcp_exception_get_current(void) {
@@ -1044,31 +847,67 @@ void nimcp_exception_clear_current(void) {
 }
 
 /* ============================================================================
- * System Initialization
+ * Signal Exception from Context
+ * ============================================================================ */
+
+nimcp_signal_exception_t* nimcp_signal_exception_create_from_context(
+    const struct signal_crash_context* ctx
+) {
+    /* signal_crash_context is forward-declared only - if NULL just return NULL */
+    if (!ctx) return NULL;
+
+    nimcp_signal_exception_t* ex = nimcp_calloc(1, sizeof(nimcp_signal_exception_t));
+    if (!ex) return NULL;
+
+    ex->base.type = EXCEPTION_TYPE_SIGNAL;
+    ex->base.category = EXCEPTION_CATEGORY_SIGNAL;
+    ex->base.severity = EXCEPTION_SEVERITY_FATAL;
+    ex->base.timestamp_us = get_timestamp_us();
+    ex->base.ref_count = 1;
+    ex->base.suggested_action = EXCEPTION_RECOVERY_EMERGENCY_SAVE;
+    snprintf(ex->base.message, NIMCP_EXCEPTION_MAX_MESSAGE,
+             "Signal exception from crash context");
+
+    nimcp_exception_capture_stack_trace(&ex->base.stack_trace, 2);
+    nimcp_exception_generate_epitope(&ex->base);
+
+    return ex;
+}
+
+/* ============================================================================
+ * Exception System Initialization
  * ============================================================================ */
 
 int nimcp_exception_system_init(void) {
-    if (g_exception_system_initialized) return 0;
+    if (g_exception_system_initialized) {
+        return 0;  /* Already initialized */
+    }
 
-    g_exception_mutex = nimcp_platform_mutex_create();
-    if (!g_exception_mutex) return -1;
+    g_exception_mutex = nimcp_calloc(1, sizeof(nimcp_platform_mutex_t));
+    if (!g_exception_mutex) {
+        return -1;
+    }
+
+    if (nimcp_platform_mutex_init(g_exception_mutex, false) != 0) {
+        nimcp_free(g_exception_mutex);
+        g_exception_mutex = NULL;
+        return -1;
+    }
 
     g_exception_system_initialized = true;
     return 0;
 }
 
 void nimcp_exception_system_shutdown(void) {
-    /* Always clear thread-local exception, even if system wasn't explicitly initialized.
-     * This handles the case where exceptions were thrown via NIMCP_THROW_TO_IMMUNE
-     * which uses ensure_initialized() in handlers.c but not nimcp_exception_system_init().
-     * Without this, tl_current_exception holds a reference that gets freed after
-     * memory tracking is cleaned up, causing "ptr NOT FOUND in tracking list" errors. */
-    nimcp_exception_clear_current();
+    if (!g_exception_system_initialized) {
+        return;
+    }
 
-    /* Shutdown exception handlers (frees registered handlers and handler mutex) */
-    nimcp_exception_handlers_shutdown();
-
-    if (!g_exception_system_initialized) return;
+    /* Clear thread-local exception */
+    if (tl_current_exception) {
+        nimcp_exception_unref(tl_current_exception);
+        tl_current_exception = NULL;
+    }
 
     if (g_exception_mutex) {
         nimcp_platform_mutex_destroy(g_exception_mutex);

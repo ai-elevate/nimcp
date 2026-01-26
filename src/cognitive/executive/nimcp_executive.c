@@ -99,6 +99,7 @@ static inline bool exec_has_gpu_mc(void) { return false; }
 #define LOG_MODULE "cognitive.executive"
 
 //=============================================================================
+#include <stddef.h>  /* for NULL */
 // Health Agent Integration (Phase 8: Heartbeat for Long Operations)
 //=============================================================================
 struct nimcp_health_agent;
@@ -114,7 +115,7 @@ static nimcp_health_agent_t* g_exec_health_agent = NULL;
  * @brief Set health agent for executive heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-void executive_set_health_agent(nimcp_health_agent_t* agent) {
+static void executive_set_health_agent(nimcp_health_agent_t* agent) {
     g_exec_health_agent = agent;
 }
 

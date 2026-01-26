@@ -34,6 +34,35 @@
 #include "utils/exception/nimcp_exception_immune.h"
 
 #define LOG_MODULE "utils_checkpoint"
+
+#include <stddef.h>  /* for NULL */
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for checkpoint module */
+static nimcp_health_agent_t* g_checkpoint_health_agent = NULL;
+
+/**
+ * @brief Set health agent for checkpoint heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void checkpoint_set_health_agent(nimcp_health_agent_t* agent) {
+    g_checkpoint_health_agent = agent;
+}
+
+/** @brief Send heartbeat from checkpoint module */
+static inline void checkpoint_heartbeat(const char* operation, float progress) {
+    if (g_checkpoint_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_checkpoint_health_agent, operation, progress);
+    }
+}
+
 #include "plasticity/adaptive/nimcp_adaptive.h"
 
 #include <stdio.h>

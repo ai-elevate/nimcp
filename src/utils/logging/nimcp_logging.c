@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_logging.c - Enhanced Logging System Implementation
 //=============================================================================
@@ -108,6 +109,34 @@ extern void* unified_mem_write(unified_mem_handle_t handle);
 //=============================================================================
 
 #define LOG_MODULE_NAME "logging"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for logging module */
+static nimcp_health_agent_t* g_logging_health_agent = NULL;
+
+/**
+ * @brief Set health agent for logging heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void logging_set_health_agent(nimcp_health_agent_t* agent) {
+    g_logging_health_agent = agent;
+}
+
+/** @brief Send heartbeat from logging module */
+static inline void logging_heartbeat(const char* operation, float progress) {
+    if (g_logging_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_logging_health_agent, operation, progress);
+    }
+}
+
 #define DEFAULT_LOG_PATH "/var/log/nimcp/nimcp.log"
 #define MAX_MODULE_FILTERS 64
 #define CONTEXT_KEY_SIZE 32

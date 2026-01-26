@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_network_builder.c - Network Builder Implementation
 //=============================================================================
@@ -20,6 +21,34 @@
 #include <pthread.h>
 
 #define LOG_MODULE "network_builder"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for network_builder module */
+static nimcp_health_agent_t* g_network_builder_health_agent = NULL;
+
+/**
+ * @brief Set health agent for network_builder heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void network_builder_set_health_agent(nimcp_health_agent_t* agent) {
+    g_network_builder_health_agent = agent;
+}
+
+/** @brief Send heartbeat from network_builder module */
+static inline void network_builder_heartbeat(const char* operation, float progress) {
+    if (g_network_builder_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_network_builder_health_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Bio-Async Module Context (Thread-Safe Initialization)

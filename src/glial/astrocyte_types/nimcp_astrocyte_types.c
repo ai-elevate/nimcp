@@ -24,8 +24,37 @@
 #include <math.h>
 #include <string.h>
 
+#include <stddef.h>  /* for NULL */
 // Logging module identifier
 #define LOG_MODULE "ASTROCYTE_TYPES"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for astrocyte_types module */
+static nimcp_health_agent_t* g_astrocyte_types_health_agent = NULL;
+
+/**
+ * @brief Set health agent for astrocyte_types heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void astrocyte_types_set_health_agent(nimcp_health_agent_t* agent) {
+    g_astrocyte_types_health_agent = agent;
+}
+
+/** @brief Send heartbeat from astrocyte_types module */
+static inline void astrocyte_types_heartbeat(const char* operation, float progress) {
+    if (g_astrocyte_types_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_astrocyte_types_health_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Constants for Type-Specific Modulation

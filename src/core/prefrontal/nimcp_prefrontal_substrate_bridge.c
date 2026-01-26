@@ -9,86 +9,33 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
-struct prefrontal_substrate_bridge {
-    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
-    void* prefrontal;
-    neural_substrate_t* substrate;
-    prefrontal_substrate_config_t config;
-    prefrontal_substrate_effects_t effects;
-    bio_router_t* router;
-    bool bio_async_connected;
-    uint64_t update_count;
-};
+#include <stddef.h>  /* for NULL */
 
-static float clamp_f(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
 
-prefrontal_substrate_config_t prefrontal_substrate_default_config(void) {
-    prefrontal_substrate_config_t cfg = { .enable_atp_modulation = true, .enable_fatigue_modulation = true,
-        .enable_bio_async = false, .atp_sensitivity = 1.2f, .fatigue_sensitivity = 1.0f, .min_capacity = 0.2f };
-    return cfg;
+/** Global health agent for prefrontal_substrate_bridge module */
+static nimcp_health_agent_t* g_prefrontal_substrate_bridge_health_agent = NULL;
+
+/**
+ * @brief Set health agent for prefrontal_substrate_bridge heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void prefrontal_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+    g_prefrontal_substrate_bridge_health_agent = agent;
 }
 
-prefrontal_substrate_bridge_t* prefrontal_substrate_bridge_create(void* prefrontal, neural_substrate_t* substrate, const prefrontal_substrate_config_t* config) {
-    if (!substrate) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
-
-        return NULL;
-
+/** @brief Send heartbeat from prefrontal_substrate_bridge module */
+static inline void prefrontal_substrate_bridge_heartbeat(const char* operation, float progress) {
+    if (g_prefrontal_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_prefrontal_substrate_bridge_health_agent, operation, progress);
     }
-    prefrontal_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(prefrontal_substrate_bridge_t));
-    if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-        return NULL;
-
-    }
-    bridge->prefrontal = prefrontal;
-    bridge->substrate = substrate;
-    bridge->config = config ? *config : prefrontal_substrate_default_config();
-    bridge->effects.executive_function = 1.0f;
-    bridge->effects.working_memory = 1.0f;
-    bridge->effects.inhibitory_control = 1.0f;
-    bridge->effects.planning_capacity = 1.0f;
-    bridge->effects.overall_capacity = 1.0f;
-    return bridge;
 }
 
-void prefrontal_substrate_bridge_destroy(prefrontal_substrate_bridge_t* bridge) { if (bridge) nimcp_free(bridge); }
-
-int prefrontal_substrate_bridge_update(prefrontal_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->substrate) return -1;
-    substrate_metabolic_state_t metabolic;
-    if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
-    float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
-    /* PFC is most sensitive to ATP depletion */
-    if (bridge->config.enable_atp_modulation) {
-        bridge->effects.executive_function = clamp_f(atp * bridge->config.atp_sensitivity, min_cap, 1.0f);
-        bridge->effects.working_memory = clamp_f(atp * 1.15f * bridge->config.atp_sensitivity, min_cap, 1.0f);
-    }
-    /* Fatigue impairs inhibition and planning first */
-    if (bridge->config.enable_fatigue_modulation) {
-        bridge->effects.inhibitory_control = clamp_f(metabolic_cap * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-        bridge->effects.planning_capacity = clamp_f(metabolic_cap * 0.85f * bridge->config.fatigue_sensitivity, min_cap, 1.0f);
-    }
-    bridge->effects.overall_capacity = (bridge->effects.executive_function + bridge->effects.working_memory +
-                                        bridge->effects.inhibitory_control + bridge->effects.planning_capacity) / 4.0f;
-    bridge->update_count++;
-    return 0;
-}
-
-int prefrontal_substrate_bridge_get_effects(const prefrontal_substrate_bridge_t* bridge, prefrontal_substrate_effects_t* effects) {
-    if (!bridge || !effects) return -1;
-    *effects = bridge->effects;
-    return 0;
-}
-
-int prefrontal_substrate_bridge_apply_effects(prefrontal_substrate_bridge_t* bridge) { return bridge ? 0 : -1; }
-
-int prefrontal_substrate_bridge_register_bio_async(prefrontal_substrate_bridge_t* bridge, bio_router_t* router) {
-    if (!bridge) return -1;
-    bridge->router = router;
-    bridge->bio_async_connected = (router != NULL);
-    return 0;
-}
+//=============================================================================

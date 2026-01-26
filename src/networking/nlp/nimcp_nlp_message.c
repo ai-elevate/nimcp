@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_nlp_message.c - Neural Link Protocol Message Handling
 //=============================================================================
@@ -49,6 +50,34 @@
 #include <time.h>
 #include <arpa/inet.h>
 #include <endian.h>
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for nlp_message module */
+static nimcp_health_agent_t* g_nlp_message_health_agent = NULL;
+
+/**
+ * @brief Set health agent for nlp_message heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void nlp_message_set_health_agent(nimcp_health_agent_t* agent) {
+    g_nlp_message_health_agent = agent;
+}
+
+/** @brief Send heartbeat from nlp_message module */
+static inline void nlp_message_heartbeat(const char* operation, float progress) {
+    if (g_nlp_message_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_nlp_message_health_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Constants and Configuration

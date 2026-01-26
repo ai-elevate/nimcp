@@ -30,6 +30,35 @@
 
 #define LOG_MODULE "BRAIN_STATE"
 
+//=============================================================================
+#include <stddef.h>  /* for NULL */
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for brain_state module */
+static nimcp_health_agent_t* g_brain_state_health_agent = NULL;
+
+/**
+ * @brief Set health agent for brain_state heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void brain_state_set_health_agent(nimcp_health_agent_t* agent) {
+    g_brain_state_health_agent = agent;
+}
+
+/** @brief Send heartbeat from brain_state module */
+static inline void brain_state_heartbeat(const char* operation, float progress) {
+    if (g_brain_state_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_brain_state_health_agent, operation, progress);
+    }
+}
+
+
 // NOTE: Implementation functions are currently in nimcp_brain.c
 // External declarations for linking
 extern adaptive_network_t brain_get_network(brain_t brain);

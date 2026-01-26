@@ -20,6 +20,35 @@
 
 #define LOG_MODULE "API.COGNITIVE"
 
+#include <stddef.h>  /* for NULL */
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for cognitive_api module */
+static nimcp_health_agent_t* g_cognitive_api_health_agent = NULL;
+
+/**
+ * @brief Set health agent for cognitive_api heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void cognitive_api_set_health_agent(nimcp_health_agent_t* agent) {
+    g_cognitive_api_health_agent = agent;
+}
+
+/** @brief Send heartbeat from cognitive_api module */
+static inline void cognitive_api_heartbeat(const char* operation, float progress) {
+    if (g_cognitive_api_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_cognitive_api_health_agent, operation, progress);
+    }
+}
+
+
 // External declarations from nimcp.c
 extern void set_error(const char* fmt, ...);
 

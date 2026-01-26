@@ -18,6 +18,35 @@
 #include <math.h>
 #include <string.h>
 
+#include <stddef.h>  /* for NULL */
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for circadian module */
+static nimcp_health_agent_t* g_circadian_health_agent = NULL;
+
+/**
+ * @brief Set health agent for circadian heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void circadian_set_health_agent(nimcp_health_agent_t* agent) {
+    g_circadian_health_agent = agent;
+}
+
+/** @brief Send heartbeat from circadian module */
+static inline void circadian_heartbeat(const char* operation, float progress) {
+    if (g_circadian_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_circadian_health_agent, operation, progress);
+    }
+}
+
+
 /* ============================================================================
  * Constants - Phase Timing
  * ============================================================================ */

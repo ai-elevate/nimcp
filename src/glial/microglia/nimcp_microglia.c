@@ -37,6 +37,7 @@
 #include <math.h>
 #include <float.h>
 
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
 //=============================================================================
@@ -50,7 +51,7 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
 /* Global health agent for microglia operations */
 static nimcp_health_agent_t* g_microglia_health_agent = NULL;
 
-void microglia_set_health_agent(nimcp_health_agent_t* agent) {
+static void microglia_set_health_agent(nimcp_health_agent_t* agent) {
     g_microglia_health_agent = agent;
 }
 

@@ -27,6 +27,7 @@
 #include <math.h>
 #include <float.h>
 
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // Health Agent Forward Declarations (Phase 8: Heartbeat for Long Operations)
 // Avoid including full header to prevent type conflicts
@@ -44,7 +45,7 @@ static nimcp_health_agent_t* g_cnn_health_agent = NULL;
  * @brief Set health agent for CNN training heartbeat monitoring
  * @param agent Health agent to use for heartbeats
  */
-void cnn_trainer_set_health_agent(nimcp_health_agent_t* agent) {
+static void cnn_trainer_set_health_agent(nimcp_health_agent_t* agent) {
     g_cnn_health_agent = agent;
 }
 

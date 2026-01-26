@@ -25,6 +25,35 @@
 /* Try to include nimcp_memory if available, otherwise use stdlib */
 #ifdef NIMCP_HAS_MEMORY_H
 #include "utils/memory/nimcp_memory.h"
+
+#include <stddef.h>  /* for NULL */
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for utils_bio_async_bridge module */
+static nimcp_health_agent_t* g_utils_bio_async_bridge_health_agent = NULL;
+
+/**
+ * @brief Set health agent for utils_bio_async_bridge heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void utils_bio_async_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+    g_utils_bio_async_bridge_health_agent = agent;
+}
+
+/** @brief Send heartbeat from utils_bio_async_bridge module */
+static inline void utils_bio_async_bridge_heartbeat(const char* operation, float progress) {
+    if (g_utils_bio_async_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_utils_bio_async_bridge_health_agent, operation, progress);
+    }
+}
+
 #define UTILS_MALLOC(size) nimcp_malloc(size)
 #define UTILS_CALLOC(n, size) nimcp_calloc(n, size)
 #define UTILS_FREE(ptr) nimcp_free(ptr)

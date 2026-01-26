@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_neuralnet_homeostasis.c - Homeostatic Plasticity Mechanisms
 //=============================================================================
@@ -12,6 +13,34 @@
 #include <string.h>
 
 #define LOG_MODULE "neuralnet_homeostasis"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for neuralnet_homeostasis module */
+static nimcp_health_agent_t* g_neuralnet_homeostasis_health_agent = NULL;
+
+/**
+ * @brief Set health agent for neuralnet_homeostasis heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void neuralnet_homeostasis_set_health_agent(nimcp_health_agent_t* agent) {
+    g_neuralnet_homeostasis_health_agent = agent;
+}
+
+/** @brief Send heartbeat from neuralnet_homeostasis module */
+static inline void neuralnet_homeostasis_heartbeat(const char* operation, float progress) {
+    if (g_neuralnet_homeostasis_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_neuralnet_homeostasis_health_agent, operation, progress);
+    }
+}
+
 
 // Constants
 #define CALCIUM_DECAY_RATE 0.1f

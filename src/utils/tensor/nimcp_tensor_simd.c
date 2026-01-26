@@ -20,6 +20,35 @@
 #define LOG_MODULE "TENSOR_SIMD"
 #define LOG_MODULE_ID 0x0902
 
+#include <stddef.h>  /* for NULL */
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for tensor_simd module */
+static nimcp_health_agent_t* g_tensor_simd_health_agent = NULL;
+
+/**
+ * @brief Set health agent for tensor_simd heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void tensor_simd_set_health_agent(nimcp_health_agent_t* agent) {
+    g_tensor_simd_health_agent = agent;
+}
+
+/** @brief Send heartbeat from tensor_simd module */
+static inline void tensor_simd_heartbeat(const char* operation, float progress) {
+    if (g_tensor_simd_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_tensor_simd_health_agent, operation, progress);
+    }
+}
+
+
 #include "utils/tensor/nimcp_tensor_simd.h"
 #include "gpu/execution/nimcp_simd_detect.h"
 #include "utils/logging/nimcp_logging.h"

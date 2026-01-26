@@ -38,6 +38,35 @@
 #include <stdio.h>
 #include <time.h>
 
+#include <stddef.h>  /* for NULL */
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for sbom module */
+static nimcp_health_agent_t* g_sbom_health_agent = NULL;
+
+/**
+ * @brief Set health agent for sbom heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void sbom_set_health_agent(nimcp_health_agent_t* agent) {
+    g_sbom_health_agent = agent;
+}
+
+/** @brief Send heartbeat from sbom module */
+static inline void sbom_heartbeat(const char* operation, float progress) {
+    if (g_sbom_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_sbom_health_agent, operation, progress);
+    }
+}
+
+
 /* Supply chain structure definition */
 struct nimcp_supply_chain {
     uint32_t magic;

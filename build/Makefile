@@ -1537,6 +1537,19 @@ unit_core_brain_test_brain_coverage_boost/fast:
 .PHONY : unit_core_brain_test_brain_coverage_boost/fast
 
 #=============================================================================
+# Target rules for targets named unit_core_brain_test_brain_cycle_coordinator
+
+# Build rule for target.
+unit_core_brain_test_brain_cycle_coordinator: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_core_brain_test_brain_cycle_coordinator
+.PHONY : unit_core_brain_test_brain_cycle_coordinator
+
+# fast build rule for target.
+unit_core_brain_test_brain_cycle_coordinator/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_core_brain_test_brain_cycle_coordinator.dir/build.make test/CMakeFiles/unit_core_brain_test_brain_cycle_coordinator.dir/build
+.PHONY : unit_core_brain_test_brain_cycle_coordinator/fast
+
+#=============================================================================
 # Target rules for targets named unit_core_brain_test_brain_edge_cases
 
 # Build rule for target.
@@ -9155,6 +9168,19 @@ e2e_test_gpu_acceleration/fast:
 .PHONY : e2e_test_gpu_acceleration/fast
 
 #=============================================================================
+# Target rules for targets named e2e_brain_cycle_coordinator
+
+# Build rule for target.
+e2e_brain_cycle_coordinator: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_brain_cycle_coordinator
+.PHONY : e2e_brain_cycle_coordinator
+
+# fast build rule for target.
+e2e_brain_cycle_coordinator/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/core/brain/CMakeFiles/e2e_brain_cycle_coordinator.dir/build.make test/e2e/core/brain/CMakeFiles/e2e_brain_cycle_coordinator.dir/build
+.PHONY : e2e_brain_cycle_coordinator/fast
+
+#=============================================================================
 # Target rules for targets named test_language_lateralization_e2e
 
 # Build rule for target.
@@ -16084,6 +16110,19 @@ integration_kg_hierarchy_graph_algorithms_test/fast:
 .PHONY : integration_kg_hierarchy_graph_algorithms_test/fast
 
 #=============================================================================
+# Target rules for targets named integration_brain_cycle_coordinator_test
+
+# Build rule for target.
+integration_brain_cycle_coordinator_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_brain_cycle_coordinator_test
+.PHONY : integration_brain_cycle_coordinator_test
+
+# fast build rule for target.
+integration_brain_cycle_coordinator_test/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/core/brain/CMakeFiles/integration_brain_cycle_coordinator_test.dir/build.make test/integration/core/brain/CMakeFiles/integration_brain_cycle_coordinator_test.dir/build
+.PHONY : integration_brain_cycle_coordinator_test/fast
+
+#=============================================================================
 # Target rules for targets named integration_core_brain_subcortical_test
 
 # Build rule for target.
@@ -17122,6 +17161,19 @@ regression_core_brain_kg_hierarchy_graph_algorithms: cmake_check_build_system
 regression_core_brain_kg_hierarchy_graph_algorithms/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/core/brain/CMakeFiles/regression_core_brain_kg_hierarchy_graph_algorithms.dir/build.make test/regression/core/brain/CMakeFiles/regression_core_brain_kg_hierarchy_graph_algorithms.dir/build
 .PHONY : regression_core_brain_kg_hierarchy_graph_algorithms/fast
+
+#=============================================================================
+# Target rules for targets named regression_core_brain_cycle_coordinator
+
+# Build rule for target.
+regression_core_brain_cycle_coordinator: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_core_brain_cycle_coordinator
+.PHONY : regression_core_brain_cycle_coordinator
+
+# fast build rule for target.
+regression_core_brain_cycle_coordinator/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/core/brain/CMakeFiles/regression_core_brain_cycle_coordinator.dir/build.make test/regression/core/brain/CMakeFiles/regression_core_brain_cycle_coordinator.dir/build
+.PHONY : regression_core_brain_cycle_coordinator/fast
 
 #=============================================================================
 # Target rules for targets named regression_core_brain_subcortical_test
@@ -33602,6 +33654,7 @@ help:
 	@echo "... cow_snapshot_learning"
 	@echo "... distributed_cow_demo"
 	@echo "... e2e_attention_exception"
+	@echo "... e2e_brain_cycle_coordinator"
 	@echo "... e2e_cognitive_immune_tick"
 	@echo "... e2e_cognitive_immune_tick_enhanced"
 	@echo "... e2e_cognitive_memory_pr_exception"
@@ -33863,6 +33916,7 @@ help:
 	@echo "... integration_biology_neurovascular_test_neurovascular_integration"
 	@echo "... integration_brain_bio_async_test"
 	@echo "... integration_brain_coordinator_test"
+	@echo "... integration_brain_cycle_coordinator_test"
 	@echo "... integration_brain_persistence_test"
 	@echo "... integration_brain_regions_test_neuromodulatory_bio_async_integration"
 	@echo "... integration_brain_regions_test_neuromodulatory_integration"
@@ -34439,6 +34493,7 @@ help:
 	@echo "... regression_contralateral_mapping_regression"
 	@echo "... regression_core_axon_performance"
 	@echo "... regression_core_brain_coordinator_regression"
+	@echo "... regression_core_brain_cycle_coordinator"
 	@echo "... regression_core_brain_distributed_cow_regression"
 	@echo "... regression_core_brain_factory_test_brain_init_hypothalamus"
 	@echo "... regression_core_brain_factory_test_factory_regression"
@@ -35410,6 +35465,7 @@ help:
 	@echo "... unit_core_brain_test_brain_comprehensive"
 	@echo "... unit_core_brain_test_brain_comprehensive_coverage"
 	@echo "... unit_core_brain_test_brain_coverage_boost"
+	@echo "... unit_core_brain_test_brain_cycle_coordinator"
 	@echo "... unit_core_brain_test_brain_edge_cases"
 	@echo "... unit_core_brain_test_brain_error_paths"
 	@echo "... unit_core_brain_test_brain_exhaustive_scenarios"

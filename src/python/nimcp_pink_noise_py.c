@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_pink_noise_py.c - Python Bindings for Pink Noise Generator
 //=============================================================================
@@ -24,6 +25,34 @@
 #include "common/nimcp_module.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for pink_noise_py module */
+static nimcp_health_agent_t* g_pink_noise_py_health_agent = NULL;
+
+/**
+ * @brief Set health agent for pink_noise_py heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void pink_noise_py_set_health_agent(nimcp_health_agent_t* agent) {
+    g_pink_noise_py_health_agent = agent;
+}
+
+/** @brief Send heartbeat from pink_noise_py module */
+static inline void pink_noise_py_heartbeat(const char* operation, float progress) {
+    if (g_pink_noise_py_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pink_noise_py_health_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // PinkNoiseGenerator Type

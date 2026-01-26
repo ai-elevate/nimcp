@@ -41,6 +41,7 @@
 
 #define LOG_MODULE "ADV_TRAINING"
 
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // Health Agent Integration (Phase 8: Heartbeat for Long Operations)
 //=============================================================================
@@ -57,7 +58,7 @@ static nimcp_health_agent_t* g_adv_health_agent = NULL;
  * @brief Set health agent for adversarial training heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-void adv_set_health_agent(nimcp_health_agent_t* agent) {
+static void adv_set_health_agent(nimcp_health_agent_t* agent) {
     g_adv_health_agent = agent;
 }
 

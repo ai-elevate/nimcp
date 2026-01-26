@@ -28,6 +28,7 @@
 
 #define LOG_MODULE "HPO"
 
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // Health Agent Integration (Phase 8: Heartbeat for Long Operations)
 //=============================================================================
@@ -44,7 +45,7 @@ static nimcp_health_agent_t* g_hpo_health_agent = NULL;
  * @brief Set health agent for HPO heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-void hpo_set_health_agent(nimcp_health_agent_t* agent) {
+static void hpo_set_health_agent(nimcp_health_agent_t* agent) {
     g_hpo_health_agent = agent;
 }
 

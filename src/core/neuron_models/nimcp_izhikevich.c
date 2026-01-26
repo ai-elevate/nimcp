@@ -1,3 +1,4 @@
+#include <stddef.h>  /* for NULL */
 //=============================================================================
 // nimcp_izhikevich.c - Izhikevich Neuron Model Implementation
 //=============================================================================
@@ -51,6 +52,34 @@
 #include <pthread.h>
 
 #define LOG_MODULE "izhikevich"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: System-Wide Health Integration)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for izhikevich module */
+static nimcp_health_agent_t* g_izhikevich_health_agent = NULL;
+
+/**
+ * @brief Set health agent for izhikevich heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+static void izhikevich_set_health_agent(nimcp_health_agent_t* agent) {
+    g_izhikevich_health_agent = agent;
+}
+
+/** @brief Send heartbeat from izhikevich module */
+static inline void izhikevich_heartbeat(const char* operation, float progress) {
+    if (g_izhikevich_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_izhikevich_health_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Bio-Async Module Context (Thread-Safe Initialization)
