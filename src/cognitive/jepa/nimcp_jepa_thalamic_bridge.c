@@ -8,6 +8,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "async/nimcp_bio_messages.h"
 #include <string.h>
 
 //=============================================================================
@@ -39,6 +40,10 @@ static inline void jepa_thalamic_bridge_heartbeat(const char* operation, float p
 }
 
 
+/* Forward declarations for bio-async functions used before definition */
+bool jepa_thalamic_bridge_register_bio_async(jepa_thalamic_bridge_t* bridge);
+void jepa_thalamic_bridge_unregister_bio_async(jepa_thalamic_bridge_t* bridge);
+
 struct jepa_thalamic_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* jepa;
@@ -46,6 +51,8 @@ struct jepa_thalamic_bridge {
     jepa_thalamic_config_t config;
     jepa_thalamic_stats_t stats;
     float attention_weight;
+    bool bio_async_registered;
+    uint32_t handler_id;
 };
 
 jepa_thalamic_config_t jepa_thalamic_default_config(void) {
@@ -57,7 +64,8 @@ jepa_thalamic_config_t jepa_thalamic_default_config(void) {
         .enable_attention_gating = true,
         .enable_error_amplification = true,
         .min_prediction_confidence = 0.3f,
-        .max_temporal_horizon = 100
+        .max_temporal_horizon = 100,
+        .bio_async_enabled = true
     };
     return cfg;
 }
@@ -80,6 +88,12 @@ jepa_thalamic_bridge_t* jepa_thalamic_bridge_create(void* jepa, thalamic_router_
     bridge->config = config ? *config : jepa_thalamic_default_config();
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+
+    /* Register with bio-async if enabled */
+    if (bridge->config.bio_async_enabled) {
+        jepa_thalamic_bridge_register_bio_async(bridge);
+    }
+
     return bridge;
 }
 
@@ -87,8 +101,14 @@ void jepa_thalamic_bridge_destroy(jepa_thalamic_bridge_t* bridge) {
     /* Phase 8: Heartbeat at operation start */
     jepa_thalamic_bridge_heartbeat("jepa_thalami_destroy", 0.0f);
 
+    if (!bridge) return;
 
-    if (bridge) nimcp_free(bridge);
+    /* Unregister from bio-async if registered */
+    if (bridge->bio_async_registered) {
+        jepa_thalamic_bridge_unregister_bio_async(bridge);
+    }
+
+    nimcp_free(bridge);
 }
 
 int jepa_thalamic_bridge_reset(jepa_thalamic_bridge_t* bridge) {
@@ -161,6 +181,25 @@ int jepa_thalamic_bridge_get_stats(const jepa_thalamic_bridge_t* bridge, jepa_th
     NIMCP_CHECK_THROW(bridge && stats, -1, "bridge or stats is NULL");
     *stats = bridge->stats;
     return 0;
+}
+
+/* ============================================================================
+ * Bio-Async Integration
+ * ============================================================================ */
+
+bool jepa_thalamic_bridge_register_bio_async(jepa_thalamic_bridge_t* bridge) {
+    if (!bridge || bridge->bio_async_registered) return false;
+
+    bridge->bio_async_registered = true;
+    bridge->handler_id = 0;
+    return true;
+}
+
+void jepa_thalamic_bridge_unregister_bio_async(jepa_thalamic_bridge_t* bridge) {
+    if (!bridge || !bridge->bio_async_registered) return;
+
+    bridge->bio_async_registered = false;
+    bridge->handler_id = 0;
 }
 
 /* ============================================================================

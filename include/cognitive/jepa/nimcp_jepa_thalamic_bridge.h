@@ -46,6 +46,7 @@ typedef struct {
     bool enable_error_amplification;
     float min_prediction_confidence;
     uint32_t max_temporal_horizon;
+    bool bio_async_enabled;
 } jepa_thalamic_config_t;
 
 typedef struct jepa_thalamic_bridge jepa_thalamic_bridge_t;
@@ -67,6 +68,10 @@ typedef struct {
 } jepa_thalamic_stats_t;
 
 int jepa_thalamic_bridge_get_stats(const jepa_thalamic_bridge_t* bridge, jepa_thalamic_stats_t* stats);
+
+/* Bio-async integration */
+bool jepa_thalamic_bridge_register_bio_async(jepa_thalamic_bridge_t* bridge);
+void jepa_thalamic_bridge_unregister_bio_async(jepa_thalamic_bridge_t* bridge);
 
 #ifdef __cplusplus
 }
