@@ -219,3 +219,7 @@ set_tests_properties(e2e_fault_tolerance_test_heartbeat_B13_knowledge_mentalheal
 # B14: cognitive/curiosity + cognitive/collective_cognition + cognitive/logic
 add_e2e_fault_tolerance_test(test_heartbeat_B14_curiosity_collective_logic_e2e)
 set_tests_properties(e2e_fault_tolerance_test_heartbeat_B14_curiosity_collective_logic_e2e PROPERTIES TIMEOUT 300)
+
+# B15: cognitive/theory_of_mind + cognitive/symbolic_logic + cognitive/self_model + cognitive/predictive
+add_e2e_fault_tolerance_test(test_heartbeat_B15_tom_symboliclogic_selfmodel_predictive_e2e)
+set_tests_properties(e2e_fault_tolerance_test_heartbeat_B15_tom_symboliclogic_selfmodel_predictive_e2e PROPERTIES TIMEOUT 300)

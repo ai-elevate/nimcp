@@ -567,6 +567,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_model/nimcp_self_model.c  # Phase 12: Explicit Self-Model
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_model/nimcp_self_model_snn_bridge.c  # Self-model-SNN integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_model/nimcp_self_model_plasticity_bridge.c  # Self-model-Plasticity integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_model/nimcp_self_model_sleep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/personality/nimcp_personality.c  # Phase 12: Personality, Gender, and Sexual Identity
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/grief/nimcp_grief_and_loss.c  # Phase E1: Grief, Loss, and Death Understanding
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/joy/nimcp_joy_euphoria.c  # Phase E2: Joy, Euphoria, and Value-Aligned Success
@@ -578,6 +579,9 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/theory_of_mind/nimcp_theory_of_mind.c  # Phase 10.6: Theory of Mind
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/theory_of_mind/nimcp_tom_snn_bridge.c  # Theory of Mind-SNN integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/theory_of_mind/nimcp_tom_plasticity_bridge.c  # Theory of Mind-Plasticity integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/theory_of_mind/nimcp_theory_of_mind_sleep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/theory_of_mind/nimcp_theory_of_mind_thalamic_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/theory_of_mind/nimcp_theory_of_mind_substrate_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_self_awareness_coordinator.c  # Self-Awareness Unification: Orchestrates introspection, self-model, autobio, ToM
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_self_awareness_feedback.c    # Self-Awareness Feedback: Policies, history, analysis
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/integration/nimcp_cognitive_integration_hub.c  # Cognitive Integration Hub: Module registration, event pub/sub, queries
@@ -967,6 +971,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/symbolic_logic/nimcp_symbolic_logic_hub_bridge.c  # Symbolic logic - Cognitive Hub integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/symbolic_logic/nimcp_symbolic_logic_safety.c  # LGSS A1: Safety KB
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/symbolic_logic/nimcp_symbolic_logic_lgss_loader.c  # LGSS A1: JSON loader
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/symbolic_logic/bridges/nimcp_symbolic_logic_plasticity_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/wellbeing/nimcp_wellbeing_fep_bridge.c
     # Core FEP Bridges
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/cortical_columns/nimcp_cortical_column_fep_bridge.c

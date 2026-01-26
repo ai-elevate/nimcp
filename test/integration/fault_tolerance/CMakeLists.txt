@@ -414,3 +414,28 @@ set_tests_properties(integration_heartbeat_B14_curiosity_collective_logic PROPER
     LABELS "integration;fault_tolerance;heartbeat;B14;curiosity_collective_logic"
     TIMEOUT 180
 )
+
+# B15: cognitive/theory_of_mind + cognitive/symbolic_logic + cognitive/self_model + cognitive/predictive
+add_executable(integration_heartbeat_B15_tom_symboliclogic_selfmodel_predictive
+    test_heartbeat_B15_tom_symboliclogic_selfmodel_predictive_integration.cpp
+)
+
+target_link_libraries(integration_heartbeat_B15_tom_symboliclogic_selfmodel_predictive
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        pthread
+)
+
+target_include_directories(integration_heartbeat_B15_tom_symboliclogic_selfmodel_predictive
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME integration_heartbeat_B15_tom_symboliclogic_selfmodel_predictive
+         COMMAND integration_heartbeat_B15_tom_symboliclogic_selfmodel_predictive)
+set_tests_properties(integration_heartbeat_B15_tom_symboliclogic_selfmodel_predictive PROPERTIES
+    LABELS "integration;fault_tolerance;heartbeat;B15;tom_symboliclogic_selfmodel_predictive"
+    TIMEOUT 180
+)

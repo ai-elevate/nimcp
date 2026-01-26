@@ -499,4 +499,33 @@ gtest_discover_tests(unit_heartbeat_B14_curiosity_collective_logic
         TIMEOUT 120
 )
 
+# B15: cognitive/theory_of_mind + cognitive/symbolic_logic + cognitive/self_model + cognitive/predictive
+add_executable(unit_heartbeat_B15_tom_symboliclogic_selfmodel_predictive
+    test_heartbeat_B15_tom_symboliclogic_selfmodel_predictive_functions.cpp
+)
+
+target_link_libraries(unit_heartbeat_B15_tom_symboliclogic_selfmodel_predictive
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        pthread
+)
+
+target_include_directories(unit_heartbeat_B15_tom_symboliclogic_selfmodel_predictive
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_heartbeat_B15_tom_symboliclogic_selfmodel_predictive PRIVATE cxx_std_17)
+target_compile_definitions(unit_heartbeat_B15_tom_symboliclogic_selfmodel_predictive PRIVATE NIMCP_TESTING)
+
+gtest_discover_tests(unit_heartbeat_B15_tom_symboliclogic_selfmodel_predictive
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;fault_tolerance;heartbeat;B15;tom_symboliclogic_selfmodel_predictive"
+        TIMEOUT 120
+)
+
 message(STATUS "Added fault tolerance unit tests")

@@ -470,4 +470,33 @@ gtest_discover_tests(regression_heartbeat_B14_curiosity_collective_logic
         TIMEOUT 180
 )
 
+# B15: cognitive/theory_of_mind + cognitive/symbolic_logic + cognitive/self_model + cognitive/predictive
+add_executable(regression_heartbeat_B15_tom_symboliclogic_selfmodel_predictive
+    test_heartbeat_B15_tom_symboliclogic_selfmodel_predictive_regression.cpp
+)
+
+target_link_libraries(regression_heartbeat_B15_tom_symboliclogic_selfmodel_predictive
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        pthread
+)
+
+target_include_directories(regression_heartbeat_B15_tom_symboliclogic_selfmodel_predictive
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_heartbeat_B15_tom_symboliclogic_selfmodel_predictive PRIVATE cxx_std_17)
+target_compile_definitions(regression_heartbeat_B15_tom_symboliclogic_selfmodel_predictive PRIVATE NIMCP_TESTING)
+
+gtest_discover_tests(regression_heartbeat_B15_tom_symboliclogic_selfmodel_predictive
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;fault_tolerance;heartbeat;B15;tom_symboliclogic_selfmodel_predictive"
+        TIMEOUT 180
+)
+
 message(STATUS "Added fault tolerance regression tests")
