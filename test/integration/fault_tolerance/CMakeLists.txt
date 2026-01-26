@@ -345,3 +345,26 @@ set_tests_properties(integration_heartbeat_B11_wellbeing_introspection PROPERTIE
     LABELS "integration;fault_tolerance;heartbeat;B11;wellbeing_introspection"
     TIMEOUT 180
 )
+
+# Heartbeat B12 Neuro-Symbolic/JEPA Integration Tests (Phase 8: Per-Batch Heartbeat Testing)
+add_executable(integration_heartbeat_B12_neuro_symbolic_jepa
+    test_heartbeat_B12_neuro_symbolic_jepa_integration.cpp
+)
+target_link_libraries(integration_heartbeat_B12_neuro_symbolic_jepa
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+)
+target_include_directories(integration_heartbeat_B12_neuro_symbolic_jepa
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME integration_heartbeat_B12_neuro_symbolic_jepa
+         COMMAND integration_heartbeat_B12_neuro_symbolic_jepa)
+set_tests_properties(integration_heartbeat_B12_neuro_symbolic_jepa PROPERTIES
+    LABELS "integration;fault_tolerance;heartbeat;B12;neuro_symbolic_jepa"
+    TIMEOUT 180
+)

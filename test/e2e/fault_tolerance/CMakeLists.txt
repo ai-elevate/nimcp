@@ -207,3 +207,7 @@ set_tests_properties(e2e_fault_tolerance_test_heartbeat_B10_fep_ft_e2e PROPERTIE
 # Heartbeat B11 Wellbeing/Introspection E2E Tests (Phase 8: Per-Batch Heartbeat Testing)
 add_e2e_fault_tolerance_test(test_heartbeat_B11_wellbeing_introspection_e2e)
 set_tests_properties(e2e_fault_tolerance_test_heartbeat_B11_wellbeing_introspection_e2e PROPERTIES TIMEOUT 300)
+
+# Heartbeat B12 Neuro-Symbolic/JEPA E2E Tests (Phase 8: Per-Batch Heartbeat Testing)
+add_e2e_fault_tolerance_test(test_heartbeat_B12_neuro_symbolic_jepa_e2e)
+set_tests_properties(e2e_fault_tolerance_test_heartbeat_B12_neuro_symbolic_jepa_e2e PROPERTIES TIMEOUT 300)
