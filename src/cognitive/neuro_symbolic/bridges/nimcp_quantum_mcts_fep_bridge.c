@@ -65,7 +65,10 @@ NIMCP_API void qmcts_fep_bridge_destroy(qmcts_fep_bridge_t* bridge) {
 NIMCP_API float qmcts_fep_bridge_expected_value(
     qmcts_fep_bridge_t* bridge, const float* state, uint32_t dim) {
 
-    if (!bridge || !state || dim == 0) return 0.0f;
+    if (!bridge || !state || dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qmcts_fep_bridge_expected_value: bridge, state, or dim is invalid");
+        return 0.0f;
+    }
 
     /* Compute expected value based on state energy */
     float sum = 0.0f;

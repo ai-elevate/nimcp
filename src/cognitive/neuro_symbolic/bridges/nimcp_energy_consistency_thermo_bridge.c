@@ -70,7 +70,10 @@ NIMCP_API void energy_thermo_bridge_destroy(energy_thermo_bridge_t* bridge) {
 NIMCP_API nimcp_error_t energy_thermo_bridge_track_reasoning_cost(
     energy_thermo_bridge_t* bridge, uint32_t operations) {
 
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_thermo_bridge_track_reasoning_cost: bridge is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     bridge->total_atp_consumed += operations * bridge->config.atp_per_operation;
     bridge->operations_tracked += operations;
@@ -81,7 +84,10 @@ NIMCP_API nimcp_error_t energy_thermo_bridge_track_reasoning_cost(
 NIMCP_API double energy_thermo_bridge_landauer_proof_cost(
     energy_thermo_bridge_t* bridge, uint32_t proof_bits) {
 
-    if (!bridge) return 0.0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_thermo_bridge_landauer_proof_cost: bridge is NULL");
+        return 0.0;
+    }
 
     /* Landauer limit: E >= k*T*ln(2) per bit erased */
     double min_energy_per_bit = bridge->config.landauer_constant *

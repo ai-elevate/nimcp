@@ -109,7 +109,10 @@ NIMCP_API void energy_fep_bridge_destroy(energy_fep_bridge_t* bridge) {
 }
 
 NIMCP_API nimcp_error_t energy_fep_bridge_reset(energy_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_reset: bridge is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     bridge->current_energy = 0.0f;
     bridge->smoothed_energy = 0.0f;
@@ -131,7 +134,10 @@ NIMCP_API nimcp_error_t energy_fep_bridge_reset(energy_fep_bridge_t* bridge) {
 NIMCP_API nimcp_error_t energy_fep_bridge_get_default_config(
     energy_fep_bridge_config_t* config) {
 
-    if (!config) return NIMCP_ERROR_INVALID_PARAM;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_get_default_config: config is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     memset(config, 0, sizeof(energy_fep_bridge_config_t));
 
@@ -155,7 +161,10 @@ NIMCP_API nimcp_error_t energy_fep_bridge_connect_checker(
     energy_fep_bridge_t* bridge,
     energy_consistency_checker_t* checker) {
 
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_connect_checker: bridge is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     bridge->base.system_a = checker;
     bridge->base.system_a_connected = (checker != NULL);
@@ -168,7 +177,10 @@ NIMCP_API nimcp_error_t energy_fep_bridge_connect_fep(
     energy_fep_bridge_t* bridge,
     void* fep) {
 
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_connect_fep: bridge is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     bridge->base.system_b = fep;
     bridge->base.system_b_connected = (fep != NULL);
@@ -180,7 +192,10 @@ NIMCP_API nimcp_error_t energy_fep_bridge_connect_fep(
 NIMCP_API nimcp_error_t energy_fep_bridge_disconnect_checker(
     energy_fep_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_disconnect_checker: bridge is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     bridge->base.system_a = NULL;
     bridge->base.system_a_connected = false;
@@ -192,7 +207,10 @@ NIMCP_API nimcp_error_t energy_fep_bridge_disconnect_checker(
 NIMCP_API nimcp_error_t energy_fep_bridge_disconnect_fep(
     energy_fep_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_disconnect_fep: bridge is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     bridge->base.system_b = NULL;
     bridge->base.system_b_connected = false;
@@ -209,7 +227,10 @@ NIMCP_API nimcp_error_t energy_fep_bridge_update(
     energy_fep_bridge_t* bridge,
     float consistency_energy) {
 
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_update: bridge is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     /* Compute derivative */
     bridge->energy_derivative = consistency_energy - bridge->current_energy;
@@ -276,7 +297,10 @@ NIMCP_API nimcp_error_t energy_fep_bridge_update_from_result(
     energy_fep_bridge_t* bridge,
     const energy_consistency_result_t* result) {
 
-    if (!bridge || !result) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_update_from_result: bridge or result is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     return energy_fep_bridge_update(bridge, result->total_energy);
 }
@@ -285,7 +309,10 @@ NIMCP_API float energy_fep_bridge_get_precision_weighted_energy(
     const energy_fep_bridge_t* bridge,
     const consistency_violation_t* violation) {
 
-    if (!bridge || !violation) return 0.0f;
+    if (!bridge || !violation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_get_precision_weighted_energy: bridge or violation is NULL");
+        return 0.0f;
+    }
 
     /* Weight violation energy by precision */
     return violation->energy_cost * bridge->estimated_precision;
@@ -299,7 +326,10 @@ NIMCP_API nimcp_error_t energy_fep_bridge_get_effects(
     const energy_fep_bridge_t* bridge,
     energy_fep_bridge_effects_t* effects) {
 
-    if (!bridge || !effects) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_get_effects: bridge or effects is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     memcpy(effects, &bridge->effects, sizeof(energy_fep_bridge_effects_t));
     return NIMCP_SUCCESS;
@@ -308,14 +338,20 @@ NIMCP_API nimcp_error_t energy_fep_bridge_get_effects(
 NIMCP_API float energy_fep_bridge_get_prediction_error(
     const energy_fep_bridge_t* bridge) {
 
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_get_prediction_error: bridge is NULL");
+        return 0.0f;
+    }
     return bridge->effects.prediction_error;
 }
 
 NIMCP_API float energy_fep_bridge_get_precision(
     const energy_fep_bridge_t* bridge) {
 
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_get_precision: bridge is NULL");
+        return 0.0f;
+    }
     return bridge->estimated_precision;
 }
 
@@ -329,6 +365,7 @@ NIMCP_API nimcp_error_t energy_fep_bridge_get_repair_action(
     int* action) {
 
     if (!bridge || !violation || !action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_get_repair_action: bridge, violation, or action is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -358,7 +395,10 @@ NIMCP_API nimcp_error_t energy_fep_bridge_get_repair_action(
 NIMCP_API nimcp_error_t energy_fep_bridge_register_bio_async(
     energy_fep_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_register_bio_async: bridge is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     /* Bio-async registration handled by bridge_base */
     bridge->base.bio_async_enabled = true;
@@ -368,7 +408,10 @@ NIMCP_API nimcp_error_t energy_fep_bridge_register_bio_async(
 NIMCP_API nimcp_error_t energy_fep_bridge_unregister_bio_async(
     energy_fep_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_fep_bridge_unregister_bio_async: bridge is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     bridge->base.bio_async_enabled = false;
     return NIMCP_SUCCESS;
