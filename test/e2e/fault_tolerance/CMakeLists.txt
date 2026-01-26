@@ -167,3 +167,7 @@ set_tests_properties(e2e_fault_tolerance_test_health_workflow_e2e PROPERTIES TIM
 # Heartbeat B01 Memory Core E2E Tests (Phase 8: Per-Batch Heartbeat Testing)
 add_e2e_fault_tolerance_test(test_heartbeat_B01_memory_core_e2e)
 set_tests_properties(e2e_fault_tolerance_test_heartbeat_B01_memory_core_e2e PROPERTIES TIMEOUT 300)
+
+# Heartbeat B02 Memory (non-core) E2E Tests (Phase 8: Per-Batch Heartbeat Testing)
+add_e2e_fault_tolerance_test(test_heartbeat_B02_memory_e2e)
+set_tests_properties(e2e_fault_tolerance_test_heartbeat_B02_memory_e2e PROPERTIES TIMEOUT 300)

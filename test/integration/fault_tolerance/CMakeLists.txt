@@ -115,3 +115,26 @@ set_tests_properties(integration_heartbeat_B01_memory_core PROPERTIES
     LABELS "integration;fault_tolerance;heartbeat;B01;memory_core"
     TIMEOUT 180
 )
+
+# Heartbeat B02 Memory (non-core) Integration Tests (Phase 8: Per-Batch Heartbeat Testing)
+add_executable(integration_heartbeat_B02_memory
+    test_heartbeat_B02_memory_integration.cpp
+)
+target_link_libraries(integration_heartbeat_B02_memory
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+)
+target_include_directories(integration_heartbeat_B02_memory
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME integration_heartbeat_B02_memory
+         COMMAND integration_heartbeat_B02_memory)
+set_tests_properties(integration_heartbeat_B02_memory PROPERTIES
+    LABELS "integration;fault_tolerance;heartbeat;B02;memory"
+    TIMEOUT 180
+)
