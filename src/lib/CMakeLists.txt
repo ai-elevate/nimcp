@@ -863,6 +863,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mirror_neurons/nimcp_mirror_neurons_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_salience_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_surprise_amplifier.c  # Society of Thought: Surprise amplification (Phase 1)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_model/nimcp_self_model_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/theory_of_mind/nimcp_tom_fep_bridge.c
     # Core Brain FEP Bridges
@@ -1245,9 +1246,11 @@ set(NIMCP_CORE_SOURCES
     # Knowledge SNN/Plasticity Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge_snn_bridge.c  # SNN integration for knowledge
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge_plasticity_bridge.c  # Plasticity integration for knowledge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/knowledge/nimcp_knowledge_sleep_bridge.c  # Sleep integration for knowledge
     # Mental Health SNN/Plasticity Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mental_health/nimcp_mental_health_snn_bridge.c  # SNN integration for mental health
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mental_health/nimcp_mental_health_plasticity_bridge.c  # Plasticity integration for mental health
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/mental_health/nimcp_mental_health_sleep_bridge.c  # Sleep integration for mental health
     # Parietal SNN/Plasticity Integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_parietal_snn_bridge.c  # SNN integration for parietal
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_parietal_plasticity_bridge.c  # Plasticity integration for parietal

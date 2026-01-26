@@ -368,3 +368,26 @@ set_tests_properties(integration_heartbeat_B12_neuro_symbolic_jepa PROPERTIES
     LABELS "integration;fault_tolerance;heartbeat;B12;neuro_symbolic_jepa"
     TIMEOUT 180
 )
+
+# Heartbeat B13 Knowledge/MentalHealth/Imagination Integration Tests (Phase 8: Per-Batch Heartbeat Testing)
+add_executable(integration_heartbeat_B13_knowledge_mentalhealth_imagination
+    test_heartbeat_B13_knowledge_mentalhealth_imagination_integration.cpp
+)
+target_link_libraries(integration_heartbeat_B13_knowledge_mentalhealth_imagination
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+)
+target_include_directories(integration_heartbeat_B13_knowledge_mentalhealth_imagination
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME integration_heartbeat_B13_knowledge_mentalhealth_imagination
+         COMMAND integration_heartbeat_B13_knowledge_mentalhealth_imagination)
+set_tests_properties(integration_heartbeat_B13_knowledge_mentalhealth_imagination PROPERTIES
+    LABELS "integration;fault_tolerance;heartbeat;B13;knowledge_mentalhealth_imagination"
+    TIMEOUT 180
+)

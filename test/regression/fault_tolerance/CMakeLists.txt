@@ -412,4 +412,33 @@ gtest_discover_tests(regression_heartbeat_B12_neuro_symbolic_jepa
         TIMEOUT 180
 )
 
+# Heartbeat B13 Knowledge/MentalHealth/Imagination Regression Tests (Phase 8: Per-Batch Heartbeat Testing)
+add_executable(regression_heartbeat_B13_knowledge_mentalhealth_imagination
+    test_heartbeat_B13_knowledge_mentalhealth_imagination_regression.cpp
+)
+
+target_include_directories(regression_heartbeat_B13_knowledge_mentalhealth_imagination PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
+)
+
+target_link_libraries(regression_heartbeat_B13_knowledge_mentalhealth_imagination
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_compile_features(regression_heartbeat_B13_knowledge_mentalhealth_imagination PRIVATE cxx_std_17)
+target_compile_definitions(regression_heartbeat_B13_knowledge_mentalhealth_imagination PRIVATE NIMCP_TESTING)
+
+gtest_discover_tests(regression_heartbeat_B13_knowledge_mentalhealth_imagination
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;fault_tolerance;heartbeat;B13;knowledge_mentalhealth_imagination"
+        TIMEOUT 180
+)
+
 message(STATUS "Added fault tolerance regression tests")
