@@ -199,3 +199,7 @@ set_tests_properties(e2e_fault_tolerance_test_heartbeat_B08_ethics_reasoning_e2e
 # Heartbeat B09 Omni/Recursive E2E Tests (Phase 8: Per-Batch Heartbeat Testing)
 add_e2e_fault_tolerance_test(test_heartbeat_B09_omni_recursive_e2e)
 set_tests_properties(e2e_fault_tolerance_test_heartbeat_B09_omni_recursive_e2e PROPERTIES TIMEOUT 300)
+
+# Heartbeat B10 FEP/FaultTolerance E2E Tests (Phase 8: Per-Batch Heartbeat Testing)
+add_e2e_fault_tolerance_test(test_heartbeat_B10_fep_ft_e2e)
+set_tests_properties(e2e_fault_tolerance_test_heartbeat_B10_fep_ft_e2e PROPERTIES TIMEOUT 300)

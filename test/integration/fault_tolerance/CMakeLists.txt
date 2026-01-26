@@ -299,3 +299,26 @@ set_tests_properties(integration_heartbeat_B09_omni_recursive PROPERTIES
     LABELS "integration;fault_tolerance;heartbeat;B09;omni_recursive"
     TIMEOUT 180
 )
+
+# Heartbeat B10 FEP/FaultTolerance Integration Tests (Phase 8: Per-Batch Heartbeat Testing)
+add_executable(integration_heartbeat_B10_fep_ft
+    test_heartbeat_B10_fep_ft_integration.cpp
+)
+target_link_libraries(integration_heartbeat_B10_fep_ft
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+)
+target_include_directories(integration_heartbeat_B10_fep_ft
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME integration_heartbeat_B10_fep_ft
+         COMMAND integration_heartbeat_B10_fep_ft)
+set_tests_properties(integration_heartbeat_B10_fep_ft PROPERTIES
+    LABELS "integration;fault_tolerance;heartbeat;B10;fep_ft"
+    TIMEOUT 180
+)
