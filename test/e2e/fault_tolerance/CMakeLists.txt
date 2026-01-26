@@ -175,3 +175,7 @@ set_tests_properties(e2e_fault_tolerance_test_heartbeat_B02_memory_e2e PROPERTIE
 # Heartbeat B03 Immune E2E Tests (Phase 8: Per-Batch Heartbeat Testing)
 add_e2e_fault_tolerance_test(test_heartbeat_B03_immune_e2e)
 set_tests_properties(e2e_fault_tolerance_test_heartbeat_B03_immune_e2e PROPERTIES TIMEOUT 300)
+
+# Heartbeat B04 Parietal E2E Tests (Phase 8: Per-Batch Heartbeat Testing)
+add_e2e_fault_tolerance_test(test_heartbeat_B04_parietal_e2e)
+set_tests_properties(e2e_fault_tolerance_test_heartbeat_B04_parietal_e2e PROPERTIES TIMEOUT 300)
