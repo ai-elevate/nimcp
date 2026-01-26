@@ -470,4 +470,33 @@ gtest_discover_tests(unit_heartbeat_B13_knowledge_mentalhealth_imagination
         TIMEOUT 120
 )
 
+# B14: cognitive/curiosity + cognitive/collective_cognition + cognitive/logic
+add_executable(unit_heartbeat_B14_curiosity_collective_logic
+    test_heartbeat_B14_curiosity_collective_logic_functions.cpp
+)
+
+target_include_directories(unit_heartbeat_B14_curiosity_collective_logic PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
+)
+
+target_link_libraries(unit_heartbeat_B14_curiosity_collective_logic
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_compile_features(unit_heartbeat_B14_curiosity_collective_logic PRIVATE cxx_std_17)
+target_compile_definitions(unit_heartbeat_B14_curiosity_collective_logic PRIVATE NIMCP_TESTING)
+
+gtest_discover_tests(unit_heartbeat_B14_curiosity_collective_logic
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;fault_tolerance;heartbeat;B14;curiosity_collective_logic"
+        TIMEOUT 120
+)
+
 message(STATUS "Added fault tolerance unit tests")

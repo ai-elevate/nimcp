@@ -441,4 +441,33 @@ gtest_discover_tests(regression_heartbeat_B13_knowledge_mentalhealth_imagination
         TIMEOUT 180
 )
 
+# B14: cognitive/curiosity + cognitive/collective_cognition + cognitive/logic
+add_executable(regression_heartbeat_B14_curiosity_collective_logic
+    test_heartbeat_B14_curiosity_collective_logic_regression.cpp
+)
+
+target_include_directories(regression_heartbeat_B14_curiosity_collective_logic PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
+)
+
+target_link_libraries(regression_heartbeat_B14_curiosity_collective_logic
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_compile_features(regression_heartbeat_B14_curiosity_collective_logic PRIVATE cxx_std_17)
+target_compile_definitions(regression_heartbeat_B14_curiosity_collective_logic PRIVATE NIMCP_TESTING)
+
+gtest_discover_tests(regression_heartbeat_B14_curiosity_collective_logic
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;fault_tolerance;heartbeat;B14;curiosity_collective_logic"
+        TIMEOUT 180
+)
+
 message(STATUS "Added fault tolerance regression tests")

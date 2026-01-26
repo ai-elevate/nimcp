@@ -391,3 +391,26 @@ set_tests_properties(integration_heartbeat_B13_knowledge_mentalhealth_imaginatio
     LABELS "integration;fault_tolerance;heartbeat;B13;knowledge_mentalhealth_imagination"
     TIMEOUT 180
 )
+
+# B14: cognitive/curiosity + cognitive/collective_cognition + cognitive/logic
+add_executable(integration_heartbeat_B14_curiosity_collective_logic
+    test_heartbeat_B14_curiosity_collective_logic_integration.cpp
+)
+target_link_libraries(integration_heartbeat_B14_curiosity_collective_logic
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+)
+target_include_directories(integration_heartbeat_B14_curiosity_collective_logic
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME integration_heartbeat_B14_curiosity_collective_logic
+         COMMAND integration_heartbeat_B14_curiosity_collective_logic)
+set_tests_properties(integration_heartbeat_B14_curiosity_collective_logic PROPERTIES
+    LABELS "integration;fault_tolerance;heartbeat;B14;curiosity_collective_logic"
+    TIMEOUT 180
+)
