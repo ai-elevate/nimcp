@@ -230,3 +230,26 @@ set_tests_properties(integration_heartbeat_B06_integration PROPERTIES
     LABELS "integration;fault_tolerance;heartbeat;B06;integration"
     TIMEOUT 180
 )
+
+# Heartbeat B07 Game Theory Integration Tests (Phase 8: Per-Batch Heartbeat Testing)
+add_executable(integration_heartbeat_B07_game_theory
+    test_heartbeat_B07_game_theory_integration.cpp
+)
+target_link_libraries(integration_heartbeat_B07_game_theory
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+)
+target_include_directories(integration_heartbeat_B07_game_theory
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME integration_heartbeat_B07_game_theory
+         COMMAND integration_heartbeat_B07_game_theory)
+set_tests_properties(integration_heartbeat_B07_game_theory PROPERTIES
+    LABELS "integration;fault_tolerance;heartbeat;B07;game_theory"
+    TIMEOUT 180
+)

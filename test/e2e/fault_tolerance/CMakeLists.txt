@@ -187,3 +187,7 @@ set_tests_properties(e2e_fault_tolerance_test_heartbeat_B05_mirror_neurons_e2e P
 # Heartbeat B06 Integration E2E Tests (Phase 8: Per-Batch Heartbeat Testing)
 add_e2e_fault_tolerance_test(test_heartbeat_B06_integration_e2e)
 set_tests_properties(e2e_fault_tolerance_test_heartbeat_B06_integration_e2e PROPERTIES TIMEOUT 300)
+
+# Heartbeat B07 Game Theory E2E Tests (Phase 8: Per-Batch Heartbeat Testing)
+add_e2e_fault_tolerance_test(test_heartbeat_B07_game_theory_e2e)
+set_tests_properties(e2e_fault_tolerance_test_heartbeat_B07_game_theory_e2e PROPERTIES TIMEOUT 300)
