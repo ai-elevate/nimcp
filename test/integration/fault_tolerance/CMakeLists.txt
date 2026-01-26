@@ -138,3 +138,26 @@ set_tests_properties(integration_heartbeat_B02_memory PROPERTIES
     LABELS "integration;fault_tolerance;heartbeat;B02;memory"
     TIMEOUT 180
 )
+
+# Heartbeat B03 Immune Integration Tests (Phase 8: Per-Batch Heartbeat Testing)
+add_executable(integration_heartbeat_B03_immune
+    test_heartbeat_B03_immune_integration.cpp
+)
+target_link_libraries(integration_heartbeat_B03_immune
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+)
+target_include_directories(integration_heartbeat_B03_immune
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME integration_heartbeat_B03_immune
+         COMMAND integration_heartbeat_B03_immune)
+set_tests_properties(integration_heartbeat_B03_immune PROPERTIES
+    LABELS "integration;fault_tolerance;heartbeat;B03;immune"
+    TIMEOUT 180
+)
