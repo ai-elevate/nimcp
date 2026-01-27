@@ -1944,3 +1944,13 @@ add_subdirectory(neuro_symbolic)
 # ============================================================================
 
 add_subdirectory(predictive)
+
+# ============================================================================
+# Inner Dialogue Engine Tests
+# ============================================================================
+# WHAT: Unit tests for Inner Dialogue (Turn, Perspective, Convergence, Engine)
+# WHY:  Verify each inner dialogue function in isolation
+# HOW:  Test lifecycle, CRUD, scheduling, convergence analysis, state machine
+# ============================================================================
+
+add_subdirectory(inner_dialogue)

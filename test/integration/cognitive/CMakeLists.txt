@@ -252,3 +252,6 @@ add_subdirectory(neuro_symbolic)
 # ============================================================================
 
 add_subdirectory(predictive)
+
+# Inner Dialogue Engine Integration Tests
+add_subdirectory(inner_dialogue)

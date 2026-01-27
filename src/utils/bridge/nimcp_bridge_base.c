@@ -14,6 +14,18 @@
 #include "utils/exception/nimcp_exception_macros.h"
 
 #include <stddef.h>  /* for NULL */
+
+/* Security subsystem extern declarations.
+ * We forward-declare only what we call, avoiding circular header includes.
+ * bbb_validate_input() result param is always NULL here (we only need pass/fail).
+ * Using void* for the result parameter avoids including the full BBB header. */
+extern bool bbb_validate_input(bbb_system_t system, const void* data, size_t size,
+                               void* result);
+
+extern int brain_cycle_coordinator_notify_tick(
+    brain_cycle_coordinator_t* coord,
+    int type,
+    uint64_t duration_us);
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -85,6 +97,16 @@ void bridge_base_cleanup(bridge_base_t* base) {
     if (base->bio_async_enabled) {
         bridge_base_disconnect_bio_async(base);
     }
+
+    /* NULL out security handles (bridges don't own them) */
+    base->bbb = NULL;
+    base->enable_bbb_validation = false;
+    base->ethics = NULL;
+    base->enable_ethics_evaluation = false;
+    base->lgss_kb = NULL;
+    base->enable_lgss_evaluation = false;
+    base->cycle_coordinator = NULL;
+    base->coordinator_registered = false;
 
     /* Destroy and free mutex (nimcp_mutex_free does both destroy + free) */
     if (base->mutex) {
@@ -340,4 +362,96 @@ int bridge_base_get_stats(const bridge_base_t* base,
     nimcp_mutex_unlock((nimcp_mutex_t*)base->mutex);
 
     return 0;
+}
+
+/* ============================================================================
+ * Security Subsystem Setters
+ * ============================================================================ */
+
+int bridge_base_set_bbb(bridge_base_t* base, bbb_system_t bbb) {
+    NIMCP_CHECK_THROW(base, NIMCP_ERROR_NULL_POINTER, "bridge base is NULL");
+
+    nimcp_mutex_lock(base->mutex);
+    base->bbb = bbb;
+    base->enable_bbb_validation = (bbb != NULL);
+    nimcp_mutex_unlock(base->mutex);
+
+    NIMCP_LOGGING_INFO("%s BBB validation for %s",
+                       bbb ? "Enabled" : "Disabled",
+                       base->module_name ? base->module_name : "bridge");
+    return 0;
+}
+
+int bridge_base_set_ethics(bridge_base_t* base, ethics_engine_t ethics) {
+    NIMCP_CHECK_THROW(base, NIMCP_ERROR_NULL_POINTER, "bridge base is NULL");
+
+    nimcp_mutex_lock(base->mutex);
+    base->ethics = ethics;
+    base->enable_ethics_evaluation = (ethics != NULL);
+    nimcp_mutex_unlock(base->mutex);
+
+    NIMCP_LOGGING_INFO("%s ethics evaluation for %s",
+                       ethics ? "Enabled" : "Disabled",
+                       base->module_name ? base->module_name : "bridge");
+    return 0;
+}
+
+int bridge_base_set_lgss(bridge_base_t* base, const void* lgss_kb) {
+    NIMCP_CHECK_THROW(base, NIMCP_ERROR_NULL_POINTER, "bridge base is NULL");
+
+    nimcp_mutex_lock(base->mutex);
+    base->lgss_kb = lgss_kb;
+    base->enable_lgss_evaluation = (lgss_kb != NULL);
+    nimcp_mutex_unlock(base->mutex);
+
+    NIMCP_LOGGING_INFO("%s LGSS evaluation for %s",
+                       lgss_kb ? "Enabled" : "Disabled",
+                       base->module_name ? base->module_name : "bridge");
+    return 0;
+}
+
+int bridge_base_set_coordinator(bridge_base_t* base, brain_cycle_coordinator_t* coordinator) {
+    NIMCP_CHECK_THROW(base, NIMCP_ERROR_NULL_POINTER, "bridge base is NULL");
+
+    nimcp_mutex_lock(base->mutex);
+    base->cycle_coordinator = coordinator;
+    base->coordinator_registered = (coordinator != NULL);
+    nimcp_mutex_unlock(base->mutex);
+
+    NIMCP_LOGGING_INFO("%s coordinator for %s",
+                       coordinator ? "Registered" : "Unregistered",
+                       base->module_name ? base->module_name : "bridge");
+    return 0;
+}
+
+/* ============================================================================
+ * Security Validation Helpers
+ * ============================================================================ */
+
+bool bridge_base_validate_bbb(bridge_base_t* base, const void* data, size_t len) {
+    if (!base || !base->enable_bbb_validation || !base->bbb) {
+        return true;  /* No BBB configured — pass through */
+    }
+
+    bool valid = bbb_validate_input(base->bbb, data, len, NULL);
+    if (!valid) {
+        NIMCP_LOGGING_WARN("BBB validation failed for %s (data=%p, len=%zu)",
+                          base->module_name ? base->module_name : "bridge",
+                          data, len);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_SECURITY_THREAT,
+                "BBB threat detected in %s",
+                base->module_name ? base->module_name : "bridge");
+    }
+
+    return valid;
+}
+
+int bridge_base_notify_coordinator_tick(bridge_base_t* base, uint64_t duration_us) {
+    if (!base || !base->coordinator_registered || !base->cycle_coordinator) {
+        return 0;  /* No coordinator — silently succeed */
+    }
+
+    /* Use BRAIN_UPDATE as default cycle type for bridge ticks */
+    return brain_cycle_coordinator_notify_tick(
+        base->cycle_coordinator, 8 /* BRAIN_CYCLE_BRAIN_UPDATE */, duration_us);
 }

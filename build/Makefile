@@ -9441,6 +9441,19 @@ e2e_cognitive_fault_tolerance_test_health_diagnostic_bridge_e2e/fast:
 .PHONY : e2e_cognitive_fault_tolerance_test_health_diagnostic_bridge_e2e/fast
 
 #=============================================================================
+# Target rules for targets named e2e_cognitive_inner_dialogue
+
+# Build rule for target.
+e2e_cognitive_inner_dialogue: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_cognitive_inner_dialogue
+.PHONY : e2e_cognitive_inner_dialogue
+
+# fast build rule for target.
+e2e_cognitive_inner_dialogue/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/cognitive/inner_dialogue/CMakeFiles/e2e_cognitive_inner_dialogue.dir/build.make test/e2e/cognitive/inner_dialogue/CMakeFiles/e2e_cognitive_inner_dialogue.dir/build
+.PHONY : e2e_cognitive_inner_dialogue/fast
+
+#=============================================================================
 # Target rules for targets named e2e_test_metabolic_processing
 
 # Build rule for target.
@@ -15614,6 +15627,19 @@ unit_cognitive_predictive_test_predictive_real: cmake_check_build_system
 unit_cognitive_predictive_test_predictive_real/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/predictive/CMakeFiles/unit_cognitive_predictive_test_predictive_real.dir/build.make test/unit/cognitive/predictive/CMakeFiles/unit_cognitive_predictive_test_predictive_real.dir/build
 .PHONY : unit_cognitive_predictive_test_predictive_real/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_inner_dialogue
+
+# Build rule for target.
+unit_cognitive_inner_dialogue: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_inner_dialogue
+.PHONY : unit_cognitive_inner_dialogue
+
+# fast build rule for target.
+unit_cognitive_inner_dialogue/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/inner_dialogue/CMakeFiles/unit_cognitive_inner_dialogue.dir/build.make test/unit/cognitive/inner_dialogue/CMakeFiles/unit_cognitive_inner_dialogue.dir/build
+.PHONY : unit_cognitive_inner_dialogue/fast
 
 #=============================================================================
 # Target rules for targets named integration_cognitive_bio_async_test
@@ -24014,6 +24040,19 @@ integration_cognitive_predictive_test_predictive_bridge_exception_integration/fa
 .PHONY : integration_cognitive_predictive_test_predictive_bridge_exception_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_cognitive_inner_dialogue
+
+# Build rule for target.
+integration_cognitive_inner_dialogue: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_inner_dialogue
+.PHONY : integration_cognitive_inner_dialogue
+
+# fast build rule for target.
+integration_cognitive_inner_dialogue/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/inner_dialogue/CMakeFiles/integration_cognitive_inner_dialogue.dir/build.make test/integration/cognitive/inner_dialogue/CMakeFiles/integration_cognitive_inner_dialogue.dir/build
+.PHONY : integration_cognitive_inner_dialogue/fast
+
+#=============================================================================
 # Target rules for targets named regression_cognitive_emotion_performance
 
 # Build rule for target.
@@ -24753,6 +24792,19 @@ regression_cognitive_predictive_test_predictive_bridge_exception_regression: cma
 regression_cognitive_predictive_test_predictive_bridge_exception_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/predictive/CMakeFiles/regression_cognitive_predictive_test_predictive_bridge_exception_regression.dir/build.make test/regression/cognitive/predictive/CMakeFiles/regression_cognitive_predictive_test_predictive_bridge_exception_regression.dir/build
 .PHONY : regression_cognitive_predictive_test_predictive_bridge_exception_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_inner_dialogue
+
+# Build rule for target.
+regression_cognitive_inner_dialogue: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_inner_dialogue
+.PHONY : regression_cognitive_inner_dialogue
+
+# fast build rule for target.
+regression_cognitive_inner_dialogue/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/inner_dialogue/CMakeFiles/regression_cognitive_inner_dialogue.dir/build.make test/regression/cognitive/inner_dialogue/CMakeFiles/regression_cognitive_inner_dialogue.dir/build
+.PHONY : regression_cognitive_inner_dialogue/fast
 
 #=============================================================================
 # Target rules for targets named integration_brain_regions_test_visual_cortex_integration
@@ -34945,6 +34997,7 @@ help:
 	@echo "... e2e_cognitive_fault_tolerance_test_health_diagnostic_bridge_e2e"
 	@echo "... e2e_cognitive_immune_tick"
 	@echo "... e2e_cognitive_immune_tick_enhanced"
+	@echo "... e2e_cognitive_inner_dialogue"
 	@echo "... e2e_cognitive_memory_pr_exception"
 	@echo "... e2e_cognitive_test_predictive_bridge_exception_e2e"
 	@echo "... e2e_cognitive_test_surprise_amplifier_e2e"
@@ -35279,6 +35332,7 @@ help:
 	@echo "... integration_cognitive_immune_modules"
 	@echo "... integration_cognitive_immune_perception_immune"
 	@echo "... integration_cognitive_immune_tick_enhanced"
+	@echo "... integration_cognitive_inner_dialogue"
 	@echo "... integration_cognitive_introspection_auto_activity_history"
 	@echo "... integration_cognitive_introspection_connectivity_health"
 	@echo "... integration_cognitive_introspection_consciousness_metrics"
@@ -35793,6 +35847,7 @@ help:
 	@echo "... regression_cognitive_immune_code_immune"
 	@echo "... regression_cognitive_immune_modules"
 	@echo "... regression_cognitive_immune_tick_enhanced"
+	@echo "... regression_cognitive_inner_dialogue"
 	@echo "... regression_cognitive_introspection_auto_activity_history"
 	@echo "... regression_cognitive_introspection_connectivity_health"
 	@echo "... regression_cognitive_introspection_consciousness_metrics"
@@ -36543,6 +36598,7 @@ help:
 	@echo "... unit_cognitive_immune_tolerance"
 	@echo "... unit_cognitive_immune_trained_immunity"
 	@echo "... unit_cognitive_immune_vaccine"
+	@echo "... unit_cognitive_inner_dialogue"
 	@echo "... unit_cognitive_jepa_latent"
 	@echo "... unit_cognitive_jepa_masking"
 	@echo "... unit_cognitive_jepa_multimodal"

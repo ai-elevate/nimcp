@@ -37,6 +37,28 @@ extern "C" {
 #endif
 
 /* ============================================================================
+ * Forward Declarations for Security/Coordination Subsystems
+ * ============================================================================ */
+
+/** @brief Blood-Brain Barrier system (opaque pointer typedef in nimcp_blood_brain_barrier.h) */
+#ifndef BBB_SYSTEM_T_DEFINED
+#define BBB_SYSTEM_T_DEFINED
+typedef struct bbb_system_struct* bbb_system_t;
+#endif
+
+/** @brief Ethics engine (opaque pointer typedef in nimcp_ethics.h) */
+#ifndef ETHICS_ENGINE_T_DEFINED
+#define ETHICS_ENGINE_T_DEFINED
+typedef struct ethics_engine_struct* ethics_engine_t;
+#endif
+
+/** @brief Brain cycle coordinator (defined in nimcp_brain_cycle_coordinator.h) */
+#ifndef BRAIN_CYCLE_COORDINATOR_T_DEFINED
+#define BRAIN_CYCLE_COORDINATOR_T_DEFINED
+typedef struct brain_cycle_coordinator brain_cycle_coordinator_t;
+#endif
+
+/* ============================================================================
  * Base Bridge Structure
  * ============================================================================ */
 
@@ -80,6 +102,19 @@ typedef struct bridge_base {
 
     /* Thread safety */
     nimcp_mutex_t* mutex;               /**< Thread safety mutex */
+
+    /* Security subsystem handles (opt-in: NULL = skip) */
+    bbb_system_t bbb;                          /**< BBB system handle (NULL = no BBB validation) */
+    bool enable_bbb_validation;                /**< Whether BBB input validation is active */
+
+    ethics_engine_t ethics;                    /**< Ethics engine handle (NULL = no ethics eval) */
+    bool enable_ethics_evaluation;             /**< Whether ethics evaluation is active */
+
+    const void* lgss_kb;                       /**< LGSS safety KB handle (NULL = no LGSS eval) */
+    bool enable_lgss_evaluation;               /**< Whether LGSS evaluation is active */
+
+    brain_cycle_coordinator_t* cycle_coordinator;  /**< Coordinator handle (NULL = no coordination) */
+    bool coordinator_registered;               /**< Whether registered with coordinator */
 } bridge_base_t;
 
 /**
@@ -270,6 +305,69 @@ int bridge_base_record_update(bridge_base_t* base);
 int bridge_base_get_stats(const bridge_base_t* base,
                           uint64_t* total_updates,
                           uint64_t* last_update);
+
+/* ============================================================================
+ * Security Subsystem Setters
+ * ============================================================================ */
+
+/**
+ * @brief Attach/detach BBB system to bridge for input validation
+ *
+ * @param base   Pointer to base bridge struct
+ * @param bbb    BBB system handle (NULL to disable)
+ * @return 0 on success, error code on failure
+ */
+int bridge_base_set_bbb(bridge_base_t* base, bbb_system_t bbb);
+
+/**
+ * @brief Attach/detach ethics engine to bridge for ethical evaluation
+ *
+ * @param base    Pointer to base bridge struct
+ * @param ethics  Ethics engine handle (NULL to disable)
+ * @return 0 on success, error code on failure
+ */
+int bridge_base_set_ethics(bridge_base_t* base, ethics_engine_t ethics);
+
+/**
+ * @brief Attach/detach LGSS safety knowledge base to bridge
+ *
+ * @param base     Pointer to base bridge struct
+ * @param lgss_kb  Safety KB handle (NULL to disable)
+ * @return 0 on success, error code on failure
+ */
+int bridge_base_set_lgss(bridge_base_t* base, const void* lgss_kb);
+
+/**
+ * @brief Attach/detach brain cycle coordinator to bridge
+ *
+ * @param base        Pointer to base bridge struct
+ * @param coordinator Coordinator handle (NULL to disable)
+ * @return 0 on success, error code on failure
+ */
+int bridge_base_set_coordinator(bridge_base_t* base, brain_cycle_coordinator_t* coordinator);
+
+/* ============================================================================
+ * Security Validation Helpers
+ * ============================================================================ */
+
+/**
+ * @brief Validate input data through bridge's BBB system
+ *
+ * @param base  Pointer to base bridge struct
+ * @param data  Data to validate
+ * @param len   Length of data in bytes
+ * @return true if validation passes (or BBB not enabled), false if threat detected
+ */
+bool bridge_base_validate_bbb(bridge_base_t* base, const void* data, size_t len);
+
+/**
+ * @brief Notify brain cycle coordinator of a tick from this bridge's update
+ *
+ * @param base        Pointer to base bridge struct
+ * @param duration_us Duration of this tick in microseconds
+ * @return 0 on success, error code on failure (silently succeeds if coordinator not attached)
+ */
+int bridge_base_notify_coordinator_tick(bridge_base_t* base, uint64_t duration_us);
 
 /* ============================================================================
  * Convenience Macros for Derived Bridges
@@ -496,6 +594,86 @@ int bridge_base_get_stats(const bridge_base_t* base,
     bool prefix##_is_connected(const bridge_type* bridge) { \
         return bridge_base_is_connected(bridge ? &bridge->base : NULL); \
     }
+
+/* ============================================================================
+ * Security Subsystem Macros
+ * ============================================================================ */
+
+/**
+ * @brief Define standard security setter functions for a bridge type
+ *
+ * Generates 4 setter functions that delegate to bridge_base_set_* functions:
+ * - prefix_set_bbb(bridge, bbb)
+ * - prefix_set_ethics(bridge, ethics)
+ * - prefix_set_lgss(bridge, lgss_kb)
+ * - prefix_set_coordinator(bridge, coordinator)
+ *
+ * Usage in implementation (.c) file:
+ * @code
+ * BRIDGE_DEFINE_SECURITY_SETTERS(my_bridge)
+ * @endcode
+ */
+#define BRIDGE_DEFINE_SECURITY_SETTERS(prefix) \
+    int prefix##_set_bbb(prefix##_t* bridge, bbb_system_t bbb) { \
+        BRIDGE_NULL_CHECK(bridge); \
+        return bridge_base_set_bbb(&bridge->base, bbb); \
+    } \
+    int prefix##_set_ethics(prefix##_t* bridge, ethics_engine_t ethics) { \
+        BRIDGE_NULL_CHECK(bridge); \
+        return bridge_base_set_ethics(&bridge->base, ethics); \
+    } \
+    int prefix##_set_lgss(prefix##_t* bridge, const void* lgss_kb) { \
+        BRIDGE_NULL_CHECK(bridge); \
+        return bridge_base_set_lgss(&bridge->base, lgss_kb); \
+    } \
+    int prefix##_set_coordinator(prefix##_t* bridge, brain_cycle_coordinator_t* coordinator) { \
+        BRIDGE_NULL_CHECK(bridge); \
+        return bridge_base_set_coordinator(&bridge->base, coordinator); \
+    }
+
+/**
+ * @brief Define standard security setter functions (explicit type version)
+ *
+ * Use when bridge type doesn't follow prefix_t naming convention.
+ */
+#define BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(prefix, bridge_type) \
+    int prefix##_set_bbb(bridge_type* bridge, bbb_system_t bbb) { \
+        BRIDGE_NULL_CHECK(bridge); \
+        return bridge_base_set_bbb(&bridge->base, bbb); \
+    } \
+    int prefix##_set_ethics(bridge_type* bridge, ethics_engine_t ethics) { \
+        BRIDGE_NULL_CHECK(bridge); \
+        return bridge_base_set_ethics(&bridge->base, ethics); \
+    } \
+    int prefix##_set_lgss(bridge_type* bridge, const void* lgss_kb) { \
+        BRIDGE_NULL_CHECK(bridge); \
+        return bridge_base_set_lgss(&bridge->base, lgss_kb); \
+    } \
+    int prefix##_set_coordinator(bridge_type* bridge, brain_cycle_coordinator_t* coordinator) { \
+        BRIDGE_NULL_CHECK(bridge); \
+        return bridge_base_set_coordinator(&bridge->base, coordinator); \
+    }
+
+/**
+ * @brief Convenience macro for BBB validation at bridge entry points
+ *
+ * Validates data through the bridge's BBB handle and returns an error
+ * code if a threat is detected. No-op if BBB is not enabled.
+ *
+ * Usage:
+ * @code
+ * int my_bridge_process(my_bridge_t* bridge, const void* data, size_t len) {
+ *     BRIDGE_BBB_VALIDATE(bridge, data, len);
+ *     // ... normal processing ...
+ * }
+ * @endcode
+ */
+#define BRIDGE_BBB_VALIDATE(bridge, data, len) \
+    do { \
+        if ((bridge) && !bridge_base_validate_bbb(&(bridge)->base, (data), (len))) { \
+            return NIMCP_ERROR_SECURITY_THREAT; \
+        } \
+    } while (0)
 
 #ifdef __cplusplus
 }
