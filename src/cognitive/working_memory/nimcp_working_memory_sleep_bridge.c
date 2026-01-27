@@ -196,6 +196,10 @@ void working_memory_sleep_bridge_destroy(working_memory_sleep_bridge_t bridge) {
 int working_memory_sleep_update(working_memory_sleep_bridge_t bridge) {
     if (!bridge) return -1;
 
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "working_memory_sleep_update");
+    BRIDGE_LGSS_GATE(bridge, "working_memory_sleep_update");
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
@@ -226,6 +230,9 @@ int working_memory_sleep_update(working_memory_sleep_bridge_t bridge) {
                                             state == SLEEP_STATE_LIGHT_NREM);
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

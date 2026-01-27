@@ -178,6 +178,10 @@ int self_model_thalamic_route_update(
     self_model_thalamic_bridge_heartbeat("self_model_t_self_model_thalamic_", 0.0f);
 
 
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "self_model_thalamic_route_update");
+    BRIDGE_LGSS_GATE(bridge, "self_model_thalamic_route_update");
+
     self_model_thalamic_signal_t signal = {
         .signal_type = SELF_MODEL_SIGNAL_UPDATE,
         .model_urgency = urgency < 0.0f ? 0.0f : (urgency > 1.0f ? 1.0f : urgency),

@@ -238,6 +238,8 @@ typedef int32_t nimcp_error_t;
 #define NIMCP_ERROR_CERTIFICATE_INVALID     9008 /**< Certificate validation failed */
 #define NIMCP_ERROR_POLICY_VIOLATION        9009 /**< Security policy violation */
 #define NIMCP_ERROR_QUARANTINE_REQUIRED     9010 /**< Resource requires quarantine */
+#define NIMCP_ERROR_ETHICS_VIOLATION        9011 /**< Ethics evaluation denied operation */
+#define NIMCP_ERROR_LGSS_DENIED             9012 /**< LGSS safety gate denied operation */
 
 //=============================================================================
 // Brain Region Errors (10000-19999)

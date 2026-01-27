@@ -601,6 +601,8 @@ int axon_plasticity_update(axon_plasticity_bridge_t* bridge, float dt_ms)
     axon_plasticity_update_conduction(bridge);
     axon_plasticity_update_myelination(bridge);
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

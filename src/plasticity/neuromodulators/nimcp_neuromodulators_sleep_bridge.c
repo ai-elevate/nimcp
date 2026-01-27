@@ -355,6 +355,8 @@ int neuromod_sleep_update(neuromod_sleep_bridge_t bridge) {
                        bridge->effects.da_factor,
                        bridge->effects.serotonin_factor);
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

@@ -207,6 +207,9 @@ int pink_noise_fep_bridge_update(pink_noise_fep_bridge_t* bridge, uint64_t delta
         bridge->stats.avg_precision_scaling = (bridge->stats.avg_precision_scaling * (bridge->stats.total_updates - 1) + bridge->fep_effects.precision_value) / bridge->stats.total_updates;
     }
     nimcp_platform_mutex_unlock(bridge->base.mutex);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

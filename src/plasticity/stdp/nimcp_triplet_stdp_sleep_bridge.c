@@ -348,6 +348,8 @@ int triplet_stdp_sleep_update(triplet_stdp_sleep_bridge_t bridge) {
     sleep_state_t current_state = sleep_get_current_state(bridge->sleep_system);
     triplet_stdp_on_sleep_state_change(current_state, bridge);
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

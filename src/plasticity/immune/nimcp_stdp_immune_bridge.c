@@ -665,6 +665,9 @@ int stdp_immune_bridge_update(
     stdp_immune_signal_balanced_plasticity(bridge);
 
     bridge->total_updates++;
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

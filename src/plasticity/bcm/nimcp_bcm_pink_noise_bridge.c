@@ -183,6 +183,10 @@ int bcm_pink_noise_disconnect_bcm(bcm_pink_noise_bridge_t* bridge) {
 
 int bcm_pink_noise_update(bcm_pink_noise_bridge_t* bridge) {
     NIMCP_API_CHECK_NULL(bridge, -1, "BCM pink noise bridge is NULL");
+
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "bcm_pink_noise_update");
+    BRIDGE_LGSS_GATE(bridge, "bcm_pink_noise_update");
     if (!bridge->is_enabled) return 0;
     NIMCP_API_CHECK_NULL(bridge->noise_gen, -1, "Pink noise generator is NULL");
 
@@ -265,6 +269,8 @@ int bcm_pink_noise_update(bcm_pink_noise_bridge_t* bridge) {
     bridge->avg_threshold_shift = (bridge->avg_threshold_shift * 0.99f) +
                                    (threshold_shift * 0.01f);
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

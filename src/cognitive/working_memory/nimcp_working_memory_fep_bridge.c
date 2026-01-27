@@ -433,6 +433,10 @@ int working_memory_fep_bridge_update(
 ) {
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "working_memory_fep_bridge_update");
+    BRIDGE_LGSS_GATE(bridge, "working_memory_fep_bridge_update");
+
     /* FEP → Working Memory */
     working_memory_fep_apply_precision_capacity_modulation(bridge);
     working_memory_fep_efe_item_selection(bridge);
@@ -461,6 +465,8 @@ int working_memory_fep_bridge_update(
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

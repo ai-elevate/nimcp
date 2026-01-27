@@ -607,6 +607,9 @@ int neuron_orchestrator_step(
     bool spiked = neuron_model_check_spike(entry->model_state);
 
     if (!spiked) {
+
+        /* Notify coordinator of update cycle completion */
+        bridge_base_notify_coordinator_tick(&bridge->base, 0);
         return 0;
     }
 

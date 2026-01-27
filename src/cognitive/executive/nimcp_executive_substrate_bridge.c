@@ -306,6 +306,10 @@ int executive_substrate_update(executive_substrate_bridge_t* bridge)
     executive_substrate_bridge_heartbeat("executive_su_executive_substrate_", 0.0f);
 
 
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "executive_substrate_update");
+    BRIDGE_LGSS_GATE(bridge, "executive_substrate_update");
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* ========================================================================
@@ -476,6 +480,8 @@ int executive_substrate_update(executive_substrate_bridge_t* bridge)
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

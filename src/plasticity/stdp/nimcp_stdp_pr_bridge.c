@@ -715,6 +715,9 @@ int stdp_pr_bridge_update(stdp_pr_bridge_t bridge, float dt_ms) {
     bridge->state.bridge_coherence = clamp_float(bridge->state.bridge_coherence, 0.0f, 1.0f);
 
     nimcp_platform_mutex_unlock(&bridge->base.mutex);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

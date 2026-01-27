@@ -660,6 +660,8 @@ int hetero_pink_noise_bridge_update(
         }
     }
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

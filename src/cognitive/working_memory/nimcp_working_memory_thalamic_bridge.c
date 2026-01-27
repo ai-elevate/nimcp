@@ -179,6 +179,10 @@ int working_memory_thalamic_route_update(
 ) {
     if (!bridge) return -1;
 
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "working_memory_thalamic_route_update");
+    BRIDGE_LGSS_GATE(bridge, "working_memory_thalamic_route_update");
+
     working_memory_thalamic_signal_t signal = {
         .signal_type = WM_SIGNAL_UPDATE,
         .wm_urgency = urgency < 0.0f ? 0.0f : (urgency > 1.0f ? 1.0f : urgency),

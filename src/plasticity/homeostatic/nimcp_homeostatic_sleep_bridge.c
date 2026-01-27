@@ -209,6 +209,10 @@ void homeostatic_sleep_bridge_destroy(homeostatic_sleep_bridge_t bridge) {
 int homeostatic_sleep_update(homeostatic_sleep_bridge_t bridge) {
     NIMCP_API_CHECK_NULL(bridge, -1, "Homeostatic-sleep bridge is NULL");
 
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "homeostatic_sleep_update");
+    BRIDGE_LGSS_GATE(bridge, "homeostatic_sleep_update");
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
@@ -247,6 +251,8 @@ int homeostatic_sleep_update(homeostatic_sleep_bridge_t bridge) {
                        bridge->effects.target_rate_modifier,
                        bridge->effects.pruning_threshold_mod);
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

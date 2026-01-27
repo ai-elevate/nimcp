@@ -618,6 +618,10 @@ int executive_snn_step(executive_snn_bridge_t* bridge) {
     executive_snn_bridge_heartbeat("executive_sn_executive_snn_step", 0.0f);
 
 
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "executive_snn_step");
+    BRIDGE_LGSS_GATE(bridge, "executive_snn_step");
+
     return executive_snn_simulate(bridge, bridge->config.dt_ms);
 }
 

@@ -105,6 +105,10 @@ void shadow_substrate_bridge_destroy(shadow_substrate_bridge_t* bridge) {
 
 int shadow_substrate_bridge_update(shadow_substrate_bridge_t* bridge) {
     if (!bridge || !bridge->substrate) return -1;
+
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "shadow_substrate_bridge_update");
+    BRIDGE_LGSS_GATE(bridge, "shadow_substrate_bridge_update");
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
     float atp = metabolic.atp_level, fatigue = 1.0f - metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
@@ -120,6 +124,9 @@ int shadow_substrate_bridge_update(shadow_substrate_bridge_t* bridge) {
     }
     bridge->effects.overall_capacity = (bridge->effects.repression_strength + bridge->effects.integration_capacity) / 2.0f;
     bridge->update_count++;
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

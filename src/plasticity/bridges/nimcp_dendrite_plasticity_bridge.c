@@ -680,6 +680,9 @@ int dendrite_plasticity_update(
     bridge->last_update_time = nimcp_time_get_us();
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

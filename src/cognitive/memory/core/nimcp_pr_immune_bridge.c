@@ -1339,6 +1339,8 @@ int pr_immune_bridge_update(
     bridge->stats.avg_update_time_us =
         alpha * (float)elapsed_us + (1.0f - alpha) * bridge->stats.avg_update_time_us;
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

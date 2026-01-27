@@ -114,6 +114,9 @@ int struct_pink_noise_update(struct_pink_noise_bridge_t* bridge) {
     bridge->noisy_prune_rate = clamp(bridge->noisy_prune_rate, 0.0001f, 0.05f);
 
     bridge->samples_generated++;
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

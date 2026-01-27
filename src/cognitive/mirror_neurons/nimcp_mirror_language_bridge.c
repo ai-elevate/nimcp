@@ -1692,6 +1692,13 @@ int mirror_language_bridge_training_end(mirror_language_bridge_t* bridge) {
 
 int mirror_language_bridge_training_step(mirror_language_bridge_t* bridge, float progress) {
     if (!bridge) return -1;
+
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "mirror_language_bridge_training_step");
+    BRIDGE_LGSS_GATE(bridge, "mirror_language_bridge_training_step");
     mirror_language_bridge_heartbeat_instance(bridge->health_agent, "mirror_language_bridge_training_step", progress);
+
+    /* Notify coordinator of step cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }

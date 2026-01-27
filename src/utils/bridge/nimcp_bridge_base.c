@@ -455,3 +455,45 @@ int bridge_base_notify_coordinator_tick(bridge_base_t* base, uint64_t duration_u
     return brain_cycle_coordinator_notify_tick(
         base->cycle_coordinator, 8 /* BRAIN_CYCLE_BRAIN_UPDATE */, duration_us);
 }
+
+bool bridge_base_ethics_permits(bridge_base_t* base, const char* operation) {
+    if (!base || !base->enable_ethics_evaluation) {
+        return true;  /* Ethics not enabled — no gate */
+    }
+
+    if (!base->ethics) {
+        /* Fail-closed: ethics evaluation required but engine not attached */
+        NIMCP_LOGGING_WARN("Ethics gate DENIED for %s in %s: engine not attached",
+                          operation ? operation : "unknown",
+                          base->module_name ? base->module_name : "bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_ETHICS_VIOLATION,
+                "Ethics engine required but not attached in %s",
+                base->module_name ? base->module_name : "bridge");
+        return false;
+    }
+
+    /* Ethics engine is available — permit operation.
+     * Full evaluation with action_context_t happens at orchestration layer. */
+    return true;
+}
+
+bool bridge_base_lgss_permits(bridge_base_t* base, const char* operation) {
+    if (!base || !base->enable_lgss_evaluation) {
+        return true;  /* LGSS not enabled — no gate */
+    }
+
+    if (!base->lgss_kb) {
+        /* Fail-closed: LGSS evaluation required but safety KB not attached */
+        NIMCP_LOGGING_WARN("LGSS gate DENIED for %s in %s: safety KB not attached",
+                          operation ? operation : "unknown",
+                          base->module_name ? base->module_name : "bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_LGSS_DENIED,
+                "LGSS safety KB required but not attached in %s",
+                base->module_name ? base->module_name : "bridge");
+        return false;
+    }
+
+    /* LGSS safety KB is available — permit operation.
+     * Full safety evaluation with safety_action_context_t happens at orchestration layer. */
+    return true;
+}

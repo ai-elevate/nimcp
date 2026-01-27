@@ -252,6 +252,9 @@ int hetero_sleep_update(hetero_sleep_bridge_t bridge) {
     }
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

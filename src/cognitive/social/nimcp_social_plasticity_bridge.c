@@ -605,6 +605,10 @@ int social_plasticity_homeostatic_update(
 ) {
     if (!bridge) return -1;
 
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "social_plasticity_homeostatic_update");
+    BRIDGE_LGSS_GATE(bridge, "social_plasticity_homeostatic_update");
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = SOCIAL_PLASTICITY_STATE_UPDATING;
 
@@ -645,6 +649,9 @@ int social_plasticity_homeostatic_update(
 
     bridge->state = SOCIAL_PLASTICITY_STATE_IDLE;
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

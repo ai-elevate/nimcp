@@ -346,6 +346,10 @@ int self_model_fep_bridge_update(
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "self_model_fep_bridge_update");
+    BRIDGE_LGSS_GATE(bridge, "self_model_fep_bridge_update");
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update self-knowledge uncertainty */

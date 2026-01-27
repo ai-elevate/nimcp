@@ -201,6 +201,9 @@ int predictive_coding_fep_bridge_update(predictive_coding_fep_bridge_t* bridge, 
         bridge->stats.avg_prediction_error = (bridge->stats.avg_prediction_error * (bridge->stats.total_updates - 1) + bridge->pc_effects.mean_error) / bridge->stats.total_updates;
     }
     nimcp_platform_mutex_unlock(bridge->base.mutex);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

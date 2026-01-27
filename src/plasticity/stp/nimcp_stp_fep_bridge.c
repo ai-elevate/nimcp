@@ -379,6 +379,9 @@ int stp_fep_bridge_update(stp_fep_bridge_t* bridge, uint64_t delta_ms) {
     }
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

@@ -540,6 +540,8 @@ int elig_pr_bridge_update(elig_pr_bridge_t bridge, float dt_ms) {
     bridge->state.bridge_coherence = 0.9f * bridge->state.bridge_coherence +
                                      0.1f * alignment;
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

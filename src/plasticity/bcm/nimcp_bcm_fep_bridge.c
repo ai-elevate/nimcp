@@ -215,6 +215,10 @@ int bcm_fep_report_sparsity(bcm_fep_bridge_t* bridge, uint32_t active_count) {
 
 int bcm_fep_bridge_update(bcm_fep_bridge_t* bridge, uint64_t delta_ms) {
     NIMCP_API_CHECK_NULL(bridge, -1, "BCM-FEP bridge is NULL");
+
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "bcm_fep_bridge_update");
+    BRIDGE_LGSS_GATE(bridge, "bcm_fep_bridge_update");
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     if (bridge->fep_system) {
@@ -236,6 +240,9 @@ int bcm_fep_bridge_update(bcm_fep_bridge_t* bridge, uint64_t delta_ms) {
     bridge->stats.total_updates++;
     bridge->state.last_update_time = delta_ms;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

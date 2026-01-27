@@ -248,11 +248,18 @@ int executive_fep_bridge_update(executive_fep_bridge_t* bridge, uint64_t delta_m
 
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "executive_fep_bridge_update");
+    BRIDGE_LGSS_GATE(bridge, "executive_fep_bridge_update");
     executive_fep_select_policy_by_efe(bridge);
     executive_fep_modulate_exploration(bridge);
     executive_fep_apply_goal_priors(bridge);
     executive_fep_maintain_wm_beliefs(bridge);
     executive_fep_apply_inhibition_precision(bridge);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

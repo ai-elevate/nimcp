@@ -888,6 +888,8 @@ int mirror_motor_bridge_update(
     /* Record update */
     bridge_base_record_update(&bridge->base);
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

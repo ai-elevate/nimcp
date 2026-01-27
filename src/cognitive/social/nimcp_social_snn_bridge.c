@@ -524,6 +524,10 @@ int social_snn_simulate(social_snn_bridge_t* bridge, float duration_ms) {
 
 int social_snn_step(social_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "social_snn_step");
+    BRIDGE_LGSS_GATE(bridge, "social_snn_step");
     return social_snn_simulate(bridge, bridge->config.dt_ms);
 }
 

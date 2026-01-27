@@ -574,6 +574,8 @@ int dendritic_pink_noise_bridge_update(
     bridge->avg_activity_scaling = (1.0f - alpha) * bridge->avg_activity_scaling +
                                    alpha * bridge->dendritic_modulation.activity_noise_scale;
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

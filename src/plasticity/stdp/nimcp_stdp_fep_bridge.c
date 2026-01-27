@@ -315,6 +315,10 @@ float stdp_fep_compute_complexity_regularization(const stdp_fep_bridge_t* bridge
 int stdp_fep_bridge_update(stdp_fep_bridge_t* bridge, uint64_t delta_ms) {
     NIMCP_API_CHECK_NULL(bridge, -1, "STDP-FEP bridge is NULL");
 
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "stdp_fep_bridge_update");
+    BRIDGE_LGSS_GATE(bridge, "stdp_fep_bridge_update");
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     if (bridge->fep_system) {
@@ -370,6 +374,9 @@ int stdp_fep_bridge_update(stdp_fep_bridge_t* bridge, uint64_t delta_ms) {
     bridge->state.last_update_time = delta_ms;
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

@@ -175,6 +175,9 @@ int mirror_substrate_bridge_update(mirror_substrate_bridge_t* bridge) {
                                         bridge->effects.action_prediction) / 4.0f;
 
     bridge->update_count++;
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

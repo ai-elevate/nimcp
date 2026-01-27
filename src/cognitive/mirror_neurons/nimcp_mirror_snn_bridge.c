@@ -1314,6 +1314,8 @@ int mirror_snn_update(mirror_snn_bridge_t* bridge, float dt_ms) {
     bridge->last_update_us = now;
     nimcp_mutex_unlock(bridge->base.mutex);
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 
@@ -1412,6 +1414,10 @@ int mirror_snn_bridge_training_end(mirror_snn_bridge_t* bridge) {
 
 int mirror_snn_bridge_training_step(mirror_snn_bridge_t* bridge, float progress) {
     if (!bridge) return -1;
+
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "mirror_snn_bridge_training_step");
+    BRIDGE_LGSS_GATE(bridge, "mirror_snn_bridge_training_step");
     mirror_snn_bridge_heartbeat_instance(bridge->health_agent, "mirror_snn_bridge_training_step", progress);
     return 0;
 }

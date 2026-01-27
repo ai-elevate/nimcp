@@ -701,6 +701,8 @@ int mirror_hypo_update(mirror_hypo_bridge_t* bridge, uint64_t current_time) {
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

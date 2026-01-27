@@ -691,6 +691,10 @@ int self_model_plasticity_homeostatic_update(
     self_model_plasticity_bridge_heartbeat("self_model_p_self_model_plasticit", 0.0f);
 
 
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "self_model_plasticity_homeostatic_update");
+    BRIDGE_LGSS_GATE(bridge, "self_model_plasticity_homeostatic_update");
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Calculate mean weight */
@@ -753,6 +757,9 @@ int self_model_plasticity_homeostatic_update(
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

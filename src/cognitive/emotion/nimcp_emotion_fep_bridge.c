@@ -200,9 +200,16 @@ int emotion_fep_bridge_update(emotion_fep_bridge_t* bridge, uint64_t delta_ms) {
 
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "emotion_fep_bridge_update");
+    BRIDGE_LGSS_GATE(bridge, "emotion_fep_bridge_update");
     emotion_fep_modulate_precision_by_intensity(bridge);
     emotion_fep_apply_emotion_precision_modulation(bridge);
     emotion_fep_apply_emotion_learning_modulation(bridge);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

@@ -203,6 +203,10 @@ void stdp_sleep_bridge_destroy(stdp_sleep_bridge_t bridge) {
 int stdp_sleep_update(stdp_sleep_bridge_t bridge) {
     NIMCP_API_CHECK_NULL(bridge, -1, "STDP-sleep bridge is NULL");
 
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "stdp_sleep_update");
+    BRIDGE_LGSS_GATE(bridge, "stdp_sleep_update");
+
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
@@ -233,6 +237,9 @@ int stdp_sleep_update(stdp_sleep_bridge_t bridge) {
                                           bridge->effects.learning_rate_factor > 0.1f;
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

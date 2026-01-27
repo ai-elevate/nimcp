@@ -620,6 +620,10 @@ int self_model_snn_step(self_model_snn_bridge_t* bridge) {
     self_model_snn_bridge_heartbeat("self_model_s_self_model_snn_step", 0.0f);
 
 
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "self_model_snn_step");
+    BRIDGE_LGSS_GATE(bridge, "self_model_snn_step");
+
     return self_model_snn_simulate(bridge, bridge->config.dt_ms);
 }
 

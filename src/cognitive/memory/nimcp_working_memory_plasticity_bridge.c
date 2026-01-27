@@ -883,6 +883,10 @@ int wm_plasticity_update(
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_update", 0.0f);
 
 
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "wm_plasticity_update");
+    BRIDGE_LGSS_GATE(bridge, "wm_plasticity_update");
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t now_us = nimcp_time_get_us();
@@ -949,6 +953,8 @@ int wm_plasticity_update(
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

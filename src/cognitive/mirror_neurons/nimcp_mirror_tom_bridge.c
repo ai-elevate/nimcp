@@ -996,6 +996,9 @@ int mirror_tom_update(mirror_tom_bridge_t bridge, uint64_t delta_time_us) {
     }
 
     bridge->stats.last_update_us = now;
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

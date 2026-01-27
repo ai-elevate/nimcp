@@ -686,6 +686,10 @@ void social_fep_destroy_callback(void* handle) {
 int social_fep_bridge_update(social_fep_bridge_t* bridge) {
     if (!bridge) return -1;
 
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "social_fep_bridge_update");
+    BRIDGE_LGSS_GATE(bridge, "social_fep_bridge_update");
+
     /* If registered with orchestrator and has social system, do full update */
     if (bridge->registered && bridge->social) {
         return social_fep_update_callback(bridge);
@@ -696,6 +700,10 @@ int social_fep_bridge_update(social_fep_bridge_t* bridge) {
 
 int social_fep_bridge_force_update(social_fep_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "social_fep_bridge_force_update");
+    BRIDGE_LGSS_GATE(bridge, "social_fep_bridge_force_update");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -728,6 +736,9 @@ int social_fep_bridge_force_update(social_fep_bridge_t* bridge) {
     check_callbacks(bridge);
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

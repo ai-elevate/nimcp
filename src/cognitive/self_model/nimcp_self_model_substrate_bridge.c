@@ -116,6 +116,10 @@ int self_model_substrate_bridge_update(self_model_substrate_bridge_t* bridge) {
     self_model_substrate_bridge_heartbeat("self_model_s_update", 0.0f);
 
 
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "self_model_substrate_bridge_update");
+    BRIDGE_LGSS_GATE(bridge, "self_model_substrate_bridge_update");
+
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
@@ -130,6 +134,9 @@ int self_model_substrate_bridge_update(self_model_substrate_bridge_t* bridge) {
     bridge->effects.overall_capacity = (bridge->effects.self_representation + bridge->effects.body_schema +
                                         bridge->effects.agency_sense + bridge->effects.boundary_clarity) / 4.0f;
     bridge->update_count++;
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

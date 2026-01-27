@@ -238,11 +238,18 @@ int reasoning_fep_bridge_update(reasoning_fep_bridge_t* bridge, uint64_t delta_m
 
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "reasoning_fep_bridge_update");
+    BRIDGE_LGSS_GATE(bridge, "reasoning_fep_bridge_update");
     reasoning_fep_select_hypothesis_by_fe(bridge);
     reasoning_fep_modulate_inference_confidence(bridge);
     reasoning_fep_apply_rule_priors(bridge);
     reasoning_fep_apply_conclusion_constraints(bridge);
     reasoning_fep_apply_explanation_reduction(bridge);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

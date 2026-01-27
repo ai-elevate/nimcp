@@ -255,6 +255,9 @@ int protein_sleep_update(protein_sleep_bridge_t bridge) {
 
     NIMCP_LOGGING_DEBUG("Updated protein-sleep bridge: state=%d, synth_factor=%.2f",
                         current_state, synthesis_factor);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

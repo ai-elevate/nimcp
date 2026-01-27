@@ -329,6 +329,10 @@ int memory_sleep_update(memory_sleep_bridge_t bridge)
     memory_sleep_bridge_heartbeat("memory_sleep_memory_sleep_update", 0.0f);
 
 
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "memory_sleep_update");
+    BRIDGE_LGSS_GATE(bridge, "memory_sleep_update");
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
@@ -371,6 +375,9 @@ int memory_sleep_update(memory_sleep_bridge_t bridge)
     bridge->effects.peak_consolidation = (state == SLEEP_STATE_DEEP_NREM);
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

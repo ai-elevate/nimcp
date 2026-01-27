@@ -557,6 +557,8 @@ int mirror_neurons_fep_bridge_update(
         bridge->state.current_free_energy = bridge->fep_system->free_energy.total;
     }
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

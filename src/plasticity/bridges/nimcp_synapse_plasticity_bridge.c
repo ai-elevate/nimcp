@@ -774,6 +774,9 @@ int synapse_plasticity_update(
     bridge->stats.last_update_time = (float)nimcp_time_get_us() / 1000.0f;
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

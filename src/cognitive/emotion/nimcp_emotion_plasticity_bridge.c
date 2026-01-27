@@ -773,6 +773,10 @@ int emotion_plasticity_update(
     emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_u", 0.0f);
 
 
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "emotion_plasticity_update");
+    BRIDGE_LGSS_GATE(bridge, "emotion_plasticity_update");
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = EMOTION_PLASTICITY_STATE_UPDATING;
@@ -853,6 +857,8 @@ int emotion_plasticity_update(
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

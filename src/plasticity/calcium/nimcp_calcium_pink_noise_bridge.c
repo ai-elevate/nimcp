@@ -414,6 +414,9 @@ int calcium_pink_noise_update(calcium_pink_noise_bridge_t* bridge) {
     update_statistics(bridge, noise_sample);
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

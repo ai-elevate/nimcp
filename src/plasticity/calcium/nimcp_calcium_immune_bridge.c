@@ -549,6 +549,8 @@ int calcium_immune_bridge_update(
         calcium_immune_signal_healthy_dynamics(bridge);
     }
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

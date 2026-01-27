@@ -938,6 +938,8 @@ int attention_snn_step(attention_snn_bridge_t* bridge) {
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
+    /* Notify coordinator of step cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

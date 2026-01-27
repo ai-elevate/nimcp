@@ -688,6 +688,8 @@ int homeostatic_immune_bridge_update(
     homeostatic_immune_trigger_from_instability(bridge, firing_rates, num_neurons);
     homeostatic_immune_boost_from_recovery(bridge, is_stable);
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

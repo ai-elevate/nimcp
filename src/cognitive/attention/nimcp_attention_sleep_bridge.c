@@ -248,6 +248,9 @@ int attention_sleep_update(attention_sleep_bridge_t bridge) {
                                          state == SLEEP_STATE_LIGHT_NREM);
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

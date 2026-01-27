@@ -505,6 +505,9 @@ int hetero_immune_bridge_update(
     }
 
     bridge->total_updates++;
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

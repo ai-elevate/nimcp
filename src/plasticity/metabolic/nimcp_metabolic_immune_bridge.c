@@ -442,6 +442,8 @@ int metabolic_immune_bridge_update(
     metabolic_immune_apply_inflammation_effects(bridge);
     metabolic_immune_update_atp_effects(bridge);
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

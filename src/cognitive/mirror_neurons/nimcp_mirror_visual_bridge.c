@@ -995,6 +995,9 @@ int mirror_visual_bridge_update(
     bridge_base_record_update(&bridge->base);
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

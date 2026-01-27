@@ -161,6 +161,8 @@ int meta_pink_noise_update(meta_pink_noise_bridge_t* bridge) {
     bridge->avg_noise_amplitude = bridge->avg_noise_amplitude * 0.99f + noise_amp * 0.01f;
     if (noise_amp > bridge->max_noise_amplitude) bridge->max_noise_amplitude = noise_amp;
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

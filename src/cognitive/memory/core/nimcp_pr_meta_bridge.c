@@ -757,6 +757,8 @@ int pr_meta_maml_outer_step(
     bridge->stats.total_outer_steps++;
     nimcp_mutex_unlock(bridge->base.mutex);
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 
@@ -2121,6 +2123,8 @@ int pr_meta_bridge_update(
 
     (void)now_ms;  /* Suppress unused warning */
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

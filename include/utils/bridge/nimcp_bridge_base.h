@@ -369,6 +369,30 @@ bool bridge_base_validate_bbb(bridge_base_t* base, const void* data, size_t len)
  */
 int bridge_base_notify_coordinator_tick(bridge_base_t* base, uint64_t duration_us);
 
+/**
+ * @brief Check if ethics engine permits operation to proceed
+ *
+ * Fail-closed: if ethics evaluation is enabled but handle is NULL, returns false.
+ * If ethics evaluation is not enabled, returns true (no gate).
+ *
+ * @param base       Pointer to base bridge struct
+ * @param operation  Human-readable operation name for audit logging
+ * @return true if operation is permitted, false if denied
+ */
+bool bridge_base_ethics_permits(bridge_base_t* base, const char* operation);
+
+/**
+ * @brief Check if LGSS safety gate permits operation to proceed
+ *
+ * Fail-closed: if LGSS evaluation is enabled but handle is NULL, returns false.
+ * If LGSS evaluation is not enabled, returns true (no gate).
+ *
+ * @param base       Pointer to base bridge struct
+ * @param operation  Human-readable operation name for audit logging
+ * @return true if operation is permitted, false if denied
+ */
+bool bridge_base_lgss_permits(bridge_base_t* base, const char* operation);
+
 /* ============================================================================
  * Convenience Macros for Derived Bridges
  * ============================================================================ */
@@ -672,6 +696,32 @@ int bridge_base_notify_coordinator_tick(bridge_base_t* base, uint64_t duration_u
     do { \
         if ((bridge) && !bridge_base_validate_bbb(&(bridge)->base, (data), (len))) { \
             return NIMCP_ERROR_SECURITY_THREAT; \
+        } \
+    } while (0)
+
+/**
+ * @brief Gate macro: return NIMCP_ERROR_ETHICS_VIOLATION if ethics denies
+ *
+ * Use at entry points of bridge operations that have ethical implications.
+ * No-op if ethics evaluation is not enabled on this bridge.
+ */
+#define BRIDGE_ETHICS_GATE(bridge, operation) \
+    do { \
+        if ((bridge) && !bridge_base_ethics_permits(&(bridge)->base, (operation))) { \
+            return NIMCP_ERROR_ETHICS_VIOLATION; \
+        } \
+    } while (0)
+
+/**
+ * @brief Gate macro: return NIMCP_ERROR_LGSS_DENIED if LGSS denies
+ *
+ * Use at entry points of bridge operations that require safety clearance.
+ * No-op if LGSS evaluation is not enabled on this bridge.
+ */
+#define BRIDGE_LGSS_GATE(bridge, operation) \
+    do { \
+        if ((bridge) && !bridge_base_lgss_permits(&(bridge)->base, (operation))) { \
+            return NIMCP_ERROR_LGSS_DENIED; \
         } \
     } while (0)
 

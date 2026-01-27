@@ -242,6 +242,9 @@ int predictive_sleep_update(predictive_sleep_bridge_t bridge) {
     bridge->effects.offline_consolidation = (state == SLEEP_STATE_DEEP_NREM);
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

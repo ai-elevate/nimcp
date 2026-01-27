@@ -1681,6 +1681,8 @@ int pr_plasticity_bridge_update(
         pr_plasticity_sync_with_coordinator(bridge);
     }
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

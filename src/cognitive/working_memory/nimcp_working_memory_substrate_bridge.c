@@ -522,6 +522,8 @@ int wm_substrate_update(wm_substrate_bridge_t* bridge)
                         bridge->effects.encoding_strength,
                         bridge->effects.is_impaired);
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

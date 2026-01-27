@@ -220,11 +220,18 @@ int memory_fep_bridge_update(memory_fep_bridge_t* bridge, uint64_t delta_ms) {
 
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "memory_fep_bridge_update");
+    BRIDGE_LGSS_GATE(bridge, "memory_fep_bridge_update");
     memory_fep_maintain_wm_beliefs(bridge);
     memory_fep_trigger_consolidation(bridge);
     memory_fep_boost_retrieval_precision(bridge);
     memory_fep_apply_belief_priors(bridge);
     memory_fep_apply_trace_persistence(bridge);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

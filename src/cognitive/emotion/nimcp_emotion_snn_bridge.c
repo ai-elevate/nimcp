@@ -606,12 +606,18 @@ int emotion_snn_step(emotion_snn_bridge_t* bridge) {
     emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_step", 0.0f);
 
 
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "emotion_snn_step");
+    BRIDGE_LGSS_GATE(bridge, "emotion_snn_step");
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     snn_network_step(bridge->snn, bridge->config.dt_ms);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
+    /* Notify coordinator of step cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

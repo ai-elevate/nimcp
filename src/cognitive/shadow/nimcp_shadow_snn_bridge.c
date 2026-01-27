@@ -530,6 +530,10 @@ int shadow_snn_simulate(shadow_snn_bridge_t* bridge, float duration_ms) {
 
 int shadow_snn_step(shadow_snn_bridge_t* bridge) {
     if (!bridge) return -1;
+
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "shadow_snn_step");
+    BRIDGE_LGSS_GATE(bridge, "shadow_snn_step");
     return shadow_snn_simulate(bridge, bridge->config.dt_ms);
 }
 

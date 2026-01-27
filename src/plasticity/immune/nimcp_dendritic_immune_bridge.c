@@ -550,6 +550,9 @@ int dendritic_immune_bridge_update(
     dendritic_immune_support_from_health(bridge);
 
     bridge->total_updates++;
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

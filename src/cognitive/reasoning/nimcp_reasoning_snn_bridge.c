@@ -630,6 +630,10 @@ int reasoning_snn_step(reasoning_snn_bridge_t* bridge) {
     reasoning_snn_bridge_heartbeat("reasoning_sn_reasoning_snn_step", 0.0f);
 
 
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "reasoning_snn_step");
+    BRIDGE_LGSS_GATE(bridge, "reasoning_snn_step");
+
     return reasoning_snn_simulate(bridge, bridge->config.dt_ms);
 }
 

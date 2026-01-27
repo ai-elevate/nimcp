@@ -440,6 +440,8 @@ int protein_immune_bridge_update(
     protein_immune_apply_cytokine_effects(bridge);
     protein_immune_apply_inflammation_effects(bridge);
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

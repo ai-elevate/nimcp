@@ -593,6 +593,9 @@ int eligibility_immune_bridge_update(
     eligibility_immune_trigger_from_learning_stress(bridge);
 
     bridge->total_updates++;
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

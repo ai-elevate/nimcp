@@ -516,6 +516,9 @@ int spatial_pink_bridge_update(spatial_pink_bridge_t* bridge) {
     }
 
     bridge->update_count++;
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

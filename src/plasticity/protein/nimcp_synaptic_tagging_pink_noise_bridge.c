@@ -121,6 +121,9 @@ int tag_pink_noise_update(tag_pink_noise_bridge_t* bridge) {
     bridge->noisy_prp_level = clamp(bridge->noisy_prp_level, 0.1f, 2.0f);
 
     bridge->samples_generated++;
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

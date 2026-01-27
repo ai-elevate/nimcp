@@ -829,6 +829,8 @@ int synaptic_scaling_immune_bridge_update(
         synaptic_scaling_immune_signal_recovery(bridge);
     }
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

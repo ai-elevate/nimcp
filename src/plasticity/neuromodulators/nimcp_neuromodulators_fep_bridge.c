@@ -196,6 +196,9 @@ int neuromod_fep_bridge_update(neuromod_fep_bridge_t* bridge, uint64_t delta_ms)
         bridge->stats.avg_da_level = (bridge->stats.avg_da_level * (bridge->stats.total_updates - 1) + bridge->neuromod_effects.da_level) / bridge->stats.total_updates;
     }
     nimcp_platform_mutex_unlock(bridge->base.mutex);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

@@ -585,6 +585,8 @@ int stp_pink_noise_update(stp_pink_noise_bridge_t* bridge) {
     bridge->state.modulation_events++;
     bridge->state.last_update_time++;
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 

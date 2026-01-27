@@ -221,6 +221,8 @@ int homeo_pink_noise_update(homeo_pink_noise_bridge_t* bridge) {
     float rate_shift = bridge->noisy_target_rate - base_target_rate;
     bridge->avg_target_rate_shift = bridge->avg_target_rate_shift * 0.99f + rate_shift * 0.01f;
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 
