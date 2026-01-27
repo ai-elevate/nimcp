@@ -439,3 +439,28 @@ set_tests_properties(integration_heartbeat_B15_tom_symboliclogic_selfmodel_predi
     LABELS "integration;fault_tolerance;heartbeat;B15;tom_symboliclogic_selfmodel_predictive"
     TIMEOUT 180
 )
+
+# B16: cognitive/executive + cognitive/consolidation + cognitive/autobiographical_memory + cognitive/attention
+add_executable(integration_heartbeat_B16_executive_consolidation_autobio_attention
+    test_heartbeat_B16_executive_consolidation_autobio_attention_integration.cpp
+)
+
+target_link_libraries(integration_heartbeat_B16_executive_consolidation_autobio_attention
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        pthread
+)
+
+target_include_directories(integration_heartbeat_B16_executive_consolidation_autobio_attention
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME integration_heartbeat_B16_executive_consolidation_autobio_attention
+         COMMAND integration_heartbeat_B16_executive_consolidation_autobio_attention)
+set_tests_properties(integration_heartbeat_B16_executive_consolidation_autobio_attention PROPERTIES
+    LABELS "integration;fault_tolerance;heartbeat;B16;executive_consolidation_autobio_attention"
+    TIMEOUT 180
+)

@@ -874,6 +874,13 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_surprise_fep_bridge.c  # Society of Thought: Surprise ↔ FEP bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_surprise_gw_bridge.c  # Society of Thought: Surprise → GW bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_surprise_attention_bridge.c  # Society of Thought: Surprise ↔ Attention bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_surprise_plasticity_bridge.c  # Society of Thought: Surprise ↔ Plasticity bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_surprise_snn_bridge.c  # Society of Thought: Surprise ↔ SNN bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_surprise_substrate_bridge.c  # Society of Thought: Surprise ↔ Substrate bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_surprise_thalamic_bridge.c  # Society of Thought: Surprise ↔ Thalamic bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_surprise_pink_noise_bridge.c  # Society of Thought: Surprise ↔ Pink Noise bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_surprise_imagination_bridge.c  # Society of Thought: Surprise ↔ Imagination bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_surprise_self_model_bridge.c  # Society of Thought: Surprise ↔ Self-Model bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_model/nimcp_self_model_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/theory_of_mind/nimcp_tom_fep_bridge.c
     # Core Brain FEP Bridges
@@ -1304,6 +1311,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_salience_thalamic_bridge.c  # Salience-thalamic integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotion_recognition/nimcp_emotion_recognition_thalamic_bridge.c  # Emotion-recognition-thalamic integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/autobiographical_memory/nimcp_autobio_thalamic_bridge.c  # Autobio-thalamic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/autobiographical_memory/nimcp_autobiographical_memory_sleep_bridge.c  # Autobio-sleep integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/sleep_wake/nimcp_sleep_wake_thalamic_bridge.c  # Sleep-wake-thalamic integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/meta_learning/nimcp_meta_learning_thalamic_bridge.c  # Meta-learning-thalamic integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/jepa/nimcp_jepa_thalamic_bridge.c  # JEPA-thalamic integration

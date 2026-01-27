@@ -499,4 +499,33 @@ gtest_discover_tests(regression_heartbeat_B15_tom_symboliclogic_selfmodel_predic
         TIMEOUT 180
 )
 
+# B16: cognitive/executive + cognitive/consolidation + cognitive/autobiographical_memory + cognitive/attention
+add_executable(regression_heartbeat_B16_executive_consolidation_autobio_attention
+    test_heartbeat_B16_executive_consolidation_autobio_attention_regression.cpp
+)
+
+target_link_libraries(regression_heartbeat_B16_executive_consolidation_autobio_attention
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        pthread
+)
+
+target_include_directories(regression_heartbeat_B16_executive_consolidation_autobio_attention
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_heartbeat_B16_executive_consolidation_autobio_attention PRIVATE cxx_std_17)
+target_compile_definitions(regression_heartbeat_B16_executive_consolidation_autobio_attention PRIVATE NIMCP_TESTING)
+
+gtest_discover_tests(regression_heartbeat_B16_executive_consolidation_autobio_attention
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;fault_tolerance;heartbeat;B16;executive_consolidation_autobio_attention"
+        TIMEOUT 180
+)
+
 message(STATUS "Added fault tolerance regression tests")
