@@ -37,3 +37,21 @@ target_include_directories(regression_cognitive_fault_tolerance_health_repair_br
 add_test(NAME regression_cognitive_fault_tolerance_health_repair_bridge
          COMMAND regression_cognitive_fault_tolerance_health_repair_bridge)
 set_tests_properties(regression_cognitive_fault_tolerance_health_repair_bridge PROPERTIES LABELS "regression")
+
+# Health Diagnostic Bridge Regression Tests
+add_executable(regression_cognitive_fault_tolerance_health_diagnostic_bridge
+    test_health_diagnostic_bridge_regression.cpp
+)
+target_link_libraries(regression_cognitive_fault_tolerance_health_diagnostic_bridge
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(regression_cognitive_fault_tolerance_health_diagnostic_bridge
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME regression_cognitive_fault_tolerance_health_diagnostic_bridge
+         COMMAND regression_cognitive_fault_tolerance_health_diagnostic_bridge)
+set_tests_properties(regression_cognitive_fault_tolerance_health_diagnostic_bridge PROPERTIES LABELS "regression")

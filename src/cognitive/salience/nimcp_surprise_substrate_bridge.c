@@ -1,18 +1,21 @@
 /**
  * @file nimcp_surprise_substrate_bridge.c
  * @brief Bridge between Surprise Amplifier and metabolic substrate
- * @version 1.0.0
+ * @version 1.1.0
  * @date 2026-01-27
  *
  * WHAT: Metabolic constraints on surprise processing
  * WHY:  Low ATP reduces sensitivity; fatigue increases thresholds
- * HOW:  ATP/fatigue levels → surprise parameter modulation
+ * HOW:  ATP/fatigue levels -> surprise parameter modulation
  *
  * @author NIMCP Development Team
  */
 
 #include "cognitive/salience/nimcp_surprise_substrate_bridge.h"
 #include "cognitive/salience/nimcp_surprise_amplifier.h"
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -41,6 +44,17 @@ void surprise_substrate_bridge_set_health_agent_global(nimcp_health_agent_t* age
 static inline void surprise_substrate_heartbeat(const char* op, float progress) {
     if (g_surprise_substrate_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_surprise_substrate_health_agent, op, progress);
+    }
+}
+
+static inline void surprise_substrate_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* op, float progress)
+{
+    if (g_surprise_substrate_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_surprise_substrate_health_agent, op, progress);
+    }
+    if (instance_agent && instance_agent != g_surprise_substrate_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, op, progress);
     }
 }
 
@@ -78,13 +92,68 @@ struct surprise_substrate_bridge {
 };
 
 /* ============================================================================
- * Helpers
+ * Bio-Async Helpers
  * ============================================================================ */
 
-static inline float clamp_f(float val, float lo, float hi) {
-    if (val < lo) return lo;
-    if (val > hi) return hi;
-    return val;
+static void substrate_send_modulation_msg(surprise_substrate_bridge_t* bridge,
+                                           float atp, float fatigue, float capacity)
+{
+    if (!bridge->bio_async_connected || !bridge->router) return;
+
+    typedef struct {
+        bio_message_header_t header;
+        float atp_level;
+        float fatigue_level;
+        float overall_capacity;
+        float detection_sensitivity;
+        float amplification_accuracy;
+        uint64_t update_count;
+    } surprise_substrate_modulation_msg_t;
+
+    surprise_substrate_modulation_msg_t msg;
+    memset(&msg, 0, sizeof(msg));
+    bio_msg_init_header(&msg.header,
+                        BIO_MSG_SURPRISE_SUBSTRATE_MODULATION,
+                        BIO_MODULE_SURPRISE_SUBSTRATE,
+                        0, sizeof(msg));
+    msg.header.channel = BIO_CHANNEL_NOREPINEPHRINE;
+    msg.atp_level = atp;
+    msg.fatigue_level = fatigue;
+    msg.overall_capacity = capacity;
+    msg.detection_sensitivity = bridge->effects.detection_sensitivity;
+    msg.amplification_accuracy = bridge->effects.amplification_accuracy;
+    msg.update_count = bridge->update_count;
+
+    bio_router_broadcast((bio_module_context_t)bridge->router, &msg, sizeof(msg));
+}
+
+static void substrate_send_fatigue_msg(surprise_substrate_bridge_t* bridge,
+                                        float atp, float fatigue)
+{
+    if (!bridge->bio_async_connected || !bridge->router) return;
+
+    typedef struct {
+        bio_message_header_t header;
+        float atp_level;
+        float fatigue_level;
+        float overall_capacity;
+        bool atp_critical;
+    } surprise_substrate_fatigue_msg_t;
+
+    surprise_substrate_fatigue_msg_t msg;
+    memset(&msg, 0, sizeof(msg));
+    bio_msg_init_header(&msg.header,
+                        BIO_MSG_SURPRISE_SUBSTRATE_FATIGUE,
+                        BIO_MODULE_SURPRISE_SUBSTRATE,
+                        0, sizeof(msg));
+    msg.header.channel = BIO_CHANNEL_NOREPINEPHRINE;
+    msg.header.flags = BIO_MSG_FLAG_URGENT;
+    msg.atp_level = atp;
+    msg.fatigue_level = fatigue;
+    msg.overall_capacity = bridge->effects.overall_capacity;
+    msg.atp_critical = (atp < 0.2f);
+
+    bio_router_broadcast((bio_module_context_t)bridge->router, &msg, sizeof(msg));
 }
 
 /* ============================================================================
@@ -147,6 +216,12 @@ surprise_substrate_bridge_t* surprise_substrate_bridge_create(
     if (bridge->config.enable_logging) {
         NIMCP_LOGGING_INFO("Created surprise-substrate bridge (min_cap=%.2f)",
                            bridge->config.min_capacity);
+        NIMCP_LOGGING_DEBUG("Substrate bridge config: detect_mult=%.3f, amplify_mult=%.3f, "
+                            "decay_mult=%.3f, refract_mult=%.3f",
+                            bridge->config.detection_sensitivity_mult,
+                            bridge->config.amplification_accuracy_mult,
+                            bridge->config.decay_modulation_mult,
+                            bridge->config.refractory_modulation_mult);
     }
 
     return bridge;
@@ -159,6 +234,9 @@ void surprise_substrate_bridge_destroy(surprise_substrate_bridge_t* bridge) {
         NIMCP_LOGGING_INFO("Destroying surprise-substrate bridge (updates=%lu, warnings=%lu)",
                            (unsigned long)bridge->stats.modulation_updates,
                            (unsigned long)bridge->stats.capacity_warnings);
+        NIMCP_LOGGING_DEBUG("Substrate bridge final state: atp=%.3f, fatigue=%.3f, capacity=%.3f",
+                            bridge->last_atp, bridge->last_fatigue,
+                            bridge->effects.overall_capacity);
     }
 
     if (bridge->mutex) {
@@ -182,12 +260,15 @@ int surprise_substrate_bridge_connect_amplifier(
                              NIMCP_SURPRISE_SUBSTRATE_ERROR_NULL_POINTER,
                              "NULL amp in connect_amplifier");
 
+    surprise_substrate_heartbeat_instance(bridge->health_agent, "connect_amplifier", 0.0f);
+
     nimcp_mutex_lock(bridge->mutex);
     bridge->amplifier = amp;
     nimcp_mutex_unlock(bridge->mutex);
 
     if (bridge->config.enable_logging) {
         NIMCP_LOGGING_INFO("Surprise-substrate bridge connected to amplifier");
+        NIMCP_LOGGING_DEBUG("Substrate bridge amplifier connection established, ptr=%p", (void*)amp);
     }
     return 0;
 }
@@ -203,12 +284,15 @@ int surprise_substrate_bridge_connect_substrate(
                              NIMCP_SURPRISE_SUBSTRATE_ERROR_NULL_POINTER,
                              "NULL substrate in connect_substrate");
 
+    surprise_substrate_heartbeat_instance(bridge->health_agent, "connect_substrate", 0.0f);
+
     nimcp_mutex_lock(bridge->mutex);
     bridge->substrate_system = substrate;
     nimcp_mutex_unlock(bridge->mutex);
 
     if (bridge->config.enable_logging) {
         NIMCP_LOGGING_INFO("Surprise-substrate bridge connected to substrate system");
+        NIMCP_LOGGING_DEBUG("Substrate system connection established, ptr=%p", (void*)substrate);
     }
     return 0;
 }
@@ -221,10 +305,17 @@ int surprise_substrate_bridge_register_bio_async(
                              NIMCP_SURPRISE_SUBSTRATE_ERROR_NULL_POINTER,
                              "NULL bridge in register_bio_async");
 
+    surprise_substrate_heartbeat_instance(bridge->health_agent, "register_bio_async", 0.0f);
+
     nimcp_mutex_lock(bridge->mutex);
     bridge->router = router;
     bridge->bio_async_connected = (router != NULL);
     nimcp_mutex_unlock(bridge->mutex);
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Substrate bridge bio-async %s (router=%p)",
+                            router ? "connected" : "disconnected", router);
+    }
 
     return 0;
 }
@@ -242,41 +333,58 @@ int surprise_substrate_bridge_update(
                              NIMCP_SURPRISE_SUBSTRATE_ERROR_NULL_POINTER,
                              "NULL bridge in update");
 
-    surprise_substrate_heartbeat("update", 0.0f);
+    surprise_substrate_heartbeat_instance(bridge->health_agent, "update", 0.0f);
 
-    float atp = clamp_f(atp_level, 0.0f, 1.0f);
-    float fatigue = clamp_f(fatigue_level, 0.0f, 1.0f);
+    float atp = nimcp_myelin_clamp(atp_level, 0.0f, 1.0f);
+    float fatigue = nimcp_myelin_clamp(fatigue_level, 0.0f, 1.0f);
 
     nimcp_mutex_lock(bridge->mutex);
 
+    float prev_capacity = bridge->effects.overall_capacity;
     bridge->last_atp = atp;
     bridge->last_fatigue = fatigue;
 
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Substrate update: atp=%.3f, fatigue=%.3f, prev_capacity=%.3f",
+                            atp, fatigue, prev_capacity);
+    }
+
+    /* Warn on edge conditions */
+    if (bridge->config.enable_logging) {
+        if (atp < 0.2f) {
+            NIMCP_LOGGING_WARN("Substrate ATP critically low: atp=%.3f (threshold=0.2)", atp);
+        }
+    }
+
     /* Compute modulation effects from substrate state */
-    /* High ATP → better detection; low ATP → worse */
+    /* High ATP -> better detection; low ATP -> worse */
     bridge->effects.detection_sensitivity = bridge->config.detection_sensitivity_mult * atp;
-    bridge->effects.detection_sensitivity = clamp_f(
+    bridge->effects.detection_sensitivity = nimcp_myelin_clamp(
         bridge->effects.detection_sensitivity, bridge->config.min_capacity, 2.0f);
 
-    /* High ATP → accurate amplification */
+    /* High ATP -> accurate amplification */
     bridge->effects.amplification_accuracy = bridge->config.amplification_accuracy_mult * atp;
-    bridge->effects.amplification_accuracy = clamp_f(
+    bridge->effects.amplification_accuracy = nimcp_myelin_clamp(
         bridge->effects.amplification_accuracy, bridge->config.min_capacity, 2.0f);
 
-    /* High fatigue → faster decay */
+    /* High fatigue -> faster decay */
     bridge->effects.decay_modulation = bridge->config.decay_modulation_mult * (1.0f + fatigue);
 
-    /* High fatigue → longer refractory */
+    /* High fatigue -> longer refractory */
     bridge->effects.refractory_modulation = bridge->config.refractory_modulation_mult * (1.0f + fatigue);
 
     /* Overall capacity = ATP * (1 - fatigue) */
-    bridge->effects.overall_capacity = clamp_f(
+    bridge->effects.overall_capacity = nimcp_myelin_clamp(
         atp * (1.0f - fatigue * 0.5f), bridge->config.min_capacity, 1.0f);
 
     bridge->stats.modulation_updates++;
 
     if (bridge->effects.overall_capacity < 0.5f) {
         bridge->stats.capacity_warnings++;
+        if (bridge->config.enable_logging) {
+            NIMCP_LOGGING_WARN("Substrate capacity below 50%%: capacity=%.3f, atp=%.3f, fatigue=%.3f",
+                               bridge->effects.overall_capacity, atp, fatigue);
+        }
     }
     if (atp < 0.2f) {
         bridge->stats.atp_critical_events++;
@@ -284,6 +392,34 @@ int surprise_substrate_bridge_update(
 
     bridge->stats.total_updates++;
     bridge->update_count++;
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Substrate effects computed: detect=%.3f, amplify=%.3f, "
+                            "decay=%.3f, refract=%.3f, capacity=%.3f",
+                            bridge->effects.detection_sensitivity,
+                            bridge->effects.amplification_accuracy,
+                            bridge->effects.decay_modulation,
+                            bridge->effects.refractory_modulation,
+                            bridge->effects.overall_capacity);
+    }
+
+    /* Bio-async: send modulation when effects change significantly */
+    float capacity_delta = fabsf(bridge->effects.overall_capacity - prev_capacity);
+    if (capacity_delta > 0.05f) {
+        substrate_send_modulation_msg(bridge, atp, fatigue,
+                                       bridge->effects.overall_capacity);
+        if (bridge->config.enable_logging) {
+            NIMCP_LOGGING_DEBUG("Substrate bio-async: sent MODULATION (delta=%.3f)", capacity_delta);
+        }
+    }
+
+    /* Bio-async: send fatigue when ATP critical */
+    if (atp < 0.2f) {
+        substrate_send_fatigue_msg(bridge, atp, fatigue);
+        if (bridge->config.enable_logging) {
+            NIMCP_LOGGING_DEBUG("Substrate bio-async: sent FATIGUE (atp=%.3f)", atp);
+        }
+    }
 
     nimcp_mutex_unlock(bridge->mutex);
 
@@ -312,7 +448,13 @@ int surprise_substrate_bridge_apply_effects(
                              NIMCP_SURPRISE_SUBSTRATE_ERROR_NULL_POINTER,
                              "NULL bridge in apply_effects");
 
-    surprise_substrate_heartbeat("apply_effects", 0.0f);
+    surprise_substrate_heartbeat_instance(bridge->health_agent, "apply_effects", 0.0f);
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Substrate apply_effects: capacity=%.3f, detect=%.3f",
+                            bridge->effects.overall_capacity,
+                            bridge->effects.detection_sensitivity);
+    }
 
     /* Effects would be applied to the amplifier here via its API */
     /* For now, effects are available via get_effects for the amplifier to query */
@@ -352,5 +494,10 @@ int surprise_substrate_bridge_set_health_agent(
                              "NULL bridge in set_health_agent");
 
     bridge->health_agent = agent;
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Substrate bridge instance health agent %s",
+                            agent ? "set" : "cleared");
+    }
     return 0;
 }

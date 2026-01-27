@@ -1,18 +1,21 @@
 /**
  * @file nimcp_surprise_imagination_bridge.c
  * @brief Bridge between Surprise Amplifier and imagination/counterfactual system
- * @version 1.0.0
+ * @version 1.1.0
  * @date 2026-01-27
  *
  * WHAT: High surprise triggers counterfactual imagination scenarios
  * WHY:  Surprising events should trigger "what if" reasoning
- * HOW:  Surprise threshold → trigger imagination; results → expectation update
+ * HOW:  Surprise threshold -> trigger imagination; results -> expectation update
  *
  * @author NIMCP Development Team
  */
 
 #include "cognitive/salience/nimcp_surprise_imagination_bridge.h"
 #include "cognitive/salience/nimcp_surprise_amplifier.h"
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -41,6 +44,17 @@ void surprise_imagination_bridge_set_health_agent_global(nimcp_health_agent_t* a
 static inline void surprise_imagination_heartbeat(const char* op, float progress) {
     if (g_surprise_imagination_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_surprise_imagination_health_agent, op, progress);
+    }
+}
+
+static inline void surprise_imagination_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* op, float progress)
+{
+    if (g_surprise_imagination_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_surprise_imagination_health_agent, op, progress);
+    }
+    if (instance_agent && instance_agent != g_surprise_imagination_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, op, progress);
     }
 }
 
@@ -82,10 +96,14 @@ struct surprise_imagination_bridge {
  * Helpers
  * ============================================================================ */
 
-static inline float clamp_f(float val, float lo, float hi) {
-    if (val < lo) return lo;
-    if (val > hi) return hi;
-    return val;
+static const char* imagination_status_name(uint32_t status) {
+    switch (status) {
+        case SURPRISE_IMAGINATION_STATUS_PENDING:   return "PENDING";
+        case SURPRISE_IMAGINATION_STATUS_ACTIVE:    return "ACTIVE";
+        case SURPRISE_IMAGINATION_STATUS_COMPLETED: return "COMPLETED";
+        case SURPRISE_IMAGINATION_STATUS_CANCELLED: return "CANCELLED";
+        default: return "UNKNOWN";
+    }
 }
 
 static surprise_imagination_scenario_t* find_scenario(
@@ -122,6 +140,74 @@ static uint32_t count_active(surprise_imagination_bridge_t* bridge) {
         }
     }
     return count;
+}
+
+/* ============================================================================
+ * Bio-Async Helpers
+ * ============================================================================ */
+
+static void imagination_send_trigger_msg(surprise_imagination_bridge_t* bridge,
+                                           uint32_t scenario_id, float surprise_level,
+                                           uint32_t source_module)
+{
+    if (!bridge->bio_async_connected || !bridge->router) return;
+
+    typedef struct {
+        bio_message_header_t header;
+        uint32_t scenario_id;
+        float surprise_level;
+        uint32_t source_module;
+        uint32_t scenarios_active;
+        uint64_t total_triggers;
+    } surprise_imagination_trigger_msg_t;
+
+    surprise_imagination_trigger_msg_t msg;
+    memset(&msg, 0, sizeof(msg));
+    bio_msg_init_header(&msg.header,
+                        BIO_MSG_SURPRISE_IMAGINATION_TRIGGER,
+                        BIO_MODULE_SURPRISE_IMAGINATION,
+                        0, sizeof(msg));
+    msg.header.channel = BIO_CHANNEL_NOREPINEPHRINE;
+    msg.scenario_id = scenario_id;
+    msg.surprise_level = surprise_level;
+    msg.source_module = source_module;
+    msg.scenarios_active = bridge->effects.scenarios_active;
+    msg.total_triggers = bridge->stats.triggers;
+
+    bio_router_broadcast((bio_module_context_t)bridge->router, &msg, sizeof(msg));
+}
+
+static void imagination_send_result_msg(surprise_imagination_bridge_t* bridge,
+                                          uint32_t scenario_id, float divergence,
+                                          float expected, float actual)
+{
+    if (!bridge->bio_async_connected || !bridge->router) return;
+
+    typedef struct {
+        bio_message_header_t header;
+        uint32_t scenario_id;
+        float divergence;
+        float expected_outcome;
+        float actual_outcome;
+        float expectation_adjustment;
+        uint64_t scenarios_completed;
+    } surprise_imagination_result_msg_t;
+
+    surprise_imagination_result_msg_t msg;
+    memset(&msg, 0, sizeof(msg));
+    bio_msg_init_header(&msg.header,
+                        BIO_MSG_SURPRISE_IMAGINATION_RESULT,
+                        BIO_MODULE_SURPRISE_IMAGINATION,
+                        0, sizeof(msg));
+    msg.header.channel = BIO_CHANNEL_NOREPINEPHRINE;
+    msg.scenario_id = scenario_id;
+    msg.divergence = divergence;
+    msg.expected_outcome = expected;
+    msg.actual_outcome = actual;
+    msg.expectation_adjustment = bridge->effects.expectation_adjustment;
+    msg.scenarios_completed = bridge->stats.scenarios_completed;
+
+    bio_router_broadcast((bio_module_context_t)bridge->router, &msg, sizeof(msg));
 }
 
 /* ============================================================================
@@ -189,6 +275,10 @@ surprise_imagination_bridge_t* surprise_imagination_bridge_create(
     if (bridge->config.enable_logging) {
         NIMCP_LOGGING_INFO("Created surprise-imagination bridge (threshold=%.2f, max_scenarios=%u)",
                            bridge->config.trigger_threshold, bridge->config.max_scenarios);
+        NIMCP_LOGGING_DEBUG("Imagination config: cooldown=%.2fs, expect_rate=%.3f, cf_depth=%u",
+                            bridge->config.cooldown_seconds,
+                            bridge->config.expectation_update_rate,
+                            bridge->config.counterfactual_depth);
     }
 
     return bridge;
@@ -201,6 +291,9 @@ void surprise_imagination_bridge_destroy(surprise_imagination_bridge_t* bridge) 
         NIMCP_LOGGING_INFO("Destroying surprise-imagination bridge (triggers=%lu, completed=%lu)",
                            (unsigned long)bridge->stats.triggers,
                            (unsigned long)bridge->stats.scenarios_completed);
+        NIMCP_LOGGING_DEBUG("Imagination final state: expect_adj=%.4f, cooldown_blocked=%lu",
+                            bridge->effects.expectation_adjustment,
+                            (unsigned long)bridge->stats.cooldown_blocked);
     }
 
     if (bridge->scenarios) {
@@ -217,7 +310,7 @@ int surprise_imagination_bridge_reset(surprise_imagination_bridge_t* bridge) {
                              NIMCP_SURPRISE_IMAGINATION_ERROR_NULL_POINTER,
                              "NULL bridge in reset");
 
-    surprise_imagination_heartbeat("reset", 0.0f);
+    surprise_imagination_heartbeat_instance(bridge->health_agent, "reset", 0.0f);
 
     nimcp_mutex_lock(bridge->mutex);
     memset(&bridge->effects, 0, sizeof(bridge->effects));
@@ -228,6 +321,10 @@ int surprise_imagination_bridge_reset(surprise_imagination_bridge_t* bridge) {
     bridge->cooldown_timer = 0.0f;
     bridge->update_count = 0;
     nimcp_mutex_unlock(bridge->mutex);
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Imagination bridge reset: scenarios cleared, cooldown zeroed");
+    }
 
     return 0;
 }
@@ -247,12 +344,15 @@ int surprise_imagination_bridge_connect_amplifier(
                              NIMCP_SURPRISE_IMAGINATION_ERROR_NULL_POINTER,
                              "NULL amp in connect_amplifier");
 
+    surprise_imagination_heartbeat_instance(bridge->health_agent, "connect_amplifier", 0.0f);
+
     nimcp_mutex_lock(bridge->mutex);
     bridge->amplifier = amp;
     nimcp_mutex_unlock(bridge->mutex);
 
     if (bridge->config.enable_logging) {
         NIMCP_LOGGING_INFO("Surprise-imagination bridge connected to amplifier");
+        NIMCP_LOGGING_DEBUG("Imagination amplifier connection established, ptr=%p", (void*)amp);
     }
     return 0;
 }
@@ -268,6 +368,8 @@ int surprise_imagination_bridge_connect_imagination_engine(
                              NIMCP_SURPRISE_IMAGINATION_ERROR_NULL_POINTER,
                              "NULL engine in connect_imagination_engine");
 
+    surprise_imagination_heartbeat_instance(bridge->health_agent, "connect_imagination_engine", 0.0f);
+
     nimcp_mutex_lock(bridge->mutex);
     bridge->imagination_engine = engine;
     bridge->effects.imagination_connected = true;
@@ -275,6 +377,7 @@ int surprise_imagination_bridge_connect_imagination_engine(
 
     if (bridge->config.enable_logging) {
         NIMCP_LOGGING_INFO("Surprise-imagination bridge connected to imagination engine");
+        NIMCP_LOGGING_DEBUG("Imagination engine connection established, ptr=%p", (void*)engine);
     }
     return 0;
 }
@@ -287,10 +390,17 @@ int surprise_imagination_bridge_connect_bio_async(
                              NIMCP_SURPRISE_IMAGINATION_ERROR_NULL_POINTER,
                              "NULL bridge in connect_bio_async");
 
+    surprise_imagination_heartbeat_instance(bridge->health_agent, "connect_bio_async", 0.0f);
+
     nimcp_mutex_lock(bridge->mutex);
     bridge->router = router;
     bridge->bio_async_connected = (router != NULL);
     nimcp_mutex_unlock(bridge->mutex);
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Imagination bio-async %s (router=%p)",
+                            router ? "connected" : "disconnected", router);
+    }
 
     return 0;
 }
@@ -302,10 +412,16 @@ int surprise_imagination_bridge_disconnect_bio_async(
                              NIMCP_SURPRISE_IMAGINATION_ERROR_NULL_POINTER,
                              "NULL bridge in disconnect_bio_async");
 
+    surprise_imagination_heartbeat_instance(bridge->health_agent, "disconnect_bio_async", 0.0f);
+
     nimcp_mutex_lock(bridge->mutex);
     bridge->router = NULL;
     bridge->bio_async_connected = false;
     nimcp_mutex_unlock(bridge->mutex);
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Imagination bio-async disconnected");
+    }
 
     return 0;
 }
@@ -323,22 +439,41 @@ int surprise_imagination_check_trigger(
                              NIMCP_SURPRISE_IMAGINATION_ERROR_NULL_POINTER,
                              "NULL bridge in check_trigger");
 
-    surprise_imagination_heartbeat("check_trigger", 0.0f);
+    surprise_imagination_heartbeat_instance(bridge->health_agent, "check_trigger", 0.0f);
 
-    float level = clamp_f(surprise_level, 0.0f, 1.0f);
+    float level = nimcp_myelin_clamp(surprise_level, 0.0f, 1.0f);
 
     nimcp_mutex_lock(bridge->mutex);
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Imagination check_trigger: surprise=%.3f, threshold=%.3f, "
+                            "cooldown=%.3f, source=0x%x",
+                            level, bridge->config.trigger_threshold,
+                            bridge->cooldown_timer, source_module);
+    }
 
     /* Check cooldown */
     if (bridge->cooldown_timer > 0.0f) {
         bridge->stats.cooldown_blocked++;
         bridge->effects.cooldown_remaining = bridge->cooldown_timer;
+
+        if (bridge->config.enable_logging) {
+            NIMCP_LOGGING_WARN("Imagination trigger blocked by cooldown: remaining=%.3fs, "
+                               "surprise=%.3f (blocked_count=%lu)",
+                               bridge->cooldown_timer, level,
+                               (unsigned long)bridge->stats.cooldown_blocked);
+        }
+
         nimcp_mutex_unlock(bridge->mutex);
         return 0;
     }
 
     /* Check threshold */
     if (level < bridge->config.trigger_threshold) {
+        if (bridge->config.enable_logging) {
+            NIMCP_LOGGING_DEBUG("Imagination trigger below threshold: surprise=%.3f < threshold=%.3f",
+                                level, bridge->config.trigger_threshold);
+        }
         nimcp_mutex_unlock(bridge->mutex);
         return 0;
     }
@@ -346,6 +481,10 @@ int surprise_imagination_check_trigger(
     /* Check available slots */
     surprise_imagination_scenario_t* slot = find_free_slot(bridge);
     if (!slot) {
+        if (bridge->config.enable_logging) {
+            NIMCP_LOGGING_WARN("Imagination trigger: no free scenario slots (max=%u, active=%u)",
+                               bridge->config.max_scenarios, count_active(bridge));
+        }
         nimcp_mutex_unlock(bridge->mutex);
         return 0;
     }
@@ -368,12 +507,22 @@ int surprise_imagination_check_trigger(
 
     bridge->stats.triggers++;
 
-    nimcp_mutex_unlock(bridge->mutex);
-
     if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Imagination scenario CREATED: id=%u, surprise=%.3f, source=0x%x, "
+                            "expected=%.3f, active_count=%u",
+                            slot->scenario_id, level, source_module,
+                            slot->expected_outcome, bridge->effects.scenarios_active);
         NIMCP_LOGGING_INFO("Imagination triggered: scenario=%u, surprise=%.3f, source=0x%x",
                            slot->scenario_id, level, source_module);
     }
+
+    /* Bio-async: send trigger notification */
+    imagination_send_trigger_msg(bridge, slot->scenario_id, level, source_module);
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Imagination bio-async: sent TRIGGER (scenario=%u)", slot->scenario_id);
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
 
     return 0;
 }
@@ -387,12 +536,16 @@ int surprise_imagination_on_result(
                              NIMCP_SURPRISE_IMAGINATION_ERROR_NULL_POINTER,
                              "NULL bridge in on_result");
 
-    surprise_imagination_heartbeat("on_result", 0.0f);
+    surprise_imagination_heartbeat_instance(bridge->health_agent, "on_result", 0.0f);
 
     nimcp_mutex_lock(bridge->mutex);
 
     surprise_imagination_scenario_t* scenario = find_scenario(bridge, scenario_id);
     if (!scenario) {
+        if (bridge->config.enable_logging) {
+            NIMCP_LOGGING_WARN("Imagination on_result: scenario %u not found or cancelled",
+                               scenario_id);
+        }
         nimcp_mutex_unlock(bridge->mutex);
         return NIMCP_SURPRISE_IMAGINATION_ERROR_INVALID_PARAM;
     }
@@ -401,6 +554,14 @@ int surprise_imagination_on_result(
     scenario->divergence = fabsf(scenario->expected_outcome - actual_outcome);
     scenario->status = SURPRISE_IMAGINATION_STATUS_COMPLETED;
 
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Imagination on_result: scenario=%u, expected=%.3f, actual=%.3f, "
+                            "divergence=%.3f, status=%s",
+                            scenario_id, scenario->expected_outcome, actual_outcome,
+                            scenario->divergence,
+                            imagination_status_name(scenario->status));
+    }
+
     /* Update expectation adjustment based on divergence */
     bridge->effects.expectation_adjustment +=
         bridge->config.expectation_update_rate * scenario->divergence;
@@ -408,6 +569,21 @@ int surprise_imagination_on_result(
     bridge->effects.scenarios_active = count_active(bridge);
     bridge->stats.scenarios_completed++;
     bridge->stats.expectations_updated++;
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Imagination expectation update: divergence=%.3f, "
+                            "cumulative_adjustment=%.4f, completed=%lu",
+                            scenario->divergence, bridge->effects.expectation_adjustment,
+                            (unsigned long)bridge->stats.scenarios_completed);
+    }
+
+    /* Bio-async: send result notification */
+    imagination_send_result_msg(bridge, scenario_id, scenario->divergence,
+                                 scenario->expected_outcome, actual_outcome);
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Imagination bio-async: sent RESULT (scenario=%u, divergence=%.3f)",
+                            scenario_id, scenario->divergence);
+    }
 
     nimcp_mutex_unlock(bridge->mutex);
 
@@ -424,15 +600,26 @@ int surprise_imagination_bridge_update(
 
     if (dt_seconds <= 0.0f) return 0;
 
-    surprise_imagination_heartbeat("update", 0.0f);
+    surprise_imagination_heartbeat_instance(bridge->health_agent, "update", 0.0f);
 
     nimcp_mutex_lock(bridge->mutex);
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Imagination update: dt=%.4f, cooldown=%.3f, active=%u, "
+                            "expect_adj=%.4f",
+                            dt_seconds, bridge->cooldown_timer,
+                            bridge->effects.scenarios_active,
+                            bridge->effects.expectation_adjustment);
+    }
 
     /* Decay cooldown */
     if (bridge->cooldown_timer > 0.0f) {
         bridge->cooldown_timer -= dt_seconds;
         if (bridge->cooldown_timer < 0.0f) {
             bridge->cooldown_timer = 0.0f;
+            if (bridge->config.enable_logging) {
+                NIMCP_LOGGING_DEBUG("Imagination cooldown expired, ready for new triggers");
+            }
         }
     }
     bridge->effects.cooldown_remaining = bridge->cooldown_timer;
@@ -443,6 +630,9 @@ int surprise_imagination_bridge_update(
     bridge->effects.scenarios_active = count_active(bridge);
     bridge->stats.total_updates++;
     bridge->update_count++;
+
+    /* Loop heartbeat */
+    surprise_imagination_heartbeat_instance(bridge->health_agent, "update", 1.0f);
 
     nimcp_mutex_unlock(bridge->mutex);
 
@@ -518,5 +708,10 @@ int surprise_imagination_bridge_set_health_agent(
                              "NULL bridge in set_health_agent");
 
     bridge->health_agent = agent;
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Imagination bridge instance health agent %s",
+                            agent ? "set" : "cleared");
+    }
     return 0;
 }

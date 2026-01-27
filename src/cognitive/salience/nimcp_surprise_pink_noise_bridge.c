@@ -1,27 +1,30 @@
 /**
  * @file nimcp_surprise_pink_noise_bridge.c
  * @brief Bridge between Surprise Amplifier and Pink Noise system
- * @version 1.0.0
+ * @version 1.1.0
  * @date 2026-01-27
  *
  * WHAT: Biologically realistic 1/f noise for surprise baseline parameters
  * WHY:  Neural systems operate with 1/f noise; natural threshold fluctuations
- * HOW:  Pink noise → parameter injection; surprise level → amplitude adaptation
+ * HOW:  Pink noise -> parameter injection; surprise level -> amplitude adaptation
  *
  * @author NIMCP Development Team
  */
 
 #include "cognitive/salience/nimcp_surprise_pink_noise_bridge.h"
 #include "cognitive/salience/nimcp_surprise_amplifier.h"
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/rng/nimcp_rand.h"
 
 #include <string.h>
 #include <math.h>
 #include <stddef.h>
-#include <stdlib.h>
 
 /* ============================================================================
  * Health Agent Integration
@@ -42,6 +45,17 @@ void surprise_pink_noise_bridge_set_health_agent_global(nimcp_health_agent_t* ag
 static inline void surprise_pink_noise_heartbeat(const char* op, float progress) {
     if (g_surprise_pink_noise_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_surprise_pink_noise_health_agent, op, progress);
+    }
+}
+
+static inline void surprise_pink_noise_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* op, float progress)
+{
+    if (g_surprise_pink_noise_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_surprise_pink_noise_health_agent, op, progress);
+    }
+    if (instance_agent && instance_agent != g_surprise_pink_noise_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, op, progress);
     }
 }
 
@@ -75,7 +89,7 @@ static float pink_noise_gen_next(pink_noise_gen_t* gen) {
     if (octave < PINK_NOISE_NUM_OCTAVES) {
         /* Remove old value, generate new white noise, add it */
         gen->running_sum -= gen->octave_values[octave];
-        float white = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
+        float white = nimcp_rand_uniform() * 2.0f - 1.0f;
         gen->octave_values[octave] = white;
         gen->running_sum += white;
     }
@@ -116,13 +130,63 @@ struct surprise_pink_noise_bridge {
 };
 
 /* ============================================================================
- * Helpers
+ * Bio-Async Helpers
  * ============================================================================ */
 
-static inline float clamp_f(float val, float lo, float hi) {
-    if (val < lo) return lo;
-    if (val > hi) return hi;
-    return val;
+static void pink_noise_send_injection_msg(surprise_pink_noise_bridge_t* bridge,
+                                            float amplitude)
+{
+    if (!bridge->bio_async_connected || !bridge->router) return;
+
+    typedef struct {
+        bio_message_header_t header;
+        float effective_amplitude;
+        float noise_values[SURPRISE_PINK_NOISE_NUM_TARGETS];
+        uint64_t injection_count;
+    } surprise_noise_injection_msg_t;
+
+    surprise_noise_injection_msg_t msg;
+    memset(&msg, 0, sizeof(msg));
+    bio_msg_init_header(&msg.header,
+                        BIO_MSG_SURPRISE_NOISE_INJECTION,
+                        BIO_MODULE_SURPRISE_PINK_NOISE,
+                        0, sizeof(msg));
+    msg.header.channel = BIO_CHANNEL_NOREPINEPHRINE;
+    msg.effective_amplitude = amplitude;
+    for (int i = 0; i < SURPRISE_PINK_NOISE_NUM_TARGETS; i++) {
+        msg.noise_values[i] = bridge->effects.current_noise[i];
+    }
+    msg.injection_count = bridge->stats.noise_injections;
+
+    bio_router_broadcast((bio_module_context_t)bridge->router, &msg, sizeof(msg));
+}
+
+static void pink_noise_send_adaptation_msg(surprise_pink_noise_bridge_t* bridge,
+                                             float old_amplitude, float new_amplitude)
+{
+    if (!bridge->bio_async_connected || !bridge->router) return;
+
+    typedef struct {
+        bio_message_header_t header;
+        float old_amplitude;
+        float new_amplitude;
+        float adaptation_factor;
+        uint64_t adaptation_count;
+    } surprise_noise_adaptation_msg_t;
+
+    surprise_noise_adaptation_msg_t msg;
+    memset(&msg, 0, sizeof(msg));
+    bio_msg_init_header(&msg.header,
+                        BIO_MSG_SURPRISE_NOISE_ADAPTATION,
+                        BIO_MODULE_SURPRISE_PINK_NOISE,
+                        0, sizeof(msg));
+    msg.header.channel = BIO_CHANNEL_NOREPINEPHRINE;
+    msg.old_amplitude = old_amplitude;
+    msg.new_amplitude = new_amplitude;
+    msg.adaptation_factor = bridge->effects.adaptation_factor;
+    msg.adaptation_count = bridge->stats.adaptations;
+
+    bio_router_broadcast((bio_module_context_t)bridge->router, &msg, sizeof(msg));
 }
 
 /* ============================================================================
@@ -189,6 +253,18 @@ surprise_pink_noise_bridge_t* surprise_pink_noise_bridge_create(
     if (bridge->config.enable_logging) {
         NIMCP_LOGGING_INFO("Created surprise-pink noise bridge (amp=%.3f, alpha=%.1f)",
                            bridge->config.base_amplitude, bridge->config.alpha);
+        NIMCP_LOGGING_DEBUG("Pink noise config: adapt_rate=%.3f, smoothing=%.3f, "
+                            "min_amp=%.3f, max_amp=%.3f",
+                            bridge->config.adaptation_rate,
+                            bridge->config.temporal_smoothing,
+                            bridge->config.min_amplitude,
+                            bridge->config.max_amplitude);
+        NIMCP_LOGGING_DEBUG("Pink noise target amplitudes: [thresh=%.2f, sens=%.2f, "
+                            "decay=%.2f, refract=%.2f]",
+                            bridge->config.target_amplitudes[0],
+                            bridge->config.target_amplitudes[1],
+                            bridge->config.target_amplitudes[2],
+                            bridge->config.target_amplitudes[3]);
     }
 
     return bridge;
@@ -201,6 +277,11 @@ void surprise_pink_noise_bridge_destroy(surprise_pink_noise_bridge_t* bridge) {
         NIMCP_LOGGING_INFO("Destroying surprise-pink noise bridge (injections=%lu, adaptations=%lu)",
                            (unsigned long)bridge->stats.noise_injections,
                            (unsigned long)bridge->stats.adaptations);
+        NIMCP_LOGGING_DEBUG("Pink noise final state: amplitude=%.3f, adapt_factor=%.3f, "
+                            "amp_changes=%lu",
+                            bridge->effects.effective_amplitude,
+                            bridge->effects.adaptation_factor,
+                            (unsigned long)bridge->stats.amplitude_changes);
     }
 
     if (bridge->mutex) {
@@ -214,7 +295,7 @@ int surprise_pink_noise_bridge_reset(surprise_pink_noise_bridge_t* bridge) {
                              NIMCP_SURPRISE_PINK_NOISE_ERROR_NULL_POINTER,
                              "NULL bridge in reset");
 
-    surprise_pink_noise_heartbeat("reset", 0.0f);
+    surprise_pink_noise_heartbeat_instance(bridge->health_agent, "reset", 0.0f);
 
     nimcp_mutex_lock(bridge->mutex);
     memset(&bridge->effects, 0, sizeof(bridge->effects));
@@ -226,6 +307,11 @@ int surprise_pink_noise_bridge_reset(surprise_pink_noise_bridge_t* bridge) {
     }
     bridge->update_count = 0;
     nimcp_mutex_unlock(bridge->mutex);
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Pink noise bridge reset: amplitude restored to %.3f",
+                            bridge->config.base_amplitude);
+    }
 
     return 0;
 }
@@ -245,12 +331,15 @@ int surprise_pink_noise_bridge_connect_amplifier(
                              NIMCP_SURPRISE_PINK_NOISE_ERROR_NULL_POINTER,
                              "NULL amp in connect_amplifier");
 
+    surprise_pink_noise_heartbeat_instance(bridge->health_agent, "connect_amplifier", 0.0f);
+
     nimcp_mutex_lock(bridge->mutex);
     bridge->amplifier = amp;
     nimcp_mutex_unlock(bridge->mutex);
 
     if (bridge->config.enable_logging) {
         NIMCP_LOGGING_INFO("Surprise-pink noise bridge connected to amplifier");
+        NIMCP_LOGGING_DEBUG("Pink noise amplifier connection established, ptr=%p", (void*)amp);
     }
     return 0;
 }
@@ -263,10 +352,17 @@ int surprise_pink_noise_bridge_connect_bio_async(
                              NIMCP_SURPRISE_PINK_NOISE_ERROR_NULL_POINTER,
                              "NULL bridge in connect_bio_async");
 
+    surprise_pink_noise_heartbeat_instance(bridge->health_agent, "connect_bio_async", 0.0f);
+
     nimcp_mutex_lock(bridge->mutex);
     bridge->router = router;
     bridge->bio_async_connected = (router != NULL);
     nimcp_mutex_unlock(bridge->mutex);
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Pink noise bio-async %s (router=%p)",
+                            router ? "connected" : "disconnected", router);
+    }
 
     return 0;
 }
@@ -278,10 +374,16 @@ int surprise_pink_noise_bridge_disconnect_bio_async(
                              NIMCP_SURPRISE_PINK_NOISE_ERROR_NULL_POINTER,
                              "NULL bridge in disconnect_bio_async");
 
+    surprise_pink_noise_heartbeat_instance(bridge->health_agent, "disconnect_bio_async", 0.0f);
+
     nimcp_mutex_lock(bridge->mutex);
     bridge->router = NULL;
     bridge->bio_async_connected = false;
     nimcp_mutex_unlock(bridge->mutex);
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Pink noise bio-async disconnected");
+    }
 
     return 0;
 }
@@ -295,11 +397,16 @@ int surprise_pink_noise_inject(surprise_pink_noise_bridge_t* bridge) {
                              NIMCP_SURPRISE_PINK_NOISE_ERROR_NULL_POINTER,
                              "NULL bridge in inject");
 
-    surprise_pink_noise_heartbeat("inject", 0.0f);
+    surprise_pink_noise_heartbeat_instance(bridge->health_agent, "inject", 0.0f);
 
     nimcp_mutex_lock(bridge->mutex);
 
     float amplitude = bridge->effects.effective_amplitude;
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Pink noise inject: amplitude=%.4f, samples_generated=%lu",
+                            amplitude, (unsigned long)bridge->effects.samples_generated);
+    }
 
     for (int i = 0; i < SURPRISE_PINK_NOISE_NUM_TARGETS; i++) {
         float raw = pink_noise_gen_next(&bridge->generators[i]);
@@ -310,10 +417,29 @@ int surprise_pink_noise_inject(surprise_pink_noise_bridge_t* bridge) {
         bridge->effects.current_noise[i] =
             bridge->config.temporal_smoothing * bridge->effects.current_noise[i] +
             (1.0f - bridge->config.temporal_smoothing) * noise;
+
+        if (bridge->config.enable_logging) {
+            NIMCP_LOGGING_TRACE("Pink noise target[%d]: raw=%.4f, scale=%.3f, "
+                                "noise=%.4f, smoothed=%.4f",
+                                i, raw, target_scale, noise,
+                                bridge->effects.current_noise[i]);
+        }
     }
 
     bridge->effects.samples_generated++;
     bridge->stats.noise_injections++;
+
+    /* Bio-async: send injection notification periodically (every 100 injections) */
+    if ((bridge->stats.noise_injections % 100) == 0) {
+        pink_noise_send_injection_msg(bridge, amplitude);
+        if (bridge->config.enable_logging) {
+            NIMCP_LOGGING_DEBUG("Pink noise bio-async: sent INJECTION (count=%lu)",
+                                (unsigned long)bridge->stats.noise_injections);
+        }
+    }
+
+    /* Loop heartbeat */
+    surprise_pink_noise_heartbeat_instance(bridge->health_agent, "inject", 1.0f);
 
     nimcp_mutex_unlock(bridge->mutex);
 
@@ -328,27 +454,57 @@ int surprise_pink_noise_adapt_amplitude(
                              NIMCP_SURPRISE_PINK_NOISE_ERROR_NULL_POINTER,
                              "NULL bridge in adapt_amplitude");
 
-    surprise_pink_noise_heartbeat("adapt_amplitude", 0.0f);
+    surprise_pink_noise_heartbeat_instance(bridge->health_agent, "adapt_amplitude", 0.0f);
 
-    float level = clamp_f(surprise_level, 0.0f, 1.0f);
+    float level = nimcp_myelin_clamp(surprise_level, 0.0f, 1.0f);
 
     nimcp_mutex_lock(bridge->mutex);
 
-    /* High surprise → increase noise (more uncertainty) */
+    /* High surprise -> increase noise (more uncertainty) */
     float target_factor = 1.0f + level;
     bridge->effects.adaptation_factor +=
         bridge->config.adaptation_rate * (target_factor - bridge->effects.adaptation_factor);
 
     float old_amp = bridge->effects.effective_amplitude;
-    bridge->effects.effective_amplitude = clamp_f(
+    bridge->effects.effective_amplitude = nimcp_myelin_clamp(
         bridge->config.base_amplitude * bridge->effects.adaptation_factor,
         bridge->config.min_amplitude,
         bridge->config.max_amplitude);
 
     bridge->stats.adaptations++;
 
-    if (fabsf(bridge->effects.effective_amplitude - old_amp) > 0.001f) {
+    float amp_delta = fabsf(bridge->effects.effective_amplitude - old_amp);
+    if (amp_delta > 0.001f) {
         bridge->stats.amplitude_changes++;
+
+        if (bridge->config.enable_logging) {
+            NIMCP_LOGGING_DEBUG("Pink noise amplitude adapted: %.4f -> %.4f (factor=%.3f, "
+                                "surprise=%.3f)",
+                                old_amp, bridge->effects.effective_amplitude,
+                                bridge->effects.adaptation_factor, level);
+        }
+
+        /* Bio-async: send adaptation when amplitude changes significantly */
+        if (amp_delta > 0.005f) {
+            pink_noise_send_adaptation_msg(bridge, old_amp,
+                                            bridge->effects.effective_amplitude);
+            if (bridge->config.enable_logging) {
+                NIMCP_LOGGING_DEBUG("Pink noise bio-async: sent ADAPTATION (delta=%.4f)",
+                                    amp_delta);
+            }
+        }
+    }
+
+    /* Warn on edge conditions */
+    if (bridge->config.enable_logging) {
+        if (bridge->effects.effective_amplitude <= bridge->config.min_amplitude) {
+            NIMCP_LOGGING_WARN("Pink noise amplitude at minimum: %.4f",
+                               bridge->effects.effective_amplitude);
+        }
+        if (bridge->effects.effective_amplitude >= bridge->config.max_amplitude) {
+            NIMCP_LOGGING_WARN("Pink noise amplitude at maximum: %.4f",
+                               bridge->effects.effective_amplitude);
+        }
     }
 
     nimcp_mutex_unlock(bridge->mutex);
@@ -366,7 +522,12 @@ int surprise_pink_noise_bridge_update(
 
     if (dt_seconds <= 0.0f) return 0;
 
-    surprise_pink_noise_heartbeat("update", 0.0f);
+    surprise_pink_noise_heartbeat_instance(bridge->health_agent, "update", 0.0f);
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Pink noise update: dt=%.4f, amplitude=%.4f",
+                            dt_seconds, bridge->effects.effective_amplitude);
+    }
 
     /* Inject noise on each update */
     surprise_pink_noise_inject(bridge);
@@ -382,6 +543,10 @@ int surprise_pink_noise_bridge_update(
 
     bridge->stats.total_updates++;
     bridge->update_count++;
+
+    /* Loop heartbeat */
+    surprise_pink_noise_heartbeat_instance(bridge->health_agent, "update", 1.0f);
+
     nimcp_mutex_unlock(bridge->mutex);
 
     return 0;
@@ -444,5 +609,10 @@ int surprise_pink_noise_bridge_set_health_agent(
                              "NULL bridge in set_health_agent");
 
     bridge->health_agent = agent;
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Pink noise bridge instance health agent %s",
+                            agent ? "set" : "cleared");
+    }
     return 0;
 }

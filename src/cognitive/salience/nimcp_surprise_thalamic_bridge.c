@@ -1,18 +1,21 @@
 /**
  * @file nimcp_surprise_thalamic_bridge.c
  * @brief Bridge between Surprise Amplifier and thalamic routing system
- * @version 1.0.0
+ * @version 1.1.0
  * @date 2026-01-27
  *
  * WHAT: Thalamic gating and routing of surprise signals
  * WHY:  Surprise signals must be routed to appropriate cortical destinations
- * HOW:  Signal type/urgency → routing destination; attention → gating weights
+ * HOW:  Signal type/urgency -> routing destination; attention -> gating weights
  *
  * @author NIMCP Development Team
  */
 
 #include "cognitive/salience/nimcp_surprise_thalamic_bridge.h"
 #include "cognitive/salience/nimcp_surprise_amplifier.h"
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
+#include "async/nimcp_bio_messages.h"
+#include "async/nimcp_bio_router.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -44,6 +47,17 @@ static inline void surprise_thalamic_heartbeat(const char* op, float progress) {
     }
 }
 
+static inline void surprise_thalamic_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* op, float progress)
+{
+    if (g_surprise_thalamic_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_surprise_thalamic_health_agent, op, progress);
+    }
+    if (instance_agent && instance_agent != g_surprise_thalamic_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, op, progress);
+    }
+}
+
 /* ============================================================================
  * Constants
  * ============================================================================ */
@@ -67,6 +81,10 @@ struct surprise_thalamic_bridge {
     /* Attention weights per signal type */
     float attention_weights[NUM_SIGNAL_TYPES];
 
+    /* Bio-async */
+    void* router;
+    bool bio_async_connected;
+
     /* Thread safety */
     nimcp_mutex_t* mutex;
 
@@ -81,12 +99,6 @@ struct surprise_thalamic_bridge {
  * Helpers
  * ============================================================================ */
 
-static inline float clamp_f(float val, float lo, float hi) {
-    if (val < lo) return lo;
-    if (val > hi) return hi;
-    return val;
-}
-
 static int signal_type_to_index(uint32_t signal_type) {
     switch (signal_type) {
         case SURPRISE_THALAMIC_REALIZATION: return 0;
@@ -94,6 +106,16 @@ static int signal_type_to_index(uint32_t signal_type) {
         case SURPRISE_THALAMIC_NOVELTY:     return 2;
         case SURPRISE_THALAMIC_HYPOTHESIS:  return 3;
         default: return -1;
+    }
+}
+
+static const char* signal_type_name(uint32_t signal_type) {
+    switch (signal_type) {
+        case SURPRISE_THALAMIC_REALIZATION: return "REALIZATION";
+        case SURPRISE_THALAMIC_CONFLICT:    return "CONFLICT";
+        case SURPRISE_THALAMIC_NOVELTY:     return "NOVELTY";
+        case SURPRISE_THALAMIC_HYPOTHESIS:  return "HYPOTHESIS";
+        default: return "UNKNOWN";
     }
 }
 
@@ -115,6 +137,73 @@ static bool is_type_enabled(const surprise_thalamic_config_t* cfg, uint32_t sign
         case SURPRISE_THALAMIC_HYPOTHESIS:  return cfg->enable_hypothesis;
         default: return false;
     }
+}
+
+/* ============================================================================
+ * Bio-Async Helpers
+ * ============================================================================ */
+
+static void thalamic_send_route_msg(surprise_thalamic_bridge_t* bridge,
+                                     uint32_t signal_type, float magnitude,
+                                     float weighted_magnitude, float urgency)
+{
+    if (!bridge->bio_async_connected || !bridge->router) return;
+
+    typedef struct {
+        bio_message_header_t header;
+        uint32_t signal_type;
+        float magnitude;
+        float weighted_magnitude;
+        float urgency;
+        uint64_t signals_routed;
+    } surprise_thalamic_route_msg_t;
+
+    surprise_thalamic_route_msg_t msg;
+    memset(&msg, 0, sizeof(msg));
+    bio_msg_init_header(&msg.header,
+                        BIO_MSG_SURPRISE_THALAMIC_ROUTE,
+                        BIO_MODULE_SURPRISE_THALAMIC,
+                        0, sizeof(msg));
+    msg.header.channel = BIO_CHANNEL_NOREPINEPHRINE;
+    if (urgency > 0.8f) {
+        msg.header.flags = BIO_MSG_FLAG_URGENT;
+    }
+    msg.signal_type = signal_type;
+    msg.magnitude = magnitude;
+    msg.weighted_magnitude = weighted_magnitude;
+    msg.urgency = urgency;
+    msg.signals_routed = bridge->stats.signals_routed;
+
+    bio_router_broadcast((bio_module_context_t)bridge->router, &msg, sizeof(msg));
+}
+
+static void thalamic_send_gate_msg(surprise_thalamic_bridge_t* bridge,
+                                    uint32_t signal_type, float old_weight,
+                                    float new_weight)
+{
+    if (!bridge->bio_async_connected || !bridge->router) return;
+
+    typedef struct {
+        bio_message_header_t header;
+        uint32_t signal_type;
+        float old_weight;
+        float new_weight;
+        uint64_t gating_updates;
+    } surprise_thalamic_gate_msg_t;
+
+    surprise_thalamic_gate_msg_t msg;
+    memset(&msg, 0, sizeof(msg));
+    bio_msg_init_header(&msg.header,
+                        BIO_MSG_SURPRISE_THALAMIC_GATE,
+                        BIO_MODULE_SURPRISE_THALAMIC,
+                        0, sizeof(msg));
+    msg.header.channel = BIO_CHANNEL_NOREPINEPHRINE;
+    msg.signal_type = signal_type;
+    msg.old_weight = old_weight;
+    msg.new_weight = new_weight;
+    msg.gating_updates = bridge->stats.gating_updates;
+
+    bio_router_broadcast((bio_module_context_t)bridge->router, &msg, sizeof(msg));
 }
 
 /* ============================================================================
@@ -178,6 +267,12 @@ surprise_thalamic_bridge_t* surprise_thalamic_bridge_create(
     if (bridge->config.enable_logging) {
         NIMCP_LOGGING_INFO("Created surprise-thalamic bridge (attn_default=%.1f)",
                            bridge->config.attention_weight_default);
+        NIMCP_LOGGING_DEBUG("Thalamic bridge config: thresholds=[real=%.2f, conf=%.2f, "
+                            "nov=%.2f, hyp=%.2f]",
+                            bridge->config.threshold_realization,
+                            bridge->config.threshold_conflict,
+                            bridge->config.threshold_novelty,
+                            bridge->config.threshold_hypothesis);
     }
 
     return bridge;
@@ -190,6 +285,11 @@ void surprise_thalamic_bridge_destroy(surprise_thalamic_bridge_t* bridge) {
         NIMCP_LOGGING_INFO("Destroying surprise-thalamic bridge (routed=%lu, overrides=%lu)",
                            (unsigned long)bridge->stats.signals_routed,
                            (unsigned long)bridge->stats.overrides);
+        NIMCP_LOGGING_DEBUG("Thalamic bridge final weights: [%.2f, %.2f, %.2f, %.2f], "
+                            "avg_surprise=%.3f",
+                            bridge->attention_weights[0], bridge->attention_weights[1],
+                            bridge->attention_weights[2], bridge->attention_weights[3],
+                            bridge->stats.avg_surprise);
     }
 
     if (bridge->mutex) {
@@ -203,7 +303,7 @@ int surprise_thalamic_bridge_reset(surprise_thalamic_bridge_t* bridge) {
                              NIMCP_SURPRISE_THALAMIC_ERROR_NULL_POINTER,
                              "NULL bridge in reset");
 
-    surprise_thalamic_heartbeat("reset", 0.0f);
+    surprise_thalamic_heartbeat_instance(bridge->health_agent, "reset", 0.0f);
 
     nimcp_mutex_lock(bridge->mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -212,6 +312,11 @@ int surprise_thalamic_bridge_reset(surprise_thalamic_bridge_t* bridge) {
     }
     bridge->update_count = 0;
     nimcp_mutex_unlock(bridge->mutex);
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Thalamic bridge reset: weights restored to default=%.2f",
+                            bridge->config.attention_weight_default);
+    }
 
     return 0;
 }
@@ -231,12 +336,15 @@ int surprise_thalamic_bridge_connect_amplifier(
                              NIMCP_SURPRISE_THALAMIC_ERROR_NULL_POINTER,
                              "NULL amp in connect_amplifier");
 
+    surprise_thalamic_heartbeat_instance(bridge->health_agent, "connect_amplifier", 0.0f);
+
     nimcp_mutex_lock(bridge->mutex);
     bridge->amplifier = amp;
     nimcp_mutex_unlock(bridge->mutex);
 
     if (bridge->config.enable_logging) {
         NIMCP_LOGGING_INFO("Surprise-thalamic bridge connected to amplifier");
+        NIMCP_LOGGING_DEBUG("Thalamic bridge amplifier connection established, ptr=%p", (void*)amp);
     }
     return 0;
 }
@@ -252,12 +360,15 @@ int surprise_thalamic_bridge_connect_thalamic_router(
                              NIMCP_SURPRISE_THALAMIC_ERROR_NULL_POINTER,
                              "NULL router in connect_thalamic_router");
 
+    surprise_thalamic_heartbeat_instance(bridge->health_agent, "connect_thalamic_router", 0.0f);
+
     nimcp_mutex_lock(bridge->mutex);
     bridge->thalamic_router = router;
     nimcp_mutex_unlock(bridge->mutex);
 
     if (bridge->config.enable_logging) {
         NIMCP_LOGGING_INFO("Surprise-thalamic bridge connected to thalamic router");
+        NIMCP_LOGGING_DEBUG("Thalamic router connection established, ptr=%p", router);
     }
     return 0;
 }
@@ -277,12 +388,18 @@ int surprise_thalamic_route_surprise(
                              NIMCP_SURPRISE_THALAMIC_ERROR_NULL_POINTER,
                              "NULL signal in route_surprise");
 
-    surprise_thalamic_heartbeat("route_surprise", 0.0f);
+    surprise_thalamic_heartbeat_instance(bridge->health_agent, "route_surprise", 0.0f);
 
     nimcp_mutex_lock(bridge->mutex);
 
     uint32_t type = signal->signal_type;
-    float magnitude = clamp_f(signal->surprise_magnitude, 0.0f, 1.0f);
+    float magnitude = nimcp_myelin_clamp(signal->surprise_magnitude, 0.0f, 1.0f);
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Thalamic route_surprise: type=0x%x, magnitude=%.3f, "
+                            "urgency=%.3f, source=0x%x",
+                            type, magnitude, signal->urgency, signal->source_module);
+    }
 
     /* Check each signal type bit */
     uint32_t types[] = {SURPRISE_THALAMIC_REALIZATION, SURPRISE_THALAMIC_CONFLICT,
@@ -298,12 +415,30 @@ int surprise_thalamic_route_surprise(
         float threshold = get_threshold_for_type(&bridge->config, types[i]);
         float weighted_magnitude = magnitude * bridge->attention_weights[idx];
 
+        if (bridge->config.enable_logging) {
+            NIMCP_LOGGING_TRACE("Thalamic routing [%d/%d]: type=%s, weight=%.3f, "
+                                "weighted=%.3f, threshold=%.3f",
+                                i + 1, NUM_SIGNAL_TYPES,
+                                signal_type_name(types[i]),
+                                bridge->attention_weights[idx],
+                                weighted_magnitude, threshold);
+        }
+
         if (weighted_magnitude >= threshold) {
             bridge->stats.signals_routed++;
 
             if (signal->urgency > 0.8f) {
                 bridge->stats.high_priority_routes++;
             }
+
+            if (bridge->config.enable_logging) {
+                NIMCP_LOGGING_DEBUG("Thalamic signal ROUTED: type=%s, weighted=%.3f >= threshold=%.3f",
+                                    signal_type_name(types[i]), weighted_magnitude, threshold);
+            }
+
+            /* Bio-async: send route notification */
+            thalamic_send_route_msg(bridge, types[i], magnitude,
+                                     weighted_magnitude, signal->urgency);
         }
     }
 
@@ -314,6 +449,9 @@ int surprise_thalamic_route_surprise(
 
     bridge->stats.total_updates++;
     bridge->update_count++;
+
+    /* Loop heartbeat for iteration-heavy routing */
+    surprise_thalamic_heartbeat_instance(bridge->health_agent, "route_surprise", 1.0f);
 
     nimcp_mutex_unlock(bridge->mutex);
 
@@ -329,12 +467,19 @@ int surprise_thalamic_route_realization(
                              NIMCP_SURPRISE_THALAMIC_ERROR_NULL_POINTER,
                              "NULL bridge in route_realization");
 
+    surprise_thalamic_heartbeat_instance(bridge->health_agent, "route_realization", 0.0f);
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Thalamic route_realization: magnitude=%.3f, source=0x%x",
+                            magnitude, source_module);
+    }
+
     surprise_thalamic_signal_t signal;
     memset(&signal, 0, sizeof(signal));
     signal.signal_type = SURPRISE_THALAMIC_REALIZATION;
     signal.surprise_magnitude = magnitude;
     signal.source_module = source_module;
-    signal.urgency = clamp_f(magnitude * 1.2f, 0.0f, 1.0f); /* Realizations are high priority */
+    signal.urgency = nimcp_myelin_clamp(magnitude * 1.2f, 0.0f, 1.0f); /* Realizations are high priority */
 
     return surprise_thalamic_route_surprise(bridge, &signal);
 }
@@ -353,9 +498,33 @@ int surprise_thalamic_set_attention_weight(
                              NIMCP_SURPRISE_THALAMIC_ERROR_INVALID_PARAM,
                              "Invalid signal type 0x%x", signal_type);
 
+    surprise_thalamic_heartbeat_instance(bridge->health_agent, "set_attention_weight", 0.0f);
+
     nimcp_mutex_lock(bridge->mutex);
-    bridge->attention_weights[idx] = clamp_f(weight, 0.0f, 5.0f);
+
+    float old_weight = bridge->attention_weights[idx];
+    float new_weight = nimcp_myelin_clamp(weight, 0.0f, 5.0f);
+    bridge->attention_weights[idx] = new_weight;
     bridge->stats.gating_updates++;
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Thalamic attention weight changed: type=%s (0x%x), "
+                            "old=%.3f -> new=%.3f",
+                            signal_type_name(signal_type), signal_type,
+                            old_weight, new_weight);
+    }
+
+    /* Bio-async: send gate update on weight change */
+    if (fabsf(new_weight - old_weight) > 0.01f) {
+        thalamic_send_gate_msg(bridge, signal_type, old_weight, new_weight);
+
+        if (bridge->config.enable_logging) {
+            NIMCP_LOGGING_DEBUG("Thalamic bio-async: sent GATE (type=%s, delta=%.3f)",
+                                signal_type_name(signal_type),
+                                new_weight - old_weight);
+        }
+    }
+
     nimcp_mutex_unlock(bridge->mutex);
 
     return 0;
@@ -405,5 +574,10 @@ int surprise_thalamic_bridge_set_health_agent(
                              "NULL bridge in set_health_agent");
 
     bridge->health_agent = agent;
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Thalamic bridge instance health agent %s",
+                            agent ? "set" : "cleared");
+    }
     return 0;
 }

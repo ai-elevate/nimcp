@@ -1,31 +1,24 @@
 # ============================================================================
-# Cognitive E2E Tests
+# Cognitive Fault Tolerance E2E Tests
 # ============================================================================
-# WHAT: End-to-end tests for cognitive workflows
-# WHY:  Verify complete cognitive workflows: training loops, prediction
-#       pipelines, counterfactual reasoning, exception handling, and policy evaluation
-# HOW:  GTest-based tests for realistic scenarios
-#
-# TESTS INCLUDED:
-# - World model workflows (DreamerV3/JEPA inspired)
-# - ToM exception handling
-# - WM bridges exception handling
-# - Predictive bridge exception handling
+# WHAT: End-to-end tests for fault tolerance pipeline
+# WHY:  Verify complete health monitoring → diagnostic → self-repair workflows
+# HOW:  GTest-based tests for realistic fault tolerance scenarios
 # ============================================================================
 
 # Find test sources
-file(GLOB WM_E2E_SOURCES "*.cpp")
+file(GLOB FT_E2E_SOURCES "*.cpp")
 
 # Guard: Check if test sources exist
-if(NOT WM_E2E_SOURCES)
-    message(STATUS "No world model E2E tests found")
+if(NOT FT_E2E_SOURCES)
+    message(STATUS "No cognitive fault tolerance E2E tests found")
     return()
 endif()
 
 # Create test executable for each test file
-foreach(TEST_FILE ${WM_E2E_SOURCES})
+foreach(TEST_FILE ${FT_E2E_SOURCES})
     get_filename_component(TEST_NAME ${TEST_FILE} NAME_WE)
-    set(TARGET_NAME "e2e_cognitive_${TEST_NAME}")
+    set(TARGET_NAME "e2e_cognitive_fault_tolerance_${TEST_NAME}")
 
     add_executable(${TARGET_NAME} ${TEST_FILE})
 
@@ -51,19 +44,9 @@ foreach(TEST_FILE ${WM_E2E_SOURCES})
     # Register test with CTest
     add_test(NAME ${TARGET_NAME} COMMAND ${TARGET_NAME})
     set_tests_properties(${TARGET_NAME} PROPERTIES
-        LABELS "e2e;cognitive;world_model"
+        LABELS "e2e;cognitive;fault_tolerance"
         TIMEOUT 300
     )
 endforeach()
 
-message(STATUS "Added world model E2E tests")
-
-# ============================================================================
-# Include subdirectories
-# ============================================================================
-add_subdirectory(attention)
-add_subdirectory(memory)
-add_subdirectory(neuro_symbolic)
-add_subdirectory(immune)
-add_subdirectory(parietal)
-add_subdirectory(fault_tolerance)
+message(STATUS "Added cognitive fault tolerance E2E tests")

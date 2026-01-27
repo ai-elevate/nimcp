@@ -37,3 +37,21 @@ target_include_directories(integration_cognitive_fault_tolerance_health_self_rep
 add_test(NAME integration_cognitive_fault_tolerance_health_self_repair
          COMMAND integration_cognitive_fault_tolerance_health_self_repair)
 set_tests_properties(integration_cognitive_fault_tolerance_health_self_repair PROPERTIES LABELS "integration")
+
+# Health Diagnostic Bridge Integration Tests
+add_executable(integration_cognitive_fault_tolerance_health_diagnostic_bridge
+    test_health_diagnostic_bridge_integration.cpp
+)
+target_link_libraries(integration_cognitive_fault_tolerance_health_diagnostic_bridge
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(integration_cognitive_fault_tolerance_health_diagnostic_bridge
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME integration_cognitive_fault_tolerance_health_diagnostic_bridge
+         COMMAND integration_cognitive_fault_tolerance_health_diagnostic_bridge)
+set_tests_properties(integration_cognitive_fault_tolerance_health_diagnostic_bridge PROPERTIES LABELS "integration")

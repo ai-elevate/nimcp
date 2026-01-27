@@ -615,4 +615,33 @@ gtest_discover_tests(regression_heartbeat_B19_remaining_modules
         TIMEOUT 180
 )
 
+# B20: cognitive/salience surprise bridges (plasticity, SNN, substrate, thalamic, pink_noise, imagination, self_model)
+add_executable(regression_heartbeat_B20_surprise_bridges
+    test_surprise_bridges_B20_regression.cpp
+)
+
+target_link_libraries(regression_heartbeat_B20_surprise_bridges
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        pthread
+)
+
+target_include_directories(regression_heartbeat_B20_surprise_bridges
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_heartbeat_B20_surprise_bridges PRIVATE cxx_std_17)
+target_compile_definitions(regression_heartbeat_B20_surprise_bridges PRIVATE NIMCP_TESTING)
+
+gtest_discover_tests(regression_heartbeat_B20_surprise_bridges
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;fault_tolerance;heartbeat;B20;surprise_bridges"
+        TIMEOUT 180
+)
+
 message(STATUS "Added fault tolerance regression tests")

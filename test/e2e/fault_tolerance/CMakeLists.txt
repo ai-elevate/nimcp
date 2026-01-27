@@ -239,3 +239,7 @@ set_tests_properties(e2e_fault_tolerance_test_heartbeat_B18_empathy_ethics_epist
 # B19: All remaining 89 uncovered modules (final batch for 100% coverage)
 add_e2e_fault_tolerance_test(test_heartbeat_B19_remaining_modules_e2e)
 set_tests_properties(e2e_fault_tolerance_test_heartbeat_B19_remaining_modules_e2e PROPERTIES TIMEOUT 300)
+
+# B20: cognitive/salience surprise bridges (plasticity, SNN, substrate, thalamic, pink_noise, imagination, self_model)
+add_e2e_fault_tolerance_test(test_surprise_bridges_B20_e2e)
+set_tests_properties(e2e_fault_tolerance_test_surprise_bridges_B20_e2e PROPERTIES TIMEOUT 300)
