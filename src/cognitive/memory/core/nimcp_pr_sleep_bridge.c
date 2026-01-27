@@ -15,6 +15,7 @@
 #include "cognitive/memory/core/nimcp_pr_sleep_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -29,6 +30,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -55,6 +57,9 @@ static inline void pr_sleep_bridge_heartbeat(const char* operation, float progre
     }
 }
 
+#define LOG_MODULE "PR_SLEEP_BRIDGE"
+
+/* Security subsystem setters (Phase 1: Audit Gap Remediation) */
 //=============================================================================
 // Internal Constants
 //=============================================================================
@@ -127,6 +132,8 @@ struct pr_sleep_bridge_struct {
     uint64_t last_consolidation_time_ms;
     uint64_t creation_time_ms;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_sleep_bridge, struct pr_sleep_bridge_struct)
 
 //=============================================================================
 // Static Function Declarations
@@ -313,12 +320,14 @@ NIMCP_EXPORT pr_sleep_bridge_t pr_sleep_bridge_create(const pr_sleep_config_t* c
     }
 #endif
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "pr_sleep");
     return bridge;
 }
 
 NIMCP_EXPORT void pr_sleep_bridge_destroy(pr_sleep_bridge_t bridge) {
     if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
         return;
+        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "pr_sleep");
     }
 
     // Invalidate magic

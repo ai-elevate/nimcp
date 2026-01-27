@@ -16,6 +16,7 @@
 #include <time.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -42,6 +43,8 @@ static inline void dragonfly_thalamic_bridge_heartbeat(const char* operation, fl
         nimcp_health_agent_heartbeat_ex(g_dragonfly_thalamic_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "DRAGONFLY_THALAMIC_BRIDGE"
 
 
 //=============================================================================
@@ -213,6 +216,7 @@ dragonfly_thalamic_bridge_t* dragonfly_thalamic_bridge_create(
 
 void dragonfly_thalamic_bridge_destroy(dragonfly_thalamic_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "dragonfly_thalamic");
     free(bridge);
 }
 

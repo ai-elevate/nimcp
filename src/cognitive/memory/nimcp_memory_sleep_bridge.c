@@ -12,6 +12,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <string.h>
 
 //=============================================================================
@@ -42,7 +43,7 @@ static inline void memory_sleep_bridge_heartbeat(const char* operation, float pr
     }
 }
 
-
+/* Security subsystem setters (Phase 1: Audit Gap Remediation) */
 /**
  * @struct memory_sleep_bridge_struct
  * @brief Internal bridge structure
@@ -60,6 +61,8 @@ struct memory_sleep_bridge_struct {
     bool callback_registered;             /* Track callback registration for cleanup */
 
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(memory_sleep_bridge, struct memory_sleep_bridge_struct)
 
 /* Forward declarations */
 static void memory_on_sleep_state_change(sleep_state_t new_state, void* user_data);

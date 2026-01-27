@@ -49,6 +49,8 @@ static inline void curiosity_snn_bridge_heartbeat(const char* operation, float p
     }
 }
 
+#define LOG_MODULE "CURIOSITY_SNN_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -274,11 +276,13 @@ curiosity_snn_bridge_t* curiosity_snn_create(const curiosity_snn_config_t* confi
     bridge->novelty_signal = 0.0f;
     bridge->information_signal = 0.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "curiosity_snn");
     return bridge;
 }
 
 void curiosity_snn_destroy(curiosity_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "curiosity_snn");
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_destro", 0.0f);

@@ -11,6 +11,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -37,6 +38,8 @@ static inline void quantum_mcts_fep_bridge_heartbeat(const char* operation, floa
     }
 }
 
+#define LOG_MODULE "QUANTUM_MCTS_FEP_BRIDGE"
+
 
 NIMCP_API qmcts_fep_bridge_t* qmcts_fep_bridge_create(void) {
     qmcts_fep_bridge_t* bridge = nimcp_calloc(1, sizeof(qmcts_fep_bridge_t));
@@ -53,11 +56,13 @@ NIMCP_API qmcts_fep_bridge_t* qmcts_fep_bridge_create(void) {
 
     bridge->quantum_exploration_boost = 1.5f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "quantum_mcts_fep");
     return bridge;
 }
 
 NIMCP_API void qmcts_fep_bridge_destroy(qmcts_fep_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "quantum_mcts_fep");
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }

@@ -49,6 +49,8 @@ static inline void game_theory_snn_bridge_heartbeat(const char* operation, float
     }
 }
 
+#define LOG_MODULE "GAME_THEORY_SNN_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -273,11 +275,13 @@ game_theory_snn_bridge_t* game_theory_snn_create(const game_theory_snn_config_t*
     bridge->equilibrium_signal = 0.0f;
     bridge->payoff_signal = 0.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "game_theory_snn");
     return bridge;
 }
 
 void game_theory_snn_destroy(game_theory_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "game_theory_snn");
 
     /* Phase 8: Heartbeat at operation start */
     game_theory_snn_bridge_heartbeat("game_theory__game_theory_snn_dest", 0.0f);

@@ -14,6 +14,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -39,6 +40,8 @@ static inline void entorhinal_omni_bridge_heartbeat(const char* operation, float
         nimcp_health_agent_heartbeat_ex(g_entorhinal_omni_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "ENTORHINAL_OMNI_BRIDGE"
 
 
 /*=============================================================================
@@ -179,6 +182,7 @@ void entorhinal_omni_bridge_destroy(
     entorhinal_omni_bridge_state_t* bridge)
 {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "entorhinal_omni");
 
     if (bridge->spatial_map.spherical_map) {
         free(bridge->spatial_map.spherical_map);

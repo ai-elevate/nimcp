@@ -45,6 +45,8 @@ static inline void logic_substrate_bridge_heartbeat(const char* operation, float
     }
 }
 
+#define LOG_MODULE "LOGIC_SUBSTRATE_BRIDGE"
+
 
 struct logic_substrate_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
@@ -99,6 +101,7 @@ logic_substrate_bridge_t* logic_substrate_bridge_create(void* logic, neural_subs
     bridge->effects.abstraction_capacity = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "logic_substrate");
     return bridge;
 }
 

@@ -29,6 +29,8 @@ typedef struct {
 #include <time.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
+#include "security/nimcp_bbb_helpers.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -55,6 +57,8 @@ static inline void stdp_utils_bridge_heartbeat(const char* operation, float prog
         nimcp_health_agent_heartbeat_ex(g_stdp_utils_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "STDP_UTILS_BRIDGE"
 
 
 /*=============================================================================
@@ -205,12 +209,14 @@ stdp_utils_ctx_t stdp_utils_create(const stdp_utils_config_t* config) {
     memset(&ctx->current_metrics, 0, sizeof(ctx->current_metrics));
     ctx->metrics_start_time = (uint64_t)time(NULL) * 1000;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "stdp_utils");
     return ctx;
 }
 
 void stdp_utils_destroy(stdp_utils_ctx_t ctx) {
     /* Silent return for destroy - idempotent operation */
     if (!ctx) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "stdp_utils");
 
     /* Flush any remaining metrics */
     if (ctx->metrics_collector) {

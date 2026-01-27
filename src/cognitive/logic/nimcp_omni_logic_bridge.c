@@ -44,6 +44,8 @@ static inline void omni_logic_bridge_heartbeat(const char* operation, float prog
     }
 }
 
+#define LOG_MODULE "OMNI_LOGIC_BRIDGE"
+
 
 /* ============================================================================
  * Static Helpers
@@ -190,11 +192,13 @@ omni_logic_bridge_t* omni_logic_bridge_create(const omni_logic_config_t* config)
 
     memset(&bridge->stats, 0, sizeof(omni_logic_stats_t));
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "omni_logic");
     return bridge;
 }
 
 void omni_logic_bridge_destroy(omni_logic_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "omni_logic");
 
     /* Phase 8: Heartbeat at operation start */
     omni_logic_bridge_heartbeat("omni_logic_b_destroy", 0.0f);

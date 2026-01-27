@@ -18,6 +18,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <math.h>
 #include <string.h>
 
@@ -49,6 +50,8 @@ static inline void systems_consolidation_pink_noise_bridge_heartbeat(const char*
     }
 }
 
+/* Security subsystem setters (Phase 1: Audit Gap Remediation) */
+BRIDGE_DEFINE_SECURITY_SETTERS(consolidation_pink_noise_bridge)
 
 //=============================================================================
 // Internal Helper: Clamp

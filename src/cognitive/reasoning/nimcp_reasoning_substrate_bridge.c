@@ -28,6 +28,7 @@
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <string.h>
 #include <math.h>
@@ -60,6 +61,8 @@ static inline void reasoning_substrate_bridge_heartbeat(const char* operation, f
     }
 }
 
+
+BRIDGE_DEFINE_SECURITY_SETTERS(reasoning_substrate_bridge)
 
 /* ============================================================================
  * Helper Functions (using shared nimcp_clamp_f from nimcp_metabolic_modulation.h)

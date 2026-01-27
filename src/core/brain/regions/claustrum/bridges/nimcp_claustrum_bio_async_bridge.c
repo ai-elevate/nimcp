@@ -15,6 +15,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -40,6 +41,8 @@ static inline void claustrum_bio_async_bridge_heartbeat(const char* operation, f
         nimcp_health_agent_heartbeat_ex(g_claustrum_bio_async_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "CLAUSTRUM_BIO_ASYNC_BRIDGE"
 
 
 /* ============================================================================
@@ -176,6 +179,7 @@ claustrum_bio_async_bridge_t* claustrum_bio_async_bridge_create(
 
 void claustrum_bio_async_bridge_destroy(claustrum_bio_async_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "claustrum_bio_async");
 
     if (bridge->connected) {
         claustrum_bio_async_disconnect(bridge);

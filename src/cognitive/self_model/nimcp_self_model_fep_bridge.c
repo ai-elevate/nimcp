@@ -13,6 +13,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <string.h>
 #include <math.h>
@@ -47,6 +48,7 @@ static inline void self_model_fep_bridge_heartbeat(const char* operation, float 
     }
 }
 
+BRIDGE_DEFINE_SECURITY_SETTERS(self_model_fep_bridge)
 
 /* ============================================================================
  * Lifecycle API

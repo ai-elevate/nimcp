@@ -16,6 +16,7 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
+#include "security/nimcp_bbb_helpers.h"
 
 #include <stddef.h>  /* for NULL */
 //=============================================================================
@@ -45,7 +46,7 @@ static inline void homeostatic_sleep_bridge_heartbeat(const char* operation, flo
     }
 }
 
-
+/* Security integration */
 struct homeostatic_sleep_bridge_struct {
     bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
 
@@ -55,6 +56,8 @@ struct homeostatic_sleep_bridge_struct {
     nimcp_platform_mutex_t* mutex;
     bool callback_registered;  /* Track if callback is registered for cleanup */
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(homeostatic_sleep_bridge, struct homeostatic_sleep_bridge_struct)
 
 /* Forward declarations */
 static void homeostatic_on_sleep_state_change(sleep_state_t new_state, void* user_data);

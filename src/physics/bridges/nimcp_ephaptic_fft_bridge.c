@@ -22,6 +22,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -49,6 +50,8 @@ static inline void ephaptic_fft_bridge_heartbeat(const char* operation, float pr
         nimcp_health_agent_heartbeat_ex(g_ephaptic_fft_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "EPHAPTIC_FFT_BRIDGE"
 
 
 //=============================================================================
@@ -384,6 +387,7 @@ ephaptic_fft_bridge_t* ephaptic_fft_bridge_create(
 void ephaptic_fft_bridge_destroy(ephaptic_fft_bridge_t* bridge) {
     if (!bridge) {
         return;
+        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "ephaptic_fft");
     }
 
     if (bridge->power_spectrum) {

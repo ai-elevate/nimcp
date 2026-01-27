@@ -16,6 +16,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -108,6 +109,9 @@ struct mirror_prefrontal_bridge_struct {
     /* Instance-level health agent (B22) */
     nimcp_health_agent_t* health_agent;
 };
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(mirror_prefrontal_bridge, struct mirror_prefrontal_bridge_struct)
 
 /*=============================================================================
  * HELPER FUNCTIONS
@@ -694,6 +698,7 @@ uint32_t mirror_prefrontal_store_sequence(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_prefrontal_store_sequence: required parameter is NULL");
         return 0;
     }
+    BRIDGE_BBB_VALIDATE(bridge, sequence, sizeof(*sequence));
     if (!bridge->config.enable_wm_integration || !bridge->sequences) return 0;
 
     /* Phase 8: Heartbeat at operation start */

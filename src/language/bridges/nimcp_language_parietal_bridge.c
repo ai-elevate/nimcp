@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -39,6 +40,8 @@ static inline void language_parietal_bridge_heartbeat(const char* operation, flo
         nimcp_health_agent_heartbeat_ex(g_language_parietal_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "LANGUAGE_PARIETAL_BRIDGE"
 
 
 //=============================================================================

@@ -15,6 +15,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <math.h>
 #include <string.h>
@@ -117,6 +118,9 @@ struct mirror_plasticity_bridge {
     /* Health agent (instance-level) */
     nimcp_health_agent_t* health_agent;
 };
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(mirror_plasticity_bridge)
 
 //=============================================================================
 // Helper Functions
@@ -472,6 +476,7 @@ mirror_plasticity_bridge_t* mirror_plasticity_create_with_orchestrator(
 
 void mirror_plasticity_destroy(mirror_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "mirror_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_de", 0.0f);

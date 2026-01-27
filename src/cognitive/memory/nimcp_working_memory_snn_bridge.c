@@ -18,6 +18,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <string.h>
 #include <math.h>
@@ -58,7 +59,7 @@ static inline void working_memory_snn_bridge_heartbeat(const char* operation, fl
     }
 }
 
-
+/* Security subsystem setters (Phase 1: Audit Gap Remediation) */
 //=============================================================================
 // Internal Structures
 //=============================================================================
@@ -99,6 +100,8 @@ struct wm_snn_bridge {
     /* Bio-async */
     bool bio_async_connected;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS(wm_snn_bridge)
 
 //=============================================================================
 // Helper Functions
@@ -320,11 +323,13 @@ wm_snn_bridge_t* wm_snn_create(const wm_snn_config_t* config) {
     NIMCP_LOG_INFO(LOG_MODULE, "Created WM-SNN bridge with %u slots",
                    bridge->config.max_slots);
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "working_memory_snn");
     return bridge;
 }
 
 void wm_snn_destroy(wm_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "working_memory_snn");
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_snn_bridge_heartbeat("working_memo_wm_snn_destroy", 0.0f);

@@ -13,6 +13,7 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
+#include "security/nimcp_bbb_helpers.h"
 
 #include <stddef.h>  /* for NULL */
 //=============================================================================
@@ -42,7 +43,7 @@ static inline void bcm_sleep_bridge_heartbeat(const char* operation, float progr
     }
 }
 
-
+/* Security integration */
 struct bcm_sleep_bridge_struct {
     bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
 
@@ -52,6 +53,8 @@ struct bcm_sleep_bridge_struct {
     nimcp_platform_mutex_t* mutex;
     bool callback_registered;  /* Track if callback is registered for cleanup */
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(bcm_sleep_bridge, struct bcm_sleep_bridge_struct)
 
 /* Forward declarations */
 static void bcm_on_sleep_state_change(sleep_state_t new_state, void* user_data);

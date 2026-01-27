@@ -24,6 +24,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -49,6 +50,8 @@ static inline void omni_wernicke_bridge_heartbeat(const char* operation, float p
         nimcp_health_agent_heartbeat_ex(g_omni_wernicke_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "OMNI_WERNICKE_BRIDGE"
 
 
 /*=============================================================================
@@ -314,6 +317,7 @@ omni_wernicke_bridge_t* omni_wernicke_bridge_create(
 
 void omni_wernicke_bridge_destroy(omni_wernicke_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "omni_wernicke");
 
     /* Free phoneme prediction */
     free(bridge->omni_effects.phoneme_pred.phoneme_probs);

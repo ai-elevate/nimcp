@@ -12,6 +12,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <string.h>
 
 //=============================================================================
@@ -52,6 +53,8 @@ struct attention_thalamic_bridge {
     float attention_weight;
     float accumulated_shift_cost;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS(attention_thalamic_bridge)
 
 attention_thalamic_config_t attention_thalamic_default_config(void) {
     /* Phase 8: Heartbeat at operation start */
@@ -138,6 +141,10 @@ int attention_thalamic_route_signal(
     if (!bridge || !signal) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_thalamic_route_signal: bridge or signal is NULL");
         return -1;
+    }
+
+    if (signal->content && signal->content_size > 0) {
+        BRIDGE_BBB_VALIDATE(bridge, signal->content, signal->content_size);
     }
 
     /* Phase 8: Heartbeat at operation start */

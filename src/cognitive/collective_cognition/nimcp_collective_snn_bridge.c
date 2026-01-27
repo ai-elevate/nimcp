@@ -49,6 +49,8 @@ static inline void collective_snn_bridge_heartbeat(const char* operation, float 
     }
 }
 
+#define LOG_MODULE "COLLECTIVE_SNN_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -274,11 +276,13 @@ collective_snn_bridge_t* collective_snn_create(const collective_snn_config_t* co
     bridge->sync_signal = 0.0f;
     bridge->emergence_signal = 0.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "collective_snn");
     return bridge;
 }
 
 void collective_snn_destroy(collective_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "collective_snn");
 
     /* Phase 8: Heartbeat at operation start */
     collective_snn_bridge_heartbeat("collective_s_collective_snn_destr", 0.0f);

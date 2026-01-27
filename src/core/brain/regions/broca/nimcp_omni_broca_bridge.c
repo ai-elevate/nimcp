@@ -20,6 +20,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -45,6 +46,8 @@ static inline void omni_broca_bridge_heartbeat(const char* operation, float prog
         nimcp_health_agent_heartbeat_ex(g_omni_broca_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "OMNI_BROCA_BRIDGE"
 
 
 /* ============================================================================
@@ -90,6 +93,7 @@ static omni_phon_wm_t* phon_wm_create(uint32_t capacity, uint32_t slot_dim,
 
 static void phon_wm_destroy(omni_phon_wm_t* wm) {
     if (!wm) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "omni_broca");
 
     if (wm->slots) {
         for (uint32_t i = 0; i < wm->num_slots; i++) {

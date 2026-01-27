@@ -18,6 +18,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -129,6 +130,7 @@ struct mirror_language_bridge {
     phoneme_template_t phoneme_templates[MAX_PHONEME_TEMPLATES];
     uint32_t num_templates;
 
+
     /* Phoneme activations */
     phoneme_mirror_activation_t phoneme_activations[MAX_PHONEME_TEMPLATES];
 
@@ -164,6 +166,9 @@ struct mirror_language_bridge {
     /* Health agent (instance-level) */
     nimcp_health_agent_t* health_agent;
 };
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(mirror_language_bridge)
 
 //=============================================================================
 // Helper Functions - Time
@@ -835,6 +840,7 @@ int mirror_language_observe_speech(
     if (!bridge || !observation) {
         return -1;
     }
+    BRIDGE_BBB_VALIDATE(bridge, observation, sizeof(*observation));
 
     /* Phase 8: Heartbeat at operation start */
     mirror_language_bridge_heartbeat("mirror_langu_mirror_language_obse", 0.0f);
@@ -1075,6 +1081,7 @@ float mirror_language_process_efference(
     if (!bridge || !predicted_features) {
         return -1.0f;
     }
+    BRIDGE_BBB_VALIDATE(bridge, predicted_features, num_features * sizeof(float));
 
     /* Find phoneme template */
     /* Phase 8: Heartbeat at operation start */
@@ -1408,6 +1415,7 @@ int mirror_language_register_phoneme(
     if (!bridge || !features) {
         return -1;
     }
+    BRIDGE_BBB_VALIDATE(bridge, features, num_features * sizeof(float));
 
     /* Phase 8: Heartbeat at operation start */
     mirror_language_bridge_heartbeat("mirror_langu_mirror_language_regi", 0.0f);
@@ -1456,6 +1464,7 @@ int mirror_language_match_phoneme(
     if (!bridge || !features || !best_phoneme || !confidence) {
         return -1;
     }
+    BRIDGE_BBB_VALIDATE(bridge, features, num_features * sizeof(float));
 
     /* Phase 8: Heartbeat at operation start */
     mirror_language_bridge_heartbeat("mirror_langu_mirror_language_matc", 0.0f);

@@ -26,12 +26,14 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/platform/nimcp_platform_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <string.h>
 #include <math.h>
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -57,6 +59,8 @@ static inline void social_fep_bridge_heartbeat(const char* operation, float prog
         nimcp_health_agent_heartbeat_ex(g_social_fep_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "SOCIAL_FEP_BRIDGE"
 
 
 /*=============================================================================
@@ -104,6 +108,8 @@ struct social_fep_bridge {
     social_fep_metrics_callback_t metrics_callback;
     void* metrics_user_data;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS(social_fep_bridge)
 
 /*=============================================================================
  * HELPER FUNCTIONS
@@ -479,11 +485,13 @@ social_fep_bridge_t* social_fep_bridge_create(const social_fep_config_t* config)
     bridge->prev_closeness = 0.5f;
     bridge->prev_trust = 0.5f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "social_fep");
     return bridge;
 }
 
 void social_fep_bridge_destroy(social_fep_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "social_fep");
 
     /* Unregister if still registered */
     if (bridge->registered) {

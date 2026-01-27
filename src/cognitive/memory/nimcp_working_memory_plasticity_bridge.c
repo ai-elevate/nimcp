@@ -11,12 +11,14 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <string.h>
 #include <math.h>
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -43,7 +45,9 @@ static inline void working_memory_plasticity_bridge_heartbeat(const char* operat
     }
 }
 
+#define LOG_MODULE "WORKING_MEMORY_PLASTICITY_BRIDGE"
 
+/* Security subsystem setters (Phase 1: Audit Gap Remediation) */
 //=============================================================================
 // Internal Structure
 //=============================================================================
@@ -87,6 +91,8 @@ struct wm_plasticity_bridge {
     /* Bio-async */
     bool bio_async_connected;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS(wm_plasticity_bridge)
 
 //=============================================================================
 // Helper Functions
@@ -307,11 +313,13 @@ wm_plasticity_bridge_t* wm_plasticity_create(const wm_plasticity_config_t* confi
     bridge->last_reward_time_us = 0;
     bridge->bio_async_connected = false;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "working_memory_plasticity");
     return bridge;
 }
 
 void wm_plasticity_destroy(wm_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "working_memory_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_destro", 0.0f);

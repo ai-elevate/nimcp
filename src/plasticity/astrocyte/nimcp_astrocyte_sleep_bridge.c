@@ -17,6 +17,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <pthread.h>
+#include "security/nimcp_bbb_helpers.h"
 
 #include <stddef.h>  /* for NULL */
 //=============================================================================
@@ -46,7 +47,7 @@ static inline void astrocyte_sleep_bridge_heartbeat(const char* operation, float
     }
 }
 
-
+/* Security integration */
 /* ============================================================================
  * Internal Structure
  * ============================================================================ */
@@ -71,6 +72,8 @@ struct astrocyte_sleep_bridge_struct {
     /* Thread safety */
     pthread_mutex_t* mutex;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(astrocyte_sleep_bridge, struct astrocyte_sleep_bridge_struct)
 
 /* ============================================================================
  * Helper Function Implementations

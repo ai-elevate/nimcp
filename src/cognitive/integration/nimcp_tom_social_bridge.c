@@ -27,6 +27,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -52,6 +53,8 @@ static inline void tom_social_bridge_heartbeat(const char* operation, float prog
         nimcp_health_agent_heartbeat_ex(g_tom_social_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "TOM_SOCIAL_BRIDGE"
 
 
 /* ============================================================================
@@ -259,11 +262,13 @@ tom_social_bridge_t* tom_social_bridge_create(const tom_social_config_t* config)
 
     bridge->initialized = true;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "tom_social");
     return bridge;
 }
 
 void tom_social_bridge_destroy(tom_social_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "tom_social");
 
     /* Phase 8: Heartbeat at operation start */
     tom_social_bridge_heartbeat("tom_social_b_destroy", 0.0f);

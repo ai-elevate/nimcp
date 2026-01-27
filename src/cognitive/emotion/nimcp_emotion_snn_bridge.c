@@ -11,12 +11,14 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <string.h>
 #include <math.h>
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -42,6 +44,8 @@ static inline void emotion_snn_bridge_heartbeat(const char* operation, float pro
         nimcp_health_agent_heartbeat_ex(g_emotion_snn_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "EMOTION_SNN_BRIDGE"
 
 
 //=============================================================================
@@ -252,11 +256,13 @@ emotion_snn_bridge_t* emotion_snn_create(const emotion_snn_config_t* config) {
     bridge->current_arousal_mod = 1.0f;
     bridge->bio_async_connected = false;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "emotion_snn");
     return bridge;
 }
 
 void emotion_snn_destroy(emotion_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "emotion_snn");
 
     /* Phase 8: Heartbeat at operation start */
     emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_destroy", 0.0f);
@@ -323,6 +329,7 @@ int emotion_snn_encode_observation(
     const emotion_recognition_result_t* result)
 {
     if (!bridge || !result) return -1;
+    BRIDGE_BBB_VALIDATE(bridge, result, sizeof(emotion_recognition_result_t));
 
     /* Phase 8: Heartbeat at operation start */
     emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_encode_o", 0.0f);
@@ -434,6 +441,7 @@ int emotion_snn_encode_features(
     float arousal)
 {
     if (!bridge || !features) return -1;
+    BRIDGE_BBB_VALIDATE(bridge, features, n_features * sizeof(float));
 
     /* Phase 8: Heartbeat at operation start */
     emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_encode_f", 0.0f);
@@ -1019,3 +1027,8 @@ int emotion_snn_set_intensity_modulation(
 
     return 0;
 }
+
+/* ============================================================================
+ * Security Integration (BBB)
+ * ============================================================================ */
+BRIDGE_DEFINE_SECURITY_SETTERS(emotion_snn_bridge)

@@ -41,6 +41,8 @@ static inline void cortical_attention_gain_sleep_bridge_heartbeat(const char* op
     }
 }
 
+#define LOG_MODULE "CORTICAL_ATTENTION_GAIN_SLEEP_BRIDGE"
+
 
 struct cortical_attention_gain_sleep_bridge_struct {
     bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
@@ -137,6 +139,7 @@ cortical_attention_gain_sleep_bridge_t cortical_attention_gain_sleep_bridge_crea
 void cortical_attention_gain_sleep_bridge_destroy(cortical_attention_gain_sleep_bridge_t bridge)
 {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "cortical_attention_gain_sleep");
     if (bridge->callback_registered) {
         sleep_unregister_state_callback(bridge->sleep_system, cortical_attention_gain_on_sleep_state_change, bridge);
     }

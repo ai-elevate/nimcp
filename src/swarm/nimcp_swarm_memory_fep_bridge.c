@@ -13,6 +13,7 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -40,6 +41,8 @@ static inline void swarm_memory_fep_bridge_heartbeat(const char* operation, floa
     }
 }
 
+#define LOG_MODULE "SWARM_MEMORY_FEP_BRIDGE"
+
 
 void swarm_memory_fep_default_config(swarm_memory_fep_config_t* config) {
     if (!config) return;
@@ -59,7 +62,10 @@ swarm_memory_fep_bridge_t* swarm_memory_fep_create(const swarm_memory_fep_config
         return NULL;
     }
     swarm_memory_fep_bridge_t* bridge = (swarm_memory_fep_bridge_t*)nimcp_malloc(sizeof(swarm_memory_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Failed to allocate swarm_memory_fep bridge");
+        return NULL;
+    }
     memset(bridge, 0, sizeof(swarm_memory_fep_bridge_t));
     if (config) bridge->config = *config;
     else swarm_memory_fep_default_config(&bridge->config);
@@ -67,11 +73,13 @@ swarm_memory_fep_bridge_t* swarm_memory_fep_create(const swarm_memory_fep_config
     bridge->memory_ctx = memory_ctx;
     if (bridge_base_init(&bridge->base, 0, "swarm_memory_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
+    NIMCP_LOGGING_INFO("Created %s bridge", "swarm_memory_fep");
     return bridge;
 }
 
 void swarm_memory_fep_destroy(swarm_memory_fep_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "swarm_memory_fep");
     if (bridge->base.bio_async_enabled) swarm_memory_fep_disconnect_bio_async(bridge);
     if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);

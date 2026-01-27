@@ -47,6 +47,8 @@ static inline void cingulate_quantum_bridge_heartbeat(const char* operation, flo
     }
 }
 
+#define LOG_MODULE "CINGULATE_QUANTUM_BRIDGE"
+
 
 /*=============================================================================
  * LOGGING MODULE IDENTIFIER
@@ -275,6 +277,7 @@ cingulate_quantum_bridge_t* cingulate_quantum_bridge_create(
 
 void cingulate_quantum_bridge_destroy(cingulate_quantum_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "cingulate_quantum");
 
     LOG_INFO("[%s] Destroying cingulate quantum bridge", CING_QUANTUM_LOG_MODULE);
 

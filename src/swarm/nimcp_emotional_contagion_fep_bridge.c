@@ -13,6 +13,7 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -40,6 +41,8 @@ static inline void emotional_contagion_fep_bridge_heartbeat(const char* operatio
     }
 }
 
+#define LOG_MODULE "EMOTIONAL_CONTAGION_FEP_BRIDGE"
+
 
 void emotional_contagion_fep_default_config(emotional_contagion_fep_config_t* config) {
     if (!config) return;
@@ -66,11 +69,13 @@ emotional_contagion_fep_bridge_t* emotional_contagion_fep_create(const emotional
     bridge->contagion_system = contagion_system;
     if (bridge_base_init(&bridge->base, 0, "emotional_contagion_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
+    NIMCP_LOGGING_INFO("Created %s bridge", "emotional_contagion_fep");
     return bridge;
 }
 
 void emotional_contagion_fep_destroy(emotional_contagion_fep_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "emotional_contagion_fep");
     if (bridge->base.bio_async_enabled) emotional_contagion_fep_disconnect_bio_async(bridge);
     if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);

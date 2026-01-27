@@ -19,6 +19,8 @@
 #include <math.h>
 #include <stdio.h>
 
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
+
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -46,6 +48,20 @@ static inline void genius_plasticity_bridge_heartbeat(const char* operation, flo
         nimcp_health_agent_heartbeat_ex(g_genius_plasticity_bridge_health_agent, operation, progress);
     }
 }
+
+/** @brief Send heartbeat from genius_plasticity_bridge module (instance-level) */
+static inline void genius_plasticity_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_genius_plasticity_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_genius_plasticity_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_genius_plasticity_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+#define LOG_MODULE "GENIUS_PLASTICITY_BRIDGE"
 
 
 //=============================================================================
@@ -89,17 +105,14 @@ struct genius_plasticity_bridge {
 
     /* KG Wiring */
     struct kg_module_wiring* kg_wiring;
+
+    /* Health agent (instance-level) - Phase 8 */
+    nimcp_health_agent_t* health_agent;
 };
 
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static genius_plasticity_synapse_t* find_synapse(genius_plasticity_bridge_t* bridge, uint32_t synapse_id) {
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
@@ -136,7 +149,7 @@ static void update_mode_skill(genius_plasticity_bridge_t* bridge, genius_mode_t 
     if (mode >= GENIUS_MODE_COUNT) return;
 
     float old_skill = bridge->mode_skills[mode];
-    bridge->mode_skills[mode] = clamp_f(old_skill + delta, 0.0f, 1.0f);
+    bridge->mode_skills[mode] = nimcp_myelin_clamp(old_skill + delta, 0.0f, 1.0f);
 
     if (bridge->skill_callback && fabsf(delta) > 0.01f) {
         bridge->skill_callback(bridge, mode, old_skill, bridge->mode_skills[mode],
@@ -257,11 +270,13 @@ genius_plasticity_bridge_t* genius_plasticity_create(const genius_plasticity_con
     /* Initialize KG wiring */
     bridge->kg_wiring = genius_plasticity_create_kg_wiring();
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "genius_plasticity");
     return bridge;
 }
 
 void genius_plasticity_destroy(genius_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "genius_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_de", 0.0f);
@@ -359,7 +374,7 @@ int genius_plasticity_register_synapse(genius_plasticity_bridge_t* bridge,
     genius_plasticity_synapse_t* syn = &bridge->synapses[bridge->synapse_count++];
     syn->synapse_id = synapse_id;
     syn->type = type;
-    syn->weight = clamp_f(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
+    syn->weight = nimcp_myelin_clamp(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
     syn->initial_weight = syn->weight;
     syn->eligibility_trace = 0.0f;
     syn->bcm_threshold = bridge->config.bcm_target_rate;
@@ -483,7 +498,7 @@ int genius_plasticity_learn(genius_plasticity_bridge_t* bridge,
         return -1;
     }
 
-    magnitude = clamp_f(magnitude, 0.0f, 1.0f);
+    magnitude = nimcp_myelin_clamp(magnitude, 0.0f, 1.0f);
     float lr = bridge->config.base_learning_rate * bridge->learning_state.learning_rate_mod;
     float dw = 0.0f;
 
@@ -565,7 +580,7 @@ int genius_plasticity_learn(genius_plasticity_bridge_t* bridge,
 
     /* Apply weight change with eligibility trace */
     dw += syn->eligibility_trace * context;
-    syn->weight = clamp_f(syn->weight + dw, bridge->config.weight_min, bridge->config.weight_max);
+    syn->weight = nimcp_myelin_clamp(syn->weight + dw, bridge->config.weight_min, bridge->config.weight_max);
     syn->update_count++;
     syn->last_update_us = bridge->current_time_us;
 
@@ -631,7 +646,7 @@ float genius_plasticity_apply_stdp(genius_plasticity_bridge_t* bridge,
     }
 
     dw *= mode_lr;
-    syn->weight = clamp_f(syn->weight + dw, bridge->config.weight_min, bridge->config.weight_max);
+    syn->weight = nimcp_myelin_clamp(syn->weight + dw, bridge->config.weight_min, bridge->config.weight_max);
     syn->update_count++;
     syn->last_update_us = bridge->current_time_us;
 
@@ -652,8 +667,8 @@ int genius_plasticity_apply_proof_reward(genius_plasticity_bridge_t* bridge,
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    reward = clamp_f(reward, -1.0f, 1.0f);
-    elegance = clamp_f(elegance, 0.0f, 1.0f);
+    reward = nimcp_myelin_clamp(reward, -1.0f, 1.0f);
+    elegance = nimcp_myelin_clamp(elegance, 0.0f, 1.0f);
 
     float modulation = reward * bridge->config.proof_success_boost +
                        elegance * bridge->config.elegance_bonus;
@@ -674,7 +689,7 @@ int genius_plasticity_apply_proof_reward(genius_plasticity_bridge_t* bridge,
                 dw *= (1.0f - bridge->config.protection_strength);
             }
 
-            syn->weight = clamp_f(syn->weight + dw, bridge->config.weight_min, bridge->config.weight_max);
+            syn->weight = nimcp_myelin_clamp(syn->weight + dw, bridge->config.weight_min, bridge->config.weight_max);
             syn->update_count++;
         }
     }
@@ -694,7 +709,7 @@ int genius_plasticity_apply_insight_reward(genius_plasticity_bridge_t* bridge,
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    insight_strength = clamp_f(insight_strength, 0.0f, 1.0f);
+    insight_strength = nimcp_myelin_clamp(insight_strength, 0.0f, 1.0f);
     float modulation = insight_strength * bridge->config.insight_modulation;
 
     /* Apply to synapses associated with the mode */
@@ -713,7 +728,7 @@ int genius_plasticity_apply_insight_reward(genius_plasticity_bridge_t* bridge,
                 dw *= (1.0f - bridge->config.protection_strength);
             }
 
-            syn->weight = clamp_f(syn->weight + dw, bridge->config.weight_min, bridge->config.weight_max);
+            syn->weight = nimcp_myelin_clamp(syn->weight + dw, bridge->config.weight_min, bridge->config.weight_max);
             syn->update_count++;
         }
     }
@@ -745,7 +760,7 @@ int genius_plasticity_update_bcm(genius_plasticity_bridge_t* bridge, float dt_ms
 
         genius_plasticity_synapse_t* syn = &bridge->synapses[i];
         syn->bcm_threshold += dt_ms * (syn->avg_activity * syn->avg_activity - syn->bcm_threshold) / tau;
-        syn->bcm_threshold = clamp_f(syn->bcm_threshold, 0.01f, 1.0f);
+        syn->bcm_threshold = nimcp_myelin_clamp(syn->bcm_threshold, 0.01f, 1.0f);
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -792,7 +807,7 @@ int genius_plasticity_homeostatic_update(genius_plasticity_bridge_t* bridge, flo
         genius_plasticity_synapse_t* syn = &bridge->synapses[i];
         if (!syn->is_protected) {
             syn->weight *= scale_factor;
-            syn->weight = clamp_f(syn->weight, bridge->config.weight_min, bridge->config.weight_max);
+            syn->weight = nimcp_myelin_clamp(syn->weight, bridge->config.weight_min, bridge->config.weight_max);
         }
     }
 
@@ -878,12 +893,12 @@ int genius_plasticity_get_learning_state(genius_plasticity_bridge_t* bridge,
     *state = bridge->learning_state;
 
     /* Clamp values */
-    state->pattern_sensitivity = clamp_f(state->pattern_sensitivity, 0.0f, 1.0f);
-    state->proof_skill = clamp_f(state->proof_skill, 0.0f, 1.0f);
-    state->conjecture_quality = clamp_f(state->conjecture_quality, 0.0f, 1.0f);
-    state->analogy_strength = clamp_f(state->analogy_strength, 0.0f, 1.0f);
-    state->insight_frequency = clamp_f(state->insight_frequency, 0.0f, 1.0f);
-    state->elegance_perception = clamp_f(state->elegance_perception, 0.0f, 1.0f);
+    state->pattern_sensitivity = nimcp_myelin_clamp(state->pattern_sensitivity, 0.0f, 1.0f);
+    state->proof_skill = nimcp_myelin_clamp(state->proof_skill, 0.0f, 1.0f);
+    state->conjecture_quality = nimcp_myelin_clamp(state->conjecture_quality, 0.0f, 1.0f);
+    state->analogy_strength = nimcp_myelin_clamp(state->analogy_strength, 0.0f, 1.0f);
+    state->insight_frequency = nimcp_myelin_clamp(state->insight_frequency, 0.0f, 1.0f);
+    state->elegance_perception = nimcp_myelin_clamp(state->elegance_perception, 0.0f, 1.0f);
 
     /* Find strongest mode */
     float max_skill = bridge->mode_skills[0];
@@ -1326,4 +1341,38 @@ kg_module_wiring_t* genius_plasticity_get_kg_wiring(genius_plasticity_bridge_t* 
 
 
     return bridge->kg_wiring;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B23 Upgrade)
+//=============================================================================
+
+void genius_plasticity_bridge_set_instance_health_agent(
+    genius_plasticity_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B23 Upgrade)
+//=============================================================================
+
+int genius_plasticity_bridge_training_begin(genius_plasticity_bridge_t* bridge) {
+    if (!bridge) return -1;
+    genius_plasticity_bridge_heartbeat_instance(bridge->health_agent, "genius_plasticity_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int genius_plasticity_bridge_training_end(genius_plasticity_bridge_t* bridge) {
+    if (!bridge) return -1;
+    genius_plasticity_bridge_heartbeat_instance(bridge->health_agent, "genius_plasticity_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int genius_plasticity_bridge_training_step(genius_plasticity_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    genius_plasticity_bridge_heartbeat_instance(bridge->health_agent, "genius_plasticity_bridge_training_step", progress);
+    return 0;
 }

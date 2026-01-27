@@ -45,6 +45,8 @@ static inline void jepa_plasticity_bridge_heartbeat(const char* operation, float
     }
 }
 
+#define LOG_MODULE "JEPA_PLASTICITY_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -238,6 +240,7 @@ jepa_plasticity_bridge_t* jepa_plasticity_create(
 
 void jepa_plasticity_destroy(jepa_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "jepa_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_dest", 0.0f);

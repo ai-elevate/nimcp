@@ -47,6 +47,8 @@ static inline void hypothalamus_wellbeing_bridge_heartbeat(const char* operation
     }
 }
 
+#define LOG_MODULE "HYPOTHALAMUS_WELLBEING_BRIDGE"
+
 
 /*=============================================================================
  * INTERNAL STRUCTURES
@@ -170,6 +172,7 @@ hypo_wellbeing_bridge_t* hypo_wellbeing_bridge_create(
 
 void hypo_wellbeing_bridge_destroy(hypo_wellbeing_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hypothalamus_wellbeing");
 
     if (bridge->bio_registered) {
         hypo_wellbeing_bridge_unregister_bio(bridge);

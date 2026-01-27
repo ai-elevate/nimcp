@@ -126,6 +126,7 @@ temporal_substrate_bridge_t* temporal_substrate_bridge_create(
 
 void temporal_substrate_bridge_destroy(temporal_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "temporal_substrate");
     nimcp_free(bridge);
     LOG_DEBUG("[%s] Temporal substrate bridge destroyed", LOG_MODULE);
 }

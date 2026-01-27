@@ -13,10 +13,12 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <string.h>
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -43,6 +45,8 @@ static inline void shadow_thalamic_bridge_heartbeat(const char* operation, float
     }
 }
 
+#define LOG_MODULE "SHADOW_THALAMIC_BRIDGE"
+
 
 /* Source ID for shadow signals in thalamic routing */
 #define SHADOW_THALAMIC_SOURCE_ID 0x1500
@@ -61,6 +65,8 @@ struct shadow_thalamic_bridge {
     shadow_thalamic_stats_t stats;
     float attention_weight;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS(shadow_thalamic_bridge)
 
 shadow_thalamic_config_t shadow_thalamic_default_config(void) {
     shadow_thalamic_config_t cfg = {
@@ -91,11 +97,13 @@ shadow_thalamic_bridge_t* shadow_thalamic_bridge_create(void* shadow, thalamic_r
     bridge->config = config ? *config : shadow_thalamic_default_config();
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    NIMCP_LOGGING_INFO("Created %s bridge", "shadow_thalamic");
     return bridge;
 }
 
 void shadow_thalamic_bridge_destroy(shadow_thalamic_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "shadow_thalamic");
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
     }
@@ -120,6 +128,7 @@ int shadow_thalamic_bridge_reset(shadow_thalamic_bridge_t* bridge) {
  */
 int shadow_thalamic_route_emergence(shadow_thalamic_bridge_t* bridge, const shadow_thalamic_signal_t* signal) {
     if (!bridge || !signal) return -1;
+    BRIDGE_BBB_VALIDATE(bridge, signal, sizeof(shadow_thalamic_signal_t));
 
     nimcp_mutex_lock(bridge->base.mutex);
 

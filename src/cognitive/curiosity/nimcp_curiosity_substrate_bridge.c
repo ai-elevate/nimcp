@@ -14,6 +14,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -39,6 +40,8 @@ static inline void curiosity_substrate_bridge_heartbeat(const char* operation, f
         nimcp_health_agent_heartbeat_ex(g_curiosity_substrate_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "CURIOSITY_SUBSTRATE_BRIDGE"
 
 
 struct curiosity_substrate_bridge {
@@ -92,11 +95,13 @@ curiosity_substrate_bridge_t* curiosity_substrate_bridge_create(void* curiosity,
     bridge->effects.information_gain = 1.0f;
     bridge->effects.uncertainty_tolerance = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
+    NIMCP_LOGGING_INFO("Created %s bridge", "curiosity_substrate");
     return bridge;
 }
 
 void curiosity_substrate_bridge_destroy(curiosity_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "curiosity_substrate");
     /* Phase 8: Heartbeat at operation start */
     curiosity_substrate_bridge_heartbeat("curiosity_su_destroy", 0.0f);
 

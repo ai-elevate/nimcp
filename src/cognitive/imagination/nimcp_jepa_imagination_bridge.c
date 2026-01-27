@@ -47,6 +47,8 @@ static inline void jepa_imagination_bridge_heartbeat(const char* operation, floa
     }
 }
 
+#define LOG_MODULE "JEPA_IMAGINATION_BRIDGE"
+
 
 /* Local logging macros */
 #define NIMCP_LOG_INFO(...)  LOG_INFO(__VA_ARGS__)
@@ -194,6 +196,7 @@ jepa_imagination_bridge_t* jepa_imagination_bridge_create(
 
 void jepa_imagination_bridge_destroy(jepa_imagination_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "jepa_imagination");
 
     /* Disconnect bio-async if connected */
     /* Phase 8: Heartbeat at operation start */

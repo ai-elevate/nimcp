@@ -21,6 +21,8 @@
 #include <math.h>
 #include <stdio.h>
 
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
+
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -48,6 +50,20 @@ static inline void genius_snn_bridge_heartbeat(const char* operation, float prog
         nimcp_health_agent_heartbeat_ex(g_genius_snn_bridge_health_agent, operation, progress);
     }
 }
+
+/** @brief Send heartbeat from genius_snn_bridge module (instance-level) */
+static inline void genius_snn_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_genius_snn_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_genius_snn_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_genius_snn_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+#define LOG_MODULE "GENIUS_SNN_BRIDGE"
 
 
 //=============================================================================
@@ -97,17 +113,14 @@ struct genius_snn_bridge {
 
     /* KG Wiring */
     struct kg_module_wiring* kg_wiring;
+
+    /* Health agent (instance-level) - Phase 8 */
+    nimcp_health_agent_t* health_agent;
 };
 
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -281,11 +294,13 @@ genius_snn_bridge_t* genius_snn_create(const genius_snn_config_t* config) {
     /* Initialize KG wiring */
     bridge->kg_wiring = genius_snn_create_kg_wiring();
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "genius_snn");
     return bridge;
 }
 
 void genius_snn_destroy(genius_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "genius_snn");
 
     /* Phase 8: Heartbeat at operation start */
     genius_snn_bridge_heartbeat("genius_snn_b_genius_snn_destroy", 0.0f);
@@ -402,7 +417,7 @@ int genius_snn_encode_state(genius_snn_bridge_t* bridge, const float* dimensions
                              (float)(d + 1) / (float)num_dims);
         }
 
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_myelin_clamp(dimensions[d], 0.0f, 1.0f);
         bridge->dim_states[d].activation = value;
 
         /* Population coding */
@@ -444,7 +459,7 @@ int genius_snn_encode_pattern(genius_snn_bridge_t* bridge, float pattern_strengt
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    bridge->dim_states[GENIUS_DIM_PATTERN_RECOGNITION].activation = clamp_f(pattern_strength, 0.0f, 1.0f);
+    bridge->dim_states[GENIUS_DIM_PATTERN_RECOGNITION].activation = nimcp_myelin_clamp(pattern_strength, 0.0f, 1.0f);
     bridge->dim_states[GENIUS_DIM_PATTERN_RECOGNITION].accumulated_evidence += pattern_strength * 0.1f;
 
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -460,9 +475,9 @@ int genius_snn_encode_proof_state(genius_snn_bridge_t* bridge, float progress, f
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    bridge->dim_states[GENIUS_DIM_PROOF_SEARCH].activation = clamp_f(progress, 0.0f, 1.0f);
-    bridge->dim_states[GENIUS_DIM_ELEGANCE_SIGNAL].activation = clamp_f(elegance, 0.0f, 1.0f);
-    bridge->dim_states[GENIUS_DIM_RIGOR_LEVEL].activation = clamp_f(1.0f - (float)depth / 100.0f, 0.0f, 1.0f);
+    bridge->dim_states[GENIUS_DIM_PROOF_SEARCH].activation = nimcp_myelin_clamp(progress, 0.0f, 1.0f);
+    bridge->dim_states[GENIUS_DIM_ELEGANCE_SIGNAL].activation = nimcp_myelin_clamp(elegance, 0.0f, 1.0f);
+    bridge->dim_states[GENIUS_DIM_RIGOR_LEVEL].activation = nimcp_myelin_clamp(1.0f - (float)depth / 100.0f, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
@@ -477,7 +492,7 @@ int genius_snn_encode_mode(genius_snn_bridge_t* bridge, genius_mode_t mode, floa
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    activation = clamp_f(activation, 0.0f, 1.0f);
+    activation = nimcp_myelin_clamp(activation, 0.0f, 1.0f);
 
     switch (mode) {
         case GENIUS_MODE_GAUSS:
@@ -1075,4 +1090,38 @@ kg_module_wiring_t* genius_snn_get_kg_wiring(genius_snn_bridge_t* bridge) {
 
 
     return bridge->kg_wiring;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B23 Upgrade)
+//=============================================================================
+
+void genius_snn_bridge_set_instance_health_agent(
+    genius_snn_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B23 Upgrade)
+//=============================================================================
+
+int genius_snn_bridge_training_begin(genius_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+    genius_snn_bridge_heartbeat_instance(bridge->health_agent, "genius_snn_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int genius_snn_bridge_training_end(genius_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+    genius_snn_bridge_heartbeat_instance(bridge->health_agent, "genius_snn_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int genius_snn_bridge_training_step(genius_snn_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    genius_snn_bridge_heartbeat_instance(bridge->health_agent, "genius_snn_bridge_training_step", progress);
+    return 0;
 }

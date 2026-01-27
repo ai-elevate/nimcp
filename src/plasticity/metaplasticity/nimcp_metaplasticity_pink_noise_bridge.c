@@ -10,6 +10,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
+#include "security/nimcp_bbb_helpers.h"
 
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -38,6 +39,8 @@ static inline void metaplasticity_pink_noise_bridge_heartbeat(const char* operat
     }
 }
 
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(meta_pink_noise_bridge)
 
 static float clamp_value(float val, float min_val, float max_val) {
     if (val < min_val) return min_val;

@@ -27,6 +27,7 @@
 #define LOG_MODULE "stp_pink_noise_bridge"
 
 #include <stddef.h>  /* for NULL */
+#include "security/nimcp_bbb_helpers.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -53,6 +54,9 @@ static inline void stp_pink_noise_bridge_heartbeat(const char* operation, float 
         nimcp_health_agent_heartbeat_ex(g_stp_pink_noise_bridge_health_agent, operation, progress);
     }
 }
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(stp_pink_noise_bridge)
 
 
 /* ============================================================================

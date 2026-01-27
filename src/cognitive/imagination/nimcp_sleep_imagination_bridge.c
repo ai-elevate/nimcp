@@ -46,6 +46,8 @@ static inline void sleep_imagination_bridge_heartbeat(const char* operation, flo
     }
 }
 
+#define LOG_MODULE "SLEEP_IMAGINATION_BRIDGE"
+
 
 /* Logging macros - map to nimcp logging functions */
 #define NIMCP_LOG_INFO(...)  LOG_INFO(__VA_ARGS__)
@@ -272,6 +274,7 @@ sleep_imagination_bridge_t* sleep_imagination_bridge_create(
 
 void sleep_imagination_bridge_destroy(sleep_imagination_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "sleep_imagination");
 
     /* Disconnect bio-async if connected */
     /* Phase 8: Heartbeat at operation start */

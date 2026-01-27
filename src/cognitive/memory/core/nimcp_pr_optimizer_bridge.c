@@ -49,6 +49,7 @@
 
 #include "cognitive/memory/core/nimcp_pr_optimizer_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -86,6 +87,8 @@ static inline void pr_optimizer_bridge_heartbeat(const char* operation, float pr
     }
 }
 
+/* Security subsystem setters (Phase 1: Audit Gap Remediation) */
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_optimizer_bridge, struct pr_optimizer_bridge_struct)
 
 //=============================================================================
 // Private Constants

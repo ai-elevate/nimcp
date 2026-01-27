@@ -14,6 +14,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include "glial/myelin_sheath/nimcp_myelin_math.h"
 #include <string.h>
 #include <math.h>
@@ -58,6 +59,8 @@ static inline void mirror_neurons_fep_bridge_heartbeat_instance(
     }
 }
 
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(mirror_neurons_fep_bridge)
 
 /* ============================================================================
  * Helper Functions

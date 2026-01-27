@@ -15,6 +15,7 @@
 #include <time.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -41,6 +42,8 @@ static inline void glial_bio_async_bridge_heartbeat(const char* operation, float
         nimcp_health_agent_heartbeat_ex(g_glial_bio_async_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "GLIAL_BIO_ASYNC_BRIDGE"
 
 
 /* ============================================================================
@@ -157,6 +160,7 @@ glial_bio_async_bridge_t* glial_bio_async_bridge_create(
 
 void glial_bio_async_bridge_destroy(glial_bio_async_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "glial_bio_async");
 
     if (bridge->connected) {
         glial_bio_async_disconnect(bridge);

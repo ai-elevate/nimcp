@@ -43,6 +43,8 @@ static inline void physics_cognitive_bridge_heartbeat(const char* operation, flo
     }
 }
 
+#define LOG_MODULE "PHYSICS_COGNITIVE_BRIDGE"
+
 
 //=============================================================================
 // Internal Structure
@@ -229,6 +231,7 @@ physics_cog_bridge_t* physics_cog_bridge_create(
 
 void physics_cog_bridge_destroy(physics_cog_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "physics_cognitive");
 
     NIMCP_LOG_INFO(PHYSICS_COG_MODULE_NAME,
         "Bridge destroyed - physics_to_cog: %lu, cog_to_physics: %lu, impairments: %lu",

@@ -20,6 +20,7 @@
 #include <string.h>
 
 #include <stddef.h>  /* for NULL */
+#include "security/nimcp_bbb_helpers.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -47,7 +48,6 @@ static inline void protein_sleep_bridge_heartbeat(const char* operation, float p
     }
 }
 
-
 /* ============================================================================
  * Internal Structures
  * ============================================================================ */
@@ -71,6 +71,9 @@ typedef struct protein_sleep_bridge_struct {
     /* Thread safety */
     nimcp_platform_mutex_t* mutex;
 } protein_sleep_bridge_struct;
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(protein_sleep_bridge, struct protein_sleep_bridge_struct)
 
 /* ============================================================================
  * Helper Functions

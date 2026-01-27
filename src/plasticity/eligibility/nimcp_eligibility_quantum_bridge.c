@@ -14,6 +14,8 @@
 #include <time.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
+#include "security/nimcp_bbb_helpers.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -40,6 +42,8 @@ static inline void eligibility_quantum_bridge_heartbeat(const char* operation, f
         nimcp_health_agent_heartbeat_ex(g_eligibility_quantum_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "ELIGIBILITY_QUANTUM_BRIDGE"
 
 
 /*=============================================================================
@@ -140,6 +144,7 @@ eligibility_quantum_ctx_t elig_quantum_create(const elig_quantum_config_t* confi
     ctx->walk_distance = 0.0f;
     ctx->walk_entropy = 0.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "eligibility_quantum");
     return ctx;
 }
 
@@ -147,6 +152,7 @@ void elig_quantum_destroy(eligibility_quantum_ctx_t ctx) {
     if (!ctx) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_destroy: ctx is NULL");
         return;
+        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "eligibility_quantum");
     }
     nimcp_free(ctx);
 }

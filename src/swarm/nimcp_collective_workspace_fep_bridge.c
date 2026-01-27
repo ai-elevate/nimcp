@@ -13,6 +13,7 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -40,6 +41,8 @@ static inline void collective_workspace_fep_bridge_heartbeat(const char* operati
     }
 }
 
+#define LOG_MODULE "COLLECTIVE_WORKSPACE_FEP_BRIDGE"
+
 
 void collective_workspace_fep_default_config(collective_workspace_fep_config_t* config) {
     if (!config) return;
@@ -66,11 +69,13 @@ collective_workspace_fep_bridge_t* collective_workspace_fep_create(const collect
     bridge->workspace = workspace;
     if (bridge_base_init(&bridge->base, 0, "collective_workspace_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
+    NIMCP_LOGGING_INFO("Created %s bridge", "collective_workspace_fep");
     return bridge;
 }
 
 void collective_workspace_fep_destroy(collective_workspace_fep_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "collective_workspace_fep");
     if (bridge->base.bio_async_enabled) collective_workspace_fep_disconnect_bio_async(bridge);
     if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);

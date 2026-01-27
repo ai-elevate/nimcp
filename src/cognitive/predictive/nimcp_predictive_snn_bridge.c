@@ -50,6 +50,8 @@ static inline void predictive_snn_bridge_heartbeat(const char* operation, float 
     }
 }
 
+#define LOG_MODULE "PREDICTIVE_SNN_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -277,11 +279,13 @@ predictive_snn_bridge_t* predictive_snn_create(const predictive_snn_config_t* co
     bridge->error_signal = 0.0f;
     bridge->precision_signal = 0.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "predictive_snn");
     return bridge;
 }
 
 void predictive_snn_destroy(predictive_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "predictive_snn");
 
     /* Phase 8: Heartbeat at operation start */
     predictive_snn_bridge_heartbeat("predictive_s_predictive_snn_destr", 0.0f);

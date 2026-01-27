@@ -20,6 +20,7 @@
 #include <pthread.h>
 
 #include <stddef.h>  /* for NULL */
+#include "security/nimcp_bbb_helpers.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -46,6 +47,9 @@ static inline void eligibility_immune_bridge_heartbeat(const char* operation, fl
         nimcp_health_agent_heartbeat_ex(g_eligibility_immune_bridge_health_agent, operation, progress);
     }
 }
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(eligibility_immune_bridge)
 
 
 /* ============================================================================

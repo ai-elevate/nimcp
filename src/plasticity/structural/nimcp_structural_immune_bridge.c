@@ -13,6 +13,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
+#include "security/nimcp_bbb_helpers.h"
 
 #include <stddef.h>  /* for NULL */
 //=============================================================================
@@ -42,6 +43,8 @@ static inline void structural_immune_bridge_heartbeat(const char* operation, flo
     }
 }
 
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(structural_immune_bridge)
 
 /* ============================================================================
  * Lifecycle Implementation

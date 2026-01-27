@@ -13,6 +13,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -38,6 +39,8 @@ static inline void shadow_emotions_thalamic_bridge_heartbeat(const char* operati
         nimcp_health_agent_heartbeat_ex(g_shadow_emotions_thalamic_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "SHADOW_EMOTIONS_THALAMIC_BRIDGE"
 
 
 struct shadow_emotions_thalamic_bridge {

@@ -25,6 +25,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -50,6 +51,8 @@ static inline void rcog_fep_bridge_heartbeat(const char* operation, float progre
         nimcp_health_agent_heartbeat_ex(g_rcog_fep_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "RCOG_FEP_BRIDGE"
 
 
 /*=============================================================================
@@ -386,11 +389,13 @@ rcog_fep_bridge_t* rcog_fep_bridge_create(const rcog_fep_config_t* config) {
 
     bridge->state = RCOG_FEP_STATE_IDLE;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "rcog_fep");
     return bridge;
 }
 
 void rcog_fep_bridge_destroy(rcog_fep_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "rcog_fep");
 
     /* Unregister if still registered */
     /* Phase 8: Heartbeat at operation start */

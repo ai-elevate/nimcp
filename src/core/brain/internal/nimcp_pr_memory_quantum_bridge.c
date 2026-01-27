@@ -14,6 +14,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -39,6 +40,8 @@ static inline void pr_memory_quantum_bridge_heartbeat(const char* operation, flo
         nimcp_health_agent_heartbeat_ex(g_pr_memory_quantum_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "PR_MEMORY_QUANTUM_BRIDGE"
 
 
 /*=============================================================================
@@ -146,6 +149,7 @@ pr_memory_quantum_ctx_t pr_quantum_create(const pr_quantum_config_t* config) {
     ctx->anneal_tunneling_prob = ctx->config.tunneling_rate;
     ctx->anneal_iteration = 0;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "pr_memory_quantum");
     return ctx;
 }
 

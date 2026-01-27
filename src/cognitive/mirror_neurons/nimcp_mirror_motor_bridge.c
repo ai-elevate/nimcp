@@ -17,6 +17,7 @@
 #include "utils/error/nimcp_error_codes.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include "glial/myelin_sheath/nimcp_myelin_math.h"
 
 #include <stdlib.h>
@@ -51,6 +52,8 @@ static inline void mirror_motor_bridge_heartbeat(const char* operation, float pr
     }
 }
 
+#define LOG_MODULE "MIRROR_MOTOR_BRIDGE"
+
 /** @brief Send heartbeat from mirror_motor_bridge module (instance-level) */
 static inline void mirror_motor_bridge_heartbeat_instance(
     nimcp_health_agent_t* instance_agent, const char* operation, float progress)
@@ -63,6 +66,8 @@ static inline void mirror_motor_bridge_heartbeat_instance(
     }
 }
 
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(mirror_motor_bridge)
 
 /* ============================================================================
  * Internal Constants
@@ -260,6 +265,7 @@ mirror_motor_bridge_t* mirror_motor_bridge_create(
 
 void mirror_motor_bridge_destroy(mirror_motor_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "mirror_motor");
 
     /* Phase 8: Heartbeat at operation start */
     mirror_motor_bridge_heartbeat("mirror_motor_destroy", 0.0f);
@@ -413,6 +419,8 @@ uint32_t mirror_motor_extract_program_full(
     if (!bridge || !start || !end) {
         return UINT32_MAX;
     }
+    BRIDGE_BBB_VALIDATE(bridge, start, sizeof(*start));
+    BRIDGE_BBB_VALIDATE(bridge, end, sizeof(*end));
 
     /* First extract basic program */
     /* Phase 8: Heartbeat at operation start */

@@ -20,6 +20,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -45,6 +46,8 @@ static inline void health_self_repair_bridge_heartbeat(const char* operation, fl
         nimcp_health_agent_heartbeat_ex(g_health_self_repair_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "HEALTH_SELF_REPAIR_BRIDGE"
 
 
 /* ============================================================================
@@ -447,6 +450,7 @@ health_self_repair_bridge_t* health_self_repair_bridge_create(
 void health_self_repair_bridge_destroy(health_self_repair_bridge_t* bridge) {
     if (!bridge) {
         return;
+        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "health_self_repair");
     }
 
     /* Phase 8: Heartbeat at operation start */

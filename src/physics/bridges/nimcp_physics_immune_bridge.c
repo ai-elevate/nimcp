@@ -43,6 +43,8 @@ static inline void physics_immune_bridge_heartbeat(const char* operation, float 
     }
 }
 
+#define LOG_MODULE "PHYSICS_IMMUNE_BRIDGE"
+
 
 //=============================================================================
 // Internal Structure
@@ -144,6 +146,7 @@ physics_immune_bridge_t* physics_immune_bridge_create(
 
 void physics_immune_bridge_destroy(physics_immune_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "physics_immune");
 
     NIMCP_LOG_INFO(PHYSICS_IMMUNE_MODULE_NAME, "Bridge destroyed - "
         "physics_to_immune: %lu, immune_to_physics: %lu",

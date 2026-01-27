@@ -324,6 +324,7 @@ language_training_bridge_t* language_training_bridge_create(
 
 void language_training_bridge_destroy(language_training_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "language_training");
 
     if (bridge->bio_async_registered) {
         language_training_bridge_bio_async_unregister(bridge);

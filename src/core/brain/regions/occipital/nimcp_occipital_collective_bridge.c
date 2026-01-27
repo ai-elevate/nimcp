@@ -218,6 +218,7 @@ occipital_collective_bridge_t* occipital_collective_create(
 
 void occipital_collective_destroy(occipital_collective_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "occipital_collective");
 
     if (bridge->bio_async_connected) {
         occipital_collective_disconnect_bio_async(bridge);

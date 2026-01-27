@@ -12,6 +12,7 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -38,6 +39,8 @@ static inline void dragonfly_fep_bridge_heartbeat(const char* operation, float p
         nimcp_health_agent_heartbeat_ex(g_dragonfly_fep_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "DRAGONFLY_FEP_BRIDGE"
 
 
 //=============================================================================
@@ -255,6 +258,7 @@ dragonfly_fep_bridge_t* dragonfly_fep_bridge_create(
 
 void dragonfly_fep_bridge_destroy(dragonfly_fep_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "dragonfly_fep");
     free(bridge);
 }
 

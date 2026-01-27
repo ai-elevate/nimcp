@@ -16,6 +16,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/tensor/nimcp_tensor_simd.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include "async/nimcp_bio_messages.h"
 #include <string.h>
 #include <math.h>
@@ -48,6 +49,8 @@ static inline void mirror_tom_bridge_heartbeat(const char* operation, float prog
         nimcp_health_agent_heartbeat_ex(g_mirror_tom_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "MIRROR_TOM_BRIDGE"
 
 static inline void mirror_tom_bridge_heartbeat_instance(
     nimcp_health_agent_t* instance_agent, const char* operation, float progress)
@@ -109,6 +112,9 @@ struct mirror_tom_bridge {
     /* Instance-level health agent (B22) */
     nimcp_health_agent_t* health_agent;
 };
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(mirror_tom_bridge, struct mirror_tom_bridge)
 
 /* ============================================================================
  * SIMD Helper Functions
@@ -400,11 +406,13 @@ mirror_tom_bridge_t mirror_tom_create(const mirror_tom_config_t* config) {
     nimcp_log(LOG_LEVEL_INFO, "Mirror-ToM bridge created (SIMD=%s)",
               bridge->config.enable_simd_optimization ? "enabled" : "disabled");
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "mirror_tom");
     return bridge;
 }
 
 void mirror_tom_destroy(mirror_tom_bridge_t bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "mirror_tom");
 
     /* Phase 8: Heartbeat at operation start */
     mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_destroy", 0.0f);
@@ -501,6 +509,7 @@ int mirror_tom_process_observation(mirror_tom_bridge_t bridge,
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_tom_process_observation: required parameter is NULL");
         return -1;
     }
+    BRIDGE_BBB_VALIDATE(bridge, observation, sizeof(*observation));
 
     /* Phase 8: Heartbeat at operation start */
     mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_process_o", 0.0f);
@@ -566,6 +575,7 @@ int mirror_tom_infer_intention(mirror_tom_bridge_t bridge,
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_tom_infer_intention: required parameter is NULL");
         return -1;
     }
+    BRIDGE_BBB_VALIDATE(bridge, action_features, action_dim * sizeof(float));
 
     /* Phase 8: Heartbeat at operation start */
     mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_infer_int", 0.0f);
@@ -696,6 +706,7 @@ int mirror_tom_update_mental_state(mirror_tom_bridge_t bridge,
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_tom_update_mental_state: required parameter is NULL");
         return -1;
     }
+    BRIDGE_BBB_VALIDATE(bridge, mental_state, sizeof(*mental_state));
 
     /* Phase 8: Heartbeat at operation start */
     mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_update_me", 0.0f);

@@ -47,6 +47,8 @@ static inline void hypothalamus_immune_bridge_heartbeat(const char* operation, f
     }
 }
 
+#define LOG_MODULE "HYPOTHALAMUS_IMMUNE_BRIDGE"
+
 
 /*=============================================================================
  * ORCHESTRATOR INTEGRATION (OPTIONAL)
@@ -254,6 +256,7 @@ hypo_immune_bridge_t* hypo_immune_bridge_create(
 
 void hypo_immune_bridge_destroy(hypo_immune_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hypothalamus_immune");
 
     /* Note: Orchestrator unregistration handled via bio-async cleanup */
     bridge->orch_registered = false;

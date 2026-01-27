@@ -13,6 +13,7 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -40,6 +41,8 @@ static inline void swarm_immune_fep_bridge_heartbeat(const char* operation, floa
     }
 }
 
+#define LOG_MODULE "SWARM_IMMUNE_FEP_BRIDGE"
+
 
 void swarm_immune_fep_default_config(swarm_immune_fep_config_t* config) {
     if (!config) return;
@@ -66,11 +69,13 @@ swarm_immune_fep_bridge_t* swarm_immune_fep_create(const swarm_immune_fep_config
     bridge->immune_system = immune_system;
     if (bridge_base_init(&bridge->base, 0, "swarm_immune_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
+    NIMCP_LOGGING_INFO("Created %s bridge", "swarm_immune_fep");
     return bridge;
 }
 
 void swarm_immune_fep_destroy(swarm_immune_fep_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "swarm_immune_fep");
     if (bridge->base.bio_async_enabled) swarm_immune_fep_disconnect_bio_async(bridge);
     if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);

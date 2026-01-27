@@ -12,6 +12,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <string.h>
 #include <math.h>
 
@@ -58,6 +59,8 @@ struct reasoning_sleep_bridge_struct {
     bool callback_registered;             /**< Track callback for cleanup */
 
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(reasoning_sleep_bridge, struct reasoning_sleep_bridge_struct)
 
 /* Forward declarations */
 static void reasoning_on_sleep_state_change(sleep_state_t new_state, void* user_data);

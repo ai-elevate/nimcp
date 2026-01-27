@@ -18,6 +18,8 @@
 #include <time.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
+#include "security/nimcp_bbb_helpers.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -45,6 +47,9 @@ static inline void stdp_pr_bridge_heartbeat(const char* operation, float progres
     }
 }
 
+/* Security integration */
+#define LOG_MODULE "STDP_PR_BRIDGE"
+
 #endif
 
 //=============================================================================
@@ -60,6 +65,8 @@ struct stdp_pr_bridge_struct {
     bool mutex_initialized;
     bool initialized;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(stdp_pr_bridge, struct stdp_pr_bridge_struct)
 
 //=============================================================================
 // Helper Functions
@@ -184,12 +191,14 @@ stdp_pr_bridge_t stdp_pr_bridge_create(const stdp_pr_bridge_config_t* config) {
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     bridge->initialized = true;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "stdp_pr");
     return bridge;
 }
 
 void stdp_pr_bridge_destroy(stdp_pr_bridge_t bridge) {
     if (!bridge) {
         /* Silent return for destroy - idempotent operation */
+        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "stdp_pr");
         return;
     }
 

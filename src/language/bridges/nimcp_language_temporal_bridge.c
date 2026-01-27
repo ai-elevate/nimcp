@@ -342,6 +342,7 @@ language_temporal_bridge_t* language_temporal_bridge_create(
 
 void language_temporal_bridge_destroy(language_temporal_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "language_temporal");
 
     /* Free concept cache embeddings */
     if (bridge->concept_cache) {

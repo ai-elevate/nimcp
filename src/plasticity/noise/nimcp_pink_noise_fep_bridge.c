@@ -14,6 +14,7 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
+#include "security/nimcp_bbb_helpers.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -40,6 +41,11 @@ static inline void pink_noise_fep_bridge_heartbeat(const char* operation, float 
         nimcp_health_agent_heartbeat_ex(g_pink_noise_fep_bridge_health_agent, operation, progress);
     }
 }
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(pink_noise_fep_bridge)
+
+#define LOG_MODULE "PINK_NOISE_FEP_BRIDGE"
 
 
 static inline float clamp(float value, float min, float max) {
@@ -89,11 +95,13 @@ pink_noise_fep_bridge_t* pink_noise_fep_bridge_create(const pink_noise_fep_confi
     bridge->fep_system = NULL;
     bridge->noise_generator = NULL;
     bridge->base.bio_async_enabled = false;
+    NIMCP_LOGGING_INFO("Created %s bridge", "pink_noise_fep");
     return bridge;
 }
 
 void pink_noise_fep_bridge_destroy(pink_noise_fep_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "pink_noise_fep");
     if (bridge->base.bio_async_enabled) pink_noise_fep_bridge_disconnect_bio_async(bridge);
     if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);

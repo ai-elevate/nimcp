@@ -51,6 +51,18 @@ static inline void parietal_training_bridge_heartbeat(const char* operation, flo
     }
 }
 
+/** @brief Send heartbeat from parietal_training_bridge module (instance-level) */
+static inline void parietal_training_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_parietal_training_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_parietal_training_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_parietal_training_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* ============================================================================
  * Internal Structures
@@ -102,6 +114,9 @@ struct parietal_training_bridge {
 
     /* Last update time per domain */
     uint64_t last_update_time[PARIETAL_DOMAIN_COUNT];
+
+    /* Health agent (instance-level) - Phase 8 */
+    nimcp_health_agent_t* health_agent;
 };
 
 /* ============================================================================
@@ -292,6 +307,7 @@ parietal_training_bridge_t* parietal_training_create(
 void parietal_training_destroy(parietal_training_bridge_t* bridge) {
     if (!bridge || bridge->magic != PARIETAL_TRAINING_BRIDGE_MAGIC) {
         return;
+        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "parietal_training");
     }
 
     /* Disconnect from training */
@@ -821,4 +837,38 @@ static float compute_domain_gradient(parietal_training_bridge_t* bridge,
     /* Simple gradient approximation based on loss change */
     /* In practice, this would use actual gradient information */
     return -loss_delta;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B23 Upgrade)
+//=============================================================================
+
+void parietal_training_bridge_set_instance_health_agent(
+    parietal_training_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B23 Upgrade)
+//=============================================================================
+
+int parietal_training_bridge_training_begin(parietal_training_bridge_t* bridge) {
+    if (!bridge) return -1;
+    parietal_training_bridge_heartbeat_instance(bridge->health_agent, "parietal_training_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int parietal_training_bridge_training_end(parietal_training_bridge_t* bridge) {
+    if (!bridge) return -1;
+    parietal_training_bridge_heartbeat_instance(bridge->health_agent, "parietal_training_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int parietal_training_bridge_training_step(parietal_training_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    parietal_training_bridge_heartbeat_instance(bridge->health_agent, "parietal_training_bridge_training_step", progress);
+    return 0;
 }

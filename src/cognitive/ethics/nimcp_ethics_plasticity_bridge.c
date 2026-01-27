@@ -45,6 +45,8 @@ static inline void ethics_plasticity_bridge_heartbeat(const char* operation, flo
     }
 }
 
+#define LOG_MODULE "ETHICS_PLASTICITY_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -224,6 +226,7 @@ ethics_plasticity_bridge_t* ethics_plasticity_create(
 
 void ethics_plasticity_destroy(ethics_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "ethics_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_de", 0.0f);

@@ -15,6 +15,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -40,6 +41,8 @@ static inline void broca_quantum_bridge_heartbeat(const char* operation, float p
         nimcp_health_agent_heartbeat_ex(g_broca_quantum_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "BROCA_QUANTUM_BRIDGE"
 
 
 //=============================================================================
@@ -150,6 +153,7 @@ broca_quantum_bridge_t* broca_quantum_bridge_create(
 
 void broca_quantum_bridge_destroy(broca_quantum_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "broca_quantum");
 
     if (bridge->lexical_candidates) nimcp_free(bridge->lexical_candidates);
     if (bridge->syntax_candidates) nimcp_free(bridge->syntax_candidates);

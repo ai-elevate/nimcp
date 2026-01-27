@@ -18,6 +18,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
+#include "security/nimcp_bbb_helpers.h"
 
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -45,6 +46,9 @@ static inline void pink_noise_immune_bridge_heartbeat(const char* operation, flo
         nimcp_health_agent_heartbeat_ex(g_pink_noise_immune_bridge_health_agent, operation, progress);
     }
 }
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(pink_immune_bridge)
 
 
 //=============================================================================

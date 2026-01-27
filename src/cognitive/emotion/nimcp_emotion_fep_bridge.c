@@ -11,6 +11,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <string.h>
 
 #define LOG_MODULE "emotion_fep_bridge"
@@ -300,3 +301,8 @@ int emotion_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
 }
+
+/* ============================================================================
+ * Security Integration (BBB)
+ * ============================================================================ */
+BRIDGE_DEFINE_SECURITY_SETTERS(emotion_fep_bridge)

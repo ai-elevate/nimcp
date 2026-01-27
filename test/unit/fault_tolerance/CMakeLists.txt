@@ -701,4 +701,32 @@ gtest_discover_tests(unit_heartbeat_B22_mirror_bridges
         TIMEOUT 120
 )
 
+# B23: Parietal bridge heartbeat/utility integration tests
+add_executable(unit_heartbeat_B23_parietal_bridges
+    test_parietal_bridges_B23_functions.cpp
+)
+target_link_libraries(unit_heartbeat_B23_parietal_bridges
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        pthread
+)
+
+target_include_directories(unit_heartbeat_B23_parietal_bridges
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_heartbeat_B23_parietal_bridges PRIVATE cxx_std_17)
+target_compile_definitions(unit_heartbeat_B23_parietal_bridges PRIVATE NIMCP_TESTING)
+
+gtest_discover_tests(unit_heartbeat_B23_parietal_bridges
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;fault_tolerance;heartbeat;B23;parietal_bridges"
+        TIMEOUT 120
+)
+
 message(STATUS "Added fault tolerance unit tests")

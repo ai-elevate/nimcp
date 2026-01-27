@@ -52,6 +52,8 @@ static inline void jepa_fep_bridge_heartbeat(const char* operation, float progre
     }
 }
 
+#define LOG_MODULE "JEPA_FEP_BRIDGE"
+
 
 /*=============================================================================
  * INTERNAL STRUCTURES
@@ -314,11 +316,13 @@ jepa_fep_bridge_t* jepa_fep_bridge_create(const jepa_fep_config_t* config) {
     /* Initialize statistics */
     bridge->stats.min_representation_quality = 1.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "jepa_fep");
     return bridge;
 }
 
 void jepa_fep_bridge_destroy(jepa_fep_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "jepa_fep");
 
     /* Unregister if still registered */
     /* Phase 8: Heartbeat at operation start */

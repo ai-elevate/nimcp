@@ -45,6 +45,8 @@ static inline void knowledge_plasticity_bridge_heartbeat(const char* operation, 
     }
 }
 
+#define LOG_MODULE "KNOWLEDGE_PLASTICITY_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -232,6 +234,7 @@ knowledge_plasticity_bridge_t* knowledge_plasticity_create(
 
 void knowledge_plasticity_destroy(knowledge_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "knowledge_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_plasticity_bridge_heartbeat("knowledge_pl_knowledge_plasticity", 0.0f);

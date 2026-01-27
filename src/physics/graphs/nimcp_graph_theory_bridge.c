@@ -49,6 +49,8 @@ static inline void graph_theory_bridge_heartbeat(const char* operation, float pr
     }
 }
 
+#define LOG_MODULE "GRAPH_THEORY_BRIDGE"
+
 
 //=============================================================================
 // Internal Constants
@@ -178,6 +180,7 @@ void graph_theory_bridge_destroy(graph_theory_bridge_t bridge)
 {
     if (!bridge) {
         return;
+        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "graph_theory");
     }
 
     if (bridge->config.enable_logging) {

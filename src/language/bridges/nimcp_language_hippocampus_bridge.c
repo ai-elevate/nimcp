@@ -43,6 +43,8 @@ static inline void language_hippocampus_bridge_heartbeat(const char* operation, 
     }
 }
 
+#define LOG_MODULE "LANGUAGE_HIPPOCAMPUS_BRIDGE"
+
 
 //=============================================================================
 // Internal Constants
@@ -230,6 +232,7 @@ language_hippocampus_bridge_t* language_hippocampus_bridge_create(
 void language_hippocampus_bridge_destroy(language_hippocampus_bridge_t* bridge)
 {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "language_hippocampus");
 
     if (bridge->memories) {
         for (uint32_t i = 0; i < bridge->config.max_word_memories; i++) {

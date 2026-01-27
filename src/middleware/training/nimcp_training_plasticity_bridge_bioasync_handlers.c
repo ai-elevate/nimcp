@@ -61,6 +61,8 @@ static inline void training_plasticity_bridge_bioasync_handlers_heartbeat(const 
     }
 }
 
+#define LOG_MODULE "TRAINING_PLASTICITY_BRIDGE_BIOASYNC_HANDLERS"
+
 
 /* Internal context type from training_plasticity_bridge - forward declare */
 typedef struct tpb_context tpb_context_t;

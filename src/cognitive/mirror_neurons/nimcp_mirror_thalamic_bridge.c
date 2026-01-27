@@ -9,6 +9,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <string.h>
 #include "async/nimcp_bio_messages.h"
 
@@ -68,6 +69,9 @@ struct mirror_thalamic_bridge {
     /* Instance-level health agent */
     nimcp_health_agent_t* health_agent;
 };
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(mirror_thalamic_bridge)
 
 mirror_thalamic_config_t mirror_thalamic_default_config(void) {
     mirror_thalamic_bridge_heartbeat("default_config", 0.0f);
@@ -158,6 +162,7 @@ int mirror_thalamic_route_action(mirror_thalamic_bridge_t* bridge, const mirror_
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_thalamic_route_action: required parameter is NULL");
         return -1;
     }
+    BRIDGE_BBB_VALIDATE(bridge, signal, sizeof(*signal));
     mirror_thalamic_bridge_heartbeat_instance(bridge->health_agent, "route_action", 0.0f);
     NIMCP_LOGGING_DEBUG("Mirror thalamic bridge: route_action (type=0x%x, strength=%.3f)",
                         signal->signal_type, signal->mirroring_strength);
@@ -186,6 +191,7 @@ int mirror_thalamic_route_empathy(mirror_thalamic_bridge_t* bridge, const void* 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_thalamic_route_empathy: bridge is NULL");
         return -1;
     }
+    BRIDGE_BBB_VALIDATE(bridge, emotion, sizeof(float));
     mirror_thalamic_bridge_heartbeat_instance(bridge->health_agent, "route_empathy", 0.0f);
     NIMCP_LOGGING_DEBUG("Mirror thalamic bridge: route_empathy (resonance=%.3f, threshold=%.3f)",
                         resonance, bridge->config.empathy_threshold);

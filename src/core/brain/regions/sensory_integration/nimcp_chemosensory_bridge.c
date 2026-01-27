@@ -18,6 +18,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -43,6 +44,8 @@ static inline void chemosensory_bridge_heartbeat(const char* operation, float pr
         nimcp_health_agent_heartbeat_ex(g_chemosensory_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "CHEMOSENSORY_BRIDGE"
 
 
 /* ============================================================================
@@ -122,11 +125,13 @@ chemosensory_bridge_t* chemosensory_bridge_create(const chemosensory_config_t* c
     bridge->is_connected = false;
     bridge->status = CHEMOSENSORY_STATUS_IDLE;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "chemosensory");
     return bridge;
 }
 
 void chemosensory_bridge_destroy(chemosensory_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "chemosensory");
     free(bridge->current_flavor.flavor_profile);
     free(bridge);
 }

@@ -21,6 +21,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
+#include "security/nimcp_bbb_helpers.h"
 
 #include <stddef.h>  /* for NULL */
 //=============================================================================
@@ -50,6 +51,8 @@ static inline void dendrite_plasticity_bridge_heartbeat(const char* operation, f
     }
 }
 
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(dendrite_plasticity_bridge)
 
 /* ============================================================================
  * Static Helpers

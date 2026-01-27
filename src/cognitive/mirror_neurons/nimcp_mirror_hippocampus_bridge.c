@@ -17,6 +17,7 @@
 #include "utils/error/nimcp_error_codes.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -51,6 +52,8 @@ static inline void mirror_hippocampus_bridge_heartbeat(const char* operation, fl
     }
 }
 
+#define LOG_MODULE "MIRROR_HIPPOCAMPUS_BRIDGE"
+
 /** @brief Send heartbeat from mirror_hippocampus_bridge module (instance-level) */
 static inline void mirror_hippocampus_bridge_heartbeat_instance(
     nimcp_health_agent_t* instance_agent, const char* operation, float progress)
@@ -63,6 +66,8 @@ static inline void mirror_hippocampus_bridge_heartbeat_instance(
     }
 }
 
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(mirror_hippocampus_bridge)
 
 /* ============================================================================
  * Internal Constants
@@ -374,6 +379,7 @@ mirror_hippocampus_bridge_t* mirror_hippocampus_bridge_create(
 
 void mirror_hippocampus_bridge_destroy(mirror_hippocampus_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "mirror_hippocampus");
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hippocampus_bridge_heartbeat("mirror_hippo_destroy", 0.0f);
@@ -464,6 +470,7 @@ int mirror_hippocampus_store_action(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hippocampus_store_action: required parameter is NULL");
         return -1;
     }
+    BRIDGE_BBB_VALIDATE(bridge, action, sizeof(*action));
 
     /* Check encoding threshold */
     /* Phase 8: Heartbeat at operation start */
@@ -644,6 +651,7 @@ uint32_t mirror_hippocampus_store_demonstration(
         if (!bridge || !actions) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hippocampus_store_demonstration: required parameter is NULL");
         return UINT32_MAX;
     }
+    BRIDGE_BBB_VALIDATE(bridge, actions, num_actions * sizeof(*actions));
 
     /* Store each action in sequence */
     /* Phase 8: Heartbeat at operation start */

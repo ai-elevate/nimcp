@@ -14,6 +14,8 @@
 #include <stdio.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
+#include "security/nimcp_bbb_helpers.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -40,6 +42,8 @@ static inline void eligibility_utils_bridge_heartbeat(const char* operation, flo
         nimcp_health_agent_heartbeat_ex(g_eligibility_utils_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "ELIGIBILITY_UTILS_BRIDGE"
 
 
 /*=============================================================================
@@ -129,6 +133,7 @@ static void pool_destroy(elig_trace_pool_t* pool) {
     if (!pool) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool_destroy: pool is NULL");
         return;
+        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "eligibility_utils");
     }
 
     nimcp_free(pool->pool);
@@ -195,6 +200,7 @@ eligibility_utils_ctx_t eligibility_utils_create(const eligibility_utils_config_
     clock_gettime(CLOCK_MONOTONIC, &ctx->start_time);
     ctx->metrics.last_update_ms = get_current_time_ms();
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "eligibility_utils");
     return ctx;
 }
 

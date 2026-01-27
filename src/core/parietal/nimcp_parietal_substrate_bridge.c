@@ -38,12 +38,15 @@ static inline void parietal_substrate_bridge_heartbeat(const char* operation, fl
     }
 }
 
+#define LOG_MODULE "PARIETAL_SUBSTRATE_BRIDGE"
+
 //=============================================================================
 // Parietal Cortex-Neural Substrate Bridge Implementation
 //=============================================================================
 
 #include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
 
 struct parietal_substrate_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
@@ -114,6 +117,7 @@ parietal_substrate_bridge_t* parietal_substrate_bridge_create(void* parietal,
 
 void parietal_substrate_bridge_destroy(parietal_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "parietal_substrate");
 
     /* Phase 8: Heartbeat at operation start */
     parietal_substrate_bridge_heartbeat("parietal_sub_destroy", 0.0f);

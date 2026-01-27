@@ -18,6 +18,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <string.h>
 #include <math.h>
@@ -25,6 +26,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -51,7 +53,9 @@ static inline void pr_immune_bridge_heartbeat(const char* operation, float progr
     }
 }
 
+#define LOG_MODULE "PR_IMMUNE_BRIDGE"
 
+/* Security subsystem setters (Phase 1: Audit Gap Remediation) */
 //=============================================================================
 // Internal Structure Definition
 //=============================================================================
@@ -99,6 +103,8 @@ struct pr_immune_bridge_struct {
     /* Update tracking */
     uint64_t last_update_ms;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_immune_bridge, struct pr_immune_bridge_struct)
 
 //=============================================================================
 // Helper Functions
@@ -461,6 +467,7 @@ pr_immune_bridge_t pr_immune_bridge_create(
 
 void pr_immune_bridge_destroy(pr_immune_bridge_t bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "pr_immune");
 
     /* Phase 8: Heartbeat at operation start */
     pr_immune_bridge_heartbeat("pr_immune_br_destroy", 0.0f);

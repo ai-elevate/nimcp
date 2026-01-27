@@ -46,6 +46,8 @@ static inline void async_integration_bridge_heartbeat(const char* operation, flo
     }
 }
 
+#define LOG_MODULE "ASYNC_INTEGRATION_BRIDGE"
+
 
 /* ============================================================================
  * Internal Constants

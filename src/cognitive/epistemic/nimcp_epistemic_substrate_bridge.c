@@ -14,6 +14,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -39,6 +40,8 @@ static inline void epistemic_substrate_bridge_heartbeat(const char* operation, f
         nimcp_health_agent_heartbeat_ex(g_epistemic_substrate_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "EPISTEMIC_SUBSTRATE_BRIDGE"
 
 
 struct epistemic_substrate_bridge {
@@ -92,11 +95,13 @@ epistemic_substrate_bridge_t* epistemic_substrate_bridge_create(void* epistemic,
     bridge->effects.certainty_calibration = 1.0f;
     bridge->effects.source_evaluation = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
+    NIMCP_LOGGING_INFO("Created %s bridge", "epistemic_substrate");
     return bridge;
 }
 
 void epistemic_substrate_bridge_destroy(epistemic_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "epistemic_substrate");
     /* Phase 8: Heartbeat at operation start */
     epistemic_substrate_bridge_heartbeat("epistemic_su_destroy", 0.0f);
 

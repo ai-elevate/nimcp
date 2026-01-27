@@ -36,7 +36,7 @@ static nimcp_health_agent_t* g_parietal_quantum_bridge_health_agent = NULL;
  * @brief Set health agent for parietal_quantum_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void parietal_quantum_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void parietal_quantum_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_parietal_quantum_bridge_health_agent = agent;
 }
 
@@ -46,6 +46,8 @@ static inline void parietal_quantum_bridge_heartbeat(const char* operation, floa
         nimcp_health_agent_heartbeat_ex(g_parietal_quantum_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "PARIETAL_QUANTUM_BRIDGE"
 
 
 /*=============================================================================
@@ -317,6 +319,7 @@ parietal_quantum_bridge_t* parietal_region_quantum_bridge_create(
 
 void parietal_region_quantum_bridge_destroy(parietal_quantum_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "parietal_quantum");
 
     LOG_DEBUG("[%s] Destroying quantum parietal bridge", PARIETAL_Q_LOG_MODULE);
 

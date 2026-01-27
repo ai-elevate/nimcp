@@ -11,6 +11,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <string.h>
 #include <math.h>
 
@@ -44,6 +45,8 @@ static inline void reasoning_fep_bridge_heartbeat(const char* operation, float p
     }
 }
 
+
+BRIDGE_DEFINE_SECURITY_SETTERS(reasoning_fep_bridge)
 
 int reasoning_fep_bridge_default_config(reasoning_fep_config_t* config) {
     /* Phase 8: Heartbeat at operation start */

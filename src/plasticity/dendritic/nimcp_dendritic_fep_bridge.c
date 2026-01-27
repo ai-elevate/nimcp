@@ -16,6 +16,7 @@
 #define LOG_MODULE_DENDRITIC_FEP "DENDRITIC_FEP_BRIDGE"
 
 #include <stddef.h>  /* for NULL */
+#include "security/nimcp_bbb_helpers.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -42,6 +43,9 @@ static inline void dendritic_fep_bridge_heartbeat(const char* operation, float p
         nimcp_health_agent_heartbeat_ex(g_dendritic_fep_bridge_health_agent, operation, progress);
     }
 }
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(dendritic_fep_bridge)
 
 
 int dendritic_fep_bridge_default_config(dendritic_fep_config_t* config) {

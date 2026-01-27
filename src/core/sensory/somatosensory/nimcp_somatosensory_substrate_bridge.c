@@ -38,12 +38,15 @@ static inline void somatosensory_substrate_bridge_heartbeat(const char* operatio
     }
 }
 
+#define LOG_MODULE "SOMATOSENSORY_SUBSTRATE_BRIDGE"
+
 //=============================================================================
 // Somatosensory-Neural Substrate Bridge Implementation
 //=============================================================================
 
 #include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
 
 struct somatosensory_substrate_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
@@ -114,6 +117,7 @@ somatosensory_substrate_bridge_t* somatosensory_substrate_bridge_create(void* so
 
 void somatosensory_substrate_bridge_destroy(somatosensory_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "somatosensory_substrate");
 
     /* Phase 8: Heartbeat at operation start */
     somatosensory_substrate_bridge_heartbeat("somatosensory_sub_destroy", 0.0f);

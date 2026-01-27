@@ -19,6 +19,7 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include "security/nimcp_bbb_helpers.h"
 
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -46,6 +47,9 @@ static inline void spatial_neuromod_pink_noise_bridge_heartbeat(const char* oper
         nimcp_health_agent_heartbeat_ex(g_spatial_neuromod_pink_noise_bridge_health_agent, operation, progress);
     }
 }
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(spatial_pink_bridge)
 
 
 //=============================================================================

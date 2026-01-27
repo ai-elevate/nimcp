@@ -10,6 +10,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <string.h>
 
 //=============================================================================
@@ -40,7 +41,6 @@ static inline void self_model_thalamic_bridge_heartbeat(const char* operation, f
     }
 }
 
-
 struct self_model_thalamic_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* self_model;
@@ -49,6 +49,8 @@ struct self_model_thalamic_bridge {
     self_model_thalamic_stats_t stats;
     float attention_weight;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS(self_model_thalamic_bridge)
 
 self_model_thalamic_config_t self_model_thalamic_default_config(void) {
     /* Phase 8: Heartbeat at operation start */
@@ -114,6 +116,7 @@ int self_model_thalamic_route_signal(
     const self_model_thalamic_signal_t* signal
 ) {
     if (!bridge || !signal) return -1;
+    BRIDGE_BBB_VALIDATE(bridge, signal, sizeof(self_model_thalamic_signal_t));
 
     /* Phase 8: Heartbeat at operation start */
     self_model_thalamic_bridge_heartbeat("self_model_t_self_model_thalamic_", 0.0f);

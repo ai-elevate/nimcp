@@ -50,6 +50,8 @@ static inline void language_cingulate_bridge_heartbeat(const char* operation, fl
     }
 }
 
+#define LOG_MODULE "LANGUAGE_CINGULATE_BRIDGE"
+
 
 //=============================================================================
 // Internal Constants
@@ -438,6 +440,7 @@ void language_cingulate_bridge_destroy(language_cingulate_bridge_t* bridge)
 {
     if (!bridge) {
         return;
+        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "language_cingulate");
     }
 
     if (bridge->log_ctx) {

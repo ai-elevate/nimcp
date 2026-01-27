@@ -49,6 +49,8 @@ static inline void imagination_snn_bridge_heartbeat(const char* operation, float
     }
 }
 
+#define LOG_MODULE "IMAGINATION_SNN_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -273,11 +275,13 @@ imagination_snn_bridge_t* imagination_snn_create(const imagination_snn_config_t*
     bridge->coherence_signal = 0.0f;
     bridge->creativity_signal = 0.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "imagination_snn");
     return bridge;
 }
 
 void imagination_snn_destroy(imagination_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "imagination_snn");
 
     /* Phase 8: Heartbeat at operation start */
     imagination_snn_bridge_heartbeat("imagination__imagination_snn_dest", 0.0f);

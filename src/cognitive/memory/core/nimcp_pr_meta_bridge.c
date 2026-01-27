@@ -18,6 +18,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <string.h>
 #include <math.h>
@@ -25,6 +26,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -51,7 +53,9 @@ static inline void pr_meta_bridge_heartbeat(const char* operation, float progres
     }
 }
 
+#define LOG_MODULE "PR_META_BRIDGE"
 
+/* Security subsystem setters (Phase 1: Audit Gap Remediation) */
 //=============================================================================
 // Internal Structure Definitions
 //=============================================================================
@@ -107,6 +111,8 @@ struct pr_meta_bridge_struct {
     /* Statistics */
     pr_meta_bridge_stats_t stats;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_meta_bridge, struct pr_meta_bridge_struct)
 
 //=============================================================================
 // Helper Functions
@@ -446,11 +452,13 @@ pr_meta_bridge_t pr_meta_bridge_create(const pr_meta_config_t* config) {
     bridge->meta_ctx = NULL;
     bridge->graph = NULL;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "pr_meta");
     return bridge;
 }
 
 void pr_meta_bridge_destroy(pr_meta_bridge_t bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "pr_meta");
 
     /* Free task memory entries */
     /* Phase 8: Heartbeat at operation start */

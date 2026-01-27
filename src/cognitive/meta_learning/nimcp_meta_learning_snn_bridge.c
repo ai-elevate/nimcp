@@ -49,6 +49,8 @@ static inline void meta_learning_snn_bridge_heartbeat(const char* operation, flo
     }
 }
 
+#define LOG_MODULE "META_LEARNING_SNN_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -274,11 +276,13 @@ meta_learning_snn_bridge_t* meta_learning_snn_create(const meta_learning_snn_con
     bridge->transfer_signal = 0.0f;
     bridge->strategy_signal = 0.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "meta_learning_snn");
     return bridge;
 }
 
 void meta_learning_snn_destroy(meta_learning_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "meta_learning_snn");
 
     /* Phase 8: Heartbeat at operation start */
     meta_learning_snn_bridge_heartbeat("meta_learnin_meta_learning_snn_de", 0.0f);

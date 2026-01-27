@@ -17,6 +17,7 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -43,6 +44,8 @@ static inline void omni_cortical_columns_bridge_heartbeat(const char* operation,
         nimcp_health_agent_heartbeat_ex(g_omni_cortical_columns_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "OMNI_CORTICAL_COLUMNS_BRIDGE"
 
 
 /* ============================================================================
@@ -174,6 +177,7 @@ omni_cortical_columns_bridge_t* omni_cc_bridge_create(
 
 void omni_cc_bridge_destroy(omni_cortical_columns_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "omni_cortical_columns");
 
     if (bridge->omni_effects.prediction_bias) {
         nimcp_free(bridge->omni_effects.prediction_bias);

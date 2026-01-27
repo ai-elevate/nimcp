@@ -20,6 +20,7 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -47,6 +48,8 @@ static inline void ephaptic_bio_async_bridge_heartbeat(const char* operation, fl
         nimcp_health_agent_heartbeat_ex(g_ephaptic_bio_async_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "EPHAPTIC_BIO_ASYNC_BRIDGE"
 
 
 //=============================================================================
@@ -262,6 +265,7 @@ ephaptic_bio_async_bridge_t* ephaptic_bio_async_bridge_create(
 void ephaptic_bio_async_bridge_destroy(ephaptic_bio_async_bridge_t* bridge) {
     if (!bridge) {
         return;
+        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "ephaptic_bio_async");
     }
 
     // Disconnect if connected

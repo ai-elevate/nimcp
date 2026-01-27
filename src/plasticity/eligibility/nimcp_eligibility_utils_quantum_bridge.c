@@ -16,6 +16,8 @@
 #include <stdio.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
+#include "security/nimcp_bbb_helpers.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -42,6 +44,9 @@ static inline void eligibility_utils_quantum_bridge_heartbeat(const char* operat
         nimcp_health_agent_heartbeat_ex(g_eligibility_utils_quantum_bridge_health_agent, operation, progress);
     }
 }
+
+/* Security integration */
+#define LOG_MODULE "ELIGIBILITY_UTILS_QUANTUM_BRIDGE"
 
 
 /*=============================================================================
@@ -78,6 +83,8 @@ struct elig_uq_bridge_struct {
     /* Initialization flag */
     bool initialized;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(elig_uq_bridge, struct elig_uq_bridge_struct)
 
 /*=============================================================================
  * HELPER FUNCTIONS
@@ -207,6 +214,7 @@ elig_uq_bridge_t elig_uq_bridge_create(const elig_uq_bridge_config_t* config) {
     bridge->previous_energy = INFINITY;
     bridge->initialized = true;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "eligibility_utils_quantum");
     return bridge;
 }
 
@@ -214,6 +222,7 @@ void elig_uq_bridge_destroy(elig_uq_bridge_t bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_bridge_destroy: bridge is NULL");
         return;
+        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "eligibility_utils_quantum");
     }
     nimcp_free(bridge);
 }

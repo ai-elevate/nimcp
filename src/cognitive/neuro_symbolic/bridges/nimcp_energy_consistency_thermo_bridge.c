@@ -11,6 +11,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -37,6 +38,8 @@ static inline void energy_consistency_thermo_bridge_heartbeat(const char* operat
     }
 }
 
+#define LOG_MODULE "ENERGY_CONSISTENCY_THERMO_BRIDGE"
+
 
 #define BOLTZMANN_CONSTANT 1.380649e-23f
 
@@ -58,11 +61,13 @@ NIMCP_API energy_thermo_bridge_t* energy_thermo_bridge_create(void) {
     bridge->config.landauer_constant = BOLTZMANN_CONSTANT;
     bridge->config.temperature_kelvin = 310.0f; /* Body temperature */
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "energy_consistency_thermo");
     return bridge;
 }
 
 NIMCP_API void energy_thermo_bridge_destroy(energy_thermo_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "energy_consistency_thermo");
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }

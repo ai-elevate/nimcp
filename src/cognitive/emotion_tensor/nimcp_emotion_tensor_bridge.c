@@ -51,6 +51,8 @@ static inline void emotion_tensor_bridge_heartbeat(const char* operation, float 
     }
 }
 
+#define LOG_MODULE "EMOTION_TENSOR_BRIDGE"
+
 
 /*=============================================================================
  * CONSTANTS AND LOGGING
@@ -267,6 +269,7 @@ emotion_tensor_bridge_t* emotion_tensor_bridge_create(
 
 void emotion_tensor_bridge_destroy(emotion_tensor_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "emotion_tensor");
 
     /* Phase 8: Heartbeat at operation start */
     emotion_tensor_bridge_heartbeat("emotion_tens_destroy", 0.0f);

@@ -26,6 +26,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -51,6 +52,8 @@ static inline void recovery_parietal_bridge_heartbeat(const char* operation, flo
         nimcp_health_agent_heartbeat_ex(g_recovery_parietal_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "RECOVERY_PARIETAL_BRIDGE"
 
 
 //=============================================================================
@@ -244,6 +247,7 @@ recovery_parietal_bridge_t* recovery_parietal_bridge_create(
 void recovery_parietal_bridge_destroy(recovery_parietal_bridge_t* bridge) {
     if (!bridge) {
         return;
+        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "recovery_parietal");
     }
 
     /* Phase 8: Heartbeat at operation start */

@@ -192,6 +192,7 @@ portia_collective_bridge_t* portia_collective_create(
 
 void portia_collective_destroy(portia_collective_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "portia_collective");
 
     if (bridge->bio_async_connected) {
         portia_collective_disconnect_bio_async(bridge);

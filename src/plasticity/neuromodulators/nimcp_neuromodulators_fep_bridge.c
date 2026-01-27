@@ -14,6 +14,7 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
+#include "security/nimcp_bbb_helpers.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -40,6 +41,11 @@ static inline void neuromodulators_fep_bridge_heartbeat(const char* operation, f
         nimcp_health_agent_heartbeat_ex(g_neuromodulators_fep_bridge_health_agent, operation, progress);
     }
 }
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(neuromod_fep_bridge)
+
+#define LOG_MODULE "NEUROMODULATORS_FEP_BRIDGE"
 
 
 int neuromod_fep_bridge_default_config(neuromod_fep_config_t* config) {
@@ -86,11 +92,13 @@ neuromod_fep_bridge_t* neuromod_fep_bridge_create(const neuromod_fep_config_t* c
     bridge->fep_system = NULL;
     bridge->neuromod_system = NULL;
     bridge->base.bio_async_enabled = false;
+    NIMCP_LOGGING_INFO("Created %s bridge", "neuromodulators_fep");
     return bridge;
 }
 
 void neuromod_fep_bridge_destroy(neuromod_fep_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "neuromodulators_fep");
     if (bridge->base.bio_async_enabled) neuromod_fep_bridge_disconnect_bio_async(bridge);
     if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);

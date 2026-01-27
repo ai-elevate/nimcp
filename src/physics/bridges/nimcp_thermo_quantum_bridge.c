@@ -9,6 +9,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -36,6 +37,8 @@ static inline void thermo_quantum_bridge_heartbeat(const char* operation, float 
         nimcp_health_agent_heartbeat_ex(g_thermo_quantum_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "THERMO_QUANTUM_BRIDGE"
 
 
 //=============================================================================

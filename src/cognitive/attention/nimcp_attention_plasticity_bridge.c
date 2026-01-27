@@ -11,12 +11,14 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <string.h>
 #include <math.h>
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -42,6 +44,8 @@ static inline void attention_plasticity_bridge_heartbeat(const char* operation, 
         nimcp_health_agent_heartbeat_ex(g_attention_plasticity_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "ATTENTION_PLASTICITY_BRIDGE"
 
 
 //=============================================================================
@@ -89,6 +93,8 @@ struct attention_plasticity_bridge {
     bool bio_async_connected;
 
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS(attention_plasticity_bridge)
 
 //=============================================================================
 // Helper Functions
@@ -313,6 +319,7 @@ attention_plasticity_bridge_t* attention_plasticity_create(
 
 void attention_plasticity_destroy(attention_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "attention_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
@@ -694,6 +701,8 @@ int attention_plasticity_salience(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_salience: bridge or salience_map is NULL");
         return -1;
     }
+
+    BRIDGE_BBB_VALIDATE(bridge, salience_map, sequence_length * sizeof(float));
 
     /* Phase 8: Heartbeat at operation start */
     attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);

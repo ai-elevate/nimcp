@@ -19,6 +19,7 @@
 #include <time.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -45,6 +46,8 @@ static inline void dragonfly_audio_bridge_heartbeat(const char* operation, float
         nimcp_health_agent_heartbeat_ex(g_dragonfly_audio_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "DRAGONFLY_AUDIO_BRIDGE"
 
 
 #ifndef M_PI
@@ -234,6 +237,7 @@ dragonfly_audio_bridge_t* dragonfly_audio_bridge_create(
 
 void dragonfly_audio_bridge_destroy(dragonfly_audio_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "dragonfly_audio");
 
     bridge_base_cleanup(&bridge->base);
     free(bridge);

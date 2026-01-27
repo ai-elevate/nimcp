@@ -394,6 +394,7 @@ language_production_bridge_t* lpb_create(const lpb_config_t* config,
 
 void lpb_destroy(language_production_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "language_production");
 
     /* Clear context (frees intent vector) */
     lpb_clear_context(bridge);

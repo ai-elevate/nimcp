@@ -50,6 +50,8 @@ static inline void lgss_ethics_bridge_heartbeat(const char* operation, float pro
     }
 }
 
+#define LOG_MODULE "LGSS_ETHICS_BRIDGE"
+
 
 /*=============================================================================
  * LOGGING
@@ -167,6 +169,7 @@ void lgss_ethics_bridge_destroy(lgss_ethics_bridge_t* bridge)
 {
     if (!bridge) {
         return;
+        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "lgss_ethics");
     }
 
     if (bridge->magic != NIMCP_LGSS_ETHICS_BRIDGE_MAGIC) {

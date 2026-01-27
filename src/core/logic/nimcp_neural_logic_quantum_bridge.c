@@ -16,6 +16,7 @@
 
 #include <stddef.h>  /* for NULL */
 #include <string.h>  /* for memcpy */
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Opaque wrapper for neural_logic.c (avoids header dependency)
@@ -60,5 +61,7 @@ static inline void neural_logic_quantum_bridge_heartbeat(const char* operation, 
         nimcp_health_agent_heartbeat_ex(g_neural_logic_quantum_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "NEURAL_LOGIC_QUANTUM_BRIDGE"
 
 //=============================================================================

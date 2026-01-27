@@ -10,6 +10,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -36,6 +37,8 @@ static inline void genius_game_theory_bridge_heartbeat(const char* operation, fl
     }
 }
 
+#define LOG_MODULE "GENIUS_GAME_THEORY_BRIDGE"
+
 
 NIMCP_API genius_gt_bridge_t* genius_gt_bridge_create(void) {
     genius_gt_bridge_t* bridge = nimcp_calloc(1, sizeof(genius_gt_bridge_t));
@@ -53,11 +56,13 @@ NIMCP_API genius_gt_bridge_t* genius_gt_bridge_create(void) {
     bridge->enable_nash_equilibrium = true;
     bridge->enable_shapley_attribution = true;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "genius_game_theory");
     return bridge;
 }
 
 NIMCP_API void genius_gt_bridge_destroy(genius_gt_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "genius_game_theory");
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }

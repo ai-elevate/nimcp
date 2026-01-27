@@ -11,6 +11,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <string.h>
 
 //=============================================================================
@@ -41,7 +42,6 @@ static inline void self_model_substrate_bridge_heartbeat(const char* operation, 
     }
 }
 
-
 struct self_model_substrate_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* self_model;
@@ -54,6 +54,8 @@ struct self_model_substrate_bridge {
     uint64_t update_count;
     float prev_overall_capacity;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS(self_model_substrate_bridge)
 
 self_model_substrate_config_t self_model_substrate_default_config(void) {
     /* Phase 8: Heartbeat at operation start */

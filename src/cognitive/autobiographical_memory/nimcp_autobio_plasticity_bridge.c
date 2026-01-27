@@ -45,6 +45,8 @@ static inline void autobio_plasticity_bridge_heartbeat(const char* operation, fl
     }
 }
 
+#define LOG_MODULE "AUTOBIO_PLASTICITY_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -234,6 +236,7 @@ autobio_plasticity_bridge_t* autobio_plasticity_create(
 
 void autobio_plasticity_destroy(autobio_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "autobio_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     autobio_plasticity_bridge_heartbeat("autobio_plas_autobio_plasticity_d", 0.0f);

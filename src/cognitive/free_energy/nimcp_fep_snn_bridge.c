@@ -49,6 +49,8 @@ static inline void fep_snn_bridge_heartbeat(const char* operation, float progres
     }
 }
 
+#define LOG_MODULE "FEP_SNN_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -275,11 +277,13 @@ fep_snn_bridge_t* fep_snn_create(const fep_snn_config_t* config) {
     bridge->precision_signal = 0.5f;
     bridge->prev_free_energy = 0.5f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "fep_snn");
     return bridge;
 }
 
 void fep_snn_destroy(fep_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "fep_snn");
 
     /* Phase 8: Heartbeat at operation start */
     fep_snn_bridge_heartbeat("fep_snn_brid_fep_snn_destroy", 0.0f);

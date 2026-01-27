@@ -513,6 +513,7 @@ hypothalamus_quantum_bridge_t* hypothalamus_quantum_bridge_create(
 
 void hypothalamus_quantum_bridge_destroy(hypothalamus_quantum_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hypothalamus_quantum");
 
     LOG_INFO(LOG_MODULE, "Destroying quantum bridge");
 

@@ -16,6 +16,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -41,6 +42,8 @@ static inline void neuromodulatory_immune_bridge_heartbeat(const char* operation
         nimcp_health_agent_heartbeat_ex(g_neuromodulatory_immune_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "NEUROMODULATORY_IMMUNE_BRIDGE"
 
 
 /* ============================================================================
@@ -155,11 +158,13 @@ neuromod_immune_bridge_t* neuromod_immune_bridge_create(const neuromod_immune_br
     bridge->modulation.ifn_modulation = 1.0f;
 
     bridge->last_update_us = get_timestamp_us();
+    NIMCP_LOGGING_INFO("Created %s bridge", "neuromodulatory_immune");
     return bridge;
 }
 
 void neuromod_immune_bridge_destroy(neuromod_immune_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "neuromodulatory_immune");
     if (bridge->magic != NEUROMOD_IMMUNE_BRIDGE_MAGIC) return;
 
     if (bridge->connected) {

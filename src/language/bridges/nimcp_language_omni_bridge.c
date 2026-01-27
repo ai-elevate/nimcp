@@ -240,11 +240,13 @@ language_omni_bridge_t* language_omni_bridge_create(const language_omni_config_t
     bridge->active = false;
 
     LOG_INFO(LOG_MODULE, "Omni bridge created");
+    NIMCP_LOGGING_INFO("Created %s bridge", "language_omni");
     return bridge;
 }
 
 void language_omni_bridge_destroy(language_omni_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "language_omni");
 
     if (bridge->bio_async_registered) {
         language_omni_bridge_bio_async_unregister(bridge);

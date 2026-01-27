@@ -18,6 +18,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -43,6 +44,8 @@ static inline void trigeminal_oral_bridge_heartbeat(const char* operation, float
         nimcp_health_agent_heartbeat_ex(g_trigeminal_oral_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "TRIGEMINAL_ORAL_BRIDGE"
 
 
 /* ============================================================================
@@ -158,11 +161,13 @@ trigeminal_oral_bridge_t* trigeminal_oral_bridge_create(const trigeminal_oral_co
     bridge->masticating = false;
     bridge->cooling_active = false;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "trigeminal_oral");
     return bridge;
 }
 
 void trigeminal_oral_bridge_destroy(trigeminal_oral_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "trigeminal_oral");
 
     /* Free any allocated texture/mouthfeel profiles */
     if (bridge->current_texture.texture_profile) {

@@ -15,6 +15,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <string.h>
 #include <math.h>
 
@@ -46,6 +47,8 @@ static inline void social_substrate_bridge_heartbeat(const char* operation, floa
     }
 }
 
+#define LOG_MODULE "SOCIAL_SUBSTRATE_BRIDGE"
+
 
 struct social_substrate_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
@@ -59,6 +62,8 @@ struct social_substrate_bridge {
     uint64_t update_count;
     float prev_overall_capacity;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS(social_substrate_bridge)
 
 social_substrate_config_t social_substrate_default_config(void) {
     social_substrate_config_t cfg = {
@@ -100,6 +105,7 @@ social_substrate_bridge_t* social_substrate_bridge_create(void* social, neural_s
     bridge->effects.prosocial_motivation = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "social_substrate");
     return bridge;
 }
 

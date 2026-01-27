@@ -14,6 +14,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -39,6 +40,8 @@ static inline void jepa_substrate_bridge_heartbeat(const char* operation, float 
         nimcp_health_agent_heartbeat_ex(g_jepa_substrate_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "JEPA_SUBSTRATE_BRIDGE"
 
 
 struct jepa_substrate_bridge {
@@ -92,11 +95,13 @@ jepa_substrate_bridge_t* jepa_substrate_bridge_create(void* jepa, neural_substra
     bridge->effects.embedding_quality = 1.0f;
     bridge->effects.update_rate = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
+    NIMCP_LOGGING_INFO("Created %s bridge", "jepa_substrate");
     return bridge;
 }
 
 void jepa_substrate_bridge_destroy(jepa_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "jepa_substrate");
     /* Phase 8: Heartbeat at operation start */
     jepa_substrate_bridge_heartbeat("jepa_substra_destroy", 0.0f);
 

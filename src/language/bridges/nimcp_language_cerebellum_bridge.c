@@ -10,6 +10,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -37,6 +38,8 @@ static inline void language_cerebellum_bridge_heartbeat(const char* operation, f
         nimcp_health_agent_heartbeat_ex(g_language_cerebellum_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "LANGUAGE_CEREBELLUM_BRIDGE"
 
 
 //=============================================================================

@@ -10,6 +10,7 @@
 
 #include "cognitive/memory/core/nimcp_pr_omni_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -19,6 +20,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -44,6 +46,8 @@ static inline void pr_omni_bridge_heartbeat(const char* operation, float progres
         nimcp_health_agent_heartbeat_ex(g_pr_omni_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "PR_OMNI_BRIDGE"
 
 
 //=============================================================================
@@ -449,11 +453,13 @@ pr_omni_bridge_t* pr_omni_bridge_create(const pr_omni_bridge_config_t* config) {
     bridge->bridges_connected = false;
     bridge->dominant = PR_OMNI_DOMINANT_NONE;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "pr_omni");
     return bridge;
 }
 
 void pr_omni_bridge_destroy(pr_omni_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "pr_omni");
 
     /* Destroy Kuramoto system */
     /* Phase 8: Heartbeat at operation start */

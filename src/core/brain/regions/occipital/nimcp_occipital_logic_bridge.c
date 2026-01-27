@@ -58,6 +58,8 @@ static inline void occipital_logic_bridge_heartbeat(const char* operation, float
     }
 }
 
+#define LOG_MODULE "OCCIPITAL_LOGIC_BRIDGE"
+
 
 /*=============================================================================
  * LOGGING MODULE IDENTIFIER
@@ -634,6 +636,7 @@ occipital_logic_bridge_t* occipital_logic_bridge_create(
 
 void occipital_logic_bridge_destroy(occipital_logic_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "occipital_logic");
 
     LOG_INFO(LOGIC_BRIDGE_LOG_MODULE, "Destroying logic bridge");
 

@@ -18,6 +18,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -43,6 +44,8 @@ static inline void sensory_swarm_bridge_heartbeat(const char* operation, float p
         nimcp_health_agent_heartbeat_ex(g_sensory_swarm_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "SENSORY_SWARM_BRIDGE"
 
 
 /* ============================================================================
@@ -159,11 +162,13 @@ sensory_swarm_bridge_t* sensory_swarm_bridge_create(const sensory_swarm_config_t
     bridge->next_node_id = 1;
     bridge->next_task_id = 1;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "sensory_swarm");
     return bridge;
 }
 
 void sensory_swarm_bridge_destroy(sensory_swarm_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "sensory_swarm");
 
     /* Free task resources */
     for (uint32_t i = 0; i < bridge->num_tasks; i++) {

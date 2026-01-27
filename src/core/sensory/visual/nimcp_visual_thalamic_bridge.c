@@ -14,6 +14,7 @@
 #include <string.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -40,6 +41,8 @@ static inline void visual_thalamic_bridge_heartbeat(const char* operation, float
         nimcp_health_agent_heartbeat_ex(g_visual_thalamic_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "VISUAL_THALAMIC_BRIDGE"
 
 
 struct visual_thalamic_bridge {

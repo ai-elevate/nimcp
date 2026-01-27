@@ -588,3 +588,27 @@ set_tests_properties(integration_heartbeat_B22_mirror_bridges PROPERTIES
     LABELS "integration;fault_tolerance;heartbeat;B22;mirror_bridges"
     TIMEOUT 180
 )
+
+# B23: Parietal bridge heartbeat/utility integration tests
+add_executable(integration_heartbeat_B23_parietal_bridges
+    test_parietal_bridges_B23_integration.cpp
+)
+target_link_libraries(integration_heartbeat_B23_parietal_bridges
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        pthread
+)
+
+target_include_directories(integration_heartbeat_B23_parietal_bridges
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME integration_heartbeat_B23_parietal_bridges
+         COMMAND integration_heartbeat_B23_parietal_bridges)
+set_tests_properties(integration_heartbeat_B23_parietal_bridges PROPERTIES
+    LABELS "integration;fault_tolerance;heartbeat;B23;parietal_bridges"
+    TIMEOUT 180
+)

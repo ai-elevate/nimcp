@@ -15,6 +15,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include "glial/myelin_sheath/nimcp_myelin_math.h"
 #include <string.h>
 #include <math.h>
@@ -58,6 +59,8 @@ static inline void mirror_visual_bridge_heartbeat_instance(
     }
 }
 
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(mirror_visual_bridge)
 
 /* ============================================================================
  * Internal Constants
@@ -542,6 +545,7 @@ int mirror_visual_process_agent_detection(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_visual_process_agent_detection: bridge, features, or detection is NULL");
         return -1;
     }
+    BRIDGE_BBB_VALIDATE(bridge, features, num_features * sizeof(float));
 
     /* Phase 8: Heartbeat at operation start */
     mirror_visual_bridge_heartbeat("mirror_visua_mirror_visual_proces", 0.0f);
@@ -591,6 +595,7 @@ int mirror_visual_process_bio_motion(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_visual_process_bio_motion: bridge, motion_vectors, or analysis is NULL");
         return -1;
     }
+    BRIDGE_BBB_VALIDATE(bridge, motion_vectors, num_vectors * sizeof(float));
 
     /* Phase 8: Heartbeat at operation start */
     mirror_visual_bridge_heartbeat("mirror_visua_mirror_visual_proces", 0.0f);
@@ -636,6 +641,7 @@ int mirror_visual_process_face(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_visual_process_face: bridge, features, or face is NULL");
         return -1;
     }
+    BRIDGE_BBB_VALIDATE(bridge, features, num_features * sizeof(float));
 
     /* Phase 8: Heartbeat at operation start */
     mirror_visual_bridge_heartbeat("mirror_visua_mirror_visual_proces", 0.0f);

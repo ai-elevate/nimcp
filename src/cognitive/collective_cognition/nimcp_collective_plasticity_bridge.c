@@ -45,6 +45,8 @@ static inline void collective_plasticity_bridge_heartbeat(const char* operation,
     }
 }
 
+#define LOG_MODULE "COLLECTIVE_PLASTICITY_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -233,6 +235,7 @@ collective_plasticity_bridge_t* collective_plasticity_create(
 
 void collective_plasticity_destroy(collective_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "collective_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     collective_plasticity_bridge_heartbeat("collective_p_collective_plasticit", 0.0f);

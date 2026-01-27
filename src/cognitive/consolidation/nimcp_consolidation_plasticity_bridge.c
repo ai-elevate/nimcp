@@ -45,6 +45,8 @@ static inline void consolidation_plasticity_bridge_heartbeat(const char* operati
     }
 }
 
+#define LOG_MODULE "CONSOLIDATION_PLASTICITY_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -233,6 +235,7 @@ consolidation_plasticity_bridge_t* consolidation_plasticity_create(
 
 void consolidation_plasticity_destroy(consolidation_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "consolidation_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     consolidation_plasticity_bridge_heartbeat("consolidatio_consolidation_plasti", 0.0f);

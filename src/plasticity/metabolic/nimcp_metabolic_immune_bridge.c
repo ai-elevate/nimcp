@@ -14,6 +14,7 @@
 #include <string.h>
 #include <math.h>
 #include <pthread.h>
+#include "security/nimcp_bbb_helpers.h"
 
 #include <stddef.h>  /* for NULL */
 //=============================================================================
@@ -43,6 +44,8 @@ static inline void metabolic_immune_bridge_heartbeat(const char* operation, floa
     }
 }
 
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(metabolic_immune_bridge)
 
 /* ============================================================================
  * Helper Functions

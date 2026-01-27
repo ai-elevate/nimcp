@@ -45,6 +45,8 @@ static inline void self_awareness_plasticity_bridge_heartbeat(const char* operat
     }
 }
 
+#define LOG_MODULE "SELF_AWARENESS_PLASTICITY_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -213,6 +215,7 @@ self_awareness_plasticity_bridge_t* self_awareness_plasticity_create(
 
 void self_awareness_plasticity_destroy(self_awareness_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "self_awareness_plasticity");
 
     bridge_base_cleanup(&bridge->base);
 

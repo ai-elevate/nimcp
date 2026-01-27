@@ -25,6 +25,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -50,6 +51,8 @@ static inline void gust_bio_async_bridge_heartbeat(const char* operation, float 
         nimcp_health_agent_heartbeat_ex(g_gust_bio_async_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "GUST_BIO_ASYNC_BRIDGE"
 
 
 /* ============================================================================
@@ -178,11 +181,13 @@ gust_bio_async_bridge_t* gust_bio_async_bridge_create(const gust_bio_async_confi
 
     memset(&bridge->stats, 0, sizeof(gust_bio_async_stats_t));
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "gust_bio_async");
     return bridge;
 }
 
 void gust_bio_async_bridge_destroy(gust_bio_async_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "gust_bio_async");
 
     if (bridge->is_connected) {
         gust_bio_async_disconnect(bridge);

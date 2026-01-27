@@ -17,6 +17,7 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -43,6 +44,8 @@ static inline void occipital_training_bridge_heartbeat(const char* operation, fl
         nimcp_health_agent_heartbeat_ex(g_occipital_training_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "OCCIPITAL_TRAINING_BRIDGE"
 
 
 /*=============================================================================
@@ -296,6 +299,7 @@ occipital_training_bridge_t* occipital_training_bridge_create(
 
 void occipital_training_bridge_destroy(occipital_training_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "occipital_training");
 
     if (bridge->attention_buffer) {
         nimcp_free(bridge->attention_buffer);

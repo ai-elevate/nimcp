@@ -16,6 +16,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <string.h>
 #include <math.h>
@@ -48,6 +49,8 @@ static inline void reasoning_snn_bridge_heartbeat(const char* operation, float p
         nimcp_health_agent_heartbeat_ex(g_reasoning_snn_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "REASONING_SNN_BRIDGE"
 
 
 //=============================================================================
@@ -91,6 +94,8 @@ struct reasoning_snn_bridge {
     /* Statistics */
     reasoning_snn_stats_t stats;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS(reasoning_snn_bridge)
 
 //=============================================================================
 // Helper Functions
@@ -275,11 +280,13 @@ reasoning_snn_bridge_t* reasoning_snn_create(const reasoning_snn_config_t* confi
     bridge->conflict_signal = 0.0f;
     bridge->causal_signal = 0.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "reasoning_snn");
     return bridge;
 }
 
 void reasoning_snn_destroy(reasoning_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "reasoning_snn");
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_snn_bridge_heartbeat("reasoning_sn_reasoning_snn_destro", 0.0f);
@@ -360,6 +367,7 @@ int reasoning_snn_encode_state(
 ) {
     if (!bridge || !dimensions) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    BRIDGE_BBB_VALIDATE(bridge, dimensions, num_dims * sizeof(float));
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_snn_bridge_heartbeat("reasoning_sn_reasoning_snn_encode", 0.0f);
@@ -631,6 +639,7 @@ int reasoning_snn_forward(
     uint32_t input_count
 ) {
     if (!bridge || !inputs) return -1;
+    BRIDGE_BBB_VALIDATE(bridge, inputs, input_count * sizeof(float));
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_snn_bridge_heartbeat("reasoning_sn_reasoning_snn_forwar", 0.0f);

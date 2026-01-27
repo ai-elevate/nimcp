@@ -353,6 +353,7 @@ language_perception_bridge_t* language_perception_bridge_create(
 
 void language_perception_bridge_destroy(language_perception_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "language_perception");
 
     /* Unregister from bio-async if registered */
     if (bridge->bio_async_registered) {

@@ -12,6 +12,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -37,6 +38,8 @@ static inline void empathetic_response_thalamic_bridge_heartbeat(const char* ope
         nimcp_health_agent_heartbeat_ex(g_empathetic_response_thalamic_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "EMPATHETIC_RESPONSE_THALAMIC_BRIDGE"
 
 
 struct empathetic_response_thalamic_bridge {
@@ -88,6 +91,7 @@ empathetic_response_thalamic_bridge_t* empathetic_response_thalamic_bridge_creat
     bridge->config = config ? *config : empathetic_response_thalamic_default_config();
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    NIMCP_LOGGING_INFO("Created %s bridge", "empathetic_response_thalamic");
     return bridge;
 }
 

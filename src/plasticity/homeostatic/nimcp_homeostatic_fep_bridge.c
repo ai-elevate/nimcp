@@ -13,6 +13,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
+#include "security/nimcp_bbb_helpers.h"
 
 #define LOG_MODULE_HOMEOSTATIC_FEP "HOMEOSTATIC_FEP_BRIDGE"
 
@@ -44,6 +45,8 @@ static inline void homeostatic_fep_bridge_heartbeat(const char* operation, float
     }
 }
 
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(homeostatic_fep_bridge)
 
 int homeostatic_fep_bridge_default_config(homeostatic_fep_config_t* config) {
     NIMCP_API_CHECK_NULL(config, -1, "Homeostatic-FEP config is NULL");

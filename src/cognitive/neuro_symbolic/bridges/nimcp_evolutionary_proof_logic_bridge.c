@@ -10,6 +10,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -36,6 +37,8 @@ static inline void evolutionary_proof_logic_bridge_heartbeat(const char* operati
     }
 }
 
+#define LOG_MODULE "EVOLUTIONARY_PROOF_LOGIC_BRIDGE"
+
 
 NIMCP_API evoproof_logic_bridge_t* evoproof_logic_bridge_create(void) {
     evoproof_logic_bridge_t* bridge = nimcp_calloc(1, sizeof(evoproof_logic_bridge_t));
@@ -53,11 +56,13 @@ NIMCP_API evoproof_logic_bridge_t* evoproof_logic_bridge_create(void) {
     bridge->enable_axiom_expansion = true;
     bridge->enable_lemma_caching = true;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "evolutionary_proof_logic");
     return bridge;
 }
 
 NIMCP_API void evoproof_logic_bridge_destroy(evoproof_logic_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "evolutionary_proof_logic");
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }

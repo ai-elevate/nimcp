@@ -44,6 +44,8 @@ static inline void hypothalamus_hippocampus_bridge_heartbeat(const char* operati
     }
 }
 
+#define LOG_MODULE "HYPOTHALAMUS_HIPPOCAMPUS_BRIDGE"
+
 
 /*=============================================================================
  * INTERNAL HELPERS
@@ -168,6 +170,7 @@ hypo_hipp_bridge_t* hypo_hipp_bridge_create(
 
 void hypo_hipp_bridge_destroy(hypo_hipp_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hypothalamus_hippocampus");
 
     /* Destroy mutex */
     if (bridge->base.mutex) {

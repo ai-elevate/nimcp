@@ -15,6 +15,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -40,6 +41,8 @@ static inline void vta_snn_bridge_heartbeat(const char* operation, float progres
         nimcp_health_agent_heartbeat_ex(g_vta_snn_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "VTA_SNN_BRIDGE"
 
 
 /*=============================================================================
@@ -171,11 +174,13 @@ nimcp_vta_snn_bridge_t* nimcp_vta_snn_create(const nimcp_vta_snn_config_t* confi
     bridge->current_modulation.reward_sensitivity = 1.0f;
     bridge->current_modulation.vigor = 0.5f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "vta_snn");
     return bridge;
 }
 
 void nimcp_vta_snn_destroy(nimcp_vta_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "vta_snn");
     free(bridge->input_spikes);
     free(bridge->output_spikes);
     free(bridge);

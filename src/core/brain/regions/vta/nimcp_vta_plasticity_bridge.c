@@ -15,6 +15,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -40,6 +41,8 @@ static inline void vta_plasticity_bridge_heartbeat(const char* operation, float 
         nimcp_health_agent_heartbeat_ex(g_vta_plasticity_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "VTA_PLASTICITY_BRIDGE"
 
 
 struct nimcp_vta_plasticity_bridge {
@@ -122,6 +125,7 @@ nimcp_vta_plasticity_bridge_t* nimcp_vta_plasticity_create(const nimcp_vta_plast
 
 void nimcp_vta_plasticity_destroy(nimcp_vta_plasticity_bridge_t* b) {
     if (!b) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "vta_plasticity");
     free(b->synapses);
     free(b);
 }

@@ -21,6 +21,8 @@
 #include <math.h>
 #include <stdio.h>
 
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
+
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -48,6 +50,20 @@ static inline void parietal_snn_bridge_heartbeat(const char* operation, float pr
         nimcp_health_agent_heartbeat_ex(g_parietal_snn_bridge_health_agent, operation, progress);
     }
 }
+
+/** @brief Send heartbeat from parietal_snn_bridge module (instance-level) */
+static inline void parietal_snn_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_parietal_snn_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_parietal_snn_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_parietal_snn_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+#define LOG_MODULE "PARIETAL_SNN_BRIDGE"
 
 
 //=============================================================================
@@ -90,17 +106,14 @@ struct parietal_snn_bridge {
 
     /* Statistics */
     parietal_snn_stats_t stats;
+
+    /* Health agent (instance-level) - Phase 8 */
+    nimcp_health_agent_t* health_agent;
 };
 
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -273,11 +286,13 @@ parietal_snn_bridge_t* parietal_snn_create(const parietal_snn_config_t* config) 
     bridge->attention_signal = 0.0f;
     bridge->numerical_signal = 0.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "parietal_snn");
     return bridge;
 }
 
 void parietal_snn_destroy(parietal_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "parietal_snn");
 
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_destroy", 0.0f);
@@ -376,7 +391,7 @@ int parietal_snn_encode_state(
                              (float)(d + 1) / (float)num_dims);
         }
 
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_myelin_clamp(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -443,8 +458,8 @@ int parietal_snn_encode_attention(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[PARIETAL_DIM_COUNT] = {0};
-    dims[PARIETAL_DIM_SPATIAL_ATTENTION] = clamp_f(attention, 0.0f, 1.0f);
-    dims[PARIETAL_DIM_VISUOSPATIAL] = clamp_f(focus, 0.0f, 1.0f);
+    dims[PARIETAL_DIM_SPATIAL_ATTENTION] = nimcp_myelin_clamp(attention, 0.0f, 1.0f);
+    dims[PARIETAL_DIM_VISUOSPATIAL] = nimcp_myelin_clamp(focus, 0.0f, 1.0f);
     dims[PARIETAL_DIM_COORDINATE_TRANSFORM] = (attention + focus) / 2.0f;
 
     bridge->attention_signal = attention;
@@ -468,8 +483,8 @@ int parietal_snn_encode_magnitude(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[PARIETAL_DIM_COUNT] = {0};
-    dims[PARIETAL_DIM_NUMERICAL_MAGNITUDE] = clamp_f(magnitude, 0.0f, 1.0f);
-    dims[PARIETAL_DIM_PRECISION] = clamp_f((float)precision / 10.0f, 0.0f, 1.0f);
+    dims[PARIETAL_DIM_NUMERICAL_MAGNITUDE] = nimcp_myelin_clamp(magnitude, 0.0f, 1.0f);
+    dims[PARIETAL_DIM_PRECISION] = nimcp_myelin_clamp((float)precision / 10.0f, 0.0f, 1.0f);
 
     bridge->numerical_signal = magnitude;
 
@@ -492,9 +507,9 @@ int parietal_snn_encode_multisensory(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[PARIETAL_DIM_COUNT] = {0};
-    dims[PARIETAL_DIM_MULTISENSORY] = clamp_f(integration, 0.0f, 1.0f);
-    dims[PARIETAL_DIM_INTEGRATION] = clamp_f((float)modality_count / 5.0f, 0.0f, 1.0f);
-    dims[PARIETAL_DIM_BODY_SCHEMA] = clamp_f(integration * 0.8f, 0.0f, 1.0f);
+    dims[PARIETAL_DIM_MULTISENSORY] = nimcp_myelin_clamp(integration, 0.0f, 1.0f);
+    dims[PARIETAL_DIM_INTEGRATION] = nimcp_myelin_clamp((float)modality_count / 5.0f, 0.0f, 1.0f);
+    dims[PARIETAL_DIM_BODY_SCHEMA] = nimcp_myelin_clamp(integration * 0.8f, 0.0f, 1.0f);
 
     if (integration > bridge->config.attention_threshold) {
         bridge->last_spatial.high_precision = true;
@@ -571,12 +586,12 @@ int parietal_snn_simulate(parietal_snn_bridge_t* bridge, float duration_ms) {
     }
 
     /* Decode outputs */
-    bridge->last_spatial.attention_level = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
-    bridge->last_spatial.numerical_magnitude = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
-    bridge->last_spatial.multisensory_integration = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_spatial.body_schema_strength = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->last_spatial.visuospatial_activity = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
-    bridge->last_spatial.mental_rotation_activity = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
+    bridge->last_spatial.attention_level = nimcp_myelin_clamp(bridge->output_buffer[0], 0.0f, 1.0f);
+    bridge->last_spatial.numerical_magnitude = nimcp_myelin_clamp(bridge->output_buffer[1], 0.0f, 1.0f);
+    bridge->last_spatial.multisensory_integration = nimcp_myelin_clamp(bridge->output_buffer[2], 0.0f, 1.0f);
+    bridge->last_spatial.body_schema_strength = nimcp_myelin_clamp(bridge->output_buffer[3], 0.0f, 1.0f);
+    bridge->last_spatial.visuospatial_activity = nimcp_myelin_clamp(bridge->output_buffer[4], 0.0f, 1.0f);
+    bridge->last_spatial.mental_rotation_activity = nimcp_myelin_clamp(bridge->output_buffer[5], 0.0f, 1.0f);
 
     /* Check attention threshold */
     if (bridge->last_spatial.attention_level > bridge->config.attention_threshold) {
@@ -989,4 +1004,38 @@ bool parietal_snn_is_bio_async_connected(parietal_snn_bridge_t* bridge) {
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B23 Upgrade)
+//=============================================================================
+
+void parietal_snn_bridge_set_instance_health_agent(
+    parietal_snn_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B23 Upgrade)
+//=============================================================================
+
+int parietal_snn_bridge_training_begin(parietal_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+    parietal_snn_bridge_heartbeat_instance(bridge->health_agent, "parietal_snn_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int parietal_snn_bridge_training_end(parietal_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+    parietal_snn_bridge_heartbeat_instance(bridge->health_agent, "parietal_snn_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int parietal_snn_bridge_training_step(parietal_snn_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    parietal_snn_bridge_heartbeat_instance(bridge->health_agent, "parietal_snn_bridge_training_step", progress);
+    return 0;
 }

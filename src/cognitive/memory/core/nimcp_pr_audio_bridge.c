@@ -14,6 +14,7 @@
 
 #include "cognitive/memory/core/nimcp_pr_audio_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -23,6 +24,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -48,6 +50,8 @@ static inline void pr_audio_bridge_heartbeat(const char* operation, float progre
         nimcp_health_agent_heartbeat_ex(g_pr_audio_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "PR_AUDIO_BRIDGE"
 
 
 //=============================================================================
@@ -329,6 +333,7 @@ NIMCP_EXPORT pr_audio_bridge_t* pr_audio_bridge_create(
 
 NIMCP_EXPORT void pr_audio_bridge_destroy(pr_audio_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "pr_audio");
 
     /* Free signature */
     if (bridge->current_signature) {

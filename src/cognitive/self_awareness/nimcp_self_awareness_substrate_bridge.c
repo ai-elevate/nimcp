@@ -46,6 +46,8 @@ static inline void self_awareness_substrate_bridge_heartbeat(const char* operati
     }
 }
 
+#define LOG_MODULE "SELF_AWARENESS_SUBSTRATE_BRIDGE"
+
 
 struct self_awareness_substrate_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
@@ -100,6 +102,7 @@ self_awareness_substrate_bridge_t* self_awareness_substrate_bridge_create(void* 
     bridge->effects.identity_coherence = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "self_awareness_substrate");
     return bridge;
 }
 

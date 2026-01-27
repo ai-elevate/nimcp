@@ -47,6 +47,8 @@ static inline void hypothalamus_broca_bridge_heartbeat(const char* operation, fl
     }
 }
 
+#define LOG_MODULE "HYPOTHALAMUS_BROCA_BRIDGE"
+
 
 /*=============================================================================
  * INTERNAL STRUCTURES
@@ -179,6 +181,7 @@ hypo_broca_bridge_t* hypo_broca_bridge_create(
 
 void hypo_broca_bridge_destroy(hypo_broca_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hypothalamus_broca");
 
     if (bridge->bio_registered) {
         hypo_broca_bridge_unregister_bio(bridge);

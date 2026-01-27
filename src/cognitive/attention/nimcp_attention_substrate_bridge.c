@@ -31,6 +31,7 @@
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <math.h>
 #include <string.h>
 
@@ -62,6 +63,7 @@ static inline void attention_substrate_bridge_heartbeat(const char* operation, f
     }
 }
 
+BRIDGE_DEFINE_SECURITY_SETTERS(attention_substrate_bridge)
 
 /* ============================================================================
  * Helper Functions (using shared nimcp_clamp_f from nimcp_metabolic_modulation.h)

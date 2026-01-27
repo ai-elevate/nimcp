@@ -19,6 +19,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -44,6 +45,8 @@ static inline void omni_occipital_bridge_heartbeat(const char* operation, float 
         nimcp_health_agent_heartbeat_ex(g_omni_occipital_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "OMNI_OCCIPITAL_BRIDGE"
 
 
 /* ============================================================================
@@ -159,6 +162,7 @@ omni_occipital_bridge_t* omni_occipital_bridge_create(
 
 void omni_occipital_bridge_destroy(omni_occipital_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "omni_occipital");
 
     /* Free area state buffers */
     for (int i = 0; i < OMNI_OCCIPITAL_NUM_AREAS; i++) {

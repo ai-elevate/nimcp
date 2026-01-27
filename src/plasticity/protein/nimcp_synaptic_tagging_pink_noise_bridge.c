@@ -10,6 +10,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
+#include "security/nimcp_bbb_helpers.h"
 
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -37,6 +38,9 @@ static inline void synaptic_tagging_pink_noise_bridge_heartbeat(const char* oper
         nimcp_health_agent_heartbeat_ex(g_synaptic_tagging_pink_noise_bridge_health_agent, operation, progress);
     }
 }
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(tag_pink_noise_bridge)
 
 
 static float clamp(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }

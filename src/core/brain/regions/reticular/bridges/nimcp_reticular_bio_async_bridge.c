@@ -15,6 +15,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -40,6 +41,8 @@ static inline void reticular_bio_async_bridge_heartbeat(const char* operation, f
         nimcp_health_agent_heartbeat_ex(g_reticular_bio_async_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "RETICULAR_BIO_ASYNC_BRIDGE"
 
 
 /* ============================================================================
@@ -158,11 +161,13 @@ reticular_bridge_t* reticular_bridge_create(const reticular_bridge_config_t* con
     bridge->last_arousal_level = 0.5f;
     bridge->last_arousal_state = RETICULAR_AROUSAL_RELAXED;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "reticular_bio_async");
     return bridge;
 }
 
 void reticular_bridge_destroy(reticular_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "reticular_bio_async");
 
     if (bridge->connected) {
         reticular_bridge_disconnect(bridge);

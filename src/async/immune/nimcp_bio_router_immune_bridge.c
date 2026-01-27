@@ -47,6 +47,8 @@ static inline void bio_router_immune_bridge_heartbeat(const char* operation, flo
     }
 }
 
+#define LOG_MODULE "BIO_ROUTER_IMMUNE_BRIDGE"
+
 
 /* ============================================================================
  * Helper Functions
@@ -337,6 +339,7 @@ router_immune_bridge_t* router_immune_bridge_create(
 
 void router_immune_bridge_destroy(router_immune_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "bio_router_immune");
 
     /* Destroy mutex */
     if (bridge->base.mutex) {

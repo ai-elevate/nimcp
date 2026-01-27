@@ -48,6 +48,8 @@ static inline void personality_substrate_bridge_heartbeat(const char* operation,
     }
 }
 
+#define LOG_MODULE "PERSONALITY_SUBSTRATE_BRIDGE"
+
 
 struct personality_substrate_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
@@ -129,11 +131,13 @@ personality_substrate_bridge_t* personality_substrate_bridge_create(void* person
     bridge->effects.social_energy = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "personality_substrate");
     return bridge;
 }
 
 void personality_substrate_bridge_destroy(personality_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "personality_substrate");
     /* Phase 8: Heartbeat at operation start */
     personality_substrate_bridge_heartbeat("personality__destroy", 0.0f);
 

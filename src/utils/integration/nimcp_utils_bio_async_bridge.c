@@ -27,6 +27,7 @@
 #include "utils/memory/nimcp_memory.h"
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -53,6 +54,8 @@ static inline void utils_bio_async_bridge_heartbeat(const char* operation, float
         nimcp_health_agent_heartbeat_ex(g_utils_bio_async_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "UTILS_BIO_ASYNC_BRIDGE"
 
 #define UTILS_MALLOC(size) nimcp_malloc(size)
 #define UTILS_CALLOC(n, size) nimcp_calloc(n, size)
@@ -283,6 +286,7 @@ int utils_bio_bridge_init(
 
 void utils_bio_bridge_destroy(utils_bio_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "utils_bio_async");
 
     if (bridge->connected) {
         utils_bio_bridge_disconnect(bridge);

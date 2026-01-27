@@ -41,6 +41,8 @@ static inline void cortical_dendritic_sleep_bridge_heartbeat(const char* operati
     }
 }
 
+#define LOG_MODULE "CORTICAL_DENDRITIC_SLEEP_BRIDGE"
+
 
 struct cortical_dendritic_sleep_bridge_struct {
     bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
@@ -137,6 +139,7 @@ cortical_dendritic_sleep_bridge_t cortical_dendritic_sleep_bridge_create(
 void cortical_dendritic_sleep_bridge_destroy(cortical_dendritic_sleep_bridge_t bridge)
 {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "cortical_dendritic_sleep");
     if (bridge->callback_registered) {
         sleep_unregister_state_callback(bridge->sleep_system, cortical_dendritic_on_sleep_state_change, bridge);
     }

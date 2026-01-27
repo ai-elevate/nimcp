@@ -23,6 +23,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -48,6 +49,8 @@ static inline void hypothalamus_executive_bridge_heartbeat(const char* operation
         nimcp_health_agent_heartbeat_ex(g_hypothalamus_executive_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "HYPOTHALAMUS_EXECUTIVE_BRIDGE"
 
 
 /*=============================================================================
@@ -424,6 +427,7 @@ hypo_exec_bridge_t* hypo_exec_bridge_create(
 void hypo_exec_bridge_destroy(hypo_exec_bridge_t* bridge) {
     if (!bridge) {
         return;
+        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hypothalamus_executive");
     }
 
     if (bridge->base.mutex) {

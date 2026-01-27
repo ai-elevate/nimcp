@@ -13,6 +13,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -38,6 +39,8 @@ static inline void jepa_thalamic_bridge_heartbeat(const char* operation, float p
         nimcp_health_agent_heartbeat_ex(g_jepa_thalamic_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "JEPA_THALAMIC_BRIDGE"
 
 
 /* Forward declarations for bio-async functions used before definition */
@@ -94,6 +97,7 @@ jepa_thalamic_bridge_t* jepa_thalamic_bridge_create(void* jepa, thalamic_router_
         jepa_thalamic_bridge_register_bio_async(bridge);
     }
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "jepa_thalamic");
     return bridge;
 }
 
@@ -102,6 +106,7 @@ void jepa_thalamic_bridge_destroy(jepa_thalamic_bridge_t* bridge) {
     jepa_thalamic_bridge_heartbeat("jepa_thalami_destroy", 0.0f);
 
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "jepa_thalamic");
 
     /* Unregister from bio-async if registered */
     if (bridge->bio_async_registered) {

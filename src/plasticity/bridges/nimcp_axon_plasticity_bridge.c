@@ -21,6 +21,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
+#include "security/nimcp_bbb_helpers.h"
 
 #include <stddef.h>  /* for NULL */
 //=============================================================================
@@ -50,6 +51,8 @@ static inline void axon_plasticity_bridge_heartbeat(const char* operation, float
     }
 }
 
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(axon_plasticity_bridge)
 
 /* ============================================================================
  * Static Helpers

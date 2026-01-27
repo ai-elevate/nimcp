@@ -14,6 +14,7 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
+#include "security/nimcp_bbb_helpers.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -40,6 +41,9 @@ static inline void vesicle_packaging_pink_noise_bridge_heartbeat(const char* ope
         nimcp_health_agent_heartbeat_ex(g_vesicle_packaging_pink_noise_bridge_health_agent, operation, progress);
     }
 }
+
+/* Security integration */
+#define LOG_MODULE "VESICLE_PACKAGING_PINK_NOISE_BRIDGE"
 
 
 //=============================================================================
@@ -80,6 +84,8 @@ struct vesicle_pink_noise_bridge {
 
     // Thread safety
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS(vesicle_pink_noise_bridge)
 
 //=============================================================================
 // HELPER MACROS
@@ -249,6 +255,7 @@ vesicle_pink_noise_bridge_t* vesicle_pink_noise_create(const vesicle_pink_noise_
         }
     }
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "vesicle_packaging_pink_noise");
     return bridge;
 }
 
@@ -262,6 +269,7 @@ vesicle_pink_noise_bridge_t* vesicle_pink_noise_create(const vesicle_pink_noise_
 void vesicle_pink_noise_destroy(vesicle_pink_noise_bridge_t* bridge) {
     if (!bridge) {
         return;
+        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "vesicle_packaging_pink_noise");
     }
 
     // Destroy pink noise generators

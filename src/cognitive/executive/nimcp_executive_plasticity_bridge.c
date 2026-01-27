@@ -12,6 +12,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <string.h>
 #include <math.h>
@@ -45,6 +46,7 @@ static inline void executive_plasticity_bridge_heartbeat(const char* operation, 
     }
 }
 
+#define LOG_MODULE "EXECUTIVE_PLASTICITY_BRIDGE"
 
 //=============================================================================
 // Internal Structures
@@ -80,6 +82,8 @@ struct executive_plasticity_bridge {
     /* Statistics */
     executive_plasticity_stats_t stats;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS(executive_plasticity_bridge)
 
 //=============================================================================
 // Helper Functions
@@ -207,6 +211,7 @@ executive_plasticity_bridge_t* executive_plasticity_create(
 
 void executive_plasticity_destroy(executive_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "executive_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     executive_plasticity_bridge_heartbeat("executive_pl_executive_plasticity", 0.0f);

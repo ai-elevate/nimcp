@@ -49,6 +49,8 @@ static inline void mental_health_snn_bridge_heartbeat(const char* operation, flo
     }
 }
 
+#define LOG_MODULE "MENTAL_HEALTH_SNN_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -273,11 +275,13 @@ mental_health_snn_bridge_t* mental_health_snn_create(const mental_health_snn_con
     bridge->anxiety_signal = 0.0f;
     bridge->depression_signal = 0.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "mental_health_snn");
     return bridge;
 }
 
 void mental_health_snn_destroy(mental_health_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "mental_health_snn");
 
     /* Phase 8: Heartbeat at operation start */
     mental_health_snn_bridge_heartbeat("mental_healt_mental_health_snn_de", 0.0f);

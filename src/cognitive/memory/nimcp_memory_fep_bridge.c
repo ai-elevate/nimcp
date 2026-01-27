@@ -11,6 +11,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <string.h>
 
 #define LOG_MODULE "memory_fep_bridge"
@@ -43,6 +44,8 @@ static inline void memory_fep_bridge_heartbeat(const char* operation, float prog
     }
 }
 
+/* Security subsystem setters (Phase 1: Audit Gap Remediation) */
+BRIDGE_DEFINE_SECURITY_SETTERS(memory_fep_bridge)
 
 int memory_fep_bridge_default_config(memory_fep_config_t* config) {
     /* Phase 8: Heartbeat at operation start */
@@ -83,11 +86,13 @@ memory_fep_bridge_t* memory_fep_bridge_create(const memory_fep_config_t* config)
     else memory_fep_bridge_default_config(&bridge->config);
     if (bridge_base_init(&bridge->base, 0, "memory_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
+    NIMCP_LOGGING_INFO("Created %s bridge", "memory_fep");
     return bridge;
 }
 
 void memory_fep_bridge_destroy(memory_fep_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "memory_fep");
     /* Phase 8: Heartbeat at operation start */
     memory_fep_bridge_heartbeat("memory_fep_b_destroy", 0.0f);
 

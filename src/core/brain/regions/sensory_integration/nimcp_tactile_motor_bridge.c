@@ -18,6 +18,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -43,6 +44,8 @@ static inline void tactile_motor_bridge_heartbeat(const char* operation, float p
         nimcp_health_agent_heartbeat_ex(g_tactile_motor_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "TACTILE_MOTOR_BRIDGE"
 
 
 /* ============================================================================
@@ -117,11 +120,13 @@ tactile_motor_bridge_t* tactile_motor_bridge_create(const tactile_motor_config_t
     bridge->status = TACTILE_MOTOR_STATUS_IDLE;
     bridge->mode = TACTILE_MOTOR_MODE_IDLE;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "tactile_motor");
     return bridge;
 }
 
 void tactile_motor_bridge_destroy(tactile_motor_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "tactile_motor");
     free(bridge);
 }
 

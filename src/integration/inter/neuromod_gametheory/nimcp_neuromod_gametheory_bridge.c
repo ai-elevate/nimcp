@@ -16,6 +16,7 @@
 #include <time.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -42,6 +43,8 @@ static inline void neuromod_gametheory_bridge_heartbeat(const char* operation, f
         nimcp_health_agent_heartbeat_ex(g_neuromod_gametheory_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "NEUROMOD_GAMETHEORY_BRIDGE"
 
 
 /* ============================================================================
@@ -148,11 +151,13 @@ neuromod_gametheory_bridge_t* neuromod_gametheory_create(const neuromod_gametheo
 
     bridge->connected = true;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "neuromod_gametheory");
     return bridge;
 }
 
 void neuromod_gametheory_destroy(neuromod_gametheory_bridge_t* bridge) {
     if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "neuromod_gametheory");
     bridge->magic = 0;
     free(bridge);
 }

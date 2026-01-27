@@ -12,6 +12,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -37,6 +38,8 @@ static inline void curiosity_thalamic_bridge_heartbeat(const char* operation, fl
         nimcp_health_agent_heartbeat_ex(g_curiosity_thalamic_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "CURIOSITY_THALAMIC_BRIDGE"
 
 
 struct curiosity_thalamic_bridge {
@@ -80,6 +83,7 @@ curiosity_thalamic_bridge_t* curiosity_thalamic_bridge_create(void* curiosity, t
     bridge->config = config ? *config : curiosity_thalamic_default_config();
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    NIMCP_LOGGING_INFO("Created %s bridge", "curiosity_thalamic");
     return bridge;
 }
 

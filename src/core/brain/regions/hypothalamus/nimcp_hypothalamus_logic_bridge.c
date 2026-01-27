@@ -43,6 +43,8 @@ static inline void hypothalamus_logic_bridge_heartbeat(const char* operation, fl
     }
 }
 
+#define LOG_MODULE "HYPOTHALAMUS_LOGIC_BRIDGE"
+
 
 /*=============================================================================
  * INTERNAL STRUCTURES
@@ -377,6 +379,7 @@ hypo_logic_bridge_t* hypo_logic_bridge_create(
 
 void hypo_logic_bridge_destroy(hypo_logic_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hypothalamus_logic");
 
     nimcp_log(LOG_LEVEL_INFO, "hypo_logic_bridge: destroying");
 

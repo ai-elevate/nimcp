@@ -17,6 +17,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -38,6 +39,20 @@ static inline void parietal_quantum_bridge_heartbeat(const char* operation, floa
     }
 }
 
+/** @brief Send heartbeat from parietal_quantum_bridge module (instance-level) */
+static inline void parietal_quantum_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_parietal_quantum_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_parietal_quantum_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_parietal_quantum_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+#define LOG_MODULE "PARIETAL_QUANTUM_BRIDGE"
+
 
 /* ============================================================================
  * INTERNAL STRUCTURES
@@ -49,6 +64,9 @@ struct parietal_quantum_bridge {
     float inflammation_level;
     float fatigue_level;
     parietal_quantum_stats_t stats;
+
+    /* Health agent (instance-level) - Phase 8 */
+    nimcp_health_agent_t* health_agent;
 };
 
 /* Thread-local error message */
@@ -533,4 +551,38 @@ int parietal_quantum_bridge_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Parietal_Quantum_Bridge");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B23 Upgrade)
+//=============================================================================
+
+void parietal_quantum_bridge_set_instance_health_agent(
+    parietal_quantum_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B23 Upgrade)
+//=============================================================================
+
+int parietal_quantum_bridge_training_begin(parietal_quantum_bridge_t* bridge) {
+    if (!bridge) return -1;
+    parietal_quantum_bridge_heartbeat_instance(bridge->health_agent, "parietal_quantum_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int parietal_quantum_bridge_training_end(parietal_quantum_bridge_t* bridge) {
+    if (!bridge) return -1;
+    parietal_quantum_bridge_heartbeat_instance(bridge->health_agent, "parietal_quantum_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int parietal_quantum_bridge_training_step(parietal_quantum_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    parietal_quantum_bridge_heartbeat_instance(bridge->health_agent, "parietal_quantum_bridge_training_step", progress);
+    return 0;
 }

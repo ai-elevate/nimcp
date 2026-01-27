@@ -45,6 +45,8 @@ static inline void sleep_wake_plasticity_bridge_heartbeat(const char* operation,
     }
 }
 
+#define LOG_MODULE "SLEEP_WAKE_PLASTICITY_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -213,6 +215,7 @@ sleep_wake_plasticity_bridge_t* sleep_wake_plasticity_create(
 
 void sleep_wake_plasticity_destroy(sleep_wake_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "sleep_wake_plasticity");
 
     bridge_base_cleanup(&bridge->base);
 

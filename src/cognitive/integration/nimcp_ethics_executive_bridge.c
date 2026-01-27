@@ -29,6 +29,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -54,6 +55,8 @@ static inline void ethics_executive_bridge_heartbeat(const char* operation, floa
         nimcp_health_agent_heartbeat_ex(g_ethics_executive_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "ETHICS_EXECUTIVE_BRIDGE"
 
 
 /* ============================================================================
@@ -256,6 +259,7 @@ ethics_executive_bridge_t* ethics_executive_bridge_create(
 void ethics_executive_bridge_destroy(ethics_executive_bridge_t* bridge) {
     if (!bridge) {
         return;
+        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "ethics_executive");
     }
 
     /* Destroy mutex */

@@ -45,6 +45,8 @@ static inline void wellbeing_plasticity_bridge_heartbeat(const char* operation, 
     }
 }
 
+#define LOG_MODULE "WELLBEING_PLASTICITY_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -213,6 +215,7 @@ wellbeing_plasticity_bridge_t* wellbeing_plasticity_create(
 
 void wellbeing_plasticity_destroy(wellbeing_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "wellbeing_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     wellbeing_plasticity_bridge_heartbeat("wellbeing_pl_wellbeing_plasticity", 0.0f);

@@ -12,6 +12,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -37,6 +38,8 @@ static inline void logic_thalamic_bridge_heartbeat(const char* operation, float 
         nimcp_health_agent_heartbeat_ex(g_logic_thalamic_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "LOGIC_THALAMIC_BRIDGE"
 
 
 struct logic_thalamic_bridge {
@@ -77,6 +80,7 @@ logic_thalamic_bridge_t* logic_thalamic_bridge_create(void* logic, thalamic_rout
     bridge->config = config ? *config : logic_thalamic_default_config();
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    NIMCP_LOGGING_INFO("Created %s bridge", "logic_thalamic");
     return bridge;
 }
 

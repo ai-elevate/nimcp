@@ -19,6 +19,7 @@
 #include "cognitive/memory/core/nimcp_pr_pink_noise_bridge.h"
 #include "cognitive/memory/core/nimcp_pr_memory_node.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -31,6 +32,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -56,6 +58,9 @@ static inline void pr_pink_noise_bridge_heartbeat(const char* operation, float p
         nimcp_health_agent_heartbeat_ex(g_pr_pink_noise_bridge_health_agent, operation, progress);
     }
 }
+
+/* Security subsystem setters (Phase 1: Audit Gap Remediation) */
+#define LOG_MODULE "PR_PINK_NOISE_BRIDGE"
 
 
 //=============================================================================
@@ -181,6 +186,8 @@ struct pr_pink_bridge_struct {
     /* Initialization timestamp */
     uint64_t created_time_ms;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_pink_bridge, struct pr_pink_bridge_struct)
 
 //=============================================================================
 // Internal Helper Functions

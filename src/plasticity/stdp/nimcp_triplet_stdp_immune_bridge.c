@@ -18,6 +18,7 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
+#include "security/nimcp_bbb_helpers.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -44,6 +45,9 @@ static inline void triplet_stdp_immune_bridge_heartbeat(const char* operation, f
         nimcp_health_agent_heartbeat_ex(g_triplet_stdp_immune_bridge_health_agent, operation, progress);
     }
 }
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(triplet_stdp_immune_bridge, struct triplet_stdp_immune_bridge_struct)
 
 
 /* ============================================================================

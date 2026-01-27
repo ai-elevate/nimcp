@@ -38,12 +38,15 @@ static inline void auditory_substrate_bridge_heartbeat(const char* operation, fl
     }
 }
 
+#define LOG_MODULE "AUDITORY_SUBSTRATE_BRIDGE"
+
 //=============================================================================
 // Auditory-Neural Substrate Bridge Implementation
 //=============================================================================
 
 #include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
 
 struct auditory_substrate_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
@@ -114,6 +117,7 @@ auditory_substrate_bridge_t* auditory_substrate_bridge_create(void* auditory,
 
 void auditory_substrate_bridge_destroy(auditory_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "auditory_substrate");
 
     /* Phase 8: Heartbeat at operation start */
     auditory_substrate_bridge_heartbeat("auditory_sub_destroy", 0.0f);

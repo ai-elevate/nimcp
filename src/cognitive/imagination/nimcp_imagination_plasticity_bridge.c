@@ -45,6 +45,8 @@ static inline void imagination_plasticity_bridge_heartbeat(const char* operation
     }
 }
 
+#define LOG_MODULE "IMAGINATION_PLASTICITY_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -233,6 +235,7 @@ imagination_plasticity_bridge_t* imagination_plasticity_create(
 
 void imagination_plasticity_destroy(imagination_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "imagination_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     imagination_plasticity_bridge_heartbeat("imagination__imagination_plastici", 0.0f);

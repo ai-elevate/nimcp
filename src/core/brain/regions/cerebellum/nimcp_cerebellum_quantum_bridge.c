@@ -15,6 +15,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -40,6 +41,8 @@ static inline void cerebellum_quantum_bridge_heartbeat(const char* operation, fl
         nimcp_health_agent_heartbeat_ex(g_cerebellum_quantum_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "CEREBELLUM_QUANTUM_BRIDGE"
 
 
 /*=============================================================================
@@ -150,6 +153,7 @@ cerebellum_quantum_bridge_t* cerebellum_quantum_bridge_create(
 
 void cerebellum_quantum_bridge_destroy(cerebellum_quantum_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "cerebellum_quantum");
 
     if (bridge->timing_candidates) nimcp_free(bridge->timing_candidates);
     if (bridge->trajectory_candidates) nimcp_free(bridge->trajectory_candidates);

@@ -49,6 +49,8 @@ static inline void self_awareness_snn_bridge_heartbeat(const char* operation, fl
     }
 }
 
+#define LOG_MODULE "SELF_AWARENESS_SNN_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -247,11 +249,13 @@ self_awareness_snn_bridge_t* self_awareness_snn_create(const self_awareness_snn_
     bridge->recognition_signal = 0.0f;
     bridge->agency_signal = 0.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "self_awareness_snn");
     return bridge;
 }
 
 void self_awareness_snn_destroy(self_awareness_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "self_awareness_snn");
 
     if (bridge->snn) {
         snn_network_destroy(bridge->snn);

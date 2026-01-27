@@ -54,6 +54,7 @@ static inline void energy_consistency_fep_bridge_heartbeat(const char* operation
 NIMCP_API energy_fep_bridge_t* energy_fep_bridge_create(void) {
     energy_fep_bridge_config_t config;
     energy_fep_bridge_get_default_config(&config);
+    NIMCP_LOGGING_INFO("Created %s bridge", "energy_consistency_fep");
     return energy_fep_bridge_create_with_config(&config);
 }
 
@@ -101,6 +102,7 @@ NIMCP_API energy_fep_bridge_t* energy_fep_bridge_create_with_config(
 
 NIMCP_API void energy_fep_bridge_destroy(energy_fep_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "energy_consistency_fep");
 
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);

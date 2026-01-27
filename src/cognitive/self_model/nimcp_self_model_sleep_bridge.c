@@ -12,6 +12,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <string.h>
 
 //=============================================================================
@@ -42,7 +43,6 @@ static inline void self_model_sleep_bridge_heartbeat(const char* operation, floa
     }
 }
 
-
 struct self_model_sleep_bridge_struct {
     bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
 
@@ -51,6 +51,8 @@ struct self_model_sleep_bridge_struct {
     self_model_sleep_effects_t effects;
     bool callback_registered;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(self_model_sleep_bridge, struct self_model_sleep_bridge_struct)
 
 /* Forward declarations */
 static void self_model_on_sleep_state_change(sleep_state_t new_state, void* user_data);

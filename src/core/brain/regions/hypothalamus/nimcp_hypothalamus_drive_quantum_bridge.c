@@ -45,6 +45,8 @@ static inline void hypothalamus_drive_quantum_bridge_heartbeat(const char* opera
     }
 }
 
+#define LOG_MODULE "HYPOTHALAMUS_DRIVE_QUANTUM_BRIDGE"
+
 
 /*=============================================================================
  * INTERNAL CONSTANTS
@@ -292,6 +294,7 @@ hypo_drive_quantum_bridge_t* hypo_drive_quantum_bridge_create(
 
 void hypo_drive_quantum_bridge_destroy(hypo_drive_quantum_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hypothalamus_drive_quantum");
 
     /* Free QUBO */
     free_drive_qubo(&bridge->qubo);

@@ -12,6 +12,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -37,6 +38,8 @@ static inline void fault_tolerance_thalamic_bridge_heartbeat(const char* operati
         nimcp_health_agent_heartbeat_ex(g_fault_tolerance_thalamic_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "FAULT_TOLERANCE_THALAMIC_BRIDGE"
 
 
 struct fault_tolerance_thalamic_bridge {
@@ -85,11 +88,13 @@ fault_tolerance_thalamic_bridge_t* fault_tolerance_thalamic_bridge_create(void* 
     bridge->config = config ? *config : fault_tolerance_thalamic_default_config();
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    NIMCP_LOGGING_INFO("Created %s bridge", "fault_tolerance_thalamic");
     return bridge;
 }
 
 void fault_tolerance_thalamic_bridge_destroy(fault_tolerance_thalamic_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "fault_tolerance_thalamic");
     /* Phase 8: Heartbeat at operation start */
     fault_tolerance_thalamic_bridge_heartbeat("fault_tolera_destroy", 0.0f);
 

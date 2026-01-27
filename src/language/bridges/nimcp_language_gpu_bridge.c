@@ -185,6 +185,7 @@ language_gpu_bridge_t* language_gpu_bridge_create(
 
 void language_gpu_bridge_destroy(language_gpu_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "language_gpu");
 
     /* Unregister from bio-async if registered */
     if (bridge->bio_async_registered) {

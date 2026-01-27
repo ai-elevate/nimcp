@@ -14,6 +14,7 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
+#include "security/nimcp_bbb_helpers.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -40,6 +41,11 @@ static inline void predictive_coding_fep_bridge_heartbeat(const char* operation,
         nimcp_health_agent_heartbeat_ex(g_predictive_coding_fep_bridge_health_agent, operation, progress);
     }
 }
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(predictive_coding_fep_bridge)
+
+#define LOG_MODULE "PREDICTIVE_CODING_FEP_BRIDGE"
 
 
 int predictive_coding_fep_bridge_default_config(predictive_coding_fep_config_t* config) {
@@ -88,11 +94,13 @@ predictive_coding_fep_bridge_t* predictive_coding_fep_bridge_create(const predic
     bridge->pc_hierarchy = NULL;
     bridge->base.bio_async_enabled = false;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "predictive_coding_fep");
     return bridge;
 }
 
 void predictive_coding_fep_bridge_destroy(predictive_coding_fep_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "predictive_coding_fep");
     if (bridge->base.bio_async_enabled) predictive_coding_fep_bridge_disconnect_bio_async(bridge);
     if (bridge->fep_effects.level_free_energies) nimcp_free(bridge->fep_effects.level_free_energies);
     if (bridge->pc_effects.prediction_errors) nimcp_free(bridge->pc_effects.prediction_errors);

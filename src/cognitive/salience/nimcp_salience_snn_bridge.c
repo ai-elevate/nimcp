@@ -18,6 +18,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -43,6 +44,8 @@ static inline void salience_snn_bridge_heartbeat(const char* operation, float pr
         nimcp_health_agent_heartbeat_ex(g_salience_snn_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "SALIENCE_SNN_BRIDGE"
 
 
 //=============================================================================
@@ -297,11 +300,13 @@ salience_snn_bridge_t* salience_snn_create(const salience_snn_config_t* config) 
         }
     }
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "salience_snn");
     return bridge;
 }
 
 void salience_snn_destroy(salience_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "salience_snn");
 
     /* Phase 8: Heartbeat at operation start */
     salience_snn_bridge_heartbeat("salience_snn_salience_snn_destroy", 0.0f);

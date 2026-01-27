@@ -19,6 +19,7 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -45,6 +46,8 @@ static inline void medulla_cerebellum_bridge_heartbeat(const char* operation, fl
         nimcp_health_agent_heartbeat_ex(g_medulla_cerebellum_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "MEDULLA_CEREBELLUM_BRIDGE"
 
 
 #ifndef M_PI
@@ -523,6 +526,7 @@ med_cereb_bridge_t med_cereb_bridge_create(const med_cereb_bridge_config_t* conf
                               bridge->config.min_circadian_learning_factor,
                               &bridge->circadian_effects);
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "medulla_cerebellum");
     return bridge;
 }
 
@@ -530,6 +534,7 @@ void med_cereb_bridge_destroy(med_cereb_bridge_t bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "med_cereb_bridge_destroy: bridge is NULL");
         return;
+        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "medulla_cerebellum");
     }
 
     if (bridge->base.mutex) {

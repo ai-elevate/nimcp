@@ -49,6 +49,8 @@ static inline void jepa_snn_bridge_heartbeat(const char* operation, float progre
     }
 }
 
+#define LOG_MODULE "JEPA_SNN_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -273,11 +275,13 @@ jepa_snn_bridge_t* jepa_snn_create(const jepa_snn_config_t* config) {
     bridge->error_signal = 0.0f;
     bridge->context_signal = 0.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "jepa_snn");
     return bridge;
 }
 
 void jepa_snn_destroy(jepa_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "jepa_snn");
 
     /* Phase 8: Heartbeat at operation start */
     jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_destroy", 0.0f);

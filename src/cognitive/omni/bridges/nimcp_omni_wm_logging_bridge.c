@@ -662,6 +662,7 @@ omni_wm_logging_bridge_t* omni_wm_logging_bridge_create(
 
 void omni_wm_logging_bridge_destroy(omni_wm_logging_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "omni_wm_logging");
 
     /* Flush any remaining entries */
     /* Phase 8: Heartbeat at operation start */

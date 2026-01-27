@@ -19,6 +19,8 @@
 #include <math.h>
 #include <stdio.h>
 
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
+
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -46,6 +48,20 @@ static inline void genius_training_bridge_heartbeat(const char* operation, float
         nimcp_health_agent_heartbeat_ex(g_genius_training_bridge_health_agent, operation, progress);
     }
 }
+
+/** @brief Send heartbeat from genius_training_bridge module (instance-level) */
+static inline void genius_training_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_genius_training_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_genius_training_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_genius_training_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+#define LOG_MODULE "GENIUS_TRAINING_BRIDGE"
 
 
 //=============================================================================
@@ -97,17 +113,14 @@ struct genius_training_bridge {
 
     /* KG Wiring */
     struct kg_module_wiring* kg_wiring;
+
+    /* Health agent (instance-level) - Phase 8 */
+    nimcp_health_agent_t* health_agent;
 };
 
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static genius_training_task_t* find_task(genius_training_bridge_t* bridge, uint32_t task_id) {
     for (uint32_t i = 0; i < bridge->task_count; i++) {
@@ -294,11 +307,13 @@ genius_training_bridge_t* genius_training_create(const genius_training_config_t*
     /* Initialize KG wiring */
     bridge->kg_wiring = genius_training_create_kg_wiring();
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "genius_training");
     return bridge;
 }
 
 void genius_training_destroy(genius_training_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "genius_training");
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_dest", 0.0f);
@@ -577,9 +592,9 @@ float genius_training_train_batch(genius_training_bridge_t* bridge,
     bridge->mode_state.newton_skill += lr * 0.01f * (1.0f - batch_loss);
     bridge->mode_state.erdos_skill += lr * 0.01f * (1.0f - batch_loss);
 
-    bridge->mode_state.gauss_skill = clamp_f(bridge->mode_state.gauss_skill, 0.0f, 1.0f);
-    bridge->mode_state.newton_skill = clamp_f(bridge->mode_state.newton_skill, 0.0f, 1.0f);
-    bridge->mode_state.erdos_skill = clamp_f(bridge->mode_state.erdos_skill, 0.0f, 1.0f);
+    bridge->mode_state.gauss_skill = nimcp_myelin_clamp(bridge->mode_state.gauss_skill, 0.0f, 1.0f);
+    bridge->mode_state.newton_skill = nimcp_myelin_clamp(bridge->mode_state.newton_skill, 0.0f, 1.0f);
+    bridge->mode_state.erdos_skill = nimcp_myelin_clamp(bridge->mode_state.erdos_skill, 0.0f, 1.0f);
 
     /* Update progress */
     bridge->progress.total_examples_trained += batch_size;
@@ -720,9 +735,9 @@ int genius_training_consolidate(genius_training_bridge_t* bridge) {
         bridge->mode_state.erdos_skill *= 1.02f;
     }
 
-    bridge->mode_state.gauss_skill = clamp_f(bridge->mode_state.gauss_skill, 0.0f, 1.0f);
-    bridge->mode_state.newton_skill = clamp_f(bridge->mode_state.newton_skill, 0.0f, 1.0f);
-    bridge->mode_state.erdos_skill = clamp_f(bridge->mode_state.erdos_skill, 0.0f, 1.0f);
+    bridge->mode_state.gauss_skill = nimcp_myelin_clamp(bridge->mode_state.gauss_skill, 0.0f, 1.0f);
+    bridge->mode_state.newton_skill = nimcp_myelin_clamp(bridge->mode_state.newton_skill, 0.0f, 1.0f);
+    bridge->mode_state.erdos_skill = nimcp_myelin_clamp(bridge->mode_state.erdos_skill, 0.0f, 1.0f);
 
     bridge->state = GENIUS_TRAINING_STATE_IDLE;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -1303,4 +1318,38 @@ kg_module_wiring_t* genius_training_get_kg_wiring(genius_training_bridge_t* brid
 
 
     return bridge->kg_wiring;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B23 Upgrade)
+//=============================================================================
+
+void genius_training_bridge_set_instance_health_agent(
+    genius_training_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B23 Upgrade)
+//=============================================================================
+
+int genius_training_bridge_training_begin(genius_training_bridge_t* bridge) {
+    if (!bridge) return -1;
+    genius_training_bridge_heartbeat_instance(bridge->health_agent, "genius_training_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int genius_training_bridge_training_end(genius_training_bridge_t* bridge) {
+    if (!bridge) return -1;
+    genius_training_bridge_heartbeat_instance(bridge->health_agent, "genius_training_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int genius_training_bridge_training_step(genius_training_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    genius_training_bridge_heartbeat_instance(bridge->health_agent, "genius_training_bridge_training_step", progress);
+    return 0;
 }

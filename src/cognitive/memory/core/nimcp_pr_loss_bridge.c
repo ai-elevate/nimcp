@@ -18,6 +18,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <string.h>
 #include <math.h>
@@ -26,6 +27,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -52,7 +54,9 @@ static inline void pr_loss_bridge_heartbeat(const char* operation, float progres
     }
 }
 
+#define LOG_MODULE "PR_LOSS_BRIDGE"
 
+/* Security subsystem setters (Phase 1: Audit Gap Remediation) */
 //=============================================================================
 // Internal Structure Definition
 //=============================================================================
@@ -79,6 +83,8 @@ struct pr_loss_bridge_struct {
     float* loss_cache;
     size_t loss_cache_capacity;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_loss_bridge, struct pr_loss_bridge_struct)
 
 //=============================================================================
 // Helper Functions
@@ -337,11 +343,13 @@ pr_loss_bridge_t pr_loss_bridge_create(const pr_loss_config_t* config) {
     memset(&bridge->stats, 0, sizeof(pr_loss_stats_t));
     bridge->stats.min_combined_loss = FLT_MAX;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "pr_loss");
     return bridge;
 }
 
 void pr_loss_bridge_destroy(pr_loss_bridge_t bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "pr_loss");
 
     /* Phase 8: Heartbeat at operation start */
     pr_loss_bridge_heartbeat("pr_loss_brid_destroy", 0.0f);

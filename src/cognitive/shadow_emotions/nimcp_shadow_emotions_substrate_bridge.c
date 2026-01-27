@@ -14,6 +14,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -39,6 +40,8 @@ static inline void shadow_emotions_substrate_bridge_heartbeat(const char* operat
         nimcp_health_agent_heartbeat_ex(g_shadow_emotions_substrate_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "SHADOW_EMOTIONS_SUBSTRATE_BRIDGE"
 
 
 struct shadow_emotions_substrate_bridge {
@@ -84,11 +87,13 @@ shadow_emotions_substrate_bridge_t* shadow_emotions_substrate_bridge_create(void
     bridge->effects.regulation_capacity = 1.0f;
     bridge->effects.integration_ability = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
+    NIMCP_LOGGING_INFO("Created %s bridge", "shadow_emotions_substrate");
     return bridge;
 }
 
 void shadow_emotions_substrate_bridge_destroy(shadow_emotions_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "shadow_emotions_substrate");
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
     }

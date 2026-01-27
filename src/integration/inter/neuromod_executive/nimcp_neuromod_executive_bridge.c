@@ -13,6 +13,7 @@
 #include <stdlib.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -39,6 +40,8 @@ static inline void neuromod_executive_bridge_heartbeat(const char* operation, fl
         nimcp_health_agent_heartbeat_ex(g_neuromod_executive_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "NEUROMOD_EXECUTIVE_BRIDGE"
 
 
 struct nimcp_neuromod_executive_bridge_struct {
@@ -76,11 +79,13 @@ nimcp_neuromod_executive_bridge_t nimcp_neuromod_executive_create(const nimcp_ne
     bridge->state.motivation_level = 0.5f;
     bridge->state.cognitive_flexibility = 0.7f;
     bridge->state.impulse_control = 0.6f;
+    NIMCP_LOGGING_INFO("Created %s bridge", "neuromod_executive");
     return bridge;
 }
 
 void nimcp_neuromod_executive_destroy(nimcp_neuromod_executive_bridge_t bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "neuromod_executive");
     if (bridge->is_initialized) nimcp_neuromod_executive_shutdown(bridge);
     free(bridge);
 }

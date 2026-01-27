@@ -16,6 +16,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 
 #include <stddef.h>  /* for NULL */
+#include "security/nimcp_bbb_helpers.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -42,6 +43,9 @@ static inline void plasticity_substrate_bridge_heartbeat(const char* operation, 
         nimcp_health_agent_heartbeat_ex(g_plasticity_substrate_bridge_health_agent, operation, progress);
     }
 }
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(plasticity_substrate_bridge)
 
 
 /* ============================================================================

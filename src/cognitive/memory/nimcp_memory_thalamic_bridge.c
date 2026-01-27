@@ -10,6 +10,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <string.h>
 
 //=============================================================================
@@ -40,7 +41,7 @@ static inline void memory_thalamic_bridge_heartbeat(const char* operation, float
     }
 }
 
-
+/* Security subsystem setters (Phase 1: Audit Gap Remediation) */
 struct memory_thalamic_bridge {
     bridge_base_t base;
     void* memory;
@@ -49,6 +50,8 @@ struct memory_thalamic_bridge {
     memory_thalamic_stats_t stats;
     float attention_weight;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS(memory_thalamic_bridge)
 
 memory_thalamic_config_t memory_thalamic_default_config(void) {
     /* Phase 8: Heartbeat at operation start */

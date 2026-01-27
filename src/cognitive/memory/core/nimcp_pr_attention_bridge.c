@@ -16,6 +16,7 @@
 
 #include "cognitive/memory/core/nimcp_pr_attention_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -27,6 +28,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -52,6 +54,8 @@ static inline void pr_attention_bridge_heartbeat(const char* operation, float pr
         nimcp_health_agent_heartbeat_ex(g_pr_attention_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "PR_ATTENTION_BRIDGE"
 
 
 //=============================================================================
@@ -444,6 +448,7 @@ pr_attention_bridge_t* pr_attention_bridge_create(
 void pr_attention_bridge_destroy(pr_attention_bridge_t* bridge) {
     if (!bridge) {
         return;
+        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "pr_attention");
     }
 
     // Free attention maps

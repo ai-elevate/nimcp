@@ -17,6 +17,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -42,6 +43,8 @@ static inline void grief_thalamic_bridge_heartbeat(const char* operation, float 
         nimcp_health_agent_heartbeat_ex(g_grief_thalamic_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "GRIEF_THALAMIC_BRIDGE"
 
 
 /* Source ID for grief signals in thalamic routing */
@@ -98,11 +101,13 @@ grief_thalamic_bridge_t* grief_thalamic_bridge_create(void* grief, thalamic_rout
     bridge->config = config ? *config : grief_thalamic_default_config();
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    NIMCP_LOGGING_INFO("Created %s bridge", "grief_thalamic");
     return bridge;
 }
 
 void grief_thalamic_bridge_destroy(grief_thalamic_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "grief_thalamic");
     /* Phase 8: Heartbeat at operation start */
     grief_thalamic_bridge_heartbeat("grief_thalam_destroy", 0.0f);
 

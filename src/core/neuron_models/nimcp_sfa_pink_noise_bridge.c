@@ -27,6 +27,8 @@ static inline void sfa_pink_noise_bridge_heartbeat(const char* operation, float 
     }
 }
 
+#define LOG_MODULE "SFA_PINK_NOISE_BRIDGE"
+
 //=============================================================================
 // SFA Pink Noise Bridge Implementation
 //=============================================================================
@@ -35,6 +37,7 @@ static inline void sfa_pink_noise_bridge_heartbeat(const char* operation, float 
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/logging/nimcp_logging.h"
 
 /**
  * @brief Helper to clamp a float value to [min, max]
@@ -91,6 +94,7 @@ sfa_pink_noise_bridge_t* sfa_pink_noise_create(const sfa_pink_noise_config_t* co
     bridge->neuron_state = NULL;
 
     sfa_pink_noise_bridge_heartbeat("create", 1.0f);
+    NIMCP_LOGGING_INFO("Created %s bridge", "sfa_pink_noise");
     return bridge;
 }
 
@@ -98,6 +102,7 @@ void sfa_pink_noise_destroy(sfa_pink_noise_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sfa_pink_noise_destroy: bridge is NULL");
         return;
+        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "sfa_pink_noise");
     }
 
     sfa_pink_noise_bridge_heartbeat("destroy", 0.0f);

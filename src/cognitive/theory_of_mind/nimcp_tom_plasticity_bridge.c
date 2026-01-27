@@ -45,6 +45,8 @@ static inline void tom_plasticity_bridge_heartbeat(const char* operation, float 
     }
 }
 
+#define LOG_MODULE "TOM_PLASTICITY_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -211,6 +213,7 @@ tom_plasticity_bridge_t* tom_plasticity_create(
 
 void tom_plasticity_destroy(tom_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "tom_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     tom_plasticity_bridge_heartbeat("tom_plastici_tom_plasticity_destr", 0.0f);

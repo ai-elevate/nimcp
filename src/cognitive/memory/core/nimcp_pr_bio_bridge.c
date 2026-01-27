@@ -17,6 +17,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/memory/core/nimcp_pr_bio_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -51,7 +52,9 @@ static inline void pr_bio_bridge_heartbeat(const char* operation, float progress
     }
 }
 
+#define LOG_MODULE "PR_BIO_BRIDGE"
 
+/* Security subsystem setters (Phase 1: Audit Gap Remediation) */
 //=============================================================================
 // Platform Abstraction
 //=============================================================================
@@ -66,6 +69,7 @@ static inline void pr_bio_bridge_heartbeat(const char* operation, float progress
     #define PR_BIO_MUTEX_UNLOCK(m) LeaveCriticalSection(&(m))
 #else
     #include <pthread.h>
+#include "utils/logging/nimcp_logging.h"
     typedef pthread_mutex_t pr_bio_mutex_t;
     #define PR_BIO_MUTEX_INIT(m) pthread_mutex_init(&(m), NULL)
     #define PR_BIO_MUTEX_DESTROY(m) pthread_mutex_destroy(&(m))
@@ -158,6 +162,8 @@ struct pr_bio_bridge_struct {
     /* State */
     bool initialized;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_bio_bridge, struct pr_bio_bridge_struct)
 
 //=============================================================================
 // Default Priority Mapping
@@ -444,6 +450,7 @@ NIMCP_EXPORT pr_bio_bridge_t pr_bio_bridge_create(
 
 NIMCP_EXPORT void pr_bio_bridge_destroy(pr_bio_bridge_t bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "pr_bio");
 
     /* Disconnect if connected */
     if (bridge->is_connected) {

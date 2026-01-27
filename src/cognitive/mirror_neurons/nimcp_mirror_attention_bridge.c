@@ -17,6 +17,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <math.h>
 #include <string.h>
@@ -49,6 +50,8 @@ static inline void mirror_attention_bridge_heartbeat(const char* operation, floa
         nimcp_health_agent_heartbeat_ex(g_mirror_attention_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "MIRROR_ATTENTION_BRIDGE"
 
 static inline void mirror_attention_bridge_heartbeat_instance(
     nimcp_health_agent_t* instance_agent, const char* operation, float progress)
@@ -88,6 +91,9 @@ struct mirror_attention_bridge {
     /* Instance-level health agent (B22) */
     nimcp_health_agent_t* health_agent;
 };
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(mirror_attention_bridge)
 
 //=============================================================================
 // Vector Math Helpers
@@ -401,6 +407,7 @@ mirror_attention_bridge_t* mirror_attention_create(
 
 void mirror_attention_destroy(mirror_attention_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "mirror_attention");
 
     /* Phase 8: Heartbeat at operation start */
     mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_des", 0.0f);
@@ -426,6 +433,7 @@ bool mirror_attention_process_gaze(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_attention_process_gaze: required parameter is NULL");
         return false;
     }
+    BRIDGE_BBB_VALIDATE(bridge, observation, sizeof(*observation));
 
     /* Phase 8: Heartbeat at operation start */
     mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_pro", 0.0f);
@@ -594,6 +602,7 @@ uint32_t mirror_attention_process_batch(
         }
         return 0;
     }
+    BRIDGE_BBB_VALIDATE(bridge, observations, count * sizeof(*observations));
 
     /* Phase 8: Heartbeat at operation start */
     mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_pro", 0.0f);

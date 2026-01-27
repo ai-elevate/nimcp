@@ -194,6 +194,7 @@ void nimcp_srb_destroy(nimcp_security_recovery_bridge_t* bridge)
 {
     if (!bridge)
         return;
+        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "security_recovery");
 
     nimcp_mutex_lock(&bridge->lock);
     bridge->initialized = false;

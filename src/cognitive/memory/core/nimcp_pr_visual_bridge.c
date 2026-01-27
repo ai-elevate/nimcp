@@ -12,6 +12,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <string.h>
 #include <math.h>
 
@@ -43,6 +44,10 @@ static inline void pr_visual_bridge_heartbeat(const char* operation, float progr
     }
 }
 
+#define LOG_MODULE "PR_VISUAL_BRIDGE"
+
+/* Security subsystem setters (Phase 1: Audit Gap Remediation) */
+BRIDGE_DEFINE_SECURITY_SETTERS(pr_visual_bridge)
 
 /* ============================================================================
  * Static Constants
@@ -343,6 +348,7 @@ NIMCP_EXPORT pr_visual_bridge_t* pr_visual_bridge_create(
 
 NIMCP_EXPORT void pr_visual_bridge_destroy(pr_visual_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "pr_visual");
 
     lock_bridge(bridge);
 

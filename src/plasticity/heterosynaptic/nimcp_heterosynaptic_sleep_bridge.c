@@ -12,6 +12,7 @@
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
+#include "security/nimcp_bbb_helpers.h"
 
 #include <stddef.h>  /* for NULL */
 //=============================================================================
@@ -41,7 +42,7 @@ static inline void heterosynaptic_sleep_bridge_heartbeat(const char* operation, 
     }
 }
 
-
+/* Security integration */
 /* ============================================================================
  * Internal Structure
  * ============================================================================ */
@@ -55,6 +56,8 @@ struct hetero_sleep_bridge_struct {
     hetero_sleep_effects_t effects;
     nimcp_platform_mutex_t* mutex;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(hetero_sleep_bridge, struct hetero_sleep_bridge_struct)
 
 /* ============================================================================
  * Lifecycle API Implementation

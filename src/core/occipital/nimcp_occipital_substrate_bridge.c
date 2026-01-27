@@ -38,12 +38,15 @@ static inline void occipital_substrate_bridge_heartbeat(const char* operation, f
     }
 }
 
+#define LOG_MODULE "OCCIPITAL_SUBSTRATE_BRIDGE"
+
 //=============================================================================
 // Occipital Cortex-Neural Substrate Bridge Implementation
 //=============================================================================
 
 #include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
 
 struct occipital_substrate_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
@@ -114,6 +117,7 @@ occipital_substrate_bridge_t* occipital_substrate_bridge_create(void* occipital,
 
 void occipital_substrate_bridge_destroy(occipital_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "occipital_substrate");
 
     /* Phase 8: Heartbeat at operation start */
     occipital_substrate_bridge_heartbeat("occipital_sub_destroy", 0.0f);

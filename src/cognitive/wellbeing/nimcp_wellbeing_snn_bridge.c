@@ -49,6 +49,8 @@ static inline void wellbeing_snn_bridge_heartbeat(const char* operation, float p
     }
 }
 
+#define LOG_MODULE "WELLBEING_SNN_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -275,11 +277,13 @@ wellbeing_snn_bridge_t* wellbeing_snn_create(const wellbeing_snn_config_t* confi
     bridge->stress_signal = 0.0f;
     bridge->balance_signal = 0.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "wellbeing_snn");
     return bridge;
 }
 
 void wellbeing_snn_destroy(wellbeing_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "wellbeing_snn");
 
     /* Phase 8: Heartbeat at operation start */
     wellbeing_snn_bridge_heartbeat("wellbeing_sn_wellbeing_snn_destro", 0.0f);

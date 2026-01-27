@@ -17,6 +17,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <math.h>
 #include <string.h>
@@ -118,6 +119,9 @@ struct mirror_snn_bridge {
     /* Health agent (instance-level) */
     nimcp_health_agent_t* health_agent;
 };
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(mirror_snn_bridge)
 
 //=============================================================================
 // Helper Functions
@@ -359,6 +363,7 @@ mirror_snn_bridge_t* mirror_snn_create(const mirror_snn_config_t* config) {
     NIMCP_LOG_INFO(LOG_MODULE, "Created mirror-SNN bridge (input=%u, hidden=%u, output=%u)",
         bridge->config.input_dim, bridge->config.hidden_dim, bridge->config.output_dim);
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "mirror_snn");
     return bridge;
 }
 
@@ -414,6 +419,7 @@ mirror_snn_bridge_t* mirror_snn_create_with_network(
 
 void mirror_snn_destroy(mirror_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "mirror_snn");
 
     /* Disconnect integrations */
     /* Phase 8: Heartbeat at operation start */
@@ -596,6 +602,7 @@ int mirror_snn_encode_observation(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_encode_observation: bridge or features is NULL or feature_dim is 0");
         return -1;
     }
+    BRIDGE_BBB_VALIDATE(bridge, features, feature_dim * sizeof(float));
 
     /* Phase 8: Heartbeat at operation start */
     mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_encode_ob", 0.0f);
@@ -653,6 +660,7 @@ int mirror_snn_encode_execution(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_encode_execution: bridge or motor_command is NULL or command_dim is 0");
         return -1;
     }
+    BRIDGE_BBB_VALIDATE(bridge, motor_command, command_dim * sizeof(float));
 
     /* Phase 8: Heartbeat at operation start */
     mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_encode_ex", 0.0f);
@@ -698,6 +706,7 @@ int mirror_snn_set_input_tensor(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_set_input_tensor: bridge or input is NULL");
         return -1;
     }
+    BRIDGE_BBB_VALIDATE(bridge, input, sizeof(void*));
     /* Phase 8: Heartbeat at operation start */
     mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_set_input", 0.0f);
 
@@ -898,6 +907,7 @@ int mirror_snn_forward(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_forward: bridge or features is NULL");
         return -1;
     }
+    BRIDGE_BBB_VALIDATE(bridge, features, feature_dim * sizeof(float));
 
     /* Encode observation */
     /* Phase 8: Heartbeat at operation start */
@@ -996,6 +1006,7 @@ float mirror_snn_train_step(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_train_step: bridge or features is NULL");
         return -1.0f;
     }
+    BRIDGE_BBB_VALIDATE(bridge, features, feature_dim * sizeof(float));
 
     /* Create target tensor */
     /* Phase 8: Heartbeat at operation start */

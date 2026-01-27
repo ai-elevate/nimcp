@@ -369,6 +369,7 @@ language_immune_bridge_t* language_immune_bridge_create(
 
 void language_immune_bridge_destroy(language_immune_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "language_immune");
 
     if (bridge->bio_async_registered) {
         language_immune_bridge_bio_async_unregister(bridge);

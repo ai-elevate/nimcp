@@ -14,6 +14,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -39,6 +40,8 @@ static inline void meta_learning_substrate_bridge_heartbeat(const char* operatio
         nimcp_health_agent_heartbeat_ex(g_meta_learning_substrate_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "META_LEARNING_SUBSTRATE_BRIDGE"
 
 
 struct meta_learning_substrate_bridge {
@@ -92,11 +95,13 @@ meta_learning_substrate_bridge_t* meta_learning_substrate_bridge_create(void* me
     bridge->effects.transfer_capacity = 1.0f;
     bridge->effects.plasticity_level = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
+    NIMCP_LOGGING_INFO("Created %s bridge", "meta_learning_substrate");
     return bridge;
 }
 
 void meta_learning_substrate_bridge_destroy(meta_learning_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "meta_learning_substrate");
     /* Phase 8: Heartbeat at operation start */
     meta_learning_substrate_bridge_heartbeat("meta_learnin_destroy", 0.0f);
 

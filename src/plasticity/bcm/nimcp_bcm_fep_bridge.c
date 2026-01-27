@@ -13,6 +13,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
+#include "security/nimcp_bbb_helpers.h"
 
 #define LOG_MODULE_BCM_FEP "BCM_FEP_BRIDGE"
 
@@ -44,6 +45,8 @@ static inline void bcm_fep_bridge_heartbeat(const char* operation, float progres
     }
 }
 
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(bcm_fep_bridge)
 
 int bcm_fep_bridge_default_config(bcm_fep_config_t* config) {
     NIMCP_API_CHECK_NULL(config, -1, "BCM-FEP config is NULL");

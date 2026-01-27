@@ -15,6 +15,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <string.h>
 #include <math.h>
 
@@ -72,6 +73,9 @@ struct mirror_substrate_bridge {
     uint64_t update_count;
     float prev_overall_capacity;
 };
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(mirror_substrate_bridge)
 
 mirror_substrate_config_t mirror_substrate_default_config(void) {
     /* Phase 8: Heartbeat at operation start */

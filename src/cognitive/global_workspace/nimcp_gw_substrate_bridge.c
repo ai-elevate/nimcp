@@ -46,6 +46,8 @@ static inline void gw_substrate_bridge_heartbeat(const char* operation, float pr
     }
 }
 
+#define LOG_MODULE "GW_SUBSTRATE_BRIDGE"
+
 
 /* Internal structure */
 struct gw_substrate_bridge {
@@ -111,6 +113,7 @@ gw_substrate_bridge_t* gw_substrate_bridge_create(void* gw, neural_substrate_t* 
     bridge->effects.processing_depth = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "gw_substrate");
     return bridge;
 }
 

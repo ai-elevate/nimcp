@@ -16,6 +16,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -41,6 +42,8 @@ static inline void vta_bio_async_bridge_heartbeat(const char* operation, float p
         nimcp_health_agent_heartbeat_ex(g_vta_bio_async_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "VTA_BIO_ASYNC_BRIDGE"
 
 
 /* Internal state cache */
@@ -126,11 +129,13 @@ vta_bio_async_bridge_t* vta_bio_async_bridge_create(const vta_bio_async_config_t
     }
 
     bridge->last_broadcast_us = get_timestamp_us();
+    NIMCP_LOGGING_INFO("Created %s bridge", "vta_bio_async");
     return bridge;
 }
 
 void vta_bio_async_bridge_destroy(vta_bio_async_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "vta_bio_async");
     if (bridge->connected) vta_bio_async_disconnect(bridge);
     free(bridge->subscriptions);
     free(bridge);

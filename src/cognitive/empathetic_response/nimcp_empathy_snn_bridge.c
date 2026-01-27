@@ -49,6 +49,8 @@ static inline void empathy_snn_bridge_heartbeat(const char* operation, float pro
     }
 }
 
+#define LOG_MODULE "EMPATHY_SNN_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -273,11 +275,13 @@ empathy_snn_bridge_t* empathy_snn_create(const empathy_snn_config_t* config) {
     bridge->mirroring_signal = 0.0f;
     bridge->compassion_signal = 0.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "empathy_snn");
     return bridge;
 }
 
 void empathy_snn_destroy(empathy_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "empathy_snn");
 
     /* Phase 8: Heartbeat at operation start */
     empathy_snn_bridge_heartbeat("empathy_snn__empathy_snn_destroy", 0.0f);

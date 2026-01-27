@@ -29,8 +29,11 @@
 #include <string.h>
 #include <math.h>
 
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
+
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -56,6 +59,20 @@ static inline void parietal_fep_bridge_heartbeat(const char* operation, float pr
         nimcp_health_agent_heartbeat_ex(g_parietal_fep_bridge_health_agent, operation, progress);
     }
 }
+
+/** @brief Send heartbeat from parietal_fep_bridge module (instance-level) */
+static inline void parietal_fep_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_parietal_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_parietal_fep_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_parietal_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+#define LOG_MODULE "PARIETAL_FEP_BRIDGE"
 
 
 /*=============================================================================
@@ -101,17 +118,14 @@ struct parietal_fep_bridge {
     void* surprise_user_data;
     parietal_fep_metrics_callback_t metrics_callback;
     void* metrics_user_data;
+
+    /* Health agent (instance-level) - Phase 8 */
+    nimcp_health_agent_t* health_agent;
 };
 
 /*=============================================================================
  * HELPER FUNCTIONS
  *===========================================================================*/
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static inline uint64_t get_time_ms(void) {
     return nimcp_platform_time_monotonic_ms();
@@ -151,7 +165,7 @@ static void compute_free_energy(
         float failure_rate = (parietal_stats->total_requests > 0) ?
             (float)parietal_stats->failed_requests / (float)parietal_stats->total_requests :
             0.0f;
-        m->spatial_uncertainty = clamp_f(failure_rate, 0.0f, 1.0f);
+        m->spatial_uncertainty = nimcp_myelin_clamp(failure_rate, 0.0f, 1.0f);
     } else {
         /* No operations yet - assume low uncertainty */
         m->spatial_uncertainty = 0.1f;
@@ -164,7 +178,7 @@ static void compute_free_energy(
     float body_schema_factor = (inflammation + fatigue) / 2.0f;
 
     /* Also consider rotation/transform operations */
-    m->body_schema_error = clamp_f(
+    m->body_schema_error = nimcp_myelin_clamp(
         body_schema_factor * 0.5f + (1.0f - parietal_stats->avg_confidence) * 0.5f,
         0.0f, 1.0f
     );
@@ -185,7 +199,7 @@ static void compute_free_energy(
     uint64_t math_failed = parietal_stats->failed_requests;
 
     if (math_ops > 0) {
-        m->math_prediction_error = clamp_f(
+        m->math_prediction_error = nimcp_myelin_clamp(
             (float)math_failed / (float)math_ops,
             0.0f, 1.0f
         );
@@ -204,13 +218,13 @@ static void compute_free_energy(
                      m->body_schema_contribution +
                      m->math_contribution;
 
-    m->free_energy = clamp_f(total_fe, 0.0f, cfg->max_free_energy);
+    m->free_energy = nimcp_myelin_clamp(total_fe, 0.0f, cfg->max_free_energy);
 
     /* Prediction error: EMA with decay */
     float current_error = (m->spatial_uncertainty + m->body_schema_error +
                           m->math_prediction_error) / 3.0f;
 
-    m->prediction_error = clamp_f(
+    m->prediction_error = nimcp_myelin_clamp(
         current_error * cfg->error_decay_rate +
         bridge->prev_prediction_error * (1.0f - cfg->error_decay_rate),
         0.0f, 1.0f
@@ -221,7 +235,7 @@ static void compute_free_energy(
     float spatial_change = fabsf(m->spatial_uncertainty - bridge->prev_spatial_uncertainty);
     float body_change = fabsf(m->body_schema_error - bridge->prev_body_schema_error);
 
-    m->surprise = clamp_f(
+    m->surprise = nimcp_myelin_clamp(
         (fe_change * 0.4f + spatial_change * 0.3f + body_change * 0.3f),
         0.0f, 1.0f
     );
@@ -229,7 +243,7 @@ static void compute_free_energy(
     /* Entropy: state uncertainty based on current processing */
     float uncertainty_sum = m->spatial_uncertainty + m->body_schema_error +
                            m->math_prediction_error;
-    m->entropy = clamp_f(uncertainty_sum / 3.0f, 0.0f, 1.0f);
+    m->entropy = nimcp_myelin_clamp(uncertainty_sum / 3.0f, 0.0f, 1.0f);
 
     /* Update operation counts */
     m->spatial_computations = (uint32_t)(parietal_stats->spatial.rotations_performed +
@@ -411,11 +425,13 @@ parietal_fep_bridge_t* parietal_fep_bridge_create(const parietal_fep_config_t* c
 
     bridge->state = PARIETAL_FEP_STATE_IDLE;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "parietal_fep");
     return bridge;
 }
 
 void parietal_fep_bridge_destroy(parietal_fep_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "parietal_fep");
 
     /* Unregister if still registered */
     /* Phase 8: Heartbeat at operation start */
@@ -966,4 +982,38 @@ const char* parietal_fep_state_name(parietal_fep_state_t state) {
         case PARIETAL_FEP_STATE_ERROR:         return "error";
         default:                                return "unknown";
     }
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B23 Upgrade)
+//=============================================================================
+
+void parietal_fep_bridge_set_instance_health_agent(
+    parietal_fep_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B23 Upgrade)
+//=============================================================================
+
+int parietal_fep_bridge_training_begin(parietal_fep_bridge_t* bridge) {
+    if (!bridge) return -1;
+    parietal_fep_bridge_heartbeat_instance(bridge->health_agent, "parietal_fep_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int parietal_fep_bridge_training_end(parietal_fep_bridge_t* bridge) {
+    if (!bridge) return -1;
+    parietal_fep_bridge_heartbeat_instance(bridge->health_agent, "parietal_fep_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int parietal_fep_bridge_training_step(parietal_fep_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    parietal_fep_bridge_heartbeat_instance(bridge->health_agent, "parietal_fep_bridge_training_step", progress);
+    return 0;
 }

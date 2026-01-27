@@ -8,10 +8,12 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <string.h>
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -38,6 +40,8 @@ static inline void social_thalamic_bridge_heartbeat(const char* operation, float
     }
 }
 
+#define LOG_MODULE "SOCIAL_THALAMIC_BRIDGE"
+
 
 struct social_thalamic_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
@@ -47,6 +51,8 @@ struct social_thalamic_bridge {
     social_thalamic_stats_t stats;
     float attention_weight;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS(social_thalamic_bridge)
 
 social_thalamic_config_t social_thalamic_default_config(void) {
     social_thalamic_config_t cfg = {
@@ -72,6 +78,7 @@ social_thalamic_bridge_t* social_thalamic_bridge_create(void* social, thalamic_r
     bridge->config = config ? *config : social_thalamic_default_config();
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    NIMCP_LOGGING_INFO("Created %s bridge", "social_thalamic");
     return bridge;
 }
 
@@ -88,6 +95,7 @@ int social_thalamic_bridge_reset(social_thalamic_bridge_t* bridge) {
 
 int social_thalamic_route_bond(social_thalamic_bridge_t* bridge, const social_thalamic_signal_t* signal) {
     if (!bridge || !signal) return -1;
+    BRIDGE_BBB_VALIDATE(bridge, signal, sizeof(social_thalamic_signal_t));
     /* Betrayal signals bypass attention gating */
     if (bridge->config.enable_attention_gating &&
         signal->social_salience < bridge->config.min_salience_threshold &&

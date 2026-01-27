@@ -53,6 +53,8 @@ static inline void occipital_cognitive_bridge_heartbeat(const char* operation, f
     }
 }
 
+#define LOG_MODULE "OCCIPITAL_COGNITIVE_BRIDGE"
+
 
 /*=============================================================================
  * LOGGING MODULE IDENTIFIER
@@ -362,6 +364,7 @@ occipital_cognitive_bridge_t* occipital_cognitive_bridge_create(
 
 void occipital_cognitive_bridge_destroy(occipital_cognitive_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "occipital_cognitive");
 
     LOG_INFO(COG_BRIDGE_LOG_MODULE, "Destroying cognitive bridge");
 

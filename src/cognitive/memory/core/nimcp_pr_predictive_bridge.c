@@ -17,6 +17,7 @@
 
 #include "cognitive/memory/core/nimcp_pr_predictive_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <string.h>
 #include <math.h>
@@ -55,6 +56,8 @@ static inline void pr_predictive_bridge_heartbeat(const char* operation, float p
     }
 }
 
+/* Security subsystem setters (Phase 1: Audit Gap Remediation) */
+BRIDGE_DEFINE_SECURITY_SETTERS(pr_predictive_bridge)
 
 //=============================================================================
 // Internal Constants

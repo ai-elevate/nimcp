@@ -11,12 +11,14 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <string.h>
 #include <math.h>
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -42,6 +44,8 @@ static inline void emotion_plasticity_bridge_heartbeat(const char* operation, fl
         nimcp_health_agent_heartbeat_ex(g_emotion_plasticity_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "EMOTION_PLASTICITY_BRIDGE"
 
 
 //=============================================================================
@@ -342,6 +346,7 @@ emotion_plasticity_bridge_t* emotion_plasticity_create(
 
 void emotion_plasticity_destroy(emotion_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "emotion_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_d", 0.0f);
@@ -1134,3 +1139,8 @@ bool emotion_plasticity_is_bio_async_connected(const emotion_plasticity_bridge_t
 
     return bridge->bio_async_connected;
 }
+
+/* ============================================================================
+ * Security Integration (BBB)
+ * ============================================================================ */
+BRIDGE_DEFINE_SECURITY_SETTERS(emotion_plasticity_bridge)

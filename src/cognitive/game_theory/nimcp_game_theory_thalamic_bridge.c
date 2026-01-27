@@ -12,6 +12,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -37,6 +38,8 @@ static inline void game_theory_thalamic_bridge_heartbeat(const char* operation, 
         nimcp_health_agent_heartbeat_ex(g_game_theory_thalamic_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "GAME_THEORY_THALAMIC_BRIDGE"
 
 
 struct game_theory_thalamic_bridge {
@@ -80,6 +83,7 @@ game_theory_thalamic_bridge_t* game_theory_thalamic_bridge_create(void* game_the
     bridge->config = config ? *config : game_theory_thalamic_default_config();
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    NIMCP_LOGGING_INFO("Created %s bridge", "game_theory_thalamic");
     return bridge;
 }
 

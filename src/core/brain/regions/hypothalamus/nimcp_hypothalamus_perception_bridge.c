@@ -55,6 +55,8 @@ static inline void hypothalamus_perception_bridge_heartbeat(const char* operatio
     }
 }
 
+#define LOG_MODULE "HYPOTHALAMUS_PERCEPTION_BRIDGE"
+
 
 /*=============================================================================
  * INTERNAL STRUCTURES
@@ -374,6 +376,7 @@ hypo_perception_bridge_t* hypo_perception_bridge_create(
 
 void hypo_perception_bridge_destroy(hypo_perception_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hypothalamus_perception");
 
     if (bridge->bio_registered) {
         hypo_perception_bridge_unregister_bio(bridge);

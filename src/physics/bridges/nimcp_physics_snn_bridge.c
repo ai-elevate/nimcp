@@ -39,6 +39,8 @@ static inline void physics_snn_bridge_heartbeat(const char* operation, float pro
     }
 }
 
+#define LOG_MODULE "PHYSICS_SNN_BRIDGE"
+
 
 //=============================================================================
 // Internal Constants
@@ -219,6 +221,7 @@ physics_snn_bridge_t* physics_snn_bridge_create(
 
 void physics_snn_bridge_destroy(physics_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "physics_snn");
 
     NIMCP_LOG_INFO(PHYSICS_SNN_MODULE_NAME,
         "Bridge destroyed - spikes: %lu, stdp_updates: %lu, "

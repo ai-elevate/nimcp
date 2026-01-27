@@ -38,12 +38,15 @@ static inline void temporal_substrate_bridge_heartbeat(const char* operation, fl
     }
 }
 
+#define LOG_MODULE "TEMPORAL_SUBSTRATE_BRIDGE"
+
 //=============================================================================
 // Temporal Cortex-Neural Substrate Bridge Implementation
 //=============================================================================
 
 #include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
 
 struct temporal_substrate_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
@@ -114,6 +117,7 @@ temporal_substrate_bridge_t* temporal_substrate_bridge_create(void* temporal,
 
 void temporal_substrate_bridge_destroy(temporal_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "temporal_substrate");
 
     /* Phase 8: Heartbeat at operation start */
     temporal_substrate_bridge_heartbeat("temporal_sub_destroy", 0.0f);

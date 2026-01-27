@@ -270,6 +270,7 @@ wernicke_gpu_bio_bridge_t* wernicke_gpu_bio_create(
 
 void wernicke_gpu_bio_destroy(wernicke_gpu_bio_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "wernicke_gpu_bio");
 
     /* Disconnect bio-async */
     if (bridge->bio_connected) {

@@ -49,6 +49,8 @@ static inline void autobio_snn_bridge_heartbeat(const char* operation, float pro
     }
 }
 
+#define LOG_MODULE "AUTOBIO_SNN_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -274,11 +276,13 @@ autobio_snn_bridge_t* autobio_snn_create(const autobio_snn_config_t* config) {
     bridge->temporal_signal = 0.0f;
     bridge->emotional_signal = 0.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "autobio_snn");
     return bridge;
 }
 
 void autobio_snn_destroy(autobio_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "autobio_snn");
 
     /* Phase 8: Heartbeat at operation start */
     autobio_snn_bridge_heartbeat("autobio_snn__autobio_snn_destroy", 0.0f);

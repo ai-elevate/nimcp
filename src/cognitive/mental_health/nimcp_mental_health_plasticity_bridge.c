@@ -45,6 +45,8 @@ static inline void mental_health_plasticity_bridge_heartbeat(const char* operati
     }
 }
 
+#define LOG_MODULE "MENTAL_HEALTH_PLASTICITY_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -235,6 +237,7 @@ mental_health_plasticity_bridge_t* mental_health_plasticity_create(
 
 void mental_health_plasticity_destroy(mental_health_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "mental_health_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     mental_health_plasticity_bridge_heartbeat("mental_healt_mental_health_plasti", 0.0f);

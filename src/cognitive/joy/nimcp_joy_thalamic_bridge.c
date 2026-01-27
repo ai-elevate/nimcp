@@ -17,6 +17,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -42,6 +43,8 @@ static inline void joy_thalamic_bridge_heartbeat(const char* operation, float pr
         nimcp_health_agent_heartbeat_ex(g_joy_thalamic_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "JOY_THALAMIC_BRIDGE"
 
 
 /* Source ID for joy signals in thalamic routing */
@@ -98,11 +101,13 @@ joy_thalamic_bridge_t* joy_thalamic_bridge_create(void* joy, thalamic_router_t* 
     bridge->config = config ? *config : joy_thalamic_default_config();
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    NIMCP_LOGGING_INFO("Created %s bridge", "joy_thalamic");
     return bridge;
 }
 
 void joy_thalamic_bridge_destroy(joy_thalamic_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "joy_thalamic");
     /* Phase 8: Heartbeat at operation start */
     joy_thalamic_bridge_heartbeat("joy_thalamic_destroy", 0.0f);
 

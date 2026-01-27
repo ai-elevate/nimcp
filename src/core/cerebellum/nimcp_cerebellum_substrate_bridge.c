@@ -38,12 +38,15 @@ static inline void cerebellum_substrate_bridge_heartbeat(const char* operation, 
     }
 }
 
+#define LOG_MODULE "CEREBELLUM_SUBSTRATE_BRIDGE"
+
 //=============================================================================
 // Cerebellum-Neural Substrate Bridge Implementation
 //=============================================================================
 
 #include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
 
 struct cerebellum_substrate_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
@@ -114,6 +117,7 @@ cerebellum_substrate_bridge_t* cerebellum_substrate_bridge_create(void* cerebell
 
 void cerebellum_substrate_bridge_destroy(cerebellum_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "cerebellum_substrate");
 
     /* Phase 8: Heartbeat at operation start */
     cerebellum_substrate_bridge_heartbeat("cerebellum_sub_destroy", 0.0f);

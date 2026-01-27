@@ -17,6 +17,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include "utils/logging/nimcp_logging.h"
+#include "security/nimcp_bbb_helpers.h"
 
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -45,6 +47,9 @@ static inline void eligibility_pr_bridge_heartbeat(const char* operation, float 
     }
 }
 
+/* Security integration */
+#define LOG_MODULE "ELIGIBILITY_PR_BRIDGE"
+
 
 //=============================================================================
 // Internal Structure
@@ -59,6 +64,8 @@ struct elig_pr_bridge_struct {
     float lambda_sum;
     uint32_t lambda_count;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(elig_pr_bridge, struct elig_pr_bridge_struct)
 
 //=============================================================================
 // Configuration Functions
@@ -155,6 +162,7 @@ elig_pr_bridge_t elig_pr_bridge_create(const elig_pr_bridge_config_t* config) {
     bridge->state.current_tier = ELIG_PR_TIER_Z0;
     bridge->state.bridge_coherence = 1.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "eligibility_pr");
     return bridge;
 }
 

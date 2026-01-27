@@ -12,6 +12,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <string.h>
 #include <math.h>
@@ -45,6 +46,7 @@ static inline void self_model_plasticity_bridge_heartbeat(const char* operation,
     }
 }
 
+#define LOG_MODULE "SELF_MODEL_PLASTICITY_BRIDGE"
 
 //=============================================================================
 // Internal Structures
@@ -80,6 +82,8 @@ struct self_model_plasticity_bridge {
     /* Statistics */
     self_model_plasticity_stats_t stats;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS(self_model_plasticity_bridge)
 
 //=============================================================================
 // Helper Functions
@@ -207,6 +211,7 @@ self_model_plasticity_bridge_t* self_model_plasticity_create(
 
 void self_model_plasticity_destroy(self_model_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "self_model_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     self_model_plasticity_bridge_heartbeat("self_model_p_self_model_plasticit", 0.0f);

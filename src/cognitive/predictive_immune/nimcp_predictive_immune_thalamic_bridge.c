@@ -13,6 +13,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -38,6 +39,8 @@ static inline void predictive_immune_thalamic_bridge_heartbeat(const char* opera
         nimcp_health_agent_heartbeat_ex(g_predictive_immune_thalamic_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "PREDICTIVE_IMMUNE_THALAMIC_BRIDGE"
 
 
 struct predictive_immune_thalamic_bridge {
@@ -86,11 +89,13 @@ predictive_immune_thalamic_bridge_t* predictive_immune_thalamic_bridge_create(vo
     bridge->config = config ? *config : predictive_immune_thalamic_default_config();
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    NIMCP_LOGGING_INFO("Created %s bridge", "predictive_immune_thalamic");
     return bridge;
 }
 
 void predictive_immune_thalamic_bridge_destroy(predictive_immune_thalamic_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "predictive_immune_thalamic");
     /* Phase 8: Heartbeat at operation start */
     predictive_immune_thalamic_bridge_heartbeat("predictive_i_destroy", 0.0f);
 

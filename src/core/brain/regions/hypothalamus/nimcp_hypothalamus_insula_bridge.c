@@ -47,6 +47,8 @@ static inline void hypothalamus_insula_bridge_heartbeat(const char* operation, f
     }
 }
 
+#define LOG_MODULE "HYPOTHALAMUS_INSULA_BRIDGE"
+
 
 /*=============================================================================
  * INTERNAL STRUCTURES
@@ -146,6 +148,7 @@ hypo_insula_bridge_t* hypo_insula_bridge_create(
 
 void hypo_insula_bridge_destroy(hypo_insula_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hypothalamus_insula");
 
     if (bridge->bio_registered) {
         hypo_insula_bridge_unregister_bio(bridge);

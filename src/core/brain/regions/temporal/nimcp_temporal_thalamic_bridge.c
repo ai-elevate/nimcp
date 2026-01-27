@@ -133,6 +133,7 @@ temporal_thalamic_bridge_t* temporal_thalamic_bridge_create(
 
 void temporal_thalamic_bridge_destroy(temporal_thalamic_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "temporal_thalamic");
 
     if (bridge->routed_signal_buffer) {
         nimcp_free(bridge->routed_signal_buffer);

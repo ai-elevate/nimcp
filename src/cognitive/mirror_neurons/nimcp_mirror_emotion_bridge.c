@@ -17,6 +17,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <math.h>
 #include <string.h>
@@ -49,6 +50,8 @@ static inline void mirror_emotion_bridge_heartbeat(const char* operation, float 
         nimcp_health_agent_heartbeat_ex(g_mirror_emotion_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "MIRROR_EMOTION_BRIDGE"
 
 static inline void mirror_emotion_bridge_heartbeat_instance(
     nimcp_health_agent_t* instance_agent, const char* operation, float progress)
@@ -96,6 +99,9 @@ struct mirror_emotion_bridge {
     /* Instance-level health agent (B22) */
     nimcp_health_agent_t* health_agent;
 };
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(mirror_emotion_bridge)
 
 //=============================================================================
 // SIMD Helper Functions
@@ -500,11 +506,13 @@ mirror_emotion_bridge_t* mirror_emotion_create(const mirror_emotion_config_t* co
               bridge->config.empathy_gain,
               bridge->config.enable_simd ? "enabled" : "disabled");
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "mirror_emotion");
     return bridge;
 }
 
 void mirror_emotion_destroy(mirror_emotion_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "mirror_emotion");
 
     /* Unregister from bio-async */
     /* Phase 8: Heartbeat at operation start */
@@ -531,6 +539,7 @@ bool mirror_emotion_process_observation(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_emotion_process_observation: required parameter is NULL");
         return false;
     }
+    BRIDGE_BBB_VALIDATE(bridge, observation, sizeof(*observation));
 
     /* Phase 8: Heartbeat at operation start */
     mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_proce", 0.0f);
@@ -672,6 +681,7 @@ uint32_t mirror_emotion_process_batch(
         }
         return 0;
     }
+    BRIDGE_BBB_VALIDATE(bridge, observations, count * sizeof(*observations));
 
     /* Phase 8: Heartbeat at operation start */
     mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_proce", 0.0f);

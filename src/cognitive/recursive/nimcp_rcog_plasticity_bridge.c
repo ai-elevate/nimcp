@@ -45,6 +45,8 @@ static inline void rcog_plasticity_bridge_heartbeat(const char* operation, float
     }
 }
 
+#define LOG_MODULE "RCOG_PLASTICITY_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -233,6 +235,7 @@ rcog_plasticity_bridge_t* rcog_plasticity_create(
 
 void rcog_plasticity_destroy(rcog_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "rcog_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     rcog_plasticity_bridge_heartbeat("rcog_plastic_rcog_plasticity_dest", 0.0f);

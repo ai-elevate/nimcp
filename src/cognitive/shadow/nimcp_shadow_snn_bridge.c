@@ -16,6 +16,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <string.h>
 #include <math.h>
@@ -48,6 +49,8 @@ static inline void shadow_snn_bridge_heartbeat(const char* operation, float prog
         nimcp_health_agent_heartbeat_ex(g_shadow_snn_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "SHADOW_SNN_BRIDGE"
 
 
 //=============================================================================
@@ -91,6 +94,8 @@ struct shadow_snn_bridge {
     /* Statistics */
     shadow_snn_stats_t stats;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS(shadow_snn_bridge)
 
 //=============================================================================
 // Helper Functions
@@ -247,11 +252,13 @@ shadow_snn_bridge_t* shadow_snn_create(const shadow_snn_config_t* config) {
     bridge->suppression_signal = 0.0f;
     bridge->unconscious_signal = 0.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "shadow_snn");
     return bridge;
 }
 
 void shadow_snn_destroy(shadow_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "shadow_snn");
 
     if (bridge->snn) {
         snn_network_destroy(bridge->snn);
@@ -316,6 +323,7 @@ int shadow_snn_encode_state(
     uint32_t num_dims
 ) {
     if (!bridge || !dimensions) return -1;
+    BRIDGE_BBB_VALIDATE(bridge, dimensions, num_dims * sizeof(float));
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -531,6 +539,7 @@ int shadow_snn_forward(
     uint32_t input_count
 ) {
     if (!bridge || !inputs) return -1;
+    BRIDGE_BBB_VALIDATE(bridge, inputs, input_count * sizeof(float));
 
     int spike_count = shadow_snn_encode_state(bridge, inputs, input_count);
     if (spike_count < 0) return -1;

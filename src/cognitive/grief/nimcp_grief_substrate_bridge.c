@@ -16,6 +16,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -41,6 +42,8 @@ static inline void grief_substrate_bridge_heartbeat(const char* operation, float
         nimcp_health_agent_heartbeat_ex(g_grief_substrate_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "GRIEF_SUBSTRATE_BRIDGE"
 
 
 struct grief_substrate_bridge {
@@ -107,11 +110,13 @@ grief_substrate_bridge_t* grief_substrate_bridge_create(void* grief, neural_subs
     bridge->effects.adaptation_rate = 1.0f;
     bridge->effects.resilience_level = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
+    NIMCP_LOGGING_INFO("Created %s bridge", "grief_substrate");
     return bridge;
 }
 
 void grief_substrate_bridge_destroy(grief_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "grief_substrate");
     /* Phase 8: Heartbeat at operation start */
     grief_substrate_bridge_heartbeat("grief_substr_destroy", 0.0f);
 

@@ -19,6 +19,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -44,6 +45,8 @@ static inline void prefrontal_quantum_bridge_heartbeat(const char* operation, fl
         nimcp_health_agent_heartbeat_ex(g_prefrontal_quantum_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "PREFRONTAL_QUANTUM_BRIDGE"
 
 
 /*=============================================================================
@@ -175,6 +178,7 @@ prefrontal_quantum_bridge_t* prefrontal_quantum_bridge_create(
 
 void prefrontal_quantum_bridge_destroy(prefrontal_quantum_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "prefrontal_quantum");
 
     if (bridge->decision_candidates) nimcp_free(bridge->decision_candidates);
     if (bridge->plan_candidates) nimcp_free(bridge->plan_candidates);

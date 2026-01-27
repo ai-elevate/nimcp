@@ -49,6 +49,8 @@ static inline void knowledge_snn_bridge_heartbeat(const char* operation, float p
     }
 }
 
+#define LOG_MODULE "KNOWLEDGE_SNN_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -274,11 +276,13 @@ knowledge_snn_bridge_t* knowledge_snn_create(const knowledge_snn_config_t* confi
     bridge->semantic_signal = 0.0f;
     bridge->retrieval_signal = 0.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "knowledge_snn");
     return bridge;
 }
 
 void knowledge_snn_destroy(knowledge_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "knowledge_snn");
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_destro", 0.0f);

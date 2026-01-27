@@ -14,6 +14,7 @@
 
 #include "cognitive/memory/core/nimcp_pr_speech_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -22,6 +23,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -47,6 +49,8 @@ static inline void pr_speech_bridge_heartbeat(const char* operation, float progr
         nimcp_health_agent_heartbeat_ex(g_pr_speech_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "PR_SPEECH_BRIDGE"
 
 
 //=============================================================================
@@ -272,12 +276,14 @@ pr_speech_bridge_t* pr_speech_bridge_create(const pr_speech_bridge_config_t* con
     bridge->fep_bridge = NULL;
     bridge->current_speech_memory = NULL;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "pr_speech");
     return bridge;
 }
 
 void pr_speech_bridge_destroy(pr_speech_bridge_t* bridge) {
     if (!bridge) {
         return;
+        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "pr_speech");
     }
 
     // Free word signatures cache

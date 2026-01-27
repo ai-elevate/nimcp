@@ -45,6 +45,8 @@ static inline void fep_plasticity_bridge_heartbeat(const char* operation, float 
     }
 }
 
+#define LOG_MODULE "FEP_PLASTICITY_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -235,6 +237,7 @@ fep_plasticity_bridge_t* fep_plasticity_create(
 
 void fep_plasticity_destroy(fep_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "fep_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     fep_plasticity_bridge_heartbeat("fep_plastici_fep_plasticity_destr", 0.0f);

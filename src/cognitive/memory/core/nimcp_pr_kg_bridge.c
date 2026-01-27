@@ -41,6 +41,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/memory/core/nimcp_pr_kg_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -76,7 +77,9 @@ static inline void pr_kg_bridge_heartbeat(const char* operation, float progress)
     }
 }
 
+#define LOG_MODULE "PR_KG_BRIDGE"
 
+/* Security subsystem setters (Phase 1: Audit Gap Remediation) */
 //=============================================================================
 // Platform-specific includes
 //=============================================================================
@@ -90,6 +93,7 @@ static inline void pr_kg_bridge_heartbeat(const char* operation, float progress)
     #define MUTEX_UNLOCK(m) LeaveCriticalSection(&(m))
 #else
     #include <pthread.h>
+#include "utils/logging/nimcp_logging.h"
     #define MUTEX_T pthread_mutex_t
     #define MUTEX_INIT(m) pthread_mutex_init(&(m), NULL)
     #define MUTEX_DESTROY(m) pthread_mutex_destroy(&(m))
@@ -159,6 +163,8 @@ struct pr_kg_bridge_struct {
     bool initialized;
     bool connected;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_kg_bridge, struct pr_kg_bridge_struct)
 
 //=============================================================================
 // Static Variables
@@ -542,12 +548,14 @@ pr_kg_bridge_t pr_kg_bridge_create(const pr_kg_bridge_config_t* config) {
     memset(&bridge->stats, 0, sizeof(bridge->stats));
 
     clear_error();
+    NIMCP_LOGGING_INFO("Created %s bridge", "pr_kg");
     return bridge;
 }
 
 void pr_kg_bridge_destroy(pr_kg_bridge_t bridge) {
     if (!bridge) {
         return;
+        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "pr_kg");
     }
 
     /* Phase 8: Heartbeat at operation start */

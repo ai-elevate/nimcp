@@ -13,6 +13,7 @@
 #include <stdlib.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -39,6 +40,8 @@ static inline void chemistry_biology_bridge_heartbeat(const char* operation, flo
         nimcp_health_agent_heartbeat_ex(g_chemistry_biology_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "CHEMISTRY_BIOLOGY_BRIDGE"
 
 
 struct nimcp_chemistry_biology_bridge_struct {
@@ -71,11 +74,13 @@ nimcp_chemistry_biology_bridge_t nimcp_chemistry_biology_create(const nimcp_chem
     NIMCP_API_CHECK_ALLOC(bridge, "Failed to allocate chemistry-biology bridge");
     bridge->config = config ? *config : nimcp_chemistry_biology_default_config();
     bridge->state.bridge_coherence = 1.0f;
+    NIMCP_LOGGING_INFO("Created %s bridge", "chemistry_biology");
     return bridge;
 }
 
 void nimcp_chemistry_biology_destroy(nimcp_chemistry_biology_bridge_t bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "chemistry_biology");
     if (bridge->is_initialized) nimcp_chemistry_biology_shutdown(bridge);
     free(bridge);
 }

@@ -51,6 +51,8 @@ static inline void security_collective_bridge_heartbeat(const char* operation, f
     }
 }
 
+#define LOG_MODULE "SECURITY_COLLECTIVE_BRIDGE"
+
 
 /* ============================================================================
  * Internal Constants
@@ -236,6 +238,7 @@ security_collective_bridge_t* security_collective_bridge_create(
 
 void security_collective_bridge_destroy(security_collective_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "security_collective");
 
     if (bridge->agent_byzantine_status) {
         nimcp_free(bridge->agent_byzantine_status);

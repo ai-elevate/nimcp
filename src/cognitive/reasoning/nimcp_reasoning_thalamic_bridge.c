@@ -10,6 +10,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <string.h>
 
 //=============================================================================
@@ -49,6 +50,8 @@ struct reasoning_thalamic_bridge {
     reasoning_thalamic_stats_t stats;
     float attention_weight;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS(reasoning_thalamic_bridge)
 
 reasoning_thalamic_config_t reasoning_thalamic_default_config(void) {
     /* Phase 8: Heartbeat at operation start */
@@ -126,6 +129,7 @@ int reasoning_thalamic_route_signal(
     const reasoning_thalamic_signal_t* signal
 ) {
     if (!bridge || !signal) return -1;
+    BRIDGE_BBB_VALIDATE(bridge, signal, sizeof(reasoning_thalamic_signal_t));
     /* Phase 8: Heartbeat at operation start */
     reasoning_thalamic_bridge_heartbeat("reasoning_th_reasoning_thalamic_r", 0.0f);
 

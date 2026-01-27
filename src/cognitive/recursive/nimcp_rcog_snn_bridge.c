@@ -49,6 +49,8 @@ static inline void rcog_snn_bridge_heartbeat(const char* operation, float progre
     }
 }
 
+#define LOG_MODULE "RCOG_SNN_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -276,11 +278,13 @@ rcog_snn_bridge_t* rcog_snn_create(const rcog_snn_config_t* config) {
     bridge->meta_cognitive_signal = 0.0f;
     bridge->self_reference_signal = 0.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "rcog_snn");
     return bridge;
 }
 
 void rcog_snn_destroy(rcog_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "rcog_snn");
 
     /* Phase 8: Heartbeat at operation start */
     rcog_snn_bridge_heartbeat("rcog_snn_bri_rcog_snn_destroy", 0.0f);

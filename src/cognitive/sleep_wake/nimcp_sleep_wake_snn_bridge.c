@@ -49,6 +49,8 @@ static inline void sleep_wake_snn_bridge_heartbeat(const char* operation, float 
     }
 }
 
+#define LOG_MODULE "SLEEP_WAKE_SNN_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -249,11 +251,13 @@ sleep_wake_snn_bridge_t* sleep_wake_snn_create(const sleep_wake_snn_config_t* co
     bridge->circadian_signal = 0.5f;
     bridge->prev_stage = 0;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "sleep_wake_snn");
     return bridge;
 }
 
 void sleep_wake_snn_destroy(sleep_wake_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "sleep_wake_snn");
 
     if (bridge->snn) {
         snn_network_destroy(bridge->snn);

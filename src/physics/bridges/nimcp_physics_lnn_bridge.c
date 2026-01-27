@@ -43,6 +43,8 @@ static inline void physics_lnn_bridge_heartbeat(const char* operation, float pro
     }
 }
 
+#define LOG_MODULE "PHYSICS_LNN_BRIDGE"
+
 
 //=============================================================================
 // Internal Structure
@@ -283,6 +285,7 @@ physics_lnn_bridge_t* physics_lnn_bridge_create(
 
 void physics_lnn_bridge_destroy(physics_lnn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "physics_lnn");
 
     NIMCP_LOG_INFO(PHYSICS_LNN_MODULE_NAME,
         "Bridge destroyed - spikes_encoded: %lu, lnn_forward: %lu",

@@ -195,6 +195,7 @@ temporal_quantum_bridge_t* temporal_quantum_bridge_create(
 
 void temporal_quantum_bridge_destroy(temporal_quantum_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "temporal_quantum");
 
     if (bridge->amplitude_buffer) {
         nimcp_free(bridge->amplitude_buffer);

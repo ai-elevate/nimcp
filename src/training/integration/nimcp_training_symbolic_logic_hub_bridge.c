@@ -18,6 +18,7 @@
 #include <time.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -44,6 +45,8 @@ static inline void training_symbolic_logic_hub_bridge_heartbeat(const char* oper
         nimcp_health_agent_heartbeat_ex(g_training_symbolic_logic_hub_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "TRAINING_SYMBOLIC_LOGIC_HUB_BRIDGE"
 
 
 /* ============================================================================
@@ -253,6 +256,7 @@ training_logic_hub_bridge_t* training_logic_hub_create(
 
 void training_logic_hub_destroy(training_logic_hub_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "training_symbolic_logic_hub");
 
     /* Disconnect if connected */
     if (bridge->state.is_connected) {

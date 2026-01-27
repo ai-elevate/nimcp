@@ -42,6 +42,8 @@ static inline void information_geometry_bridge_heartbeat(const char* operation, 
     }
 }
 
+#define LOG_MODULE "INFORMATION_GEOMETRY_BRIDGE"
+
 
 #define LOG_TAG "info_geom_bridge"
 
@@ -99,6 +101,7 @@ info_geom_bridge_t info_geom_bridge_create(const info_geom_bridge_config_t* conf
 void info_geom_bridge_destroy(info_geom_bridge_t bridge)
 {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "information_geometry");
 
     if (bridge->config.enable_logging) {
         NIMCP_LOG_INFO(LOG_TAG, "Destroying information geometry bridge");

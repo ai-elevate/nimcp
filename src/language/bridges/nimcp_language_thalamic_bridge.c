@@ -136,6 +136,7 @@ language_thalamic_bridge_t* language_thalamic_bridge_create(
 
 void language_thalamic_bridge_destroy(language_thalamic_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "language_thalamic");
 
     nimcp_free(bridge);
     LOG_INFO(LOG_MODULE, "Thalamic bridge destroyed");

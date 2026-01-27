@@ -23,6 +23,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -48,6 +49,8 @@ static inline void ofc_bio_async_bridge_heartbeat(const char* operation, float p
         nimcp_health_agent_heartbeat_ex(g_ofc_bio_async_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "OFC_BIO_ASYNC_BRIDGE"
 
 
 /* ============================================================================
@@ -198,6 +201,7 @@ ofc_bio_async_bridge_t* ofc_bio_async_bridge_create(
 void ofc_bio_async_bridge_destroy(ofc_bio_async_bridge_t* bridge)
 {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "ofc_bio_async");
 
     /* Disconnect if connected */
     if (bridge->connected) {

@@ -38,6 +38,8 @@ static inline void physics_swarm_bridge_heartbeat(const char* operation, float p
     }
 }
 
+#define LOG_MODULE "PHYSICS_SWARM_BRIDGE"
+
 
 //=============================================================================
 // Internal Structure
@@ -123,6 +125,7 @@ physics_swarm_bridge_t* physics_swarm_bridge_create(
 
 void physics_swarm_bridge_destroy(physics_swarm_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "physics_swarm");
 
     NIMCP_LOG_INFO(PHYSICS_SWARM_MODULE_NAME,
         "Bridge destroyed - syncs: %lu, boundaries: %lu, broadcasts: %lu",

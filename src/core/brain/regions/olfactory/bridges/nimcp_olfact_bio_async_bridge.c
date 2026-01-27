@@ -15,6 +15,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -40,6 +41,8 @@ static inline void olfact_bio_async_bridge_heartbeat(const char* operation, floa
         nimcp_health_agent_heartbeat_ex(g_olfact_bio_async_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "OLFACT_BIO_ASYNC_BRIDGE"
 
 
 /* ============================================================================
@@ -144,11 +147,13 @@ olfact_bio_async_bridge_t* olfact_bio_async_bridge_create(const olfact_bio_async
 
     bridge->last_broadcast_us = get_timestamp_us();
     bridge->current_odor_id = 1;
+    NIMCP_LOGGING_INFO("Created %s bridge", "olfact_bio_async");
     return bridge;
 }
 
 void olfact_bio_async_bridge_destroy(olfact_bio_async_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "olfact_bio_async");
 
     if (bridge->connected) {
         olfact_bio_async_disconnect(bridge);

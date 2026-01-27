@@ -10,6 +10,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -17,6 +18,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -43,7 +45,9 @@ static inline void pr_cognitive_bridge_heartbeat(const char* operation, float pr
     }
 }
 
+#define LOG_MODULE "PR_COGNITIVE_BRIDGE"
 
+/* Security subsystem setters (Phase 1: Audit Gap Remediation) */
 //=============================================================================
 // Internal Structures
 //=============================================================================
@@ -84,6 +88,8 @@ struct pr_cognitive_bridge_struct {
     bool initialized;
     uint64_t creation_time_ms;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_cognitive_bridge, struct pr_cognitive_bridge_struct)
 
 //=============================================================================
 // Helper Functions
@@ -364,6 +370,7 @@ pr_cognitive_bridge_t pr_cognitive_bridge_create(
 
 void pr_cognitive_bridge_destroy(pr_cognitive_bridge_t bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "pr_cognitive");
 
     /* Phase 8: Heartbeat at operation start */
     pr_cognitive_bridge_heartbeat("pr_cognitive_destroy", 0.0f);

@@ -49,6 +49,8 @@ static inline void consolidation_snn_bridge_heartbeat(const char* operation, flo
     }
 }
 
+#define LOG_MODULE "CONSOLIDATION_SNN_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -273,11 +275,13 @@ consolidation_snn_bridge_t* consolidation_snn_create(const consolidation_snn_con
     bridge->replay_signal = 0.0f;
     bridge->stabilization_signal = 0.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "consolidation_snn");
     return bridge;
 }
 
 void consolidation_snn_destroy(consolidation_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "consolidation_snn");
 
     /* Phase 8: Heartbeat at operation start */
     consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_de", 0.0f);

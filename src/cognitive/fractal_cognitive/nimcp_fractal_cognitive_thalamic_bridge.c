@@ -12,6 +12,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -37,6 +38,8 @@ static inline void fractal_cognitive_thalamic_bridge_heartbeat(const char* opera
         nimcp_health_agent_heartbeat_ex(g_fractal_cognitive_thalamic_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "FRACTAL_COGNITIVE_THALAMIC_BRIDGE"
 
 
 struct fractal_cognitive_thalamic_bridge {
@@ -85,11 +88,13 @@ fractal_cognitive_thalamic_bridge_t* fractal_cognitive_thalamic_bridge_create(vo
     bridge->config = config ? *config : fractal_cognitive_thalamic_default_config();
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    NIMCP_LOGGING_INFO("Created %s bridge", "fractal_cognitive_thalamic");
     return bridge;
 }
 
 void fractal_cognitive_thalamic_bridge_destroy(fractal_cognitive_thalamic_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "fractal_cognitive_thalamic");
     /* Phase 8: Heartbeat at operation start */
     fractal_cognitive_thalamic_bridge_heartbeat("fractal_cogn_destroy", 0.0f);
 

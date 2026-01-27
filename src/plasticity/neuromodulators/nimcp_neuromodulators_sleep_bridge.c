@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include <stddef.h>  /* for NULL */
+#include "security/nimcp_bbb_helpers.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -48,6 +49,7 @@ static inline void neuromodulators_sleep_bridge_heartbeat(const char* operation,
     }
 }
 
+/* Security integration */
 
 /* ============================================================================
  * Internal Structure
@@ -63,6 +65,8 @@ struct neuromod_sleep_bridge_struct {
     nimcp_platform_mutex_t* mutex;                    /**< Thread safety */
     bool callback_registered;  /**< Track if callback is registered for cleanup */
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(neuromod_sleep_bridge, struct neuromod_sleep_bridge_struct)
 
 /* Forward declarations */
 static void neuromod_on_sleep_state_change(sleep_state_t new_state, void* user_data);

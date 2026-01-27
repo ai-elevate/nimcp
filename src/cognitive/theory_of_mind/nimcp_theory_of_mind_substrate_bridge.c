@@ -8,6 +8,7 @@
  */
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -35,3 +36,5 @@ static inline void theory_of_mind_substrate_bridge_heartbeat(const char* operati
         nimcp_health_agent_heartbeat_ex(g_theory_of_mind_substrate_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "THEORY_OF_MIND_SUBSTRATE_BRIDGE"

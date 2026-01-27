@@ -23,6 +23,7 @@
 #include <time.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -49,6 +50,8 @@ static inline void dragonfly_immune_bridge_heartbeat(const char* operation, floa
         nimcp_health_agent_heartbeat_ex(g_dragonfly_immune_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "DRAGONFLY_IMMUNE_BRIDGE"
 
 
 //=============================================================================
@@ -298,6 +301,7 @@ dragonfly_immune_bridge_t dragonfly_immune_bridge_create(
 
 void dragonfly_immune_bridge_destroy(dragonfly_immune_bridge_t bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "dragonfly_immune");
 
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);

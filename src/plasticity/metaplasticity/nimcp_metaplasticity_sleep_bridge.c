@@ -13,6 +13,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
+#include "security/nimcp_bbb_helpers.h"
 
 #include <stddef.h>  /* for NULL */
 //=============================================================================
@@ -42,6 +43,8 @@ static inline void metaplasticity_sleep_bridge_heartbeat(const char* operation, 
     }
 }
 
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(metaplasticity_sleep_bridge)
 
 /* ============================================================================
  * Helper Functions

@@ -11,6 +11,7 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -37,6 +38,8 @@ static inline void dragonfly_workspace_bridge_heartbeat(const char* operation, f
         nimcp_health_agent_heartbeat_ex(g_dragonfly_workspace_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "DRAGONFLY_WORKSPACE_BRIDGE"
 
 
 //=============================================================================
@@ -166,6 +169,7 @@ dragonfly_workspace_bridge_t* dragonfly_ws_bridge_create(
 
 void dragonfly_ws_bridge_destroy(dragonfly_workspace_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "dragonfly_workspace");
     free(bridge);
 }
 

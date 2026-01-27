@@ -49,6 +49,8 @@ static inline void gw_snn_bridge_heartbeat(const char* operation, float progress
     }
 }
 
+#define LOG_MODULE "GW_SNN_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -273,11 +275,13 @@ gw_snn_bridge_t* gw_snn_create(const gw_snn_config_t* config) {
     bridge->ignition_signal = 0.0f;
     bridge->broadcast_signal = 0.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "gw_snn");
     return bridge;
 }
 
 void gw_snn_destroy(gw_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "gw_snn");
 
     /* Phase 8: Heartbeat at operation start */
     gw_snn_bridge_heartbeat("gw_snn_bridg_gw_snn_destroy", 0.0f);

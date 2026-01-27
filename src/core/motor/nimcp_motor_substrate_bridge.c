@@ -38,12 +38,15 @@ static inline void motor_substrate_bridge_heartbeat(const char* operation, float
     }
 }
 
+#define LOG_MODULE "MOTOR_SUBSTRATE_BRIDGE"
+
 //=============================================================================
 // Motor-Neural Substrate Bridge Implementation
 //=============================================================================
 
 #include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
 
 struct motor_substrate_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
@@ -114,6 +117,7 @@ motor_substrate_bridge_t* motor_substrate_bridge_create(void* motor,
 
 void motor_substrate_bridge_destroy(motor_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "motor_substrate");
 
     /* Phase 8: Heartbeat at operation start */
     motor_substrate_bridge_heartbeat("motor_sub_destroy", 0.0f);

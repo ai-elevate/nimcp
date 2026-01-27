@@ -17,6 +17,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/memory/core/nimcp_pr_snn_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -25,6 +26,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include <stdio.h>   /* for printf */
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -51,7 +53,9 @@ static inline void pr_snn_bridge_heartbeat(const char* operation, float progress
     }
 }
 
+#define LOG_MODULE "PR_SNN_BRIDGE"
 
+/* Security subsystem setters (Phase 1: Audit Gap Remediation) */
 //=============================================================================
 // Platform Abstraction
 //=============================================================================
@@ -66,6 +70,7 @@ static inline void pr_snn_bridge_heartbeat(const char* operation, float progress
     #define PR_MUTEX_UNLOCK(m) LeaveCriticalSection(&(m))
 #else
     #include <pthread.h>
+#include "utils/logging/nimcp_logging.h"
     typedef pthread_mutex_t pr_mutex_internal_t;
     #define PR_MUTEX_INIT(m) pthread_mutex_init(&(m), NULL)
     #define PR_MUTEX_DESTROY(m) pthread_mutex_destroy(&(m))
@@ -143,6 +148,8 @@ struct pr_snn_bridge_struct {
     /* State */
     bool initialized;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_snn_bridge, struct pr_snn_bridge_struct)
 
 //=============================================================================
 // Random Number Generation (xorshift128+)
@@ -386,11 +393,13 @@ NIMCP_EXPORT pr_snn_bridge_t pr_snn_bridge_create(const pr_snn_bridge_config_t* 
 
     bridge->initialized = true;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "pr_snn");
     return bridge;
 }
 
 NIMCP_EXPORT void pr_snn_bridge_destroy(pr_snn_bridge_t bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "pr_snn");
 
     /* Free buffers */
     free(bridge->rate_buffer);

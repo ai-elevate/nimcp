@@ -13,6 +13,7 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -40,6 +41,8 @@ static inline void swarm_quorum_fep_bridge_heartbeat(const char* operation, floa
     }
 }
 
+#define LOG_MODULE "SWARM_QUORUM_FEP_BRIDGE"
+
 
 void swarm_quorum_fep_default_config(swarm_quorum_fep_config_t* config) {
     if (!config) return;
@@ -66,11 +69,13 @@ swarm_quorum_fep_bridge_t* swarm_quorum_fep_create(const swarm_quorum_fep_config
     bridge->quorum_system = quorum_system;
     if (bridge_base_init(&bridge->base, 0, "swarm_quorum_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
+    NIMCP_LOGGING_INFO("Created %s bridge", "swarm_quorum_fep");
     return bridge;
 }
 
 void swarm_quorum_fep_destroy(swarm_quorum_fep_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "swarm_quorum_fep");
     if (bridge->base.bio_async_enabled) swarm_quorum_fep_disconnect_bio_async(bridge);
     if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);

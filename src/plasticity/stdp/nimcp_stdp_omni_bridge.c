@@ -18,6 +18,8 @@
 #include <time.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
+#include "security/nimcp_bbb_helpers.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -45,6 +47,9 @@ static inline void stdp_omni_bridge_heartbeat(const char* operation, float progr
     }
 }
 
+/* Security integration */
+#define LOG_MODULE "STDP_OMNI_BRIDGE"
+
 #endif
 
 //=============================================================================
@@ -60,6 +65,8 @@ struct stdp_omni_bridge_struct {
     bool mutex_initialized;
     bool initialized;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(stdp_omni_bridge, struct stdp_omni_bridge_struct)
 
 //=============================================================================
 // Helper Functions
@@ -165,11 +172,13 @@ stdp_omni_bridge_t stdp_omni_bridge_create(const stdp_omni_bridge_config_t* conf
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     bridge->initialized = true;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "stdp_omni");
     return bridge;
 }
 
 void stdp_omni_bridge_destroy(stdp_omni_bridge_t bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "stdp_omni");
     if (bridge->mutex_initialized) {
         nimcp_platform_mutex_destroy(&bridge->base.mutex);
     }

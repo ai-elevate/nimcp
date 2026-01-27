@@ -13,6 +13,7 @@
 #include <string.h>
 #include <math.h>
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <stddef.h>  /* for NULL */
 //=============================================================================
@@ -42,6 +43,8 @@ static inline void second_messengers_fep_bridge_heartbeat(const char* operation,
     }
 }
 
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(sm_fep_bridge)
 
 static inline float clamp(float value, float min, float max) {
     if (value < min) return min;

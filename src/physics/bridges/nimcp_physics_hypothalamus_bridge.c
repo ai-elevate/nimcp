@@ -43,6 +43,8 @@ static inline void physics_hypothalamus_bridge_heartbeat(const char* operation, 
     }
 }
 
+#define LOG_MODULE "PHYSICS_HYPOTHALAMUS_BRIDGE"
+
 
 //=============================================================================
 // Internal Structure
@@ -216,6 +218,7 @@ physics_hypo_bridge_t* physics_hypo_bridge_create(
 
 void physics_hypo_bridge_destroy(physics_hypo_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "physics_hypothalamus");
 
     NIMCP_LOG_INFO(PHYSICS_HYPO_MODULE_NAME,
         "Bridge destroyed - physics_to_hypo: %lu, hypo_to_physics: %lu",

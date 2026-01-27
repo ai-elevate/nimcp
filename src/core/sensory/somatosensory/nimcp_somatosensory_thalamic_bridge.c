@@ -17,6 +17,7 @@
 #include <string.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -43,6 +44,8 @@ static inline void somatosensory_thalamic_bridge_heartbeat(const char* operation
         nimcp_health_agent_heartbeat_ex(g_somatosensory_thalamic_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "SOMATOSENSORY_THALAMIC_BRIDGE"
 
 
 /**

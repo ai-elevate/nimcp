@@ -39,6 +39,8 @@ static inline void physics_training_bridge_heartbeat(const char* operation, floa
     }
 }
 
+#define LOG_MODULE "PHYSICS_TRAINING_BRIDGE"
+
 
 //=============================================================================
 // Internal Structure
@@ -112,6 +114,7 @@ physics_train_bridge_t* physics_train_bridge_create(
 
 void physics_train_bridge_destroy(physics_train_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "physics_training");
 
     NIMCP_LOG_INFO(PHYSICS_TRAIN_MODULE_NAME,
         "Bridge destroyed - modulations: %lu, blocks: %lu, cost: %.3f",

@@ -391,6 +391,7 @@ wernicke_nlp_bridge_t* wernicke_nlp_bridge_create(
 
 void wernicke_nlp_bridge_destroy(wernicke_nlp_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "wernicke_nlp");
 
     free_buffers(bridge);
     nimcp_free(bridge);

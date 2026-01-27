@@ -18,6 +18,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -43,6 +44,8 @@ static inline void bias_plasticity_bridge_heartbeat(const char* operation, float
         nimcp_health_agent_heartbeat_ex(g_bias_plasticity_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "BIAS_PLASTICITY_BRIDGE"
 
 
 //=============================================================================
@@ -241,6 +244,7 @@ bias_plasticity_bridge_t* bias_plasticity_create(
 
 void bias_plasticity_destroy(bias_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "bias_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_dest", 0.0f);

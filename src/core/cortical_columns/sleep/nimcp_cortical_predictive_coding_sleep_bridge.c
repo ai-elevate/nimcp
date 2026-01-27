@@ -41,6 +41,8 @@ static inline void cortical_predictive_coding_sleep_bridge_heartbeat(const char*
     }
 }
 
+#define LOG_MODULE "CORTICAL_PREDICTIVE_CODING_SLEEP_BRIDGE"
+
 
 struct cortical_predictive_coding_sleep_bridge_struct {
     bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
@@ -151,6 +153,7 @@ cortical_predictive_coding_sleep_bridge_t cortical_predictive_coding_sleep_bridg
 void cortical_predictive_coding_sleep_bridge_destroy(cortical_predictive_coding_sleep_bridge_t bridge)
 {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "cortical_predictive_coding_sleep");
     if (bridge->callback_registered) {
         sleep_unregister_state_callback(bridge->sleep_system, cortical_predictive_coding_on_sleep_state_change, bridge);
     }

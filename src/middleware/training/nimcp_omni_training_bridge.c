@@ -47,6 +47,8 @@ static inline void omni_training_bridge_heartbeat(const char* operation, float p
     }
 }
 
+#define LOG_MODULE "OMNI_TRAINING_BRIDGE"
+
 
 /* ============================================================================
  * Static Helpers
@@ -147,6 +149,7 @@ omni_training_bridge_t* omni_training_bridge_create(
 
 void omni_training_bridge_destroy(omni_training_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "omni_training");
 
     if (bridge->gradient_buffer) {
         nimcp_free(bridge->gradient_buffer);

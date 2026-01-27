@@ -9,6 +9,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <string.h>
 
 //=============================================================================
@@ -128,6 +129,7 @@ int emotion_thalamic_route_signal(
     const emotion_thalamic_signal_t* signal
 ) {
     if (!bridge || !signal) return -1;
+    BRIDGE_BBB_VALIDATE(bridge, signal, sizeof(emotion_thalamic_signal_t));
 
     /* Phase 8: Heartbeat at operation start */
     emotion_thalamic_bridge_heartbeat("emotion_thal_emotion_thalamic_rou", 0.0f);
@@ -304,3 +306,8 @@ int emotion_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
 }
+
+/* ============================================================================
+ * Security Integration (BBB)
+ * ============================================================================ */
+BRIDGE_DEFINE_SECURITY_SETTERS(emotion_thalamic_bridge)

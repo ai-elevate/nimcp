@@ -25,6 +25,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -50,6 +51,8 @@ static inline void mirror_empathy_fep_bridge_heartbeat(const char* operation, fl
         nimcp_health_agent_heartbeat_ex(g_mirror_empathy_fep_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "MIRROR_EMPATHY_FEP_BRIDGE"
 
 
 /*=============================================================================
@@ -375,11 +378,13 @@ me_fep_bridge_t* me_fep_bridge_create(const me_fep_config_t* config) {
 
     bridge->state = ME_FEP_STATE_IDLE;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "mirror_empathy_fep");
     return bridge;
 }
 
 void me_fep_bridge_destroy(me_fep_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "mirror_empathy_fep");
 
     /* Unregister if still registered */
     /* Phase 8: Heartbeat at operation start */

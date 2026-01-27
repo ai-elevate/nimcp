@@ -41,6 +41,8 @@ static inline void population_coding_pink_noise_bridge_heartbeat(const char* ope
     }
 }
 
+#define LOG_MODULE "POPULATION_CODING_PINK_NOISE_BRIDGE"
+
 
 //=============================================================================
 // Helper Functions
@@ -237,6 +239,7 @@ population_pink_bridge_t* population_pink_bridge_create(
 void population_pink_bridge_destroy(population_pink_bridge_t* bridge) {
     // Guard: NULL-safe
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "population_coding_pink_noise");
 
     // Destroy per-neuron generators
     if (bridge->per_neuron_generators) {

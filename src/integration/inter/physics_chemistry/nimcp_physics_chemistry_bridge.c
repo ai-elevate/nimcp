@@ -13,6 +13,7 @@
 #include <stdlib.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -39,6 +40,8 @@ static inline void physics_chemistry_bridge_heartbeat(const char* operation, flo
         nimcp_health_agent_heartbeat_ex(g_physics_chemistry_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "PHYSICS_CHEMISTRY_BRIDGE"
 
 
 struct nimcp_physics_chemistry_bridge_struct {
@@ -71,11 +74,13 @@ nimcp_physics_chemistry_bridge_t nimcp_physics_chemistry_create(const nimcp_phys
     bridge->config = config ? *config : nimcp_physics_chemistry_default_config();
     bridge->state.bridge_coherence = 1.0f;
     bridge->state.current_temperature = 310.0f;
+    NIMCP_LOGGING_INFO("Created %s bridge", "physics_chemistry");
     return bridge;
 }
 
 void nimcp_physics_chemistry_destroy(nimcp_physics_chemistry_bridge_t bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "physics_chemistry");
     if (bridge->is_initialized) nimcp_physics_chemistry_shutdown(bridge);
     free(bridge);
 }

@@ -256,6 +256,7 @@ language_prefrontal_bridge_t* language_prefrontal_bridge_create(
 
 void language_prefrontal_bridge_destroy(language_prefrontal_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "language_prefrontal");
 
     /* Free goals */
     goal_entry_t* g = bridge->goals;

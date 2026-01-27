@@ -16,6 +16,8 @@
 #include <time.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
+#include "security/nimcp_bbb_helpers.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -42,6 +44,9 @@ static inline void plasticity_bio_async_bridge_heartbeat(const char* operation, 
         nimcp_health_agent_heartbeat_ex(g_plasticity_bio_async_bridge_health_agent, operation, progress);
     }
 }
+
+/* Security integration */
+#define LOG_MODULE "PLASTICITY_BIO_ASYNC_BRIDGE"
 
 
 /* ============================================================================
@@ -79,6 +84,8 @@ struct plasticity_bio_async_bridge_struct {
     /* Statistics */
     plasticity_bio_async_stats_t stats;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS(plasticity_bio_async_bridge)
 
 /* ============================================================================
  * Helper Functions
@@ -227,6 +234,7 @@ plasticity_bio_async_bridge_t* plasticity_bio_async_bridge_create(
 
 void plasticity_bio_async_bridge_destroy(plasticity_bio_async_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "plasticity_bio_async");
 
     if (bridge->connected) {
         plasticity_bio_async_disconnect(bridge);

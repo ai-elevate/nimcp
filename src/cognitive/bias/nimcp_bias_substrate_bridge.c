@@ -14,6 +14,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -39,6 +40,8 @@ static inline void bias_substrate_bridge_heartbeat(const char* operation, float 
         nimcp_health_agent_heartbeat_ex(g_bias_substrate_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "BIAS_SUBSTRATE_BRIDGE"
 
 
 struct bias_substrate_bridge {
@@ -92,11 +95,13 @@ bias_substrate_bridge_t* bias_substrate_bridge_create(void* bias, neural_substra
     bridge->effects.metacognitive_oversight = 1.0f;
     bridge->effects.heuristic_resistance = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
+    NIMCP_LOGGING_INFO("Created %s bridge", "bias_substrate");
     return bridge;
 }
 
 void bias_substrate_bridge_destroy(bias_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "bias_substrate");
     /* Phase 8: Heartbeat at operation start */
     bias_substrate_bridge_heartbeat("bias_substra_destroy", 0.0f);
 

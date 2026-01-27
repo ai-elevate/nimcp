@@ -38,12 +38,15 @@ static inline void hippocampus_substrate_bridge_heartbeat(const char* operation,
     }
 }
 
+#define LOG_MODULE "HIPPOCAMPUS_SUBSTRATE_BRIDGE"
+
 //=============================================================================
 // Hippocampus-Neural Substrate Bridge Implementation
 //=============================================================================
 
 #include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
 
 struct hippocampus_substrate_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
@@ -114,6 +117,7 @@ hippocampus_substrate_bridge_t* hippocampus_substrate_bridge_create(void* hippoc
 
 void hippocampus_substrate_bridge_destroy(hippocampus_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hippocampus_substrate");
 
     /* Phase 8: Heartbeat at operation start */
     hippocampus_substrate_bridge_heartbeat("hippocampus_sub_destroy", 0.0f);

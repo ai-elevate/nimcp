@@ -39,6 +39,8 @@ static inline void physics_perception_bridge_heartbeat(const char* operation, fl
     }
 }
 
+#define LOG_MODULE "PHYSICS_PERCEPTION_BRIDGE"
+
 
 //=============================================================================
 // Internal Constants
@@ -228,6 +230,7 @@ physics_percept_bridge_t* physics_percept_bridge_create(
 
 void physics_percept_bridge_destroy(physics_percept_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "physics_perception");
 
     NIMCP_LOG_INFO(PHYSICS_PERCEPT_MODULE_NAME,
         "Bridge destroyed - visual: %lu, auditory: %lu, binding_events: %lu",

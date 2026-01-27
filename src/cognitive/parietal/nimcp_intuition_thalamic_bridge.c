@@ -12,6 +12,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -38,6 +39,20 @@ static inline void intuition_thalamic_bridge_heartbeat(const char* operation, fl
     }
 }
 
+/** @brief Send heartbeat from intuition_thalamic_bridge module (instance-level) */
+static inline void intuition_thalamic_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_intuition_thalamic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_intuition_thalamic_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_intuition_thalamic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+#define LOG_MODULE "INTUITION_THALAMIC_BRIDGE"
+
 
 struct intuition_thalamic_bridge {
     bridge_base_t base;
@@ -47,6 +62,9 @@ struct intuition_thalamic_bridge {
     intuition_thalamic_stats_t stats;
     float attention_weight;
     float signal_type_boosts[8]; /* Boost per signal type */
+
+    /* Health agent (instance-level) - Phase 8 */
+    nimcp_health_agent_t* health_agent;
 };
 
 intuition_thalamic_config_t intuition_thalamic_default_config(void) {
@@ -115,6 +133,7 @@ intuition_thalamic_bridge_t* intuition_thalamic_bridge_create(
 
 void intuition_thalamic_bridge_destroy(intuition_thalamic_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "intuition_thalamic");
     /* Phase 8: Heartbeat at operation start */
     intuition_thalamic_bridge_heartbeat("intuition_th_destroy", 0.0f);
 
@@ -449,4 +468,38 @@ int intuition_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Intuition_Thalamic_Bridge");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B23 Upgrade)
+//=============================================================================
+
+void intuition_thalamic_bridge_set_instance_health_agent(
+    intuition_thalamic_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B23 Upgrade)
+//=============================================================================
+
+int intuition_thalamic_bridge_training_begin(intuition_thalamic_bridge_t* bridge) {
+    if (!bridge) return -1;
+    intuition_thalamic_bridge_heartbeat_instance(bridge->health_agent, "intuition_thalamic_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int intuition_thalamic_bridge_training_end(intuition_thalamic_bridge_t* bridge) {
+    if (!bridge) return -1;
+    intuition_thalamic_bridge_heartbeat_instance(bridge->health_agent, "intuition_thalamic_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int intuition_thalamic_bridge_training_step(intuition_thalamic_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    intuition_thalamic_bridge_heartbeat_instance(bridge->health_agent, "intuition_thalamic_bridge_training_step", progress);
+    return 0;
 }

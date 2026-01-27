@@ -13,6 +13,7 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -40,6 +41,8 @@ static inline void swarm_signal_fep_bridge_heartbeat(const char* operation, floa
     }
 }
 
+#define LOG_MODULE "SWARM_SIGNAL_FEP_BRIDGE"
+
 
 void swarm_signal_fep_default_config(swarm_signal_fep_config_t* config) {
     if (!config) return;
@@ -59,7 +62,10 @@ swarm_signal_fep_bridge_t* swarm_signal_fep_create(const swarm_signal_fep_config
         return NULL;
     }
     swarm_signal_fep_bridge_t* bridge = (swarm_signal_fep_bridge_t*)nimcp_malloc(sizeof(swarm_signal_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Failed to allocate swarm_signal_fep bridge");
+        return NULL;
+    }
     memset(bridge, 0, sizeof(swarm_signal_fep_bridge_t));
     if (config) bridge->config = *config;
     else swarm_signal_fep_default_config(&bridge->config);
@@ -67,11 +73,13 @@ swarm_signal_fep_bridge_t* swarm_signal_fep_create(const swarm_signal_fep_config
     bridge->signal_ctx = signal_ctx;
     if (bridge_base_init(&bridge->base, 0, "swarm_signal_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
+    NIMCP_LOGGING_INFO("Created %s bridge", "swarm_signal_fep");
     return bridge;
 }
 
 void swarm_signal_fep_destroy(swarm_signal_fep_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "swarm_signal_fep");
     if (bridge->base.bio_async_enabled) swarm_signal_fep_disconnect_bio_async(bridge);
     if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);

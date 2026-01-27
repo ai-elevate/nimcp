@@ -16,6 +16,7 @@
 #include <time.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -42,6 +43,8 @@ static inline void thermo_bio_async_bridge_heartbeat(const char* operation, floa
         nimcp_health_agent_heartbeat_ex(g_thermo_bio_async_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "THERMO_BIO_ASYNC_BRIDGE"
 
 
 /* ============================================================================
@@ -165,6 +168,7 @@ thermo_bio_async_bridge_t* thermo_bio_async_bridge_create(
 
 void thermo_bio_async_bridge_destroy(thermo_bio_async_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "thermo_bio_async");
 
     if (bridge->connected) {
         thermo_bio_async_disconnect(bridge);

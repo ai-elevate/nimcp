@@ -15,6 +15,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -40,6 +41,8 @@ static inline void insula_quantum_bridge_heartbeat(const char* operation, float 
         nimcp_health_agent_heartbeat_ex(g_insula_quantum_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "INSULA_QUANTUM_BRIDGE"
 
 
 /*=============================================================================
@@ -185,6 +188,7 @@ insula_quantum_bridge_t* insula_quantum_bridge_create(
 
 void insula_quantum_bridge_destroy(insula_quantum_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "insula_quantum");
 
     if (bridge->intero_states) nimcp_free(bridge->intero_states);
     if (bridge->emotion_hypotheses) nimcp_free(bridge->emotion_hypotheses);

@@ -17,6 +17,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/memory/core/nimcp_pr_hypo_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -51,7 +52,9 @@ static inline void pr_hypo_bridge_heartbeat(const char* operation, float progres
     }
 }
 
+#define LOG_MODULE "PR_HYPO_BRIDGE"
 
+/* Security subsystem setters (Phase 1: Audit Gap Remediation) */
 //=============================================================================
 // Platform Abstraction
 //=============================================================================
@@ -65,6 +68,7 @@ static inline void pr_hypo_bridge_heartbeat(const char* operation, float progres
     #define PR_HYPO_MUTEX_UNLOCK(m) LeaveCriticalSection(&(m))
 #else
     #include <pthread.h>
+#include "utils/logging/nimcp_logging.h"
     typedef pthread_mutex_t pr_hypo_mutex_t;
     #define PR_HYPO_MUTEX_INIT(m) pthread_mutex_init(&(m), NULL)
     #define PR_HYPO_MUTEX_DESTROY(m) pthread_mutex_destroy(&(m))
@@ -191,6 +195,8 @@ struct pr_hypo_bridge_struct {
     bool initialized;
     uint64_t last_update_ms;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_hypo_bridge, struct pr_hypo_bridge_struct)
 
 //=============================================================================
 // Default Mappings
@@ -437,11 +443,13 @@ NIMCP_EXPORT pr_hypo_bridge_t pr_hypo_bridge_create(const pr_hypo_config_t* conf
     bridge->last_update_ms = get_time_ms();
     bridge->initialized = true;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "pr_hypo");
     return bridge;
 }
 
 NIMCP_EXPORT void pr_hypo_bridge_destroy(pr_hypo_bridge_t bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "pr_hypo");
 
     /* Destroy mutexes */
     if (bridge->neuromod_mutex_initialized) {

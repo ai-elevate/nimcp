@@ -150,6 +150,7 @@ language_logic_bridge_t* language_logic_bridge_create(
 
 void language_logic_bridge_destroy(language_logic_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "language_logic");
 
     nimcp_free(bridge);
     LOG_INFO(LOG_MODULE, "Logic bridge destroyed");

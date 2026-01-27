@@ -10,10 +10,12 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <string.h>
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -40,6 +42,8 @@ static inline void shadow_substrate_bridge_heartbeat(const char* operation, floa
     }
 }
 
+#define LOG_MODULE "SHADOW_SUBSTRATE_BRIDGE"
+
 
 struct shadow_substrate_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
@@ -53,6 +57,8 @@ struct shadow_substrate_bridge {
     uint64_t update_count;
     float prev_overall_capacity;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS(shadow_substrate_bridge)
 
 shadow_substrate_config_t shadow_substrate_default_config(void) {
     shadow_substrate_config_t cfg = { .enable_atp_modulation = true, .enable_fatigue_modulation = true,
@@ -84,11 +90,13 @@ shadow_substrate_bridge_t* shadow_substrate_bridge_create(void* shadow, neural_s
     bridge->effects.awareness_threshold = 0.5f;
     bridge->effects.projection_tendency = 0.0f;
     bridge->effects.overall_capacity = 1.0f;
+    NIMCP_LOGGING_INFO("Created %s bridge", "shadow_substrate");
     return bridge;
 }
 
 void shadow_substrate_bridge_destroy(shadow_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "shadow_substrate");
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
     }

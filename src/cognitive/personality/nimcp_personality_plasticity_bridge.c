@@ -45,6 +45,8 @@ static inline void personality_plasticity_bridge_heartbeat(const char* operation
     }
 }
 
+#define LOG_MODULE "PERSONALITY_PLASTICITY_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -233,6 +235,7 @@ personality_plasticity_bridge_t* personality_plasticity_create(
 
 void personality_plasticity_destroy(personality_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "personality_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     personality_plasticity_bridge_heartbeat("personality__personality_plastici", 0.0f);

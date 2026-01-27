@@ -9,6 +9,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <string.h>
 
 //=============================================================================
@@ -39,7 +40,6 @@ static inline void executive_thalamic_bridge_heartbeat(const char* operation, fl
     }
 }
 
-
 struct executive_thalamic_bridge {
     bridge_base_t base;  /* MUST be first - provides mutex protection */
     void* executive;
@@ -49,6 +49,8 @@ struct executive_thalamic_bridge {
     float attention_weight;
     float accumulated_switch_cost;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS(executive_thalamic_bridge)
 
 executive_thalamic_config_t executive_thalamic_default_config(void) {
     /* Phase 8: Heartbeat at operation start */

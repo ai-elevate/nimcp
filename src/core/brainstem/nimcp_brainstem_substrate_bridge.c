@@ -38,12 +38,15 @@ static inline void brainstem_substrate_bridge_heartbeat(const char* operation, f
     }
 }
 
+#define LOG_MODULE "BRAINSTEM_SUBSTRATE_BRIDGE"
+
 //=============================================================================
 // Brainstem-Neural Substrate Bridge Implementation
 //=============================================================================
 
 #include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
 
 struct brainstem_substrate_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
@@ -114,6 +117,7 @@ brainstem_substrate_bridge_t* brainstem_substrate_bridge_create(void* brainstem,
 
 void brainstem_substrate_bridge_destroy(brainstem_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "brainstem_substrate");
 
     /* Phase 8: Heartbeat at operation start */
     brainstem_substrate_bridge_heartbeat("brainstem_sub_destroy", 0.0f);

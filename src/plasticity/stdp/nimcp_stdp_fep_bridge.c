@@ -22,6 +22,7 @@
 #define LOG_MODULE_STDP_FEP "STDP_FEP_BRIDGE"
 
 #include <stddef.h>  /* for NULL */
+#include "security/nimcp_bbb_helpers.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -48,6 +49,9 @@ static inline void stdp_fep_bridge_heartbeat(const char* operation, float progre
         nimcp_health_agent_heartbeat_ex(g_stdp_fep_bridge_health_agent, operation, progress);
     }
 }
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(stdp_fep_bridge)
 
 
 /* ============================================================================

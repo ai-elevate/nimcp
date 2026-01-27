@@ -46,6 +46,8 @@ static inline void predictive_plasticity_bridge_heartbeat(const char* operation,
     }
 }
 
+#define LOG_MODULE "PREDICTIVE_PLASTICITY_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -236,6 +238,7 @@ predictive_plasticity_bridge_t* predictive_plasticity_create(
 
 void predictive_plasticity_destroy(predictive_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "predictive_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     predictive_plasticity_bridge_heartbeat("predictive_p_predictive_plasticit", 0.0f);

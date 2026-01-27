@@ -14,6 +14,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -39,6 +40,8 @@ static inline void emotion_recognition_substrate_bridge_heartbeat(const char* op
         nimcp_health_agent_heartbeat_ex(g_emotion_recognition_substrate_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "EMOTION_RECOGNITION_SUBSTRATE_BRIDGE"
 
 
 struct emotion_recognition_substrate_bridge {
@@ -92,11 +95,13 @@ emotion_recognition_substrate_bridge_t* emotion_recognition_substrate_bridge_cre
     bridge->effects.subtle_sensitivity = 1.0f;
     bridge->effects.context_integration = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
+    NIMCP_LOGGING_INFO("Created %s bridge", "emotion_recognition_substrate");
     return bridge;
 }
 
 void emotion_recognition_substrate_bridge_destroy(emotion_recognition_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "emotion_recognition_substrate");
     /* Phase 8: Heartbeat at operation start */
     emotion_recognition_substrate_bridge_heartbeat("emotion_reco_destroy", 0.0f);
 

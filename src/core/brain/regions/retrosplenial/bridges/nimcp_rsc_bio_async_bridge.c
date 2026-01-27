@@ -15,6 +15,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -40,6 +41,8 @@ static inline void rsc_bio_async_bridge_heartbeat(const char* operation, float p
         nimcp_health_agent_heartbeat_ex(g_rsc_bio_async_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "RSC_BIO_ASYNC_BRIDGE"
 
 
 /* ============================================================================
@@ -146,11 +149,13 @@ rsc_bio_async_router_t* rsc_bio_async_router_create(const rsc_bio_async_bridge_c
     }
 
     bridge->last_broadcast_us = get_timestamp_us();
+    NIMCP_LOGGING_INFO("Created %s bridge", "rsc_bio_async");
     return bridge;
 }
 
 void rsc_bio_async_router_destroy(rsc_bio_async_router_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "rsc_bio_async");
 
     if (bridge->connected) {
         rsc_bio_async_router_disconnect(bridge);

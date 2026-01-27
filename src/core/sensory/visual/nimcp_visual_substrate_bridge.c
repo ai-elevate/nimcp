@@ -38,12 +38,15 @@ static inline void visual_substrate_bridge_heartbeat(const char* operation, floa
     }
 }
 
+#define LOG_MODULE "VISUAL_SUBSTRATE_BRIDGE"
+
 //=============================================================================
 // Visual-Neural Substrate Bridge Implementation
 //=============================================================================
 
 #include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
 
 struct visual_substrate_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
@@ -114,6 +117,7 @@ visual_substrate_bridge_t* visual_substrate_bridge_create(void* visual,
 
 void visual_substrate_bridge_destroy(visual_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "visual_substrate");
 
     /* Phase 8: Heartbeat at operation start */
     visual_substrate_bridge_heartbeat("visual_sub_destroy", 0.0f);

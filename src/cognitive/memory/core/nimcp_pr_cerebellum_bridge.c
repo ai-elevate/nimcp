@@ -17,6 +17,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/memory/core/nimcp_pr_cerebellum_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -51,7 +52,9 @@ static inline void pr_cerebellum_bridge_heartbeat(const char* operation, float p
     }
 }
 
+#define LOG_MODULE "PR_CEREBELLUM_BRIDGE"
 
+/* Security subsystem setters (Phase 1: Audit Gap Remediation) */
 //=============================================================================
 // Platform Abstraction
 //=============================================================================
@@ -65,6 +68,7 @@ static inline void pr_cerebellum_bridge_heartbeat(const char* operation, float p
     #define PR_CEREB_MUTEX_UNLOCK(m) LeaveCriticalSection(&(m))
 #else
     #include <pthread.h>
+#include "utils/logging/nimcp_logging.h"
     typedef pthread_mutex_t pr_cereb_mutex_t;
     #define PR_CEREB_MUTEX_INIT(m) pthread_mutex_init(&(m), NULL)
     #define PR_CEREB_MUTEX_DESTROY(m) pthread_mutex_destroy(&(m))
@@ -207,6 +211,8 @@ struct pr_cerebellum_bridge_struct {
     bool initialized;
     uint64_t last_update_ms;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_cerebellum_bridge, struct pr_cerebellum_bridge_struct)
 
 //=============================================================================
 // Internal Sequence Management
@@ -397,6 +403,7 @@ NIMCP_EXPORT pr_cerebellum_bridge_t pr_cerebellum_bridge_create(
 
 NIMCP_EXPORT void pr_cerebellum_bridge_destroy(pr_cerebellum_bridge_t bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "pr_cerebellum");
 
     /* Free sequence elements */
     if (bridge->sequences) {

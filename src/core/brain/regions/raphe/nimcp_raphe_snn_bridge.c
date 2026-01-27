@@ -15,6 +15,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -40,6 +41,8 @@ static inline void raphe_snn_bridge_heartbeat(const char* operation, float progr
         nimcp_health_agent_heartbeat_ex(g_raphe_snn_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "RAPHE_SNN_BRIDGE"
 
 
 struct nimcp_raphe_snn_bridge {
@@ -107,6 +110,7 @@ nimcp_raphe_snn_bridge_t* nimcp_raphe_snn_create(const nimcp_raphe_snn_config_t*
 
 void nimcp_raphe_snn_destroy(nimcp_raphe_snn_bridge_t* b) {
     if (!b) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "raphe_snn");
     free(b->input_spikes);
     free(b->output_spikes);
     free(b);

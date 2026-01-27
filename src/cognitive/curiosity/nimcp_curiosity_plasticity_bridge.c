@@ -45,6 +45,8 @@ static inline void curiosity_plasticity_bridge_heartbeat(const char* operation, 
     }
 }
 
+#define LOG_MODULE "CURIOSITY_PLASTICITY_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -233,6 +235,7 @@ curiosity_plasticity_bridge_t* curiosity_plasticity_create(
 
 void curiosity_plasticity_destroy(curiosity_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "curiosity_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_plasticity_bridge_heartbeat("curiosity_pl_curiosity_plasticity", 0.0f);

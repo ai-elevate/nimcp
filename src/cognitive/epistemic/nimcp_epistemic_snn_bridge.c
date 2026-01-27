@@ -18,6 +18,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -43,6 +44,8 @@ static inline void epistemic_snn_bridge_heartbeat(const char* operation, float p
         nimcp_health_agent_heartbeat_ex(g_epistemic_snn_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "EPISTEMIC_SNN_BRIDGE"
 
 
 //=============================================================================
@@ -297,11 +300,13 @@ epistemic_snn_bridge_t* epistemic_snn_create(const epistemic_snn_config_t* confi
         return NULL;
     }
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "epistemic_snn");
     return bridge;
 }
 
 void epistemic_snn_destroy(epistemic_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "epistemic_snn");
 
     /* Phase 8: Heartbeat at operation start */
     epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_destro", 0.0f);

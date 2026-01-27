@@ -14,6 +14,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -39,6 +40,8 @@ static inline void emotional_tagging_substrate_bridge_heartbeat(const char* oper
         nimcp_health_agent_heartbeat_ex(g_emotional_tagging_substrate_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "EMOTIONAL_TAGGING_SUBSTRATE_BRIDGE"
 
 
 struct emotional_tagging_substrate_bridge {
@@ -92,11 +95,13 @@ emotional_tagging_substrate_bridge_t* emotional_tagging_substrate_bridge_create(
     bridge->effects.consolidation_quality = 1.0f;
     bridge->effects.retrieval_accuracy = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
+    NIMCP_LOGGING_INFO("Created %s bridge", "emotional_tagging_substrate");
     return bridge;
 }
 
 void emotional_tagging_substrate_bridge_destroy(emotional_tagging_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "emotional_tagging_substrate");
     /* Phase 8: Heartbeat at operation start */
     emotional_tagging_substrate_bridge_heartbeat("emotional_ta_destroy", 0.0f);
 

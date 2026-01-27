@@ -11,6 +11,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <string.h>
 #include <math.h>
@@ -18,6 +19,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -43,6 +45,8 @@ static inline void attention_snn_bridge_heartbeat(const char* operation, float p
         nimcp_health_agent_heartbeat_ex(g_attention_snn_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "ATTENTION_SNN_BRIDGE"
 
 
 //=============================================================================
@@ -88,6 +92,8 @@ struct attention_snn_bridge {
     bool bio_async_connected;
 
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS(attention_snn_bridge)
 
 //=============================================================================
 // Helper Functions
@@ -436,11 +442,13 @@ attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* confi
     bridge->current_competition_strength = bridge->config.inhibition_strength;
     bridge->bio_async_connected = false;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "attention_snn");
     return bridge;
 }
 
 void attention_snn_destroy(attention_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "attention_snn");
 
     /* Phase 8: Heartbeat at operation start */
     attention_snn_bridge_heartbeat("attention_sn_attention_snn_destro", 0.0f);
@@ -538,6 +546,9 @@ int attention_snn_encode_weights(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_encode_weights: bridge or attention_weights is NULL");
         return -1;
     }
+
+    BRIDGE_BBB_VALIDATE(bridge, attention_weights, num_heads * sizeof(float));
+
     /* Phase 8: Heartbeat at operation start */
     attention_snn_bridge_heartbeat("attention_sn_attention_snn_encode", 0.0f);
 
@@ -619,6 +630,8 @@ int attention_snn_encode_salience(
         return -1;
     }
 
+    BRIDGE_BBB_VALIDATE(bridge, salience, sequence_length * sizeof(float));
+
     /* Phase 8: Heartbeat at operation start */
     attention_snn_bridge_heartbeat("attention_sn_attention_snn_encode", 0.0f);
 
@@ -678,6 +691,8 @@ int attention_snn_encode_multihead(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_encode_multihead: bridge, mha, or input is NULL");
         return -1;
     }
+
+    BRIDGE_BBB_VALIDATE(bridge, input, sequence_length * sizeof(float));
 
     /* Phase 8: Heartbeat at operation start */
     attention_snn_bridge_heartbeat("attention_sn_attention_snn_encode", 0.0f);

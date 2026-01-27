@@ -18,6 +18,7 @@
 #include <time.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -44,6 +45,8 @@ static inline void neuromod_attention_bridge_heartbeat(const char* operation, fl
         nimcp_health_agent_heartbeat_ex(g_neuromod_attention_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "NEUROMOD_ATTENTION_BRIDGE"
 
 
 /* ============================================================================
@@ -139,11 +142,13 @@ neuromod_attention_bridge_t* neuromod_attention_create(const neuromod_attention_
 
     bridge->connected = true;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "neuromod_attention");
     return bridge;
 }
 
 void neuromod_attention_destroy(neuromod_attention_bridge_t* bridge) {
     if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "neuromod_attention");
     bridge->magic = 0;
     free(bridge);
 }

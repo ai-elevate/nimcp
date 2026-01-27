@@ -62,6 +62,8 @@ static inline void security_logging_bridge_heartbeat(const char* operation, floa
     }
 }
 
+#define LOG_MODULE "SECURITY_LOGGING_BRIDGE"
+
 
 /* ============================================================================
  * Module Constants
@@ -591,6 +593,7 @@ security_logging_bridge_t* security_logging_bridge_create(
 
 void security_logging_bridge_destroy(security_logging_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "security_logging");
 
     /* Flush pending entries */
     security_logging_flush(bridge);

@@ -26,6 +26,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <string.h>
 #include <math.h>
 
@@ -57,6 +58,8 @@ static inline void memory_consolidation_substrate_bridge_heartbeat(const char* o
     }
 }
 
+/* Security subsystem setters (Phase 1: Audit Gap Remediation) */
+BRIDGE_DEFINE_SECURITY_SETTERS(consolidation_substrate_bridge)
 
 /* ============================================================================
  * Helper Functions

@@ -45,6 +45,8 @@ static inline void empathy_plasticity_bridge_heartbeat(const char* operation, fl
     }
 }
 
+#define LOG_MODULE "EMPATHY_PLASTICITY_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -233,6 +235,7 @@ empathy_plasticity_bridge_t* empathy_plasticity_create(
 
 void empathy_plasticity_destroy(empathy_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "empathy_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     empathy_plasticity_bridge_heartbeat("empathy_plas_empathy_plasticity_d", 0.0f);

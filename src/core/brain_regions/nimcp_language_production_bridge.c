@@ -469,12 +469,14 @@ language_production_bridge_t* language_bridge_create(const language_bridge_confi
     LOG_INFO("Created language production bridge: queue=%u, encoding_dim=%u",
              cfg.max_message_queue, cfg.encoding_dim);
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "language_production");
     return bridge;
 }
 
 void language_bridge_destroy(language_production_bridge_t* bridge) {
     if (!validate_bridge(bridge)) {
         return;
+        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "language_production");
     }
 
     LOG_INFO("Destroying language production bridge");

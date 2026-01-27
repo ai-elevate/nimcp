@@ -14,6 +14,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -39,6 +40,8 @@ static inline void analysis_substrate_bridge_heartbeat(const char* operation, fl
         nimcp_health_agent_heartbeat_ex(g_analysis_substrate_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "ANALYSIS_SUBSTRATE_BRIDGE"
 
 
 struct analysis_substrate_bridge {
@@ -86,11 +89,13 @@ analysis_substrate_bridge_t* analysis_substrate_bridge_create(void* analysis, ne
     bridge->effects.processing_speed = 1.0f;
     bridge->effects.decomposition_ability = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
+    NIMCP_LOGGING_INFO("Created %s bridge", "analysis_substrate");
     return bridge;
 }
 
 void analysis_substrate_bridge_destroy(analysis_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "analysis_substrate");
     /* Phase 8: Heartbeat at operation start */
     analysis_substrate_bridge_heartbeat("analysis_sub_destroy", 0.0f);
 

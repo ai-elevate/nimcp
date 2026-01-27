@@ -17,6 +17,8 @@
 #include <math.h>
 #include <stdio.h>
 
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
+
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -44,6 +46,20 @@ static inline void parietal_plasticity_bridge_heartbeat(const char* operation, f
         nimcp_health_agent_heartbeat_ex(g_parietal_plasticity_bridge_health_agent, operation, progress);
     }
 }
+
+/** @brief Send heartbeat from parietal_plasticity_bridge module (instance-level) */
+static inline void parietal_plasticity_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_parietal_plasticity_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_parietal_plasticity_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_parietal_plasticity_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+#define LOG_MODULE "PARIETAL_PLASTICITY_BRIDGE"
 
 
 //=============================================================================
@@ -85,17 +101,14 @@ struct parietal_plasticity_bridge {
 
     /* Statistics */
     parietal_plasticity_stats_t stats;
+
+    /* Health agent (instance-level) - Phase 8 */
+    nimcp_health_agent_t* health_agent;
 };
 
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static synapse_entry_t* find_synapse(parietal_plasticity_bridge_t* bridge, uint32_t synapse_id) {
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
@@ -233,6 +246,7 @@ parietal_plasticity_bridge_t* parietal_plasticity_create(
 
 void parietal_plasticity_destroy(parietal_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "parietal_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
@@ -319,7 +333,7 @@ int parietal_plasticity_register_synapse(
     slot->in_use = true;
     slot->synapse.synapse_id = synapse_id;
     slot->synapse.type = type;
-    slot->synapse.weight = clamp_f(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
+    slot->synapse.weight = nimcp_myelin_clamp(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
     slot->synapse.initial_weight = slot->synapse.weight;
     slot->synapse.eligibility_trace = 0.0f;
     slot->synapse.bcm_threshold = bridge->config.bcm_target_rate;
@@ -501,7 +515,7 @@ int parietal_plasticity_learn(
 
     /* Apply weight change */
     float old_weight = entry->synapse.weight;
-    entry->synapse.weight = clamp_f(
+    entry->synapse.weight = nimcp_myelin_clamp(
         entry->synapse.weight + weight_change,
         bridge->config.weight_min,
         bridge->config.weight_max
@@ -573,7 +587,7 @@ float parietal_plasticity_apply_stdp(
 
     /* Apply weight change */
     float old_weight = entry->synapse.weight;
-    entry->synapse.weight = clamp_f(
+    entry->synapse.weight = nimcp_myelin_clamp(
         entry->synapse.weight + delta_w,
         bridge->config.weight_min,
         bridge->config.weight_max
@@ -605,7 +619,7 @@ int parietal_plasticity_apply_reward(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    reward = clamp_f(reward, -1.0f, 1.0f);
+    reward = nimcp_myelin_clamp(reward, -1.0f, 1.0f);
     bridge->current_reward = reward;
 
     /* Apply reward modulation to all eligible synapses */
@@ -620,7 +634,7 @@ int parietal_plasticity_apply_reward(
             float trace = bridge->synapses[i].synapse.eligibility_trace;
             if (fabsf(trace) > 0.001f) {
                 float delta = bridge->config.base_learning_rate * reward * trace;
-                bridge->synapses[i].synapse.weight = clamp_f(
+                bridge->synapses[i].synapse.weight = nimcp_myelin_clamp(
                     bridge->synapses[i].synapse.weight + delta,
                     bridge->config.weight_min,
                     bridge->config.weight_max
@@ -712,7 +726,7 @@ int parietal_plasticity_homeostatic_update(
     float scale_factor = 1.0f;
     if (mean_spatial > 0.0f) {
         scale_factor = target / mean_spatial;
-        scale_factor = clamp_f(scale_factor, 0.9f, 1.1f);
+        scale_factor = nimcp_myelin_clamp(scale_factor, 0.9f, 1.1f);
     }
 
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
@@ -724,7 +738,7 @@ int parietal_plasticity_homeostatic_update(
 
         if (bridge->synapses[i].in_use && !bridge->synapses[i].synapse.is_protected) {
             float scaled = bridge->synapses[i].synapse.weight * (1.0f + (scale_factor - 1.0f) * (1.0f - decay));
-            bridge->synapses[i].synapse.weight = clamp_f(
+            bridge->synapses[i].synapse.weight = nimcp_myelin_clamp(
                 scaled,
                 bridge->config.weight_min,
                 bridge->config.weight_max
@@ -1033,4 +1047,38 @@ bool parietal_plasticity_is_bio_async_connected(parietal_plasticity_bridge_t* br
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B23 Upgrade)
+//=============================================================================
+
+void parietal_plasticity_bridge_set_instance_health_agent(
+    parietal_plasticity_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B23 Upgrade)
+//=============================================================================
+
+int parietal_plasticity_bridge_training_begin(parietal_plasticity_bridge_t* bridge) {
+    if (!bridge) return -1;
+    parietal_plasticity_bridge_heartbeat_instance(bridge->health_agent, "parietal_plasticity_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int parietal_plasticity_bridge_training_end(parietal_plasticity_bridge_t* bridge) {
+    if (!bridge) return -1;
+    parietal_plasticity_bridge_heartbeat_instance(bridge->health_agent, "parietal_plasticity_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int parietal_plasticity_bridge_training_step(parietal_plasticity_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    parietal_plasticity_bridge_heartbeat_instance(bridge->health_agent, "parietal_plasticity_bridge_training_step", progress);
+    return 0;
 }

@@ -47,6 +47,8 @@ static inline void hypothalamus_sleep_bridge_heartbeat(const char* operation, fl
     }
 }
 
+#define LOG_MODULE "HYPOTHALAMUS_SLEEP_BRIDGE"
+
 
 /*=============================================================================
  * INTERNAL STRUCTURES
@@ -188,6 +190,7 @@ hypo_sleep_bridge_t* hypo_sleep_bridge_create(
 
 void hypo_sleep_bridge_destroy(hypo_sleep_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hypothalamus_sleep");
 
     if (bridge->bio_registered) {
         hypo_sleep_bridge_unregister_bio(bridge);

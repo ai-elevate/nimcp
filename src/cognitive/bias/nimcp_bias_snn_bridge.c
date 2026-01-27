@@ -18,6 +18,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -43,6 +44,8 @@ static inline void bias_snn_bridge_heartbeat(const char* operation, float progre
         nimcp_health_agent_heartbeat_ex(g_bias_snn_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "BIAS_SNN_BRIDGE"
 
 
 //=============================================================================
@@ -303,11 +306,13 @@ bias_snn_bridge_t* bias_snn_create(const bias_snn_config_t* config) {
         return NULL;
     }
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "bias_snn");
     return bridge;
 }
 
 void bias_snn_destroy(bias_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "bias_snn");
 
     /* Phase 8: Heartbeat at operation start */
     bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_destroy", 0.0f);

@@ -45,6 +45,8 @@ static inline void introspection_plasticity_bridge_heartbeat(const char* operati
     }
 }
 
+#define LOG_MODULE "INTROSPECTION_PLASTICITY_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -207,6 +209,7 @@ introspection_plasticity_bridge_t* introspection_plasticity_create(
 
 void introspection_plasticity_destroy(introspection_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "introspection_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     introspection_plasticity_bridge_heartbeat("introspectio_introspection_plasti", 0.0f);

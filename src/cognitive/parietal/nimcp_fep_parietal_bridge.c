@@ -15,6 +15,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -41,6 +42,20 @@ static inline void fep_parietal_bridge_heartbeat(const char* operation, float pr
     }
 }
 
+/** @brief Send heartbeat from fep_parietal_bridge module (instance-level) */
+static inline void fep_parietal_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_fep_parietal_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_fep_parietal_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_fep_parietal_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+#define LOG_MODULE "FEP_PARIETAL_BRIDGE"
+
 
 /* ============================================================================
  * INTERNAL STRUCTURES
@@ -54,6 +69,9 @@ struct fep_parietal_bridge {
     float fatigue_level;
     fep_parietal_stats_t stats;
     fep_system_t* fep_system;
+
+    /* Health agent (instance-level) - Phase 8 */
+    nimcp_health_agent_t* health_agent;
 };
 
 /* Thread-local error message */
@@ -119,6 +137,7 @@ fep_parietal_bridge_t* fep_parietal_bridge_create(const fep_parietal_config_t* c
     }
     bridge->config = config ? *config : fep_parietal_default_config();
     bridge->enabled = bridge->config.enabled;
+    NIMCP_LOGGING_INFO("Created %s bridge", "fep_parietal");
     return bridge;
 }
 
@@ -620,4 +639,38 @@ int fep_parietal_bridge_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "FEP_Parietal_Bridge");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B23 Upgrade)
+//=============================================================================
+
+void fep_parietal_bridge_set_instance_health_agent(
+    fep_parietal_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B23 Upgrade)
+//=============================================================================
+
+int fep_parietal_bridge_training_begin(fep_parietal_bridge_t* bridge) {
+    if (!bridge) return -1;
+    fep_parietal_bridge_heartbeat_instance(bridge->health_agent, "fep_parietal_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int fep_parietal_bridge_training_end(fep_parietal_bridge_t* bridge) {
+    if (!bridge) return -1;
+    fep_parietal_bridge_heartbeat_instance(bridge->health_agent, "fep_parietal_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int fep_parietal_bridge_training_step(fep_parietal_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    fep_parietal_bridge_heartbeat_instance(bridge->health_agent, "fep_parietal_bridge_training_step", progress);
+    return 0;
 }

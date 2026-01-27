@@ -49,6 +49,8 @@ static inline void introspection_snn_bridge_heartbeat(const char* operation, flo
     }
 }
 
+#define LOG_MODULE "INTROSPECTION_SNN_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -274,11 +276,13 @@ introspection_snn_bridge_t* introspection_snn_create(const introspection_snn_con
     bridge->uncertainty_signal = 0.0f;
     bridge->error_signal = 0.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "introspection_snn");
     return bridge;
 }
 
 void introspection_snn_destroy(introspection_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "introspection_snn");
 
     /* Phase 8: Heartbeat at operation start */
     introspection_snn_bridge_heartbeat("introspectio_introspection_snn_de", 0.0f);

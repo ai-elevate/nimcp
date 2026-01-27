@@ -17,6 +17,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/memory/core/nimcp_pr_logging_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -51,7 +52,9 @@ static inline void pr_logging_bridge_heartbeat(const char* operation, float prog
     }
 }
 
+#define LOG_MODULE "PR_LOGGING_BRIDGE"
 
+/* Security subsystem setters (Phase 1: Audit Gap Remediation) */
 //=============================================================================
 // Platform Abstraction
 //=============================================================================
@@ -78,6 +81,7 @@ static inline void pr_logging_bridge_heartbeat(const char* operation, float prog
     #include <pthread.h>
     #include <unistd.h>
     #include <sys/syscall.h>
+#include "utils/logging/nimcp_logging.h"
     typedef pthread_mutex_t pr_log_mutex_t;
     #define PR_LOG_MUTEX_INIT(m) pthread_mutex_init(&(m), NULL)
     #define PR_LOG_MUTEX_DESTROY(m) pthread_mutex_destroy(&(m))
@@ -225,6 +229,8 @@ struct pr_logging_bridge_struct {
     bool initialized;
 };
 
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_logging_bridge, struct pr_logging_bridge_struct)
+
 //=============================================================================
 // Configuration Functions
 //=============================================================================
@@ -359,6 +365,7 @@ NIMCP_EXPORT pr_logging_bridge_t pr_logging_bridge_create(
 
 NIMCP_EXPORT void pr_logging_bridge_destroy(pr_logging_bridge_t bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "pr_logging");
 
     /* Close log file */
     if (bridge->log_file) {

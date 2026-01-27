@@ -16,6 +16,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -41,6 +42,8 @@ static inline void raphe_bio_async_bridge_heartbeat(const char* operation, float
         nimcp_health_agent_heartbeat_ex(g_raphe_bio_async_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "RAPHE_BIO_ASYNC_BRIDGE"
 
 
 /* Internal state cache */
@@ -125,11 +128,13 @@ raphe_bio_async_bridge_t* raphe_bio_async_bridge_create(const raphe_bio_async_co
     }
 
     bridge->last_broadcast_us = get_timestamp_us();
+    NIMCP_LOGGING_INFO("Created %s bridge", "raphe_bio_async");
     return bridge;
 }
 
 void raphe_bio_async_bridge_destroy(raphe_bio_async_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "raphe_bio_async");
     if (bridge->connected) raphe_bio_async_disconnect(bridge);
     free(bridge->subscriptions);
     free(bridge);

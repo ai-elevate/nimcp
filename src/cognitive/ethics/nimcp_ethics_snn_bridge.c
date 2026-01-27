@@ -49,6 +49,8 @@ static inline void ethics_snn_bridge_heartbeat(const char* operation, float prog
     }
 }
 
+#define LOG_MODULE "ETHICS_SNN_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -264,11 +266,13 @@ ethics_snn_bridge_t* ethics_snn_create(const ethics_snn_config_t* config) {
     bridge->current_time_us = nimcp_time_get_us();
     bridge->bio_async_connected = false;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "ethics_snn");
     return bridge;
 }
 
 void ethics_snn_destroy(ethics_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "ethics_snn");
 
     /* Phase 8: Heartbeat at operation start */
     ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_destroy", 0.0f);

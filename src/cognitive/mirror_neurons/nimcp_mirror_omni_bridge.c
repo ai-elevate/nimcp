@@ -13,6 +13,7 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <string.h>
 #include <math.h>
 #include "glial/myelin_sheath/nimcp_myelin_math.h"
@@ -57,6 +58,8 @@ static inline void mirror_omni_bridge_heartbeat_instance(
     }
 }
 
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(mirror_omni_bridge)
 
 /* ============================================================================
  * Helper Functions
@@ -998,6 +1001,7 @@ int mirror_omni_validate_motor_sequence(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_omni_validate_motor_sequence: bridge, action_ids, or feasible is NULL");
         return -1;
     }
+    BRIDGE_BBB_VALIDATE(bridge, action_ids, num_actions * sizeof(uint32_t));
 
     /* Phase 8: Heartbeat at operation start */
     mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_validate", 0.0f);

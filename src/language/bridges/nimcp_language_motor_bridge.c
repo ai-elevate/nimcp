@@ -48,6 +48,8 @@ static inline void language_motor_bridge_heartbeat(const char* operation, float 
     }
 }
 
+#define LOG_MODULE "LANGUAGE_MOTOR_BRIDGE"
+
 
 //=============================================================================
 // Internal Constants
@@ -408,6 +410,7 @@ void language_motor_bridge_destroy(language_motor_bridge_t* bridge)
 {
     if (!bridge) {
         return;
+        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "language_motor");
     }
 
     if (bridge->log_ctx) {

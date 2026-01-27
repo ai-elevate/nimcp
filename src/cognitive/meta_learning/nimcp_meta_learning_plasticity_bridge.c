@@ -45,6 +45,8 @@ static inline void meta_learning_plasticity_bridge_heartbeat(const char* operati
     }
 }
 
+#define LOG_MODULE "META_LEARNING_PLASTICITY_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -208,6 +210,7 @@ meta_learning_plasticity_bridge_t* meta_learning_plasticity_create(
 
 void meta_learning_plasticity_destroy(meta_learning_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "meta_learning_plasticity");
 
     /* Cleanup base bridge infrastructure */
     /* Phase 8: Heartbeat at operation start */

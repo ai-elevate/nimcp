@@ -38,12 +38,15 @@ static inline void prefrontal_substrate_bridge_heartbeat(const char* operation, 
     }
 }
 
+#define LOG_MODULE "PREFRONTAL_SUBSTRATE_BRIDGE"
+
 //=============================================================================
 // Prefrontal Cortex-Neural Substrate Bridge Implementation
 //=============================================================================
 
 #include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/logging/nimcp_logging.h"
 
 struct prefrontal_substrate_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
@@ -114,6 +117,7 @@ prefrontal_substrate_bridge_t* prefrontal_substrate_bridge_create(void* prefront
 
 void prefrontal_substrate_bridge_destroy(prefrontal_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "prefrontal_substrate");
 
     /* Phase 8: Heartbeat at operation start */
     prefrontal_substrate_bridge_heartbeat("prefrontal_sub_destroy", 0.0f);

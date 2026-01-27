@@ -13,6 +13,7 @@
 #include <stdlib.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -39,6 +40,8 @@ static inline void memory_executive_bridge_heartbeat(const char* operation, floa
         nimcp_health_agent_heartbeat_ex(g_memory_executive_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "MEMORY_EXECUTIVE_BRIDGE"
 
 
 struct nimcp_memory_executive_bridge_struct {
@@ -75,11 +78,13 @@ nimcp_memory_executive_bridge_t nimcp_memory_executive_create(const nimcp_memory
     bridge->state.bridge_coherence = 1.0f;
     bridge->state.decision_context_strength = 0.5f;
     bridge->state.wm_rehearsal_level = 0.5f;
+    NIMCP_LOGGING_INFO("Created %s bridge", "memory_executive");
     return bridge;
 }
 
 void nimcp_memory_executive_destroy(nimcp_memory_executive_bridge_t bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "memory_executive");
     if (bridge->is_initialized) nimcp_memory_executive_shutdown(bridge);
     free(bridge);
 }

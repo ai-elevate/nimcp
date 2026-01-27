@@ -12,6 +12,7 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -38,6 +39,8 @@ static inline void dragonfly_cnn_bridge_heartbeat(const char* operation, float p
         nimcp_health_agent_heartbeat_ex(g_dragonfly_cnn_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "DRAGONFLY_CNN_BRIDGE"
 
 
 //=============================================================================
@@ -167,6 +170,7 @@ dragonfly_cnn_bridge_t* dragonfly_cnn_bridge_create(
 
 void dragonfly_cnn_bridge_destroy(dragonfly_cnn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "dragonfly_cnn");
 
     /* Free frame data in motion history */
     for (uint32_t i = 0; i < bridge->motion_history.num_frames; i++) {

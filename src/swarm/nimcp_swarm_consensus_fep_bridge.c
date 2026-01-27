@@ -13,6 +13,7 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -40,6 +41,8 @@ static inline void swarm_consensus_fep_bridge_heartbeat(const char* operation, f
     }
 }
 
+#define LOG_MODULE "SWARM_CONSENSUS_FEP_BRIDGE"
+
 
 void swarm_consensus_fep_default_config(swarm_consensus_fep_config_t* config) {
     if (!config) return;
@@ -59,7 +62,10 @@ swarm_consensus_fep_bridge_t* swarm_consensus_fep_create(const swarm_consensus_f
         return NULL;
     }
     swarm_consensus_fep_bridge_t* bridge = (swarm_consensus_fep_bridge_t*)nimcp_malloc(sizeof(swarm_consensus_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("Failed to allocate swarm_consensus_fep bridge");
+        return NULL;
+    }
     memset(bridge, 0, sizeof(swarm_consensus_fep_bridge_t));
     if (config) bridge->config = *config;
     else swarm_consensus_fep_default_config(&bridge->config);
@@ -67,11 +73,13 @@ swarm_consensus_fep_bridge_t* swarm_consensus_fep_create(const swarm_consensus_f
     bridge->consensus_ctx = consensus_ctx;
     if (bridge_base_init(&bridge->base, 0, "swarm_consensus_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
+    NIMCP_LOGGING_INFO("Created %s bridge", "swarm_consensus_fep");
     return bridge;
 }
 
 void swarm_consensus_fep_destroy(swarm_consensus_fep_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "swarm_consensus_fep");
     if (bridge->base.bio_async_enabled) swarm_consensus_fep_disconnect_bio_async(bridge);
     if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);

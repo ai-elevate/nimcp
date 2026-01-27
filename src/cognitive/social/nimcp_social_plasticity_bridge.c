@@ -12,6 +12,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <string.h>
 #include <math.h>
@@ -44,6 +45,8 @@ static inline void social_plasticity_bridge_heartbeat(const char* operation, flo
         nimcp_health_agent_heartbeat_ex(g_social_plasticity_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "SOCIAL_PLASTICITY_BRIDGE"
 
 
 //=============================================================================
@@ -86,6 +89,8 @@ struct social_plasticity_bridge {
     /* Statistics */
     social_plasticity_stats_t stats;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS(social_plasticity_bridge)
 
 //=============================================================================
 // Helper Functions
@@ -213,6 +218,7 @@ social_plasticity_bridge_t* social_plasticity_create(
 
 void social_plasticity_destroy(social_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "social_plasticity");
 
     bridge_base_cleanup(&bridge->base);
 

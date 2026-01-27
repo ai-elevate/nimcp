@@ -25,6 +25,7 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
+#include "security/nimcp_bbb_helpers.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -52,6 +53,7 @@ static inline void axon_orchestrator_bridge_heartbeat(const char* operation, flo
     }
 }
 
+/* Security integration */
 
 /* ============================================================================
  * Internal Constants
@@ -122,6 +124,8 @@ struct axon_orchestrator_bridge {
     unified_mem_manager_t* mem_manager;
     bool owns_mem_manager;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS(axon_orchestrator_bridge)
 
 /* ============================================================================
  * Forward Declarations

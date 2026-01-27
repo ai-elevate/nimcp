@@ -58,6 +58,8 @@ static inline void hypothalamus_logging_bridge_heartbeat(const char* operation, 
     }
 }
 
+#define LOG_MODULE "HYPOTHALAMUS_LOGGING_BRIDGE"
+
 
 /*=============================================================================
  * FORWARD DECLARATIONS FROM ORCHESTRATOR
@@ -719,6 +721,7 @@ hypo_logging_bridge_t* hypo_logging_bridge_create(
 
 void hypo_logging_bridge_destroy(hypo_logging_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hypothalamus_logging");
 
     /* Disconnect from orchestrator */
     if (bridge->connected) {

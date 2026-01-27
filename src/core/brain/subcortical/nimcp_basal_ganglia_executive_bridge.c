@@ -12,6 +12,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -37,6 +38,8 @@ static inline void basal_ganglia_executive_bridge_heartbeat(const char* operatio
         nimcp_health_agent_heartbeat_ex(g_basal_ganglia_executive_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "BASAL_GANGLIA_EXECUTIVE_BRIDGE"
 
 
 /* ============================================================================
@@ -116,11 +119,13 @@ bge_bridge_t* bge_bridge_create(const bge_bridge_config_t* config) {
         return NULL;
     }
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "basal_ganglia_executive");
     return bridge;
 }
 
 void bge_bridge_destroy(bge_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "basal_ganglia_executive");
 
     if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);

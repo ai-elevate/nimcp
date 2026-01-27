@@ -61,6 +61,8 @@ static inline void occipital_audiovisual_bridge_heartbeat(const char* operation,
     }
 }
 
+#define LOG_MODULE "OCCIPITAL_AUDIOVISUAL_BRIDGE"
+
 
 /*=============================================================================
  * LOGGING MODULE IDENTIFIER
@@ -503,6 +505,7 @@ occipital_audiovisual_bridge_t* occipital_av_bridge_create(
 
 void occipital_av_bridge_destroy(occipital_audiovisual_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "occipital_audiovisual");
 
     LOG_INFO(AV_BRIDGE_LOG_MODULE, "Destroying audiovisual bridge");
 

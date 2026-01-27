@@ -10,6 +10,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -36,6 +37,8 @@ static inline void hypergraph_kg_bridge_heartbeat(const char* operation, float p
     }
 }
 
+#define LOG_MODULE "HYPERGRAPH_KG_BRIDGE"
+
 
 NIMCP_API hypergraph_kg_bridge_t* hypergraph_kg_bridge_create(void) {
     hypergraph_kg_bridge_t* bridge = nimcp_calloc(1, sizeof(hypergraph_kg_bridge_t));
@@ -52,11 +55,13 @@ NIMCP_API hypergraph_kg_bridge_t* hypergraph_kg_bridge_create(void) {
 
     bridge->enable_bidirectional_sync = true;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "hypergraph_kg");
     return bridge;
 }
 
 NIMCP_API void hypergraph_kg_bridge_destroy(hypergraph_kg_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hypergraph_kg");
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }

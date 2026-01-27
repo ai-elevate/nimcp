@@ -15,6 +15,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
+#include "security/nimcp_bbb_helpers.h"
 
 #define LOG_MODULE "metabolic_pink_noise"
 
@@ -45,6 +46,8 @@ static inline void metabolic_pink_noise_bridge_heartbeat(const char* operation, 
     }
 }
 
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(metabolic_pink_noise_bridge)
 
 /* ============================================================================
  * Internal Helper Functions

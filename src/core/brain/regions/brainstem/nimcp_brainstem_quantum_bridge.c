@@ -47,6 +47,8 @@ static inline void brainstem_quantum_bridge_heartbeat(const char* operation, flo
     }
 }
 
+#define LOG_MODULE "BRAINSTEM_QUANTUM_BRIDGE"
+
 
 /*=============================================================================
  * LOGGING MODULE IDENTIFIER
@@ -294,6 +296,7 @@ brainstem_quantum_bridge_t* brainstem_quantum_bridge_create(
 
 void brainstem_quantum_bridge_destroy(brainstem_quantum_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "brainstem_quantum");
 
     LOG_INFO("[%s] Destroying quantum bridge", BRAINSTEM_QUANTUM_LOG_MODULE);
 

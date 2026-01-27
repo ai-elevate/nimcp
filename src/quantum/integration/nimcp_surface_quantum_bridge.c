@@ -60,6 +60,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
+#include "utils/logging/nimcp_logging.h"
 
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -87,6 +88,8 @@ static inline void surface_quantum_bridge_heartbeat(const char* operation, float
         nimcp_health_agent_heartbeat_ex(g_surface_quantum_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "SURFACE_QUANTUM_BRIDGE"
 
 
 //=============================================================================
@@ -188,6 +191,7 @@ surface_quantum_bridge_t* surface_quantum_bridge_create(
 
 void surface_quantum_bridge_destroy(surface_quantum_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "surface_quantum");
 
     /* Disconnect systems */
     bridge->geometry_ctx = NULL;

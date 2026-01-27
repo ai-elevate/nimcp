@@ -63,6 +63,8 @@ static inline void training_plasticity_bridge_heartbeat(const char* operation, f
     }
 }
 
+#define LOG_MODULE "TRAINING_PLASTICITY_BRIDGE"
+
 
 //=============================================================================
 // Internal Constants
@@ -519,6 +521,7 @@ void tpb_destroy(tpb_context_t* ctx)
 {
     if (!ctx) {
         return;
+        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "training_plasticity");
     }
 
     /* Signal shutdown */

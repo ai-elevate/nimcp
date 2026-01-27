@@ -15,6 +15,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -40,6 +41,8 @@ static inline void soma_bio_async_bridge_heartbeat(const char* operation, float 
         nimcp_health_agent_heartbeat_ex(g_soma_bio_async_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "SOMA_BIO_ASYNC_BRIDGE"
 
 
 /* ============================================================================
@@ -144,11 +147,13 @@ soma_bio_router_t* soma_bio_async_bridge_create(const soma_bio_async_config_t* c
     }
 
     bridge->last_broadcast_us = get_timestamp_us();
+    NIMCP_LOGGING_INFO("Created %s bridge", "soma_bio_async");
     return bridge;
 }
 
 void soma_bio_async_bridge_destroy(soma_bio_router_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "soma_bio_async");
 
     if (bridge->connected) {
         soma_bio_async_disconnect(bridge);

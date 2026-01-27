@@ -12,6 +12,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -37,6 +38,8 @@ static inline void self_awareness_thalamic_bridge_heartbeat(const char* operatio
         nimcp_health_agent_heartbeat_ex(g_self_awareness_thalamic_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "SELF_AWARENESS_THALAMIC_BRIDGE"
 
 
 struct self_awareness_thalamic_bridge {
@@ -77,11 +80,13 @@ self_awareness_thalamic_bridge_t* self_awareness_thalamic_bridge_create(void* se
     bridge->config = config ? *config : self_awareness_thalamic_default_config();
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    NIMCP_LOGGING_INFO("Created %s bridge", "self_awareness_thalamic");
     return bridge;
 }
 
 void self_awareness_thalamic_bridge_destroy(self_awareness_thalamic_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "self_awareness_thalamic");
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
     }

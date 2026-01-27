@@ -11,6 +11,7 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -37,6 +38,8 @@ static inline void dragonfly_bio_async_bridge_heartbeat(const char* operation, f
         nimcp_health_agent_heartbeat_ex(g_dragonfly_bio_async_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "DRAGONFLY_BIO_ASYNC_BRIDGE"
 
 
 //=============================================================================
@@ -172,6 +175,7 @@ dragonfly_bio_async_bridge_t* dragonfly_bio_async_bridge_create(
 
 void dragonfly_bio_async_bridge_destroy(dragonfly_bio_async_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "dragonfly_bio_async");
 
     /* Destroy any active futures */
     for (uint32_t i = 0; i < bridge->num_futures; i++) {

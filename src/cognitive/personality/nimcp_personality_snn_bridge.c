@@ -49,6 +49,8 @@ static inline void personality_snn_bridge_heartbeat(const char* operation, float
     }
 }
 
+#define LOG_MODULE "PERSONALITY_SNN_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -275,11 +277,13 @@ personality_snn_bridge_t* personality_snn_create(const personality_snn_config_t*
     bridge->stability_signal = 1.0f;
     bridge->behavioral_signal = 0.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "personality_snn");
     return bridge;
 }
 
 void personality_snn_destroy(personality_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "personality_snn");
 
     /* Phase 8: Heartbeat at operation start */
     personality_snn_bridge_heartbeat("personality__personality_snn_dest", 0.0f);

@@ -45,6 +45,8 @@ static inline void game_theory_plasticity_bridge_heartbeat(const char* operation
     }
 }
 
+#define LOG_MODULE "GAME_THEORY_PLASTICITY_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -233,6 +235,7 @@ game_theory_plasticity_bridge_t* game_theory_plasticity_create(
 
 void game_theory_plasticity_destroy(game_theory_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "game_theory_plasticity");
 
     /* Phase 8: Heartbeat at operation start */
     game_theory_plasticity_bridge_heartbeat("game_theory__game_theory_plastici", 0.0f);

@@ -47,6 +47,8 @@ static inline void predictive_substrate_bridge_heartbeat(const char* operation, 
     }
 }
 
+#define LOG_MODULE "PREDICTIVE_SUBSTRATE_BRIDGE"
+
 
 struct predictive_substrate_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
@@ -109,6 +111,7 @@ predictive_substrate_bridge_t* predictive_substrate_bridge_create(void* predicti
     bridge->effects.hierarchical_depth = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "predictive_substrate");
     return bridge;
 }
 

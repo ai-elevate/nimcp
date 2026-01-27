@@ -16,6 +16,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <string.h>
 #include <math.h>
@@ -49,6 +50,7 @@ static inline void executive_snn_bridge_heartbeat(const char* operation, float p
     }
 }
 
+#define LOG_MODULE "EXECUTIVE_SNN_BRIDGE"
 
 //=============================================================================
 // Internal Structures
@@ -91,6 +93,8 @@ struct executive_snn_bridge {
     /* Statistics */
     executive_snn_stats_t stats;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS(executive_snn_bridge)
 
 //=============================================================================
 // Helper Functions
@@ -274,11 +278,13 @@ executive_snn_bridge_t* executive_snn_create(const executive_snn_config_t* confi
     bridge->conflict_signal = 0.0f;
     bridge->error_signal = 0.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "executive_snn");
     return bridge;
 }
 
 void executive_snn_destroy(executive_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "executive_snn");
 
     /* Phase 8: Heartbeat at operation start */
     executive_snn_bridge_heartbeat("executive_sn_executive_snn_destro", 0.0f);
@@ -360,6 +366,7 @@ int executive_snn_encode_state(
 ) {
     if (!bridge || !dimensions) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    BRIDGE_BBB_VALIDATE(bridge, dimensions, num_dims * sizeof(float));
 
     /* Phase 8: Heartbeat at operation start */
     executive_snn_bridge_heartbeat("executive_sn_executive_snn_encode", 0.0f);
@@ -620,6 +627,7 @@ int executive_snn_forward(
     uint32_t input_count
 ) {
     if (!bridge || !inputs) return -1;
+    BRIDGE_BBB_VALIDATE(bridge, inputs, input_count * sizeof(float));
 
     /* Phase 8: Heartbeat at operation start */
     executive_snn_bridge_heartbeat("executive_sn_executive_snn_forwar", 0.0f);

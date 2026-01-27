@@ -48,6 +48,8 @@ static inline void knowledge_substrate_bridge_heartbeat(const char* operation, f
     }
 }
 
+#define LOG_MODULE "KNOWLEDGE_SUBSTRATE_BRIDGE"
+
 
 struct knowledge_substrate_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
@@ -123,11 +125,13 @@ knowledge_substrate_bridge_t* knowledge_substrate_bridge_create(void* knowledge,
     bridge->effects.association_strength = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "knowledge_substrate");
     return bridge;
 }
 
 void knowledge_substrate_bridge_destroy(knowledge_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "knowledge_substrate");
     /* Phase 8: Heartbeat at operation start */
     knowledge_substrate_bridge_heartbeat("knowledge_su_destroy", 0.0f);
 

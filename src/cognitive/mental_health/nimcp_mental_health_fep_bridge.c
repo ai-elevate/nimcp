@@ -83,11 +83,13 @@ mental_health_fep_bridge_t* mental_health_fep_bridge_create(const mental_health_
     else mental_health_fep_bridge_default_config(&bridge->config);
     if (bridge_base_init(&bridge->base, 0, "mental_health_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
+    NIMCP_LOGGING_INFO("Created %s bridge", "mental_health_fep");
     return bridge;
 }
 
 void mental_health_fep_bridge_destroy(mental_health_fep_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "mental_health_fep");
     /* Phase 8: Heartbeat at operation start */
     mental_health_fep_bridge_heartbeat("mental_healt_destroy", 0.0f);
 

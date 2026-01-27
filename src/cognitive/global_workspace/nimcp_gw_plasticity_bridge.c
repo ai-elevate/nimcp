@@ -45,6 +45,8 @@ static inline void gw_plasticity_bridge_heartbeat(const char* operation, float p
     }
 }
 
+#define LOG_MODULE "GW_PLASTICITY_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -207,6 +209,7 @@ gw_plasticity_bridge_t* gw_plasticity_create(
 
 void gw_plasticity_destroy(gw_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "gw_plasticity");
 
     /* Cleanup base bridge infrastructure */
     /* Phase 8: Heartbeat at operation start */

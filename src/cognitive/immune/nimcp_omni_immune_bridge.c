@@ -47,6 +47,8 @@ static inline void omni_immune_bridge_heartbeat(const char* operation, float pro
     }
 }
 
+#define LOG_MODULE "OMNI_IMMUNE_BRIDGE"
+
 
 /* ============================================================================
  * Static Helpers
@@ -203,11 +205,13 @@ omni_immune_bridge_t* omni_immune_bridge_create(const omni_immune_config_t* conf
 
     memset(&bridge->stats, 0, sizeof(omni_immune_stats_t));
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "omni_immune");
     return bridge;
 }
 
 void omni_immune_bridge_destroy(omni_immune_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "omni_immune");
 
     /* Phase 8: Heartbeat at operation start */
     omni_immune_bridge_heartbeat("omni_immune__destroy", 0.0f);

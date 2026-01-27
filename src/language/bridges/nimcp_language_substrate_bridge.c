@@ -219,6 +219,7 @@ language_substrate_bridge_t* language_substrate_bridge_create(
 
 void language_substrate_bridge_destroy(language_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "language_substrate");
 
     nimcp_free(bridge);
     LOG_INFO(LOG_MODULE, "Substrate bridge destroyed");

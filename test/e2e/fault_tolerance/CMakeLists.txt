@@ -247,3 +247,7 @@ set_tests_properties(e2e_fault_tolerance_test_surprise_bridges_B20_e2e PROPERTIE
 # B22: Mirror neuron bridge heartbeat/utility E2E tests
 add_e2e_fault_tolerance_test(test_mirror_bridges_B22_e2e)
 set_tests_properties(e2e_fault_tolerance_test_mirror_bridges_B22_e2e PROPERTIES TIMEOUT 300)
+
+# B23: Parietal bridge heartbeat/utility E2E tests
+add_e2e_fault_tolerance_test(test_parietal_bridges_B23_e2e)
+set_tests_properties(e2e_fault_tolerance_test_parietal_bridges_B23_e2e PROPERTIES TIMEOUT 300)

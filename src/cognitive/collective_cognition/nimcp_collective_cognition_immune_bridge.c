@@ -58,6 +58,8 @@ static inline void collective_cognition_immune_bridge_heartbeat(const char* oper
     }
 }
 
+#define LOG_MODULE "COLLECTIVE_COGNITION_IMMUNE_BRIDGE"
+
 
 /*=============================================================================
  * Constants
@@ -258,6 +260,7 @@ collective_immune_bridge_t* collective_immune_bridge_create(
 void collective_immune_bridge_destroy(collective_immune_bridge_t* bridge)
 {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "collective_cognition_immune");
 
     /* Phase 8: Heartbeat at operation start */
     collective_cognition_immune_bridge_heartbeat("collective_c_collective_immune_br", 0.0f);

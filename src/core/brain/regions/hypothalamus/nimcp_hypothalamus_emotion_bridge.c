@@ -47,6 +47,8 @@ static inline void hypothalamus_emotion_bridge_heartbeat(const char* operation, 
     }
 }
 
+#define LOG_MODULE "HYPOTHALAMUS_EMOTION_BRIDGE"
+
 
 /*=============================================================================
  * INTERNAL STRUCTURES
@@ -159,6 +161,7 @@ hypo_emotion_bridge_t* hypo_emotion_bridge_create(
 
 void hypo_emotion_bridge_destroy(hypo_emotion_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hypothalamus_emotion");
 
     if (bridge->bio_registered) {
         hypo_emotion_bridge_unregister_bio(bridge);

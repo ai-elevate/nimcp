@@ -1,4 +1,5 @@
 #include <stddef.h>  /* for NULL */
+#include "security/nimcp_bbb_helpers.h"
 
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -27,6 +28,11 @@ static inline void stdp_quantum_bridge_heartbeat(const char* operation, float pr
     }
 }
 
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(stdp_quantum_bridge)
+
+#define LOG_MODULE "STDP_QUANTUM_BRIDGE"
+
 //=============================================================================
 // STDP Quantum Bridge Implementation
 //=============================================================================
@@ -37,3 +43,4 @@ static inline void stdp_quantum_bridge_heartbeat(const char* operation, float pr
  */
 #define NIMCP_STDP_QUANTUM_BRIDGE_IMPLEMENTATION
 #include "plasticity/stdp/nimcp_stdp_quantum_bridge.h"
+#include "utils/logging/nimcp_logging.h"

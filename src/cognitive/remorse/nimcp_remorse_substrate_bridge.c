@@ -14,6 +14,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -39,6 +40,8 @@ static inline void remorse_substrate_bridge_heartbeat(const char* operation, flo
         nimcp_health_agent_heartbeat_ex(g_remorse_substrate_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "REMORSE_SUBSTRATE_BRIDGE"
 
 
 struct remorse_substrate_bridge {
@@ -92,11 +95,13 @@ remorse_substrate_bridge_t* remorse_substrate_bridge_create(void* remorse, neura
     bridge->effects.moral_learning = 1.0f;
     bridge->effects.self_forgiveness = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
+    NIMCP_LOGGING_INFO("Created %s bridge", "remorse_substrate");
     return bridge;
 }
 
 void remorse_substrate_bridge_destroy(remorse_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "remorse_substrate");
     /* Phase 8: Heartbeat at operation start */
     remorse_substrate_bridge_heartbeat("remorse_subs_destroy", 0.0f);
 

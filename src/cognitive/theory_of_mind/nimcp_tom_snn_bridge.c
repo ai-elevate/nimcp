@@ -49,6 +49,8 @@ static inline void tom_snn_bridge_heartbeat(const char* operation, float progres
     }
 }
 
+#define LOG_MODULE "TOM_SNN_BRIDGE"
+
 
 //=============================================================================
 // Internal Structures
@@ -279,11 +281,13 @@ tom_snn_bridge_t* tom_snn_create(const tom_snn_config_t* config) {
     bridge->empathy_signal = 0.0f;
     bridge->perspective_signal = 0.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "tom_snn");
     return bridge;
 }
 
 void tom_snn_destroy(tom_snn_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "tom_snn");
 
     /* Phase 8: Heartbeat at operation start */
     tom_snn_bridge_heartbeat("tom_snn_brid_tom_snn_destroy", 0.0f);

@@ -47,6 +47,8 @@ static inline void hippocampus_imagination_bridge_heartbeat(const char* operatio
     }
 }
 
+#define LOG_MODULE "HIPPOCAMPUS_IMAGINATION_BRIDGE"
+
 
 /* Logging macros - map to nimcp logging functions */
 #define NIMCP_LOG_INFO(...)  LOG_INFO(__VA_ARGS__)
@@ -201,6 +203,7 @@ hippocampus_imagination_bridge_t* hippocampus_imagination_bridge_create(
 
 void hippocampus_imagination_bridge_destroy(hippocampus_imagination_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "hippocampus_imagination");
 
     /* Disconnect bio-async if connected */
     /* Phase 8: Heartbeat at operation start */

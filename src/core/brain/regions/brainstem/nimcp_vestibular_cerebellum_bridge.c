@@ -47,6 +47,8 @@ static inline void vestibular_cerebellum_bridge_heartbeat(const char* operation,
     }
 }
 
+#define LOG_MODULE "VESTIBULAR_CEREBELLUM_BRIDGE"
+
 
 /*=============================================================================
  * LOGGING MODULE IDENTIFIER
@@ -177,6 +179,7 @@ vestibular_cerebellum_bridge_t* vestibular_cerebellum_bridge_create(
 
 void vestibular_cerebellum_bridge_destroy(vestibular_cerebellum_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "vestibular_cerebellum");
 
     LOG_INFO("[%s] Destroying bridge", BRIDGE_LOG_MODULE);
     nimcp_free(bridge);

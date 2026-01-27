@@ -17,6 +17,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -42,6 +43,8 @@ static inline void rcog_imagination_bridge_heartbeat(const char* operation, floa
         nimcp_health_agent_heartbeat_ex(g_rcog_imagination_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "RCOG_IMAGINATION_BRIDGE"
 
 
 /*=============================================================================
@@ -146,6 +149,7 @@ rcog_imagination_bridge_t* rcog_imagination_bridge_create_default(void) {
 void rcog_imagination_bridge_destroy(rcog_imagination_bridge_t* bridge) {
     if (!bridge) {
         return;
+        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "rcog_imagination");
     }
 
     /* Cleanup base bridge infrastructure */

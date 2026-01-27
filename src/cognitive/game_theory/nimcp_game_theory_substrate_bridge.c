@@ -46,6 +46,8 @@ static inline void game_theory_substrate_bridge_heartbeat(const char* operation,
     }
 }
 
+#define LOG_MODULE "GAME_THEORY_SUBSTRATE_BRIDGE"
+
 
 struct game_theory_substrate_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
@@ -108,6 +110,7 @@ game_theory_substrate_bridge_t* game_theory_substrate_bridge_create(void* game_t
     bridge->effects.equilibrium_search = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "game_theory_substrate");
     return bridge;
 }
 

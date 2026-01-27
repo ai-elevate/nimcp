@@ -25,6 +25,7 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
+#include "security/nimcp_bbb_helpers.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -52,6 +53,7 @@ static inline void dendrite_orchestrator_bridge_heartbeat(const char* operation,
     }
 }
 
+/* Security integration */
 
 /* ============================================================================
  * Internal Constants
@@ -92,6 +94,8 @@ struct dendrite_orchestrator_bridge {
     nimcp_mutex_t mutex;
     bool mutex_initialized;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS(dendrite_orchestrator_bridge)
 
 /* ============================================================================
  * Forward Declarations

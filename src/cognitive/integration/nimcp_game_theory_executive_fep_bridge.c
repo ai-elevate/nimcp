@@ -25,6 +25,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -50,6 +51,8 @@ static inline void game_theory_executive_fep_bridge_heartbeat(const char* operat
         nimcp_health_agent_heartbeat_ex(g_game_theory_executive_fep_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "GAME_THEORY_EXECUTIVE_FEP_BRIDGE"
 
 
 /*=============================================================================
@@ -375,11 +378,13 @@ gt_exec_fep_bridge_t* gt_exec_fep_bridge_create(const gt_exec_fep_config_t* conf
 
     bridge->state = GT_EXEC_FEP_STATE_IDLE;
 
+    NIMCP_LOGGING_INFO("Created %s bridge", "game_theory_executive_fep");
     return bridge;
 }
 
 void gt_exec_fep_bridge_destroy(gt_exec_fep_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "game_theory_executive_fep");
 
     /* Unregister if still registered */
     /* Phase 8: Heartbeat at operation start */

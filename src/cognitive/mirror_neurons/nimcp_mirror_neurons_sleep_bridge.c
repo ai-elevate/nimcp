@@ -14,6 +14,7 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 #include <string.h>
 
 //=============================================================================
@@ -72,6 +73,9 @@ struct mirror_neurons_sleep_bridge_struct {
 
     bool callback_registered;                  /**< Whether callback is active */
 };
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(mirror_neurons_sleep_bridge, struct mirror_neurons_sleep_bridge_struct)
 
 /* Forward declarations */
 static void mirror_neurons_on_sleep_state_change(sleep_state_t new_state, void* user_data);

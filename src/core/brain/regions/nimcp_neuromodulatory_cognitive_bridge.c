@@ -16,6 +16,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -41,6 +42,8 @@ static inline void neuromodulatory_cognitive_bridge_heartbeat(const char* operat
         nimcp_health_agent_heartbeat_ex(g_neuromodulatory_cognitive_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "NEUROMODULATORY_COGNITIVE_BRIDGE"
 
 
 /* ============================================================================
@@ -128,11 +131,13 @@ neuromod_cognitive_hub_bridge_t* neuromod_cognitive_hub_create(const neuromod_co
     }
 
     bridge->last_broadcast_us = get_timestamp_us();
+    NIMCP_LOGGING_INFO("Created %s bridge", "neuromodulatory_cognitive");
     return bridge;
 }
 
 void neuromod_cognitive_hub_destroy(neuromod_cognitive_hub_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "neuromodulatory_cognitive");
 
     if (bridge->connected) {
         neuromod_cognitive_hub_disconnect(bridge);

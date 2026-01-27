@@ -12,6 +12,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -37,6 +38,8 @@ static inline void mental_health_thalamic_bridge_heartbeat(const char* operation
         nimcp_health_agent_heartbeat_ex(g_mental_health_thalamic_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "MENTAL_HEALTH_THALAMIC_BRIDGE"
 
 
 struct mental_health_thalamic_bridge {
@@ -85,11 +88,13 @@ mental_health_thalamic_bridge_t* mental_health_thalamic_bridge_create(void* ment
     bridge->config = config ? *config : mental_health_thalamic_default_config();
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
+    NIMCP_LOGGING_INFO("Created %s bridge", "mental_health_thalamic");
     return bridge;
 }
 
 void mental_health_thalamic_bridge_destroy(mental_health_thalamic_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "mental_health_thalamic");
     /* Phase 8: Heartbeat at operation start */
     mental_health_thalamic_bridge_heartbeat("mental_healt_destroy", 0.0f);
 

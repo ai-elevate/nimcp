@@ -14,6 +14,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -39,6 +40,8 @@ static inline void llf_substrate_bridge_heartbeat(const char* operation, float p
         nimcp_health_agent_heartbeat_ex(g_llf_substrate_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "LLF_SUBSTRATE_BRIDGE"
 
 
 struct llf_substrate_bridge {
@@ -92,11 +95,13 @@ llf_substrate_bridge_t* llf_substrate_bridge_create(void* llf, neural_substrate_
     bridge->effects.social_investment = 1.0f;
     bridge->effects.loyalty_maintenance = 1.0f;
     bridge->effects.overall_capacity = 1.0f;
+    NIMCP_LOGGING_INFO("Created %s bridge", "llf_substrate");
     return bridge;
 }
 
 void llf_substrate_bridge_destroy(llf_substrate_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "llf_substrate");
     /* Phase 8: Heartbeat at operation start */
     llf_substrate_bridge_heartbeat("llf_substrat_destroy", 0.0f);
 

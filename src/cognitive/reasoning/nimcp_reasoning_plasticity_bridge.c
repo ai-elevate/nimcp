@@ -12,6 +12,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "security/nimcp_bbb_helpers.h"
 
 #include <string.h>
 #include <math.h>
@@ -44,6 +45,8 @@ static inline void reasoning_plasticity_bridge_heartbeat(const char* operation, 
         nimcp_health_agent_heartbeat_ex(g_reasoning_plasticity_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "REASONING_PLASTICITY_BRIDGE"
 
 
 //=============================================================================
@@ -80,6 +83,8 @@ struct reasoning_plasticity_bridge {
     /* Statistics */
     reasoning_plasticity_stats_t stats;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS(reasoning_plasticity_bridge)
 
 //=============================================================================
 // Helper Functions
@@ -207,6 +212,7 @@ reasoning_plasticity_bridge_t* reasoning_plasticity_create(
 
 void reasoning_plasticity_destroy(reasoning_plasticity_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "reasoning_plasticity");
 
     /* Cleanup base bridge infrastructure */
     /* Phase 8: Heartbeat at operation start */

@@ -14,6 +14,7 @@
 #include <string.h>
 
 #include <stddef.h>  /* for NULL */
+#include "security/nimcp_bbb_helpers.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -41,6 +42,7 @@ static inline void adaptive_sleep_bridge_heartbeat(const char* operation, float 
     }
 }
 
+/* Security integration */
 
 struct adaptive_sleep_bridge_struct {
     bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
@@ -51,6 +53,8 @@ struct adaptive_sleep_bridge_struct {
     nimcp_platform_mutex_t* mutex;
     bool callback_registered;  /* Track if callback is registered for cleanup */
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(adaptive_sleep_bridge, struct adaptive_sleep_bridge_struct)
 
 /* Forward declarations */
 static void adaptive_on_sleep_state_change(sleep_state_t new_state, void* user_data);

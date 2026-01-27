@@ -22,6 +22,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -47,6 +48,8 @@ static inline void wernicke_quantum_bridge_heartbeat(const char* operation, floa
         nimcp_health_agent_heartbeat_ex(g_wernicke_quantum_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "WERNICKE_QUANTUM_BRIDGE"
 
 
 /*=============================================================================
@@ -243,6 +246,7 @@ wernicke_quantum_bridge_t* wernicke_quantum_bridge_create(
 
 void wernicke_quantum_bridge_destroy(wernicke_quantum_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "wernicke_quantum");
     free(bridge);
 }
 

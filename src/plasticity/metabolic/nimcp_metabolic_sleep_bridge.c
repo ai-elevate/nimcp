@@ -12,6 +12,7 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
+#include "security/nimcp_bbb_helpers.h"
 
 #include <stddef.h>  /* for NULL */
 //=============================================================================
@@ -41,7 +42,7 @@ static inline void metabolic_sleep_bridge_heartbeat(const char* operation, float
     }
 }
 
-
+/* Security integration */
 /* ============================================================================
  * Internal Structure
  * ============================================================================ */
@@ -56,6 +57,8 @@ struct metabolic_sleep_bridge_struct {
     nimcp_platform_mutex_t* mutex;
     bool callback_registered;
 };
+
+BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(metabolic_sleep_bridge, struct metabolic_sleep_bridge_struct)
 
 /* ============================================================================
  * Sleep State Callback

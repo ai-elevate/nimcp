@@ -21,6 +21,7 @@
 #include <math.h>
 
 #include <stddef.h>  /* for NULL */
+#include "utils/logging/nimcp_logging.h"
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -47,6 +48,8 @@ static inline void omni_sensory_bridge_heartbeat(const char* operation, float pr
         nimcp_health_agent_heartbeat_ex(g_omni_sensory_bridge_health_agent, operation, progress);
     }
 }
+
+#define LOG_MODULE "OMNI_SENSORY_BRIDGE"
 
 
 /* ============================================================================
@@ -212,6 +215,7 @@ omni_sensory_bridge_t* omni_sensory_bridge_create(
 
 void omni_sensory_bridge_destroy(omni_sensory_bridge_t* bridge) {
     if (!bridge) return;
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "omni_sensory");
 
     /* Free modality state buffers */
     for (int i = 0; i < OMNI_MODALITY_COUNT; i++) {
