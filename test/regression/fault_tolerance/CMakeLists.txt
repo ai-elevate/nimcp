@@ -586,4 +586,33 @@ gtest_discover_tests(regression_heartbeat_B18_empathy_ethics_epistemic
         TIMEOUT 180
 )
 
+# B19: All remaining 89 uncovered modules (final batch for 100% coverage)
+add_executable(regression_heartbeat_B19_remaining_modules
+    test_heartbeat_B19_remaining_modules_regression.cpp
+)
+
+target_link_libraries(regression_heartbeat_B19_remaining_modules
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        pthread
+)
+
+target_include_directories(regression_heartbeat_B19_remaining_modules
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_heartbeat_B19_remaining_modules PRIVATE cxx_std_17)
+target_compile_definitions(regression_heartbeat_B19_remaining_modules PRIVATE NIMCP_TESTING)
+
+gtest_discover_tests(regression_heartbeat_B19_remaining_modules
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;fault_tolerance;heartbeat;B19;remaining_modules"
+        TIMEOUT 180
+)
+
 message(STATUS "Added fault tolerance regression tests")

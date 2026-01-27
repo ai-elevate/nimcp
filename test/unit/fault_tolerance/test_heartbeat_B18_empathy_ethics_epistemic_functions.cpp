@@ -1,7 +1,8 @@
 /**
- * @file test_heartbeat_B18_empathy_ethics_epistemic_functions.cpp
+ * @file test_heartbeat_B18_emotion_cluster_functions.cpp
  * @brief Unit tests for B18 heartbeat setter functions
- *        (cognitive/empathetic_response + cognitive/ethics + cognitive/epistemic)
+ *        (cognitive/emotion + cognitive/emotional_tagging + cognitive/emotion_recognition +
+ *         cognitive/emotions + cognitive/emotion_tensor + cognitive/grief + cognitive/joy + cognitive/remorse)
  */
 
 #include <gtest/gtest.h>
@@ -11,78 +12,99 @@
 extern "C" {
 #include "utils/fault_tolerance/nimcp_health_agent.h"
 
-/* cognitive/empathetic_response modules */
-void empathetic_response_fep_bridge_set_health_agent(nimcp_health_agent_t* agent);
-void empathetic_response_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent);
-void empathetic_response_set_health_agent(nimcp_health_agent_t* agent);
-void empathy_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent);
-void empathy_snn_bridge_set_health_agent(nimcp_health_agent_t* agent);
-void empathetic_response_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent);
+/* cognitive/emotion modules */
+void emotion_fep_bridge_set_health_agent(nimcp_health_agent_t* agent);
+void emotion_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent);
+void emotion_snn_bridge_set_health_agent(nimcp_health_agent_t* agent);
+void emotion_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent);
+void emotion_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent);
+void health_emotion_bridge_set_health_agent(nimcp_health_agent_t* agent);
 
-/* cognitive/ethics modules */
-void ethics_policies_set_health_agent(nimcp_health_agent_t* agent);
-void ethics_incidents_set_health_agent(nimcp_health_agent_t* agent);
-void ethics_snn_bridge_set_health_agent(nimcp_health_agent_t* agent);
-void ethics_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent);
-void ethics_fep_bridge_set_health_agent(nimcp_health_agent_t* agent);
-void health_ethics_bridge_set_health_agent(nimcp_health_agent_t* agent);
-void combinatorial_harm_set_health_agent(nimcp_health_agent_t* agent);
-void ethics_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent);
-void ethics_immune_set_health_agent(nimcp_health_agent_t* agent);
-void ethics_evaluation_set_health_agent(nimcp_health_agent_t* agent);
-void ethics_warfare_set_health_agent(nimcp_health_agent_t* agent);
-void ethics_set_health_agent(nimcp_health_agent_t* agent);
-void core_directives_set_health_agent(nimcp_health_agent_t* agent);
-void ethics_learning_set_health_agent(nimcp_health_agent_t* agent);
-void ethics_asimov_set_health_agent(nimcp_health_agent_t* agent);
-void ethics_hyperbolic_set_health_agent(nimcp_health_agent_t* agent);
-void ethics_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent);
+/* cognitive/emotional_tagging modules */
+void emotional_tagging_set_health_agent(nimcp_health_agent_t* agent);
+void emotional_tagging_fep_bridge_set_health_agent(nimcp_health_agent_t* agent);
+void emotional_tagging_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent);
+void emotional_tagging_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent);
 
-/* cognitive/epistemic modules */
-void epistemic_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent);
-void epistemic_snn_bridge_set_health_agent(nimcp_health_agent_t* agent);
-void epistemic_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent);
-void epistemic_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent);
-void epistemic_filter_set_health_agent(nimcp_health_agent_t* agent);
-void epistemic_fep_bridge_set_health_agent(nimcp_health_agent_t* agent);
+/* cognitive/emotion_recognition modules */
+void emotion_recognition_simple_set_health_agent(nimcp_health_agent_t* agent);
+void emotion_recognition_fep_bridge_set_health_agent(nimcp_health_agent_t* agent);
+void emotion_recognition_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent);
+void emotion_recognition_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent);
+
+/* cognitive/emotions modules */
+void emotional_system_set_health_agent(nimcp_health_agent_t* agent);
+void emotional_system_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent);
+
+/* cognitive/emotion_tensor modules */
+void emotion_tensor_set_health_agent(nimcp_health_agent_t* agent);
+void emotion_tensor_bridge_set_health_agent(nimcp_health_agent_t* agent);
+void emotion_tensor_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent);
+void emotion_tensor_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent);
+
+/* cognitive/grief modules */
+void grief_and_loss_set_health_agent(nimcp_health_agent_t* agent);
+void grief_fep_bridge_set_health_agent(nimcp_health_agent_t* agent);
+void grief_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent);
+void grief_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent);
+
+/* cognitive/joy modules */
+void joy_euphoria_set_health_agent(nimcp_health_agent_t* agent);
+void joy_fep_bridge_set_health_agent(nimcp_health_agent_t* agent);
+void joy_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent);
+void joy_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent);
+
+/* cognitive/remorse modules */
+void remorse_regret_set_health_agent(nimcp_health_agent_t* agent);
+void remorse_fep_bridge_set_health_agent(nimcp_health_agent_t* agent);
+void remorse_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent);
+void remorse_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent);
 }
 
 typedef void (*set_health_agent_fn)(nimcp_health_agent_t*);
 struct B18Module { const char* name; set_health_agent_fn set_fn; };
 
 static const B18Module B18_MODULES[] = {
-    /* cognitive/empathetic_response */
-    {"empathetic_response_fep_bridge",      empathetic_response_fep_bridge_set_health_agent},
-    {"empathetic_response_substrate_bridge", empathetic_response_substrate_bridge_set_health_agent},
-    {"empathetic_response",                 empathetic_response_set_health_agent},
-    {"empathy_plasticity_bridge",           empathy_plasticity_bridge_set_health_agent},
-    {"empathy_snn_bridge",                  empathy_snn_bridge_set_health_agent},
-    {"empathetic_response_thalamic_bridge", empathetic_response_thalamic_bridge_set_health_agent},
-    /* cognitive/ethics */
-    {"ethics_policies",                     ethics_policies_set_health_agent},
-    {"ethics_incidents",                    ethics_incidents_set_health_agent},
-    {"ethics_snn_bridge",                   ethics_snn_bridge_set_health_agent},
-    {"ethics_thalamic_bridge",              ethics_thalamic_bridge_set_health_agent},
-    {"ethics_fep_bridge",                   ethics_fep_bridge_set_health_agent},
-    {"health_ethics_bridge",                health_ethics_bridge_set_health_agent},
-    {"combinatorial_harm",                  combinatorial_harm_set_health_agent},
-    {"ethics_substrate_bridge",             ethics_substrate_bridge_set_health_agent},
-    {"ethics_immune",                       ethics_immune_set_health_agent},
-    {"ethics_evaluation",                   ethics_evaluation_set_health_agent},
-    {"ethics_warfare",                      ethics_warfare_set_health_agent},
-    {"ethics",                              ethics_set_health_agent},
-    {"core_directives",                     core_directives_set_health_agent},
-    {"ethics_learning",                     ethics_learning_set_health_agent},
-    {"ethics_asimov",                       ethics_asimov_set_health_agent},
-    {"ethics_hyperbolic",                   ethics_hyperbolic_set_health_agent},
-    {"ethics_plasticity_bridge",            ethics_plasticity_bridge_set_health_agent},
-    /* cognitive/epistemic */
-    {"epistemic_substrate_bridge",          epistemic_substrate_bridge_set_health_agent},
-    {"epistemic_snn_bridge",                epistemic_snn_bridge_set_health_agent},
-    {"epistemic_thalamic_bridge",           epistemic_thalamic_bridge_set_health_agent},
-    {"epistemic_plasticity_bridge",         epistemic_plasticity_bridge_set_health_agent},
-    {"epistemic_filter",                    epistemic_filter_set_health_agent},
-    {"epistemic_fep_bridge",                epistemic_fep_bridge_set_health_agent},
+    /* cognitive/emotion */
+    {"emotion_fep_bridge",                emotion_fep_bridge_set_health_agent},
+    {"emotion_plasticity_bridge",         emotion_plasticity_bridge_set_health_agent},
+    {"emotion_snn_bridge",                emotion_snn_bridge_set_health_agent},
+    {"emotion_substrate_bridge",          emotion_substrate_bridge_set_health_agent},
+    {"emotion_thalamic_bridge",           emotion_thalamic_bridge_set_health_agent},
+    {"health_emotion_bridge",             health_emotion_bridge_set_health_agent},
+    /* cognitive/emotional_tagging */
+    {"emotional_tagging",                 emotional_tagging_set_health_agent},
+    {"emotional_tagging_fep_bridge",      emotional_tagging_fep_bridge_set_health_agent},
+    {"emotional_tagging_substrate_bridge", emotional_tagging_substrate_bridge_set_health_agent},
+    {"emotional_tagging_thalamic_bridge", emotional_tagging_thalamic_bridge_set_health_agent},
+    /* cognitive/emotion_recognition */
+    {"emotion_recognition_simple",        emotion_recognition_simple_set_health_agent},
+    {"emotion_recognition_fep_bridge",    emotion_recognition_fep_bridge_set_health_agent},
+    {"emotion_recognition_substrate_bridge", emotion_recognition_substrate_bridge_set_health_agent},
+    {"emotion_recognition_thalamic_bridge", emotion_recognition_thalamic_bridge_set_health_agent},
+    /* cognitive/emotions */
+    {"emotional_system",                  emotional_system_set_health_agent},
+    {"emotional_system_sleep_bridge",     emotional_system_sleep_bridge_set_health_agent},
+    /* cognitive/emotion_tensor */
+    {"emotion_tensor",                    emotion_tensor_set_health_agent},
+    {"emotion_tensor_bridge",             emotion_tensor_bridge_set_health_agent},
+    {"emotion_tensor_substrate_bridge",   emotion_tensor_substrate_bridge_set_health_agent},
+    {"emotion_tensor_thalamic_bridge",    emotion_tensor_thalamic_bridge_set_health_agent},
+    /* cognitive/grief */
+    {"grief_and_loss",                    grief_and_loss_set_health_agent},
+    {"grief_fep_bridge",                  grief_fep_bridge_set_health_agent},
+    {"grief_substrate_bridge",            grief_substrate_bridge_set_health_agent},
+    {"grief_thalamic_bridge",             grief_thalamic_bridge_set_health_agent},
+    /* cognitive/joy */
+    {"joy_euphoria",                      joy_euphoria_set_health_agent},
+    {"joy_fep_bridge",                    joy_fep_bridge_set_health_agent},
+    {"joy_substrate_bridge",              joy_substrate_bridge_set_health_agent},
+    {"joy_thalamic_bridge",               joy_thalamic_bridge_set_health_agent},
+    /* cognitive/remorse */
+    {"remorse_regret",                    remorse_regret_set_health_agent},
+    {"remorse_fep_bridge",                remorse_fep_bridge_set_health_agent},
+    {"remorse_substrate_bridge",          remorse_substrate_bridge_set_health_agent},
+    {"remorse_thalamic_bridge",           remorse_thalamic_bridge_set_health_agent},
 };
 static constexpr size_t B18_MODULE_COUNT = sizeof(B18_MODULES) / sizeof(B18_MODULES[0]);
 

@@ -235,3 +235,7 @@ set_tests_properties(e2e_fault_tolerance_test_heartbeat_B17_emotion_cluster_e2e 
 # B18: cognitive/empathetic_response + cognitive/ethics + cognitive/epistemic
 add_e2e_fault_tolerance_test(test_heartbeat_B18_empathy_ethics_epistemic_e2e)
 set_tests_properties(e2e_fault_tolerance_test_heartbeat_B18_empathy_ethics_epistemic_e2e PROPERTIES TIMEOUT 300)
+
+# B19: All remaining 89 uncovered modules (final batch for 100% coverage)
+add_e2e_fault_tolerance_test(test_heartbeat_B19_remaining_modules_e2e)
+set_tests_properties(e2e_fault_tolerance_test_heartbeat_B19_remaining_modules_e2e PROPERTIES TIMEOUT 300)

@@ -615,4 +615,33 @@ gtest_discover_tests(unit_heartbeat_B18_empathy_ethics_epistemic
         TIMEOUT 120
 )
 
+# B19: All remaining 89 uncovered modules (final batch for 100% coverage)
+add_executable(unit_heartbeat_B19_remaining_modules
+    test_heartbeat_B19_remaining_modules_functions.cpp
+)
+
+target_link_libraries(unit_heartbeat_B19_remaining_modules
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        pthread
+)
+
+target_include_directories(unit_heartbeat_B19_remaining_modules
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_heartbeat_B19_remaining_modules PRIVATE cxx_std_17)
+target_compile_definitions(unit_heartbeat_B19_remaining_modules PRIVATE NIMCP_TESTING)
+
+gtest_discover_tests(unit_heartbeat_B19_remaining_modules
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;fault_tolerance;heartbeat;B19;remaining_modules"
+        TIMEOUT 120
+)
+
 message(STATUS "Added fault tolerance unit tests")

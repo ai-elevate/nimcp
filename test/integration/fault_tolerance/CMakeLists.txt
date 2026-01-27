@@ -514,3 +514,28 @@ set_tests_properties(integration_heartbeat_B18_empathy_ethics_epistemic PROPERTI
     LABELS "integration;fault_tolerance;heartbeat;B18;empathy_ethics_epistemic"
     TIMEOUT 180
 )
+
+# B19: All remaining 89 uncovered modules (final batch for 100% coverage)
+add_executable(integration_heartbeat_B19_remaining_modules
+    test_heartbeat_B19_remaining_modules_integration.cpp
+)
+
+target_link_libraries(integration_heartbeat_B19_remaining_modules
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        pthread
+)
+
+target_include_directories(integration_heartbeat_B19_remaining_modules
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME integration_heartbeat_B19_remaining_modules
+         COMMAND integration_heartbeat_B19_remaining_modules)
+set_tests_properties(integration_heartbeat_B19_remaining_modules PROPERTIES
+    LABELS "integration;fault_tolerance;heartbeat;B19;remaining_modules"
+    TIMEOUT 180
+)
