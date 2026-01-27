@@ -32,6 +32,9 @@
 extern "C" {
 #endif
 
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
 typedef struct {
     float pe_empathy_gain;
     float precision_response_confidence;
@@ -78,7 +81,9 @@ typedef struct {
     empathetic_response_fep_effects_t fep_effects;
     fep_empathetic_response_effects_t emotion_effects;
     empathetic_response_fep_state_t state;
-    empathetic_response_fep_stats_t stats;} empathetic_response_fep_bridge_t;
+    empathetic_response_fep_stats_t stats;
+    nimcp_health_agent_t* health_agent;
+} empathetic_response_fep_bridge_t;
 
 int empathetic_response_fep_default_config(empathetic_response_fep_config_t* config);
 empathetic_response_fep_bridge_t* empathetic_response_fep_create(const empathetic_response_fep_config_t* config);

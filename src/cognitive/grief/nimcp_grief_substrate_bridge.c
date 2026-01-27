@@ -43,6 +43,18 @@ static inline void grief_substrate_bridge_heartbeat(const char* operation, float
     }
 }
 
+/** @brief Send heartbeat from grief_substrate_bridge module (instance-level) */
+static inline void grief_substrate_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_grief_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_grief_substrate_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_grief_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "GRIEF_SUBSTRATE_BRIDGE"
 
 
@@ -57,6 +69,7 @@ struct grief_substrate_bridge {
     bool bio_async_connected;
     uint64_t update_count;
     float prev_overall_capacity;
+    nimcp_health_agent_t* health_agent;  /**< Instance-level health agent */
 };
 
 grief_substrate_config_t grief_substrate_default_config(void) {
@@ -315,4 +328,34 @@ int grief_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Instance-Level Health Agent (Phase 8 Utility Integration)
+ * ============================================================================ */
+
+void grief_substrate_bridge_set_instance_health_agent(grief_substrate_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) { bridge->health_agent = agent; }
+}
+
+/* ============================================================================
+ * Training Stubs (Phase 8 Utility Integration)
+ * ============================================================================ */
+
+int grief_substrate_bridge_training_begin(grief_substrate_bridge_t* bridge) {
+    if (!bridge) return -1;
+    grief_substrate_bridge_heartbeat_instance(bridge->health_agent, "grief_substrate_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int grief_substrate_bridge_training_end(grief_substrate_bridge_t* bridge) {
+    if (!bridge) return -1;
+    grief_substrate_bridge_heartbeat_instance(bridge->health_agent, "grief_substrate_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int grief_substrate_bridge_training_step(grief_substrate_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    grief_substrate_bridge_heartbeat_instance(bridge->health_agent, "grief_substrate_bridge_training_step", progress);
+    return 0;
 }

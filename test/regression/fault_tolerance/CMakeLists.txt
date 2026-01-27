@@ -756,4 +756,32 @@ gtest_discover_tests(regression_heartbeat_B25_memory_core_bridges
         TIMEOUT 180
 )
 
+# B26: Emotion cluster bridge heartbeat/utility regression tests
+add_executable(regression_heartbeat_B26_emotion_cluster_bridges
+    test_emotion_cluster_bridges_B26_regression.cpp
+)
+target_link_libraries(regression_heartbeat_B26_emotion_cluster_bridges
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        pthread
+)
+
+target_include_directories(regression_heartbeat_B26_emotion_cluster_bridges
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_heartbeat_B26_emotion_cluster_bridges PRIVATE cxx_std_17)
+target_compile_definitions(regression_heartbeat_B26_emotion_cluster_bridges PRIVATE NIMCP_TESTING)
+
+gtest_discover_tests(regression_heartbeat_B26_emotion_cluster_bridges
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;fault_tolerance;heartbeat;B26;emotion_cluster_bridges"
+        TIMEOUT 180
+)
+
 message(STATUS "Added fault tolerance regression tests")

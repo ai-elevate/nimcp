@@ -47,6 +47,10 @@
 extern "C" {
 #endif
 
+/* Forward declaration for health agent (Phase 8) */
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
 /* ============================================================================
  * CONSTANTS
  * ============================================================================ */
@@ -172,7 +176,9 @@ typedef struct {
     emotional_tagging_fep_effects_t fep_effects;
     fep_emotional_tagging_effects_t emotion_effects;
     emotional_tagging_fep_state_t state;
-    emotional_tagging_fep_stats_t stats;} emotional_tagging_fep_bridge_t;
+    emotional_tagging_fep_stats_t stats;
+    nimcp_health_agent_t* health_agent;  /**< Instance-level health agent (Phase 8) */
+} emotional_tagging_fep_bridge_t;
 
 /* ============================================================================
  * LIFECYCLE API

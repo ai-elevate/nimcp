@@ -12,6 +12,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "security/nimcp_bbb_helpers.h"
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 
 #include <string.h>
 #include <math.h>
@@ -42,6 +43,18 @@ void emotion_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void emotion_snn_bridge_heartbeat(const char* operation, float progress) {
     if (g_emotion_snn_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_emotion_snn_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from emotion_snn_bridge module (instance-level) */
+static inline void emotion_snn_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_emotion_snn_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_emotion_snn_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_emotion_snn_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -88,15 +101,14 @@ struct emotion_snn_bridge {
 
     /* Bio-async */
     bool bio_async_connected;
+
+    /* Phase 8: Instance-level health agent */
+    nimcp_health_agent_t* health_agent;
 };
 
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    return (x < min_val) ? min_val : (x > max_val) ? max_val : x;
-}
 
 static inline float sigmoid(float x) {
     return 1.0f / (1.0f + expf(-x));
@@ -514,9 +526,9 @@ int emotion_snn_encode_valence_arousal(
     emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_encode_v", 0.0f);
 
 
-    valence = clamp_f(valence, -1.0f, 1.0f);
-    arousal = clamp_f(arousal, 0.0f, 1.0f);
-    intensity = clamp_f(intensity, 0.0f, 1.0f);
+    valence = nimcp_myelin_clamp(valence, -1.0f, 1.0f);
+    arousal = nimcp_myelin_clamp(arousal, 0.0f, 1.0f);
+    intensity = nimcp_myelin_clamp(intensity, 0.0f, 1.0f);
 
     int total_active = 0;
     uint32_t half_dim = bridge->config.va_dim;
@@ -685,7 +697,7 @@ emotion_category_t emotion_snn_get_category_confidences(
 
             confidences[i] /= sum_exp;
             confidences[i] *= bridge->config.confidence_gain;
-            confidences[i] = clamp_f(confidences[i], 0.0f, 1.0f);
+            confidences[i] = nimcp_myelin_clamp(confidences[i], 0.0f, 1.0f);
 
             if (confidences[i] > best_conf) {
                 best_conf = confidences[i];
@@ -704,7 +716,7 @@ emotion_category_t emotion_snn_get_category_confidences(
 
             float conf = rates[i] / bridge->config.max_rate_hz;
             conf *= bridge->config.confidence_gain;
-            confidences[i] = clamp_f(conf, 0.0f, 1.0f);
+            confidences[i] = nimcp_myelin_clamp(conf, 0.0f, 1.0f);
 
             if (rates[i] > max_rate) {
                 max_rate = rates[i];
@@ -793,7 +805,7 @@ int emotion_snn_get_valence_arousal(
         v_total_rate += rate;
     }
     *valence = (v_total_rate > 0.01f) ? (v_weighted_sum / v_total_rate) : 0.0f;
-    *valence = clamp_f(*valence, -1.0f, 1.0f);
+    *valence = nimcp_myelin_clamp(*valence, -1.0f, 1.0f);
 
     /* Decode arousal from second half of VA buffer */
     float a_weighted_sum = 0.0f;
@@ -811,7 +823,7 @@ int emotion_snn_get_valence_arousal(
         a_total_rate += rate;
     }
     *arousal = (a_total_rate > 0.01f) ? (a_weighted_sum / a_total_rate) : 0.5f;
-    *arousal = clamp_f(*arousal, 0.0f, 1.0f);
+    *arousal = nimcp_myelin_clamp(*arousal, 0.0f, 1.0f);
 
     /* Update state */
     bridge->emotion_state.valence = *valence;
@@ -1026,11 +1038,41 @@ int emotion_snn_set_intensity_modulation(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    bridge->current_intensity_mod = clamp_f(intensity * bridge->config.intensity_gain, 0.1f, 3.0f);
+    bridge->current_intensity_mod = nimcp_myelin_clamp(intensity * bridge->config.intensity_gain, 0.1f, 3.0f);
     bridge->emotion_state.intensity = intensity;
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
+    return 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void emotion_snn_bridge_set_instance_health_agent(emotion_snn_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training stubs
+ * ============================================================================ */
+int emotion_snn_bridge_training_begin(emotion_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+    emotion_snn_bridge_heartbeat_instance(bridge->health_agent, "emotion_snn_training_begin", 0.0f);
+    return 0;
+}
+
+int emotion_snn_bridge_training_end(emotion_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+    emotion_snn_bridge_heartbeat_instance(bridge->health_agent, "emotion_snn_training_end", 1.0f);
+    return 0;
+}
+
+int emotion_snn_bridge_training_step(emotion_snn_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    emotion_snn_bridge_heartbeat_instance(bridge->health_agent, "emotion_snn_training_step", progress);
     return 0;
 }
 

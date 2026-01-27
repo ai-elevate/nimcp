@@ -39,6 +39,18 @@ static inline void llf_thalamic_bridge_heartbeat(const char* operation, float pr
     }
 }
 
+/** @brief Send heartbeat from llf_thalamic_bridge module (instance-level) */
+static inline void llf_thalamic_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_llf_thalamic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_llf_thalamic_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_llf_thalamic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "LLF_THALAMIC_BRIDGE"
 
 
@@ -49,6 +61,7 @@ struct llf_thalamic_bridge {
     llf_thalamic_config_t config;
     llf_thalamic_stats_t stats;
     float attention_weight;
+    nimcp_health_agent_t* health_agent;  /**< Instance-level health agent */
 };
 
 llf_thalamic_config_t llf_thalamic_default_config(void) {
@@ -218,4 +231,34 @@ int llf_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void llf_thalamic_bridge_set_instance_health_agent(llf_thalamic_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) { bridge->health_agent = agent; }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration Stubs
+ * ============================================================================ */
+
+int llf_thalamic_bridge_training_begin(llf_thalamic_bridge_t* bridge) {
+    if (!bridge) return -1;
+    llf_thalamic_bridge_heartbeat_instance(bridge->health_agent, "llf_thalamic_training_begin", 0.0f);
+    return 0;
+}
+
+int llf_thalamic_bridge_training_end(llf_thalamic_bridge_t* bridge) {
+    if (!bridge) return -1;
+    llf_thalamic_bridge_heartbeat_instance(bridge->health_agent, "llf_thalamic_training_end", 1.0f);
+    return 0;
+}
+
+int llf_thalamic_bridge_training_step(llf_thalamic_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    llf_thalamic_bridge_heartbeat_instance(bridge->health_agent, "llf_thalamic_training_step", progress);
+    return 0;
 }

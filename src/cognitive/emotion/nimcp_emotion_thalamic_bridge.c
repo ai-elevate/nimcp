@@ -40,6 +40,18 @@ static inline void emotion_thalamic_bridge_heartbeat(const char* operation, floa
     }
 }
 
+/** @brief Send heartbeat from emotion_thalamic_bridge module (instance-level) */
+static inline void emotion_thalamic_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_emotion_thalamic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_emotion_thalamic_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_emotion_thalamic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 struct emotion_thalamic_bridge {
     bridge_base_t base;  /* MUST be first - provides mutex protection */
@@ -48,6 +60,9 @@ struct emotion_thalamic_bridge {
     emotion_thalamic_config_t config;
     emotion_thalamic_stats_t stats;
     float attention_weight;
+
+    /* Phase 8: Instance-level health agent */
+    nimcp_health_agent_t* health_agent;
 };
 
 emotion_thalamic_config_t emotion_thalamic_default_config(void) {
@@ -305,6 +320,36 @@ int emotion_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Emotion_Thalamic_Bridge");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void emotion_thalamic_bridge_set_instance_health_agent(emotion_thalamic_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training stubs
+ * ============================================================================ */
+int emotion_thalamic_bridge_training_begin(emotion_thalamic_bridge_t* bridge) {
+    if (!bridge) return -1;
+    emotion_thalamic_bridge_heartbeat_instance(bridge->health_agent, "emotion_thal_training_begin", 0.0f);
+    return 0;
+}
+
+int emotion_thalamic_bridge_training_end(emotion_thalamic_bridge_t* bridge) {
+    if (!bridge) return -1;
+    emotion_thalamic_bridge_heartbeat_instance(bridge->health_agent, "emotion_thal_training_end", 1.0f);
+    return 0;
+}
+
+int emotion_thalamic_bridge_training_step(emotion_thalamic_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    emotion_thalamic_bridge_heartbeat_instance(bridge->health_agent, "emotion_thal_training_step", progress);
+    return 0;
 }
 
 /* ============================================================================

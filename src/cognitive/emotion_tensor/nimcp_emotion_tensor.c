@@ -49,6 +49,18 @@ static inline void emotion_tensor_heartbeat(const char* operation, float progres
     }
 }
 
+/** @brief Send heartbeat from emotion_tensor module (instance-level) */
+static inline void emotion_tensor_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_emotion_tensor_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_emotion_tensor_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_emotion_tensor_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Logging
@@ -1186,4 +1198,37 @@ int emotion_tensor_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Instance-Level Health Agent (Phase 8 Utility Integration)
+ * ============================================================================ */
+
+static nimcp_health_agent_t* g_emotion_tensor_instance_health_agent = NULL;
+
+void emotion_tensor_set_instance_health_agent(void* ctx, nimcp_health_agent_t* agent) {
+    (void)ctx;
+    g_emotion_tensor_instance_health_agent = agent;
+}
+
+/* ============================================================================
+ * Training Stubs (Phase 8 Utility Integration)
+ * ============================================================================ */
+
+int emotion_tensor_training_begin(void* ctx) {
+    if (!ctx) return -1;
+    emotion_tensor_heartbeat_instance(g_emotion_tensor_instance_health_agent, "emotion_tensor_training_begin", 0.0f);
+    return 0;
+}
+
+int emotion_tensor_training_end(void* ctx) {
+    if (!ctx) return -1;
+    emotion_tensor_heartbeat_instance(g_emotion_tensor_instance_health_agent, "emotion_tensor_training_end", 1.0f);
+    return 0;
+}
+
+int emotion_tensor_training_step(void* ctx, float progress) {
+    if (!ctx) return -1;
+    emotion_tensor_heartbeat_instance(g_emotion_tensor_instance_health_agent, "emotion_tensor_training_step", progress);
+    return 0;
 }

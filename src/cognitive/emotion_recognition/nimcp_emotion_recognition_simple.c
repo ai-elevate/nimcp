@@ -56,6 +56,18 @@ static inline void emotion_recognition_simple_heartbeat(const char* operation, f
     }
 }
 
+/** @brief Send heartbeat from emotion_recognition_simple module (instance-level) */
+static inline void emotion_recognition_simple_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_emotion_recognition_simple_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_emotion_recognition_simple_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_emotion_recognition_simple_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 // ============================================================================
 // Emotion Keywords
@@ -273,4 +285,32 @@ int emotion_recognition_simple_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent + Training Stubs
+ * ============================================================================ */
+
+static nimcp_health_agent_t* g_emotion_recognition_simple_instance_health_agent = NULL;
+
+void emotion_recognition_simple_set_instance_health_agent(nimcp_health_agent_t* agent) {
+    g_emotion_recognition_simple_instance_health_agent = agent;
+}
+
+int emotion_recognition_simple_training_begin(void* ctx) {
+    if (!ctx) return -1;
+    emotion_recognition_simple_heartbeat_instance(g_emotion_recognition_simple_instance_health_agent, "erec_simple_training_begin", 0.0f);
+    return 0;
+}
+
+int emotion_recognition_simple_training_end(void* ctx) {
+    if (!ctx) return -1;
+    emotion_recognition_simple_heartbeat_instance(g_emotion_recognition_simple_instance_health_agent, "erec_simple_training_end", 1.0f);
+    return 0;
+}
+
+int emotion_recognition_simple_training_step(void* ctx, float progress) {
+    if (!ctx) return -1;
+    emotion_recognition_simple_heartbeat_instance(g_emotion_recognition_simple_instance_health_agent, "erec_simple_training_step", progress);
+    return 0;
 }

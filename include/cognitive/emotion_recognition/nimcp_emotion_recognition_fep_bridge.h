@@ -34,6 +34,10 @@
 extern "C" {
 #endif
 
+/* Forward declaration for health agent (Phase 8) */
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
 typedef struct {
     /* FEP → Emotion Recognition */
     float pe_inference_gain;
@@ -90,7 +94,9 @@ typedef struct {
     emotion_recognition_fep_effects_t fep_effects;
     fep_emotion_recognition_effects_t emotion_effects;
     emotion_recognition_fep_state_t state;
-    emotion_recognition_fep_stats_t stats;} emotion_recognition_fep_bridge_t;
+    emotion_recognition_fep_stats_t stats;
+    nimcp_health_agent_t* health_agent;  /**< Instance-level health agent (Phase 8) */
+} emotion_recognition_fep_bridge_t;
 
 int emotion_recognition_fep_default_config(emotion_recognition_fep_config_t* config);
 emotion_recognition_fep_bridge_t* emotion_recognition_fep_create(const emotion_recognition_fep_config_t* config);

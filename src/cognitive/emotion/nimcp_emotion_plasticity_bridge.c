@@ -12,6 +12,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "security/nimcp_bbb_helpers.h"
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 
 #include <string.h>
 #include <math.h>
@@ -42,6 +43,18 @@ void emotion_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void emotion_plasticity_bridge_heartbeat(const char* operation, float progress) {
     if (g_emotion_plasticity_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_emotion_plasticity_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from emotion_plasticity_bridge module (instance-level) */
+static inline void emotion_plasticity_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_emotion_plasticity_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_emotion_plasticity_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_emotion_plasticity_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -87,15 +100,14 @@ struct emotion_plasticity_bridge {
 
     /* Bio-async */
     bool bio_async_connected;
+
+    /* Phase 8: Instance-level health agent */
+    nimcp_health_agent_t* health_agent;
 };
 
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    return (x < min_val) ? min_val : (x > max_val) ? max_val : x;
-}
 
 static emotion_plasticity_synapse_t* find_synapse(
     emotion_plasticity_bridge_t* bridge,
@@ -190,7 +202,7 @@ static void apply_reward_modulated_plasticity_unlocked(
                          bridge->pending_reward *
                          bridge->config.reward_modulation_gain;
 
-            syn->weight = clamp_f(syn->weight + delta,
+            syn->weight = nimcp_myelin_clamp(syn->weight + delta,
                                  bridge->config.weight_min,
                                  bridge->config.weight_max);
 
@@ -447,7 +459,7 @@ int emotion_plasticity_register_synapse(
     syn->synapse_id = synapse_id;
     syn->type = type;
     syn->associated_emotion = associated_emotion;
-    syn->weight = clamp_f(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
+    syn->weight = nimcp_myelin_clamp(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
     syn->initial_weight = syn->weight;
     syn->last_pre_spike_us = 0;
     syn->last_post_spike_us = 0;
@@ -561,7 +573,7 @@ int emotion_plasticity_stimulus(
                     /* Pre after post -> LTD */
                     float delta = compute_stdp_delta(bridge, -dt_ms);
                     float old_weight = syn->weight;
-                    syn->weight = clamp_f(syn->weight + delta,
+                    syn->weight = nimcp_myelin_clamp(syn->weight + delta,
                                          bridge->config.weight_min,
                                          bridge->config.weight_max);
 
@@ -634,7 +646,7 @@ int emotion_plasticity_response(
                     /* Post after pre -> LTP */
                     float delta = compute_stdp_delta(bridge, dt_ms);
                     float old_weight = syn->weight;
-                    syn->weight = clamp_f(syn->weight + delta,
+                    syn->weight = nimcp_myelin_clamp(syn->weight + delta,
                                          bridge->config.weight_min,
                                          bridge->config.weight_max);
 
@@ -725,14 +737,14 @@ int emotion_plasticity_extinction_trial(
             float old_weight = syn->weight;
 
             /* Increase extinction level */
-            syn->extinction_level = clamp_f(
+            syn->extinction_level = nimcp_myelin_clamp(
                 syn->extinction_level + bridge->config.extinction_rate,
                 0.0f, 1.0f
             );
 
             /* Reduce weight proportionally */
             syn->weight = syn->original_strength * (1.0f - syn->extinction_level);
-            syn->weight = clamp_f(syn->weight,
+            syn->weight = nimcp_myelin_clamp(syn->weight,
                                  bridge->config.weight_min,
                                  bridge->config.weight_max);
 
@@ -747,7 +759,7 @@ int emotion_plasticity_extinction_trial(
     }
 
     /* Update global extinction level for emotion */
-    bridge->emotion_extinction[emotion] = clamp_f(
+    bridge->emotion_extinction[emotion] = nimcp_myelin_clamp(
         bridge->emotion_extinction[emotion] + bridge->config.extinction_rate,
         0.0f, 1.0f
     );
@@ -820,7 +832,7 @@ int emotion_plasticity_update(
 
             emotion_plasticity_synapse_t* syn = &bridge->synapses[i];
             float error = bridge->config.target_response_rate - syn->avg_activity;
-            syn->weight = clamp_f(syn->weight + alpha * error * 0.01f,
+            syn->weight = nimcp_myelin_clamp(syn->weight + alpha * error * 0.01f,
                                  bridge->config.weight_min,
                                  bridge->config.weight_max);
         }
@@ -886,12 +898,12 @@ int emotion_plasticity_consolidate(emotion_plasticity_bridge_t* bridge) {
         float mid = (bridge->config.weight_min + bridge->config.weight_max) / 2.0f;
         if (syn->weight > mid) {
             /* Strengthen strong synapses */
-            syn->weight = clamp_f(syn->weight * 1.05f,
+            syn->weight = nimcp_myelin_clamp(syn->weight * 1.05f,
                                  bridge->config.weight_min,
                                  bridge->config.weight_max);
         } else {
             /* Weaken weak synapses */
-            syn->weight = clamp_f(syn->weight * 0.95f,
+            syn->weight = nimcp_myelin_clamp(syn->weight * 0.95f,
                                  bridge->config.weight_min,
                                  bridge->config.weight_max);
         }
@@ -1078,7 +1090,7 @@ int emotion_plasticity_set_valence_modulation(
 
 
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->current_valence_mod = clamp_f(valence, -1.0f, 1.0f);
+    bridge->current_valence_mod = nimcp_myelin_clamp(valence, -1.0f, 1.0f);
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
@@ -1095,7 +1107,7 @@ int emotion_plasticity_set_arousal_modulation(
 
 
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->current_arousal_mod = clamp_f(arousal, 0.0f, 1.0f);
+    bridge->current_arousal_mod = nimcp_myelin_clamp(arousal, 0.0f, 1.0f);
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
@@ -1147,6 +1159,36 @@ bool emotion_plasticity_is_bio_async_connected(const emotion_plasticity_bridge_t
 
 
     return bridge->bio_async_connected;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void emotion_plasticity_bridge_set_instance_health_agent(emotion_plasticity_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training stubs
+ * ============================================================================ */
+int emotion_plasticity_bridge_training_begin(emotion_plasticity_bridge_t* bridge) {
+    if (!bridge) return -1;
+    emotion_plasticity_bridge_heartbeat_instance(bridge->health_agent, "emotion_plas_training_begin", 0.0f);
+    return 0;
+}
+
+int emotion_plasticity_bridge_training_end(emotion_plasticity_bridge_t* bridge) {
+    if (!bridge) return -1;
+    emotion_plasticity_bridge_heartbeat_instance(bridge->health_agent, "emotion_plas_training_end", 1.0f);
+    return 0;
+}
+
+int emotion_plasticity_bridge_training_step(emotion_plasticity_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    emotion_plasticity_bridge_heartbeat_instance(bridge->health_agent, "emotion_plas_training_step", progress);
+    return 0;
 }
 
 /* ============================================================================

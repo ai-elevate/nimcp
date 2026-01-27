@@ -9246,6 +9246,32 @@ e2e_fault_tolerance_test_predictive_personality_selfawareness_bridges_B24_e2e/fa
 .PHONY : e2e_fault_tolerance_test_predictive_personality_selfawareness_bridges_B24_e2e/fast
 
 #=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_memory_core_bridges_B25_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_memory_core_bridges_B25_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_memory_core_bridges_B25_e2e
+.PHONY : e2e_fault_tolerance_test_memory_core_bridges_B25_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_memory_core_bridges_B25_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_memory_core_bridges_B25_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_memory_core_bridges_B25_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_memory_core_bridges_B25_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_emotion_cluster_bridges_B26_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_emotion_cluster_bridges_B26_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_emotion_cluster_bridges_B26_e2e
+.PHONY : e2e_fault_tolerance_test_emotion_cluster_bridges_B26_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_emotion_cluster_bridges_B26_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_emotion_cluster_bridges_B26_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_emotion_cluster_bridges_B26_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_emotion_cluster_bridges_B26_e2e/fast
+
+#=============================================================================
 # Target rules for targets named e2e_cognitive_test_predictive_bridge_exception_e2e
 
 # Build rule for target.
@@ -12455,6 +12481,32 @@ integration_heartbeat_B24_predictive_personality_selfawareness_bridges: cmake_ch
 integration_heartbeat_B24_predictive_personality_selfawareness_bridges/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B24_predictive_personality_selfawareness_bridges.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B24_predictive_personality_selfawareness_bridges.dir/build
 .PHONY : integration_heartbeat_B24_predictive_personality_selfawareness_bridges/fast
+
+#=============================================================================
+# Target rules for targets named integration_heartbeat_B25_memory_core_bridges
+
+# Build rule for target.
+integration_heartbeat_B25_memory_core_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_heartbeat_B25_memory_core_bridges
+.PHONY : integration_heartbeat_B25_memory_core_bridges
+
+# fast build rule for target.
+integration_heartbeat_B25_memory_core_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B25_memory_core_bridges.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B25_memory_core_bridges.dir/build
+.PHONY : integration_heartbeat_B25_memory_core_bridges/fast
+
+#=============================================================================
+# Target rules for targets named integration_heartbeat_B26_emotion_cluster_bridges
+
+# Build rule for target.
+integration_heartbeat_B26_emotion_cluster_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_heartbeat_B26_emotion_cluster_bridges
+.PHONY : integration_heartbeat_B26_emotion_cluster_bridges
+
+# fast build rule for target.
+integration_heartbeat_B26_emotion_cluster_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B26_emotion_cluster_bridges.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B26_emotion_cluster_bridges.dir/build
+.PHONY : integration_heartbeat_B26_emotion_cluster_bridges/fast
 
 #=============================================================================
 # Target rules for targets named test_symbolic_logic_attachment
@@ -21843,6 +21895,32 @@ regression_heartbeat_B24_predictive_personality_selfawareness_bridges/fast:
 .PHONY : regression_heartbeat_B24_predictive_personality_selfawareness_bridges/fast
 
 #=============================================================================
+# Target rules for targets named regression_heartbeat_B25_memory_core_bridges
+
+# Build rule for target.
+regression_heartbeat_B25_memory_core_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_heartbeat_B25_memory_core_bridges
+.PHONY : regression_heartbeat_B25_memory_core_bridges
+
+# fast build rule for target.
+regression_heartbeat_B25_memory_core_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B25_memory_core_bridges.dir/build.make test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B25_memory_core_bridges.dir/build
+.PHONY : regression_heartbeat_B25_memory_core_bridges/fast
+
+#=============================================================================
+# Target rules for targets named regression_heartbeat_B26_emotion_cluster_bridges
+
+# Build rule for target.
+regression_heartbeat_B26_emotion_cluster_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_heartbeat_B26_emotion_cluster_bridges
+.PHONY : regression_heartbeat_B26_emotion_cluster_bridges
+
+# fast build rule for target.
+regression_heartbeat_B26_emotion_cluster_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B26_emotion_cluster_bridges.dir/build.make test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B26_emotion_cluster_bridges.dir/build
+.PHONY : regression_heartbeat_B26_emotion_cluster_bridges/fast
+
+#=============================================================================
 # Target rules for targets named unit_utils_vcs_integration
 
 # Build rule for target.
@@ -22322,6 +22400,32 @@ unit_heartbeat_B24_predictive_personality_selfawareness_bridges: cmake_check_bui
 unit_heartbeat_B24_predictive_personality_selfawareness_bridges/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B24_predictive_personality_selfawareness_bridges.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B24_predictive_personality_selfawareness_bridges.dir/build
 .PHONY : unit_heartbeat_B24_predictive_personality_selfawareness_bridges/fast
+
+#=============================================================================
+# Target rules for targets named unit_heartbeat_B25_memory_core_bridges
+
+# Build rule for target.
+unit_heartbeat_B25_memory_core_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_heartbeat_B25_memory_core_bridges
+.PHONY : unit_heartbeat_B25_memory_core_bridges
+
+# fast build rule for target.
+unit_heartbeat_B25_memory_core_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B25_memory_core_bridges.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B25_memory_core_bridges.dir/build
+.PHONY : unit_heartbeat_B25_memory_core_bridges/fast
+
+#=============================================================================
+# Target rules for targets named unit_heartbeat_B26_emotion_cluster_bridges
+
+# Build rule for target.
+unit_heartbeat_B26_emotion_cluster_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_heartbeat_B26_emotion_cluster_bridges
+.PHONY : unit_heartbeat_B26_emotion_cluster_bridges
+
+# fast build rule for target.
+unit_heartbeat_B26_emotion_cluster_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B26_emotion_cluster_bridges.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B26_emotion_cluster_bridges.dir/build
+.PHONY : unit_heartbeat_B26_emotion_cluster_bridges/fast
 
 #=============================================================================
 # Target rules for targets named unit_brain_test_kg_module_wiring
@@ -35117,6 +35221,7 @@ help:
 	@echo "... e2e_fault_tolerance_test_brain_state_manager_e2e"
 	@echo "... e2e_fault_tolerance_test_capacity_manager_e2e"
 	@echo "... e2e_fault_tolerance_test_crash_recovery"
+	@echo "... e2e_fault_tolerance_test_emotion_cluster_bridges_B26_e2e"
 	@echo "... e2e_fault_tolerance_test_exception_brain_integration_e2e"
 	@echo "... e2e_fault_tolerance_test_exception_complete_flow_e2e"
 	@echo "... e2e_fault_tolerance_test_exception_e2e_comprehensive"
@@ -35157,6 +35262,7 @@ help:
 	@echo "... e2e_fault_tolerance_test_heartbeat_B18_empathy_ethics_epistemic_e2e"
 	@echo "... e2e_fault_tolerance_test_heartbeat_B19_remaining_modules_e2e"
 	@echo "... e2e_fault_tolerance_test_heartbeat_module_e2e"
+	@echo "... e2e_fault_tolerance_test_memory_core_bridges_B25_e2e"
 	@echo "... e2e_fault_tolerance_test_mirror_bridges_B22_e2e"
 	@echo "... e2e_fault_tolerance_test_parietal_bridges_B23_e2e"
 	@echo "... e2e_fault_tolerance_test_perception_cortical_health_e2e"
@@ -35658,6 +35764,8 @@ help:
 	@echo "... integration_heartbeat_B22_mirror_bridges"
 	@echo "... integration_heartbeat_B23_parietal_bridges"
 	@echo "... integration_heartbeat_B24_predictive_personality_selfawareness_bridges"
+	@echo "... integration_heartbeat_B25_memory_core_bridges"
+	@echo "... integration_heartbeat_B26_emotion_cluster_bridges"
 	@echo "... integration_hemispheric_brain"
 	@echo "... integration_hypergraph_knowledge"
 	@echo "... integration_imagination_fep"
@@ -36105,6 +36213,8 @@ help:
 	@echo "... regression_heartbeat_B22_mirror_bridges"
 	@echo "... regression_heartbeat_B23_parietal_bridges"
 	@echo "... regression_heartbeat_B24_predictive_personality_selfawareness_bridges"
+	@echo "... regression_heartbeat_B25_memory_core_bridges"
+	@echo "... regression_heartbeat_B26_emotion_cluster_bridges"
 	@echo "... regression_hemispheric_brain_regression"
 	@echo "... regression_imagination_fep"
 	@echo "... regression_information_test_quantum_shannon_backward_compat"
@@ -37215,6 +37325,8 @@ help:
 	@echo "... unit_heartbeat_B22_mirror_bridges"
 	@echo "... unit_heartbeat_B23_parietal_bridges"
 	@echo "... unit_heartbeat_B24_predictive_personality_selfawareness_bridges"
+	@echo "... unit_heartbeat_B25_memory_core_bridges"
+	@echo "... unit_heartbeat_B26_emotion_cluster_bridges"
 	@echo "... unit_information_test_quantum_shannon"
 	@echo "... unit_information_test_shannon"
 	@echo "... unit_integration_adapters_chemistry_test_calcium_adapter"

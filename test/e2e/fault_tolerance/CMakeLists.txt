@@ -259,3 +259,7 @@ set_tests_properties(e2e_fault_tolerance_test_predictive_personality_selfawarene
 # B25: Memory/Core bridge heartbeat/utility E2E tests
 add_e2e_fault_tolerance_test(test_memory_core_bridges_B25_e2e)
 set_tests_properties(e2e_fault_tolerance_test_memory_core_bridges_B25_e2e PROPERTIES TIMEOUT 300)
+
+# B26: Emotion cluster bridge heartbeat/utility E2E tests
+add_e2e_fault_tolerance_test(test_emotion_cluster_bridges_B26_e2e)
+set_tests_properties(e2e_fault_tolerance_test_emotion_cluster_bridges_B26_e2e PROPERTIES TIMEOUT 300)

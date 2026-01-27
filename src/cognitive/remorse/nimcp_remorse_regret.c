@@ -58,6 +58,21 @@ static inline void remorse_regret_heartbeat(const char* operation, float progres
     }
 }
 
+/** @brief Send heartbeat from remorse_regret module (instance-level) */
+static inline void remorse_regret_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_remorse_regret_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_remorse_regret_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_remorse_regret_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+/** Instance-level health agent for non-bridge module (static fallback) */
+static nimcp_health_agent_t* g_remorse_regret_instance_health_agent = NULL;
+
 #define BIO_MODULE_REMORSE 0x0325
 
 /*=============================================================================
@@ -829,4 +844,34 @@ int remorse_regret_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void remorse_regret_set_instance_health_agent(nimcp_health_agent_t* agent) {
+    g_remorse_regret_instance_health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration Stubs
+ * ============================================================================ */
+
+int remorse_regret_training_begin(void* ctx) {
+    if (!ctx) return -1;
+    remorse_regret_heartbeat_instance(g_remorse_regret_instance_health_agent, "remorse_regret_training_begin", 0.0f);
+    return 0;
+}
+
+int remorse_regret_training_end(void* ctx) {
+    if (!ctx) return -1;
+    remorse_regret_heartbeat_instance(g_remorse_regret_instance_health_agent, "remorse_regret_training_end", 1.0f);
+    return 0;
+}
+
+int remorse_regret_training_step(void* ctx, float progress) {
+    if (!ctx) return -1;
+    remorse_regret_heartbeat_instance(g_remorse_regret_instance_health_agent, "remorse_regret_training_step", progress);
+    return 0;
 }

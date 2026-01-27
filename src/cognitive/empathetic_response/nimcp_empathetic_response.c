@@ -59,6 +59,18 @@ static inline void empathetic_response_heartbeat(const char* operation, float pr
     }
 }
 
+/** @brief Send heartbeat from empathetic_response module (instance-level) */
+static inline void empathetic_response_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_empathetic_response_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_empathetic_response_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_empathetic_response_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define BIO_MODULE_EMPATHY 0x0322
 
 // ============================================================================
@@ -78,6 +90,8 @@ struct empathetic_response_engine_struct {
     // Bio-async integration
     bio_module_context_t bio_ctx;   /**< Bio-async module context */
     bool bio_async_enabled;         /**< Bio-async registration status */
+
+    nimcp_health_agent_t* health_agent;
 };
 
 // ============================================================================
@@ -648,4 +662,26 @@ int empathetic_response_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+void empathetic_response_set_instance_health_agent(empathetic_response_engine_t engine, nimcp_health_agent_t* agent) {
+    if (engine) { engine->health_agent = agent; }
+}
+
+int empathetic_response_training_begin(empathetic_response_engine_t engine) {
+    if (!engine) return -1;
+    empathetic_response_heartbeat_instance(engine->health_agent, "empathetic_response_training_begin", 0.0f);
+    return 0;
+}
+
+int empathetic_response_training_end(empathetic_response_engine_t engine) {
+    if (!engine) return -1;
+    empathetic_response_heartbeat_instance(engine->health_agent, "empathetic_response_training_end", 1.0f);
+    return 0;
+}
+
+int empathetic_response_training_step(empathetic_response_engine_t engine, float progress) {
+    if (!engine) return -1;
+    empathetic_response_heartbeat_instance(engine->health_agent, "empathetic_response_training_step", progress);
+    return 0;
 }

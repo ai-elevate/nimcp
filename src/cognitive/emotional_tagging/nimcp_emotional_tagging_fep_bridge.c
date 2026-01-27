@@ -45,6 +45,18 @@ static inline void emotional_tagging_fep_bridge_heartbeat(const char* operation,
     }
 }
 
+/** @brief Send heartbeat from emotional_tagging_fep_bridge module (instance-level) */
+static inline void emotional_tagging_fep_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_emotional_tagging_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_emotional_tagging_fep_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_emotional_tagging_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* ============================================================================
  * Default Configuration
@@ -604,4 +616,32 @@ int emotional_tagging_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent + Training Stubs
+ * ============================================================================ */
+
+void emotional_tagging_fep_bridge_set_instance_health_agent(emotional_tagging_fep_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+int emotional_tagging_fep_bridge_training_begin(emotional_tagging_fep_bridge_t* bridge) {
+    if (!bridge) return -1;
+    emotional_tagging_fep_bridge_heartbeat_instance(bridge->health_agent, "etag_fep_training_begin", 0.0f);
+    return 0;
+}
+
+int emotional_tagging_fep_bridge_training_end(emotional_tagging_fep_bridge_t* bridge) {
+    if (!bridge) return -1;
+    emotional_tagging_fep_bridge_heartbeat_instance(bridge->health_agent, "etag_fep_training_end", 1.0f);
+    return 0;
+}
+
+int emotional_tagging_fep_bridge_training_step(emotional_tagging_fep_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    emotional_tagging_fep_bridge_heartbeat_instance(bridge->health_agent, "etag_fep_training_step", progress);
+    return 0;
 }

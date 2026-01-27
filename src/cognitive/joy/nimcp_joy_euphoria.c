@@ -53,6 +53,18 @@ static inline void joy_euphoria_heartbeat(const char* operation, float progress)
     }
 }
 
+/** @brief Send heartbeat from joy_euphoria module (instance-level) */
+static inline void joy_euphoria_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_joy_euphoria_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_joy_euphoria_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_joy_euphoria_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define BIO_MODULE_JOY 0x0324
 
 /*=============================================================================
@@ -899,4 +911,37 @@ int joy_euphoria_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Instance-Level Health Agent (Phase 8 Utility Integration)
+ * ============================================================================ */
+
+static nimcp_health_agent_t* g_joy_euphoria_instance_health_agent = NULL;
+
+void joy_euphoria_set_instance_health_agent(void* ctx, nimcp_health_agent_t* agent) {
+    (void)ctx;
+    g_joy_euphoria_instance_health_agent = agent;
+}
+
+/* ============================================================================
+ * Training Stubs (Phase 8 Utility Integration)
+ * ============================================================================ */
+
+int joy_euphoria_training_begin(void* ctx) {
+    if (!ctx) return -1;
+    joy_euphoria_heartbeat_instance(g_joy_euphoria_instance_health_agent, "joy_euphoria_training_begin", 0.0f);
+    return 0;
+}
+
+int joy_euphoria_training_end(void* ctx) {
+    if (!ctx) return -1;
+    joy_euphoria_heartbeat_instance(g_joy_euphoria_instance_health_agent, "joy_euphoria_training_end", 1.0f);
+    return 0;
+}
+
+int joy_euphoria_training_step(void* ctx, float progress) {
+    if (!ctx) return -1;
+    joy_euphoria_heartbeat_instance(g_joy_euphoria_instance_health_agent, "joy_euphoria_training_step", progress);
+    return 0;
 }

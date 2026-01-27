@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/empathetic_response/nimcp_empathy_plasticity_bridge.h"
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -42,6 +43,18 @@ void empathy_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void empathy_plasticity_bridge_heartbeat(const char* operation, float progress) {
     if (g_empathy_plasticity_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_empathy_plasticity_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from empathy_plasticity_bridge module (instance-level) */
+static inline void empathy_plasticity_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_empathy_plasticity_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_empathy_plasticity_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_empathy_plasticity_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -87,17 +100,13 @@ struct empathy_plasticity_bridge {
 
     /* Statistics */
     empathy_plasticity_stats_t stats;
+
+    nimcp_health_agent_t* health_agent;
 };
 
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static synapse_entry_t* find_synapse(empathy_plasticity_bridge_t* bridge, uint32_t synapse_id) {
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
@@ -322,7 +331,7 @@ int empathy_plasticity_register_synapse(
     slot->in_use = true;
     slot->synapse.synapse_id = synapse_id;
     slot->synapse.type = type;
-    slot->synapse.weight = clamp_f(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
+    slot->synapse.weight = nimcp_myelin_clamp(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
     slot->synapse.initial_weight = slot->synapse.weight;
     slot->synapse.eligibility_trace = 0.0f;
     slot->synapse.bcm_threshold = bridge->config.bcm_target_rate;
@@ -504,7 +513,7 @@ int empathy_plasticity_learn(
 
     /* Apply weight change */
     float old_weight = entry->synapse.weight;
-    entry->synapse.weight = clamp_f(
+    entry->synapse.weight = nimcp_myelin_clamp(
         entry->synapse.weight + weight_change,
         bridge->config.weight_min,
         bridge->config.weight_max
@@ -576,7 +585,7 @@ float empathy_plasticity_apply_stdp(
 
     /* Apply weight change */
     float old_weight = entry->synapse.weight;
-    entry->synapse.weight = clamp_f(
+    entry->synapse.weight = nimcp_myelin_clamp(
         entry->synapse.weight + delta_w,
         bridge->config.weight_min,
         bridge->config.weight_max
@@ -608,7 +617,7 @@ int empathy_plasticity_apply_reward(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    reward = clamp_f(reward, -1.0f, 1.0f);
+    reward = nimcp_myelin_clamp(reward, -1.0f, 1.0f);
     bridge->current_reward = reward;
 
     /* Apply reward modulation to all eligible synapses */
@@ -623,7 +632,7 @@ int empathy_plasticity_apply_reward(
             float trace = bridge->synapses[i].synapse.eligibility_trace;
             if (fabsf(trace) > 0.001f) {
                 float delta = bridge->config.base_learning_rate * reward * trace;
-                bridge->synapses[i].synapse.weight = clamp_f(
+                bridge->synapses[i].synapse.weight = nimcp_myelin_clamp(
                     bridge->synapses[i].synapse.weight + delta,
                     bridge->config.weight_min,
                     bridge->config.weight_max
@@ -714,7 +723,7 @@ int empathy_plasticity_homeostatic_update(
     float scale_factor = 1.0f;
     if (mean_empathy > 0.0f) {
         scale_factor = target / mean_empathy;
-        scale_factor = clamp_f(scale_factor, 0.9f, 1.1f);
+        scale_factor = nimcp_myelin_clamp(scale_factor, 0.9f, 1.1f);
     }
 
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
@@ -726,7 +735,7 @@ int empathy_plasticity_homeostatic_update(
 
         if (bridge->synapses[i].in_use && !bridge->synapses[i].synapse.is_protected) {
             float scaled = bridge->synapses[i].synapse.weight * (1.0f + (scale_factor - 1.0f) * (1.0f - decay));
-            bridge->synapses[i].synapse.weight = clamp_f(
+            bridge->synapses[i].synapse.weight = nimcp_myelin_clamp(
                 scaled,
                 bridge->config.weight_min,
                 bridge->config.weight_max
@@ -1035,4 +1044,26 @@ bool empathy_plasticity_is_bio_async_connected(empathy_plasticity_bridge_t* brid
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
+}
+
+void empathy_plasticity_bridge_set_instance_health_agent(empathy_plasticity_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) { bridge->health_agent = agent; }
+}
+
+int empathy_plasticity_bridge_training_begin(empathy_plasticity_bridge_t* bridge) {
+    if (!bridge) return -1;
+    empathy_plasticity_bridge_heartbeat_instance(bridge->health_agent, "empathy_plasticity_training_begin", 0.0f);
+    return 0;
+}
+
+int empathy_plasticity_bridge_training_end(empathy_plasticity_bridge_t* bridge) {
+    if (!bridge) return -1;
+    empathy_plasticity_bridge_heartbeat_instance(bridge->health_agent, "empathy_plasticity_training_end", 1.0f);
+    return 0;
+}
+
+int empathy_plasticity_bridge_training_step(empathy_plasticity_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    empathy_plasticity_bridge_heartbeat_instance(bridge->health_agent, "empathy_plasticity_training_step", progress);
+    return 0;
 }

@@ -44,6 +44,18 @@ static inline void emotion_fep_bridge_heartbeat(const char* operation, float pro
     }
 }
 
+/** @brief Send heartbeat from emotion_fep_bridge module (instance-level) */
+static inline void emotion_fep_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_emotion_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_emotion_fep_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_emotion_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 int emotion_fep_bridge_default_config(emotion_fep_config_t* config) {
     /* Phase 8: Heartbeat at operation start */
@@ -307,6 +319,38 @@ int emotion_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Emotion_FEP_Bridge");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void emotion_fep_bridge_set_instance_health_agent(emotion_fep_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) {
+        /* Instance-level setter - FEP bridge struct is in header (opaque) */
+        (void)agent; /* Opaque struct: use global agent as fallback */
+        g_emotion_fep_bridge_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training stubs
+ * ============================================================================ */
+int emotion_fep_bridge_training_begin(emotion_fep_bridge_t* bridge) {
+    if (!bridge) return -1;
+    emotion_fep_bridge_heartbeat_instance(NULL, "emotion_fep_training_begin", 0.0f);
+    return 0;
+}
+
+int emotion_fep_bridge_training_end(emotion_fep_bridge_t* bridge) {
+    if (!bridge) return -1;
+    emotion_fep_bridge_heartbeat_instance(NULL, "emotion_fep_training_end", 1.0f);
+    return 0;
+}
+
+int emotion_fep_bridge_training_step(emotion_fep_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    emotion_fep_bridge_heartbeat_instance(NULL, "emotion_fep_training_step", progress);
+    return 0;
 }
 
 /* ============================================================================

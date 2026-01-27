@@ -32,7 +32,7 @@ static nimcp_health_agent_t* g_shadow_emotions_fep_bridge_health_agent = NULL;
  * @brief Set health agent for shadow_emotions_fep_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void shadow_emotions_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void shadow_emotions_fep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_shadow_emotions_fep_bridge_health_agent = agent;
 }
 
@@ -42,6 +42,21 @@ static inline void shadow_emotions_fep_bridge_heartbeat(const char* operation, f
         nimcp_health_agent_heartbeat_ex(g_shadow_emotions_fep_bridge_health_agent, operation, progress);
     }
 }
+
+/** @brief Send heartbeat from shadow_emotions_fep_bridge module (instance-level) */
+static inline void shadow_emotions_fep_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_shadow_emotions_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_shadow_emotions_fep_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_shadow_emotions_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+/** Instance-level health agent for opaque struct (static fallback) */
+static nimcp_health_agent_t* g_shadow_emotions_fep_bridge_instance_health_agent = NULL;
 
 
 int shadow_emotions_fep_bridge_default_config(shadow_emotions_fep_config_t* config) {
@@ -240,4 +255,34 @@ int shadow_emotions_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void shadow_emotions_fep_bridge_set_instance_health_agent(nimcp_health_agent_t* agent) {
+    g_shadow_emotions_fep_bridge_instance_health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration Stubs
+ * ============================================================================ */
+
+int shadow_emotions_fep_bridge_training_begin(void* ctx) {
+    if (!ctx) return -1;
+    shadow_emotions_fep_bridge_heartbeat_instance(g_shadow_emotions_fep_bridge_instance_health_agent, "shadow_fep_training_begin", 0.0f);
+    return 0;
+}
+
+int shadow_emotions_fep_bridge_training_end(void* ctx) {
+    if (!ctx) return -1;
+    shadow_emotions_fep_bridge_heartbeat_instance(g_shadow_emotions_fep_bridge_instance_health_agent, "shadow_fep_training_end", 1.0f);
+    return 0;
+}
+
+int shadow_emotions_fep_bridge_training_step(void* ctx, float progress) {
+    if (!ctx) return -1;
+    shadow_emotions_fep_bridge_heartbeat_instance(g_shadow_emotions_fep_bridge_instance_health_agent, "shadow_fep_training_step", progress);
+    return 0;
 }

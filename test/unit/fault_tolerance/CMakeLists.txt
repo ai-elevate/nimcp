@@ -785,4 +785,32 @@ gtest_discover_tests(unit_heartbeat_B25_memory_core_bridges
         TIMEOUT 120
 )
 
+# B26: Emotion cluster bridge heartbeat/utility unit tests
+add_executable(unit_heartbeat_B26_emotion_cluster_bridges
+    test_emotion_cluster_bridges_B26_functions.cpp
+)
+target_link_libraries(unit_heartbeat_B26_emotion_cluster_bridges
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        pthread
+)
+
+target_include_directories(unit_heartbeat_B26_emotion_cluster_bridges
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_heartbeat_B26_emotion_cluster_bridges PRIVATE cxx_std_17)
+target_compile_definitions(unit_heartbeat_B26_emotion_cluster_bridges PRIVATE NIMCP_TESTING)
+
+gtest_discover_tests(unit_heartbeat_B26_emotion_cluster_bridges
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;fault_tolerance;heartbeat;B26;emotion_cluster_bridges"
+        TIMEOUT 120
+)
+
 message(STATUS "Added fault tolerance unit tests")

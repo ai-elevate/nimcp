@@ -29,7 +29,7 @@ static nimcp_health_agent_t* g_shadow_emotions_thalamic_bridge_health_agent = NU
  * @brief Set health agent for shadow_emotions_thalamic_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void shadow_emotions_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void shadow_emotions_thalamic_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_shadow_emotions_thalamic_bridge_health_agent = agent;
 }
 
@@ -37,6 +37,18 @@ static void shadow_emotions_thalamic_bridge_set_health_agent(nimcp_health_agent_
 static inline void shadow_emotions_thalamic_bridge_heartbeat(const char* operation, float progress) {
     if (g_shadow_emotions_thalamic_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_shadow_emotions_thalamic_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from shadow_emotions_thalamic_bridge module (instance-level) */
+static inline void shadow_emotions_thalamic_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_shadow_emotions_thalamic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_shadow_emotions_thalamic_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_shadow_emotions_thalamic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -50,6 +62,7 @@ struct shadow_emotions_thalamic_bridge {
     shadow_emotions_thalamic_config_t config;
     shadow_emotions_thalamic_stats_t stats;
     float attention_weight;
+    nimcp_health_agent_t* health_agent;  /**< Instance-level health agent */
 };
 
 shadow_emotions_thalamic_config_t shadow_emotions_thalamic_default_config(void) {
@@ -213,4 +226,34 @@ int shadow_emotions_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void shadow_emotions_thalamic_bridge_set_instance_health_agent(shadow_emotions_thalamic_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) { bridge->health_agent = agent; }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration Stubs
+ * ============================================================================ */
+
+int shadow_emotions_thalamic_bridge_training_begin(shadow_emotions_thalamic_bridge_t* bridge) {
+    if (!bridge) return -1;
+    shadow_emotions_thalamic_bridge_heartbeat_instance(bridge->health_agent, "shadow_thalamic_training_begin", 0.0f);
+    return 0;
+}
+
+int shadow_emotions_thalamic_bridge_training_end(shadow_emotions_thalamic_bridge_t* bridge) {
+    if (!bridge) return -1;
+    shadow_emotions_thalamic_bridge_heartbeat_instance(bridge->health_agent, "shadow_thalamic_training_end", 1.0f);
+    return 0;
+}
+
+int shadow_emotions_thalamic_bridge_training_step(shadow_emotions_thalamic_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    shadow_emotions_thalamic_bridge_heartbeat_instance(bridge->health_agent, "shadow_thalamic_training_step", progress);
+    return 0;
 }

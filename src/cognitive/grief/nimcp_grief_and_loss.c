@@ -54,6 +54,18 @@ static inline void grief_and_loss_heartbeat(const char* operation, float progres
     }
 }
 
+/** @brief Send heartbeat from grief_and_loss module (instance-level) */
+static inline void grief_and_loss_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_grief_and_loss_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_grief_and_loss_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_grief_and_loss_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 // Thread-safe attachment ID counter
 static nimcp_atomic_uint32_t g_attachment_id_counter = {1};
@@ -1271,4 +1283,37 @@ int grief_and_loss_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Instance-Level Health Agent (Phase 8 Utility Integration)
+ * ============================================================================ */
+
+static nimcp_health_agent_t* g_grief_and_loss_instance_health_agent = NULL;
+
+void grief_and_loss_set_instance_health_agent(void* ctx, nimcp_health_agent_t* agent) {
+    (void)ctx;
+    g_grief_and_loss_instance_health_agent = agent;
+}
+
+/* ============================================================================
+ * Training Stubs (Phase 8 Utility Integration)
+ * ============================================================================ */
+
+int grief_and_loss_training_begin(void* ctx) {
+    if (!ctx) return -1;
+    grief_and_loss_heartbeat_instance(g_grief_and_loss_instance_health_agent, "grief_and_loss_training_begin", 0.0f);
+    return 0;
+}
+
+int grief_and_loss_training_end(void* ctx) {
+    if (!ctx) return -1;
+    grief_and_loss_heartbeat_instance(g_grief_and_loss_instance_health_agent, "grief_and_loss_training_end", 1.0f);
+    return 0;
+}
+
+int grief_and_loss_training_step(void* ctx, float progress) {
+    if (!ctx) return -1;
+    grief_and_loss_heartbeat_instance(g_grief_and_loss_instance_health_agent, "grief_and_loss_training_step", progress);
+    return 0;
 }

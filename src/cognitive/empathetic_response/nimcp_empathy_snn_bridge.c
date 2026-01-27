@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/empathetic_response/nimcp_empathy_snn_bridge.h"
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_config.h"
@@ -46,6 +47,18 @@ void empathy_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void empathy_snn_bridge_heartbeat(const char* operation, float progress) {
     if (g_empathy_snn_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_empathy_snn_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from empathy_snn_bridge module (instance-level) */
+static inline void empathy_snn_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_empathy_snn_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_empathy_snn_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_empathy_snn_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -92,17 +105,13 @@ struct empathy_snn_bridge {
 
     /* Statistics */
     empathy_snn_stats_t stats;
+
+    nimcp_health_agent_t* health_agent;
 };
 
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -380,7 +389,7 @@ int empathy_snn_encode_state(
                              (float)(d + 1) / (float)num_dims);
         }
 
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_myelin_clamp(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -447,9 +456,9 @@ int empathy_snn_encode_mirroring(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[EMPATHY_DIM_COUNT] = {0};
-    dims[EMPATHY_DIM_EMOTIONAL_MIRRORING] = clamp_f(mirroring, 0.0f, 1.0f);
-    dims[EMPATHY_DIM_AFFECTIVE_SHARING] = clamp_f(target_emotion * mirroring, 0.0f, 1.0f);
-    dims[EMPATHY_DIM_SELF_OTHER_DISTINCTION] = clamp_f(1.0f - mirroring * 0.3f, 0.0f, 1.0f);
+    dims[EMPATHY_DIM_EMOTIONAL_MIRRORING] = nimcp_myelin_clamp(mirroring, 0.0f, 1.0f);
+    dims[EMPATHY_DIM_AFFECTIVE_SHARING] = nimcp_myelin_clamp(target_emotion * mirroring, 0.0f, 1.0f);
+    dims[EMPATHY_DIM_SELF_OTHER_DISTINCTION] = nimcp_myelin_clamp(1.0f - mirroring * 0.3f, 0.0f, 1.0f);
 
     bridge->mirroring_signal = mirroring;
 
@@ -472,8 +481,8 @@ int empathy_snn_encode_perspective(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[EMPATHY_DIM_COUNT] = {0};
-    dims[EMPATHY_DIM_PERSPECTIVE_TAKING] = clamp_f(perspective, 0.0f, 1.0f);
-    dims[EMPATHY_DIM_SELF_OTHER_DISTINCTION] = clamp_f(self_other_clarity, 0.0f, 1.0f);
+    dims[EMPATHY_DIM_PERSPECTIVE_TAKING] = nimcp_myelin_clamp(perspective, 0.0f, 1.0f);
+    dims[EMPATHY_DIM_SELF_OTHER_DISTINCTION] = nimcp_myelin_clamp(self_other_clarity, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -494,9 +503,9 @@ int empathy_snn_encode_compassion(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[EMPATHY_DIM_COUNT] = {0};
-    dims[EMPATHY_DIM_COMPASSION] = clamp_f(compassion, 0.0f, 1.0f);
-    dims[EMPATHY_DIM_EMPATHIC_CONCERN] = clamp_f(empathic_concern, 0.0f, 1.0f);
-    dims[EMPATHY_DIM_PROSOCIAL_MOTIVATION] = clamp_f((compassion + empathic_concern) / 2.0f, 0.0f, 1.0f);
+    dims[EMPATHY_DIM_COMPASSION] = nimcp_myelin_clamp(compassion, 0.0f, 1.0f);
+    dims[EMPATHY_DIM_EMPATHIC_CONCERN] = nimcp_myelin_clamp(empathic_concern, 0.0f, 1.0f);
+    dims[EMPATHY_DIM_PROSOCIAL_MOTIVATION] = nimcp_myelin_clamp((compassion + empathic_concern) / 2.0f, 0.0f, 1.0f);
 
     bridge->compassion_signal = compassion;
 
@@ -574,12 +583,12 @@ int empathy_snn_simulate(empathy_snn_bridge_t* bridge, float duration_ms) {
     }
 
     /* Decode outputs */
-    bridge->last_response.mirroring_level = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
-    bridge->last_response.perspective_taking = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
-    bridge->last_response.affective_sharing = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_response.empathic_concern = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->last_response.compassion_response = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
-    bridge->last_response.validation_readiness = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
+    bridge->last_response.mirroring_level = nimcp_myelin_clamp(bridge->output_buffer[0], 0.0f, 1.0f);
+    bridge->last_response.perspective_taking = nimcp_myelin_clamp(bridge->output_buffer[1], 0.0f, 1.0f);
+    bridge->last_response.affective_sharing = nimcp_myelin_clamp(bridge->output_buffer[2], 0.0f, 1.0f);
+    bridge->last_response.empathic_concern = nimcp_myelin_clamp(bridge->output_buffer[3], 0.0f, 1.0f);
+    bridge->last_response.compassion_response = nimcp_myelin_clamp(bridge->output_buffer[4], 0.0f, 1.0f);
+    bridge->last_response.validation_readiness = nimcp_myelin_clamp(bridge->output_buffer[5], 0.0f, 1.0f);
 
     /* Calculate combined empathy level */
     float empathy_level = (bridge->last_response.mirroring_level +
@@ -1021,4 +1030,26 @@ bool empathy_snn_is_bio_async_connected(empathy_snn_bridge_t* bridge) {
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
+}
+
+void empathy_snn_bridge_set_instance_health_agent(empathy_snn_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) { bridge->health_agent = agent; }
+}
+
+int empathy_snn_bridge_training_begin(empathy_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+    empathy_snn_bridge_heartbeat_instance(bridge->health_agent, "empathy_snn_training_begin", 0.0f);
+    return 0;
+}
+
+int empathy_snn_bridge_training_end(empathy_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+    empathy_snn_bridge_heartbeat_instance(bridge->health_agent, "empathy_snn_training_end", 1.0f);
+    return 0;
+}
+
+int empathy_snn_bridge_training_step(empathy_snn_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    empathy_snn_bridge_heartbeat_instance(bridge->health_agent, "empathy_snn_training_step", progress);
+    return 0;
 }

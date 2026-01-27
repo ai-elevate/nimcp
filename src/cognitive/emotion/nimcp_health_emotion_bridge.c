@@ -48,6 +48,18 @@ static inline void health_emotion_bridge_heartbeat(const char* operation, float 
     }
 }
 
+/** @brief Send heartbeat from health_emotion_bridge module (instance-level) */
+static inline void health_emotion_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_health_emotion_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_health_emotion_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_health_emotion_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "HEALTH_EMOTION_BRIDGE"
 
 
@@ -865,4 +877,33 @@ const char* health_inflammation_level_name(brain_inflammation_level_t level) {
         return "Unknown";
     }
     return inflammation_names[level];
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void health_emotion_bridge_set_instance_health_agent(void* agent) {
+    /* Instance-level setter used by test harness - sets global agent as fallback */
+    g_health_emotion_bridge_health_agent = (nimcp_health_agent_t*)agent;
+}
+
+/* ============================================================================
+ * Phase 8: Training stubs
+ * ============================================================================ */
+int health_emotion_bridge_training_begin(void* ctx) {
+    (void)ctx;
+    health_emotion_bridge_heartbeat_instance(NULL, "health_emoti_training_begin", 0.0f);
+    return 0;
+}
+
+int health_emotion_bridge_training_end(void* ctx) {
+    (void)ctx;
+    health_emotion_bridge_heartbeat_instance(NULL, "health_emoti_training_end", 1.0f);
+    return 0;
+}
+
+int health_emotion_bridge_training_step(void* ctx, float progress) {
+    (void)ctx;
+    health_emotion_bridge_heartbeat_instance(NULL, "health_emoti_training_step", progress);
+    return 0;
 }

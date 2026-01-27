@@ -54,6 +54,18 @@ static inline void emotional_tagging_heartbeat(const char* operation, float prog
     }
 }
 
+/** @brief Send heartbeat from emotional_tagging module (instance-level) */
+static inline void emotional_tagging_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_emotional_tagging_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_emotional_tagging_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_emotional_tagging_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define BIO_MODULE_EMOTIONAL_TAGGING 0x0326
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Neuromodulator integration
 #include "core/brain/nimcp_brain.h"  // Brain reference
@@ -760,4 +772,32 @@ int emotional_tagging_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent + Training Stubs
+ * ============================================================================ */
+
+static nimcp_health_agent_t* g_emotional_tagging_instance_health_agent = NULL;
+
+void emotional_tagging_set_instance_health_agent(nimcp_health_agent_t* agent) {
+    g_emotional_tagging_instance_health_agent = agent;
+}
+
+int emotional_tagging_training_begin(void* ctx) {
+    if (!ctx) return -1;
+    emotional_tagging_heartbeat_instance(g_emotional_tagging_instance_health_agent, "etag_training_begin", 0.0f);
+    return 0;
+}
+
+int emotional_tagging_training_end(void* ctx) {
+    if (!ctx) return -1;
+    emotional_tagging_heartbeat_instance(g_emotional_tagging_instance_health_agent, "etag_training_end", 1.0f);
+    return 0;
+}
+
+int emotional_tagging_training_step(void* ctx, float progress) {
+    if (!ctx) return -1;
+    emotional_tagging_heartbeat_instance(g_emotional_tagging_instance_health_agent, "etag_training_step", progress);
+    return 0;
 }

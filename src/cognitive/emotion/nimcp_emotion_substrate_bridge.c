@@ -25,6 +25,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "security/nimcp_bbb_helpers.h"
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 #include <string.h>
 #include <math.h>
 
@@ -56,23 +57,22 @@ static inline void emotion_substrate_bridge_heartbeat(const char* operation, flo
     }
 }
 
+/** @brief Send heartbeat from emotion_substrate_bridge module (instance-level) */
+static inline void emotion_substrate_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_emotion_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_emotion_substrate_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_emotion_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* ========================================================================
  * Helper Functions
  * ======================================================================== */
-
-/**
- * @brief Clamp float value to range
- *
- * WHAT: Restrict value to [min, max]
- * WHY: Ensure computed effects stay in valid ranges
- * HOW: Simple min/max comparison
- */
-static float clamp_float(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Compute intensity modulation from metabolic state
@@ -109,7 +109,7 @@ static float compute_intensity_modulation(float atp_level, float sensitivity) {
     intensity_mod = 1.0f + (intensity_mod - 1.0f) * sensitivity;
 
     /* Clamp to valid range */
-    return clamp_float(intensity_mod, 0.5f, 1.5f);
+    return nimcp_myelin_clamp(intensity_mod, 0.5f, 1.5f);
 }
 
 /**
@@ -144,7 +144,7 @@ static float compute_regulation_capacity(
     regulation = regulation * sensitivity;
 
     /* Clamp to valid range */
-    return clamp_float(regulation, 0.2f, 1.0f);
+    return nimcp_myelin_clamp(regulation, 0.2f, 1.0f);
 }
 
 /**
@@ -185,7 +185,7 @@ static float compute_reactivity_threshold(
     threshold = threshold * sensitivity;
 
     /* Clamp to valid range */
-    return clamp_float(threshold, 0.3f, 1.0f);
+    return nimcp_myelin_clamp(threshold, 0.3f, 1.0f);
 }
 
 /**
@@ -218,7 +218,7 @@ static float compute_valence_bias(
     bias = bias * sensitivity;
 
     /* Clamp to valid range */
-    return clamp_float(bias, -0.25f, 0.25f);
+    return nimcp_myelin_clamp(bias, -0.25f, 0.25f);
 }
 
 /**
@@ -786,6 +786,38 @@ int emotion_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Emotion_Substrate_Bridge");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void emotion_substrate_bridge_set_instance_health_agent(emotion_substrate_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) {
+        /* Instance-level setter - substrate bridge struct is in header (opaque) */
+        (void)agent; /* Opaque struct: use global agent as fallback */
+        g_emotion_substrate_bridge_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training stubs
+ * ============================================================================ */
+int emotion_substrate_bridge_training_begin(emotion_substrate_bridge_t* bridge) {
+    if (!bridge) return -1;
+    emotion_substrate_bridge_heartbeat_instance(NULL, "emotion_subs_training_begin", 0.0f);
+    return 0;
+}
+
+int emotion_substrate_bridge_training_end(emotion_substrate_bridge_t* bridge) {
+    if (!bridge) return -1;
+    emotion_substrate_bridge_heartbeat_instance(NULL, "emotion_subs_training_end", 1.0f);
+    return 0;
+}
+
+int emotion_substrate_bridge_training_step(emotion_substrate_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    emotion_substrate_bridge_heartbeat_instance(NULL, "emotion_subs_training_step", progress);
+    return 0;
 }
 
 /* ============================================================================

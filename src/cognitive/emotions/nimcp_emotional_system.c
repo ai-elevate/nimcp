@@ -78,6 +78,18 @@ static inline void emotional_system_heartbeat(const char* operation, float progr
     }
 }
 
+/** @brief Send heartbeat from emotional_system module (instance-level) */
+static inline void emotional_system_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_emotional_system_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_emotional_system_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_emotional_system_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define BIO_MODULE_EMOTIONS 0x0320
 
 //=============================================================================
@@ -129,6 +141,9 @@ struct emotional_system {
 
     // === Thread Safety ===
     nimcp_platform_mutex_t mutex;   /**< Protects all emotional system operations */
+
+    /* Phase 8: Instance-level health agent */
+    nimcp_health_agent_t* health_agent;
 };
 
 /*=============================================================================
@@ -1161,4 +1176,34 @@ int emotional_system_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void emotional_system_set_instance_health_agent(emotional_system_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training stubs
+ * ============================================================================ */
+int emotional_system_training_begin(emotional_system_t* bridge) {
+    if (!bridge) return -1;
+    emotional_system_heartbeat_instance(bridge->health_agent, "emotional_sy_training_begin", 0.0f);
+    return 0;
+}
+
+int emotional_system_training_end(emotional_system_t* bridge) {
+    if (!bridge) return -1;
+    emotional_system_heartbeat_instance(bridge->health_agent, "emotional_sy_training_end", 1.0f);
+    return 0;
+}
+
+int emotional_system_training_step(emotional_system_t* bridge, float progress) {
+    if (!bridge) return -1;
+    emotional_system_heartbeat_instance(bridge->health_agent, "emotional_sy_training_step", progress);
+    return 0;
 }

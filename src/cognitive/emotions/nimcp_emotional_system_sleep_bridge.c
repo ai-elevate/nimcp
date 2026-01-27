@@ -42,6 +42,18 @@ static inline void emotional_system_sleep_bridge_heartbeat(const char* operation
     }
 }
 
+/** @brief Send heartbeat from emotional_system_sleep_bridge module (instance-level) */
+static inline void emotional_system_sleep_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_emotional_system_sleep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_emotional_system_sleep_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_emotional_system_sleep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 struct emotional_sleep_bridge_struct {
     bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
@@ -50,6 +62,9 @@ struct emotional_sleep_bridge_struct {
     sleep_system_t sleep_system;
     emotional_sleep_effects_t effects;
     bool callback_registered;
+
+    /* Phase 8: Instance-level health agent */
+    nimcp_health_agent_t* health_agent;
 };
 
 /* Forward declarations */
@@ -367,4 +382,34 @@ int emotional_system_sleep_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void emotional_system_sleep_bridge_set_instance_health_agent(emotional_sleep_bridge_t bridge, nimcp_health_agent_t* agent) {
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training stubs
+ * ============================================================================ */
+int emotional_system_sleep_bridge_training_begin(emotional_sleep_bridge_t bridge) {
+    if (!bridge) return -1;
+    emotional_system_sleep_bridge_heartbeat_instance(bridge->health_agent, "emotional_sy_training_begin", 0.0f);
+    return 0;
+}
+
+int emotional_system_sleep_bridge_training_end(emotional_sleep_bridge_t bridge) {
+    if (!bridge) return -1;
+    emotional_system_sleep_bridge_heartbeat_instance(bridge->health_agent, "emotional_sy_training_end", 1.0f);
+    return 0;
+}
+
+int emotional_system_sleep_bridge_training_step(emotional_sleep_bridge_t bridge, float progress) {
+    if (!bridge) return -1;
+    emotional_system_sleep_bridge_heartbeat_instance(bridge->health_agent, "emotional_sy_training_step", progress);
+    return 0;
 }

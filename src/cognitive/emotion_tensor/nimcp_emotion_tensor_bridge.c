@@ -51,6 +51,18 @@ static inline void emotion_tensor_bridge_heartbeat(const char* operation, float 
     }
 }
 
+/** @brief Send heartbeat from emotion_tensor_bridge module (instance-level) */
+static inline void emotion_tensor_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_emotion_tensor_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_emotion_tensor_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_emotion_tensor_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "EMOTION_TENSOR_BRIDGE"
 
 
@@ -149,6 +161,8 @@ struct emotion_tensor_bridge {
 
     /* Statistics */
     emotion_tensor_bridge_stats_t stats;
+
+    nimcp_health_agent_t* health_agent;  /**< Instance-level health agent */
 };
 
 /*=============================================================================
@@ -1065,4 +1079,34 @@ int emotion_tensor_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Instance-Level Health Agent (Phase 8 Utility Integration)
+ * ============================================================================ */
+
+void emotion_tensor_bridge_set_instance_health_agent(emotion_tensor_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) { bridge->health_agent = agent; }
+}
+
+/* ============================================================================
+ * Training Stubs (Phase 8 Utility Integration)
+ * ============================================================================ */
+
+int emotion_tensor_bridge_training_begin(emotion_tensor_bridge_t* bridge) {
+    if (!bridge) return -1;
+    emotion_tensor_bridge_heartbeat_instance(bridge->health_agent, "emotion_tensor_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int emotion_tensor_bridge_training_end(emotion_tensor_bridge_t* bridge) {
+    if (!bridge) return -1;
+    emotion_tensor_bridge_heartbeat_instance(bridge->health_agent, "emotion_tensor_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int emotion_tensor_bridge_training_step(emotion_tensor_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    emotion_tensor_bridge_heartbeat_instance(bridge->health_agent, "emotion_tensor_bridge_training_step", progress);
+    return 0;
 }
