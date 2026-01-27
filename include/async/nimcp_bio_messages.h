@@ -1071,6 +1071,24 @@ typedef enum {
     BIO_MSG_REPAIR_HEALTH_REPEATED_FAILURE,          /**< Repeated failure escalation */
     BIO_MSG_REPAIR_HEALTH_INTERVENTION,              /**< Intervention suggestion */
 
+    /* Society of Thought messages (0x6E80 - 0x6E9F) */
+    BIO_MSG_SOCIETY_SURPRISE_SIGNAL = 0x6E80,     /**< Raw surprise signal (to amplifier) */
+    BIO_MSG_SOCIETY_SURPRISE_QUERY,               /**< Query current surprise level */
+    BIO_MSG_SOCIETY_CONFLICT_DETECTED,            /**< Inter-agent conflict detected */
+    BIO_MSG_SOCIETY_SURPRISE_SIGNAL_EXT,          /**< Extended surprise signal */
+    BIO_MSG_SOCIETY_ATTENTION_SHIFT,              /**< Surprise-driven attention shift */
+    BIO_MSG_SOCIETY_CURIOSITY_BOOST,              /**< Surprise-driven curiosity boost */
+    BIO_MSG_SOCIETY_EXECUTIVE_INTERRUPT,          /**< Executive re-evaluation interrupt */
+    BIO_MSG_SOCIETY_HYPOTHESIS_INVALIDATED,       /**< Hypothesis invalidation signal */
+    BIO_MSG_SOCIETY_NOVELTY_DETECTED,             /**< Novelty detection from amplifier */
+    BIO_MSG_SOCIETY_BAYESIAN_DIVERGENCE,          /**< Large KL divergence signal */
+    BIO_MSG_SOCIETY_AGENT_PROFILE_UPDATE,         /**< Agent personality update */
+    BIO_MSG_SOCIETY_PERSPECTIVE_REQUEST,           /**< Request adversarial perspective */
+    BIO_MSG_SOCIETY_REALIZATION = 0x6E8C,         /**< Amplified realization broadcast */
+    BIO_MSG_SOCIETY_SCALING_UPDATE,               /**< Social scaling parameter update */
+    BIO_MSG_SOCIETY_DIVERSITY_REPORT,             /**< Thought diversity metrics */
+    BIO_MSG_SOCIETY_CONSENSUS_REACHED,            /**< Multi-agent consensus signal */
+
     /* Cycle Coordinator messages (0x6F00 - 0x6F0F) */
     BIO_MSG_CYCLE_HEALTH_CHANGED = 0x6F00,           /**< Cycle health state changed */
     BIO_MSG_CYCLE_STALL_DETECTED,                     /**< Cycle stall detected */
@@ -1895,6 +1913,14 @@ typedef enum {
     BIO_MODULE_HEALTH_DIAGNOSTIC_BRIDGE,        /**< Health diagnostic converter */
     BIO_MODULE_CODE_IMMUNE_SELF_REPAIR,         /**< Code immune self-repair integration */
     BIO_MODULE_SELF_REPAIR_HEALTH_NOTIFY,       /**< Self-repair health notification */
+
+    /* Society of Thought modules (0x1E00 - 0x1E0F) */
+    BIO_MODULE_SOCIETY_OF_THOUGHT = 0x1E00,     /**< Society of Thought orchestrator */
+    BIO_MODULE_SURPRISE_AMPLIFIER,              /**< Surprise amplification system (0x1E01) */
+    BIO_MODULE_COGNITIVE_AGENT_PROFILES,        /**< Personality-diverse agent profiles */
+    BIO_MODULE_ADVERSARIAL_PERSPECTIVE,         /**< Adversarial perspective protocol */
+    BIO_MODULE_SOCIAL_SCALING,                  /**< Social scaling controller */
+    BIO_MODULE_SOCIETY_ENGINE,                  /**< Society of Thought reasoning engine */
 
     /* Special values (Phase 7: Runtime Message Orchestration) */
     BIO_MODULE_KG_DISPATCH = 0xFFFE, /**< KG-driven dispatch: route to all handlers for message type */

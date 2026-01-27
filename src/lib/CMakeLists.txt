@@ -871,6 +871,9 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/reasoning/nimcp_reasoning_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_salience_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_surprise_amplifier.c  # Society of Thought: Surprise amplification (Phase 1)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_surprise_fep_bridge.c  # Society of Thought: Surprise ↔ FEP bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_surprise_gw_bridge.c  # Society of Thought: Surprise → GW bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/salience/nimcp_surprise_attention_bridge.c  # Society of Thought: Surprise ↔ Attention bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/self_model/nimcp_self_model_fep_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/theory_of_mind/nimcp_tom_fep_bridge.c
     # Core Brain FEP Bridges

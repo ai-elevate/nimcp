@@ -1,0 +1,473 @@
+/**
+ * @file nimcp_surprise_attention_bridge.c
+ * @brief Bridge between Surprise Amplifier and Attention System
+ * @version 1.0.0
+ * @date 2026-01-27
+ *
+ * WHAT: Bidirectional: surprise → attention boost/shift; attention → sensitivity
+ * WHY:  Surprise redirects attention (exogenous capture); attention state
+ *       modulates surprise sensitivity (attended vs unattended channels)
+ * HOW:  High surprise → boost/shift attention; attention focus → sensitivity map
+ *
+ * NIMCP INTEGRATION PATTERNS:
+ * 1. Exception handling (NIMCP_CHECK_THROW_IMMUNE)
+ * 2. Health agent heartbeat
+ * 3. Thread safety (mutex)
+ * 4. Logging
+ * 5. Memory management (nimcp_calloc/free)
+ *
+ * @author NIMCP Development Team
+ */
+
+#include "cognitive/salience/nimcp_surprise_attention_bridge.h"
+#include "cognitive/salience/nimcp_surprise_amplifier.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
+
+#include <string.h>
+#include <math.h>
+#include <stddef.h>
+
+/* ============================================================================
+ * Health Agent Integration
+ * ============================================================================ */
+
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+static nimcp_health_agent_t* g_surprise_att_bridge_health_agent = NULL;
+
+void surprise_att_bridge_set_health_agent_global(nimcp_health_agent_t* agent) {
+    g_surprise_att_bridge_health_agent = agent;
+}
+
+static inline void surprise_att_bridge_heartbeat(const char* op, float progress) {
+    if (g_surprise_att_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_surprise_att_bridge_health_agent, op, progress);
+    }
+}
+
+/* ============================================================================
+ * Internal Structure
+ * ============================================================================ */
+
+struct surprise_att_bridge {
+    surprise_att_config_t config;
+
+    /* Connected systems */
+    struct surprise_amplifier* amplifier;
+    struct nimcp_attention_system* attention;
+
+    /* State */
+    surprise_att_effects_t effects;
+    surprise_att_stats_t stats;
+
+    /* Per-channel sensitivity */
+    surprise_att_channel_t channels[SURPRISE_ATT_MAX_CHANNEL_SENSITIVITY];
+    uint32_t channel_count;
+
+    /* Thread safety */
+    nimcp_mutex_t* mutex;
+
+    /* Health agent (per-instance) */
+    nimcp_health_agent_t* health_agent;
+
+    bool initialized;
+};
+
+/* ============================================================================
+ * Helpers
+ * ============================================================================ */
+
+static inline float clamp_f(float val, float lo, float hi) {
+    if (val < lo) return lo;
+    if (val > hi) return hi;
+    return val;
+}
+
+/* ============================================================================
+ * Lifecycle API
+ * ============================================================================ */
+
+surprise_att_config_t surprise_att_bridge_default_config(void) {
+    surprise_att_config_t cfg;
+    memset(&cfg, 0, sizeof(cfg));
+
+    cfg.boost_gain = SURPRISE_ATT_DEFAULT_BOOST_GAIN;
+    cfg.shift_threshold = SURPRISE_ATT_DEFAULT_SHIFT_THRESHOLD;
+    cfg.sensitivity_floor = SURPRISE_ATT_DEFAULT_SENSITIVITY_FLOOR;
+    cfg.attention_decay_rate = SURPRISE_ATT_DEFAULT_DECAY_RATE;
+    cfg.enable_attention_boost = true;
+    cfg.enable_attention_shift = true;
+    cfg.enable_sensitivity_mod = true;
+    cfg.enable_bio_async = true;
+    cfg.enable_logging = true;
+
+    return cfg;
+}
+
+surprise_att_bridge_t* surprise_att_bridge_create(
+    const surprise_att_config_t* config)
+{
+    surprise_att_bridge_t* bridge = (surprise_att_bridge_t*)nimcp_calloc(
+        1, sizeof(surprise_att_bridge_t));
+    if (!bridge) {
+        NIMCP_THROW_MEMORY(NIMCP_SURPRISE_ATT_ERROR_NO_MEMORY,
+                           sizeof(surprise_att_bridge_t),
+                           "surprise_att_bridge allocation failed (%zu bytes)",
+                           sizeof(surprise_att_bridge_t));
+        return NULL;
+    }
+
+    if (config) {
+        bridge->config = *config;
+    } else {
+        bridge->config = surprise_att_bridge_default_config();
+    }
+
+    bridge->mutex = nimcp_mutex_create(NULL);
+    if (!bridge->mutex) {
+        NIMCP_THROW_MEMORY(NIMCP_SURPRISE_ATT_ERROR_NO_MEMORY,
+                           sizeof(nimcp_mutex_t),
+                           "surprise_att_bridge mutex allocation failed (%zu bytes)",
+                           sizeof(nimcp_mutex_t));
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    bridge->effects.current_sensitivity = 1.0f;
+    bridge->initialized = true;
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_INFO("Created surprise-attention bridge (boost_gain=%.1f, "
+                           "shift_thresh=%.2f)",
+                           bridge->config.boost_gain,
+                           bridge->config.shift_threshold);
+    }
+
+    return bridge;
+}
+
+void surprise_att_bridge_destroy(surprise_att_bridge_t* bridge) {
+    if (!bridge) return;
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_INFO("Destroying surprise-attention bridge "
+                           "(boosts=%lu, shifts=%lu)",
+                           (unsigned long)bridge->stats.attention_boosts,
+                           (unsigned long)bridge->stats.attention_shifts);
+    }
+
+    if (bridge->mutex) {
+        nimcp_mutex_free(bridge->mutex);
+    }
+    nimcp_free(bridge);
+}
+
+int surprise_att_bridge_reset(surprise_att_bridge_t* bridge) {
+    NIMCP_CHECK_THROW_IMMUNE(bridge != NULL,
+                             NIMCP_SURPRISE_ATT_ERROR_NULL_POINTER,
+                             "NULL bridge in reset");
+
+    surprise_att_bridge_heartbeat("reset", 0.0f);
+
+    nimcp_mutex_lock(bridge->mutex);
+    memset(&bridge->effects, 0, sizeof(bridge->effects));
+    bridge->effects.current_sensitivity = 1.0f;
+    memset(&bridge->stats, 0, sizeof(bridge->stats));
+    memset(bridge->channels, 0, sizeof(bridge->channels));
+    bridge->channel_count = 0;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+/* ============================================================================
+ * Connection API
+ * ============================================================================ */
+
+int surprise_att_bridge_connect_amplifier(
+    surprise_att_bridge_t* bridge,
+    struct surprise_amplifier* amp)
+{
+    NIMCP_CHECK_THROW_IMMUNE(bridge != NULL,
+                             NIMCP_SURPRISE_ATT_ERROR_NULL_POINTER,
+                             "NULL bridge in connect_amplifier");
+    NIMCP_CHECK_THROW_IMMUNE(amp != NULL,
+                             NIMCP_SURPRISE_ATT_ERROR_NULL_POINTER,
+                             "NULL amp in connect_amplifier");
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->amplifier = amp;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_INFO("Surprise-attention bridge connected to amplifier");
+    }
+    return 0;
+}
+
+int surprise_att_bridge_connect_attention(
+    surprise_att_bridge_t* bridge,
+    struct nimcp_attention_system* attention)
+{
+    NIMCP_CHECK_THROW_IMMUNE(bridge != NULL,
+                             NIMCP_SURPRISE_ATT_ERROR_NULL_POINTER,
+                             "NULL bridge in connect_attention");
+    NIMCP_CHECK_THROW_IMMUNE(attention != NULL,
+                             NIMCP_SURPRISE_ATT_ERROR_NULL_POINTER,
+                             "NULL attention in connect_attention");
+
+    nimcp_mutex_lock(bridge->mutex);
+    bridge->attention = attention;
+    nimcp_mutex_unlock(bridge->mutex);
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_INFO("Surprise-attention bridge connected to attention system");
+    }
+    return 0;
+}
+
+/* ============================================================================
+ * Operations API
+ * ============================================================================ */
+
+int surprise_att_apply_boost(
+    surprise_att_bridge_t* bridge,
+    float surprise_magnitude,
+    float attention_boost)
+{
+    NIMCP_CHECK_THROW_IMMUNE(bridge != NULL,
+                             NIMCP_SURPRISE_ATT_ERROR_NULL_POINTER,
+                             "NULL bridge in apply_boost");
+
+    surprise_att_bridge_heartbeat("apply_boost", 0.0f);
+
+    if (!bridge->config.enable_attention_boost) {
+        return 0;
+    }
+
+    float mag = clamp_f(surprise_magnitude, 0.0f, 1.0f);
+    float boost = clamp_f(attention_boost, 0.0f, 5.0f);
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Apply gain */
+    float effective_boost = boost * bridge->config.boost_gain;
+    effective_boost = clamp_f(effective_boost, 0.0f, 5.0f);
+
+    /* Set current boost (max of existing and new) */
+    if (effective_boost > bridge->effects.current_attention_boost) {
+        bridge->effects.current_attention_boost = effective_boost;
+    }
+    bridge->effects.boost_remaining = bridge->effects.current_attention_boost;
+
+    bridge->stats.attention_boosts++;
+
+    /* Running avg */
+    float n = (float)bridge->stats.attention_boosts;
+    bridge->stats.avg_boost_magnitude =
+        bridge->stats.avg_boost_magnitude * ((n - 1.0f) / n) + effective_boost / n;
+    if (effective_boost > bridge->stats.max_boost_magnitude) {
+        bridge->stats.max_boost_magnitude = effective_boost;
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_DEBUG("Attention boost applied: surprise=%.3f, "
+                            "effective_boost=%.3f",
+                            mag, effective_boost);
+    }
+
+    return 0;
+}
+
+int surprise_att_request_shift(
+    surprise_att_bridge_t* bridge,
+    float surprise_magnitude,
+    uint32_t source_module)
+{
+    NIMCP_CHECK_THROW_IMMUNE(bridge != NULL,
+                             NIMCP_SURPRISE_ATT_ERROR_NULL_POINTER,
+                             "NULL bridge in request_shift");
+
+    surprise_att_bridge_heartbeat("request_shift", 0.0f);
+
+    if (!bridge->config.enable_attention_shift) {
+        return 0;
+    }
+
+    float mag = clamp_f(surprise_magnitude, 0.0f, 1.0f);
+
+    /* Only shift on high surprise */
+    if (mag < bridge->config.shift_threshold) {
+        return 0;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    bridge->effects.shift_active = true;
+    bridge->effects.shift_target = source_module;
+    bridge->stats.attention_shifts++;
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    if (bridge->config.enable_logging) {
+        NIMCP_LOGGING_INFO("Attention shift requested: surprise=%.3f → module=0x%04X",
+                           mag, source_module);
+    }
+
+    return 0;
+}
+
+float surprise_att_get_sensitivity(const surprise_att_bridge_t* bridge) {
+    if (!bridge) return 1.0f;
+    return bridge->effects.current_sensitivity;
+}
+
+int surprise_att_set_channel_sensitivity(
+    surprise_att_bridge_t* bridge,
+    uint32_t channel_id,
+    float sensitivity)
+{
+    NIMCP_CHECK_THROW_IMMUNE(bridge != NULL,
+                             NIMCP_SURPRISE_ATT_ERROR_NULL_POINTER,
+                             "NULL bridge in set_channel_sensitivity");
+
+    float sens = clamp_f(sensitivity, 0.0f, 1.0f);
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Find existing channel or add new */
+    bool found = false;
+    for (uint32_t i = 0; i < bridge->channel_count; i++) {
+        if (bridge->channels[i].channel_id == channel_id) {
+            bridge->channels[i].sensitivity = sens;
+            found = true;
+            break;
+        }
+    }
+
+    if (!found && bridge->channel_count < SURPRISE_ATT_MAX_CHANNEL_SENSITIVITY) {
+        bridge->channels[bridge->channel_count].channel_id = channel_id;
+        bridge->channels[bridge->channel_count].sensitivity = sens;
+        bridge->channel_count++;
+    }
+
+    nimcp_mutex_unlock(bridge->mutex);
+    return 0;
+}
+
+/* ============================================================================
+ * Update API
+ * ============================================================================ */
+
+int surprise_att_bridge_update(surprise_att_bridge_t* bridge, float dt_seconds) {
+    NIMCP_CHECK_THROW_IMMUNE(bridge != NULL,
+                             NIMCP_SURPRISE_ATT_ERROR_NULL_POINTER,
+                             "NULL bridge in update");
+
+    if (dt_seconds <= 0.0f) return 0;
+
+    surprise_att_bridge_heartbeat("update", 0.0f);
+
+    nimcp_mutex_lock(bridge->mutex);
+
+    /* Decay attention boost */
+    if (bridge->effects.current_attention_boost > 0.0f) {
+        float decay = powf(bridge->config.attention_decay_rate, dt_seconds);
+        bridge->effects.current_attention_boost *= decay;
+        bridge->effects.boost_remaining = bridge->effects.current_attention_boost;
+
+        if (bridge->effects.current_attention_boost < 0.001f) {
+            bridge->effects.current_attention_boost = 0.0f;
+            bridge->effects.boost_remaining = 0.0f;
+        }
+    }
+
+    /* Clear attention shift after one update cycle */
+    if (bridge->effects.shift_active) {
+        bridge->effects.shift_active = false;
+    }
+
+    /* Update sensitivity based on amplifier state */
+    if (bridge->config.enable_sensitivity_mod && bridge->amplifier) {
+        float surprise_level = surprise_amplifier_get_current_level(bridge->amplifier);
+        /*
+         * Attention is currently redirected to surprise source,
+         * so surprise sensitivity on attended channel is high,
+         * overall baseline sensitivity reduces slightly (resource allocation)
+         */
+        float sensitivity = 1.0f - 0.3f * surprise_level;
+        sensitivity = clamp_f(sensitivity, bridge->config.sensitivity_floor, 1.0f);
+        bridge->effects.current_sensitivity = sensitivity;
+        bridge->stats.sensitivity_updates++;
+
+        /* Running avg */
+        float n = (float)bridge->stats.sensitivity_updates;
+        bridge->stats.avg_sensitivity =
+            bridge->stats.avg_sensitivity * ((n - 1.0f) / n) + sensitivity / n;
+    }
+
+    bridge->stats.total_updates++;
+
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return 0;
+}
+
+/* ============================================================================
+ * Query API
+ * ============================================================================ */
+
+int surprise_att_bridge_get_effects(
+    const surprise_att_bridge_t* bridge,
+    surprise_att_effects_t* effects_out)
+{
+    NIMCP_CHECK_THROW_IMMUNE(bridge != NULL,
+                             NIMCP_SURPRISE_ATT_ERROR_NULL_POINTER,
+                             "NULL bridge in get_effects");
+    NIMCP_CHECK_THROW_IMMUNE(effects_out != NULL,
+                             NIMCP_SURPRISE_ATT_ERROR_NULL_POINTER,
+                             "NULL effects_out in get_effects");
+
+    *effects_out = bridge->effects;
+    return 0;
+}
+
+int surprise_att_bridge_get_stats(
+    const surprise_att_bridge_t* bridge,
+    surprise_att_stats_t* stats_out)
+{
+    NIMCP_CHECK_THROW_IMMUNE(bridge != NULL,
+                             NIMCP_SURPRISE_ATT_ERROR_NULL_POINTER,
+                             "NULL bridge in get_stats");
+    NIMCP_CHECK_THROW_IMMUNE(stats_out != NULL,
+                             NIMCP_SURPRISE_ATT_ERROR_NULL_POINTER,
+                             "NULL stats_out in get_stats");
+
+    *stats_out = bridge->stats;
+    return 0;
+}
+
+/* ============================================================================
+ * Health Agent Integration (per-instance)
+ * ============================================================================ */
+
+int surprise_att_bridge_set_health_agent(
+    surprise_att_bridge_t* bridge,
+    struct nimcp_health_agent* agent)
+{
+    NIMCP_CHECK_THROW_IMMUNE(bridge != NULL,
+                             NIMCP_SURPRISE_ATT_ERROR_NULL_POINTER,
+                             "NULL bridge in set_health_agent");
+
+    bridge->health_agent = agent;
+    return 0;
+}
