@@ -243,6 +243,7 @@ int stp_pink_noise_connect_stp(
     stp_state_t* stp_state
 ) {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, stp_state, sizeof(*stp_state));
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_pink_noise_connect_stp: bridge is NULL");
         return -1;
     }
@@ -431,6 +432,7 @@ int stp_pink_noise_get_effective_tau(
     float* tau_f_out
 ) {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, tau_d_out, sizeof(*tau_d_out));
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_pink_noise_get_effective_tau: bridge is NULL");
         return -1;
     }
@@ -606,6 +608,7 @@ int stp_pink_noise_get_state(
     stp_pink_noise_state_t* state
 ) {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_pink_noise_get_state: bridge is NULL");
         return -1;
     }

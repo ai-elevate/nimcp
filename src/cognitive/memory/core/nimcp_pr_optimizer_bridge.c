@@ -1002,6 +1002,7 @@ float pr_optimizer_clip_by_entanglement(
 ) {
     if (!bridge || !gradients || count == 0) {
         return 0.0f;
+        BRIDGE_BBB_VALIDATE(bridge, gradients, sizeof(*gradients));
     }
 
     /* Phase 8: Heartbeat at operation start */
@@ -1053,6 +1054,7 @@ float pr_optimizer_clip_by_norm(
     size_t count,
     float max_norm
 ) {
+    BRIDGE_BBB_VALIDATE(bridge, gradients, sizeof(*gradients));
     if (!gradients || count == 0 || max_norm <= 0.0f) {
         return 0.0f;
     }

@@ -388,6 +388,7 @@ int pr_loss_bridge_set_config(
     const pr_loss_config_t* config)
 {
     if (!bridge || !config) return -1;
+    BRIDGE_BBB_VALIDATE(bridge, config, sizeof(*config));
     if (!pr_loss_config_validate(config)) return -1;
 
     /* Phase 8: Heartbeat at operation start */
@@ -410,6 +411,7 @@ int pr_loss_bridge_get_config(
     /* Phase 8: Heartbeat at operation start */
     pr_loss_bridge_heartbeat("pr_loss_brid_get_config", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, config, sizeof(*config));
 
     nimcp_mutex_lock(bridge->base.mutex);
     *config = bridge->config;
@@ -475,6 +477,7 @@ float pr_loss_geodesic_batch(
     nimcp_loss_reduction_t reduction,
     float* per_sample_loss)
 {
+    BRIDGE_BBB_VALIDATE(bridge, per_sample_loss, sizeof(*per_sample_loss));
     if (!quats1 || !quats2 || count == 0) return -1.0f;
     if (count > PR_LOSS_MAX_BATCH_SIZE) return -1.0f;
 
@@ -771,6 +774,7 @@ float pr_loss_resonance_triplet_batch(
     nimcp_loss_reduction_t reduction,
     float* per_sample_loss)
 {
+    BRIDGE_BBB_VALIDATE(bridge, per_sample_loss, sizeof(*per_sample_loss));
     if (!anchors || !positives || !negatives || count == 0) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -886,6 +890,7 @@ float pr_loss_consolidation_weighted(
     const pr_memory_node_t* const* nodes,
     size_t count)
 {
+    BRIDGE_BBB_VALIDATE(bridge, predictions, sizeof(*predictions));
     if (!predictions || !targets || !nodes || count == 0) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -1030,6 +1035,7 @@ float pr_loss_entanglement_reg_nodes(
     const uint64_t* node_ids,
     size_t count)
 {
+    BRIDGE_BBB_VALIDATE(bridge, node_ids, sizeof(*node_ids));
     if (!graph || !node_ids || count == 0) return 0.0f;
 
     /* Phase 8: Heartbeat at operation start */
@@ -1085,6 +1091,7 @@ int pr_loss_gradient_entanglement(
     float* edge_gradients,
     size_t max_edges)
 {
+    BRIDGE_BBB_VALIDATE(bridge, edge_gradients, sizeof(*edge_gradients));
     if (!graph || !edge_gradients || max_edges == 0) return -1;
 
     /* Phase 8: Heartbeat at operation start */
@@ -1117,6 +1124,7 @@ float pr_loss_tier_aware(
     const pr_memory_node_t* const* nodes,
     size_t count)
 {
+    BRIDGE_BBB_VALIDATE(bridge, predictions, sizeof(*predictions));
     if (!predictions || !targets || !nodes || count == 0) return -1.0f;
 
     /* Phase 8: Heartbeat at operation start */

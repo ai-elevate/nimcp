@@ -702,6 +702,7 @@ int elig_uq_apply_diffusion_feedback(elig_uq_bridge_t bridge,
                                      uint32_t num_synapses,
                                      elig_uq_backward_effect_t* effect) {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, diffused_eligibility, sizeof(*diffused_eligibility));
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_apply_diffusion_feedback: bridge is NULL");
         return -1;
     }
@@ -754,6 +755,7 @@ int elig_uq_apply_step_feedback(elig_uq_bridge_t bridge,
                                 const elig_quantum_anneal_state_t* anneal_state,
                                 elig_uq_backward_effect_t* effect) {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, anneal_state, sizeof(*anneal_state));
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_apply_step_feedback: bridge is NULL");
         return -1;
     }
@@ -808,6 +810,7 @@ int elig_uq_get_integration_params(elig_uq_bridge_t bridge,
                                    float* dt,
                                    float* tolerance) {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, dt, sizeof(*dt));
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_get_integration_params: bridge is NULL");
         return -1;
     }
@@ -829,6 +832,7 @@ int elig_uq_feedback_loop_tick(elig_uq_bridge_t bridge,
                                elig_uq_forward_effect_t* forward_effect,
                                elig_uq_backward_effect_t* backward_effect) {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, weights, sizeof(*weights));
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_feedback_loop_tick: bridge is NULL");
         return -1;
     }
@@ -995,6 +999,7 @@ float elig_uq_get_stability(const elig_uq_bridge_t bridge) {
 int elig_uq_bridge_get_state(const elig_uq_bridge_t bridge,
                              elig_uq_bridge_state_t* state) {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_bridge_get_state: bridge is NULL");
         return -1;
     }
@@ -1125,6 +1130,7 @@ bool elig_uq_bridge_verify(const elig_uq_bridge_t bridge) {
 bool elig_uq_bridge_export_csv(const elig_uq_bridge_t bridge,
                                const char* filename) {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, filename, sizeof(*filename));
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_bridge_export_csv: bridge is NULL");
         return false;
     }

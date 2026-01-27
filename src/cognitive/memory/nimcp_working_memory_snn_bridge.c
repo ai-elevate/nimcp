@@ -402,6 +402,7 @@ int wm_snn_encode_item(
     /* Phase 8: Heartbeat at operation start */
     working_memory_snn_bridge_heartbeat("working_memo_wm_snn_encode_item", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, features, sizeof(*features));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -482,6 +483,7 @@ int wm_snn_update_item(
     /* Phase 8: Heartbeat at operation start */
     working_memory_snn_bridge_heartbeat("working_memo_wm_snn_update_item", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, features, sizeof(*features));
 
     return wm_snn_encode_item(bridge, slot, features, feature_count,
                               bridge->slot_states[slot].salience);
@@ -585,6 +587,7 @@ int wm_snn_forward(
     /* Phase 8: Heartbeat at operation start */
     working_memory_snn_bridge_heartbeat("working_memo_wm_snn_forward", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, inputs, sizeof(*inputs));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -627,6 +630,7 @@ int wm_snn_retrieve_item(
     /* Phase 8: Heartbeat at operation start */
     working_memory_snn_bridge_heartbeat("working_memo_wm_snn_retrieve_item", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, output, sizeof(*output));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -671,6 +675,7 @@ int wm_snn_get_slot_activities(
     /* Phase 8: Heartbeat at operation start */
     working_memory_snn_bridge_heartbeat("working_memo_wm_snn_get_slot_acti", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, activities, sizeof(*activities));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -696,6 +701,7 @@ int wm_snn_get_most_active_slot(
     float* confidence)
 {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, confidence, sizeof(*confidence));
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -748,6 +754,7 @@ int wm_snn_get_slot_state(
     /* Phase 8: Heartbeat at operation start */
     working_memory_snn_bridge_heartbeat("working_memo_wm_snn_get_slot_stat", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->slot_states[slot];
@@ -765,6 +772,7 @@ int wm_snn_get_state(
     /* Phase 8: Heartbeat at operation start */
     working_memory_snn_bridge_heartbeat("working_memo_wm_snn_get_state", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -902,6 +910,7 @@ int wm_snn_register_spike_callback(
     void* user_data)
 {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -927,6 +936,7 @@ int wm_snn_register_encoding_callback(
     void* user_data)
 {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -952,6 +962,7 @@ int wm_snn_register_retrieval_callback(
     void* user_data)
 {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 

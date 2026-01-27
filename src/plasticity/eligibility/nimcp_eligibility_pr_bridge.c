@@ -282,6 +282,7 @@ int elig_pr_apply_entanglement_update(elig_pr_bridge_t bridge,
                                       float eligibility,
                                       float* entangle_delta) {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, entangle_delta, sizeof(*entangle_delta));
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pr_apply_entanglement_update: bridge is NULL");
         return -1;
     }
@@ -313,6 +314,7 @@ int elig_pr_get_decay_modulation(elig_pr_bridge_t bridge,
                                  float base_lambda,
                                  float* modulated_lambda) {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, modulated_lambda, sizeof(*modulated_lambda));
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pr_get_decay_modulation: bridge is NULL");
         return -1;
     }
@@ -356,6 +358,7 @@ int elig_pr_get_tier_parameters(elig_pr_bridge_t bridge,
                                 float* lambda,
                                 float* sensitivity) {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, lambda, sizeof(*lambda));
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
         return -1;
@@ -387,6 +390,7 @@ int elig_pr_apply_resonance_boost(elig_pr_bridge_t bridge,
                                   float base_eligibility,
                                   float* boosted_eligibility) {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, boosted_eligibility, sizeof(*boosted_eligibility));
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pr_apply_resonance_boost: bridge is NULL");
         return -1;
     }
@@ -476,6 +480,7 @@ int elig_pr_compute_modulation(elig_pr_bridge_t bridge,
 
 int elig_pr_bridge_get_state(elig_pr_bridge_t bridge, elig_pr_bridge_state_t* state) {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pr_bridge_get_state: bridge is NULL");
         return -1;
     }

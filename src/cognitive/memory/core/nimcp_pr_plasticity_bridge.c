@@ -1169,6 +1169,7 @@ int pr_structural_remodel(
     /* Phase 8: Heartbeat at operation start */
     pr_plasticity_bridge_heartbeat("pr_plasticit_pr_structural_remode", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, node_ids, sizeof(*node_ids));
 
     uint32_t created = 0;
     uint32_t pruned = 0;
@@ -1240,6 +1241,7 @@ int pr_plasticity_from_quaternion(
     /* Phase 8: Heartbeat at operation start */
     pr_plasticity_bridge_heartbeat("pr_plasticit_pr_plasticity_from_q", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, stdp_rate, sizeof(*stdp_rate));
 
     float consolidation_factor = 1.0f - quat.w * 0.5f;
 
@@ -1279,6 +1281,7 @@ int pr_quaternion_from_plasticity(
     if (!bridge || !events || !quat_out) return -1;
 
     *quat_out = quat_in;
+    BRIDGE_BBB_VALIDATE(bridge, events, sizeof(*events));
 
     if (event_count == 0) return 0;
 
@@ -1469,6 +1472,7 @@ int pr_plasticity_log_event(
     /* Phase 8: Heartbeat at operation start */
     pr_plasticity_bridge_heartbeat("pr_plasticit_pr_plasticity_log_ev", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, event, sizeof(*event));
 
     nimcp_mutex_lock(bridge->base.mutex);
     add_event(bridge, event);
@@ -1488,6 +1492,7 @@ int pr_plasticity_get_events(
     /* Phase 8: Heartbeat at operation start */
     pr_plasticity_bridge_heartbeat("pr_plasticit_pr_plasticity_get_ev", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, event_count, sizeof(*event_count));
 
     nimcp_mutex_lock(bridge->base.mutex);
 

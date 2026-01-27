@@ -163,6 +163,7 @@ float predictive_coding_fep_compute_hierarchical_free_energy(const predictive_co
 
 int predictive_coding_fep_report_errors(predictive_coding_fep_bridge_t* bridge, const float* errors, uint32_t num_levels) {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, errors, sizeof(*errors));
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_coding_fep_report_errors: bridge is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }

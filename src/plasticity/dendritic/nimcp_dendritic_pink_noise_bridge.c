@@ -327,6 +327,7 @@ int dendritic_pink_noise_apply_voltage_noise(
 ) {
     /* Guard: Validate inputs */
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, voltage_noise_out, sizeof(*voltage_noise_out));
         NIMCP_LOGGING_ERROR("Invalid parameters");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_pink_noise_apply_voltage_noise: bridge is NULL");
         return -1;
@@ -381,6 +382,7 @@ int dendritic_pink_noise_apply_nmda_noise(
 ) {
     /* Guard: Validate inputs */
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, noisy_conductance_out, sizeof(*noisy_conductance_out));
         NIMCP_LOGGING_ERROR("Invalid parameters");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_pink_noise_apply_nmda_noise: bridge is NULL");
         return -1;
@@ -437,6 +439,7 @@ int dendritic_pink_noise_apply_synapse_noise(
 ) {
     /* Guard: Validate inputs */
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, noisy_weight_out, sizeof(*noisy_weight_out));
         NIMCP_LOGGING_ERROR("Invalid parameters");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_pink_noise_apply_synapse_noise: bridge is NULL");
         return -1;
@@ -493,6 +496,7 @@ int dendritic_pink_noise_apply_calcium_noise(
 ) {
     /* Guard: Validate inputs */
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, noisy_influx_out, sizeof(*noisy_influx_out));
         NIMCP_LOGGING_ERROR("Invalid parameters");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_pink_noise_apply_calcium_noise: bridge is NULL");
         return -1;

@@ -277,6 +277,7 @@ int stdp_omni_apply_forward_pe(stdp_omni_bridge_t bridge,
                                float base_lr,
                                float* modulated_lr) {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, modulated_lr, sizeof(*modulated_lr));
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_omni_apply_forward_pe: bridge is NULL");
         return -1;
     }
@@ -308,6 +309,7 @@ int stdp_omni_apply_backward_pe(stdp_omni_bridge_t bridge,
                                 float base_lr,
                                 float* modulated_lr) {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, modulated_lr, sizeof(*modulated_lr));
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_omni_apply_backward_pe: bridge is NULL");
         return -1;
     }
@@ -339,6 +341,7 @@ int stdp_omni_apply_lateral_pe(stdp_omni_bridge_t bridge,
                                float base_lr,
                                float* modulated_lr) {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, modulated_lr, sizeof(*modulated_lr));
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_omni_apply_lateral_pe: bridge is NULL");
         return -1;
     }
@@ -370,6 +373,7 @@ int stdp_omni_apply_precision(stdp_omni_bridge_t bridge,
                               float base_lr,
                               float* modulated_lr) {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, modulated_lr, sizeof(*modulated_lr));
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_omni_apply_precision: bridge is NULL");
         return -1;
     }
@@ -465,6 +469,7 @@ int stdp_omni_compute_modulation(stdp_omni_bridge_t bridge,
 int stdp_omni_bridge_get_state(stdp_omni_bridge_t bridge,
                                stdp_omni_bridge_state_t* state) {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_omni_bridge_get_state: bridge is NULL");
         return -1;
     }

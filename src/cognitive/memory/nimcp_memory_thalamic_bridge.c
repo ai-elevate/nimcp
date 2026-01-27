@@ -132,6 +132,7 @@ int memory_thalamic_route_signal(
     /* Phase 8: Heartbeat at operation start */
     memory_thalamic_bridge_heartbeat("memory_thala_memory_thalamic_rout", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, signal, sizeof(*signal));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -249,6 +250,7 @@ int memory_thalamic_get_attention(const memory_thalamic_bridge_t* bridge, float*
     /* Phase 8: Heartbeat at operation start */
     memory_thalamic_bridge_heartbeat("memory_thala_memory_thalamic_get_", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, attention, sizeof(*attention));
 
     nimcp_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;

@@ -559,6 +559,7 @@ int pr_meta_maml_inner_loop(
     /* Phase 8: Heartbeat at operation start */
     pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_maml_inner_l", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, model, sizeof(*model));
 
     uint64_t start_time_us = nimcp_time_get_us();
 
@@ -722,6 +723,7 @@ int pr_meta_maml_outer_step(
     /* Phase 8: Heartbeat at operation start */
     pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_maml_outer_s", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, model, sizeof(*model));
 
     float total_loss = 0.0f;
     uint32_t successful_tasks = 0;
@@ -770,6 +772,7 @@ int pr_meta_memory_init(
     float* init_params)
 {
     if (!bridge || !task || !base_params || !init_params) return -1;
+    BRIDGE_BBB_VALIDATE(bridge, base_params, sizeof(*base_params));
     if (num_params == 0) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -943,6 +946,7 @@ int pr_meta_task_embedding(
     /* Phase 8: Heartbeat at operation start */
     pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_task_embeddi", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, embedding, sizeof(*embedding));
 
     memset(embedding, 0, embed_dim * sizeof(float));
 
@@ -998,6 +1002,7 @@ int pr_meta_recall_similar_tasks(
     /* Phase 8: Heartbeat at operation start */
     pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_recall_simil", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, num_found, sizeof(*num_found));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1233,6 +1238,7 @@ int pr_meta_quaternion_to_lr(
     /* Phase 8: Heartbeat at operation start */
     pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_quaternion_t", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, inner_lr, sizeof(*inner_lr));
 
     float base_inner = bridge->config.inner_lr;
     float base_outer = bridge->config.outer_lr;
@@ -1276,6 +1282,7 @@ int pr_meta_blend_quaternions(
     /* Phase 8: Heartbeat at operation start */
     pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_blend_quater", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, weights, sizeof(*weights));
 
     return 0;
 }

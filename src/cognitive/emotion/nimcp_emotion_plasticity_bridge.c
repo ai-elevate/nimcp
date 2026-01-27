@@ -917,6 +917,7 @@ int emotion_plasticity_get_response_modulation(
     float* modulation)
 {
     if (!bridge || !modulation) return -1;
+    BRIDGE_BBB_VALIDATE(bridge, modulation, sizeof(*modulation));
     if (emotion >= EMOTION_COUNT) return -1;
 
     /* Phase 8: Heartbeat at operation start */
@@ -983,6 +984,7 @@ int emotion_plasticity_get_state(
     /* Phase 8: Heartbeat at operation start */
     emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_g", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
 
     nimcp_mutex_lock(((emotion_plasticity_bridge_t*)bridge)->base.mutex);
 
@@ -1051,6 +1053,7 @@ int emotion_plasticity_set_weight_callback(
     /* Phase 8: Heartbeat at operation start */
     emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_s", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->weight_callback = callback;

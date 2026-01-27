@@ -1425,6 +1425,7 @@ int pr_predictive_bridge_get_pending_actions(
 ) {
     if (!bridge || !actions) {
         return -1;
+        BRIDGE_BBB_VALIDATE(bridge, actions, sizeof(*actions));
     }
 
     /* Phase 8: Heartbeat at operation start */

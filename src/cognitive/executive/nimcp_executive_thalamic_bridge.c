@@ -138,6 +138,7 @@ int executive_thalamic_route_signal(
     /* Phase 8: Heartbeat at operation start */
     executive_thalamic_bridge_heartbeat("executive_th_executive_thalamic_r", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, signal, sizeof(*signal));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -271,6 +272,7 @@ int executive_thalamic_get_attention(const executive_thalamic_bridge_t* bridge, 
     /* Phase 8: Heartbeat at operation start */
     executive_thalamic_bridge_heartbeat("executive_th_executive_thalamic_g", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, attention, sizeof(*attention));
 
     nimcp_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;

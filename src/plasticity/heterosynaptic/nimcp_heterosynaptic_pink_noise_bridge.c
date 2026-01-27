@@ -677,6 +677,7 @@ int hetero_pink_noise_get_state(
     hetero_pink_noise_state_t* state)
 {
     if (!bridge || !state) return -1;
+    BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *state = bridge->noise_state;
@@ -705,6 +706,7 @@ int hetero_pink_noise_get_statistics(
     float* avg_radius)
 {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, total_updates, sizeof(*total_updates));
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 

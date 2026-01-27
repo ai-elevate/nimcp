@@ -1142,6 +1142,7 @@ int wm_plasticity_get_maintenance_modulation(
     /* Phase 8: Heartbeat at operation start */
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_get_ma", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, modulation, sizeof(*modulation));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1179,6 +1180,7 @@ int wm_plasticity_get_state(
     /* Phase 8: Heartbeat at operation start */
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_get_st", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
 
     wm_plasticity_bridge_t* mutable_bridge = (wm_plasticity_bridge_t*)bridge;
 
@@ -1263,6 +1265,7 @@ int wm_plasticity_set_weight_callback(
     /* Phase 8: Heartbeat at operation start */
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_set_we", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1284,6 +1287,7 @@ int wm_plasticity_set_consolidation_callback(
     /* Phase 8: Heartbeat at operation start */
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_set_co", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
 
     nimcp_mutex_lock(bridge->base.mutex);
 

@@ -406,6 +406,7 @@ int stdp_pink_noise_get_noisy_params(
     float* tau_minus
 ) {
     NIMCP_API_CHECK_NULL(bridge, -1, "STDP pink noise bridge is NULL");
+    BRIDGE_BBB_VALIDATE(bridge, lr, sizeof(*lr));
 
     if (lr) *lr = bridge->noisy_lr;
     if (a_plus) *a_plus = bridge->noisy_a_plus;

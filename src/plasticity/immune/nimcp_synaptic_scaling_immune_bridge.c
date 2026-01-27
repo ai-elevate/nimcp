@@ -860,6 +860,7 @@ int synaptic_scaling_immune_get_inflammation_state(
 
     /* Copy state */
     *state = bridge->inflammation_state;
+    BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
 
     return 0;
 }

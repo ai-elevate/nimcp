@@ -102,6 +102,7 @@ int working_memory_thalamic_route_signal(
     const working_memory_thalamic_signal_t* signal
 ) {
     if (!bridge || !signal) return -1;
+    BRIDGE_BBB_VALIDATE(bridge, signal, sizeof(*signal));
 
     if (bridge->config.enable_attention_gating) {
         float effective_urgency = signal->wm_urgency * bridge->attention_weight;
@@ -206,6 +207,7 @@ int working_memory_thalamic_set_attention(working_memory_thalamic_bridge_t* brid
 int working_memory_thalamic_get_attention(const working_memory_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) return -1;
     *attention = bridge->attention_weight;
+    BRIDGE_BBB_VALIDATE(bridge, attention, sizeof(*attention));
     return 0;
 }
 

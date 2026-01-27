@@ -704,6 +704,7 @@ int neuron_orchestrator_step_all(
     uint64_t current_time_us
 ) {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, inputs, sizeof(*inputs));
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
         return -1;

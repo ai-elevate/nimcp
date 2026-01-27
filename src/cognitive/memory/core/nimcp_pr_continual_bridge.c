@@ -796,6 +796,7 @@ int pr_continual_accumulate_fisher(
     /* Phase 8: Heartbeat at operation start */
     pr_continual_bridge_heartbeat("pr_continual_pr_continual_accumul", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, new_fisher, sizeof(*new_fisher));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -851,6 +852,7 @@ float pr_continual_ewc_loss(
     /* Phase 8: Heartbeat at operation start */
     pr_continual_bridge_heartbeat("pr_continual_pr_continual_ewc_los", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, current_params, sizeof(*current_params));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -896,6 +898,7 @@ float pr_continual_ewc_loss_weighted(
     /* Phase 8: Heartbeat at operation start */
     pr_continual_bridge_heartbeat("pr_continual_pr_continual_ewc_los", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, current_params, sizeof(*current_params));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -940,6 +943,7 @@ int pr_continual_ewc_gradient(
 {
     if (!bridge || !current_params || !ewc_gradients || num_params == 0) {
         return -1;
+        BRIDGE_BBB_VALIDATE(bridge, current_params, sizeof(*current_params));
     }
     if (!bridge->params_stored) {
         memset(ewc_gradients, 0, num_params * sizeof(float));
@@ -1258,6 +1262,7 @@ int pr_continual_apply_protection(
     /* Phase 8: Heartbeat at operation start */
     pr_continual_bridge_heartbeat("pr_continual_pr_continual_apply_p", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, gradients, sizeof(*gradients));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1341,6 +1346,7 @@ int pr_continual_apply_protection_nodes(
     /* Phase 8: Heartbeat at operation start */
     pr_continual_bridge_heartbeat("pr_continual_pr_continual_apply_p", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, gradients, sizeof(*gradients));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1407,6 +1413,7 @@ int pr_continual_preview_protection(
 {
     if (!bridge || !gradients || !protection_factors || num_params == 0) {
         return -1;
+        BRIDGE_BBB_VALIDATE(bridge, gradients, sizeof(*gradients));
     }
 
     /* Phase 8: Heartbeat at operation start */
@@ -1494,6 +1501,7 @@ int pr_continual_store_params(
     /* Phase 8: Heartbeat at operation start */
     pr_continual_bridge_heartbeat("pr_continual_pr_continual_store_p", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, params, sizeof(*params));
 
     nimcp_mutex_lock(bridge->base.mutex);
 

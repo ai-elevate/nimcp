@@ -486,6 +486,7 @@ int homeostatic_immune_trigger_from_instability(
 ) {
     /* Guard clauses */
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, firing_rates, sizeof(*firing_rates));
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -551,6 +552,7 @@ float homeostatic_immune_detect_hyperexcitability(
     if (!bridge || !firing_rates || num_neurons == 0) return 0.0f;
 
     /* Compute mean firing rate */
+    BRIDGE_BBB_VALIDATE(bridge, firing_rates, sizeof(*firing_rates));
     float mean_rate = compute_mean_firing_rate(firing_rates, num_neurons);
 
     /* Hyperexcitability: firing rate significantly above target */
@@ -667,6 +669,7 @@ int homeostatic_immune_bridge_update(
 ) {
     /* Guard clauses */
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, firing_rates, sizeof(*firing_rates));
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
@@ -715,6 +718,7 @@ int homeostatic_immune_get_inflammation_state(
     inflammation_homeostatic_state_t* state
 ) {
     if (!bridge || !state) return -1;
+    BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     *state = bridge->inflammation_state;

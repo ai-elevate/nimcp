@@ -1452,6 +1452,7 @@ int pr_curriculum_select_most_curious(
 {
     if (!bridge || !samples || sample_count == 0 || !selected_ids || !selected_count) {
         return -1;
+        BRIDGE_BBB_VALIDATE(bridge, selected_ids, sizeof(*selected_ids));
     }
 
     /* Phase 8: Heartbeat at operation start */
@@ -1962,6 +1963,7 @@ int pr_curriculum_get_events(
     /* Phase 8: Heartbeat at operation start */
     pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_get_ev", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, event_count, sizeof(*event_count));
 
     nimcp_mutex_lock(bridge->base.mutex);
 

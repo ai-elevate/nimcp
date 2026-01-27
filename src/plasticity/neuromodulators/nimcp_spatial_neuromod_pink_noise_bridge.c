@@ -334,6 +334,7 @@ int spatial_pink_bridge_add_region(
     float amplitude)
 {
     if (!bridge || !bridge->pink_spatial) {
+    BRIDGE_BBB_VALIDATE(bridge, name, sizeof(*name));
         NIMCP_LOGGING_ERROR("Invalid bridge in add_region");
         return -1;
     }
@@ -722,6 +723,7 @@ int spatial_pink_bridge_get_stats(
     float* spatial_correlation)
 {
     if (!bridge) {
+    BRIDGE_BBB_VALIDATE(bridge, avg_noise, sizeof(*avg_noise));
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
