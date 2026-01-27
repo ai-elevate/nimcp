@@ -8960,6 +8960,201 @@ e2e_fault_tolerance_test_heartbeat_B01_memory_core_e2e/fast:
 .PHONY : e2e_fault_tolerance_test_heartbeat_B01_memory_core_e2e/fast
 
 #=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_heartbeat_B02_memory_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_heartbeat_B02_memory_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_heartbeat_B02_memory_e2e
+.PHONY : e2e_fault_tolerance_test_heartbeat_B02_memory_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_heartbeat_B02_memory_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B02_memory_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B02_memory_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_heartbeat_B02_memory_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_heartbeat_B03_immune_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_heartbeat_B03_immune_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_heartbeat_B03_immune_e2e
+.PHONY : e2e_fault_tolerance_test_heartbeat_B03_immune_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_heartbeat_B03_immune_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B03_immune_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B03_immune_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_heartbeat_B03_immune_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_heartbeat_B04_parietal_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_heartbeat_B04_parietal_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_heartbeat_B04_parietal_e2e
+.PHONY : e2e_fault_tolerance_test_heartbeat_B04_parietal_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_heartbeat_B04_parietal_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B04_parietal_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B04_parietal_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_heartbeat_B04_parietal_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_heartbeat_B05_mirror_neurons_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_heartbeat_B05_mirror_neurons_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_heartbeat_B05_mirror_neurons_e2e
+.PHONY : e2e_fault_tolerance_test_heartbeat_B05_mirror_neurons_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_heartbeat_B05_mirror_neurons_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B05_mirror_neurons_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B05_mirror_neurons_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_heartbeat_B05_mirror_neurons_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_heartbeat_B06_integration_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_heartbeat_B06_integration_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_heartbeat_B06_integration_e2e
+.PHONY : e2e_fault_tolerance_test_heartbeat_B06_integration_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_heartbeat_B06_integration_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B06_integration_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B06_integration_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_heartbeat_B06_integration_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_heartbeat_B07_game_theory_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_heartbeat_B07_game_theory_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_heartbeat_B07_game_theory_e2e
+.PHONY : e2e_fault_tolerance_test_heartbeat_B07_game_theory_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_heartbeat_B07_game_theory_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B07_game_theory_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B07_game_theory_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_heartbeat_B07_game_theory_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_heartbeat_B08_ethics_reasoning_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_heartbeat_B08_ethics_reasoning_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_heartbeat_B08_ethics_reasoning_e2e
+.PHONY : e2e_fault_tolerance_test_heartbeat_B08_ethics_reasoning_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_heartbeat_B08_ethics_reasoning_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B08_ethics_reasoning_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B08_ethics_reasoning_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_heartbeat_B08_ethics_reasoning_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_heartbeat_B09_omni_recursive_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_heartbeat_B09_omni_recursive_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_heartbeat_B09_omni_recursive_e2e
+.PHONY : e2e_fault_tolerance_test_heartbeat_B09_omni_recursive_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_heartbeat_B09_omni_recursive_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B09_omni_recursive_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B09_omni_recursive_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_heartbeat_B09_omni_recursive_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_heartbeat_B10_fep_ft_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_heartbeat_B10_fep_ft_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_heartbeat_B10_fep_ft_e2e
+.PHONY : e2e_fault_tolerance_test_heartbeat_B10_fep_ft_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_heartbeat_B10_fep_ft_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B10_fep_ft_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B10_fep_ft_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_heartbeat_B10_fep_ft_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_heartbeat_B11_wellbeing_introspection_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_heartbeat_B11_wellbeing_introspection_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_heartbeat_B11_wellbeing_introspection_e2e
+.PHONY : e2e_fault_tolerance_test_heartbeat_B11_wellbeing_introspection_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_heartbeat_B11_wellbeing_introspection_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B11_wellbeing_introspection_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B11_wellbeing_introspection_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_heartbeat_B11_wellbeing_introspection_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_heartbeat_B12_neuro_symbolic_jepa_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_heartbeat_B12_neuro_symbolic_jepa_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_heartbeat_B12_neuro_symbolic_jepa_e2e
+.PHONY : e2e_fault_tolerance_test_heartbeat_B12_neuro_symbolic_jepa_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_heartbeat_B12_neuro_symbolic_jepa_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B12_neuro_symbolic_jepa_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B12_neuro_symbolic_jepa_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_heartbeat_B12_neuro_symbolic_jepa_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_heartbeat_B13_knowledge_mentalhealth_imagination_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_heartbeat_B13_knowledge_mentalhealth_imagination_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_heartbeat_B13_knowledge_mentalhealth_imagination_e2e
+.PHONY : e2e_fault_tolerance_test_heartbeat_B13_knowledge_mentalhealth_imagination_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_heartbeat_B13_knowledge_mentalhealth_imagination_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B13_knowledge_mentalhealth_imagination_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B13_knowledge_mentalhealth_imagination_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_heartbeat_B13_knowledge_mentalhealth_imagination_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_heartbeat_B14_curiosity_collective_logic_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_heartbeat_B14_curiosity_collective_logic_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_heartbeat_B14_curiosity_collective_logic_e2e
+.PHONY : e2e_fault_tolerance_test_heartbeat_B14_curiosity_collective_logic_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_heartbeat_B14_curiosity_collective_logic_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B14_curiosity_collective_logic_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B14_curiosity_collective_logic_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_heartbeat_B14_curiosity_collective_logic_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_heartbeat_B15_tom_symboliclogic_selfmodel_predictive_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_heartbeat_B15_tom_symboliclogic_selfmodel_predictive_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_heartbeat_B15_tom_symboliclogic_selfmodel_predictive_e2e
+.PHONY : e2e_fault_tolerance_test_heartbeat_B15_tom_symboliclogic_selfmodel_predictive_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_heartbeat_B15_tom_symboliclogic_selfmodel_predictive_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B15_tom_symboliclogic_selfmodel_predictive_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B15_tom_symboliclogic_selfmodel_predictive_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_heartbeat_B15_tom_symboliclogic_selfmodel_predictive_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_heartbeat_B16_executive_consolidation_autobio_attention_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_heartbeat_B16_executive_consolidation_autobio_attention_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_heartbeat_B16_executive_consolidation_autobio_attention_e2e
+.PHONY : e2e_fault_tolerance_test_heartbeat_B16_executive_consolidation_autobio_attention_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_heartbeat_B16_executive_consolidation_autobio_attention_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B16_executive_consolidation_autobio_attention_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B16_executive_consolidation_autobio_attention_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_heartbeat_B16_executive_consolidation_autobio_attention_e2e/fast
+
+#=============================================================================
 # Target rules for targets named e2e_cognitive_test_predictive_bridge_exception_e2e
 
 # Build rule for target.
@@ -8971,6 +9166,32 @@ e2e_cognitive_test_predictive_bridge_exception_e2e: cmake_check_build_system
 e2e_cognitive_test_predictive_bridge_exception_e2e/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_predictive_bridge_exception_e2e.dir/build.make test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_predictive_bridge_exception_e2e.dir/build
 .PHONY : e2e_cognitive_test_predictive_bridge_exception_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_cognitive_test_surprise_amplifier_e2e
+
+# Build rule for target.
+e2e_cognitive_test_surprise_amplifier_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_cognitive_test_surprise_amplifier_e2e
+.PHONY : e2e_cognitive_test_surprise_amplifier_e2e
+
+# fast build rule for target.
+e2e_cognitive_test_surprise_amplifier_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_surprise_amplifier_e2e.dir/build.make test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_surprise_amplifier_e2e.dir/build
+.PHONY : e2e_cognitive_test_surprise_amplifier_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_cognitive_test_surprise_bridges_e2e
+
+# Build rule for target.
+e2e_cognitive_test_surprise_bridges_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_cognitive_test_surprise_bridges_e2e
+.PHONY : e2e_cognitive_test_surprise_bridges_e2e
+
+# fast build rule for target.
+e2e_cognitive_test_surprise_bridges_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_surprise_bridges_e2e.dir/build.make test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_surprise_bridges_e2e.dir/build
+.PHONY : e2e_cognitive_test_surprise_bridges_e2e/fast
 
 #=============================================================================
 # Target rules for targets named e2e_cognitive_test_tom_exception_e2e
@@ -11794,6 +12015,201 @@ integration_heartbeat_B01_memory_core/fast:
 .PHONY : integration_heartbeat_B01_memory_core/fast
 
 #=============================================================================
+# Target rules for targets named integration_heartbeat_B02_memory
+
+# Build rule for target.
+integration_heartbeat_B02_memory: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_heartbeat_B02_memory
+.PHONY : integration_heartbeat_B02_memory
+
+# fast build rule for target.
+integration_heartbeat_B02_memory/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B02_memory.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B02_memory.dir/build
+.PHONY : integration_heartbeat_B02_memory/fast
+
+#=============================================================================
+# Target rules for targets named integration_heartbeat_B03_immune
+
+# Build rule for target.
+integration_heartbeat_B03_immune: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_heartbeat_B03_immune
+.PHONY : integration_heartbeat_B03_immune
+
+# fast build rule for target.
+integration_heartbeat_B03_immune/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B03_immune.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B03_immune.dir/build
+.PHONY : integration_heartbeat_B03_immune/fast
+
+#=============================================================================
+# Target rules for targets named integration_heartbeat_B04_parietal
+
+# Build rule for target.
+integration_heartbeat_B04_parietal: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_heartbeat_B04_parietal
+.PHONY : integration_heartbeat_B04_parietal
+
+# fast build rule for target.
+integration_heartbeat_B04_parietal/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B04_parietal.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B04_parietal.dir/build
+.PHONY : integration_heartbeat_B04_parietal/fast
+
+#=============================================================================
+# Target rules for targets named integration_heartbeat_B05_mirror_neurons
+
+# Build rule for target.
+integration_heartbeat_B05_mirror_neurons: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_heartbeat_B05_mirror_neurons
+.PHONY : integration_heartbeat_B05_mirror_neurons
+
+# fast build rule for target.
+integration_heartbeat_B05_mirror_neurons/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B05_mirror_neurons.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B05_mirror_neurons.dir/build
+.PHONY : integration_heartbeat_B05_mirror_neurons/fast
+
+#=============================================================================
+# Target rules for targets named integration_heartbeat_B06_integration
+
+# Build rule for target.
+integration_heartbeat_B06_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_heartbeat_B06_integration
+.PHONY : integration_heartbeat_B06_integration
+
+# fast build rule for target.
+integration_heartbeat_B06_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B06_integration.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B06_integration.dir/build
+.PHONY : integration_heartbeat_B06_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_heartbeat_B07_game_theory
+
+# Build rule for target.
+integration_heartbeat_B07_game_theory: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_heartbeat_B07_game_theory
+.PHONY : integration_heartbeat_B07_game_theory
+
+# fast build rule for target.
+integration_heartbeat_B07_game_theory/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B07_game_theory.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B07_game_theory.dir/build
+.PHONY : integration_heartbeat_B07_game_theory/fast
+
+#=============================================================================
+# Target rules for targets named integration_heartbeat_B08_ethics_reasoning
+
+# Build rule for target.
+integration_heartbeat_B08_ethics_reasoning: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_heartbeat_B08_ethics_reasoning
+.PHONY : integration_heartbeat_B08_ethics_reasoning
+
+# fast build rule for target.
+integration_heartbeat_B08_ethics_reasoning/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B08_ethics_reasoning.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B08_ethics_reasoning.dir/build
+.PHONY : integration_heartbeat_B08_ethics_reasoning/fast
+
+#=============================================================================
+# Target rules for targets named integration_heartbeat_B09_omni_recursive
+
+# Build rule for target.
+integration_heartbeat_B09_omni_recursive: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_heartbeat_B09_omni_recursive
+.PHONY : integration_heartbeat_B09_omni_recursive
+
+# fast build rule for target.
+integration_heartbeat_B09_omni_recursive/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B09_omni_recursive.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B09_omni_recursive.dir/build
+.PHONY : integration_heartbeat_B09_omni_recursive/fast
+
+#=============================================================================
+# Target rules for targets named integration_heartbeat_B10_fep_ft
+
+# Build rule for target.
+integration_heartbeat_B10_fep_ft: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_heartbeat_B10_fep_ft
+.PHONY : integration_heartbeat_B10_fep_ft
+
+# fast build rule for target.
+integration_heartbeat_B10_fep_ft/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B10_fep_ft.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B10_fep_ft.dir/build
+.PHONY : integration_heartbeat_B10_fep_ft/fast
+
+#=============================================================================
+# Target rules for targets named integration_heartbeat_B11_wellbeing_introspection
+
+# Build rule for target.
+integration_heartbeat_B11_wellbeing_introspection: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_heartbeat_B11_wellbeing_introspection
+.PHONY : integration_heartbeat_B11_wellbeing_introspection
+
+# fast build rule for target.
+integration_heartbeat_B11_wellbeing_introspection/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B11_wellbeing_introspection.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B11_wellbeing_introspection.dir/build
+.PHONY : integration_heartbeat_B11_wellbeing_introspection/fast
+
+#=============================================================================
+# Target rules for targets named integration_heartbeat_B12_neuro_symbolic_jepa
+
+# Build rule for target.
+integration_heartbeat_B12_neuro_symbolic_jepa: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_heartbeat_B12_neuro_symbolic_jepa
+.PHONY : integration_heartbeat_B12_neuro_symbolic_jepa
+
+# fast build rule for target.
+integration_heartbeat_B12_neuro_symbolic_jepa/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B12_neuro_symbolic_jepa.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B12_neuro_symbolic_jepa.dir/build
+.PHONY : integration_heartbeat_B12_neuro_symbolic_jepa/fast
+
+#=============================================================================
+# Target rules for targets named integration_heartbeat_B13_knowledge_mentalhealth_imagination
+
+# Build rule for target.
+integration_heartbeat_B13_knowledge_mentalhealth_imagination: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_heartbeat_B13_knowledge_mentalhealth_imagination
+.PHONY : integration_heartbeat_B13_knowledge_mentalhealth_imagination
+
+# fast build rule for target.
+integration_heartbeat_B13_knowledge_mentalhealth_imagination/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B13_knowledge_mentalhealth_imagination.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B13_knowledge_mentalhealth_imagination.dir/build
+.PHONY : integration_heartbeat_B13_knowledge_mentalhealth_imagination/fast
+
+#=============================================================================
+# Target rules for targets named integration_heartbeat_B14_curiosity_collective_logic
+
+# Build rule for target.
+integration_heartbeat_B14_curiosity_collective_logic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_heartbeat_B14_curiosity_collective_logic
+.PHONY : integration_heartbeat_B14_curiosity_collective_logic
+
+# fast build rule for target.
+integration_heartbeat_B14_curiosity_collective_logic/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B14_curiosity_collective_logic.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B14_curiosity_collective_logic.dir/build
+.PHONY : integration_heartbeat_B14_curiosity_collective_logic/fast
+
+#=============================================================================
+# Target rules for targets named integration_heartbeat_B15_tom_symboliclogic_selfmodel_predictive
+
+# Build rule for target.
+integration_heartbeat_B15_tom_symboliclogic_selfmodel_predictive: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_heartbeat_B15_tom_symboliclogic_selfmodel_predictive
+.PHONY : integration_heartbeat_B15_tom_symboliclogic_selfmodel_predictive
+
+# fast build rule for target.
+integration_heartbeat_B15_tom_symboliclogic_selfmodel_predictive/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B15_tom_symboliclogic_selfmodel_predictive.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B15_tom_symboliclogic_selfmodel_predictive.dir/build
+.PHONY : integration_heartbeat_B15_tom_symboliclogic_selfmodel_predictive/fast
+
+#=============================================================================
+# Target rules for targets named integration_heartbeat_B16_executive_consolidation_autobio_attention
+
+# Build rule for target.
+integration_heartbeat_B16_executive_consolidation_autobio_attention: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_heartbeat_B16_executive_consolidation_autobio_attention
+.PHONY : integration_heartbeat_B16_executive_consolidation_autobio_attention
+
+# fast build rule for target.
+integration_heartbeat_B16_executive_consolidation_autobio_attention/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B16_executive_consolidation_autobio_attention.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B16_executive_consolidation_autobio_attention.dir/build
+.PHONY : integration_heartbeat_B16_executive_consolidation_autobio_attention/fast
+
+#=============================================================================
 # Target rules for targets named test_symbolic_logic_attachment
 
 # Build rule for target.
@@ -14301,6 +14717,32 @@ unit_cognitive_salience_plasticity_bridge: cmake_check_build_system
 unit_cognitive_salience_plasticity_bridge/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/salience/CMakeFiles/unit_cognitive_salience_plasticity_bridge.dir/build.make test/unit/cognitive/salience/CMakeFiles/unit_cognitive_salience_plasticity_bridge.dir/build
 .PHONY : unit_cognitive_salience_plasticity_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_surprise_amplifier
+
+# Build rule for target.
+unit_cognitive_surprise_amplifier: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_surprise_amplifier
+.PHONY : unit_cognitive_surprise_amplifier
+
+# fast build rule for target.
+unit_cognitive_surprise_amplifier/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/salience/CMakeFiles/unit_cognitive_surprise_amplifier.dir/build.make test/unit/cognitive/salience/CMakeFiles/unit_cognitive_surprise_amplifier.dir/build
+.PHONY : unit_cognitive_surprise_amplifier/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_surprise_bridges
+
+# Build rule for target.
+unit_cognitive_surprise_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_surprise_bridges
+.PHONY : unit_cognitive_surprise_bridges
+
+# fast build rule for target.
+unit_cognitive_surprise_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/salience/CMakeFiles/unit_cognitive_surprise_bridges.dir/build.make test/unit/cognitive/salience/CMakeFiles/unit_cognitive_surprise_bridges.dir/build
+.PHONY : unit_cognitive_surprise_bridges/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_test_emotion_executive_bridge
@@ -20842,6 +21284,201 @@ regression_heartbeat_B01_memory_core/fast:
 .PHONY : regression_heartbeat_B01_memory_core/fast
 
 #=============================================================================
+# Target rules for targets named regression_heartbeat_B02_memory
+
+# Build rule for target.
+regression_heartbeat_B02_memory: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_heartbeat_B02_memory
+.PHONY : regression_heartbeat_B02_memory
+
+# fast build rule for target.
+regression_heartbeat_B02_memory/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B02_memory.dir/build.make test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B02_memory.dir/build
+.PHONY : regression_heartbeat_B02_memory/fast
+
+#=============================================================================
+# Target rules for targets named regression_heartbeat_B03_immune
+
+# Build rule for target.
+regression_heartbeat_B03_immune: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_heartbeat_B03_immune
+.PHONY : regression_heartbeat_B03_immune
+
+# fast build rule for target.
+regression_heartbeat_B03_immune/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B03_immune.dir/build.make test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B03_immune.dir/build
+.PHONY : regression_heartbeat_B03_immune/fast
+
+#=============================================================================
+# Target rules for targets named regression_heartbeat_B04_parietal
+
+# Build rule for target.
+regression_heartbeat_B04_parietal: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_heartbeat_B04_parietal
+.PHONY : regression_heartbeat_B04_parietal
+
+# fast build rule for target.
+regression_heartbeat_B04_parietal/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B04_parietal.dir/build.make test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B04_parietal.dir/build
+.PHONY : regression_heartbeat_B04_parietal/fast
+
+#=============================================================================
+# Target rules for targets named regression_heartbeat_B05_mirror_neurons
+
+# Build rule for target.
+regression_heartbeat_B05_mirror_neurons: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_heartbeat_B05_mirror_neurons
+.PHONY : regression_heartbeat_B05_mirror_neurons
+
+# fast build rule for target.
+regression_heartbeat_B05_mirror_neurons/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B05_mirror_neurons.dir/build.make test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B05_mirror_neurons.dir/build
+.PHONY : regression_heartbeat_B05_mirror_neurons/fast
+
+#=============================================================================
+# Target rules for targets named regression_heartbeat_B06_integration
+
+# Build rule for target.
+regression_heartbeat_B06_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_heartbeat_B06_integration
+.PHONY : regression_heartbeat_B06_integration
+
+# fast build rule for target.
+regression_heartbeat_B06_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B06_integration.dir/build.make test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B06_integration.dir/build
+.PHONY : regression_heartbeat_B06_integration/fast
+
+#=============================================================================
+# Target rules for targets named regression_heartbeat_B07_game_theory
+
+# Build rule for target.
+regression_heartbeat_B07_game_theory: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_heartbeat_B07_game_theory
+.PHONY : regression_heartbeat_B07_game_theory
+
+# fast build rule for target.
+regression_heartbeat_B07_game_theory/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B07_game_theory.dir/build.make test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B07_game_theory.dir/build
+.PHONY : regression_heartbeat_B07_game_theory/fast
+
+#=============================================================================
+# Target rules for targets named regression_heartbeat_B08_ethics_reasoning
+
+# Build rule for target.
+regression_heartbeat_B08_ethics_reasoning: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_heartbeat_B08_ethics_reasoning
+.PHONY : regression_heartbeat_B08_ethics_reasoning
+
+# fast build rule for target.
+regression_heartbeat_B08_ethics_reasoning/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B08_ethics_reasoning.dir/build.make test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B08_ethics_reasoning.dir/build
+.PHONY : regression_heartbeat_B08_ethics_reasoning/fast
+
+#=============================================================================
+# Target rules for targets named regression_heartbeat_B09_omni_recursive
+
+# Build rule for target.
+regression_heartbeat_B09_omni_recursive: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_heartbeat_B09_omni_recursive
+.PHONY : regression_heartbeat_B09_omni_recursive
+
+# fast build rule for target.
+regression_heartbeat_B09_omni_recursive/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B09_omni_recursive.dir/build.make test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B09_omni_recursive.dir/build
+.PHONY : regression_heartbeat_B09_omni_recursive/fast
+
+#=============================================================================
+# Target rules for targets named regression_heartbeat_B10_fep_ft
+
+# Build rule for target.
+regression_heartbeat_B10_fep_ft: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_heartbeat_B10_fep_ft
+.PHONY : regression_heartbeat_B10_fep_ft
+
+# fast build rule for target.
+regression_heartbeat_B10_fep_ft/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B10_fep_ft.dir/build.make test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B10_fep_ft.dir/build
+.PHONY : regression_heartbeat_B10_fep_ft/fast
+
+#=============================================================================
+# Target rules for targets named regression_heartbeat_B11_wellbeing_introspection
+
+# Build rule for target.
+regression_heartbeat_B11_wellbeing_introspection: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_heartbeat_B11_wellbeing_introspection
+.PHONY : regression_heartbeat_B11_wellbeing_introspection
+
+# fast build rule for target.
+regression_heartbeat_B11_wellbeing_introspection/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B11_wellbeing_introspection.dir/build.make test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B11_wellbeing_introspection.dir/build
+.PHONY : regression_heartbeat_B11_wellbeing_introspection/fast
+
+#=============================================================================
+# Target rules for targets named regression_heartbeat_B12_neuro_symbolic_jepa
+
+# Build rule for target.
+regression_heartbeat_B12_neuro_symbolic_jepa: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_heartbeat_B12_neuro_symbolic_jepa
+.PHONY : regression_heartbeat_B12_neuro_symbolic_jepa
+
+# fast build rule for target.
+regression_heartbeat_B12_neuro_symbolic_jepa/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B12_neuro_symbolic_jepa.dir/build.make test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B12_neuro_symbolic_jepa.dir/build
+.PHONY : regression_heartbeat_B12_neuro_symbolic_jepa/fast
+
+#=============================================================================
+# Target rules for targets named regression_heartbeat_B13_knowledge_mentalhealth_imagination
+
+# Build rule for target.
+regression_heartbeat_B13_knowledge_mentalhealth_imagination: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_heartbeat_B13_knowledge_mentalhealth_imagination
+.PHONY : regression_heartbeat_B13_knowledge_mentalhealth_imagination
+
+# fast build rule for target.
+regression_heartbeat_B13_knowledge_mentalhealth_imagination/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B13_knowledge_mentalhealth_imagination.dir/build.make test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B13_knowledge_mentalhealth_imagination.dir/build
+.PHONY : regression_heartbeat_B13_knowledge_mentalhealth_imagination/fast
+
+#=============================================================================
+# Target rules for targets named regression_heartbeat_B14_curiosity_collective_logic
+
+# Build rule for target.
+regression_heartbeat_B14_curiosity_collective_logic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_heartbeat_B14_curiosity_collective_logic
+.PHONY : regression_heartbeat_B14_curiosity_collective_logic
+
+# fast build rule for target.
+regression_heartbeat_B14_curiosity_collective_logic/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B14_curiosity_collective_logic.dir/build.make test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B14_curiosity_collective_logic.dir/build
+.PHONY : regression_heartbeat_B14_curiosity_collective_logic/fast
+
+#=============================================================================
+# Target rules for targets named regression_heartbeat_B15_tom_symboliclogic_selfmodel_predictive
+
+# Build rule for target.
+regression_heartbeat_B15_tom_symboliclogic_selfmodel_predictive: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_heartbeat_B15_tom_symboliclogic_selfmodel_predictive
+.PHONY : regression_heartbeat_B15_tom_symboliclogic_selfmodel_predictive
+
+# fast build rule for target.
+regression_heartbeat_B15_tom_symboliclogic_selfmodel_predictive/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B15_tom_symboliclogic_selfmodel_predictive.dir/build.make test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B15_tom_symboliclogic_selfmodel_predictive.dir/build
+.PHONY : regression_heartbeat_B15_tom_symboliclogic_selfmodel_predictive/fast
+
+#=============================================================================
+# Target rules for targets named regression_heartbeat_B16_executive_consolidation_autobio_attention
+
+# Build rule for target.
+regression_heartbeat_B16_executive_consolidation_autobio_attention: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_heartbeat_B16_executive_consolidation_autobio_attention
+.PHONY : regression_heartbeat_B16_executive_consolidation_autobio_attention
+
+# fast build rule for target.
+regression_heartbeat_B16_executive_consolidation_autobio_attention/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B16_executive_consolidation_autobio_attention.dir/build.make test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B16_executive_consolidation_autobio_attention.dir/build
+.PHONY : regression_heartbeat_B16_executive_consolidation_autobio_attention/fast
+
+#=============================================================================
 # Target rules for targets named unit_utils_vcs_integration
 
 # Build rule for target.
@@ -21035,6 +21672,201 @@ unit_heartbeat_B01_memory_core: cmake_check_build_system
 unit_heartbeat_B01_memory_core/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B01_memory_core.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B01_memory_core.dir/build
 .PHONY : unit_heartbeat_B01_memory_core/fast
+
+#=============================================================================
+# Target rules for targets named unit_heartbeat_B02_memory
+
+# Build rule for target.
+unit_heartbeat_B02_memory: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_heartbeat_B02_memory
+.PHONY : unit_heartbeat_B02_memory
+
+# fast build rule for target.
+unit_heartbeat_B02_memory/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B02_memory.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B02_memory.dir/build
+.PHONY : unit_heartbeat_B02_memory/fast
+
+#=============================================================================
+# Target rules for targets named unit_heartbeat_B03_immune
+
+# Build rule for target.
+unit_heartbeat_B03_immune: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_heartbeat_B03_immune
+.PHONY : unit_heartbeat_B03_immune
+
+# fast build rule for target.
+unit_heartbeat_B03_immune/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B03_immune.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B03_immune.dir/build
+.PHONY : unit_heartbeat_B03_immune/fast
+
+#=============================================================================
+# Target rules for targets named unit_heartbeat_B04_parietal
+
+# Build rule for target.
+unit_heartbeat_B04_parietal: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_heartbeat_B04_parietal
+.PHONY : unit_heartbeat_B04_parietal
+
+# fast build rule for target.
+unit_heartbeat_B04_parietal/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B04_parietal.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B04_parietal.dir/build
+.PHONY : unit_heartbeat_B04_parietal/fast
+
+#=============================================================================
+# Target rules for targets named unit_heartbeat_B05_mirror_neurons
+
+# Build rule for target.
+unit_heartbeat_B05_mirror_neurons: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_heartbeat_B05_mirror_neurons
+.PHONY : unit_heartbeat_B05_mirror_neurons
+
+# fast build rule for target.
+unit_heartbeat_B05_mirror_neurons/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B05_mirror_neurons.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B05_mirror_neurons.dir/build
+.PHONY : unit_heartbeat_B05_mirror_neurons/fast
+
+#=============================================================================
+# Target rules for targets named unit_heartbeat_B06_integration
+
+# Build rule for target.
+unit_heartbeat_B06_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_heartbeat_B06_integration
+.PHONY : unit_heartbeat_B06_integration
+
+# fast build rule for target.
+unit_heartbeat_B06_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B06_integration.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B06_integration.dir/build
+.PHONY : unit_heartbeat_B06_integration/fast
+
+#=============================================================================
+# Target rules for targets named unit_heartbeat_B07_game_theory
+
+# Build rule for target.
+unit_heartbeat_B07_game_theory: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_heartbeat_B07_game_theory
+.PHONY : unit_heartbeat_B07_game_theory
+
+# fast build rule for target.
+unit_heartbeat_B07_game_theory/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B07_game_theory.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B07_game_theory.dir/build
+.PHONY : unit_heartbeat_B07_game_theory/fast
+
+#=============================================================================
+# Target rules for targets named unit_heartbeat_B08_ethics_reasoning
+
+# Build rule for target.
+unit_heartbeat_B08_ethics_reasoning: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_heartbeat_B08_ethics_reasoning
+.PHONY : unit_heartbeat_B08_ethics_reasoning
+
+# fast build rule for target.
+unit_heartbeat_B08_ethics_reasoning/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B08_ethics_reasoning.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B08_ethics_reasoning.dir/build
+.PHONY : unit_heartbeat_B08_ethics_reasoning/fast
+
+#=============================================================================
+# Target rules for targets named unit_heartbeat_B09_omni_recursive
+
+# Build rule for target.
+unit_heartbeat_B09_omni_recursive: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_heartbeat_B09_omni_recursive
+.PHONY : unit_heartbeat_B09_omni_recursive
+
+# fast build rule for target.
+unit_heartbeat_B09_omni_recursive/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B09_omni_recursive.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B09_omni_recursive.dir/build
+.PHONY : unit_heartbeat_B09_omni_recursive/fast
+
+#=============================================================================
+# Target rules for targets named unit_heartbeat_B10_fep_ft
+
+# Build rule for target.
+unit_heartbeat_B10_fep_ft: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_heartbeat_B10_fep_ft
+.PHONY : unit_heartbeat_B10_fep_ft
+
+# fast build rule for target.
+unit_heartbeat_B10_fep_ft/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B10_fep_ft.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B10_fep_ft.dir/build
+.PHONY : unit_heartbeat_B10_fep_ft/fast
+
+#=============================================================================
+# Target rules for targets named unit_heartbeat_B11_wellbeing_introspection
+
+# Build rule for target.
+unit_heartbeat_B11_wellbeing_introspection: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_heartbeat_B11_wellbeing_introspection
+.PHONY : unit_heartbeat_B11_wellbeing_introspection
+
+# fast build rule for target.
+unit_heartbeat_B11_wellbeing_introspection/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B11_wellbeing_introspection.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B11_wellbeing_introspection.dir/build
+.PHONY : unit_heartbeat_B11_wellbeing_introspection/fast
+
+#=============================================================================
+# Target rules for targets named unit_heartbeat_B12_neuro_symbolic_jepa
+
+# Build rule for target.
+unit_heartbeat_B12_neuro_symbolic_jepa: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_heartbeat_B12_neuro_symbolic_jepa
+.PHONY : unit_heartbeat_B12_neuro_symbolic_jepa
+
+# fast build rule for target.
+unit_heartbeat_B12_neuro_symbolic_jepa/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B12_neuro_symbolic_jepa.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B12_neuro_symbolic_jepa.dir/build
+.PHONY : unit_heartbeat_B12_neuro_symbolic_jepa/fast
+
+#=============================================================================
+# Target rules for targets named unit_heartbeat_B13_knowledge_mentalhealth_imagination
+
+# Build rule for target.
+unit_heartbeat_B13_knowledge_mentalhealth_imagination: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_heartbeat_B13_knowledge_mentalhealth_imagination
+.PHONY : unit_heartbeat_B13_knowledge_mentalhealth_imagination
+
+# fast build rule for target.
+unit_heartbeat_B13_knowledge_mentalhealth_imagination/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B13_knowledge_mentalhealth_imagination.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B13_knowledge_mentalhealth_imagination.dir/build
+.PHONY : unit_heartbeat_B13_knowledge_mentalhealth_imagination/fast
+
+#=============================================================================
+# Target rules for targets named unit_heartbeat_B14_curiosity_collective_logic
+
+# Build rule for target.
+unit_heartbeat_B14_curiosity_collective_logic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_heartbeat_B14_curiosity_collective_logic
+.PHONY : unit_heartbeat_B14_curiosity_collective_logic
+
+# fast build rule for target.
+unit_heartbeat_B14_curiosity_collective_logic/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B14_curiosity_collective_logic.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B14_curiosity_collective_logic.dir/build
+.PHONY : unit_heartbeat_B14_curiosity_collective_logic/fast
+
+#=============================================================================
+# Target rules for targets named unit_heartbeat_B15_tom_symboliclogic_selfmodel_predictive
+
+# Build rule for target.
+unit_heartbeat_B15_tom_symboliclogic_selfmodel_predictive: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_heartbeat_B15_tom_symboliclogic_selfmodel_predictive
+.PHONY : unit_heartbeat_B15_tom_symboliclogic_selfmodel_predictive
+
+# fast build rule for target.
+unit_heartbeat_B15_tom_symboliclogic_selfmodel_predictive/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B15_tom_symboliclogic_selfmodel_predictive.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B15_tom_symboliclogic_selfmodel_predictive.dir/build
+.PHONY : unit_heartbeat_B15_tom_symboliclogic_selfmodel_predictive/fast
+
+#=============================================================================
+# Target rules for targets named unit_heartbeat_B16_executive_consolidation_autobio_attention
+
+# Build rule for target.
+unit_heartbeat_B16_executive_consolidation_autobio_attention: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_heartbeat_B16_executive_consolidation_autobio_attention
+.PHONY : unit_heartbeat_B16_executive_consolidation_autobio_attention
+
+# fast build rule for target.
+unit_heartbeat_B16_executive_consolidation_autobio_attention/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B16_executive_consolidation_autobio_attention.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B16_executive_consolidation_autobio_attention.dir/build
+.PHONY : unit_heartbeat_B16_executive_consolidation_autobio_attention/fast
 
 #=============================================================================
 # Target rules for targets named unit_brain_test_kg_module_wiring
@@ -22519,6 +23351,32 @@ integration_cognitive_salience_snn_plasticity/fast:
 .PHONY : integration_cognitive_salience_snn_plasticity/fast
 
 #=============================================================================
+# Target rules for targets named integration_cognitive_surprise_amplifier
+
+# Build rule for target.
+integration_cognitive_surprise_amplifier: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_surprise_amplifier
+.PHONY : integration_cognitive_surprise_amplifier
+
+# fast build rule for target.
+integration_cognitive_surprise_amplifier/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/salience/CMakeFiles/integration_cognitive_surprise_amplifier.dir/build.make test/integration/cognitive/salience/CMakeFiles/integration_cognitive_surprise_amplifier.dir/build
+.PHONY : integration_cognitive_surprise_amplifier/fast
+
+#=============================================================================
+# Target rules for targets named integration_cognitive_surprise_bridges
+
+# Build rule for target.
+integration_cognitive_surprise_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_surprise_bridges
+.PHONY : integration_cognitive_surprise_bridges
+
+# fast build rule for target.
+integration_cognitive_surprise_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/salience/CMakeFiles/integration_cognitive_surprise_bridges.dir/build.make test/integration/cognitive/salience/CMakeFiles/integration_cognitive_surprise_bridges.dir/build
+.PHONY : integration_cognitive_surprise_bridges/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_test_hub_module_integration
 
 # Build rule for target.
@@ -23297,6 +24155,32 @@ regression_cognitive_salience_snn_plasticity: cmake_check_build_system
 regression_cognitive_salience_snn_plasticity/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/salience/CMakeFiles/regression_cognitive_salience_snn_plasticity.dir/build.make test/regression/cognitive/salience/CMakeFiles/regression_cognitive_salience_snn_plasticity.dir/build
 .PHONY : regression_cognitive_salience_snn_plasticity/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_surprise_amplifier
+
+# Build rule for target.
+regression_cognitive_surprise_amplifier: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_surprise_amplifier
+.PHONY : regression_cognitive_surprise_amplifier
+
+# fast build rule for target.
+regression_cognitive_surprise_amplifier/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/salience/CMakeFiles/regression_cognitive_surprise_amplifier.dir/build.make test/regression/cognitive/salience/CMakeFiles/regression_cognitive_surprise_amplifier.dir/build
+.PHONY : regression_cognitive_surprise_amplifier/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_surprise_bridges
+
+# Build rule for target.
+regression_cognitive_surprise_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_surprise_bridges
+.PHONY : regression_cognitive_surprise_bridges
+
+# fast build rule for target.
+regression_cognitive_surprise_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/salience/CMakeFiles/regression_cognitive_surprise_bridges.dir/build.make test/regression/cognitive/salience/CMakeFiles/regression_cognitive_surprise_bridges.dir/build
+.PHONY : regression_cognitive_surprise_bridges/fast
 
 #=============================================================================
 # Target rules for targets named regression_cognitive_test_hub_regression
@@ -33711,6 +34595,8 @@ help:
 	@echo "... e2e_cognitive_immune_tick_enhanced"
 	@echo "... e2e_cognitive_memory_pr_exception"
 	@echo "... e2e_cognitive_test_predictive_bridge_exception_e2e"
+	@echo "... e2e_cognitive_test_surprise_amplifier_e2e"
+	@echo "... e2e_cognitive_test_surprise_bridges_e2e"
 	@echo "... e2e_cognitive_test_tom_exception_e2e"
 	@echo "... e2e_cognitive_test_wm_bridges_e2e"
 	@echo "... e2e_cognitive_test_world_model_e2e"
@@ -33742,6 +34628,21 @@ help:
 	@echo "... e2e_fault_tolerance_test_health_self_repair_e2e"
 	@echo "... e2e_fault_tolerance_test_health_workflow_e2e"
 	@echo "... e2e_fault_tolerance_test_heartbeat_B01_memory_core_e2e"
+	@echo "... e2e_fault_tolerance_test_heartbeat_B02_memory_e2e"
+	@echo "... e2e_fault_tolerance_test_heartbeat_B03_immune_e2e"
+	@echo "... e2e_fault_tolerance_test_heartbeat_B04_parietal_e2e"
+	@echo "... e2e_fault_tolerance_test_heartbeat_B05_mirror_neurons_e2e"
+	@echo "... e2e_fault_tolerance_test_heartbeat_B06_integration_e2e"
+	@echo "... e2e_fault_tolerance_test_heartbeat_B07_game_theory_e2e"
+	@echo "... e2e_fault_tolerance_test_heartbeat_B08_ethics_reasoning_e2e"
+	@echo "... e2e_fault_tolerance_test_heartbeat_B09_omni_recursive_e2e"
+	@echo "... e2e_fault_tolerance_test_heartbeat_B10_fep_ft_e2e"
+	@echo "... e2e_fault_tolerance_test_heartbeat_B11_wellbeing_introspection_e2e"
+	@echo "... e2e_fault_tolerance_test_heartbeat_B12_neuro_symbolic_jepa_e2e"
+	@echo "... e2e_fault_tolerance_test_heartbeat_B13_knowledge_mentalhealth_imagination_e2e"
+	@echo "... e2e_fault_tolerance_test_heartbeat_B14_curiosity_collective_logic_e2e"
+	@echo "... e2e_fault_tolerance_test_heartbeat_B15_tom_symboliclogic_selfmodel_predictive_e2e"
+	@echo "... e2e_fault_tolerance_test_heartbeat_B16_executive_consolidation_autobio_attention_e2e"
 	@echo "... e2e_fault_tolerance_test_heartbeat_module_e2e"
 	@echo "... e2e_fault_tolerance_test_perception_cortical_health_e2e"
 	@echo "... e2e_fault_tolerance_test_plasticity_health_e2e"
@@ -34043,6 +34944,8 @@ help:
 	@echo "... integration_cognitive_sleep_bridge"
 	@echo "... integration_cognitive_sleep_test_cognitive_sleep_integration"
 	@echo "... integration_cognitive_substrate_bridges"
+	@echo "... integration_cognitive_surprise_amplifier"
+	@echo "... integration_cognitive_surprise_bridges"
 	@echo "... integration_cognitive_test_attention_wm_integration"
 	@echo "... integration_cognitive_test_emotion_memory_integration"
 	@echo "... integration_cognitive_test_game_theory_executive_integration"
@@ -34213,6 +35116,21 @@ help:
 	@echo "... integration_gpu_test_visual_processing_gpu"
 	@echo "... integration_health_module"
 	@echo "... integration_heartbeat_B01_memory_core"
+	@echo "... integration_heartbeat_B02_memory"
+	@echo "... integration_heartbeat_B03_immune"
+	@echo "... integration_heartbeat_B04_parietal"
+	@echo "... integration_heartbeat_B05_mirror_neurons"
+	@echo "... integration_heartbeat_B06_integration"
+	@echo "... integration_heartbeat_B07_game_theory"
+	@echo "... integration_heartbeat_B08_ethics_reasoning"
+	@echo "... integration_heartbeat_B09_omni_recursive"
+	@echo "... integration_heartbeat_B10_fep_ft"
+	@echo "... integration_heartbeat_B11_wellbeing_introspection"
+	@echo "... integration_heartbeat_B12_neuro_symbolic_jepa"
+	@echo "... integration_heartbeat_B13_knowledge_mentalhealth_imagination"
+	@echo "... integration_heartbeat_B14_curiosity_collective_logic"
+	@echo "... integration_heartbeat_B15_tom_symboliclogic_selfmodel_predictive"
+	@echo "... integration_heartbeat_B16_executive_consolidation_autobio_attention"
 	@echo "... integration_hemispheric_brain"
 	@echo "... integration_hypergraph_knowledge"
 	@echo "... integration_imagination_fep"
@@ -34532,6 +35450,8 @@ help:
 	@echo "... regression_cognitive_self_model_snn_plasticity"
 	@echo "... regression_cognitive_sleep_bridge"
 	@echo "... regression_cognitive_sleep_test_cognitive_sleep_regression"
+	@echo "... regression_cognitive_surprise_amplifier"
+	@echo "... regression_cognitive_surprise_bridges"
 	@echo "... regression_cognitive_test_bridge_regression"
 	@echo "... regression_cognitive_test_hub_regression"
 	@echo "... regression_cognitive_test_integration_performance_regression"
@@ -34633,6 +35553,21 @@ help:
 	@echo "... regression_gpu_test_visual_processing_regression"
 	@echo "... regression_health_stability"
 	@echo "... regression_heartbeat_B01_memory_core"
+	@echo "... regression_heartbeat_B02_memory"
+	@echo "... regression_heartbeat_B03_immune"
+	@echo "... regression_heartbeat_B04_parietal"
+	@echo "... regression_heartbeat_B05_mirror_neurons"
+	@echo "... regression_heartbeat_B06_integration"
+	@echo "... regression_heartbeat_B07_game_theory"
+	@echo "... regression_heartbeat_B08_ethics_reasoning"
+	@echo "... regression_heartbeat_B09_omni_recursive"
+	@echo "... regression_heartbeat_B10_fep_ft"
+	@echo "... regression_heartbeat_B11_wellbeing_introspection"
+	@echo "... regression_heartbeat_B12_neuro_symbolic_jepa"
+	@echo "... regression_heartbeat_B13_knowledge_mentalhealth_imagination"
+	@echo "... regression_heartbeat_B14_curiosity_collective_logic"
+	@echo "... regression_heartbeat_B15_tom_symboliclogic_selfmodel_predictive"
+	@echo "... regression_heartbeat_B16_executive_consolidation_autobio_attention"
 	@echo "... regression_hemispheric_brain_regression"
 	@echo "... regression_imagination_fep"
 	@echo "... regression_information_test_quantum_shannon_backward_compat"
@@ -35294,6 +36229,8 @@ help:
 	@echo "... unit_cognitive_self_model_plasticity_bridge"
 	@echo "... unit_cognitive_self_model_snn_bridge"
 	@echo "... unit_cognitive_sleep_wake_test_sleep_wake"
+	@echo "... unit_cognitive_surprise_amplifier"
+	@echo "... unit_cognitive_surprise_bridges"
 	@echo "... unit_cognitive_symbolic_logic_test_symbolic_logic_integration"
 	@echo "... unit_cognitive_test_attention_wm_bridge"
 	@echo "... unit_cognitive_test_bio_async"
@@ -35717,6 +36654,21 @@ help:
 	@echo "... unit_habenula_test_core"
 	@echo "... unit_health_agent_heartbeat"
 	@echo "... unit_heartbeat_B01_memory_core"
+	@echo "... unit_heartbeat_B02_memory"
+	@echo "... unit_heartbeat_B03_immune"
+	@echo "... unit_heartbeat_B04_parietal"
+	@echo "... unit_heartbeat_B05_mirror_neurons"
+	@echo "... unit_heartbeat_B06_integration"
+	@echo "... unit_heartbeat_B07_game_theory"
+	@echo "... unit_heartbeat_B08_ethics_reasoning"
+	@echo "... unit_heartbeat_B09_omni_recursive"
+	@echo "... unit_heartbeat_B10_fep_ft"
+	@echo "... unit_heartbeat_B11_wellbeing_introspection"
+	@echo "... unit_heartbeat_B12_neuro_symbolic_jepa"
+	@echo "... unit_heartbeat_B13_knowledge_mentalhealth_imagination"
+	@echo "... unit_heartbeat_B14_curiosity_collective_logic"
+	@echo "... unit_heartbeat_B15_tom_symboliclogic_selfmodel_predictive"
+	@echo "... unit_heartbeat_B16_executive_consolidation_autobio_attention"
 	@echo "... unit_information_test_quantum_shannon"
 	@echo "... unit_information_test_shannon"
 	@echo "... unit_integration_adapters_chemistry_test_calcium_adapter"

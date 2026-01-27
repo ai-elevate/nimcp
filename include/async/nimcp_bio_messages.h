@@ -1089,6 +1089,24 @@ typedef enum {
     BIO_MSG_SOCIETY_DIVERSITY_REPORT,             /**< Thought diversity metrics */
     BIO_MSG_SOCIETY_CONSENSUS_REACHED,            /**< Multi-agent consensus signal */
 
+    /* Surprise bridge messages (0x6E90 - 0x6E9F) */
+    BIO_MSG_SURPRISE_PLASTICITY_MODULATE = 0x6E90, /**< Surprise modulates learning rate */
+    BIO_MSG_SURPRISE_HABITUATION_UPDATE,           /**< Habituation level changed */
+    BIO_MSG_SURPRISE_SNN_SPIKE_BURST,              /**< Surprise spike burst event */
+    BIO_MSG_SURPRISE_SNN_CHANNEL_DOMINANT,         /**< Surprise channel dominance shift */
+    BIO_MSG_SURPRISE_SUBSTRATE_MODULATION,         /**< Substrate modulation effects */
+    BIO_MSG_SURPRISE_SUBSTRATE_FATIGUE,            /**< Surprise processing fatigue */
+    BIO_MSG_SURPRISE_THALAMIC_ROUTE,               /**< Thalamic routing of surprise */
+    BIO_MSG_SURPRISE_THALAMIC_GATE,                /**< Thalamic gating update */
+    BIO_MSG_SURPRISE_NOISE_INJECTION,              /**< Pink noise injection event */
+    BIO_MSG_SURPRISE_NOISE_ADAPTATION,             /**< Noise amplitude adaptation */
+    BIO_MSG_SURPRISE_IMAGINATION_TRIGGER,          /**< Surprise triggers imagination */
+    BIO_MSG_SURPRISE_IMAGINATION_RESULT,           /**< Imagination result feedback */
+    BIO_MSG_SURPRISE_SELF_MODEL_UPDATE,            /**< Self-model update from surprise */
+    BIO_MSG_SURPRISE_CAPABILITY_REVISION,          /**< Capability assessment revision */
+    BIO_MSG_SURPRISE_BRIDGE_HEALTH,                /**< Bridge health status broadcast */
+    BIO_MSG_SURPRISE_BRIDGE_SYNC,                  /**< Bridge synchronization signal */
+
     /* Cycle Coordinator messages (0x6F00 - 0x6F0F) */
     BIO_MSG_CYCLE_HEALTH_CHANGED = 0x6F00,           /**< Cycle health state changed */
     BIO_MSG_CYCLE_STALL_DETECTED,                     /**< Cycle stall detected */
@@ -1921,6 +1939,13 @@ typedef enum {
     BIO_MODULE_ADVERSARIAL_PERSPECTIVE,         /**< Adversarial perspective protocol */
     BIO_MODULE_SOCIAL_SCALING,                  /**< Social scaling controller */
     BIO_MODULE_SOCIETY_ENGINE,                  /**< Society of Thought reasoning engine */
+    BIO_MODULE_SURPRISE_PLASTICITY,             /**< Surprise ↔ plasticity bridge (0x1E06) */
+    BIO_MODULE_SURPRISE_SNN,                    /**< Surprise ↔ SNN bridge (0x1E07) */
+    BIO_MODULE_SURPRISE_SUBSTRATE,              /**< Surprise ↔ substrate bridge (0x1E08) */
+    BIO_MODULE_SURPRISE_THALAMIC,               /**< Surprise ↔ thalamic bridge (0x1E09) */
+    BIO_MODULE_SURPRISE_PINK_NOISE,             /**< Surprise ↔ pink noise bridge (0x1E0A) */
+    BIO_MODULE_SURPRISE_IMAGINATION,            /**< Surprise ↔ imagination bridge (0x1E0B) */
+    BIO_MODULE_SURPRISE_SELF_MODEL,             /**< Surprise ↔ self-model bridge (0x1E0C) */
 
     /* Special values (Phase 7: Runtime Message Orchestration) */
     BIO_MODULE_KG_DISPATCH = 0xFFFE, /**< KG-driven dispatch: route to all handlers for message type */
