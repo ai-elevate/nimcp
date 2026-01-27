@@ -170,7 +170,10 @@ static float apply_immune_modulation(
 
 void audio_cortical_default_config(audio_cortical_config_t* config)
 {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_cortical_default_config: config is NULL");
+        return;
+    }
 
     memset(config, 0, sizeof(audio_cortical_config_t));
 
@@ -457,7 +460,11 @@ int audio_cortical_disconnect_bio_async(audio_cortical_bridge_t* bridge)
 
 bool audio_cortical_is_bio_async_connected(const audio_cortical_bridge_t* bridge)
 {
-    return bridge && bridge->base.bio_async_enabled;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_cortical_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }
 
 /* ============================================================================
@@ -875,14 +882,22 @@ int audio_cortical_set_hypercolumn_gain(
 
 uint32_t audio_cortical_get_num_hypercolumns(const audio_cortical_bridge_t* bridge)
 {
-    return bridge ? bridge->num_hypercolumns : 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_cortical_get_num_hypercolumns: bridge is NULL");
+        return 0;
+    }
+    return bridge->num_hypercolumns;
 }
 
 const feature_hypercolumn_t* audio_cortical_get_hypercolumn_by_index(
     const audio_cortical_bridge_t* bridge,
     uint32_t index)
 {
-    if (!bridge || index >= bridge->num_hypercolumns) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_cortical_get_hypercolumn_by_index: bridge is NULL");
+        return NULL;
+    }
+    if (index >= bridge->num_hypercolumns) return NULL;
     return bridge->hypercolumns[index];
 }
 
@@ -907,7 +922,11 @@ int audio_cortical_set_immune_modulation(
 
 float audio_cortical_get_immune_modulation(const audio_cortical_bridge_t* bridge)
 {
-    return bridge ? bridge->immune_modulation_factor : 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_cortical_get_immune_modulation: bridge is NULL");
+        return 0.0f;
+    }
+    return bridge->immune_modulation_factor;
 }
 
 /* API aliases for header compatibility */
@@ -969,7 +988,11 @@ int audio_cortical_reset_stats(audio_cortical_bridge_t* bridge)
 
 audio_cortical_state_t audio_cortical_get_state(const audio_cortical_bridge_t* bridge)
 {
-    return bridge ? bridge->state : AUDIO_CORTICAL_STATE_UNINITIALIZED;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_cortical_get_state: bridge is NULL");
+        return AUDIO_CORTICAL_STATE_UNINITIALIZED;
+    }
+    return bridge->state;
 }
 
 /* ============================================================================
@@ -979,7 +1002,11 @@ audio_cortical_state_t audio_cortical_get_state(const audio_cortical_bridge_t* b
 const topographic_map_t* audio_cortical_get_tonotopic_map(
     const audio_cortical_bridge_t* bridge)
 {
-    return bridge ? bridge->tonotopic_map : NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_cortical_get_tonotopic_map: bridge is NULL");
+        return NULL;
+    }
+    return bridge->tonotopic_map;
 }
 
 /* ============================================================================
@@ -990,7 +1017,11 @@ uint32_t audio_cortical_process_bio_messages(
     audio_cortical_bridge_t* bridge,
     uint32_t max_messages)
 {
-    if (!bridge || !bridge->base.bio_async_enabled || !bridge->base.bio_ctx) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_cortical_process_bio_messages: bridge is NULL");
+        return 0;
+    }
+    if (!bridge->base.bio_async_enabled || !bridge->base.bio_ctx) {
         return 0;
     }
 

@@ -120,6 +120,7 @@ int auditory_thalamic_bridge_reset(auditory_thalamic_bridge_t* bridge) {
 int auditory_thalamic_route_signal(auditory_thalamic_bridge_t* bridge,
                                     const auditory_thalamic_signal_t* signal) {
     if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "auditory_thalamic_route_signal: required parameter is NULL");
         return -1;
     }
 
@@ -196,6 +197,7 @@ int auditory_thalamic_set_attention(auditory_thalamic_bridge_t* bridge, float at
 
 int auditory_thalamic_get_attention(const auditory_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "auditory_thalamic_get_attention: required parameter is NULL");
         return -1;
     }
 
@@ -206,6 +208,7 @@ int auditory_thalamic_get_attention(const auditory_thalamic_bridge_t* bridge, fl
 int auditory_thalamic_bridge_get_stats(const auditory_thalamic_bridge_t* bridge,
                                         auditory_thalamic_stats_t* stats) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "auditory_thalamic_bridge_get_stats: required parameter is NULL");
         return -1;
     }
 

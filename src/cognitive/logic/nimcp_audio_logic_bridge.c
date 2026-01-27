@@ -198,7 +198,10 @@ void audio_logic_bridge_destroy(audio_logic_bridge_t* bridge) {
 }
 
 int audio_logic_bridge_reset(audio_logic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_logic_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     audio_logic_bridge_heartbeat("audio_logic__reset", 0.0f);
@@ -272,7 +275,10 @@ int audio_logic_ground_observation(
     audio_logic_bridge_t* bridge,
     const audio_logic_observation_t* obs
 ) {
-    if (!bridge || !obs) return -1;
+    if (!bridge || !obs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_logic_ground_observation: required parameter is NULL");
+        return -1;
+    }
 
     /* Filter by confidence and salience */
     /* Phase 8: Heartbeat at operation start */
@@ -373,7 +379,10 @@ int audio_logic_report_speech(
     const char* words,
     float confidence
 ) {
-    if (!bridge || !words) return -1;
+    if (!bridge || !words) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_logic_report_speech: required parameter is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_speech_grounding) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -400,7 +409,10 @@ int audio_logic_report_sound(
     sound_category_t category,
     float confidence
 ) {
-    if (!bridge || !sound_name) return -1;
+    if (!bridge || !sound_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_logic_report_sound: required parameter is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_sound_grounding) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -423,7 +435,10 @@ int audio_logic_process_batch(
     const audio_logic_observation_t* observations,
     uint32_t count
 ) {
-    if (!bridge || !observations) return -1;
+    if (!bridge || !observations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_logic_process_batch: required parameter is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     audio_logic_bridge_heartbeat("audio_logic__audio_logic_process_", 0.0f);
@@ -454,7 +469,11 @@ int audio_logic_request_attention(
     sound_category_t category,
     float priority
 ) {
-    if (!bridge || category >= SOUND_CAT_COUNT) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_logic_request_attention: bridge is NULL");
+        return -1;
+    }
+    if (category >= SOUND_CAT_COUNT) return -1;
     if (!bridge->config.enable_top_down_attention) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -482,7 +501,10 @@ int audio_logic_focus_speaker(
     const char* speaker_id,
     float priority
 ) {
-    if (!bridge || !speaker_id) return -1;
+    if (!bridge || !speaker_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_logic_focus_speaker: required parameter is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_top_down_attention) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -509,7 +531,10 @@ int audio_logic_expect_word(
     audio_logic_bridge_t* bridge,
     const char* expected_word
 ) {
-    if (!bridge || !expected_word) return -1;
+    if (!bridge || !expected_word) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_logic_expect_word: required parameter is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     audio_logic_bridge_heartbeat("audio_logic__audio_logic_expect_w", 0.0f);
@@ -535,7 +560,10 @@ int audio_logic_verify_predicate(
     bool* verified,
     float* confidence
 ) {
-    if (!bridge || !predicate || !verified || !confidence) return -1;
+    if (!bridge || !predicate || !verified || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_logic_verify_predicate: required parameter is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_verification) {
         *verified = false;
         *confidence = 0.0f;
@@ -595,7 +623,10 @@ int audio_logic_send_command(
     audio_logic_bridge_t* bridge,
     const logic_audio_command_t* command
 ) {
-    if (!bridge || !command) return -1;
+    if (!bridge || !command) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_logic_send_command: required parameter is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     audio_logic_bridge_heartbeat("audio_logic__audio_logic_send_com", 0.0f);
@@ -632,7 +663,10 @@ int audio_logic_is_speaker_active(
     const char* speaker_id,
     bool* active
 ) {
-    if (!bridge || !speaker_id || !active) return -1;
+    if (!bridge || !speaker_id || !active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_logic_is_speaker_active: required parameter is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     audio_logic_bridge_heartbeat("audio_logic__audio_logic_is_speak", 0.0f);
@@ -657,7 +691,10 @@ int audio_logic_is_speaker_active(
 }
 
 int audio_logic_get_active_speaker_count(const audio_logic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_logic_get_active_speaker_count: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     audio_logic_bridge_heartbeat("audio_logic__audio_logic_get_acti", 0.0f);
 
@@ -671,7 +708,11 @@ int audio_logic_category_heard_recently(
     uint32_t recent_ms,
     bool* heard
 ) {
-    if (!bridge || category >= SOUND_CAT_COUNT || !heard) return -1;
+    if (!bridge || !heard) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_logic_category_heard_recently: required parameter is NULL");
+        return -1;
+    }
+    if (category >= SOUND_CAT_COUNT) return -1;
 
     /* Phase 8: Heartbeat at operation start */
     audio_logic_bridge_heartbeat("audio_logic__audio_logic_category", 0.0f);
@@ -713,7 +754,10 @@ int audio_logic_bridge_get_stats(
     const audio_logic_bridge_t* bridge,
     audio_logic_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_logic_bridge_get_stats: required parameter is NULL");
+        return -1;
+    }
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
     audio_logic_bridge_heartbeat("audio_logic__get_stats", 0.0f);

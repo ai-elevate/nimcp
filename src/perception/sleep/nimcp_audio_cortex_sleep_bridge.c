@@ -234,7 +234,10 @@ int audio_sleep_get_effects(const audio_sleep_bridge_t bridge, audio_sleep_effec
 }
 
 float audio_sleep_get_threshold(const audio_sleep_bridge_t bridge, float base_threshold) {
-    if (!bridge) return base_threshold;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_sleep_get_threshold: bridge is NULL");
+        return base_threshold;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     float result = base_threshold * bridge->effects.threshold_factor;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -242,7 +245,10 @@ float audio_sleep_get_threshold(const audio_sleep_bridge_t bridge, float base_th
 }
 
 float audio_sleep_get_frequency_selectivity(const audio_sleep_bridge_t bridge, float base_selectivity) {
-    if (!bridge) return base_selectivity;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_sleep_get_frequency_selectivity: bridge is NULL");
+        return base_selectivity;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     float result = base_selectivity * bridge->effects.frequency_selectivity_factor;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -250,7 +256,10 @@ float audio_sleep_get_frequency_selectivity(const audio_sleep_bridge_t bridge, f
 }
 
 float audio_sleep_get_processing_speed(const audio_sleep_bridge_t bridge, float base_speed) {
-    if (!bridge) return base_speed;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_sleep_get_processing_speed: bridge is NULL");
+        return base_speed;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     float result = base_speed * bridge->effects.processing_speed_factor;
     nimcp_mutex_unlock(bridge->base.mutex);

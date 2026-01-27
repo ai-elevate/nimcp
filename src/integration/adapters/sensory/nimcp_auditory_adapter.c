@@ -141,11 +141,18 @@ void nimcp_auditory_adapter_destroy(nimcp_auditory_adapter_t adapter) {
 }
 
 nimcp_module_interface_t* nimcp_auditory_adapter_get_interface(nimcp_auditory_adapter_t adapter) {
-    return adapter ? &adapter->interface : NULL;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_auditory_adapter_get_interface: adapter is NULL");
+        return NULL;
+    }
+    return &adapter->interface;
 }
 
 nimcp_layer_error_t nimcp_auditory_adapter_process_samples(nimcp_auditory_adapter_t adapter, const float* samples, uint32_t count) {
-    if (!adapter || !samples) return NIMCP_LAYER_ERR_NULL_PTR;
+    if (!adapter || !samples) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_auditory_adapter_process_samples: required parameter is NULL");
+        return NIMCP_LAYER_ERR_NULL_PTR;
+    }
     if (!adapter->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
     float sum = 0.0f;
     for (uint32_t i = 0; i < count; i++) sum += fabsf(samples[i]);
@@ -155,7 +162,10 @@ nimcp_layer_error_t nimcp_auditory_adapter_process_samples(nimcp_auditory_adapte
 }
 
 nimcp_layer_error_t nimcp_auditory_adapter_get_spectrum(nimcp_auditory_adapter_t adapter, float* spectrum_out, uint32_t max_bands, uint32_t* count_out) {
-    if (!adapter || !spectrum_out || !count_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    if (!adapter || !spectrum_out || !count_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_auditory_adapter_get_spectrum: required parameter is NULL");
+        return NIMCP_LAYER_ERR_NULL_PTR;
+    }
     uint32_t count = adapter->config.num_frequency_bands < max_bands ? adapter->config.num_frequency_bands : max_bands;
     memcpy(spectrum_out, adapter->spectrum_buffer, count * sizeof(float));
     *count_out = count;
@@ -163,19 +173,28 @@ nimcp_layer_error_t nimcp_auditory_adapter_get_spectrum(nimcp_auditory_adapter_t
 }
 
 nimcp_layer_error_t nimcp_auditory_adapter_get_state(nimcp_auditory_adapter_t adapter, nimcp_auditory_adapter_state_t* state_out) {
-    if (!adapter || !state_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    if (!adapter || !state_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_auditory_adapter_get_state: required parameter is NULL");
+        return NIMCP_LAYER_ERR_NULL_PTR;
+    }
     *state_out = adapter->state;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_auditory_adapter_get_stats(nimcp_auditory_adapter_t adapter, nimcp_auditory_adapter_stats_t* stats_out) {
-    if (!adapter || !stats_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    if (!adapter || !stats_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_auditory_adapter_get_stats: required parameter is NULL");
+        return NIMCP_LAYER_ERR_NULL_PTR;
+    }
     *stats_out = adapter->stats;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_auditory_adapter_reset_stats(nimcp_auditory_adapter_t adapter) {
-    if (!adapter) return NIMCP_LAYER_ERR_NULL_PTR;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_auditory_adapter_reset_stats: adapter is NULL");
+        return NIMCP_LAYER_ERR_NULL_PTR;
+    }
     memset(&adapter->stats, 0, sizeof(adapter->stats));
     return NIMCP_LAYER_OK;
 }

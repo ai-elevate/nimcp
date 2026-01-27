@@ -370,7 +370,11 @@ int audio_immune_apply_inflammation_effects(audio_immune_bridge_t* bridge) {
 }
 
 float audio_immune_compute_bandwidth_reduction(const audio_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->immune_system) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_immune_compute_bandwidth_reduction: bridge is NULL");
+        return 0.0f;
+    }
+    if (!bridge->immune_system) return 0.0f;
 
     brain_inflammation_level_t level = get_max_inflammation_level(bridge->immune_system);
 
@@ -388,7 +392,11 @@ float audio_immune_compute_bandwidth_reduction(const audio_immune_bridge_t* brid
 }
 
 float audio_immune_compute_noise_sensitivity(const audio_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->immune_system) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_immune_compute_noise_sensitivity: bridge is NULL");
+        return 1.0f;
+    }
+    if (!bridge->immune_system) return 1.0f;
 
     brain_inflammation_level_t level = get_max_inflammation_level(bridge->immune_system);
 
@@ -682,7 +690,10 @@ bool audio_immune_is_impaired(const audio_immune_bridge_t* bridge) {
 }
 
 float audio_immune_get_accuracy_reduction(const audio_immune_bridge_t* bridge) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_immune_get_accuracy_reduction: bridge is NULL");
+        return 0.0f;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     float reduction = 1.0f - bridge->inflammation_state.processing_accuracy;
@@ -692,7 +703,10 @@ float audio_immune_get_accuracy_reduction(const audio_immune_bridge_t* bridge) {
 }
 
 float audio_immune_get_tinnitus_severity(const audio_immune_bridge_t* bridge) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_immune_get_tinnitus_severity: bridge is NULL");
+        return 0.0f;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     float severity = bridge->inflammation_state.tinnitus_severity;
@@ -702,7 +716,10 @@ float audio_immune_get_tinnitus_severity(const audio_immune_bridge_t* bridge) {
 }
 
 float audio_immune_get_attention_level(const audio_immune_bridge_t* bridge) {
-    if (!bridge) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_immune_get_attention_level: bridge is NULL");
+        return 1.0f;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     float attention = bridge->inflammation_state.auditory_attention;

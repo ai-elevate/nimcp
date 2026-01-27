@@ -175,7 +175,10 @@ int temporal_thalamic_route_signal(
     const temporal_thalamic_request_t* request,
     temporal_thalamic_response_t* response
 ) {
-    if (!bridge || !request || !response) return -1;
+    if (!bridge || !request || !response) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_thalamic_route_signal: required parameter is NULL");
+        return -1;
+    }
 
     memset(response, 0, sizeof(temporal_thalamic_response_t));
 
@@ -261,7 +264,10 @@ int temporal_thalamic_route_auditory(
     uint32_t signal_dim,
     temporal_thalamic_response_t* response
 ) {
-    if (!bridge || !auditory_signal || !response) return -1;
+    if (!bridge || !auditory_signal || !response) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_thalamic_route_auditory: required parameter is NULL");
+        return -1;
+    }
 
     temporal_thalamic_request_t request;
     memset(&request, 0, sizeof(request));
@@ -280,7 +286,10 @@ int temporal_thalamic_route_visual(
     uint32_t signal_dim,
     temporal_thalamic_response_t* response
 ) {
-    if (!bridge || !visual_signal || !response) return -1;
+    if (!bridge || !visual_signal || !response) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_thalamic_route_visual: required parameter is NULL");
+        return -1;
+    }
 
     temporal_thalamic_request_t request;
     memset(&request, 0, sizeof(request));
@@ -340,7 +349,10 @@ int temporal_thalamic_get_state(
     const temporal_thalamic_bridge_t* bridge,
     temporal_thalamic_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_thalamic_get_state: required parameter is NULL");
+        return -1;
+    }
     memcpy(state, &bridge->state, sizeof(temporal_thalamic_state_t));
     return 0;
 }
@@ -350,7 +362,10 @@ int temporal_thalamic_apply_feedback(
     const float* feedback_signal,
     uint32_t signal_dim
 ) {
-    if (!bridge || !feedback_signal) return -1;
+    if (!bridge || !feedback_signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_thalamic_apply_feedback: required parameter is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_feedback_modulation) return 0;
 
     /* Compute feedback modulation from signal */
@@ -376,7 +391,10 @@ int temporal_thalamic_bridge_register_bio_async(
     temporal_thalamic_bridge_t* bridge,
     bio_router_t* router
 ) {
-    if (!bridge || !router) return -1;
+    if (!bridge || !router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_thalamic_bridge_register_bio_async: required parameter is NULL");
+        return -1;
+    }
     /* TODO: Register message handlers */
     return 0;
 }
@@ -389,7 +407,10 @@ int temporal_thalamic_bridge_get_stats(
     const temporal_thalamic_bridge_t* bridge,
     temporal_thalamic_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_thalamic_bridge_get_stats: required parameter is NULL");
+        return -1;
+    }
     memcpy(stats, &bridge->stats, sizeof(temporal_thalamic_stats_t));
     return 0;
 }

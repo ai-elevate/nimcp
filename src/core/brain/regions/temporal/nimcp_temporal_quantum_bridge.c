@@ -205,7 +205,11 @@ void temporal_quantum_bridge_destroy(temporal_quantum_bridge_t* bridge) {
 }
 
 bool temporal_quantum_bridge_is_enabled(const temporal_quantum_bridge_t* bridge) {
-    return bridge ? bridge->config.enabled : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_quantum_bridge_is_enabled: bridge is NULL");
+        return false;
+    }
+    return bridge->config.enabled;
 }
 
 void temporal_quantum_bridge_set_enabled(temporal_quantum_bridge_t* bridge, bool enabled) {
@@ -225,7 +229,10 @@ int temporal_quantum_search_objects(
     uint32_t prototype_count,
     quantum_object_result_t* result
 ) {
-    if (!bridge || !query_features || !result) return -1;
+    if (!bridge || !query_features || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_quantum_search_objects: required parameter is NULL");
+        return -1;
+    }
     if (!bridge->config.enabled) return -1;
 
     memset(result, 0, sizeof(quantum_object_result_t));
@@ -320,7 +327,10 @@ int temporal_quantum_recognize_topk(
     quantum_object_candidate_t* candidates,
     uint32_t* num_candidates
 ) {
-    if (!bridge || !features || !candidates || !num_candidates) return -1;
+    if (!bridge || !features || !candidates || !num_candidates) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_quantum_recognize_topk: required parameter is NULL");
+        return -1;
+    }
     if (!bridge->config.enabled) return -1;
 
     (void)feature_dim;
@@ -353,7 +363,10 @@ int temporal_quantum_search_concepts(
     uint32_t concept_count,
     quantum_concept_result_t* result
 ) {
-    if (!bridge || !query_embedding || !result) return -1;
+    if (!bridge || !query_embedding || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_quantum_search_concepts: required parameter is NULL");
+        return -1;
+    }
     if (!bridge->config.enabled) return -1;
 
     memset(result, 0, sizeof(quantum_concept_result_t));
@@ -444,7 +457,10 @@ int temporal_quantum_spread_activation(
     uint32_t max_candidates,
     uint32_t* num_candidates
 ) {
-    if (!bridge || !candidates || !num_candidates) return -1;
+    if (!bridge || !candidates || !num_candidates) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_quantum_spread_activation: required parameter is NULL");
+        return -1;
+    }
     if (!bridge->config.enabled) return -1;
 
     (void)seed_concept_id;
@@ -479,7 +495,10 @@ int temporal_quantum_bind_multimodal(
     uint32_t auditory_dim,
     quantum_multimodal_binding_t* binding
 ) {
-    if (!bridge || !visual_features || !auditory_features || !binding) return -1;
+    if (!bridge || !visual_features || !auditory_features || !binding) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_quantum_bind_multimodal: required parameter is NULL");
+        return -1;
+    }
     if (!bridge->config.enabled || !bridge->config.enable_multimodal_binding) return -1;
 
     memset(binding, 0, sizeof(quantum_multimodal_binding_t));
@@ -521,7 +540,10 @@ int temporal_quantum_get_stats(
     const temporal_quantum_bridge_t* bridge,
     temporal_quantum_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_quantum_get_stats: required parameter is NULL");
+        return -1;
+    }
     memcpy(stats, &bridge->stats, sizeof(temporal_quantum_stats_t));
     return 0;
 }
@@ -536,7 +558,10 @@ int temporal_quantum_get_config(
     const temporal_quantum_bridge_t* bridge,
     temporal_quantum_config_t* config
 ) {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_quantum_get_config: required parameter is NULL");
+        return -1;
+    }
     memcpy(config, &bridge->config, sizeof(temporal_quantum_config_t));
     return 0;
 }

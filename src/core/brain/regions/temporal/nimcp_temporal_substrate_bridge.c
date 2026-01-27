@@ -232,7 +232,10 @@ int temporal_substrate_bridge_get_effects(
     const temporal_substrate_bridge_t* bridge,
     temporal_substrate_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_substrate_bridge_get_effects: required parameter is NULL");
+        return -1;
+    }
     memcpy(effects, &bridge->effects, sizeof(temporal_substrate_effects_t));
     return 0;
 }
@@ -260,7 +263,10 @@ int temporal_substrate_bridge_register_bio_async(
     temporal_substrate_bridge_t* bridge,
     bio_router_t* router
 ) {
-    if (!bridge || !router) return -1;
+    if (!bridge || !router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_substrate_bridge_register_bio_async: required parameter is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_bio_async) return 0;
 
     /* TODO: Register message handlers */
@@ -276,7 +282,10 @@ int temporal_substrate_bridge_get_stats(
     const temporal_substrate_bridge_t* bridge,
     temporal_substrate_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_substrate_bridge_get_stats: required parameter is NULL");
+        return -1;
+    }
     memcpy(stats, &bridge->stats, sizeof(temporal_substrate_stats_t));
     return 0;
 }

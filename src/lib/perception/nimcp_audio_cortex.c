@@ -1699,6 +1699,7 @@ static void update_neuromodulator_states(audio_cortex_t* cortex, float dt)
 void audio_cortex_set_brain(audio_cortex_t* cortex, brain_t brain)
 {
     if (!cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_cortex_set_brain: cortex is NULL");
         return;
     }
     cortex->brain = brain;
@@ -1738,7 +1739,11 @@ float audio_cortex_get_speech_salience(audio_cortex_t* cortex,
                                         uint32_t num_features)
 {
     // Guard: Validate inputs
-    if (!cortex || !features || num_features == 0) {
+    if (!cortex || !features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_cortex_get_speech_salience: required parameter is NULL");
+        return 0.0F;
+    }
+    if (num_features == 0) {
         return 0.0F;
     }
 
@@ -1838,6 +1843,7 @@ void audio_cortex_activate_speech_mode(audio_cortex_t* cortex)
 {
     // Guard: Validate cortex
     if (!cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_cortex_activate_speech_mode: cortex is NULL");
         return;
     }
 
@@ -1867,7 +1873,11 @@ void audio_cortex_activate_speech_mode(audio_cortex_t* cortex)
  */
 bio_module_context_t audio_cortex_get_bio_context(audio_cortex_t* cortex)
 {
-    if (!cortex || !cortex->bio_async_enabled) {
+    if (!cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_cortex_get_bio_context: cortex is NULL");
+        return NULL;
+    }
+    if (!cortex->bio_async_enabled) {
         return NULL;
     }
     return cortex->bio_ctx;
@@ -1880,7 +1890,11 @@ bio_module_context_t audio_cortex_get_bio_context(audio_cortex_t* cortex)
  */
 uint32_t audio_cortex_process_bio_messages(audio_cortex_t* cortex, uint32_t max_messages)
 {
-    if (!cortex || !cortex->bio_async_enabled || !cortex->bio_ctx) {
+    if (!cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_cortex_process_bio_messages: cortex is NULL");
+        return 0;
+    }
+    if (!cortex->bio_async_enabled || !cortex->bio_ctx) {
         return 0;
     }
 
@@ -1904,6 +1918,7 @@ nimcp_error_t audio_cortex_broadcast_input(
     float salience)
 {
     if (!cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_cortex_broadcast_input: cortex is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1911,7 +1926,11 @@ nimcp_error_t audio_cortex_broadcast_input(
         return NIMCP_ERROR_NOT_INITIALIZED;
     }
 
-    if (!features || num_features == 0) {
+    if (!features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_cortex_broadcast_input: features is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+    if (num_features == 0) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1953,6 +1972,7 @@ nimcp_error_t audio_cortex_broadcast_speech_detected(
     float speech_salience)
 {
     if (!cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_cortex_broadcast_speech_detected: cortex is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -2022,6 +2042,7 @@ nimcp_error_t audio_cortex_trigger_receptor(
 {
     // Guard: Validate inputs
     if (!cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_cortex_trigger_receptor: cortex is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -2119,6 +2140,7 @@ nimcp_error_t audio_cortex_get_second_messenger_state(
 {
     // Guard: Validate inputs
     if (!cortex || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_cortex_get_second_messenger_state: required parameter is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -2177,6 +2199,7 @@ int audio_cortex_get_training_state(
 {
     /* Guard: Validate inputs */
     if (!cortex || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_cortex_get_training_state: required parameter is NULL");
         return -1;
     }
 
@@ -2230,7 +2253,11 @@ int audio_cortex_apply_gradient_feedback(
     float scale)
 {
     /* Guard: Validate inputs */
-    if (!cortex || !gradients || gradient_size == 0) {
+    if (!cortex || !gradients) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_cortex_apply_gradient_feedback: required parameter is NULL");
+        return -1;
+    }
+    if (gradient_size == 0) {
         return -1;
     }
 
@@ -2322,7 +2349,11 @@ int audio_cortex_extract_features_tensor(
     struct nimcp_tensor** features)
 {
     /* Guard: Validate inputs */
-    if (!cortex || !audio || num_samples == 0 || !features) {
+    if (!cortex || !audio || !features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_cortex_extract_features_tensor: required parameter is NULL");
+        return -1;
+    }
+    if (num_samples == 0) {
         return -1;
     }
 
@@ -2421,6 +2452,7 @@ int audio_cortex_extract_features_tensor(
 uint32_t audio_cortex_get_feature_dim(const audio_cortex_t* cortex)
 {
     if (!cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_cortex_get_feature_dim: cortex is NULL");
         return 0;
     }
     return cortex->config.num_mel_filters + cortex->config.num_mfcc;
@@ -2481,6 +2513,7 @@ int audio_cortex_set_training_mode(audio_cortex_t* cortex, bool enable)
 bool audio_cortex_is_training_mode(const audio_cortex_t* cortex)
 {
     if (!cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_cortex_is_training_mode: cortex is NULL");
         return false;
     }
     return cortex->training_mode;

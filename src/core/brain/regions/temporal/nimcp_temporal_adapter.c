@@ -380,6 +380,7 @@ temporal_adapter_t* temporal_create(const temporal_config_t* config) {
     temporal_adapter_t* adapter = (temporal_adapter_t*)nimcp_calloc(1, sizeof(temporal_adapter_t));
     if (!adapter) {
         LOG_ERROR("[%s] Failed to allocate adapter", TEMPORAL_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "temporal_create: adapter is NULL");
         return NULL;
     }
 
@@ -442,7 +443,10 @@ void temporal_destroy(temporal_adapter_t* adapter) {
 }
 
 bool temporal_reset(temporal_adapter_t* adapter) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_reset: adapter is NULL");
+        return false;
+    }
 
     /* Reset auditory state */
     if (adapter->auditory && adapter->auditory->spectral_buffer) {
@@ -543,7 +547,11 @@ uint32_t temporal_get_spectral_state(
     float* spectral_power,
     uint32_t buffer_size
 ) {
-    if (!adapter || !spectral_power || !adapter->auditory) return 0;
+    if (!adapter || !spectral_power) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_get_spectral_state: required parameter is NULL");
+        return 0;
+    }
+    if (!adapter->auditory) return 0;
 
     uint32_t copy_count = buffer_size < adapter->auditory->num_bands ?
                           buffer_size : adapter->auditory->num_bands;
@@ -553,7 +561,11 @@ uint32_t temporal_get_spectral_state(
 }
 
 bool temporal_detect_speech(temporal_adapter_t* adapter, float* confidence) {
-    if (!adapter || !adapter->auditory) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_detect_speech: adapter is NULL");
+        return false;
+    }
+    if (!adapter->auditory) return false;
 
     if (confidence) {
         *confidence = adapter->auditory->last_is_speech ? 0.8f : 0.2f;
@@ -643,7 +655,11 @@ bool temporal_add_object_prototype(
     const float* features,
     uint32_t feature_dim
 ) {
-    if (!adapter || !name || !features || feature_dim == 0) return false;
+    if (!adapter || !name || !features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_add_object_prototype: required parameter is NULL");
+        return false;
+    }
+    if (feature_dim == 0) return false;
     if (!adapter->object) return false;
 
     uint32_t idx = hash_id(object_id, adapter->object->prototype_capacity);
@@ -691,7 +707,10 @@ bool temporal_recognize_face(
     uint32_t* face_id,
     float* confidence
 ) {
-    if (!adapter || !features || !face_id || !confidence) return false;
+    if (!adapter || !features || !face_id || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_recognize_face: required parameter is NULL");
+        return false;
+    }
 
     /* Use object recognition with face flag */
     temporal_visual_input_t input;
@@ -716,7 +735,11 @@ bool temporal_add_concept(
     temporal_adapter_t* adapter,
     const temporal_concept_t* concept_entry
 ) {
-    if (!adapter || !concept_entry || !adapter->semantic) return false;
+    if (!adapter || !concept_entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_add_concept: required parameter is NULL");
+        return false;
+    }
+    if (!adapter->semantic) return false;
 
     uint32_t idx = hash_id(concept_entry->concept_id, adapter->semantic->concept_capacity);
 
@@ -774,7 +797,11 @@ bool temporal_get_concept(
     uint32_t concept_id,
     temporal_concept_t* concept_out
 ) {
-    if (!adapter || !concept_out || !adapter->semantic) return false;
+    if (!adapter || !concept_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_get_concept: required parameter is NULL");
+        return false;
+    }
+    if (!adapter->semantic) return false;
 
     uint32_t idx = hash_id(concept_id, adapter->semantic->concept_capacity);
 
@@ -796,7 +823,11 @@ uint32_t temporal_search_concepts(
     temporal_concept_t* results,
     uint32_t max_results
 ) {
-    if (!adapter || !query || !results || max_results == 0) return 0;
+    if (!adapter || !query || !results) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_search_concepts: required parameter is NULL");
+        return 0;
+    }
+    if (max_results == 0) return 0;
     if (!adapter->semantic) return 0;
 
     adapter->status = TEMPORAL_STATUS_SEMANTIC_RETRIEVAL;
@@ -828,7 +859,11 @@ bool temporal_get_related(
     temporal_semantic_result_t* result,
     uint32_t max_depth
 ) {
-    if (!adapter || !result || !adapter->semantic) return false;
+    if (!adapter || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_get_related: required parameter is NULL");
+        return false;
+    }
+    if (!adapter->semantic) return false;
     (void)max_depth; /* TODO: Implement spreading activation */
 
     memset(result, 0, sizeof(temporal_semantic_result_t));
@@ -854,7 +889,11 @@ bool temporal_apply_priming(
     uint32_t concept_id,
     float strength
 ) {
-    if (!adapter || !adapter->semantic) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_apply_priming: adapter is NULL");
+        return false;
+    }
+    if (!adapter->semantic) return false;
     if (!adapter->semantic->priming_enabled) return false;
 
     uint32_t idx = hash_id(concept_id, adapter->semantic->concept_capacity);
@@ -897,7 +936,11 @@ bool temporal_apply_priming(
  *===========================================================================*/
 
 bool temporal_wm_push(temporal_adapter_t* adapter, uint32_t concept_id) {
-    if (!adapter || !adapter->working_memory) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_wm_push: adapter is NULL");
+        return false;
+    }
+    if (!adapter->working_memory) return false;
 
     if (adapter->wm_count >= adapter->config.working_memory_slots) {
         set_error(adapter, TEMPORAL_ERROR_WORKING_MEMORY_FULL);
@@ -915,7 +958,11 @@ bool temporal_wm_push(temporal_adapter_t* adapter, uint32_t concept_id) {
 }
 
 bool temporal_wm_pop(temporal_adapter_t* adapter, uint32_t* concept_id) {
-    if (!adapter || !concept_id || !adapter->working_memory) return false;
+    if (!adapter || !concept_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_wm_pop: required parameter is NULL");
+        return false;
+    }
+    if (!adapter->working_memory) return false;
     if (adapter->wm_count == 0) return false;
 
     uint32_t tail = (adapter->wm_head + adapter->config.working_memory_slots - adapter->wm_count)
@@ -932,7 +979,10 @@ bool temporal_wm_get_contents(
     uint32_t* concept_ids,
     uint32_t* count
 ) {
-    if (!adapter || !concept_ids || !count) return false;
+    if (!adapter || !concept_ids || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_wm_get_contents: required parameter is NULL");
+        return false;
+    }
     if (!adapter->working_memory) {
         *count = 0;
         return true;
@@ -959,7 +1009,10 @@ bool temporal_set_event_callback(
     temporal_event_callback_t callback,
     void* user_data
 ) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_set_event_callback: adapter is NULL");
+        return false;
+    }
     adapter->event_callback = callback;
     adapter->event_user_data = user_data;
     return true;
@@ -970,7 +1023,10 @@ bool temporal_set_auditory_callback(
     temporal_auditory_callback_t callback,
     void* user_data
 ) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_set_auditory_callback: adapter is NULL");
+        return false;
+    }
     adapter->auditory_callback = callback;
     adapter->auditory_user_data = user_data;
     return true;
@@ -981,7 +1037,10 @@ bool temporal_set_recognition_callback(
     temporal_recognition_callback_t callback,
     void* user_data
 ) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_set_recognition_callback: adapter is NULL");
+        return false;
+    }
     adapter->recognition_callback = callback;
     adapter->recognition_user_data = user_data;
     return true;
@@ -997,7 +1056,10 @@ bool temporal_train_recognition(
     uint32_t target_id,
     float learning_rate
 ) {
-    if (!adapter || !input) return false;
+    if (!adapter || !input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_train_recognition: required parameter is NULL");
+        return false;
+    }
     if (!adapter->config.enable_training) return false;
     (void)learning_rate; /* TODO: Implement training */
 
@@ -1011,7 +1073,11 @@ bool temporal_train_association(
     uint32_t concept_b,
     float strength
 ) {
-    if (!adapter || !adapter->semantic) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_train_association: adapter is NULL");
+        return false;
+    }
+    if (!adapter->semantic) return false;
     if (!adapter->config.enable_training) return false;
     (void)concept_a; (void)concept_b; (void)strength;
 
@@ -1025,12 +1091,18 @@ bool temporal_train_association(
  *===========================================================================*/
 
 temporal_status_t temporal_get_status(const temporal_adapter_t* adapter) {
-    if (!adapter) return TEMPORAL_STATUS_ERROR;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_get_status: adapter is NULL");
+        return TEMPORAL_STATUS_ERROR;
+    }
     return adapter->status;
 }
 
 temporal_error_t temporal_get_last_error(const temporal_adapter_t* adapter) {
-    if (!adapter) return TEMPORAL_ERROR_INTERNAL;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_get_last_error: adapter is NULL");
+        return TEMPORAL_ERROR_INTERNAL;
+    }
     return adapter->last_error;
 }
 
@@ -1063,13 +1135,19 @@ const char* temporal_status_string(temporal_status_t status) {
 }
 
 bool temporal_get_stats(const temporal_adapter_t* adapter, temporal_stats_t* stats) {
-    if (!adapter || !stats) return false;
+    if (!adapter || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_get_stats: required parameter is NULL");
+        return false;
+    }
     memcpy(stats, &adapter->stats, sizeof(temporal_stats_t));
     return true;
 }
 
 bool temporal_get_config(const temporal_adapter_t* adapter, temporal_config_t* config) {
-    if (!adapter || !config) return false;
+    if (!adapter || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_get_config: required parameter is NULL");
+        return false;
+    }
     memcpy(config, &adapter->config, sizeof(temporal_config_t));
     return true;
 }
@@ -1079,15 +1157,27 @@ bool temporal_get_config(const temporal_adapter_t* adapter, temporal_config_t* c
  *===========================================================================*/
 
 auditory_processor_t* temporal_get_auditory_processor(temporal_adapter_t* adapter) {
-    return adapter ? adapter->auditory : NULL;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_get_auditory_processor: adapter is NULL");
+        return NULL;
+    }
+    return adapter->auditory;
 }
 
 object_recognition_t* temporal_get_object_recognition(temporal_adapter_t* adapter) {
-    return adapter ? adapter->object : NULL;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_get_object_recognition: adapter is NULL");
+        return NULL;
+    }
+    return adapter->object;
 }
 
 semantic_memory_core_t* temporal_get_semantic_memory(temporal_adapter_t* adapter) {
-    return adapter ? adapter->semantic : NULL;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_get_semantic_memory: adapter is NULL");
+        return NULL;
+    }
+    return adapter->semantic;
 }
 
 /*=============================================================================
@@ -1096,6 +1186,7 @@ semantic_memory_core_t* temporal_get_semantic_memory(temporal_adapter_t* adapter
 
 bio_module_context_t temporal_get_bio_context(temporal_adapter_t* adapter) {
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_get_bio_context: adapter is NULL");
         bio_module_context_t empty = {0};
         return empty;
     }
@@ -1103,7 +1194,10 @@ bio_module_context_t temporal_get_bio_context(temporal_adapter_t* adapter) {
 }
 
 uint32_t temporal_process_bio_messages(temporal_adapter_t* adapter, uint32_t max_messages) {
-    if (!adapter) return 0;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_process_bio_messages: adapter is NULL");
+        return 0;
+    }
     (void)max_messages;
     /* TODO: Implement bio-async message processing */
     return 0;
