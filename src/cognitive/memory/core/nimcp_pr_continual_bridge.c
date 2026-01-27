@@ -25,6 +25,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -52,6 +53,18 @@ void pr_continual_bridge_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void pr_continual_bridge_heartbeat(const char* operation, float progress) {
     if (g_pr_continual_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_pr_continual_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from pr_continual_bridge module (instance-level) */
+static inline void pr_continual_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_pr_continual_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pr_continual_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_pr_continual_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -107,6 +120,9 @@ struct pr_continual_bridge_struct {
 
     /* Timing */
     uint64_t session_start_ms;
+
+    /* Health agent (instance-level) - Phase 8 */
+    nimcp_health_agent_t* health_agent;
 };
 
 BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_continual_bridge, struct pr_continual_bridge_struct)
@@ -114,13 +130,6 @@ BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_continual_bridge, struct pr_continual_bri
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-/**
- * @brief Clamp float to range
- */
-static inline float clamp_f(float x, float min_val, float max_val) {
-    return (x < min_val) ? min_val : (x > max_val) ? max_val : x;
-}
 
 /**
  * @brief Square a float
@@ -621,7 +630,7 @@ int pr_continual_compute_fisher(
         bridge->fisher_diag[i] *= inv_n;
 
         /* Clamp to valid range */
-        bridge->fisher_diag[i] = clamp_f(bridge->fisher_diag[i],
+        bridge->fisher_diag[i] = nimcp_myelin_clamp(bridge->fisher_diag[i],
                                           0.0f, PR_CONTINUAL_FISHER_MAX);
 
         /* Apply sparsification if enabled */
@@ -728,7 +737,7 @@ int pr_continual_compute_fisher_weighted(
             }
 
             bridge->fisher_diag[i] *= inv_w;
-            bridge->fisher_diag[i] = clamp_f(bridge->fisher_diag[i],
+            bridge->fisher_diag[i] = nimcp_myelin_clamp(bridge->fisher_diag[i],
                                               0.0f, PR_CONTINUAL_FISHER_MAX);
         }
     }
@@ -778,7 +787,7 @@ int pr_continual_set_fisher(
         bridge->fisher_size = param_idx + 1;
     }
 
-    bridge->fisher_diag[param_idx] = clamp_f(value, 0.0f, PR_CONTINUAL_FISHER_MAX);
+    bridge->fisher_diag[param_idx] = nimcp_myelin_clamp(value, 0.0f, PR_CONTINUAL_FISHER_MAX);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -828,7 +837,7 @@ int pr_continual_accumulate_fisher(
         }
 
         bridge->fisher_diag[i] += new_fisher[i];
-        bridge->fisher_diag[i] = clamp_f(bridge->fisher_diag[i],
+        bridge->fisher_diag[i] = nimcp_myelin_clamp(bridge->fisher_diag[i],
                                           0.0f, PR_CONTINUAL_FISHER_MAX);
     }
 
@@ -1046,7 +1055,7 @@ float pr_continual_entanglement_protection(
     if (threshold == 0) return 0.0f;
 
     float protection = (float)entangle_count / (float)threshold;
-    return clamp_f(protection, 0.0f, 1.0f);
+    return nimcp_myelin_clamp(protection, 0.0f, 1.0f);
 }
 
 float pr_continual_combined_importance(
@@ -1844,4 +1853,38 @@ bool pr_continual_validate(pr_continual_bridge_t bridge) {
     }
 
     return true;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B25 Upgrade)
+//=============================================================================
+
+void pr_continual_bridge_set_instance_health_agent(
+    pr_continual_bridge_t bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B25 Upgrade)
+//=============================================================================
+
+int pr_continual_bridge_training_begin(pr_continual_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_continual_bridge_heartbeat_instance(bridge->health_agent, "pr_continual_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int pr_continual_bridge_training_end(pr_continual_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_continual_bridge_heartbeat_instance(bridge->health_agent, "pr_continual_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int pr_continual_bridge_training_step(pr_continual_bridge_t bridge, float progress) {
+    if (!bridge) return -1;
+    pr_continual_bridge_heartbeat_instance(bridge->health_agent, "pr_continual_bridge_training_step", progress);
+    return 0;
 }

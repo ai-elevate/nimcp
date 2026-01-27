@@ -44,6 +44,18 @@ static inline void pr_visual_bridge_heartbeat(const char* operation, float progr
     }
 }
 
+/** @brief Send heartbeat from pr_visual_bridge module (instance-level) */
+static inline void pr_visual_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_pr_visual_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pr_visual_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_pr_visual_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "PR_VISUAL_BRIDGE"
 
 /* Security subsystem setters (Phase 1: Audit Gap Remediation) */
@@ -1564,4 +1576,38 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_get_current_signature(
     unlock_bridge(bridge);
 
     return set_error(bridge, PR_VISUAL_OK);
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B25 Upgrade)
+//=============================================================================
+
+void pr_visual_bridge_set_instance_health_agent(
+    pr_visual_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B25 Upgrade)
+//=============================================================================
+
+int pr_visual_bridge_training_begin(pr_visual_bridge_t* bridge) {
+    if (!bridge) return -1;
+    pr_visual_bridge_heartbeat_instance(bridge->health_agent, "pr_visual_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int pr_visual_bridge_training_end(pr_visual_bridge_t* bridge) {
+    if (!bridge) return -1;
+    pr_visual_bridge_heartbeat_instance(bridge->health_agent, "pr_visual_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int pr_visual_bridge_training_step(pr_visual_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    pr_visual_bridge_heartbeat_instance(bridge->health_agent, "pr_visual_bridge_training_step", progress);
+    return 0;
 }

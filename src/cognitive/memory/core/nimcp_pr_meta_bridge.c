@@ -19,6 +19,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "security/nimcp_bbb_helpers.h"
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 
 #include <string.h>
 #include <math.h>
@@ -50,6 +51,18 @@ void pr_meta_bridge_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void pr_meta_bridge_heartbeat(const char* operation, float progress) {
     if (g_pr_meta_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_pr_meta_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from pr_meta_bridge module (instance-level) */
+static inline void pr_meta_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_pr_meta_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pr_meta_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_pr_meta_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -110,6 +123,9 @@ struct pr_meta_bridge_struct {
 
     /* Statistics */
     pr_meta_bridge_stats_t stats;
+
+    /* Health agent (instance-level) - Phase 8 */
+    nimcp_health_agent_t* health_agent;
 };
 
 BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_meta_bridge, struct pr_meta_bridge_struct)
@@ -117,13 +133,6 @@ BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_meta_bridge, struct pr_meta_bridge_struct
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-/**
- * @brief Clamp float to range
- */
-static inline float clamp_f(float x, float min_val, float max_val) {
-    return (x < min_val) ? min_val : (x > max_val) ? max_val : x;
-}
 
 /**
  * @brief Fast exponential approximation
@@ -633,7 +642,7 @@ int pr_meta_maml_inner_loop(
         /* Increase consolidation with successful adaptation */
         if (result->query_accuracy > 0.5f) {
             result->adapted_quat.w += bridge->config.quat_adaptation_rate * result->query_accuracy;
-            result->adapted_quat.w = clamp_f(result->adapted_quat.w, 0.0f, 1.0f);
+            result->adapted_quat.w = nimcp_myelin_clamp(result->adapted_quat.w, 0.0f, 1.0f);
         }
 
         /* Adjust novelty (y) based on memory distance */
@@ -655,7 +664,7 @@ int pr_meta_maml_inner_loop(
 
         /* Increase accessibility with each access */
         result->adapted_quat.z += bridge->config.quat_adaptation_rate * 0.1f;
-        result->adapted_quat.z = clamp_f(result->adapted_quat.z, 0.0f, 1.0f);
+        result->adapted_quat.z = nimcp_myelin_clamp(result->adapted_quat.z, 0.0f, 1.0f);
 
         /* Normalize quaternion */
         float mag = sqrtf(result->adapted_quat.w * result->adapted_quat.w +
@@ -1118,21 +1127,21 @@ int pr_meta_adapt_quaternion(
     } else {
         adapted_quat->w -= rate * (0.5f - result->query_accuracy) * 0.5f;
     }
-    adapted_quat->w = clamp_f(adapted_quat->w, 0.0f, 1.0f);
+    adapted_quat->w = nimcp_myelin_clamp(adapted_quat->w, 0.0f, 1.0f);
 
     /* Adapt valence (x) based on difficulty */
     float difficulty = result->support_loss;  /* Higher loss = harder */
     adapted_quat->x += rate * (difficulty - 0.5f);
-    adapted_quat->x = clamp_f(adapted_quat->x, -1.0f, 1.0f);
+    adapted_quat->x = nimcp_myelin_clamp(adapted_quat->x, -1.0f, 1.0f);
 
     /* Adapt salience (y) based on novelty */
     float novelty = 1.0f - (float)result->memory_tasks_used / (float)bridge->config.max_recall;
     adapted_quat->y = (1.0f - rate) * adapted_quat->y + rate * novelty;
-    adapted_quat->y = clamp_f(adapted_quat->y, 0.0f, 1.0f);
+    adapted_quat->y = nimcp_myelin_clamp(adapted_quat->y, 0.0f, 1.0f);
 
     /* Adapt accessibility (z) based on access */
     adapted_quat->z += rate * 0.1f;  /* Increase with each access */
-    adapted_quat->z = clamp_f(adapted_quat->z, 0.0f, 1.0f);
+    adapted_quat->z = nimcp_myelin_clamp(adapted_quat->z, 0.0f, 1.0f);
 
     /* Normalize */
     float mag = sqrtf(adapted_quat->w * adapted_quat->w +
@@ -1254,13 +1263,13 @@ int pr_meta_quaternion_to_lr(
 
     if (inner_lr) {
         *inner_lr = base_inner * consolidation_mod * salience_mod;
-        *inner_lr = clamp_f(*inner_lr, PR_META_MIN_ADAPTATION_RATE * base_inner,
+        *inner_lr = nimcp_myelin_clamp(*inner_lr, PR_META_MIN_ADAPTATION_RATE * base_inner,
                            PR_META_MAX_ADAPTATION_RATE * base_inner);
     }
 
     if (outer_lr) {
         *outer_lr = base_outer * consolidation_mod * accessibility_mod;
-        *outer_lr = clamp_f(*outer_lr, PR_META_MIN_ADAPTATION_RATE * base_outer,
+        *outer_lr = nimcp_myelin_clamp(*outer_lr, PR_META_MIN_ADAPTATION_RATE * base_outer,
                            PR_META_MAX_ADAPTATION_RATE * base_outer);
     }
 
@@ -2231,4 +2240,38 @@ bool pr_meta_task_validate(const pr_meta_task_t* task) {
     }
 
     return true;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B25 Upgrade)
+//=============================================================================
+
+void pr_meta_bridge_set_instance_health_agent(
+    pr_meta_bridge_t bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B25 Upgrade)
+//=============================================================================
+
+int pr_meta_bridge_training_begin(pr_meta_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_meta_bridge_heartbeat_instance(bridge->health_agent, "pr_meta_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int pr_meta_bridge_training_end(pr_meta_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_meta_bridge_heartbeat_instance(bridge->health_agent, "pr_meta_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int pr_meta_bridge_training_step(pr_meta_bridge_t bridge, float progress) {
+    if (!bridge) return -1;
+    pr_meta_bridge_heartbeat_instance(bridge->health_agent, "pr_meta_bridge_training_step", progress);
+    return 0;
 }

@@ -209,6 +209,10 @@ typedef struct pr_visual_bridge_s pr_visual_bridge_t;
 typedef struct pr_audio_bridge_s pr_audio_bridge_t;
 typedef struct pr_speech_bridge_s pr_speech_bridge_t;
 
+/* Forward declaration for health agent (Phase 8) */
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
 //=============================================================================
 // Enumerations
 //=============================================================================
@@ -442,6 +446,9 @@ typedef struct {
 
     /* Thread safety */
     void* mutex;                        /**< Internal mutex */
+
+    /* Health agent (instance-level) - Phase 8 */
+    nimcp_health_agent_t* health_agent;
 } pr_omni_bridge_t;
 
 /**

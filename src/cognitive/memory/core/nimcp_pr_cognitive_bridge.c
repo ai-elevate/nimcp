@@ -15,6 +15,7 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -42,6 +43,18 @@ void pr_cognitive_bridge_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void pr_cognitive_bridge_heartbeat(const char* operation, float progress) {
     if (g_pr_cognitive_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_pr_cognitive_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from pr_cognitive_bridge module (instance-level) */
+static inline void pr_cognitive_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_pr_cognitive_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pr_cognitive_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_pr_cognitive_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -87,6 +100,9 @@ struct pr_cognitive_bridge_struct {
     // State
     bool initialized;
     uint64_t creation_time_ms;
+
+    /* Health agent (instance-level) - Phase 8 */
+    nimcp_health_agent_t* health_agent;
 };
 
 BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_cognitive_bridge, struct pr_cognitive_bridge_struct)
@@ -102,15 +118,6 @@ static uint64_t get_current_time_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
-}
-
-/**
- * @brief Clamp float to range
- */
-static float clamp_float(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
 }
 
 /**
@@ -498,8 +505,8 @@ pr_cognitive_error_t pr_cognitive_bridge_update_attention(
         return PR_COG_ERROR_NOT_CONNECTED;
     }
 
-    bridge->attention.focus_weight = clamp_float(focus_weight, 0.0f, 1.0f);
-    bridge->attention.filter_threshold = clamp_float(filter_threshold, 0.0f, 1.0f);
+    bridge->attention.focus_weight = nimcp_myelin_clamp(focus_weight, 0.0f, 1.0f);
+    bridge->attention.filter_threshold = nimcp_myelin_clamp(filter_threshold, 0.0f, 1.0f);
     bridge->attention.last_update_ms = get_current_time_ms();
 
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -538,7 +545,7 @@ float pr_cognitive_bridge_apply_attention_boost(
 
     // Calculate new salience with attention boost
     float attention_boost = attention_weight * bridge->attention.salience_gain;
-    float new_salience = clamp_float(
+    float new_salience = nimcp_myelin_clamp(
         old_salience + attention_boost,
         PR_COG_MIN_SALIENCE,
         PR_COG_MAX_SALIENCE
@@ -654,8 +661,8 @@ pr_cognitive_error_t pr_cognitive_bridge_update_emotion(
         return PR_COG_ERROR_NOT_CONNECTED;
     }
 
-    bridge->emotion.current_valence = clamp_float(valence, -1.0f, 1.0f);
-    bridge->emotion.current_arousal = clamp_float(arousal, 0.0f, 1.0f);
+    bridge->emotion.current_valence = nimcp_myelin_clamp(valence, -1.0f, 1.0f);
+    bridge->emotion.current_arousal = nimcp_myelin_clamp(arousal, 0.0f, 1.0f);
     bridge->emotion.last_update_ms = get_current_time_ms();
 
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -694,14 +701,14 @@ pr_cognitive_error_t pr_cognitive_bridge_apply_emotion_tag(
     nimcp_quaternion_t state = pr_memory_node_get_state(node);
 
     // Apply valence (quat.x)
-    float clamped_valence = clamp_float(valence, -1.0f, 1.0f);
+    float clamped_valence = nimcp_myelin_clamp(valence, -1.0f, 1.0f);
     state.x = clamped_valence * bridge->emotion.valence_sensitivity;
 
     // Apply arousal boost to consolidation (quat.w) if above threshold
-    float clamped_arousal = clamp_float(arousal, 0.0f, 1.0f);
+    float clamped_arousal = nimcp_myelin_clamp(arousal, 0.0f, 1.0f);
     if (clamped_arousal >= bridge->emotion.arousal_threshold) {
         float arousal_boost = clamped_arousal * bridge->config.arousal_boost_factor;
-        state.w = clamp_float(state.w + arousal_boost, 0.0f, 1.0f);
+        state.w = nimcp_myelin_clamp(state.w + arousal_boost, 0.0f, 1.0f);
         bridge->stats.emotional_boosts++;
     }
 
@@ -821,9 +828,9 @@ pr_cognitive_error_t pr_cognitive_bridge_update_executive(
         return PR_COG_ERROR_NOT_CONNECTED;
     }
 
-    bridge->executive.encoding_gate = clamp_float(encoding_gate, 0.0f, 1.0f);
-    bridge->executive.retrieval_gate = clamp_float(retrieval_gate, 0.0f, 1.0f);
-    bridge->executive.inhibition_level = clamp_float(inhibition, 0.0f, 1.0f);
+    bridge->executive.encoding_gate = nimcp_myelin_clamp(encoding_gate, 0.0f, 1.0f);
+    bridge->executive.retrieval_gate = nimcp_myelin_clamp(retrieval_gate, 0.0f, 1.0f);
+    bridge->executive.inhibition_level = nimcp_myelin_clamp(inhibition, 0.0f, 1.0f);
     bridge->executive.last_update_ms = get_current_time_ms();
 
     // Update permissions
@@ -1619,4 +1626,38 @@ const char* pr_memory_event_type_string(pr_memory_event_type_t event_type) {
         default:
             return "UNKNOWN";
     }
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B25 Upgrade)
+//=============================================================================
+
+void pr_cognitive_bridge_set_instance_health_agent(
+    pr_cognitive_bridge_t bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B25 Upgrade)
+//=============================================================================
+
+int pr_cognitive_bridge_training_begin(pr_cognitive_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_cognitive_bridge_heartbeat_instance(bridge->health_agent, "pr_cognitive_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int pr_cognitive_bridge_training_end(pr_cognitive_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_cognitive_bridge_heartbeat_instance(bridge->health_agent, "pr_cognitive_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int pr_cognitive_bridge_training_step(pr_cognitive_bridge_t bridge, float progress) {
+    if (!bridge) return -1;
+    pr_cognitive_bridge_heartbeat_instance(bridge->health_agent, "pr_cognitive_bridge_training_step", progress);
+    return 0;
 }

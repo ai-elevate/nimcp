@@ -56,6 +56,18 @@ static inline void pr_predictive_bridge_heartbeat(const char* operation, float p
     }
 }
 
+/** @brief Send heartbeat from pr_predictive_bridge module (instance-level) */
+static inline void pr_predictive_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_pr_predictive_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pr_predictive_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_pr_predictive_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 /* Security subsystem setters (Phase 1: Audit Gap Remediation) */
 BRIDGE_DEFINE_SECURITY_SETTERS(pr_predictive_bridge)
 
@@ -1854,4 +1866,38 @@ static pr_pred_error_t process_reconsolidation_windows(
     }
 
     return PR_PRED_SUCCESS;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B25 Upgrade)
+//=============================================================================
+
+void pr_predictive_bridge_set_instance_health_agent(
+    pr_predictive_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B25 Upgrade)
+//=============================================================================
+
+int pr_predictive_bridge_training_begin(pr_predictive_bridge_t* bridge) {
+    if (!bridge) return -1;
+    pr_predictive_bridge_heartbeat_instance(bridge->health_agent, "pr_predictive_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int pr_predictive_bridge_training_end(pr_predictive_bridge_t* bridge) {
+    if (!bridge) return -1;
+    pr_predictive_bridge_heartbeat_instance(bridge->health_agent, "pr_predictive_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int pr_predictive_bridge_training_step(pr_predictive_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    pr_predictive_bridge_heartbeat_instance(bridge->health_agent, "pr_predictive_bridge_training_step", progress);
+    return 0;
 }

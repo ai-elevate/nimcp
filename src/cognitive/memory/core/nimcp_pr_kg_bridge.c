@@ -77,6 +77,18 @@ static inline void pr_kg_bridge_heartbeat(const char* operation, float progress)
     }
 }
 
+/** @brief Send heartbeat from pr_kg_bridge module (instance-level) */
+static inline void pr_kg_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_pr_kg_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pr_kg_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_pr_kg_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "PR_KG_BRIDGE"
 
 /* Security subsystem setters (Phase 1: Audit Gap Remediation) */
@@ -162,6 +174,9 @@ struct pr_kg_bridge_struct {
     /* State flags */
     bool initialized;
     bool connected;
+
+    /* Health agent (instance-level) - Phase 8 */
+    nimcp_health_agent_t* health_agent;
 };
 
 BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_kg_bridge, struct pr_kg_bridge_struct)
@@ -1963,4 +1978,38 @@ void pr_kg_query_result_clear(pr_kg_query_result_t* result) {
     }
 
     result->count = 0;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B25 Upgrade)
+//=============================================================================
+
+void pr_kg_bridge_set_instance_health_agent(
+    pr_kg_bridge_t bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B25 Upgrade)
+//=============================================================================
+
+int pr_kg_bridge_training_begin(pr_kg_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_kg_bridge_heartbeat_instance(bridge->health_agent, "pr_kg_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int pr_kg_bridge_training_end(pr_kg_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_kg_bridge_heartbeat_instance(bridge->health_agent, "pr_kg_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int pr_kg_bridge_training_step(pr_kg_bridge_t bridge, float progress) {
+    if (!bridge) return -1;
+    pr_kg_bridge_heartbeat_instance(bridge->health_agent, "pr_kg_bridge_training_step", progress);
+    return 0;
 }

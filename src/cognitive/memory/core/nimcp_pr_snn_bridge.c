@@ -18,6 +18,7 @@
 #include "cognitive/memory/core/nimcp_pr_snn_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "security/nimcp_bbb_helpers.h"
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -50,6 +51,18 @@ void pr_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void pr_snn_bridge_heartbeat(const char* operation, float progress) {
     if (g_pr_snn_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_pr_snn_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from pr_snn_bridge module (instance-level) */
+static inline void pr_snn_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_pr_snn_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pr_snn_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_pr_snn_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -147,6 +160,9 @@ struct pr_snn_bridge_struct {
 
     /* State */
     bool initialized;
+
+    /** Instance-level health agent (B25 Upgrade) */
+    nimcp_health_agent_t* health_agent;
 };
 
 BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_snn_bridge, struct pr_snn_bridge_struct)
@@ -222,15 +238,6 @@ static float rng_exponential(pr_snn_bridge_t bridge, float rate) {
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-/**
- * @brief Clamp value to range
- */
-static inline float clampf(float x, float lo, float hi) {
-    if (x < lo) return lo;
-    if (x > hi) return hi;
-    return x;
-}
 
 /**
  * @brief Get current time in milliseconds
@@ -824,11 +831,11 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_rate(
     uint64_t start_time = get_time_us();
 
     /* Clamp value to [0, 1] */
-    value = clampf(value, 0.0f, 1.0f);
+    value = nimcp_myelin_clamp(value, 0.0f, 1.0f);
 
     /* Add noise if enabled */
     value = add_noise(bridge, value, bridge->config.noise_level * 0.5f);
-    value = clampf(value, 0.0f, 1.0f);
+    value = nimcp_myelin_clamp(value, 0.0f, 1.0f);
 
     /* Calculate target rate */
     float rate_hz = value * bridge->config.max_rate_hz;
@@ -901,11 +908,11 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_burst(
     uint64_t start_time = get_time_us();
 
     /* Clamp value to [-1, 1] */
-    value = clampf(value, -1.0f, 1.0f);
+    value = nimcp_myelin_clamp(value, -1.0f, 1.0f);
 
     /* Add noise */
     value = add_noise(bridge, value, bridge->config.noise_level);
-    value = clampf(value, -1.0f, 1.0f);
+    value = nimcp_myelin_clamp(value, -1.0f, 1.0f);
 
     /* Clear pattern */
     pr_spike_pattern_clear(pattern);
@@ -1015,11 +1022,11 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_population(
     uint64_t start_time = get_time_us();
 
     /* Clamp value to [0, 1] */
-    value = clampf(value, 0.0f, 1.0f);
+    value = nimcp_myelin_clamp(value, 0.0f, 1.0f);
 
     /* Add noise */
     value = add_noise(bridge, value, bridge->config.noise_level * 0.5f);
-    value = clampf(value, 0.0f, 1.0f);
+    value = nimcp_myelin_clamp(value, 0.0f, 1.0f);
 
     /* Clear pattern */
     pr_spike_pattern_clear(pattern);
@@ -1100,11 +1107,11 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_latency(
     uint64_t start_time = get_time_us();
 
     /* Clamp value to [0, 1] */
-    value = clampf(value, 0.0f, 1.0f);
+    value = nimcp_myelin_clamp(value, 0.0f, 1.0f);
 
     /* Add noise */
     value = add_noise(bridge, value, bridge->config.noise_level * 0.3f);
-    value = clampf(value, 0.0f, 1.0f);
+    value = nimcp_myelin_clamp(value, 0.0f, 1.0f);
 
     /* Clear pattern */
     pr_spike_pattern_clear(pattern);
@@ -1169,7 +1176,7 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_phase(
     if (!bridge->initialized) return PR_SNN_ERROR_INVALID_STATE;
 
     /* Clamp value to [0, 1] */
-    value = clampf(value, 0.0f, 1.0f);
+    value = nimcp_myelin_clamp(value, 0.0f, 1.0f);
 
     /* Clear pattern */
     pr_spike_pattern_clear(pattern);
@@ -1596,12 +1603,12 @@ NIMCP_EXPORT float pr_spike_compute_burst_index(
     }
 
     /* Map CV to regularity */
-    float regularity = 1.0f - clampf(cv, 0.0f, 2.0f) / 2.0f;
+    float regularity = 1.0f - nimcp_myelin_clamp(cv, 0.0f, 2.0f) / 2.0f;
 
     /* Combine: high regularity = positive, low regularity = negative */
     float burst_index = (2.0f * regularity - 1.0f) * burst_frac;
 
-    return clampf(burst_index, -1.0f, 1.0f);
+    return nimcp_myelin_clamp(burst_index, -1.0f, 1.0f);
 }
 
 NIMCP_EXPORT size_t pr_spike_compute_population_size(const pr_spike_pattern_t* pattern) {
@@ -1850,7 +1857,7 @@ NIMCP_EXPORT float pr_snn_decode_rate(
 
     /* Normalize by max rate */
     float normalized = rate / bridge->config.max_rate_hz;
-    return clampf(normalized, 0.0f, 1.0f);
+    return nimcp_myelin_clamp(normalized, 0.0f, 1.0f);
 }
 
 NIMCP_EXPORT float pr_snn_decode_burst(
@@ -1886,7 +1893,7 @@ NIMCP_EXPORT float pr_snn_decode_latency(
 
     /* Higher value = shorter latency */
     float normalized = (max_lat - latency) / (max_lat - min_lat);
-    return clampf(normalized, 0.0f, 1.0f);
+    return nimcp_myelin_clamp(normalized, 0.0f, 1.0f);
 }
 
 NIMCP_EXPORT pr_snn_error_t pr_snn_decode_to_quaternion(
@@ -2192,7 +2199,7 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_decode_entanglement(
     size_t max_possible = pattern1->num_spikes * pattern2->num_spikes;
     if (max_possible > 0) {
         correlation->correlation = (float)coincident / sqrtf((float)max_possible);
-        correlation->correlation = clampf(correlation->correlation, 0.0f, 1.0f);
+        correlation->correlation = nimcp_myelin_clamp(correlation->correlation, 0.0f, 1.0f);
     }
 
     /* Compute synchrony */
@@ -2241,7 +2248,7 @@ NIMCP_EXPORT float pr_snn_strengthen_via_spikes(
 
     /* Apply weight change */
     float new_weight = edge->weight + corr.stdp_weight_change;
-    new_weight = clampf(new_weight, 0.0f, 1.0f);
+    new_weight = nimcp_myelin_clamp(new_weight, 0.0f, 1.0f);
     edge->weight = new_weight;
 
     return corr.stdp_weight_change;
@@ -2380,7 +2387,7 @@ NIMCP_EXPORT float pr_snn_compute_plv(
 
     /* PLV = |mean(exp(i * phase_diff))| */
     float plv = sqrtf(sum_cos * sum_cos + sum_sin * sum_sin) / count;
-    return clampf(plv, 0.0f, 1.0f);
+    return nimcp_myelin_clamp(plv, 0.0f, 1.0f);
 }
 
 //=============================================================================
@@ -2542,4 +2549,38 @@ NIMCP_EXPORT void pr_snn_component_patterns_destroy(pr_snn_component_patterns_t*
 
 NIMCP_EXPORT uint64_t pr_snn_current_time_us(void) {
     return get_time_us();
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B25 Upgrade)
+//=============================================================================
+
+void pr_snn_bridge_set_instance_health_agent(
+    pr_snn_bridge_t bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B25 Upgrade)
+//=============================================================================
+
+int pr_snn_bridge_training_begin(pr_snn_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_snn_bridge_heartbeat_instance(bridge->health_agent, "pr_snn_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int pr_snn_bridge_training_end(pr_snn_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_snn_bridge_heartbeat_instance(bridge->health_agent, "pr_snn_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int pr_snn_bridge_training_step(pr_snn_bridge_t bridge, float progress) {
+    if (!bridge) return -1;
+    pr_snn_bridge_heartbeat_instance(bridge->health_agent, "pr_snn_bridge_training_step", progress);
+    return 0;
 }

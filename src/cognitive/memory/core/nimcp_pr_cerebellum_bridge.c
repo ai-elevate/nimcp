@@ -23,6 +23,7 @@
 #include <math.h>
 #include <time.h>
 #include <stdio.h>
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -49,6 +50,18 @@ void pr_cerebellum_bridge_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void pr_cerebellum_bridge_heartbeat(const char* operation, float progress) {
     if (g_pr_cerebellum_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_pr_cerebellum_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from pr_cerebellum_bridge module (instance-level) */
+static inline void pr_cerebellum_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_pr_cerebellum_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pr_cerebellum_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_pr_cerebellum_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -95,12 +108,6 @@ static uint64_t get_time_ms(void) {
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-static float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 static float absf(float value) {
     return value < 0 ? -value : value;
@@ -210,6 +217,9 @@ struct pr_cerebellum_bridge_struct {
     /* State */
     bool initialized;
     uint64_t last_update_ms;
+
+    /* Health agent (instance-level) - Phase 8 */
+    nimcp_health_agent_t* health_agent;
 };
 
 BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_cerebellum_bridge, struct pr_cerebellum_bridge_struct)
@@ -742,11 +752,11 @@ NIMCP_EXPORT pr_cerebellum_error_t pr_cerebellum_bridge_sync_procedural(
 
     /* Boost accessibility based on timing accuracy */
     float z_boost = (avg_accuracy - 0.5f) * 0.2f;  /* +/- 0.1 */
-    node->state.z = clamp_f(node->state.z + z_boost, 0.0f, 1.0f);
+    node->state.z = nimcp_myelin_clamp(node->state.z + z_boost, 0.0f, 1.0f);
 
     /* Influence consolidation based on sequence consolidation */
     float w_blend = avg_consolidation * 0.1f;
-    node->state.w = clamp_f(node->state.w + w_blend, 0.0f, 1.0f);
+    node->state.w = nimcp_myelin_clamp(node->state.w + w_blend, 0.0f, 1.0f);
 
     /* Update statistics */
     PR_CEREB_MUTEX_LOCK(bridge->stats_mutex);
@@ -1032,7 +1042,7 @@ NIMCP_EXPORT pr_cerebellum_error_t pr_cerebellum_bridge_error_in_sequence(
 
     uint64_t now = get_time_ms();
     float error_magnitude = (actual - expected) / (absf(expected) + PR_CEREB_EPSILON);
-    error_magnitude = clamp_f(error_magnitude, -1.0f, 1.0f);
+    error_magnitude = nimcp_myelin_clamp(error_magnitude, -1.0f, 1.0f);
 
     /* Create error signal */
     pr_error_signal_t signal;
@@ -1062,7 +1072,7 @@ NIMCP_EXPORT pr_cerebellum_error_t pr_cerebellum_bridge_error_in_sequence(
 
             /* If error is large, reduce consolidation (need more practice) */
             if (absf(error_magnitude) > 0.3f) {
-                seq->consolidation = clamp_f(seq->consolidation - error_effect * 0.5f, 0.0f, 1.0f);
+                seq->consolidation = nimcp_myelin_clamp(seq->consolidation - error_effect * 0.5f, 0.0f, 1.0f);
             }
         }
 
@@ -1094,7 +1104,7 @@ NIMCP_EXPORT float pr_cerebellum_bridge_apply_ltd(
 ) {
     if (!bridge) return -1.0f;
 
-    ltd_amount = clamp_f(ltd_amount, 0.0f, 1.0f);
+    ltd_amount = nimcp_myelin_clamp(ltd_amount, 0.0f, 1.0f);
     float new_consolidation = 0.0f;
     bool found = false;
 
@@ -1119,7 +1129,7 @@ NIMCP_EXPORT float pr_cerebellum_bridge_apply_ltd(
             if (seq->elements[j].memory_id == memory_id) {
                 /* Apply LTD to sequence consolidation */
                 float ltd_effect = ltd_amount * bridge->config.ltd_factor;
-                seq->consolidation = clamp_f(seq->consolidation - ltd_effect, 0.0f, 1.0f);
+                seq->consolidation = nimcp_myelin_clamp(seq->consolidation - ltd_effect, 0.0f, 1.0f);
                 new_consolidation = seq->consolidation;
                 found = true;
             }
@@ -1146,7 +1156,7 @@ NIMCP_EXPORT float pr_cerebellum_bridge_apply_ltp(
 ) {
     if (!bridge) return -1.0f;
 
-    ltp_amount = clamp_f(ltp_amount, 0.0f, 1.0f);
+    ltp_amount = nimcp_myelin_clamp(ltp_amount, 0.0f, 1.0f);
     float new_consolidation = 0.0f;
     bool found = false;
 
@@ -1171,7 +1181,7 @@ NIMCP_EXPORT float pr_cerebellum_bridge_apply_ltp(
             if (seq->elements[j].memory_id == memory_id) {
                 /* Apply LTP to sequence consolidation */
                 float ltp_effect = ltp_amount * bridge->config.ltp_factor;
-                seq->consolidation = clamp_f(seq->consolidation + ltp_effect, 0.0f, 1.0f);
+                seq->consolidation = nimcp_myelin_clamp(seq->consolidation + ltp_effect, 0.0f, 1.0f);
                 new_consolidation = seq->consolidation;
                 found = true;
             }
@@ -1305,7 +1315,7 @@ NIMCP_EXPORT pr_cerebellum_error_t pr_cerebellum_bridge_complete_sequence(
 
         /* Boost consolidation for successful execution */
         float boost = bridge->config.ltp_factor;
-        seq->consolidation = clamp_f(seq->consolidation + boost, 0.0f, 1.0f);
+        seq->consolidation = nimcp_myelin_clamp(seq->consolidation + boost, 0.0f, 1.0f);
     }
     seq->last_executed_ms = now;
 
@@ -1680,4 +1690,38 @@ NIMCP_EXPORT bool pr_cerebellum_bridge_validate(const pr_cerebellum_bridge_t bri
     }
 
     return true;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B25 Upgrade)
+//=============================================================================
+
+void pr_cerebellum_bridge_set_instance_health_agent(
+    pr_cerebellum_bridge_t bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B25 Upgrade)
+//=============================================================================
+
+int pr_cerebellum_bridge_training_begin(pr_cerebellum_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_cerebellum_bridge_heartbeat_instance(bridge->health_agent, "pr_cerebellum_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int pr_cerebellum_bridge_training_end(pr_cerebellum_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_cerebellum_bridge_heartbeat_instance(bridge->health_agent, "pr_cerebellum_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int pr_cerebellum_bridge_training_step(pr_cerebellum_bridge_t bridge, float progress) {
+    if (!bridge) return -1;
+    pr_cerebellum_bridge_heartbeat_instance(bridge->health_agent, "pr_cerebellum_bridge_training_step", progress);
+    return 0;
 }

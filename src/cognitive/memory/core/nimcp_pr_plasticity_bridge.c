@@ -14,6 +14,7 @@
 
 #include "cognitive/memory/core/nimcp_pr_plasticity_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
@@ -50,6 +51,18 @@ void pr_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void pr_plasticity_bridge_heartbeat(const char* operation, float progress) {
     if (g_pr_plasticity_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_pr_plasticity_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from pr_plasticity_bridge module (instance-level) */
+static inline void pr_plasticity_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_pr_plasticity_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pr_plasticity_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_pr_plasticity_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -100,6 +113,9 @@ struct pr_plasticity_bridge_struct {
     /* Structural plasticity timing */
     uint64_t last_remodel_time_ms;
 
+    /* Instance health agent (B25 Upgrade) */
+    nimcp_health_agent_t* health_agent;
+
 };
 
 BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_plasticity_bridge, struct pr_plasticity_bridge_struct)
@@ -107,13 +123,6 @@ BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_plasticity_bridge, struct pr_plasticity_b
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-/**
- * @brief Clamp float to range
- */
-static inline float clamp_f(float x, float min_val, float max_val) {
-    return (x < min_val) ? min_val : (x > max_val) ? max_val : x;
-}
 
 /**
  * @brief Fast exponential approximation
@@ -572,7 +581,7 @@ float pr_stdp_apply_to_entanglement(
 
     /* Apply weight change */
     float old_weight = edge.weight;
-    edge.weight = clamp_f(edge.weight + delta, 0.0f, 1.0f);
+    edge.weight = nimcp_myelin_clamp(edge.weight + delta, 0.0f, 1.0f);
 
     /* Update edge in graph */
     entangle_update_edge(graph, &edge);
@@ -710,7 +719,7 @@ int pr_bcm_update_history(
 
     /* Update running averages */
     float alpha = dt_hours / bridge->config.bcm.theta_tau;
-    alpha = clamp_f(alpha, 0.0f, 1.0f);
+    alpha = nimcp_myelin_clamp(alpha, 0.0f, 1.0f);
 
     node->activity_avg = (1.0f - alpha) * node->activity_avg + alpha * activity;
     node->activity_squared_avg = (1.0f - alpha) * node->activity_squared_avg + alpha * (activity * activity);
@@ -723,7 +732,7 @@ int pr_bcm_update_history(
                   node->resonance_avg * bridge->config.bcm.resonance_weight;
 
     /* Clamp theta to reasonable range */
-    node->theta = clamp_f(node->theta, 0.1f, 0.9f);
+    node->theta = nimcp_myelin_clamp(node->theta, 0.1f, 0.9f);
 
     bridge->stats.bcm_updates++;
 
@@ -779,7 +788,7 @@ int pr_bcm_apply_to_node(
 
         /* BCM weight change: dw = eta * phi * x_pre (use weight as proxy for x_pre) */
         float dw = 0.01f * phi * edges[i].weight;
-        edges[i].weight = clamp_f(edges[i].weight + dw, 0.0f, 1.0f);
+        edges[i].weight = nimcp_myelin_clamp(edges[i].weight + dw, 0.0f, 1.0f);
 
         if (fabsf(dw) > PR_PLASTICITY_EPSILON) {
             entangle_update_edge(graph, &edges[i]);
@@ -837,7 +846,7 @@ float pr_homeostatic_get_scaling(
     float scale = 1.0f + deviation * bridge->config.tier[tier].homeostatic_strength *
                   (1.0f / bridge->config.homeostatic.scaling_tau);
 
-    return clamp_f(scale, bridge->config.homeostatic.min_scale,
+    return nimcp_myelin_clamp(scale, bridge->config.homeostatic.min_scale,
                    bridge->config.homeostatic.max_scale);
 }
 
@@ -864,7 +873,7 @@ float pr_homeostatic_apply_to_edge(
     }
 
     float old_weight = edge.weight;
-    edge.weight = clamp_f(edge.weight * scale, 0.0f, 1.0f);
+    edge.weight = nimcp_myelin_clamp(edge.weight * scale, 0.0f, 1.0f);
 
     if (fabsf(edge.weight - old_weight) > PR_PLASTICITY_EPSILON) {
         entangle_update_edge(graph, &edge);
@@ -1012,7 +1021,7 @@ float pr_metaplasticity_adjust_stdp(
 
     /* Inverse relationship: high activity = lower rate */
     float rate_scale = 1.0f - activity_level * (1.0f - bridge->config.meta.min_lr_scale);
-    rate_scale = clamp_f(rate_scale, bridge->config.meta.min_lr_scale,
+    rate_scale = nimcp_myelin_clamp(rate_scale, bridge->config.meta.min_lr_scale,
                          bridge->config.meta.max_lr_scale);
 
     bridge->stats.metaplasticity_events++;
@@ -1040,7 +1049,7 @@ float pr_metaplasticity_from_consolidation(
     float protection = bridge->config.meta.consolidation_protection;
     float rate_scale = 1.0f - consolidation * protection;
 
-    return clamp_f(rate_scale, bridge->config.meta.min_lr_scale, 1.0f);
+    return nimcp_myelin_clamp(rate_scale, bridge->config.meta.min_lr_scale, 1.0f);
 }
 
 //=============================================================================
@@ -1256,12 +1265,12 @@ int pr_plasticity_from_quaternion(
 
     if (stdp_rate) {
         *stdp_rate = consolidation_factor * emotion_factor * salience_factor;
-        *stdp_rate = clamp_f(*stdp_rate, 0.1f, 2.0f);
+        *stdp_rate = nimcp_myelin_clamp(*stdp_rate, 0.1f, 2.0f);
     }
 
     if (bcm_rate) {
         *bcm_rate = consolidation_factor * accessibility_factor;
-        *bcm_rate = clamp_f(*bcm_rate, 0.1f, 2.0f);
+        *bcm_rate = nimcp_myelin_clamp(*bcm_rate, 0.1f, 2.0f);
     }
 
     if (homeostatic_rate) {
@@ -1312,13 +1321,13 @@ int pr_quaternion_from_plasticity(
     /* Strong LTP -> increase consolidation (w) */
     if (total_ltp > total_ltd * 1.5f) {
         quat_out->w += total_ltp * 0.01f;
-        quat_out->w = clamp_f(quat_out->w, 0.0f, 1.0f);
+        quat_out->w = nimcp_myelin_clamp(quat_out->w, 0.0f, 1.0f);
     }
 
     /* Repeated access -> increase accessibility (z) */
     if (access_count > 5) {
         quat_out->z += (float)access_count * 0.005f;
-        quat_out->z = clamp_f(quat_out->z, 0.0f, 1.0f);
+        quat_out->z = nimcp_myelin_clamp(quat_out->z, 0.0f, 1.0f);
     }
 
     /* Normalize quaternion if needed */
@@ -1385,7 +1394,7 @@ float pr_plasticity_update_resonance(
 
     /* Small resonance adjustment based on plasticity */
     float resonance_delta = delta_weight * 0.1f;  /* 10% of weight change */
-    edge.resonance_score = clamp_f(edge.resonance_score + resonance_delta, 0.0f, 1.0f);
+    edge.resonance_score = nimcp_myelin_clamp(edge.resonance_score + resonance_delta, 0.0f, 1.0f);
 
     entangle_update_edge(graph, &edge);
 
@@ -1653,7 +1662,7 @@ int pr_plasticity_bridge_update(
 
             /* Decay activity averages */
             float decay = 1.0f - dt_ms / (bridge->config.bcm.theta_tau * 3600.0f * 1000.0f);
-            decay = clamp_f(decay, 0.0f, 1.0f);
+            decay = nimcp_myelin_clamp(decay, 0.0f, 1.0f);
 
             node->activity_avg *= decay;
             node->activity_squared_avg *= decay;
@@ -1781,4 +1790,38 @@ void pr_plasticity_print_stats(pr_plasticity_bridge_t bridge) {
     printf("  Total updates:       %lu\n", (unsigned long)stats.total_updates);
     printf("  Avg update time:     %.2f us\n", stats.avg_update_time_us);
     printf("=================================================\n");
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B25 Upgrade)
+//=============================================================================
+
+void pr_plasticity_bridge_set_instance_health_agent(
+    pr_plasticity_bridge_t bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B25 Upgrade)
+//=============================================================================
+
+int pr_plasticity_bridge_training_begin(pr_plasticity_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_plasticity_bridge_heartbeat_instance(bridge->health_agent, "pr_plasticity_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int pr_plasticity_bridge_training_end(pr_plasticity_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_plasticity_bridge_heartbeat_instance(bridge->health_agent, "pr_plasticity_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int pr_plasticity_bridge_training_step(pr_plasticity_bridge_t bridge, float progress) {
+    if (!bridge) return -1;
+    pr_plasticity_bridge_heartbeat_instance(bridge->health_agent, "pr_plasticity_bridge_training_step", progress);
+    return 0;
 }

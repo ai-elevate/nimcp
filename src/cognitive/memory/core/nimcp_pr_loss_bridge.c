@@ -19,6 +19,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "security/nimcp_bbb_helpers.h"
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 
 #include <string.h>
 #include <math.h>
@@ -54,6 +55,18 @@ static inline void pr_loss_bridge_heartbeat(const char* operation, float progres
     }
 }
 
+/** @brief Send heartbeat from pr_loss_bridge module (instance-level) */
+static inline void pr_loss_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_pr_loss_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pr_loss_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_pr_loss_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "PR_LOSS_BRIDGE"
 
 /* Security subsystem setters (Phase 1: Audit Gap Remediation) */
@@ -82,6 +95,9 @@ struct pr_loss_bridge_struct {
     /* Caches for batch operations */
     float* loss_cache;
     size_t loss_cache_capacity;
+
+    /* Health agent (instance-level) - Phase 8 */
+    nimcp_health_agent_t* health_agent;
 };
 
 BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_loss_bridge, struct pr_loss_bridge_struct)
@@ -91,17 +107,10 @@ BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_loss_bridge, struct pr_loss_bridge_struct
 //=============================================================================
 
 /**
- * @brief Clamp float to range
- */
-static inline float clamp_f(float x, float min_val, float max_val) {
-    return (x < min_val) ? min_val : (x > max_val) ? max_val : x;
-}
-
-/**
  * @brief Safe arc cosine with clamping
  */
 static inline float safe_acos(float x) {
-    return acosf(clamp_f(x, -1.0f, 1.0f));
+    return acosf(nimcp_myelin_clamp(x, -1.0f, 1.0f));
 }
 
 /**
@@ -449,7 +458,7 @@ float pr_loss_geodesic(
     dot = fabsf(dot);
 
     /* Clamp for numerical stability */
-    dot = clamp_f(dot, 0.0f, 1.0f);
+    dot = nimcp_myelin_clamp(dot, 0.0f, 1.0f);
 
     /* Geodesic distance = arccos(|q1 . q2|) */
     float geodesic = safe_acos(dot);
@@ -505,7 +514,7 @@ float pr_loss_geodesic_batch(
 
         /* Compute geodesic */
         float dot = fabsf(quat_dot_inline(q1, q2));
-        dot = clamp_f(dot, 0.0f, 1.0f);
+        dot = nimcp_myelin_clamp(dot, 0.0f, 1.0f);
         float loss = safe_acos(dot) / (float)M_PI;
 
         if (per_sample_loss) {
@@ -565,7 +574,7 @@ int pr_loss_gradient_geodesic(
     dot = fabsf(dot);
 
     /* Clamp for stability */
-    dot = clamp_f(dot, 0.0f, 1.0f - PR_LOSS_EPSILON);
+    dot = nimcp_myelin_clamp(dot, 0.0f, 1.0f - PR_LOSS_EPSILON);
 
     /* Compute derivative factor */
     /* d(arccos(|dot|))/d(q1) = -sign(dot) * q2 / sqrt(1 - dot^2) */
@@ -919,8 +928,8 @@ float pr_loss_consolidation_weighted(
 
         /* Weight = 1 - consolidation^power */
         /* High consolidation -> low weight -> protected */
-        float weight = 1.0f - powf(clamp_f(consolidation, 0.0f, 1.0f), power);
-        weight = clamp_f(weight, PR_LOSS_EPSILON, 1.0f);
+        float weight = 1.0f - powf(nimcp_myelin_clamp(consolidation, 0.0f, 1.0f), power);
+        weight = nimcp_myelin_clamp(weight, PR_LOSS_EPSILON, 1.0f);
 
         /* MSE for this sample */
         float diff = predictions[i] - targets[i];
@@ -961,8 +970,8 @@ float pr_loss_get_consolidation_weight(
     }
 
     float consolidation = get_consolidation(node);
-    float weight = 1.0f - powf(clamp_f(consolidation, 0.0f, 1.0f), power);
-    return clamp_f(weight, PR_LOSS_EPSILON, 1.0f);
+    float weight = 1.0f - powf(nimcp_myelin_clamp(consolidation, 0.0f, 1.0f), power);
+    return nimcp_myelin_clamp(weight, PR_LOSS_EPSILON, 1.0f);
 }
 
 float pr_loss_consolidation_gradient_scale(
@@ -978,8 +987,8 @@ float pr_loss_consolidation_gradient_scale(
         power = bridge->config.consolidation_power;
     }
 
-    float weight = 1.0f - powf(clamp_f(consolidation, 0.0f, 1.0f), power);
-    return clamp_f(weight, PR_LOSS_EPSILON, 1.0f);
+    float weight = 1.0f - powf(nimcp_myelin_clamp(consolidation, 0.0f, 1.0f), power);
+    return nimcp_myelin_clamp(weight, PR_LOSS_EPSILON, 1.0f);
 }
 
 //=============================================================================
@@ -1015,7 +1024,7 @@ float pr_loss_entanglement_reg(
     /* This would integrate with nimcp_entanglement.h */
     float density = 0.5f;  /* Placeholder - would query graph */
 
-    float reg = lambda * (1.0f - clamp_f(density, 0.0f, 1.0f));
+    float reg = lambda * (1.0f - nimcp_myelin_clamp(density, 0.0f, 1.0f));
 
     /* Update statistics */
     if (bridge) {
@@ -1606,4 +1615,38 @@ void pr_loss_result_init(pr_loss_result_t* result) {
 
 
     memset(result, 0, sizeof(pr_loss_result_t));
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B25 Upgrade)
+//=============================================================================
+
+void pr_loss_bridge_set_instance_health_agent(
+    pr_loss_bridge_t bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B25 Upgrade)
+//=============================================================================
+
+int pr_loss_bridge_training_begin(pr_loss_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_loss_bridge_heartbeat_instance(bridge->health_agent, "pr_loss_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int pr_loss_bridge_training_end(pr_loss_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_loss_bridge_heartbeat_instance(bridge->health_agent, "pr_loss_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int pr_loss_bridge_training_step(pr_loss_bridge_t bridge, float progress) {
+    if (!bridge) return -1;
+    pr_loss_bridge_heartbeat_instance(bridge->health_agent, "pr_loss_bridge_training_step", progress);
+    return 0;
 }

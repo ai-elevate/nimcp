@@ -149,6 +149,10 @@ extern "C" {
     #define NIMCP_EXPORT
 #endif
 
+/* Forward declaration for health agent (B25 Upgrade) */
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
 //=============================================================================
 // Constants
 //=============================================================================
@@ -409,6 +413,9 @@ typedef struct {
 
     /* Initialization flag */
     bool initialized;
+
+    /** Instance-level health agent (B25 Upgrade) */
+    nimcp_health_agent_t* health_agent;
 } pr_speech_bridge_t;
 
 //=============================================================================

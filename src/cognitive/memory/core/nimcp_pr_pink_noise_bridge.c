@@ -18,6 +18,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/memory/core/nimcp_pr_pink_noise_bridge.h"
 #include "cognitive/memory/core/nimcp_pr_memory_node.h"
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "security/nimcp_bbb_helpers.h"
 
@@ -56,6 +57,18 @@ void pr_pink_noise_bridge_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void pr_pink_noise_bridge_heartbeat(const char* operation, float progress) {
     if (g_pr_pink_noise_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_pr_pink_noise_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from pr_pink_bridge module (instance-level) */
+static inline void pr_pink_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_pr_pink_noise_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pr_pink_noise_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_pr_pink_noise_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -185,6 +198,9 @@ struct pr_pink_bridge_struct {
 
     /* Initialization timestamp */
     uint64_t created_time_ms;
+
+    /* Instance health agent (B25 Upgrade) */
+    nimcp_health_agent_t* health_agent;
 };
 
 BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_pink_bridge, struct pr_pink_bridge_struct)
@@ -200,15 +216,6 @@ static uint64_t get_current_time_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
     return (uint64_t)(ts.tv_sec * 1000) + (uint64_t)(ts.tv_nsec / 1000000);
-}
-
-/**
- * @brief Clamp float to range
- */
-static inline float clamp_float(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
 }
 
 /**
@@ -976,7 +983,7 @@ NIMCP_EXPORT uint64_t pr_pink_consolidation_complete(
         interval = next_time - (float)current_time_ms;
 
         /* Clamp interval */
-        interval = clamp_float(interval,
+        interval = nimcp_myelin_clamp(interval,
                                PR_PINK_BRIDGE_MIN_CONSOLIDATION_INTERVAL_MS,
                                PR_PINK_BRIDGE_MAX_CONSOLIDATION_INTERVAL_MS);
     } else {
@@ -1063,7 +1070,7 @@ NIMCP_EXPORT float pr_pink_bridge_modulate_resonance(
     float modulated = base_score * (1.0f + amplitude * noise);
 
     /* Clamp to valid range */
-    modulated = clamp_float(modulated, 0.0f, 1.0f);
+    modulated = nimcp_myelin_clamp(modulated, 0.0f, 1.0f);
 
     atomic_fetch_add(&bridge->total_modulations, 1);
     return modulated;
@@ -1111,7 +1118,7 @@ NIMCP_EXPORT bool pr_pink_bridge_modulate_resonance_batch(
         }
 
         scores[i] = scores[i] * (1.0f + amplitude * noise_batch[i]);
-        scores[i] = clamp_float(scores[i], 0.0f, 1.0f);
+        scores[i] = nimcp_myelin_clamp(scores[i], 0.0f, 1.0f);
     }
 
     target->samples_generated += count;
@@ -1279,10 +1286,10 @@ NIMCP_EXPORT bool pr_pink_drift_quaternion(
     }
 
     /* Apply perturbations respecting component ranges */
-    quat->w = clamp_float(quat->w + amplitude * noise[0], 0.0f, 1.0f);
-    quat->x = clamp_float(quat->x + amplitude * noise[1], -1.0f, 1.0f);
-    quat->y = clamp_float(quat->y + amplitude * noise[2], 0.0f, 1.0f);
-    quat->z = clamp_float(quat->z + amplitude * noise[3], 0.0f, 1.0f);
+    quat->w = nimcp_myelin_clamp(quat->w + amplitude * noise[0], 0.0f, 1.0f);
+    quat->x = nimcp_myelin_clamp(quat->x + amplitude * noise[1], -1.0f, 1.0f);
+    quat->y = nimcp_myelin_clamp(quat->y + amplitude * noise[2], 0.0f, 1.0f);
+    quat->z = nimcp_myelin_clamp(quat->z + amplitude * noise[3], 0.0f, 1.0f);
 
     atomic_fetch_add(&bridge->total_noise_samples, 4);
     atomic_fetch_add(&bridge->total_modulations, 1);
@@ -1378,7 +1385,7 @@ NIMCP_EXPORT bool pr_pink_modulate_edge_weight(
     /* Apply modulation */
     float amplitude = target->params.amplitude * bridge->global_amplitude;
     edge->weight = edge->weight * (1.0f + amplitude * noise);
-    edge->weight = clamp_float(edge->weight, 0.0f, 1.0f);
+    edge->weight = nimcp_myelin_clamp(edge->weight, 0.0f, 1.0f);
 
     atomic_fetch_add(&bridge->total_modulations, 1);
     return true;
@@ -1460,7 +1467,7 @@ NIMCP_EXPORT float pr_pink_modulate_eligibility(
     float amplitude = target->params.amplitude * bridge->global_amplitude;
     float modulated = base_eligibility + amplitude * noise;
 
-    modulated = clamp_float(modulated, 0.0f, 1.0f);
+    modulated = nimcp_myelin_clamp(modulated, 0.0f, 1.0f);
 
     atomic_fetch_add(&bridge->total_modulations, 1);
     return modulated;
@@ -2175,4 +2182,38 @@ NIMCP_EXPORT bool pr_pink_bridge_validate(pr_pink_bridge_t bridge) {
     }
 
     return true;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B25 Upgrade)
+//=============================================================================
+
+void pr_pink_noise_bridge_set_instance_health_agent(
+    pr_pink_bridge_t bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B25 Upgrade)
+//=============================================================================
+
+int pr_pink_bridge_training_begin(pr_pink_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_pink_bridge_heartbeat_instance(bridge->health_agent, "pr_pink_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int pr_pink_bridge_training_end(pr_pink_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_pink_bridge_heartbeat_instance(bridge->health_agent, "pr_pink_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int pr_pink_bridge_training_step(pr_pink_bridge_t bridge, float progress) {
+    if (!bridge) return -1;
+    pr_pink_bridge_heartbeat_instance(bridge->health_agent, "pr_pink_bridge_training_step", progress);
+    return 0;
 }

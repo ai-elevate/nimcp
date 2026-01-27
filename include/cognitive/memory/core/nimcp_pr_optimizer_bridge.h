@@ -390,6 +390,9 @@ typedef struct {
 /**
  * @brief Optimizer bridge handle (opaque pointer)
  */
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
 typedef struct pr_optimizer_bridge_struct* pr_optimizer_bridge_t;
 
 /**
@@ -431,6 +434,11 @@ struct pr_optimizer_bridge_struct {
     //-------------------------------------------------------------------------
     float current_lr;                   /**< Current effective learning rate */
     bool initialized;                   /**< Initialization flag */
+
+    //-------------------------------------------------------------------------
+    // Instance Health Agent (B25 Upgrade)
+    //-------------------------------------------------------------------------
+    nimcp_health_agent_t* health_agent;  /**< Instance-level health agent */
 };
 
 //=============================================================================

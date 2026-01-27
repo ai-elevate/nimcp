@@ -23,6 +23,7 @@
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -50,6 +51,18 @@ void pr_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void pr_immune_bridge_heartbeat(const char* operation, float progress) {
     if (g_pr_immune_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_pr_immune_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from pr_immune_bridge module (instance-level) */
+static inline void pr_immune_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_pr_immune_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pr_immune_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_pr_immune_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -102,6 +115,9 @@ struct pr_immune_bridge_struct {
 
     /* Update tracking */
     uint64_t last_update_ms;
+
+    /* Health agent (instance-level) - Phase 8 */
+    nimcp_health_agent_t* health_agent;
 };
 
 BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_immune_bridge, struct pr_immune_bridge_struct)
@@ -109,13 +125,6 @@ BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_immune_bridge, struct pr_immune_bridge_st
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-/**
- * @brief Clamp float to range
- */
-static inline float clamp_f(float x, float min_val, float max_val) {
-    return (x < min_val) ? min_val : (x > max_val) ? max_val : x;
-}
 
 /**
  * @brief Convert sleep state to SIM phase
@@ -240,14 +249,14 @@ static void update_cytokine_effects(pr_immune_bridge_t bridge) {
     float anti_inflammatory = bridge->cytokine_effects.il10_consolidation_boost;
 
     bridge->cytokine_effects.net_consolidation_modifier =
-        clamp_f(anti_inflammatory - pro_inflammatory, -1.0f, 1.0f);
+        nimcp_myelin_clamp(anti_inflammatory - pro_inflammatory, -1.0f, 1.0f);
 
     bridge->cytokine_effects.net_accessibility_modifier =
-        clamp_f(-bridge->cytokine_effects.il6_accessibility_reduction, -1.0f, 0.0f);
+        nimcp_myelin_clamp(-bridge->cytokine_effects.il6_accessibility_reduction, -1.0f, 0.0f);
 
     /* Decay rate multiplier: higher with more pro-inflammatory cytokines */
     float decay_mult = 1.0f + (pro_inflammatory * (PR_IMMUNE_INFLAMMATION_DECAY_MULT - 1.0f));
-    bridge->cytokine_effects.decay_rate_multiplier = clamp_f(decay_mult, 1.0f, 3.0f);
+    bridge->cytokine_effects.decay_rate_multiplier = nimcp_myelin_clamp(decay_mult, 1.0f, 3.0f);
 
     /* Update inflammation impact */
     bridge->cytokine_effects.impact_level = level_to_impact(bridge->inflammation_level);
@@ -313,7 +322,7 @@ static void update_sim_coordination(pr_immune_bridge_t bridge) {
     /* Apply inflammation reduction to consolidation */
     if (bridge->cytokine_effects.impact_level >= PR_INFLAMMATION_MODERATE) {
         float reduction = 1.0f - (0.2f * (bridge->cytokine_effects.impact_level - 1));
-        bridge->sim_coordination.consolidation_multiplier *= clamp_f(reduction, 0.3f, 1.0f);
+        bridge->sim_coordination.consolidation_multiplier *= nimcp_myelin_clamp(reduction, 0.3f, 1.0f);
     }
 
     /* Compute immune sync level */
@@ -570,12 +579,12 @@ nimcp_quaternion_t pr_immune_bridge_modulate_consolidation(
     if (bridge->config.enable_cytokine_modulation) {
         /* Apply consolidation modifier to w component */
         float w_modifier = bridge->cytokine_effects.net_consolidation_modifier;
-        result.w = clamp_f(result.w + (w_modifier * 0.1f),
+        result.w = nimcp_myelin_clamp(result.w + (w_modifier * 0.1f),
                           PR_IMMUNE_QUAT_MIN, PR_IMMUNE_QUAT_MAX);
 
         /* Apply accessibility modifier to z component */
         float z_modifier = bridge->cytokine_effects.net_accessibility_modifier;
-        result.z = clamp_f(result.z + (z_modifier * 0.1f),
+        result.z = nimcp_myelin_clamp(result.z + (z_modifier * 0.1f),
                           PR_IMMUNE_QUAT_MIN, PR_IMMUNE_QUAT_MAX);
 
         bridge->stats.cytokine_modulations++;
@@ -586,7 +595,7 @@ nimcp_quaternion_t pr_immune_bridge_modulate_consolidation(
         pr_inflammation_impact_t impact = bridge->cytokine_effects.impact_level;
         if (impact >= PR_INFLAMMATION_MILD) {
             float reduction = 0.05f * impact;
-            result.w = clamp_f(result.w - reduction, PR_IMMUNE_QUAT_MIN, PR_IMMUNE_QUAT_MAX);
+            result.w = nimcp_myelin_clamp(result.w - reduction, PR_IMMUNE_QUAT_MIN, PR_IMMUNE_QUAT_MAX);
             bridge->stats.inflammation_effects++;
         }
     }
@@ -620,12 +629,12 @@ int pr_immune_bridge_apply_inflammation(
     if (impact > PR_INFLAMMATION_NONE) {
         /* Reduce consolidation proportional to impact */
         float w_reduction = 0.1f * impact;
-        quat_out->w = clamp_f(quat_out->w - w_reduction,
+        quat_out->w = nimcp_myelin_clamp(quat_out->w - w_reduction,
                              PR_IMMUNE_QUAT_MIN, PR_IMMUNE_QUAT_MAX);
 
         /* Reduce accessibility proportional to impact */
         float z_reduction = 0.05f * impact;
-        quat_out->z = clamp_f(quat_out->z - z_reduction,
+        quat_out->z = nimcp_myelin_clamp(quat_out->z - z_reduction,
                              PR_IMMUNE_QUAT_MIN, PR_IMMUNE_QUAT_MAX);
 
         bridge->stats.inflammation_effects++;
@@ -845,7 +854,7 @@ int pr_immune_bridge_process_inflammation(pr_immune_bridge_t bridge) {
 
         /* Convert to 0-1 scale */
         float new_level = (float)level / (float)INFLAMMATION_STORM;
-        new_level = clamp_f(new_level, 0.0f, 1.0f);
+        new_level = nimcp_myelin_clamp(new_level, 0.0f, 1.0f);
 
         /* Track chronic inflammation */
         uint64_t now = nimcp_time_get_ms();
@@ -942,18 +951,18 @@ int pr_immune_bridge_cytokine_to_quaternion(
 
     /* Apply net consolidation modifier to w */
     float w_delta = bridge->cytokine_effects.net_consolidation_modifier * 0.15f;
-    modulated_out->w = clamp_f(modulated_out->w + w_delta,
+    modulated_out->w = nimcp_myelin_clamp(modulated_out->w + w_delta,
                               PR_IMMUNE_QUAT_MIN, PR_IMMUNE_QUAT_MAX);
 
     /* Apply net accessibility modifier to z */
     float z_delta = bridge->cytokine_effects.net_accessibility_modifier * 0.1f;
-    modulated_out->z = clamp_f(modulated_out->z + z_delta,
+    modulated_out->z = nimcp_myelin_clamp(modulated_out->z + z_delta,
                               PR_IMMUNE_QUAT_MIN, PR_IMMUNE_QUAT_MAX);
 
     /* IFN-gamma can reduce salience (y) during surveillance */
     if (bridge->cytokine_effects.ifn_gamma_surveillance_level > 0.5f) {
         float y_delta = -0.05f * (bridge->cytokine_effects.ifn_gamma_surveillance_level - 0.5f);
-        modulated_out->y = clamp_f(modulated_out->y + y_delta,
+        modulated_out->y = nimcp_myelin_clamp(modulated_out->y + y_delta,
                                   PR_IMMUNE_QUAT_MIN, PR_IMMUNE_QUAT_MAX);
     }
 
@@ -992,33 +1001,33 @@ int pr_immune_bridge_apply_cytokine(
     pr_immune_bridge_heartbeat("pr_immune_br_apply_cytokine", 0.0f);
 
 
-    concentration = clamp_f(concentration, 0.0f, 1.0f);
+    concentration = nimcp_myelin_clamp(concentration, 0.0f, 1.0f);
 
     switch (cytokine) {
         case BRAIN_CYTOKINE_IL1:
             /* IL-1β reduces consolidation */
-            result_out->w = clamp_f(result_out->w -
+            result_out->w = nimcp_myelin_clamp(result_out->w -
                 concentration * PR_IMMUNE_IL1_CONSOLIDATION_REDUCTION,
                 PR_IMMUNE_QUAT_MIN, PR_IMMUNE_QUAT_MAX);
             break;
 
         case BRAIN_CYTOKINE_TNF:
             /* TNF-α reduces consolidation more strongly */
-            result_out->w = clamp_f(result_out->w -
+            result_out->w = nimcp_myelin_clamp(result_out->w -
                 concentration * PR_IMMUNE_TNF_CONSOLIDATION_REDUCTION,
                 PR_IMMUNE_QUAT_MIN, PR_IMMUNE_QUAT_MAX);
             break;
 
         case BRAIN_CYTOKINE_IL6:
             /* IL-6 reduces accessibility */
-            result_out->z = clamp_f(result_out->z -
+            result_out->z = nimcp_myelin_clamp(result_out->z -
                 concentration * PR_IMMUNE_IL6_ACCESSIBILITY_REDUCTION,
                 PR_IMMUNE_QUAT_MIN, PR_IMMUNE_QUAT_MAX);
             break;
 
         case BRAIN_CYTOKINE_IL10:
             /* IL-10 boosts consolidation */
-            result_out->w = clamp_f(result_out->w +
+            result_out->w = nimcp_myelin_clamp(result_out->w +
                 concentration * PR_IMMUNE_IL10_CONSOLIDATION_BOOST,
                 PR_IMMUNE_QUAT_MIN, PR_IMMUNE_QUAT_MAX);
             break;
@@ -1067,7 +1076,7 @@ int pr_immune_bridge_sleep_consolidation(
             /* Strong consolidation in deep NREM */
             boost = bridge->config.deep_sleep_consolidation_boost *
                     bridge->sim_coordination.immune_sync_level;
-            quat_out->w = clamp_f(quat_out->w + boost,
+            quat_out->w = nimcp_myelin_clamp(quat_out->w + boost,
                                  PR_IMMUNE_QUAT_MIN, PR_IMMUNE_QUAT_MAX);
             bridge->stats.consolidation_boosts++;
             bridge->stats.sleep_consolidations++;
@@ -1076,7 +1085,7 @@ int pr_immune_bridge_sleep_consolidation(
         case PR_SIM_PHASE_LIGHT_SLEEP:
             /* Mild consolidation in light sleep */
             boost = bridge->config.deep_sleep_consolidation_boost * 0.3f;
-            quat_out->w = clamp_f(quat_out->w + boost,
+            quat_out->w = nimcp_myelin_clamp(quat_out->w + boost,
                                  PR_IMMUNE_QUAT_MIN, PR_IMMUNE_QUAT_MAX);
             bridge->stats.consolidation_boosts++;
             bridge->stats.sleep_consolidations++;
@@ -1085,7 +1094,7 @@ int pr_immune_bridge_sleep_consolidation(
         case PR_SIM_PHASE_REM_SLEEP:
             /* REM focuses on cleanup, not consolidation */
             /* But does improve accessibility */
-            quat_out->z = clamp_f(quat_out->z + 0.02f,
+            quat_out->z = nimcp_myelin_clamp(quat_out->z + 0.02f,
                                  PR_IMMUNE_QUAT_MIN, PR_IMMUNE_QUAT_MAX);
             break;
 
@@ -1097,7 +1106,7 @@ int pr_immune_bridge_sleep_consolidation(
     if (bridge->config.enable_cytokine_modulation &&
         bridge->sim_coordination.immune_consolidation_active) {
         float w_mod = bridge->cytokine_effects.net_consolidation_modifier * 0.05f;
-        quat_out->w = clamp_f(quat_out->w + w_mod,
+        quat_out->w = nimcp_myelin_clamp(quat_out->w + w_mod,
                              PR_IMMUNE_QUAT_MIN, PR_IMMUNE_QUAT_MAX);
     }
 
@@ -1515,4 +1524,38 @@ void pr_immune_bridge_print_stats(pr_immune_bridge_t bridge) {
     printf("  Total updates: %llu\n", (unsigned long long)stats.total_updates);
     printf("  Avg update time: %.2f us\n", stats.avg_update_time_us);
     printf("=====================================\n");
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B25 Upgrade)
+//=============================================================================
+
+void pr_immune_bridge_set_instance_health_agent(
+    pr_immune_bridge_t bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B25 Upgrade)
+//=============================================================================
+
+int pr_immune_bridge_training_begin(pr_immune_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_immune_bridge_heartbeat_instance(bridge->health_agent, "pr_immune_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int pr_immune_bridge_training_end(pr_immune_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_immune_bridge_heartbeat_instance(bridge->health_agent, "pr_immune_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int pr_immune_bridge_training_step(pr_immune_bridge_t bridge, float progress) {
+    if (!bridge) return -1;
+    pr_immune_bridge_heartbeat_instance(bridge->health_agent, "pr_immune_bridge_training_step", progress);
+    return 0;
 }

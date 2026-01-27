@@ -16,6 +16,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "security/nimcp_bbb_helpers.h"
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -54,6 +55,18 @@ void pr_sleep_bridge_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void pr_sleep_bridge_heartbeat(const char* operation, float progress) {
     if (g_pr_sleep_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_pr_sleep_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from pr_sleep_bridge module (instance-level) */
+static inline void pr_sleep_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_pr_sleep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pr_sleep_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_pr_sleep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -131,6 +144,9 @@ struct pr_sleep_bridge_struct {
     /** Timestamps */
     uint64_t last_consolidation_time_ms;
     uint64_t creation_time_ms;
+
+    /** Instance-level health agent (B25 Upgrade) */
+    nimcp_health_agent_t* health_agent;
 };
 
 BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_sleep_bridge, struct pr_sleep_bridge_struct)
@@ -140,7 +156,6 @@ BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_sleep_bridge, struct pr_sleep_bridge_stru
 //=============================================================================
 
 static uint64_t get_current_time_ms(void);
-static float clamp_float(float value, float min_val, float max_val);
 static float compute_replay_priority(
     const pr_sleep_bridge_t bridge,
     const pr_memory_node_t* node,
@@ -886,13 +901,13 @@ NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_replay(
 
     // Update quaternion consolidation component
     nimcp_quaternion_t state = pr_memory_node_get_state(node);
-    state.w = clamp_float(state.w + consolidation_boost * 0.5f, 0.0f, 1.0f);
+    state.w = nimcp_myelin_clamp(state.w + consolidation_boost * 0.5f, 0.0f, 1.0f);
     pr_memory_node_update_state(node, state);
 
     // Check for promotion eligibility
     float promotion_boost = get_stage_promotion_boost(bridge->current_stage, &bridge->config);
     float eligibility = node->promotion_eligibility + promotion_boost;
-    node->promotion_eligibility = clamp_float(eligibility, 0.0f, 1.0f);
+    node->promotion_eligibility = nimcp_myelin_clamp(eligibility, 0.0f, 1.0f);
 
     ev.was_promoted = false;
     ev.tier_after = node->tier;
@@ -1159,7 +1174,7 @@ NIMCP_EXPORT float pr_sleep_bridge_get_promotion_eligibility(
     }
 
     float boost = get_stage_promotion_boost(bridge->current_stage, &bridge->config);
-    return clamp_float(node->promotion_eligibility + boost, 0.0f, 1.0f);
+    return nimcp_myelin_clamp(node->promotion_eligibility + boost, 0.0f, 1.0f);
 }
 
 //=============================================================================
@@ -1713,12 +1728,6 @@ static uint64_t get_current_time_ms(void) {
     return (uint64_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
 }
 
-static float clamp_float(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
-
 static float compute_replay_priority(
     const pr_sleep_bridge_t bridge,
     const pr_memory_node_t* node,
@@ -1766,7 +1775,7 @@ static float compute_replay_priority(
         priority += 0.1f * (1.0f - 1.0f / (1.0f + entangle_count * 0.1f));
     }
 
-    return clamp_float(priority, 0.0f, 1.0f);
+    return nimcp_myelin_clamp(priority, 0.0f, 1.0f);
 }
 
 static pr_memory_type_t infer_memory_type(const pr_memory_node_t* node) {
@@ -2016,4 +2025,38 @@ static int consolidate_rem(pr_sleep_bridge_t bridge) {
     pr_sleep_bridge_promote_z_ladder(bridge);
 
     return total_processed;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B25 Upgrade)
+//=============================================================================
+
+void pr_sleep_bridge_set_instance_health_agent(
+    pr_sleep_bridge_t bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B25 Upgrade)
+//=============================================================================
+
+int pr_sleep_bridge_training_begin(pr_sleep_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_sleep_bridge_heartbeat_instance(bridge->health_agent, "pr_sleep_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int pr_sleep_bridge_training_end(pr_sleep_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_sleep_bridge_heartbeat_instance(bridge->health_agent, "pr_sleep_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int pr_sleep_bridge_training_step(pr_sleep_bridge_t bridge, float progress) {
+    if (!bridge) return -1;
+    pr_sleep_bridge_heartbeat_instance(bridge->health_agent, "pr_sleep_bridge_training_step", progress);
+    return 0;
 }

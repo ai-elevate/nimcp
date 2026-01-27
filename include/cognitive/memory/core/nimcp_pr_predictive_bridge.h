@@ -415,6 +415,10 @@ typedef struct {
  * HOW:  Collects PE from FEP bridges, generates predictions from memories,
  *       triggers memory consolidation/reconsolidation/encoding based on PE
  */
+/* Forward declaration for health agent (Phase 8) */
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
 typedef struct {
     bridge_base_t base;                /**< MUST be first: base bridge infrastructure */
 
@@ -462,6 +466,9 @@ typedef struct {
 
     /* Statistics */
     pr_predictive_bridge_stats_t stats;
+
+    /* Health agent (instance-level) - Phase 8 */
+    nimcp_health_agent_t* health_agent;
 
 } pr_predictive_bridge_t;
 

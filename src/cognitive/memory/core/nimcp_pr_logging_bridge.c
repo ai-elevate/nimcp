@@ -18,6 +18,7 @@
 #include "cognitive/memory/core/nimcp_pr_logging_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "security/nimcp_bbb_helpers.h"
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -49,6 +50,18 @@ void pr_logging_bridge_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void pr_logging_bridge_heartbeat(const char* operation, float progress) {
     if (g_pr_logging_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_pr_logging_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from pr_logging_bridge module (instance-level) */
+static inline void pr_logging_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_pr_logging_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pr_logging_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_pr_logging_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -121,11 +134,6 @@ static void safe_strncpy(char* dest, const char* src, size_t size) {
     dest[size - 1] = '\0';
 }
 
-static float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /**
  * @brief Check if entry matches filter
@@ -227,6 +235,9 @@ struct pr_logging_bridge_struct {
 
     /* State */
     bool initialized;
+
+    /* Health agent (instance-level) - Phase 8 */
+    nimcp_health_agent_t* health_agent;
 };
 
 BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_logging_bridge, struct pr_logging_bridge_struct)
@@ -1571,4 +1582,38 @@ NIMCP_EXPORT bool pr_logging_bridge_validate(const pr_logging_bridge_t bridge) {
     if (bridge->write_idx >= bridge->capacity) return false;
 
     return true;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B25 Upgrade)
+//=============================================================================
+
+void pr_logging_bridge_set_instance_health_agent(
+    pr_logging_bridge_t bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B25 Upgrade)
+//=============================================================================
+
+int pr_logging_bridge_training_begin(pr_logging_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_logging_bridge_heartbeat_instance(bridge->health_agent, "pr_logging_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int pr_logging_bridge_training_end(pr_logging_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_logging_bridge_heartbeat_instance(bridge->health_agent, "pr_logging_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int pr_logging_bridge_training_step(pr_logging_bridge_t bridge, float progress) {
+    if (!bridge) return -1;
+    pr_logging_bridge_heartbeat_instance(bridge->health_agent, "pr_logging_bridge_training_step", progress);
+    return 0;
 }

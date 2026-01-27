@@ -25,6 +25,7 @@
 #include <time.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -52,6 +53,18 @@ void pr_attention_bridge_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void pr_attention_bridge_heartbeat(const char* operation, float progress) {
     if (g_pr_attention_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_pr_attention_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from pr_attention_bridge module (instance-level) */
+static inline void pr_attention_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_pr_attention_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pr_attention_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_pr_attention_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -87,15 +100,6 @@ static inline size_t attn_map_index(
 ) {
     return t * (bridge->spatial_width * bridge->spatial_height) +
            y * bridge->spatial_width + x;
-}
-
-/**
- * @brief Clamp float to range [min, max]
- */
-static inline float clampf(float val, float min, float max) {
-    if (val < min) return min;
-    if (val > max) return max;
-    return val;
 }
 
 /**
@@ -193,7 +197,7 @@ static float u_shaped_attention(float resonance, float fam_thresh, float nov_thr
     if (half_width < PR_ATTN_EPSILON) half_width = 0.25f;
 
     float distance = fabsf(resonance - mid) / half_width;
-    return clampf(distance, 0.0f, 1.0f);
+    return nimcp_myelin_clamp(distance, 0.0f, 1.0f);
 }
 
 /**
@@ -205,7 +209,7 @@ static float inverted_u_attention(float resonance, float fam_thresh, float nov_t
     if (half_width < PR_ATTN_EPSILON) half_width = 0.25f;
 
     float distance = fabsf(resonance - mid) / half_width;
-    return clampf(1.0f - distance, 0.0f, 1.0f);
+    return nimcp_myelin_clamp(1.0f - distance, 0.0f, 1.0f);
 }
 
 //=============================================================================
@@ -964,7 +968,7 @@ pr_attn_error_t pr_attention_bridge_fuse_attention(
                     }
 
                     float bias = (td[i] > mean_td) ? (td[i] / mean_td) : 1.0f;
-                    unified[i] = bu[i] * clampf(bias, 0.5f, 2.0f);
+                    unified[i] = bu[i] * nimcp_myelin_clamp(bias, 0.5f, 2.0f);
                 }
             }
             break;
@@ -1103,7 +1107,7 @@ pr_attn_error_t pr_attention_bridge_apply_resonance_boost(
             break;
     }
 
-    *boost_output = clampf(boost, 0.0f, 1.0f);
+    *boost_output = nimcp_myelin_clamp(boost, 0.0f, 1.0f);
 
     if (bridge->config.track_statistics) {
         bridge->stats.mean_resonance_boost =
@@ -1202,7 +1206,7 @@ pr_attn_error_t pr_attention_bridge_update_quaternion_salience(
     nimcp_quaternion_t state = pr_memory_node_get_state(node);
 
     // Update salience (y component)
-    state.y = clampf(attention, 0.0f, 1.0f);
+    state.y = nimcp_myelin_clamp(attention, 0.0f, 1.0f);
 
     // Apply state update
     pr_node_error_t err = pr_memory_node_update_state(node, state);
@@ -1256,9 +1260,9 @@ pr_attn_error_t pr_attention_bridge_modulate_encoding(
     // Formula: modulated = base * attention^gamma
     // gamma < 1 for gentler modulation, > 1 for stronger
     float gamma = 0.5f;
-    float modulation = powf(clampf(attention_weight, 0.01f, 1.0f), gamma);
+    float modulation = powf(nimcp_myelin_clamp(attention_weight, 0.01f, 1.0f), gamma);
 
-    *modulated_strength = clampf(base_strength * modulation, 0.0f, 1.0f);
+    *modulated_strength = nimcp_myelin_clamp(base_strength * modulation, 0.0f, 1.0f);
 
     return PR_ATTN_SUCCESS;
 }
@@ -1548,7 +1552,7 @@ pr_attn_error_t pr_attention_bridge_mark_attended(
             float inhibition = strength * expf(-dist_sq / (2.0f * radius * radius));
 
             size_t idx = iy * bridge->spatial_width + ix;
-            bridge->ior_state.ior_map[idx] = clampf(
+            bridge->ior_state.ior_map[idx] = nimcp_myelin_clamp(
                 bridge->ior_state.ior_map[idx] + inhibition, 0.0f, 1.0f);
             bridge->ior_state.last_attended_ms[idx] = now;
         }
@@ -1638,7 +1642,7 @@ float pr_attention_bridge_compute_alpha_suppression(
     float suppression = bridge->config.alpha_suppression_base +
                         mean_attn * (1.0f - bridge->config.alpha_suppression_base);
 
-    return clampf(suppression, 0.0f, 1.0f);
+    return nimcp_myelin_clamp(suppression, 0.0f, 1.0f);
 }
 
 float pr_attention_bridge_get_gamma_enhancement(
@@ -1757,7 +1761,7 @@ pr_attn_error_t pr_attention_bridge_attend_memory(
     // Add new entry
     pr_attn_memory_entry_t* entry = &bridge->attended_memories[bridge->num_attended];
     entry->node = node;
-    entry->attention_weight = clampf(initial_weight, 0.0f, 1.0f);
+    entry->attention_weight = nimcp_myelin_clamp(initial_weight, 0.0f, 1.0f);
     entry->resonance_score = 0.0f;
     entry->last_attended_ms = get_current_time_ms();
     entry->attend_count = 1;
@@ -1822,7 +1826,7 @@ pr_attn_error_t pr_attention_bridge_update_memory_attention(
         return PR_ATTN_ERROR_INVALID_STATE;
     }
 
-    bridge->attended_memories[idx].attention_weight = clampf(new_weight, 0.0f, 1.0f);
+    bridge->attended_memories[idx].attention_weight = nimcp_myelin_clamp(new_weight, 0.0f, 1.0f);
     bridge->attended_memories[idx].last_attended_ms = get_current_time_ms();
 
     return PR_ATTN_SUCCESS;
@@ -2053,4 +2057,38 @@ uint64_t pr_attn_current_time_ms(void) {
 
 
     return get_current_time_ms();
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B25 Upgrade)
+//=============================================================================
+
+void pr_attention_bridge_set_instance_health_agent(
+    pr_attention_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B25 Upgrade)
+//=============================================================================
+
+int pr_attention_bridge_training_begin(pr_attention_bridge_t* bridge) {
+    if (!bridge) return -1;
+    pr_attention_bridge_heartbeat_instance(bridge->health_agent, "pr_attention_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int pr_attention_bridge_training_end(pr_attention_bridge_t* bridge) {
+    if (!bridge) return -1;
+    pr_attention_bridge_heartbeat_instance(bridge->health_agent, "pr_attention_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int pr_attention_bridge_training_step(pr_attention_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    pr_attention_bridge_heartbeat_instance(bridge->health_agent, "pr_attention_bridge_training_step", progress);
+    return 0;
 }

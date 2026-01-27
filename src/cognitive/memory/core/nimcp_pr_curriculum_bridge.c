@@ -24,6 +24,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -51,6 +52,18 @@ void pr_curriculum_bridge_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void pr_curriculum_bridge_heartbeat(const char* operation, float progress) {
     if (g_pr_curriculum_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_pr_curriculum_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from pr_curriculum_bridge module (instance-level) */
+static inline void pr_curriculum_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_pr_curriculum_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pr_curriculum_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_pr_curriculum_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -157,6 +170,9 @@ struct pr_curriculum_bridge_struct {
 
     /* Random state for exploration */
     uint32_t random_state;
+
+    /* Health agent (instance-level) - Phase 8 */
+    nimcp_health_agent_t* health_agent;
 };
 
 BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_curriculum_bridge, struct pr_curriculum_bridge_struct)
@@ -164,13 +180,6 @@ BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_curriculum_bridge, struct pr_curriculum_b
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-/**
- * @brief Clamp float to range
- */
-static inline float clamp_f(float x, float min_val, float max_val) {
-    return (x < min_val) ? min_val : (x > max_val) ? max_val : x;
-}
 
 /**
  * @brief Simple hash function for sample IDs
@@ -390,7 +399,7 @@ static float compute_quaternion_difficulty(
     /* Low consolidation + low accessibility = harder */
     float difficulty = (1.0f - w) * 0.3f + (1.0f - z) * 0.4f + (1.0f - y) * 0.2f + x * 0.1f;
 
-    return clamp_f(difficulty, 0.0f, 1.0f);
+    return nimcp_myelin_clamp(difficulty, 0.0f, 1.0f);
 }
 
 /**
@@ -781,7 +790,7 @@ int pr_curriculum_compute_difficulty(
 
     /* Apply scaling */
     result->total_difficulty *= bridge->config.difficulty_scale;
-    result->total_difficulty = clamp_f(result->total_difficulty,
+    result->total_difficulty = nimcp_myelin_clamp(result->total_difficulty,
                                        PR_CURRICULUM_MIN_DIFFICULTY,
                                        PR_CURRICULUM_MAX_DIFFICULTY);
 
@@ -1844,7 +1853,7 @@ int pr_curriculum_update_after_step(
         difficulty_cache_entry_t* cached = find_cache_entry(bridge, step->sample_id);
         if (cached && cached->valid) {
             /* Blend estimated difficulty with observed loss */
-            float observed_difficulty = clamp_f(step->loss, 0.0f, 1.0f);
+            float observed_difficulty = nimcp_myelin_clamp(step->loss, 0.0f, 1.0f);
             cached->result.total_difficulty =
                 cached->result.total_difficulty * (1.0f - EMA_ALPHA) +
                 observed_difficulty * EMA_ALPHA;
@@ -1862,10 +1871,10 @@ int pr_curriculum_update_after_step(
 
     /* Adjust pacing based on performance */
     if (accuracy > 0.9f) {
-        bridge->current_pacing = clamp_f(bridge->current_pacing * 1.05f, 0.1f, 3.0f);
+        bridge->current_pacing = nimcp_myelin_clamp(bridge->current_pacing * 1.05f, 0.1f, 3.0f);
         bridge->stats.pace_increases++;
     } else if (accuracy < 0.6f) {
-        bridge->current_pacing = clamp_f(bridge->current_pacing * 0.95f, 0.1f, 3.0f);
+        bridge->current_pacing = nimcp_myelin_clamp(bridge->current_pacing * 0.95f, 0.1f, 3.0f);
         bridge->stats.pace_decreases++;
     }
 
@@ -1900,7 +1909,7 @@ float pr_curriculum_update_difficulty_from_loss(
     }
 
     /* Compute observed difficulty from loss */
-    float observed = clamp_f(loss, 0.0f, 1.0f);
+    float observed = nimcp_myelin_clamp(loss, 0.0f, 1.0f);
     if (was_correct) {
         observed *= 0.8f;  /* Discount if correct */
     }
@@ -2244,3 +2253,37 @@ uint64_t pr_curriculum_current_time_ms(void) {
 }
 
 /* NOTE: pr_memory_tier_t is defined in nimcp_pr_memory_node.h (included via header chain) */
+
+//=============================================================================
+// Instance Health Agent Setter (B25 Upgrade)
+//=============================================================================
+
+void pr_curriculum_bridge_set_instance_health_agent(
+    pr_curriculum_bridge_t bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B25 Upgrade)
+//=============================================================================
+
+int pr_curriculum_bridge_training_begin(pr_curriculum_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_curriculum_bridge_heartbeat_instance(bridge->health_agent, "pr_curriculum_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int pr_curriculum_bridge_training_end(pr_curriculum_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_curriculum_bridge_heartbeat_instance(bridge->health_agent, "pr_curriculum_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int pr_curriculum_bridge_training_step(pr_curriculum_bridge_t bridge, float progress) {
+    if (!bridge) return -1;
+    pr_curriculum_bridge_heartbeat_instance(bridge->health_agent, "pr_curriculum_bridge_training_step", progress);
+    return 0;
+}

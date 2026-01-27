@@ -48,6 +48,7 @@
  */
 
 #include "cognitive/memory/core/nimcp_pr_optimizer_bridge.h"
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "security/nimcp_bbb_helpers.h"
 
@@ -87,6 +88,18 @@ static inline void pr_optimizer_bridge_heartbeat(const char* operation, float pr
     }
 }
 
+/** @brief Send heartbeat from pr_optimizer_bridge module (instance-level) */
+static inline void pr_optimizer_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_pr_optimizer_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pr_optimizer_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_pr_optimizer_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 /* Security subsystem setters (Phase 1: Audit Gap Remediation) */
 BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_optimizer_bridge, struct pr_optimizer_bridge_struct)
 
@@ -110,7 +123,6 @@ BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_optimizer_bridge, struct pr_optimizer_bri
 static uint64_t get_time_ns(void);
 static float compute_grad_norm(const float* gradients, size_t count);
 static void scale_gradients(float* gradients, size_t count, float scale);
-static float clamp_value(float value, float min_val, float max_val);
 
 static pr_optimizer_error_t init_adam_state(
     pr_optimizer_bridge_t bridge,
@@ -549,7 +561,7 @@ pr_optimizer_error_t pr_optimizer_resonance_adam_step(
     update_stats_gradient(&bridge->stats, grad_norm);
 
     // Compute effective learning rate with resonance scaling
-    float resonance_clamped = clamp_value(resonance, 0.0f, 1.0f);
+    float resonance_clamped = nimcp_myelin_clamp(resonance, 0.0f, 1.0f);
     float lr_scale = 1.0f;
     if (cfg->enable_resonance_scaling) {
         lr_scale = 1.0f + cfg->resonance_scale * resonance_clamped;
@@ -789,7 +801,7 @@ pr_optimizer_error_t pr_optimizer_consolidation_gated_step(
 
         // Get consolidation strength from quaternion w component
         nimcp_quaternion_t state = pr_memory_node_get_state(nodes[i]);
-        float consolidation = clamp_value(state.w, 0.0f, 1.0f);
+        float consolidation = nimcp_myelin_clamp(state.w, 0.0f, 1.0f);
 
         // Compute gate factor
         float gate = 0.0f;
@@ -923,7 +935,7 @@ float pr_optimizer_compute_effective_lr(
 
     // Resonance scaling
     if (cfg->enable_resonance_scaling) {
-        float r = clamp_value(resonance, 0.0f, 1.0f);
+        float r = nimcp_myelin_clamp(resonance, 0.0f, 1.0f);
         effective_lr *= (1.0f + cfg->resonance_scale * r);
     }
 
@@ -939,7 +951,7 @@ float pr_optimizer_compute_effective_lr(
         // Consolidation gating
         if (cfg->enable_consolidation_gating) {
             nimcp_quaternion_t state = pr_memory_node_get_state(node);
-            float consolidation = clamp_value(state.w, 0.0f, 1.0f);
+            float consolidation = nimcp_myelin_clamp(state.w, 0.0f, 1.0f);
             if (consolidation >= cfg->consolidation_gate) {
                 effective_lr = 0.0f;  // Fully gated
             } else {
@@ -1686,15 +1698,6 @@ static void scale_gradients(float* gradients, size_t count, float scale) {
 }
 
 /**
- * @brief Clamp value to range [min, max]
- */
-static float clamp_value(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
-
-/**
  * @brief Initialize Adam optimizer state
  */
 static pr_optimizer_error_t init_adam_state(
@@ -1843,4 +1846,38 @@ static void update_stats_lr(
     if (effective_lr < stats->min_effective_lr) {
         stats->min_effective_lr = effective_lr;
     }
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B25 Upgrade)
+//=============================================================================
+
+void pr_optimizer_bridge_set_instance_health_agent(
+    pr_optimizer_bridge_t bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B25 Upgrade)
+//=============================================================================
+
+int pr_optimizer_bridge_training_begin(pr_optimizer_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_optimizer_bridge_heartbeat_instance(bridge->health_agent, "pr_optimizer_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int pr_optimizer_bridge_training_end(pr_optimizer_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_optimizer_bridge_heartbeat_instance(bridge->health_agent, "pr_optimizer_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int pr_optimizer_bridge_training_step(pr_optimizer_bridge_t bridge, float progress) {
+    if (!bridge) return -1;
+    pr_optimizer_bridge_heartbeat_instance(bridge->health_agent, "pr_optimizer_bridge_training_step", progress);
+    return 0;
 }

@@ -17,6 +17,7 @@
 #include <math.h>
 #include <time.h>
 #include <stdio.h>
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -47,6 +48,18 @@ static inline void pr_omni_bridge_heartbeat(const char* operation, float progres
     }
 }
 
+/** @brief Send heartbeat from pr_omni_bridge module (instance-level) */
+static inline void pr_omni_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_pr_omni_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pr_omni_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_pr_omni_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "PR_OMNI_BRIDGE"
 
 
@@ -66,15 +79,6 @@ static void set_error(const char* msg) {
 //=============================================================================
 // Internal Helper Functions
 //=============================================================================
-
-/**
- * @brief Clamp float to range [min, max]
- */
-static inline float clampf(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * @brief Get current time in nanoseconds
@@ -1012,10 +1016,10 @@ pr_omni_error_t pr_omni_bridge_compute_unified_quaternion(
     }
 
     /* Clamp all values to valid ranges */
-    unified_quat->w = clampf(unified_quat->w, 0.0f, 1.0f);
-    unified_quat->x = clampf(unified_quat->x, -1.0f, 1.0f);
-    unified_quat->y = clampf(unified_quat->y, 0.0f, 1.0f);
-    unified_quat->z = clampf(unified_quat->z, 0.0f, 1.0f);
+    unified_quat->w = nimcp_myelin_clamp(unified_quat->w, 0.0f, 1.0f);
+    unified_quat->x = nimcp_myelin_clamp(unified_quat->x, -1.0f, 1.0f);
+    unified_quat->y = nimcp_myelin_clamp(unified_quat->y, 0.0f, 1.0f);
+    unified_quat->z = nimcp_myelin_clamp(unified_quat->z, 0.0f, 1.0f);
 
     return PR_OMNI_SUCCESS;
 }
@@ -1806,4 +1810,38 @@ uint64_t pr_omni_bridge_current_time_ns(void) {
 
 
     return get_time_ns();
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B25 Upgrade)
+//=============================================================================
+
+void pr_omni_bridge_set_instance_health_agent(
+    pr_omni_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B25 Upgrade)
+//=============================================================================
+
+int pr_omni_bridge_training_begin(pr_omni_bridge_t* bridge) {
+    if (!bridge) return -1;
+    pr_omni_bridge_heartbeat_instance(bridge->health_agent, "pr_omni_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int pr_omni_bridge_training_end(pr_omni_bridge_t* bridge) {
+    if (!bridge) return -1;
+    pr_omni_bridge_heartbeat_instance(bridge->health_agent, "pr_omni_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int pr_omni_bridge_training_step(pr_omni_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    pr_omni_bridge_heartbeat_instance(bridge->health_agent, "pr_omni_bridge_training_step", progress);
+    return 0;
 }

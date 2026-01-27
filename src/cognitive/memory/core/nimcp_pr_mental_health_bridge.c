@@ -11,6 +11,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "security/nimcp_bbb_helpers.h"
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -42,6 +43,18 @@ void pr_mental_health_bridge_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void pr_mental_health_bridge_heartbeat(const char* operation, float progress) {
     if (g_pr_mental_health_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_pr_mental_health_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from pr_mental_health_bridge module (instance-level) */
+static inline void pr_mental_health_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_pr_mental_health_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pr_mental_health_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_pr_mental_health_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -112,6 +125,9 @@ struct pr_mental_health_bridge_struct {
     // State
     bool initialized;
     uint64_t creation_time_ms;
+
+    /* Health agent (instance-level) - Phase 8 */
+    nimcp_health_agent_t* health_agent;
 };
 
 BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_mental_health_bridge, struct pr_mental_health_bridge_struct)
@@ -127,15 +143,6 @@ static uint64_t get_current_time_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
-}
-
-/**
- * @brief Clamp float to range
- */
-static float clamp_float(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
 }
 
 /**
@@ -612,7 +619,7 @@ pr_mh_error_t pr_mental_health_bridge_track_retrieval(
     event.timestamp_ms = get_current_time_ms();
     event.valence = node->state.x;  // Quaternion x = emotional valence
     event.arousal = node->state.y;  // Quaternion y = salience/arousal
-    event.intensity = clamp_float(intensity, 0.0f, 1.0f);
+    event.intensity = nimcp_myelin_clamp(intensity, 0.0f, 1.0f);
     event.was_voluntary = was_voluntary;
     event.is_trauma_related = false;  // Would need flashbulb integration to determine
     event.retrieval_count = (uint32_t)atomic_load(&node->access_count);
@@ -706,7 +713,7 @@ pr_mh_error_t pr_mental_health_bridge_track_retrieval_event(
                 // Shorter intervals = stronger pattern
                 float max_interval = (float)bridge->config.rumination_window_ms /
                                     bridge->config.rumination_threshold;
-                pattern->pattern_strength = clamp_float(
+                pattern->pattern_strength = nimcp_myelin_clamp(
                     1.0f - (interval / max_interval), 0.0f, 1.0f);
             }
         }
@@ -843,9 +850,9 @@ pr_mh_error_t pr_mental_health_bridge_track_intrusion(
     // Update running averages
     float n = (float)record->intrusion_count;
     record->average_intensity = ((n - 1) * record->average_intensity +
-                                 clamp_float(intensity, 0.0f, 1.0f)) / n;
+                                 nimcp_myelin_clamp(intensity, 0.0f, 1.0f)) / n;
     record->distress_level = ((n - 1) * record->distress_level +
-                              clamp_float(distress, 0.0f, 1.0f)) / n;
+                              nimcp_myelin_clamp(distress, 0.0f, 1.0f)) / n;
 
     bridge->stats.intrusion_events++;
     bridge->stats.tracked_intrusions = bridge->intrusion_count;
@@ -1215,7 +1222,7 @@ pr_mh_error_t pr_mental_health_bridge_mark_trauma_memory(
     }
 
     record->is_trauma = true;
-    record->distress_level = clamp_float(distress_level, 0.0f, 1.0f);
+    record->distress_level = nimcp_myelin_clamp(distress_level, 0.0f, 1.0f);
 
     invalidate_caches(bridge);
 
@@ -1376,7 +1383,7 @@ pr_mh_error_t pr_mental_health_bridge_trigger_intervention(
         .type = type,
         .trigger = indicator,
         .target_node_id = target_node_id,
-        .severity = clamp_float(severity, 0.0f, 1.0f),
+        .severity = nimcp_myelin_clamp(severity, 0.0f, 1.0f),
         .urgency = severity,  // Use severity as urgency by default
         .timestamp_ms = now,
         .context_data = NULL
@@ -1864,4 +1871,38 @@ pr_mh_error_t pr_mental_health_bridge_sync_flashbulb(pr_mental_health_bridge_t b
     }
 
     return result;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B25 Upgrade)
+//=============================================================================
+
+void pr_mental_health_bridge_set_instance_health_agent(
+    pr_mental_health_bridge_t bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B25 Upgrade)
+//=============================================================================
+
+int pr_mental_health_bridge_training_begin(pr_mental_health_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_mental_health_bridge_heartbeat_instance(bridge->health_agent, "pr_mental_health_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int pr_mental_health_bridge_training_end(pr_mental_health_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_mental_health_bridge_heartbeat_instance(bridge->health_agent, "pr_mental_health_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int pr_mental_health_bridge_training_step(pr_mental_health_bridge_t bridge, float progress) {
+    if (!bridge) return -1;
+    pr_mental_health_bridge_heartbeat_instance(bridge->health_agent, "pr_mental_health_bridge_training_step", progress);
+    return 0;
 }

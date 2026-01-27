@@ -255,3 +255,7 @@ set_tests_properties(e2e_fault_tolerance_test_parietal_bridges_B23_e2e PROPERTIE
 # B24: Predictive+Personality+Self-Awareness bridge heartbeat/utility E2E tests
 add_e2e_fault_tolerance_test(test_predictive_personality_selfawareness_bridges_B24_e2e)
 set_tests_properties(e2e_fault_tolerance_test_predictive_personality_selfawareness_bridges_B24_e2e PROPERTIES TIMEOUT 300)
+
+# B25: Memory/Core bridge heartbeat/utility E2E tests
+add_e2e_fault_tolerance_test(test_memory_core_bridges_B25_e2e)
+set_tests_properties(e2e_fault_tolerance_test_memory_core_bridges_B25_e2e PROPERTIES TIMEOUT 300)

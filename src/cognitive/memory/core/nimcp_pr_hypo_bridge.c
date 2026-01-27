@@ -23,6 +23,7 @@
 #include <math.h>
 #include <time.h>
 #include <stdio.h>
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -49,6 +50,18 @@ void pr_hypo_bridge_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void pr_hypo_bridge_heartbeat(const char* operation, float progress) {
     if (g_pr_hypo_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_pr_hypo_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from pr_hypo_bridge module (instance-level) */
+static inline void pr_hypo_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_pr_hypo_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pr_hypo_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_pr_hypo_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -96,14 +109,8 @@ static uint64_t get_time_ms(void) {
 // Helper Functions
 //=============================================================================
 
-static float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
-
 static float lerp_f(float a, float b, float t) {
-    return a + (b - a) * clamp_f(t, 0.0f, 1.0f);
+    return a + (b - a) * nimcp_myelin_clamp(t, 0.0f, 1.0f);
 }
 
 /**
@@ -120,7 +127,7 @@ static float compute_yerkes_dodson(float stress_level, float optimal) {
     float deviation = stress_level - optimal;
     float factor = 1.0f - (deviation * deviation) / (optimal * optimal);
 
-    return clamp_f(factor, 0.0f, 1.0f);
+    return nimcp_myelin_clamp(factor, 0.0f, 1.0f);
 }
 
 /**
@@ -194,6 +201,9 @@ struct pr_hypo_bridge_struct {
     /* State */
     bool initialized;
     uint64_t last_update_ms;
+
+    /* Health agent (instance-level) - Phase 8 */
+    nimcp_health_agent_t* health_agent;
 };
 
 BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(pr_hypo_bridge, struct pr_hypo_bridge_struct)
@@ -538,7 +548,7 @@ NIMCP_EXPORT pr_hypo_error_t pr_hypo_bridge_set_neuromod(
     if (!bridge) return PR_HYPO_ERROR_NULL_POINTER;
     if (type >= PR_NEUROMOD_COUNT) return PR_HYPO_ERROR_INVALID_NEUROMOD;
 
-    concentration = clamp_f(concentration, PR_HYPO_MIN_CONCENTRATION,
+    concentration = nimcp_myelin_clamp(concentration, PR_HYPO_MIN_CONCENTRATION,
                             PR_HYPO_MAX_CONCENTRATION);
 
     float old_level;
@@ -615,12 +625,12 @@ NIMCP_EXPORT pr_hypo_error_t pr_hypo_bridge_apply_pulse(
     if (!bridge) return PR_HYPO_ERROR_NULL_POINTER;
     if (type >= PR_NEUROMOD_COUNT) return PR_HYPO_ERROR_INVALID_NEUROMOD;
 
-    pulse_magnitude = clamp_f(pulse_magnitude, 0.0f, 1.0f);
+    pulse_magnitude = nimcp_myelin_clamp(pulse_magnitude, 0.0f, 1.0f);
 
     PR_HYPO_MUTEX_LOCK(bridge->neuromod_mutex);
 
     float current = bridge->neuromod_states[type].concentration;
-    float new_level = clamp_f(current + pulse_magnitude, 0.0f, 1.0f);
+    float new_level = nimcp_myelin_clamp(current + pulse_magnitude, 0.0f, 1.0f);
     float baseline = bridge->neuromod_states[type].baseline;
 
     /* Set velocity for decay back to baseline */
@@ -691,7 +701,7 @@ NIMCP_EXPORT pr_hypo_error_t pr_hypo_bridge_update(
             state->concentration -= decay;
         }
 
-        state->concentration = clamp_f(state->concentration, 0.0f, 1.0f);
+        state->concentration = nimcp_myelin_clamp(state->concentration, 0.0f, 1.0f);
         state->last_update_ms = now;
     }
     PR_HYPO_MUTEX_UNLOCK(bridge->neuromod_mutex);
@@ -817,10 +827,10 @@ NIMCP_EXPORT nimcp_quaternion_t pr_hypo_bridge_apply_neuromodulator(
     PR_HYPO_MUTEX_UNLOCK(bridge->neuromod_mutex);
 
     /* Clamp to valid ranges */
-    result.w = clamp_f(result.w, 0.0f, 1.0f);
-    result.x = clamp_f(result.x, -1.0f, 1.0f);
-    result.y = clamp_f(result.y, 0.0f, 1.0f);
-    result.z = clamp_f(result.z, 0.0f, 1.0f);
+    result.w = nimcp_myelin_clamp(result.w, 0.0f, 1.0f);
+    result.x = nimcp_myelin_clamp(result.x, -1.0f, 1.0f);
+    result.y = nimcp_myelin_clamp(result.y, 0.0f, 1.0f);
+    result.z = nimcp_myelin_clamp(result.z, 0.0f, 1.0f);
 
     /* Update statistics */
     PR_HYPO_MUTEX_LOCK(bridge->stats_mutex);
@@ -862,10 +872,10 @@ NIMCP_EXPORT nimcp_quaternion_t pr_hypo_bridge_apply_single_neuromod(
             bridge->config.optimal_stress_level) - 0.5f;
     }
 
-    result.w = clamp_f(result.w + mapping.w_effect * effect_magnitude, 0.0f, 1.0f);
-    result.x = clamp_f(result.x + mapping.x_effect * effect_magnitude, -1.0f, 1.0f);
-    result.y = clamp_f(result.y + mapping.y_effect * effect_magnitude, 0.0f, 1.0f);
-    result.z = clamp_f(result.z + mapping.z_effect * effect_magnitude, 0.0f, 1.0f);
+    result.w = nimcp_myelin_clamp(result.w + mapping.w_effect * effect_magnitude, 0.0f, 1.0f);
+    result.x = nimcp_myelin_clamp(result.x + mapping.x_effect * effect_magnitude, -1.0f, 1.0f);
+    result.y = nimcp_myelin_clamp(result.y + mapping.y_effect * effect_magnitude, 0.0f, 1.0f);
+    result.z = nimcp_myelin_clamp(result.z + mapping.z_effect * effect_magnitude, 0.0f, 1.0f);
 
     return result;
 }
@@ -877,7 +887,7 @@ NIMCP_EXPORT nimcp_quaternion_t pr_hypo_bridge_map_dopamine_to_quaternion(
     nimcp_quaternion_t delta = {0.0f, 0.0f, 0.0f, 0.0f};
     if (!bridge) return delta;
 
-    da_level = clamp_f(da_level, 0.0f, 1.0f);
+    da_level = nimcp_myelin_clamp(da_level, 0.0f, 1.0f);
 
     pr_neuromod_mapping_t mapping;
     if (bridge->config.use_default_mappings) {
@@ -904,7 +914,7 @@ NIMCP_EXPORT nimcp_quaternion_t pr_hypo_bridge_map_serotonin_to_quaternion(
     nimcp_quaternion_t delta = {0.0f, 0.0f, 0.0f, 0.0f};
     if (!bridge) return delta;
 
-    serotonin_level = clamp_f(serotonin_level, 0.0f, 1.0f);
+    serotonin_level = nimcp_myelin_clamp(serotonin_level, 0.0f, 1.0f);
 
     pr_neuromod_mapping_t mapping;
     if (bridge->config.use_default_mappings) {
@@ -931,7 +941,7 @@ NIMCP_EXPORT nimcp_quaternion_t pr_hypo_bridge_map_norepinephrine_to_quaternion(
     nimcp_quaternion_t delta = {0.0f, 0.0f, 0.0f, 0.0f};
     if (!bridge) return delta;
 
-    ne_level = clamp_f(ne_level, 0.0f, 1.0f);
+    ne_level = nimcp_myelin_clamp(ne_level, 0.0f, 1.0f);
 
     pr_neuromod_mapping_t mapping;
     if (bridge->config.use_default_mappings) {
@@ -1013,22 +1023,22 @@ NIMCP_EXPORT nimcp_quaternion_t pr_hypo_bridge_stress_modulation(
 
     /* Apply Yerkes-Dodson effect on consolidation */
     float consolidation_mod = (performance - 0.5f) * 0.4f;  /* +/- 0.2 */
-    result.w = clamp_f(result.w + consolidation_mod, 0.0f, 1.0f);
+    result.w = nimcp_myelin_clamp(result.w + consolidation_mod, 0.0f, 1.0f);
 
     /* High stress increases salience */
     if (state == PR_STRESS_HIGH || state == PR_STRESS_ACUTE) {
-        result.y = clamp_f(result.y + 0.2f, 0.0f, 1.0f);
+        result.y = nimcp_myelin_clamp(result.y + 0.2f, 0.0f, 1.0f);
     }
 
     /* Acute stress triggers flashbulb-like encoding */
     if (state == PR_STRESS_ACUTE) {
-        result.w = clamp_f(result.w + 0.3f, 0.0f, 1.0f);  /* Strong consolidation */
-        result.y = clamp_f(result.y + 0.3f, 0.0f, 1.0f);  /* High salience */
+        result.w = nimcp_myelin_clamp(result.w + 0.3f, 0.0f, 1.0f);  /* Strong consolidation */
+        result.y = nimcp_myelin_clamp(result.y + 0.3f, 0.0f, 1.0f);  /* High salience */
     }
 
     /* Very high stress can impair accessibility */
     if (cortisol > bridge->config.stress_impairment_threshold) {
-        result.z = clamp_f(result.z - 0.15f, 0.0f, 1.0f);
+        result.z = nimcp_myelin_clamp(result.z - 0.15f, 0.0f, 1.0f);
     }
 
     return result;
@@ -1063,7 +1073,7 @@ NIMCP_EXPORT pr_hypo_error_t pr_hypo_bridge_trigger_acute_stress(
 ) {
     if (!bridge) return PR_HYPO_ERROR_NULL_POINTER;
 
-    intensity = clamp_f(intensity, 0.0f, 1.0f);
+    intensity = nimcp_myelin_clamp(intensity, 0.0f, 1.0f);
 
     pr_stress_state_t old_state;
 
@@ -1139,8 +1149,8 @@ NIMCP_EXPORT pr_hypo_error_t pr_hypo_bridge_reward_signal_with_memory(
     if (!bridge) return PR_HYPO_ERROR_NULL_POINTER;
     if (type >= PR_REWARD_TYPE_COUNT) return PR_HYPO_ERROR_OUT_OF_RANGE;
 
-    magnitude = clamp_f(magnitude, -1.0f, 1.0f);
-    prediction_error = clamp_f(prediction_error, -1.0f, 1.0f);
+    magnitude = nimcp_myelin_clamp(magnitude, -1.0f, 1.0f);
+    prediction_error = nimcp_myelin_clamp(prediction_error, -1.0f, 1.0f);
 
     uint64_t now = get_time_ms();
 
@@ -1573,4 +1583,38 @@ NIMCP_EXPORT bool pr_hypo_bridge_validate(const pr_hypo_bridge_t bridge) {
     }
 
     return true;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B25 Upgrade)
+//=============================================================================
+
+void pr_hypo_bridge_set_instance_health_agent(
+    pr_hypo_bridge_t bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B25 Upgrade)
+//=============================================================================
+
+int pr_hypo_bridge_training_begin(pr_hypo_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_hypo_bridge_heartbeat_instance(bridge->health_agent, "pr_hypo_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int pr_hypo_bridge_training_end(pr_hypo_bridge_t bridge) {
+    if (!bridge) return -1;
+    pr_hypo_bridge_heartbeat_instance(bridge->health_agent, "pr_hypo_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int pr_hypo_bridge_training_step(pr_hypo_bridge_t bridge, float progress) {
+    if (!bridge) return -1;
+    pr_hypo_bridge_heartbeat_instance(bridge->health_agent, "pr_hypo_bridge_training_step", progress);
+    return 0;
 }

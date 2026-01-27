@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -48,6 +49,18 @@ void pr_audio_bridge_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void pr_audio_bridge_heartbeat(const char* operation, float progress) {
     if (g_pr_audio_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_pr_audio_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from pr_audio_bridge module (instance-level) */
+static inline void pr_audio_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_pr_audio_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pr_audio_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_pr_audio_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -87,7 +100,6 @@ static inline void pr_audio_bridge_heartbeat(const char* operation, float progre
 // Static Function Prototypes
 //=============================================================================
 
-static float clamp_float(float val, float min_val, float max_val);
 static float normalize_range(float val, float min_val, float max_val);
 static uint64_t get_timestamp_ms(void);
 static uint32_t float_to_bin(float val, float min_val, float max_val, uint32_t num_bins);
@@ -623,10 +635,10 @@ NIMCP_EXPORT pr_audio_error_t pr_audio_bridge_extract_features(
 
     /* Brightness */
     features->brightness = features->spectral_centroid / 4000.0f;
-    features->brightness = clamp_float(features->brightness, 0.0f, 1.0f);
+    features->brightness = nimcp_myelin_clamp(features->brightness, 0.0f, 1.0f);
 
     /* Onset detection based on energy change */
-    features->onset_strength = clamp_float(features->spectral_flux * 10.0f, 0.0f, 1.0f);
+    features->onset_strength = nimcp_myelin_clamp(features->spectral_flux * 10.0f, 0.0f, 1.0f);
 
     /* Update onset history if onset detected */
     if (features->onset_strength > PR_AUDIO_ONSET_THRESHOLD) {
@@ -663,7 +675,7 @@ NIMCP_EXPORT pr_audio_error_t pr_audio_bridge_extract_features(
     if (valid_intervals > 2) {
         float mean_interval_ms = interval_sum / valid_intervals;
         features->tempo_estimate_bpm = 60000.0f / mean_interval_ms;
-        features->tempo_estimate_bpm = clamp_float(features->tempo_estimate_bpm,
+        features->tempo_estimate_bpm = nimcp_myelin_clamp(features->tempo_estimate_bpm,
                                                     PR_AUDIO_MIN_TEMPO,
                                                     PR_AUDIO_MAX_TEMPO);
     } else {
@@ -746,7 +758,7 @@ NIMCP_EXPORT pr_audio_error_t pr_audio_bridge_compute_audio_prime_sig(
 
         /* Normalize to [0, 1] range (assuming mfcc is in [-1, 1] approx) */
         float normalized = (mfcc_val + 1.0f) * 0.5f;
-        normalized = clamp_float(normalized, 0.0f, 1.0f);
+        normalized = nimcp_myelin_clamp(normalized, 0.0f, 1.0f);
 
         /* Quantize to bins */
         uint32_t bin = float_to_bin(normalized, 0.0f, 1.0f,
@@ -782,7 +794,7 @@ NIMCP_EXPORT pr_audio_error_t pr_audio_bridge_compute_audio_prime_sig(
 
     /* Map spectral flux to primes */
     {
-        float normalized = clamp_float(features->spectral_flux * 5.0f, 0.0f, 1.0f);
+        float normalized = nimcp_myelin_clamp(features->spectral_flux * 5.0f, 0.0f, 1.0f);
         uint32_t bin = float_to_bin(normalized, 0.0f, 1.0f, 8);
         uint32_t idx = PR_AUDIO_PRIME_FLUX_START + bin;
         if (idx < PRIME_SIG_DIM) {
@@ -808,7 +820,7 @@ NIMCP_EXPORT pr_audio_error_t pr_audio_bridge_compute_audio_prime_sig(
             /* Normalize interval to [0, 1] */
             float normalized = (logf(interval) - logf(50.0f)) /
                                (logf(2000.0f) - logf(50.0f));
-            normalized = clamp_float(normalized, 0.0f, 1.0f);
+            normalized = nimcp_myelin_clamp(normalized, 0.0f, 1.0f);
 
             uint32_t bin = float_to_bin(normalized, 0.0f, 1.0f, 8);
             uint32_t idx = PR_AUDIO_PRIME_ONSET_START + (i % 16);
@@ -835,7 +847,7 @@ NIMCP_EXPORT pr_audio_error_t pr_audio_bridge_compute_audio_prime_sig(
         for (uint32_t i = 0; i < features->num_mfcc && i < 8; i++) {
             float delta = features->delta_mfcc[i];
             float normalized = (delta + 0.5f);
-            normalized = clamp_float(normalized, 0.0f, 1.0f);
+            normalized = nimcp_myelin_clamp(normalized, 0.0f, 1.0f);
 
             uint32_t bin = float_to_bin(normalized, 0.0f, 1.0f, 4);
             uint32_t idx = 56 + i;
@@ -895,11 +907,11 @@ NIMCP_EXPORT pr_audio_error_t pr_audio_bridge_compute_audio_quaternion(
                                                    bridge->onset_history_len);
     float consolidation = repetition_factor * (1.0f - cfg->coherence_weight) +
                           coherence * cfg->coherence_weight;
-    consolidation = clamp_float(consolidation, 0.0f, 1.0f);
+    consolidation = nimcp_myelin_clamp(consolidation, 0.0f, 1.0f);
 
     /* Compute emotion (x): f(mode, tempo, brightness) */
     float emotion = pr_audio_bridge_compute_emotion_valence(bridge, features);
-    emotion = clamp_float(emotion, -1.0f, 1.0f);
+    emotion = nimcp_myelin_clamp(emotion, -1.0f, 1.0f);
 
     /* Compute salience (y): f(onset, loudness, contrast, novelty) */
     float salience = pr_audio_bridge_compute_onset_salience(
@@ -914,7 +926,7 @@ NIMCP_EXPORT pr_audio_error_t pr_audio_bridge_compute_audio_quaternion(
                                 cfg->novelty_salience_weight;
         salience += pe_contribution;
     }
-    salience = clamp_float(salience, 0.0f, 1.0f);
+    salience = nimcp_myelin_clamp(salience, 0.0f, 1.0f);
 
     /* Compute accessibility (z): f(familiarity, recent_access) */
     float familiarity = bridge->familiarity_score;
@@ -922,7 +934,7 @@ NIMCP_EXPORT pr_audio_error_t pr_audio_bridge_compute_audio_quaternion(
     float recency = 0.5f;
     float accessibility = familiarity * cfg->familiarity_weight +
                           recency * cfg->recency_weight;
-    accessibility = clamp_float(accessibility, 0.0f, 1.0f);
+    accessibility = nimcp_myelin_clamp(accessibility, 0.0f, 1.0f);
 
     /* Create quaternion */
     *quaternion = quat_create(consolidation, emotion, salience, accessibility);
@@ -953,17 +965,17 @@ NIMCP_EXPORT float pr_audio_bridge_compute_onset_salience(
     }
 
     /* Normalize loudness (assuming -60 to 0 dB range) */
-    float loudness_normalized = clamp_float((loudness_peak + 0.1f), 0.0f, 1.0f);
+    float loudness_normalized = nimcp_myelin_clamp((loudness_peak + 0.1f), 0.0f, 1.0f);
 
     /* Contrast is already [0, 1] */
-    float contrast = clamp_float(spectral_contrast, 0.0f, 1.0f);
+    float contrast = nimcp_myelin_clamp(spectral_contrast, 0.0f, 1.0f);
 
     /* Weighted sum */
     float salience = onset_contrib * cfg->onset_salience_weight +
                      loudness_normalized * cfg->loudness_salience_weight +
                      contrast * cfg->contrast_salience_weight;
 
-    return clamp_float(salience, 0.0f, 1.0f);
+    return nimcp_myelin_clamp(salience, 0.0f, 1.0f);
 }
 
 NIMCP_EXPORT float pr_audio_bridge_compute_emotion_valence(
@@ -993,7 +1005,7 @@ NIMCP_EXPORT float pr_audio_bridge_compute_emotion_valence(
                     brightness_emotion * cfg->brightness_influence +
                     mode_emotion * cfg->mode_influence;
 
-    return clamp_float(valence, -1.0f, 1.0f);
+    return nimcp_myelin_clamp(valence, -1.0f, 1.0f);
 }
 
 //=============================================================================
@@ -1236,11 +1248,11 @@ NIMCP_EXPORT pr_audio_error_t pr_audio_bridge_detect_temporal_pattern(
 
     /* Compute interval regularity (coefficient of variation) */
     float cv = std_dev / (mean_interval + PR_AUDIO_EPSILON);
-    result->interval_regularity = 1.0f - clamp_float(cv, 0.0f, 1.0f);
+    result->interval_regularity = 1.0f - nimcp_myelin_clamp(cv, 0.0f, 1.0f);
 
     /* Estimate tempo */
     result->tempo_bpm = 60000.0f / mean_interval;
-    result->tempo_bpm = clamp_float(result->tempo_bpm,
+    result->tempo_bpm = nimcp_myelin_clamp(result->tempo_bpm,
                                      PR_AUDIO_MIN_TEMPO, PR_AUDIO_MAX_TEMPO);
     result->tempo_confidence = result->interval_regularity;
 
@@ -1282,7 +1294,7 @@ NIMCP_EXPORT pr_audio_error_t pr_audio_bridge_compute_rhythm_signature(
     /* Compute interval ratios and map to prime indices */
     for (uint32_t i = 0; i < num_intervals - 1 && i < 8; i++) {
         float ratio = intervals[i+1] / (intervals[i] + PR_AUDIO_EPSILON);
-        ratio = clamp_float(ratio, 0.25f, 4.0f);
+        ratio = nimcp_myelin_clamp(ratio, 0.25f, 4.0f);
 
         /* Quantize ratio to musical subdivisions */
         uint32_t ratio_bin = 0;
@@ -1323,7 +1335,7 @@ NIMCP_EXPORT pr_audio_error_t pr_audio_bridge_update_from_fep(
     /* Note: This would call actual FEP bridge API */
     /* For now, use a simulated PE based on spectral flux */
     bridge->current_prediction_error = bridge->current_features.spectral_flux * 2.0f;
-    bridge->current_prediction_error = clamp_float(bridge->current_prediction_error,
+    bridge->current_prediction_error = nimcp_myelin_clamp(bridge->current_prediction_error,
                                                     0.0f, 1.0f);
 
     /* Update statistics */
@@ -1633,21 +1645,12 @@ NIMCP_EXPORT void pr_audio_features_print(const pr_audio_features_t* features) {
 //=============================================================================
 
 /**
- * @brief Clamp float value to range
- */
-static float clamp_float(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
-}
-
-/**
  * @brief Normalize value to [0, 1] range
  */
 static float normalize_range(float val, float min_val, float max_val) {
     if (max_val <= min_val) return 0.5f;
     float normalized = (val - min_val) / (max_val - min_val);
-    return clamp_float(normalized, 0.0f, 1.0f);
+    return nimcp_myelin_clamp(normalized, 0.0f, 1.0f);
 }
 
 /**
@@ -1722,7 +1725,7 @@ static float compute_interval_regularity(const float* intervals, uint32_t count)
     /* Regularity is inverse of CV, clamped to [0, 1] */
     float regularity = 1.0f / (1.0f + cv);
 
-    return clamp_float(regularity, 0.0f, 1.0f);
+    return nimcp_myelin_clamp(regularity, 0.0f, 1.0f);
 }
 
 /**
@@ -1742,4 +1745,38 @@ static void update_history_buffer(float* buffer, uint32_t* pos, uint32_t len,
         buffer[*pos] = new_data[i];
         *pos = (*pos + 1) % len;
     }
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B25 Upgrade)
+//=============================================================================
+
+void pr_audio_bridge_set_instance_health_agent(
+    pr_audio_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B25 Upgrade)
+//=============================================================================
+
+int pr_audio_bridge_training_begin(pr_audio_bridge_t* bridge) {
+    if (!bridge) return -1;
+    pr_audio_bridge_heartbeat_instance(bridge->health_agent, "pr_audio_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int pr_audio_bridge_training_end(pr_audio_bridge_t* bridge) {
+    if (!bridge) return -1;
+    pr_audio_bridge_heartbeat_instance(bridge->health_agent, "pr_audio_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int pr_audio_bridge_training_step(pr_audio_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    pr_audio_bridge_heartbeat_instance(bridge->health_agent, "pr_audio_bridge_training_step", progress);
+    return 0;
 }

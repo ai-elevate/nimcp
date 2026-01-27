@@ -189,6 +189,10 @@ typedef struct pr_audio_bridge_struct* pr_audio_bridge_t;
 typedef struct pr_speech_bridge_struct* pr_speech_bridge_t;
 typedef struct pr_omni_bridge_struct* pr_omni_bridge_t;
 
+/* Forward declaration for health agent (Phase 8) */
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
 //=============================================================================
 // Enumerations
 //=============================================================================
@@ -433,6 +437,8 @@ typedef struct {
     uint64_t last_update_ms;            /**< Last update timestamp */
     bool initialized;                   /**< Bridge initialized flag */
 
+    /* Health agent (instance-level) - Phase 8 */
+    nimcp_health_agent_t* health_agent;
 } pr_attention_bridge_t;
 
 //=============================================================================

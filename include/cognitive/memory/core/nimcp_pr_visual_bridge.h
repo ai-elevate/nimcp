@@ -36,6 +36,10 @@
 struct resonance_engine_struct;
 typedef struct resonance_engine_struct resonance_engine_t;
 
+/* Forward declaration for health agent (B25 Upgrade) */
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -340,6 +344,9 @@ struct pr_visual_bridge_t {
 
     /** Last error code */
     pr_visual_bridge_error_t last_error;
+
+    /** Instance-level health agent (B25 Upgrade) */
+    nimcp_health_agent_t* health_agent;
 };
 
 /* ============================================================================

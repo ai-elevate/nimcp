@@ -153,6 +153,10 @@ typedef struct cochlea cochlea_t;
 typedef struct audio_cortex audio_cortex_t;
 typedef struct audio_cortex_fep_bridge audio_cortex_fep_bridge_t;
 
+/* Forward declaration for health agent (Phase 8) */
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -529,6 +533,8 @@ typedef struct pr_audio_bridge {
     bool cortex_connected;                   /**< Audio cortex is connected */
     bool fep_connected;                      /**< FEP bridge is connected */
 
+    /* Health agent (instance-level) - Phase 8 */
+    nimcp_health_agent_t* health_agent;
 } pr_audio_bridge_t;
 
 //=============================================================================
