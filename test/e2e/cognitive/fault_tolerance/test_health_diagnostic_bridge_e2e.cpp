@@ -173,11 +173,13 @@ TEST_F(HealthDiagBridgeE2ETest, FullLifecycleAnomalyToRepair) {
     health_self_repair_bridge_process_anomaly(repair_bridge, &anomaly, &request_id);
 
     // Step 4: Verify stats across systems
+    // Note: 2 conversions total - explicit conversion above + internal conversion
+    // by health_self_repair_bridge_process_anomaly
     health_diag_bridge_stats_t diag_stats;
     health_diag_bridge_get_stats(diag_bridge, &diag_stats);
-    EXPECT_EQ(diag_stats.anomalies_converted, 1u);
-    EXPECT_EQ(diag_stats.by_anomaly_type[ANOMALY_RESOURCE_EXHAUSTION], 1u);
-    EXPECT_EQ(diag_stats.by_severity[DIAG_SEVERITY_CRITICAL], 1u);
+    EXPECT_EQ(diag_stats.anomalies_converted, 2u);
+    EXPECT_EQ(diag_stats.by_anomaly_type[ANOMALY_RESOURCE_EXHAUSTION], 2u);
+    EXPECT_EQ(diag_stats.by_severity[DIAG_SEVERITY_CRITICAL], 2u);
     EXPECT_GE(diag_stats.stack_traces_captured, 1u);
     EXPECT_GE(diag_stats.memory_snapshots_captured, 1u);
 
@@ -403,10 +405,12 @@ TEST_F(HealthDiagBridgeE2ETest, MultiPhaseOperation) {
         if (result) diagnostics_free_result(result);
     }
 
+    // Note: repair bridge internally also converts anomalies, adding 10 more
+    // Phase 1: 20 explicit + Phase 2: 10 explicit + 10 via repair bridge = 40
     health_diag_bridge_stats_t stats;
     health_diag_bridge_get_stats(diag_bridge, &stats);
-    EXPECT_GE(stats.anomalies_converted, 30u);
-    EXPECT_EQ(stats.by_severity[DIAG_SEVERITY_CRITICAL], 10u);
+    EXPECT_GE(stats.anomalies_converted, 40u);
+    EXPECT_EQ(stats.by_severity[DIAG_SEVERITY_CRITICAL], 20u);
 
     nimcp_health_agent_stop(agent);
 }
