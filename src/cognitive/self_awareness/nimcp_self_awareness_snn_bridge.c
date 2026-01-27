@@ -19,6 +19,7 @@
 
 #include <string.h>
 #include <math.h>
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 #include <stdio.h>
 
 //=============================================================================
@@ -38,7 +39,7 @@ static nimcp_health_agent_t* g_self_awareness_snn_bridge_health_agent = NULL;
  * @brief Set health agent for self_awareness_snn_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void self_awareness_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void self_awareness_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_self_awareness_snn_bridge_health_agent = agent;
 }
 
@@ -46,6 +47,18 @@ static void self_awareness_snn_bridge_set_health_agent(nimcp_health_agent_t* age
 static inline void self_awareness_snn_bridge_heartbeat(const char* operation, float progress) {
     if (g_self_awareness_snn_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_self_awareness_snn_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from self_awareness_snn_bridge module (instance-level) */
+static inline void self_awareness_snn_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_self_awareness_snn_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_self_awareness_snn_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_self_awareness_snn_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -92,17 +105,14 @@ struct self_awareness_snn_bridge {
 
     /* Statistics */
     self_awareness_snn_stats_t stats;
+
+    /* Phase 8: Instance health agent (B24 upgrade) */
+    nimcp_health_agent_t* health_agent;
 };
 
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -330,7 +340,7 @@ int self_awareness_snn_encode_state(
 
     /* Population encoding for each dimension */
     for (uint32_t d = 0; d < num_dims; d++) {
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_myelin_clamp(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -381,8 +391,8 @@ int self_awareness_snn_encode_self_recognition(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[SELF_DIM_COUNT] = {0};
-    dims[SELF_DIM_SELF_RECOGNITION] = clamp_f(recognition, 0.0f, 1.0f);
-    dims[SELF_DIM_BODY_OWNERSHIP] = clamp_f(body_ownership, 0.0f, 1.0f);
+    dims[SELF_DIM_SELF_RECOGNITION] = nimcp_myelin_clamp(recognition, 0.0f, 1.0f);
+    dims[SELF_DIM_BODY_OWNERSHIP] = nimcp_myelin_clamp(body_ownership, 0.0f, 1.0f);
     dims[SELF_DIM_SELF_BOUNDARY] = (recognition + body_ownership) / 2.0f;
 
     bridge->recognition_signal = recognition;
@@ -402,7 +412,7 @@ int self_awareness_snn_encode_agency(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[SELF_DIM_COUNT] = {0};
-    dims[SELF_DIM_AGENCY_SENSE] = clamp_f(agency_level, 0.0f, 1.0f);
+    dims[SELF_DIM_AGENCY_SENSE] = nimcp_myelin_clamp(agency_level, 0.0f, 1.0f);
     /* Agency type modulates temporal continuity */
     dims[SELF_DIM_TEMPORAL_CONTINUITY] = (agency_type == 0) ? agency_level : agency_level * 0.5f;
 
@@ -423,8 +433,8 @@ int self_awareness_snn_encode_metacognitive(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[SELF_DIM_COUNT] = {0};
-    dims[SELF_DIM_METACOGNITIVE] = clamp_f(metacog_level, 0.0f, 1.0f);
-    dims[SELF_DIM_SELF_REFLECTION] = clamp_f(reflection_depth, 0.0f, 1.0f);
+    dims[SELF_DIM_METACOGNITIVE] = nimcp_myelin_clamp(metacog_level, 0.0f, 1.0f);
+    dims[SELF_DIM_SELF_REFLECTION] = nimcp_myelin_clamp(reflection_depth, 0.0f, 1.0f);
 
     if (metacog_level > bridge->config.recognition_threshold) {
         bridge->last_awareness_state.agency_detected = true;
@@ -485,12 +495,12 @@ int self_awareness_snn_simulate(self_awareness_snn_bridge_t* bridge, float durat
     }
 
     /* Decode outputs */
-    bridge->last_awareness_state.self_recognition = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
-    bridge->last_awareness_state.body_ownership = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
-    bridge->last_awareness_state.agency_sense = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_awareness_state.metacognitive_level = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->last_awareness_state.self_reflection = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
-    bridge->last_awareness_state.temporal_continuity = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
+    bridge->last_awareness_state.self_recognition = nimcp_myelin_clamp(bridge->output_buffer[0], 0.0f, 1.0f);
+    bridge->last_awareness_state.body_ownership = nimcp_myelin_clamp(bridge->output_buffer[1], 0.0f, 1.0f);
+    bridge->last_awareness_state.agency_sense = nimcp_myelin_clamp(bridge->output_buffer[2], 0.0f, 1.0f);
+    bridge->last_awareness_state.metacognitive_level = nimcp_myelin_clamp(bridge->output_buffer[3], 0.0f, 1.0f);
+    bridge->last_awareness_state.self_reflection = nimcp_myelin_clamp(bridge->output_buffer[4], 0.0f, 1.0f);
+    bridge->last_awareness_state.temporal_continuity = nimcp_myelin_clamp(bridge->output_buffer[5], 0.0f, 1.0f);
 
     /* Check recognition threshold */
     if (bridge->last_awareness_state.self_recognition > bridge->config.recognition_threshold) {
@@ -811,4 +821,38 @@ bool self_awareness_snn_is_bio_async_connected(self_awareness_snn_bridge_t* brid
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B24 Upgrade)
+//=============================================================================
+
+void self_awareness_snn_bridge_set_instance_health_agent(
+    self_awareness_snn_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B24 Upgrade)
+//=============================================================================
+
+int self_awareness_snn_bridge_training_begin(self_awareness_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+    self_awareness_snn_bridge_heartbeat_instance(bridge->health_agent, "self_awareness_snn_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int self_awareness_snn_bridge_training_end(self_awareness_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+    self_awareness_snn_bridge_heartbeat_instance(bridge->health_agent, "self_awareness_snn_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int self_awareness_snn_bridge_training_step(self_awareness_snn_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    self_awareness_snn_bridge_heartbeat_instance(bridge->health_agent, "self_awareness_snn_bridge_training_step", progress);
+    return 0;
 }

@@ -25,6 +25,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "security/nimcp_bbb_helpers.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -118,6 +119,9 @@ struct parietal_training_bridge {
     /* Health agent (instance-level) - Phase 8 */
     nimcp_health_agent_t* health_agent;
 };
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(parietal_training_bridge)
 
 /* ============================================================================
  * Forward Declarations
@@ -655,6 +659,7 @@ int parietal_training_set_learning_callback(
     /* Phase 8: Heartbeat at operation start */
     parietal_training_bridge_heartbeat("parietal_tra_parietal_training_se", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->learning_callback = callback;
@@ -676,6 +681,7 @@ int parietal_training_set_update_callback(
     /* Phase 8: Heartbeat at operation start */
     parietal_training_bridge_heartbeat("parietal_tra_parietal_training_se", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->update_callback = callback;
@@ -713,6 +719,7 @@ int parietal_training_get_stats(
     /* Phase 8: Heartbeat at operation start */
     parietal_training_bridge_heartbeat("parietal_tra_parietal_training_ge", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, stats, sizeof(*stats));
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *stats = bridge->stats;
@@ -869,6 +876,13 @@ int parietal_training_bridge_training_end(parietal_training_bridge_t* bridge) {
 
 int parietal_training_bridge_training_step(parietal_training_bridge_t* bridge, float progress) {
     if (!bridge) return -1;
+
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "parietal_training_bridge_training_step");
+    BRIDGE_LGSS_GATE(bridge, "parietal_training_bridge_training_step");
     parietal_training_bridge_heartbeat_instance(bridge->health_agent, "parietal_training_bridge_training_step", progress);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }

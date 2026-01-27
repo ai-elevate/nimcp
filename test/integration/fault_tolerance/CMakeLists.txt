@@ -612,3 +612,27 @@ set_tests_properties(integration_heartbeat_B23_parietal_bridges PROPERTIES
     LABELS "integration;fault_tolerance;heartbeat;B23;parietal_bridges"
     TIMEOUT 180
 )
+
+# B24: Predictive+Personality+Self-Awareness bridge heartbeat/utility integration tests
+add_executable(integration_heartbeat_B24_predictive_personality_selfawareness_bridges
+    test_predictive_personality_selfawareness_bridges_B24_integration.cpp
+)
+target_link_libraries(integration_heartbeat_B24_predictive_personality_selfawareness_bridges
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        pthread
+)
+
+target_include_directories(integration_heartbeat_B24_predictive_personality_selfawareness_bridges
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME integration_heartbeat_B24_predictive_personality_selfawareness_bridges
+         COMMAND integration_heartbeat_B24_predictive_personality_selfawareness_bridges)
+set_tests_properties(integration_heartbeat_B24_predictive_personality_selfawareness_bridges PROPERTIES
+    LABELS "integration;fault_tolerance;heartbeat;B24;predictive_personality_selfawareness_bridges"
+    TIMEOUT 180
+)

@@ -48,6 +48,18 @@ static inline void personality_substrate_bridge_heartbeat(const char* operation,
     }
 }
 
+/** @brief Send heartbeat from personality_substrate_bridge module (instance-level) */
+static inline void personality_substrate_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_personality_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_personality_substrate_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_personality_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "PERSONALITY_SUBSTRATE_BRIDGE"
 
 
@@ -63,6 +75,9 @@ struct personality_substrate_bridge {
     bool bio_async_connected;
     uint64_t update_count;
     float prev_overall_capacity;
+
+    /* Phase 8: Instance health agent (B24 upgrade) */
+    nimcp_health_agent_t* health_agent;
 };
 
 personality_substrate_config_t personality_substrate_default_config(void) {
@@ -326,4 +341,38 @@ int personality_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B24 Upgrade)
+//=============================================================================
+
+void personality_substrate_bridge_set_instance_health_agent(
+    personality_substrate_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B24 Upgrade)
+//=============================================================================
+
+int personality_substrate_bridge_training_begin(personality_substrate_bridge_t* bridge) {
+    if (!bridge) return -1;
+    personality_substrate_bridge_heartbeat_instance(bridge->health_agent, "personality_substrate_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int personality_substrate_bridge_training_end(personality_substrate_bridge_t* bridge) {
+    if (!bridge) return -1;
+    personality_substrate_bridge_heartbeat_instance(bridge->health_agent, "personality_substrate_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int personality_substrate_bridge_training_step(personality_substrate_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    personality_substrate_bridge_heartbeat_instance(bridge->health_agent, "personality_substrate_bridge_training_step", progress);
+    return 0;
 }

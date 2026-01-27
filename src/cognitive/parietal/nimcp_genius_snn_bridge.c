@@ -25,6 +25,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "security/nimcp_bbb_helpers.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -117,6 +118,9 @@ struct genius_snn_bridge {
     /* Health agent (instance-level) - Phase 8 */
     nimcp_health_agent_t* health_agent;
 };
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(genius_snn_bridge)
 
 //=============================================================================
 // Helper Functions
@@ -361,7 +365,6 @@ int genius_snn_link_genius(genius_snn_bridge_t* bridge, struct mathematical_geni
     /* Phase 8: Heartbeat at operation start */
     genius_snn_bridge_heartbeat("genius_snn_b_genius_snn_link_geni", 0.0f);
 
-
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->genius = genius;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -373,7 +376,6 @@ int genius_snn_link_snn(genius_snn_bridge_t* bridge, struct snn_network* snn) {
 
     /* Phase 8: Heartbeat at operation start */
     genius_snn_bridge_heartbeat("genius_snn_b_genius_snn_link_snn", 0.0f);
-
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->snn = snn;
@@ -399,6 +401,7 @@ int genius_snn_encode_state(genius_snn_bridge_t* bridge, const float* dimensions
     /* Phase 8: Heartbeat at operation start */
     genius_snn_bridge_heartbeat("genius_snn_b_genius_snn_encode_st", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, dimensions, sizeof(*dimensions));
 
     if (num_dims > bridge->config.num_dimensions) {
         num_dims = bridge->config.num_dimensions;
@@ -587,6 +590,11 @@ int genius_snn_forward(genius_snn_bridge_t* bridge, const float* inputs, uint32_
     genius_snn_bridge_heartbeat("genius_snn_b_genius_snn_forward", 0.0f);
 
 
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "genius_snn_step");
+    BRIDGE_LGSS_GATE(bridge, "genius_snn_step");
+    BRIDGE_BBB_VALIDATE(bridge, inputs, sizeof(*inputs));
+
     return genius_snn_encode_state(bridge, inputs, input_count);
 }
 
@@ -600,6 +608,7 @@ int genius_snn_get_insight_output(genius_snn_bridge_t* bridge, genius_insight_ou
     /* Phase 8: Heartbeat at operation start */
     genius_snn_bridge_heartbeat("genius_snn_b_genius_snn_get_insig", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, insight, sizeof(*insight));
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = GENIUS_SNN_STATE_DECODING;
@@ -632,6 +641,7 @@ int genius_snn_get_activations(genius_snn_bridge_t* bridge, float* activations, 
     /* Phase 8: Heartbeat at operation start */
     genius_snn_bridge_heartbeat("genius_snn_b_genius_snn_get_activ", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, activations, sizeof(*activations));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -659,6 +669,7 @@ bool genius_snn_check_insight(genius_snn_bridge_t* bridge, float* insight_level)
     /* Phase 8: Heartbeat at operation start */
     genius_snn_bridge_heartbeat("genius_snn_b_genius_snn_check_ins", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, insight_level, sizeof(*insight_level));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -715,6 +726,7 @@ int genius_snn_get_dim_state(genius_snn_bridge_t* bridge, uint32_t dim, genius_d
     /* Phase 8: Heartbeat at operation start */
     genius_snn_bridge_heartbeat("genius_snn_b_genius_snn_get_dim_s", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->dim_states[dim];
@@ -728,6 +740,7 @@ int genius_snn_get_state(genius_snn_bridge_t* bridge, genius_snn_bridge_state_t*
     /* Phase 8: Heartbeat at operation start */
     genius_snn_bridge_heartbeat("genius_snn_b_genius_snn_get_state", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -771,6 +784,7 @@ int genius_snn_get_stats(genius_snn_bridge_t* bridge, genius_snn_stats_t* stats)
     /* Phase 8: Heartbeat at operation start */
     genius_snn_bridge_heartbeat("genius_snn_b_genius_snn_get_stats", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, stats, sizeof(*stats));
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -803,6 +817,7 @@ int genius_snn_register_insight_callback(genius_snn_bridge_t* bridge,
     /* Phase 8: Heartbeat at operation start */
     genius_snn_bridge_heartbeat("genius_snn_b_genius_snn_register_", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->insight_callback = callback;
@@ -819,6 +834,7 @@ int genius_snn_register_breakthrough_callback(genius_snn_bridge_t* bridge,
     /* Phase 8: Heartbeat at operation start */
     genius_snn_bridge_heartbeat("genius_snn_b_genius_snn_register_", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->breakthrough_callback = callback;
@@ -835,6 +851,7 @@ int genius_snn_register_mode_callback(genius_snn_bridge_t* bridge,
     /* Phase 8: Heartbeat at operation start */
     genius_snn_bridge_heartbeat("genius_snn_b_genius_snn_register_", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->mode_callback = callback;
@@ -937,6 +954,7 @@ int genius_snn_serialize_state(genius_snn_bridge_t* bridge,
     /* Phase 8: Heartbeat at operation start */
     genius_snn_bridge_heartbeat("genius_snn_b_genius_snn_serialize", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, serialized, sizeof(*serialized));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -975,6 +993,7 @@ int genius_snn_deserialize_state(genius_snn_bridge_t* bridge,
     /* Phase 8: Heartbeat at operation start */
     genius_snn_bridge_heartbeat("genius_snn_b_genius_snn_deseriali", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, serialized, sizeof(*serialized));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1122,6 +1141,13 @@ int genius_snn_bridge_training_end(genius_snn_bridge_t* bridge) {
 
 int genius_snn_bridge_training_step(genius_snn_bridge_t* bridge, float progress) {
     if (!bridge) return -1;
+
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "genius_snn_bridge_training_step");
+    BRIDGE_LGSS_GATE(bridge, "genius_snn_bridge_training_step");
     genius_snn_bridge_heartbeat_instance(bridge->health_agent, "genius_snn_bridge_training_step", progress);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }

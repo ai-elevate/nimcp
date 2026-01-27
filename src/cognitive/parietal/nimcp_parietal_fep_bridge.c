@@ -34,6 +34,7 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
+#include "security/nimcp_bbb_helpers.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -122,6 +123,9 @@ struct parietal_fep_bridge {
     /* Health agent (instance-level) - Phase 8 */
     nimcp_health_agent_t* health_agent;
 };
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(parietal_fep_bridge)
 
 /*=============================================================================
  * HELPER FUNCTIONS
@@ -497,6 +501,7 @@ int parietal_fep_bridge_register(
     /* Phase 8: Heartbeat at operation start */
     parietal_fep_bridge_heartbeat("parietal_fep_register", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, bridge_id_out, sizeof(*bridge_id_out));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -680,6 +685,10 @@ int parietal_fep_bridge_update(parietal_fep_bridge_t* bridge) {
     parietal_fep_bridge_heartbeat("parietal_fep_update", 0.0f);
 
 
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "parietal_fep_bridge_update");
+    BRIDGE_LGSS_GATE(bridge, "parietal_fep_bridge_update");
+
     if (bridge->registered && bridge->parietal) {
         return parietal_fep_update_callback(bridge);
     }
@@ -694,6 +703,10 @@ int parietal_fep_bridge_force_update(parietal_fep_bridge_t* bridge) {
     /* Phase 8: Heartbeat at operation start */
     parietal_fep_bridge_heartbeat("parietal_fep_force_update", 0.0f);
 
+
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "parietal_fep_bridge_force_update");
+    BRIDGE_LGSS_GATE(bridge, "parietal_fep_bridge_force_update");
 
     if (bridge->registered && bridge->parietal) {
         return parietal_fep_update_callback(bridge);
@@ -724,6 +737,9 @@ int parietal_fep_bridge_force_update(parietal_fep_bridge_t* bridge) {
     check_callbacks(bridge);
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 
@@ -740,6 +756,7 @@ int parietal_fep_bridge_get_metrics(
     /* Phase 8: Heartbeat at operation start */
     parietal_fep_bridge_heartbeat("parietal_fep_get_metrics", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, metrics_out, sizeof(*metrics_out));
 
     nimcp_mutex_lock(((parietal_fep_bridge_t*)bridge)->base.mutex);
     *metrics_out = bridge->metrics;
@@ -757,6 +774,7 @@ int parietal_fep_bridge_get_stats(
     /* Phase 8: Heartbeat at operation start */
     parietal_fep_bridge_heartbeat("parietal_fep_get_stats", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, stats_out, sizeof(*stats_out));
 
     nimcp_mutex_lock(((parietal_fep_bridge_t*)bridge)->base.mutex);
     *stats_out = bridge->stats;
@@ -884,6 +902,7 @@ int parietal_fep_bridge_set_high_fe_callback(
     /* Phase 8: Heartbeat at operation start */
     parietal_fep_bridge_heartbeat("parietal_fep_set_high_fe_callback", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->high_fe_callback = callback;
@@ -903,6 +922,7 @@ int parietal_fep_bridge_set_surprise_callback(
     /* Phase 8: Heartbeat at operation start */
     parietal_fep_bridge_heartbeat("parietal_fep_set_surprise_callbac", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->surprise_callback = callback;
@@ -922,6 +942,7 @@ int parietal_fep_bridge_set_metrics_callback(
     /* Phase 8: Heartbeat at operation start */
     parietal_fep_bridge_heartbeat("parietal_fep_set_metrics_callback", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics_callback = callback;
@@ -944,6 +965,7 @@ int parietal_fep_bridge_set_config(
     /* Phase 8: Heartbeat at operation start */
     parietal_fep_bridge_heartbeat("parietal_fep_set_config", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, config, sizeof(*config));
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->config = *config;
@@ -961,6 +983,7 @@ int parietal_fep_bridge_get_config(
     /* Phase 8: Heartbeat at operation start */
     parietal_fep_bridge_heartbeat("parietal_fep_get_config", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, config_out, sizeof(*config_out));
 
     nimcp_mutex_lock(((parietal_fep_bridge_t*)bridge)->base.mutex);
     *config_out = bridge->config;
@@ -1014,6 +1037,10 @@ int parietal_fep_bridge_training_end(parietal_fep_bridge_t* bridge) {
 
 int parietal_fep_bridge_training_step(parietal_fep_bridge_t* bridge, float progress) {
     if (!bridge) return -1;
+
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "parietal_fep_bridge_training_step");
+    BRIDGE_LGSS_GATE(bridge, "parietal_fep_bridge_training_step");
     parietal_fep_bridge_heartbeat_instance(bridge->health_agent, "parietal_fep_bridge_training_step", progress);
     return 0;
 }

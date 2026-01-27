@@ -23,6 +23,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "security/nimcp_bbb_helpers.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -117,6 +118,9 @@ struct genius_training_bridge {
     /* Health agent (instance-level) - Phase 8 */
     nimcp_health_agent_t* health_agent;
 };
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(genius_training_bridge)
 
 //=============================================================================
 // Helper Functions
@@ -372,7 +376,6 @@ int genius_training_link_genius(genius_training_bridge_t* bridge, struct mathema
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_link", 0.0f);
 
-
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->genius = genius;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -547,6 +550,7 @@ float genius_training_train_batch(genius_training_bridge_t* bridge,
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_trai", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, inputs, sizeof(*inputs));
 
     if (batch_size == 0) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
@@ -755,6 +759,7 @@ int genius_training_get_curriculum_state(genius_training_bridge_t* bridge,
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_get_", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->curriculum;
@@ -900,6 +905,7 @@ int genius_training_get_progress(genius_training_bridge_t* bridge,
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_get_", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, progress, sizeof(*progress));
 
     nimcp_mutex_lock(bridge->base.mutex);
     *progress = bridge->progress;
@@ -914,6 +920,7 @@ int genius_training_get_mode_state(genius_training_bridge_t* bridge,
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_get_", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->mode_state;
@@ -940,6 +947,7 @@ int genius_training_get_state(genius_training_bridge_t* bridge,
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_get_", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -962,6 +970,7 @@ int genius_training_get_stats(genius_training_bridge_t* bridge,
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_get_", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, stats, sizeof(*stats));
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -997,6 +1006,7 @@ int genius_training_save_checkpoint(genius_training_bridge_t* bridge, const char
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_save", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, path, sizeof(*path));
 
     NIMCP_LOG_INFO("Saving genius training checkpoint to: %s", path);
     return 0;
@@ -1009,6 +1019,7 @@ int genius_training_load_checkpoint(genius_training_bridge_t* bridge, const char
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_load", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, path, sizeof(*path));
 
     NIMCP_LOG_INFO("Loading genius training checkpoint from: %s", path);
     return 0;
@@ -1026,6 +1037,7 @@ int genius_training_register_epoch_callback(genius_training_bridge_t* bridge,
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_regi", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->epoch_callback = callback;
@@ -1042,6 +1054,7 @@ int genius_training_register_curriculum_callback(genius_training_bridge_t* bridg
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_regi", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->curriculum_callback = callback;
@@ -1058,6 +1071,7 @@ int genius_training_register_checkpoint_callback(genius_training_bridge_t* bridg
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_regi", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->checkpoint_callback = callback;
@@ -1160,6 +1174,7 @@ int genius_training_serialize_state(genius_training_bridge_t* bridge,
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_seri", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, serialized, sizeof(*serialized));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1200,6 +1215,7 @@ int genius_training_deserialize_state(genius_training_bridge_t* bridge,
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_dese", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, serialized, sizeof(*serialized));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1350,6 +1366,13 @@ int genius_training_bridge_training_end(genius_training_bridge_t* bridge) {
 
 int genius_training_bridge_training_step(genius_training_bridge_t* bridge, float progress) {
     if (!bridge) return -1;
+
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "genius_training_bridge_training_step");
+    BRIDGE_LGSS_GATE(bridge, "genius_training_bridge_training_step");
     genius_training_bridge_heartbeat_instance(bridge->health_agent, "genius_training_bridge_training_step", progress);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }

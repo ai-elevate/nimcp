@@ -100,6 +100,8 @@ extern "C" {
  * ============================================================================ */
 
 typedef struct predictive_fep_bridge predictive_fep_bridge_t;
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
 
 /* ============================================================================
  * Structures
@@ -226,6 +228,8 @@ struct predictive_fep_bridge {
     /* Statistics */
     predictive_fep_stats_t stats;
 
+    /* Phase 8: Instance health agent (B24 upgrade) */
+    nimcp_health_agent_t* health_agent;
 };
 
 /* ============================================================================

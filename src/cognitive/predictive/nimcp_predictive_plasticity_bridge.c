@@ -16,6 +16,7 @@
 
 #include <string.h>
 #include <math.h>
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 #include <stdio.h>
 
 //=============================================================================
@@ -43,6 +44,18 @@ void predictive_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) 
 static inline void predictive_plasticity_bridge_heartbeat(const char* operation, float progress) {
     if (g_predictive_plasticity_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_predictive_plasticity_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from predictive_plasticity_bridge module (instance-level) */
+static inline void predictive_plasticity_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_predictive_plasticity_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_predictive_plasticity_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_predictive_plasticity_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -88,17 +101,14 @@ struct predictive_plasticity_bridge {
 
     /* Statistics */
     predictive_plasticity_stats_t stats;
+
+    /* Phase 8: Instance health agent (B24 upgrade) */
+    nimcp_health_agent_t* health_agent;
 };
 
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static synapse_entry_t* find_synapse(predictive_plasticity_bridge_t* bridge, uint32_t synapse_id) {
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
@@ -325,7 +335,7 @@ int predictive_plasticity_register_synapse(
     slot->in_use = true;
     slot->synapse.synapse_id = synapse_id;
     slot->synapse.type = type;
-    slot->synapse.weight = clamp_f(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
+    slot->synapse.weight = nimcp_myelin_clamp(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
     slot->synapse.initial_weight = slot->synapse.weight;
     slot->synapse.eligibility_trace = 0.0f;
     slot->synapse.bcm_threshold = bridge->config.bcm_target_rate;
@@ -507,7 +517,7 @@ int predictive_plasticity_learn(
 
     /* Apply weight change */
     float old_weight = entry->synapse.weight;
-    entry->synapse.weight = clamp_f(
+    entry->synapse.weight = nimcp_myelin_clamp(
         entry->synapse.weight + weight_change,
         bridge->config.weight_min,
         bridge->config.weight_max
@@ -579,7 +589,7 @@ float predictive_plasticity_apply_stdp(
 
     /* Apply weight change */
     float old_weight = entry->synapse.weight;
-    entry->synapse.weight = clamp_f(
+    entry->synapse.weight = nimcp_myelin_clamp(
         entry->synapse.weight + delta_w,
         bridge->config.weight_min,
         bridge->config.weight_max
@@ -611,7 +621,7 @@ int predictive_plasticity_apply_error(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    error = clamp_f(error, -1.0f, 1.0f);
+    error = nimcp_myelin_clamp(error, -1.0f, 1.0f);
     bridge->current_error = error;
 
     /* Apply error modulation to all eligible synapses */
@@ -626,7 +636,7 @@ int predictive_plasticity_apply_error(
             float trace = bridge->synapses[i].synapse.eligibility_trace;
             if (fabsf(trace) > 0.001f) {
                 float delta = bridge->config.base_learning_rate * error * trace;
-                bridge->synapses[i].synapse.weight = clamp_f(
+                bridge->synapses[i].synapse.weight = nimcp_myelin_clamp(
                     bridge->synapses[i].synapse.weight + delta,
                     bridge->config.weight_min,
                     bridge->config.weight_max
@@ -717,7 +727,7 @@ int predictive_plasticity_homeostatic_update(
     float scale_factor = 1.0f;
     if (mean_prediction > 0.0f) {
         scale_factor = target / mean_prediction;
-        scale_factor = clamp_f(scale_factor, 0.9f, 1.1f);
+        scale_factor = nimcp_myelin_clamp(scale_factor, 0.9f, 1.1f);
     }
 
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
@@ -729,7 +739,7 @@ int predictive_plasticity_homeostatic_update(
 
         if (bridge->synapses[i].in_use && !bridge->synapses[i].synapse.is_protected) {
             float scaled = bridge->synapses[i].synapse.weight * (1.0f + (scale_factor - 1.0f) * (1.0f - decay));
-            bridge->synapses[i].synapse.weight = clamp_f(
+            bridge->synapses[i].synapse.weight = nimcp_myelin_clamp(
                 scaled,
                 bridge->config.weight_min,
                 bridge->config.weight_max
@@ -1038,4 +1048,38 @@ bool predictive_plasticity_is_bio_async_connected(predictive_plasticity_bridge_t
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B24 Upgrade)
+//=============================================================================
+
+void predictive_plasticity_bridge_set_instance_health_agent(
+    predictive_plasticity_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B24 Upgrade)
+//=============================================================================
+
+int predictive_plasticity_bridge_training_begin(predictive_plasticity_bridge_t* bridge) {
+    if (!bridge) return -1;
+    predictive_plasticity_bridge_heartbeat_instance(bridge->health_agent, "predictive_plasticity_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int predictive_plasticity_bridge_training_end(predictive_plasticity_bridge_t* bridge) {
+    if (!bridge) return -1;
+    predictive_plasticity_bridge_heartbeat_instance(bridge->health_agent, "predictive_plasticity_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int predictive_plasticity_bridge_training_step(predictive_plasticity_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    predictive_plasticity_bridge_heartbeat_instance(bridge->health_agent, "predictive_plasticity_bridge_training_step", progress);
+    return 0;
 }

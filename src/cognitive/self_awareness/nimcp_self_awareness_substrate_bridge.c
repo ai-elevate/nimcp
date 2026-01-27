@@ -35,7 +35,7 @@ static nimcp_health_agent_t* g_self_awareness_substrate_bridge_health_agent = NU
  * @brief Set health agent for self_awareness_substrate_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void self_awareness_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void self_awareness_substrate_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_self_awareness_substrate_bridge_health_agent = agent;
 }
 
@@ -43,6 +43,18 @@ static void self_awareness_substrate_bridge_set_health_agent(nimcp_health_agent_
 static inline void self_awareness_substrate_bridge_heartbeat(const char* operation, float progress) {
     if (g_self_awareness_substrate_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_self_awareness_substrate_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from self_awareness_substrate_bridge module (instance-level) */
+static inline void self_awareness_substrate_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_self_awareness_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_self_awareness_substrate_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_self_awareness_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -60,6 +72,9 @@ struct self_awareness_substrate_bridge {
     bool bio_async_connected;
     uint64_t update_count;
     float prev_overall_capacity;
+
+    /* Phase 8: Instance health agent (B24 upgrade) */
+    nimcp_health_agent_t* health_agent;
 };
 
 self_awareness_substrate_config_t self_awareness_substrate_default_config(void) {
@@ -264,4 +279,38 @@ int self_awareness_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B24 Upgrade)
+//=============================================================================
+
+void self_awareness_substrate_bridge_set_instance_health_agent(
+    self_awareness_substrate_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B24 Upgrade)
+//=============================================================================
+
+int self_awareness_substrate_bridge_training_begin(self_awareness_substrate_bridge_t* bridge) {
+    if (!bridge) return -1;
+    self_awareness_substrate_bridge_heartbeat_instance(bridge->health_agent, "self_awareness_substrate_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int self_awareness_substrate_bridge_training_end(self_awareness_substrate_bridge_t* bridge) {
+    if (!bridge) return -1;
+    self_awareness_substrate_bridge_heartbeat_instance(bridge->health_agent, "self_awareness_substrate_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int self_awareness_substrate_bridge_training_step(self_awareness_substrate_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    self_awareness_substrate_bridge_heartbeat_instance(bridge->health_agent, "self_awareness_substrate_bridge_training_step", progress);
+    return 0;
 }

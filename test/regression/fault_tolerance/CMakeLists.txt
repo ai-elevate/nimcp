@@ -700,4 +700,32 @@ gtest_discover_tests(regression_heartbeat_B23_parietal_bridges
         TIMEOUT 180
 )
 
+# B24: Predictive+Personality+Self-Awareness bridge heartbeat/utility regression tests
+add_executable(regression_heartbeat_B24_predictive_personality_selfawareness_bridges
+    test_predictive_personality_selfawareness_bridges_B24_regression.cpp
+)
+target_link_libraries(regression_heartbeat_B24_predictive_personality_selfawareness_bridges
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        pthread
+)
+
+target_include_directories(regression_heartbeat_B24_predictive_personality_selfawareness_bridges
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_heartbeat_B24_predictive_personality_selfawareness_bridges PRIVATE cxx_std_17)
+target_compile_definitions(regression_heartbeat_B24_predictive_personality_selfawareness_bridges PRIVATE NIMCP_TESTING)
+
+gtest_discover_tests(regression_heartbeat_B24_predictive_personality_selfawareness_bridges
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;fault_tolerance;heartbeat;B24;predictive_personality_selfawareness_bridges"
+        TIMEOUT 180
+)
+
 message(STATUS "Added fault tolerance regression tests")

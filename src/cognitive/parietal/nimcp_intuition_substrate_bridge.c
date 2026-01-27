@@ -17,6 +17,7 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
+#include "security/nimcp_bbb_helpers.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -72,6 +73,9 @@ struct intuition_substrate_bridge {
     /* Health agent (instance-level) - Phase 8 */
     nimcp_health_agent_t* health_agent;
 };
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(intuition_substrate_bridge)
 
 intuition_substrate_config_t intuition_substrate_default_config(void) {
     /* Phase 8: Heartbeat at operation start */
@@ -163,6 +167,10 @@ int intuition_substrate_bridge_update(intuition_substrate_bridge_t* bridge) {
     intuition_substrate_bridge_heartbeat("intuition_su_update", 0.0f);
 
 
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "intuition_substrate_bridge_update");
+    BRIDGE_LGSS_GATE(bridge, "intuition_substrate_bridge_update");
+
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
 
@@ -233,6 +241,8 @@ int intuition_substrate_bridge_update(intuition_substrate_bridge_t* bridge) {
     bridge->update_count++;
     bridge->stats.updates++;
 
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 
@@ -245,6 +255,7 @@ int intuition_substrate_bridge_get_effects(
     /* Phase 8: Heartbeat at operation start */
     intuition_substrate_bridge_heartbeat("intuition_su_get_effects", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, effects, sizeof(*effects));
 
     return 0;
 }
@@ -267,6 +278,7 @@ int intuition_substrate_bridge_register_bio_async(
     /* Phase 8: Heartbeat at operation start */
     intuition_substrate_bridge_heartbeat("intuition_su_register_bio_async", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, router, sizeof(*router));
 
     bridge->router = router;
     bridge->bio_async_connected = (router != NULL);
@@ -278,6 +290,7 @@ int intuition_substrate_bridge_handle_message(
     const bio_message_header_t* msg
 ) {
     if (!bridge || !msg) return -1;
+    BRIDGE_BBB_VALIDATE(bridge, msg, sizeof(*msg));
     bridge->stats.bio_messages_received++;
     return 0;
 }
@@ -291,6 +304,7 @@ int intuition_substrate_bridge_get_stats(
     /* Phase 8: Heartbeat at operation start */
     intuition_substrate_bridge_heartbeat("intuition_su_get_stats", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, stats, sizeof(*stats));
 
     return 0;
 }
@@ -364,6 +378,10 @@ int intuition_substrate_bridge_training_end(intuition_substrate_bridge_t* bridge
 
 int intuition_substrate_bridge_training_step(intuition_substrate_bridge_t* bridge, float progress) {
     if (!bridge) return -1;
+
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "intuition_substrate_bridge_training_step");
+    BRIDGE_LGSS_GATE(bridge, "intuition_substrate_bridge_training_step");
     intuition_substrate_bridge_heartbeat_instance(bridge->health_agent, "intuition_substrate_bridge_training_step", progress);
     return 0;
 }

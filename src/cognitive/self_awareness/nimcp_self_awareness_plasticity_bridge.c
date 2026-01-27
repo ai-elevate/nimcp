@@ -15,6 +15,7 @@
 
 #include <string.h>
 #include <math.h>
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 #include <stdio.h>
 
 //=============================================================================
@@ -34,7 +35,7 @@ static nimcp_health_agent_t* g_self_awareness_plasticity_bridge_health_agent = N
  * @brief Set health agent for self_awareness_plasticity_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void self_awareness_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
+void self_awareness_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
     g_self_awareness_plasticity_bridge_health_agent = agent;
 }
 
@@ -42,6 +43,18 @@ static void self_awareness_plasticity_bridge_set_health_agent(nimcp_health_agent
 static inline void self_awareness_plasticity_bridge_heartbeat(const char* operation, float progress) {
     if (g_self_awareness_plasticity_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_self_awareness_plasticity_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from self_awareness_plasticity_bridge module (instance-level) */
+static inline void self_awareness_plasticity_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_self_awareness_plasticity_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_self_awareness_plasticity_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_self_awareness_plasticity_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -87,17 +100,14 @@ struct self_awareness_plasticity_bridge {
 
     /* Statistics */
     self_awareness_plasticity_stats_t stats;
+
+    /* Phase 8: Instance health agent (B24 upgrade) */
+    nimcp_health_agent_t* health_agent;
 };
 
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static synapse_entry_t* find_synapse(self_awareness_plasticity_bridge_t* bridge, uint32_t synapse_id) {
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
@@ -284,7 +294,7 @@ int self_awareness_plasticity_register_synapse(
     slot->in_use = true;
     slot->synapse.synapse_id = synapse_id;
     slot->synapse.type = type;
-    slot->synapse.weight = clamp_f(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
+    slot->synapse.weight = nimcp_myelin_clamp(initial_weight, bridge->config.weight_min, bridge->config.weight_max);
     slot->synapse.initial_weight = slot->synapse.weight;
     slot->synapse.eligibility_trace = 0.0f;
     slot->synapse.bcm_threshold = bridge->config.bcm_target_rate;
@@ -450,7 +460,7 @@ int self_awareness_plasticity_learn(
 
     /* Apply weight change */
     float old_weight = entry->synapse.weight;
-    entry->synapse.weight = clamp_f(
+    entry->synapse.weight = nimcp_myelin_clamp(
         entry->synapse.weight + weight_change,
         bridge->config.weight_min,
         bridge->config.weight_max
@@ -518,7 +528,7 @@ float self_awareness_plasticity_apply_stdp(
 
     /* Apply weight change */
     float old_weight = entry->synapse.weight;
-    entry->synapse.weight = clamp_f(
+    entry->synapse.weight = nimcp_myelin_clamp(
         entry->synapse.weight + delta_w,
         bridge->config.weight_min,
         bridge->config.weight_max
@@ -546,7 +556,7 @@ int self_awareness_plasticity_apply_reward(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    reward = clamp_f(reward, -1.0f, 1.0f);
+    reward = nimcp_myelin_clamp(reward, -1.0f, 1.0f);
     bridge->current_reward = reward;
 
     /* Apply reward modulation to all eligible synapses */
@@ -555,7 +565,7 @@ int self_awareness_plasticity_apply_reward(
             float trace = bridge->synapses[i].synapse.eligibility_trace;
             if (fabsf(trace) > 0.001f) {
                 float delta = bridge->config.base_learning_rate * reward * trace;
-                bridge->synapses[i].synapse.weight = clamp_f(
+                bridge->synapses[i].synapse.weight = nimcp_myelin_clamp(
                     bridge->synapses[i].synapse.weight + delta,
                     bridge->config.weight_min,
                     bridge->config.weight_max
@@ -626,13 +636,13 @@ int self_awareness_plasticity_homeostatic_update(
     float scale_factor = 1.0f;
     if (mean_awareness > 0.0f) {
         scale_factor = target / mean_awareness;
-        scale_factor = clamp_f(scale_factor, 0.9f, 1.1f);
+        scale_factor = nimcp_myelin_clamp(scale_factor, 0.9f, 1.1f);
     }
 
     for (uint32_t i = 0; i < bridge->max_synapses; i++) {
         if (bridge->synapses[i].in_use && !bridge->synapses[i].synapse.is_protected) {
             float scaled = bridge->synapses[i].synapse.weight * (1.0f + (scale_factor - 1.0f) * (1.0f - decay));
-            bridge->synapses[i].synapse.weight = clamp_f(
+            bridge->synapses[i].synapse.weight = nimcp_myelin_clamp(
                 scaled,
                 bridge->config.weight_min,
                 bridge->config.weight_max
@@ -873,4 +883,38 @@ bool self_awareness_plasticity_is_bio_async_connected(self_awareness_plasticity_
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B24 Upgrade)
+//=============================================================================
+
+void self_awareness_plasticity_bridge_set_instance_health_agent(
+    self_awareness_plasticity_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B24 Upgrade)
+//=============================================================================
+
+int self_awareness_plasticity_bridge_training_begin(self_awareness_plasticity_bridge_t* bridge) {
+    if (!bridge) return -1;
+    self_awareness_plasticity_bridge_heartbeat_instance(bridge->health_agent, "self_awareness_plasticity_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int self_awareness_plasticity_bridge_training_end(self_awareness_plasticity_bridge_t* bridge) {
+    if (!bridge) return -1;
+    self_awareness_plasticity_bridge_heartbeat_instance(bridge->health_agent, "self_awareness_plasticity_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int self_awareness_plasticity_bridge_training_step(self_awareness_plasticity_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    self_awareness_plasticity_bridge_heartbeat_instance(bridge->health_agent, "self_awareness_plasticity_bridge_training_step", progress);
+    return 0;
 }

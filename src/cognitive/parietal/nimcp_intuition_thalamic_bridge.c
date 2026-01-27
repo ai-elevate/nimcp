@@ -13,6 +13,7 @@
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 #include "utils/logging/nimcp_logging.h"
+#include "security/nimcp_bbb_helpers.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -66,6 +67,9 @@ struct intuition_thalamic_bridge {
     /* Health agent (instance-level) - Phase 8 */
     nimcp_health_agent_t* health_agent;
 };
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(intuition_thalamic_bridge)
 
 intuition_thalamic_config_t intuition_thalamic_default_config(void) {
     /* Phase 8: Heartbeat at operation start */
@@ -165,6 +169,7 @@ int intuition_thalamic_route_hunch(
     /* Phase 8: Heartbeat at operation start */
     intuition_thalamic_bridge_heartbeat("intuition_th_intuition_thalamic_r", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, hunch, sizeof(*hunch));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -193,6 +198,7 @@ int intuition_thalamic_route_insight(
     /* Phase 8: Heartbeat at operation start */
     intuition_thalamic_bridge_heartbeat("intuition_th_intuition_thalamic_r", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, insight, sizeof(*insight));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -219,6 +225,7 @@ int intuition_thalamic_route_analogy(
     /* Phase 8: Heartbeat at operation start */
     intuition_thalamic_bridge_heartbeat("intuition_th_intuition_thalamic_r", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, analogy, sizeof(*analogy));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -243,6 +250,7 @@ int intuition_thalamic_route_hypothesis(
     /* Phase 8: Heartbeat at operation start */
     intuition_thalamic_bridge_heartbeat("intuition_th_intuition_thalamic_r", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, theory, sizeof(*theory));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -262,6 +270,7 @@ int intuition_thalamic_route_blend(
     /* Phase 8: Heartbeat at operation start */
     intuition_thalamic_bridge_heartbeat("intuition_th_intuition_thalamic_r", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, blend, sizeof(*blend));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -280,6 +289,7 @@ int intuition_thalamic_route_meta(
     /* Phase 8: Heartbeat at operation start */
     intuition_thalamic_bridge_heartbeat("intuition_th_intuition_thalamic_r", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, meta_signal, sizeof(*meta_signal));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -300,6 +310,7 @@ int intuition_thalamic_route_signal(
     /* Phase 8: Heartbeat at operation start */
     intuition_thalamic_bridge_heartbeat("intuition_th_intuition_thalamic_r", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, signal, sizeof(*signal));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -367,6 +378,7 @@ int intuition_thalamic_get_attention(
     /* Phase 8: Heartbeat at operation start */
     intuition_thalamic_bridge_heartbeat("intuition_th_intuition_thalamic_g", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, attention, sizeof(*attention));
 
     nimcp_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
@@ -422,6 +434,7 @@ int intuition_thalamic_bridge_get_stats(
     /* Phase 8: Heartbeat at operation start */
     intuition_thalamic_bridge_heartbeat("intuition_th_get_stats", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, stats, sizeof(*stats));
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -500,6 +513,13 @@ int intuition_thalamic_bridge_training_end(intuition_thalamic_bridge_t* bridge) 
 
 int intuition_thalamic_bridge_training_step(intuition_thalamic_bridge_t* bridge, float progress) {
     if (!bridge) return -1;
+
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "intuition_thalamic_bridge_training_step");
+    BRIDGE_LGSS_GATE(bridge, "intuition_thalamic_bridge_training_step");
     intuition_thalamic_bridge_heartbeat_instance(bridge->health_agent, "intuition_thalamic_bridge_training_step", progress);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }

@@ -23,6 +23,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "security/nimcp_bbb_helpers.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -109,6 +110,9 @@ struct genius_plasticity_bridge {
     /* Health agent (instance-level) - Phase 8 */
     nimcp_health_agent_t* health_agent;
 };
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(genius_plasticity_bridge)
 
 //=============================================================================
 // Helper Functions
@@ -334,7 +338,6 @@ int genius_plasticity_link_genius(genius_plasticity_bridge_t* bridge, struct mat
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_li", 0.0f);
 
-
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->genius = genius;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -432,6 +435,7 @@ int genius_plasticity_get_synapse(genius_plasticity_bridge_t* bridge,
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_ge", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, synapse, sizeof(*synapse));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -774,6 +778,10 @@ int genius_plasticity_homeostatic_update(genius_plasticity_bridge_t* bridge, flo
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_ho", 0.0f);
 
 
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "genius_plasticity_homeostatic_update");
+    BRIDGE_LGSS_GATE(bridge, "genius_plasticity_homeostatic_update");
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     float tau = bridge->config.homeostatic_tau_ms;
@@ -812,6 +820,9 @@ int genius_plasticity_homeostatic_update(genius_plasticity_bridge_t* bridge, flo
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 
@@ -887,6 +898,7 @@ int genius_plasticity_get_learning_state(genius_plasticity_bridge_t* bridge,
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_ge", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -944,6 +956,7 @@ int genius_plasticity_get_state(genius_plasticity_bridge_t* bridge,
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_ge", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -987,6 +1000,7 @@ int genius_plasticity_get_stats(genius_plasticity_bridge_t* bridge,
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_ge", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, stats, sizeof(*stats));
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -1031,6 +1045,7 @@ int genius_plasticity_register_learn_callback(genius_plasticity_bridge_t* bridge
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_re", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->learn_callback = callback;
@@ -1047,6 +1062,7 @@ int genius_plasticity_register_skill_callback(genius_plasticity_bridge_t* bridge
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_re", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->skill_callback = callback;
@@ -1063,6 +1079,7 @@ int genius_plasticity_register_breakthrough_callback(genius_plasticity_bridge_t*
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_re", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->breakthrough_callback = callback;
@@ -1166,6 +1183,7 @@ int genius_plasticity_serialize_state(genius_plasticity_bridge_t* bridge,
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_se", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, serialized, sizeof(*serialized));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1223,6 +1241,7 @@ int genius_plasticity_deserialize_state(genius_plasticity_bridge_t* bridge,
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_de", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, serialized, sizeof(*serialized));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1373,6 +1392,10 @@ int genius_plasticity_bridge_training_end(genius_plasticity_bridge_t* bridge) {
 
 int genius_plasticity_bridge_training_step(genius_plasticity_bridge_t* bridge, float progress) {
     if (!bridge) return -1;
+
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "genius_plasticity_bridge_training_step");
+    BRIDGE_LGSS_GATE(bridge, "genius_plasticity_bridge_training_step");
     genius_plasticity_bridge_heartbeat_instance(bridge->health_agent, "genius_plasticity_bridge_training_step", progress);
     return 0;
 }

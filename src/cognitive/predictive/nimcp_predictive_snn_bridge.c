@@ -20,6 +20,7 @@
 
 #include <string.h>
 #include <math.h>
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 #include <stdio.h>
 
 //=============================================================================
@@ -47,6 +48,18 @@ void predictive_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void predictive_snn_bridge_heartbeat(const char* operation, float progress) {
     if (g_predictive_snn_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_predictive_snn_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from predictive_snn_bridge module (instance-level) */
+static inline void predictive_snn_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_predictive_snn_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_predictive_snn_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_predictive_snn_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -93,17 +106,14 @@ struct predictive_snn_bridge {
 
     /* Statistics */
     predictive_snn_stats_t stats;
+
+    /* Phase 8: Instance health agent (B24 upgrade) */
+    nimcp_health_agent_t* health_agent;
 };
 
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -384,7 +394,7 @@ int predictive_snn_encode_state(
                              (float)(d + 1) / (float)num_dims);
         }
 
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_myelin_clamp(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -451,8 +461,8 @@ int predictive_snn_encode_error(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[PREDICTIVE_DIM_COUNT] = {0};
-    dims[PREDICTIVE_DIM_ERROR] = clamp_f(error, 0.0f, 1.0f);
-    dims[PREDICTIVE_DIM_PRECISION] = clamp_f(precision, 0.0f, 1.0f);
+    dims[PREDICTIVE_DIM_ERROR] = nimcp_myelin_clamp(error, 0.0f, 1.0f);
+    dims[PREDICTIVE_DIM_PRECISION] = nimcp_myelin_clamp(precision, 0.0f, 1.0f);
     dims[PREDICTIVE_DIM_ANTICIPATION] = (1.0f - error) * precision;
 
     bridge->error_signal = error;
@@ -477,8 +487,8 @@ int predictive_snn_encode_model_state(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[PREDICTIVE_DIM_COUNT] = {0};
-    dims[PREDICTIVE_DIM_MODEL_STATE] = clamp_f(model_state, 0.0f, 1.0f);
-    dims[PREDICTIVE_DIM_HIERARCHY_LEVEL] = clamp_f((float)hierarchy_level / 10.0f, 0.0f, 1.0f);
+    dims[PREDICTIVE_DIM_MODEL_STATE] = nimcp_myelin_clamp(model_state, 0.0f, 1.0f);
+    dims[PREDICTIVE_DIM_HIERARCHY_LEVEL] = nimcp_myelin_clamp((float)hierarchy_level / 10.0f, 0.0f, 1.0f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -499,8 +509,8 @@ int predictive_snn_encode_free_energy(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[PREDICTIVE_DIM_COUNT] = {0};
-    dims[PREDICTIVE_DIM_FREE_ENERGY] = clamp_f(free_energy, 0.0f, 1.0f);
-    dims[PREDICTIVE_DIM_SURPRISE] = clamp_f(free_energy * 0.8f, 0.0f, 1.0f);
+    dims[PREDICTIVE_DIM_FREE_ENERGY] = nimcp_myelin_clamp(free_energy, 0.0f, 1.0f);
+    dims[PREDICTIVE_DIM_SURPRISE] = nimcp_myelin_clamp(free_energy * 0.8f, 0.0f, 1.0f);
 
     if (free_energy > bridge->config.error_threshold) {
         bridge->last_anticipation.high_anticipation = true;
@@ -577,12 +587,12 @@ int predictive_snn_simulate(predictive_snn_bridge_t* bridge, float duration_ms) 
     }
 
     /* Decode outputs */
-    bridge->last_anticipation.prediction_level = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
-    bridge->last_anticipation.error_level = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
-    bridge->last_anticipation.precision_level = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_anticipation.anticipation_drive = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->last_anticipation.anticipation_magnitude = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
-    bridge->last_anticipation.free_energy_level = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
+    bridge->last_anticipation.prediction_level = nimcp_myelin_clamp(bridge->output_buffer[0], 0.0f, 1.0f);
+    bridge->last_anticipation.error_level = nimcp_myelin_clamp(bridge->output_buffer[1], 0.0f, 1.0f);
+    bridge->last_anticipation.precision_level = nimcp_myelin_clamp(bridge->output_buffer[2], 0.0f, 1.0f);
+    bridge->last_anticipation.anticipation_drive = nimcp_myelin_clamp(bridge->output_buffer[3], 0.0f, 1.0f);
+    bridge->last_anticipation.anticipation_magnitude = nimcp_myelin_clamp(bridge->output_buffer[4], 0.0f, 1.0f);
+    bridge->last_anticipation.free_energy_level = nimcp_myelin_clamp(bridge->output_buffer[5], 0.0f, 1.0f);
 
     /* Check error threshold */
     if (bridge->last_anticipation.error_level > bridge->config.error_threshold) {
@@ -995,4 +1005,38 @@ bool predictive_snn_is_bio_async_connected(predictive_snn_bridge_t* bridge) {
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B24 Upgrade)
+//=============================================================================
+
+void predictive_snn_bridge_set_instance_health_agent(
+    predictive_snn_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B24 Upgrade)
+//=============================================================================
+
+int predictive_snn_bridge_training_begin(predictive_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+    predictive_snn_bridge_heartbeat_instance(bridge->health_agent, "predictive_snn_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int predictive_snn_bridge_training_end(predictive_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+    predictive_snn_bridge_heartbeat_instance(bridge->health_agent, "predictive_snn_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int predictive_snn_bridge_training_step(predictive_snn_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    predictive_snn_bridge_heartbeat_instance(bridge->health_agent, "predictive_snn_bridge_training_step", progress);
+    return 0;
 }

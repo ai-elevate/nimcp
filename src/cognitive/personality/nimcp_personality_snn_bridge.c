@@ -20,6 +20,7 @@
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -46,6 +47,18 @@ void personality_snn_bridge_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void personality_snn_bridge_heartbeat(const char* operation, float progress) {
     if (g_personality_snn_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_personality_snn_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from personality_snn_bridge module (instance-level) */
+static inline void personality_snn_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_personality_snn_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_personality_snn_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_personality_snn_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -92,17 +105,14 @@ struct personality_snn_bridge {
 
     /* Statistics */
     personality_snn_stats_t stats;
+
+    /* Phase 8: Instance health agent (B24 upgrade) */
+    nimcp_health_agent_t* health_agent;
 };
 
 //=============================================================================
 // Helper Functions
 //=============================================================================
-
-static inline float clamp_f(float x, float min_val, float max_val) {
-    if (x < min_val) return min_val;
-    if (x > max_val) return max_val;
-    return x;
-}
 
 static void softmax(float* values, uint32_t n) {
     if (n == 0) return;
@@ -386,7 +396,7 @@ int personality_snn_encode_state(
                              (float)(d + 1) / (float)num_dims);
         }
 
-        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        float value = nimcp_myelin_clamp(dimensions[d], 0.0f, 1.0f);
         float rate = bridge->config.baseline_rate_hz +
                     value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
 
@@ -456,11 +466,11 @@ int personality_snn_encode_ocean(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[PERSONALITY_DIM_COUNT] = {0};
-    dims[PERSONALITY_DIM_OPENNESS] = clamp_f(openness, 0.0f, 1.0f);
-    dims[PERSONALITY_DIM_CONSCIENTIOUSNESS] = clamp_f(conscientiousness, 0.0f, 1.0f);
-    dims[PERSONALITY_DIM_EXTRAVERSION] = clamp_f(extraversion, 0.0f, 1.0f);
-    dims[PERSONALITY_DIM_AGREEABLENESS] = clamp_f(agreeableness, 0.0f, 1.0f);
-    dims[PERSONALITY_DIM_NEUROTICISM] = clamp_f(neuroticism, 0.0f, 1.0f);
+    dims[PERSONALITY_DIM_OPENNESS] = nimcp_myelin_clamp(openness, 0.0f, 1.0f);
+    dims[PERSONALITY_DIM_CONSCIENTIOUSNESS] = nimcp_myelin_clamp(conscientiousness, 0.0f, 1.0f);
+    dims[PERSONALITY_DIM_EXTRAVERSION] = nimcp_myelin_clamp(extraversion, 0.0f, 1.0f);
+    dims[PERSONALITY_DIM_AGREEABLENESS] = nimcp_myelin_clamp(agreeableness, 0.0f, 1.0f);
+    dims[PERSONALITY_DIM_NEUROTICISM] = nimcp_myelin_clamp(neuroticism, 0.0f, 1.0f);
 
     /* Derive temperament from OCEAN */
     dims[PERSONALITY_DIM_APPROACH] = (extraversion + (1.0f - neuroticism)) / 2.0f;
@@ -485,8 +495,8 @@ int personality_snn_encode_temperament(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[PERSONALITY_DIM_COUNT] = {0};
-    dims[PERSONALITY_DIM_APPROACH] = clamp_f(approach, 0.0f, 1.0f);
-    dims[PERSONALITY_DIM_AVOIDANCE] = clamp_f(avoidance, 0.0f, 1.0f);
+    dims[PERSONALITY_DIM_APPROACH] = nimcp_myelin_clamp(approach, 0.0f, 1.0f);
+    dims[PERSONALITY_DIM_AVOIDANCE] = nimcp_myelin_clamp(avoidance, 0.0f, 1.0f);
     dims[PERSONALITY_DIM_IMPULSIVITY] = approach * (1.0f - avoidance);
 
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -508,8 +518,8 @@ int personality_snn_encode_behavioral(
     nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[PERSONALITY_DIM_COUNT] = {0};
-    dims[PERSONALITY_DIM_SOCIABILITY] = clamp_f(sociability, 0.0f, 1.0f);
-    dims[PERSONALITY_DIM_EMOTIONALITY] = clamp_f(emotionality, 0.0f, 1.0f);
+    dims[PERSONALITY_DIM_SOCIABILITY] = nimcp_myelin_clamp(sociability, 0.0f, 1.0f);
+    dims[PERSONALITY_DIM_EMOTIONALITY] = nimcp_myelin_clamp(emotionality, 0.0f, 1.0f);
 
     bridge->behavioral_signal = (sociability + emotionality) / 2.0f;
 
@@ -587,13 +597,13 @@ int personality_snn_simulate(personality_snn_bridge_t* bridge, float duration_ms
     }
 
     /* Decode outputs to OCEAN + temperament */
-    bridge->last_tendency.openness_level = clamp_f(bridge->output_buffer[0], 0.0f, 1.0f);
-    bridge->last_tendency.conscientiousness_level = clamp_f(bridge->output_buffer[1], 0.0f, 1.0f);
-    bridge->last_tendency.extraversion_level = clamp_f(bridge->output_buffer[2], 0.0f, 1.0f);
-    bridge->last_tendency.agreeableness_level = clamp_f(bridge->output_buffer[3], 0.0f, 1.0f);
-    bridge->last_tendency.neuroticism_level = clamp_f(bridge->output_buffer[4], 0.0f, 1.0f);
-    bridge->last_tendency.approach_tendency = clamp_f(bridge->output_buffer[5], 0.0f, 1.0f);
-    bridge->last_tendency.avoidance_tendency = clamp_f(bridge->output_buffer[6], 0.0f, 1.0f);
+    bridge->last_tendency.openness_level = nimcp_myelin_clamp(bridge->output_buffer[0], 0.0f, 1.0f);
+    bridge->last_tendency.conscientiousness_level = nimcp_myelin_clamp(bridge->output_buffer[1], 0.0f, 1.0f);
+    bridge->last_tendency.extraversion_level = nimcp_myelin_clamp(bridge->output_buffer[2], 0.0f, 1.0f);
+    bridge->last_tendency.agreeableness_level = nimcp_myelin_clamp(bridge->output_buffer[3], 0.0f, 1.0f);
+    bridge->last_tendency.neuroticism_level = nimcp_myelin_clamp(bridge->output_buffer[4], 0.0f, 1.0f);
+    bridge->last_tendency.approach_tendency = nimcp_myelin_clamp(bridge->output_buffer[5], 0.0f, 1.0f);
+    bridge->last_tendency.avoidance_tendency = nimcp_myelin_clamp(bridge->output_buffer[6], 0.0f, 1.0f);
 
     /* Calculate stability signal */
     float variance = 0.0f;
@@ -619,7 +629,7 @@ int personality_snn_simulate(personality_snn_bridge_t* bridge, float duration_ms
         variance += diff * diff;
     }
     variance /= 5.0f;
-    bridge->stability_signal = 1.0f - clamp_f(sqrtf(variance), 0.0f, 1.0f);
+    bridge->stability_signal = 1.0f - nimcp_myelin_clamp(sqrtf(variance), 0.0f, 1.0f);
 
     /* Check stability threshold */
     if (bridge->stability_signal > bridge->config.stability_threshold) {
@@ -1051,4 +1061,38 @@ bool personality_snn_is_bio_async_connected(personality_snn_bridge_t* bridge) {
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B24 Upgrade)
+//=============================================================================
+
+void personality_snn_bridge_set_instance_health_agent(
+    personality_snn_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B24 Upgrade)
+//=============================================================================
+
+int personality_snn_bridge_training_begin(personality_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+    personality_snn_bridge_heartbeat_instance(bridge->health_agent, "personality_snn_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int personality_snn_bridge_training_end(personality_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+    personality_snn_bridge_heartbeat_instance(bridge->health_agent, "personality_snn_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int personality_snn_bridge_training_step(personality_snn_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    personality_snn_bridge_heartbeat_instance(bridge->health_agent, "personality_snn_bridge_training_step", progress);
+    return 0;
 }

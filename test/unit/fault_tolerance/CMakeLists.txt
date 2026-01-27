@@ -729,4 +729,32 @@ gtest_discover_tests(unit_heartbeat_B23_parietal_bridges
         TIMEOUT 120
 )
 
+# B24: Predictive+Personality+Self-Awareness bridge heartbeat/utility integration tests
+add_executable(unit_heartbeat_B24_predictive_personality_selfawareness_bridges
+    test_predictive_personality_selfawareness_bridges_B24_functions.cpp
+)
+target_link_libraries(unit_heartbeat_B24_predictive_personality_selfawareness_bridges
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        pthread
+)
+
+target_include_directories(unit_heartbeat_B24_predictive_personality_selfawareness_bridges
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_heartbeat_B24_predictive_personality_selfawareness_bridges PRIVATE cxx_std_17)
+target_compile_definitions(unit_heartbeat_B24_predictive_personality_selfawareness_bridges PRIVATE NIMCP_TESTING)
+
+gtest_discover_tests(unit_heartbeat_B24_predictive_personality_selfawareness_bridges
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;fault_tolerance;heartbeat;B24;predictive_personality_selfawareness_bridges"
+        TIMEOUT 120
+)
+
 message(STATUS "Added fault tolerance unit tests")

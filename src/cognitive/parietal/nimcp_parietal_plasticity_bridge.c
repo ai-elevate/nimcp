@@ -21,6 +21,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "security/nimcp_bbb_helpers.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -105,6 +106,9 @@ struct parietal_plasticity_bridge {
     /* Health agent (instance-level) - Phase 8 */
     nimcp_health_agent_t* health_agent;
 };
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(parietal_plasticity_bridge)
 
 //=============================================================================
 // Helper Functions
@@ -386,6 +390,7 @@ int parietal_plasticity_get_synapse(
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, synapse, sizeof(*synapse));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -695,6 +700,10 @@ int parietal_plasticity_homeostatic_update(
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
 
 
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "parietal_plasticity_homeostatic_update");
+    BRIDGE_LGSS_GATE(bridge, "parietal_plasticity_homeostatic_update");
+
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = PARIETAL_PLASTICITY_STATE_UPDATING;
 
@@ -748,6 +757,9 @@ int parietal_plasticity_homeostatic_update(
 
     bridge->state = PARIETAL_PLASTICITY_STATE_IDLE;
     nimcp_mutex_unlock(bridge->base.mutex);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
 
@@ -874,6 +886,7 @@ int parietal_plasticity_get_spatial_state(
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->spatial_state;
@@ -891,6 +904,7 @@ int parietal_plasticity_get_state(
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -937,6 +951,7 @@ int parietal_plasticity_get_stats(
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, stats, sizeof(*stats));
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -973,6 +988,7 @@ int parietal_plasticity_register_learn_callback(
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->learn_callback = callback;
@@ -992,6 +1008,7 @@ int parietal_plasticity_register_spatial_callback(
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->spatial_callback = callback;
@@ -1079,6 +1096,13 @@ int parietal_plasticity_bridge_training_end(parietal_plasticity_bridge_t* bridge
 
 int parietal_plasticity_bridge_training_step(parietal_plasticity_bridge_t* bridge, float progress) {
     if (!bridge) return -1;
+
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "parietal_plasticity_bridge_training_step");
+    BRIDGE_LGSS_GATE(bridge, "parietal_plasticity_bridge_training_step");
     parietal_plasticity_bridge_heartbeat_instance(bridge->health_agent, "parietal_plasticity_bridge_training_step", progress);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }

@@ -25,6 +25,7 @@
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
+#include "security/nimcp_bbb_helpers.h"
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
 struct nimcp_health_agent;
@@ -110,6 +111,9 @@ struct parietal_snn_bridge {
     /* Health agent (instance-level) - Phase 8 */
     nimcp_health_agent_t* health_agent;
 };
+
+/* Security integration */
+BRIDGE_DEFINE_SECURITY_SETTERS(parietal_snn_bridge)
 
 //=============================================================================
 // Helper Functions
@@ -371,6 +375,7 @@ int parietal_snn_encode_state(
     uint32_t num_dims
 ) {
     if (!bridge || !dimensions) return -1;
+    BRIDGE_BBB_VALIDATE(bridge, dimensions, sizeof(*dimensions));
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
     /* Phase 8: Heartbeat at operation start */
@@ -624,6 +629,10 @@ int parietal_snn_step(parietal_snn_bridge_t* bridge) {
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_step", 0.0f);
 
 
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "parietal_snn_step");
+    BRIDGE_LGSS_GATE(bridge, "parietal_snn_step");
+
     return parietal_snn_simulate(bridge, bridge->config.dt_ms);
 }
 
@@ -637,6 +646,7 @@ int parietal_snn_forward(
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_forward", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, inputs, sizeof(*inputs));
 
     int spike_count = parietal_snn_encode_state(bridge, inputs, input_count);
     if (spike_count < 0) return -1;
@@ -661,6 +671,7 @@ int parietal_snn_get_spatial_output(
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_get_spa", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, spatial, sizeof(*spatial));
 
     nimcp_mutex_lock(bridge->base.mutex);
     *spatial = bridge->last_spatial;
@@ -675,6 +686,7 @@ int parietal_snn_get_activations(
     uint32_t num_dims
 ) {
     if (!bridge || !activations) return -1;
+    BRIDGE_BBB_VALIDATE(bridge, activations, sizeof(*activations));
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
     /* Phase 8: Heartbeat at operation start */
@@ -705,6 +717,7 @@ bool parietal_snn_check_attention(
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_check_a", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, attention_level, sizeof(*attention_level));
 
     nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_spatial.attention_level;
@@ -726,6 +739,7 @@ bool parietal_snn_check_precision(
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_check_p", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, precision_level, sizeof(*precision_level));
 
     nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_spatial.precision_magnitude;
@@ -747,6 +761,7 @@ bool parietal_snn_check_state_change(
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_check_s", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, change_magnitude, sizeof(*change_magnitude));
 
     nimcp_mutex_lock(bridge->base.mutex);
     /* Calculate magnitude from prev_state differences */
@@ -782,6 +797,7 @@ int parietal_snn_get_dim_state(
     parietal_dim_state_t* state
 ) {
     if (!bridge || !state) return -1;
+    BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
     if (dim >= bridge->config.num_dimensions) return -1;
 
     /* Phase 8: Heartbeat at operation start */
@@ -804,6 +820,7 @@ int parietal_snn_get_state(
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_get_sta", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -838,6 +855,7 @@ int parietal_snn_get_stats(parietal_snn_bridge_t* bridge, parietal_snn_stats_t* 
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_get_sta", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, stats, sizeof(*stats));
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -911,6 +929,7 @@ int parietal_snn_register_attention_callback(
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_registe", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_callback = callback;
@@ -930,6 +949,7 @@ int parietal_snn_register_spatial_callback(
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_registe", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->spatial_callback = callback;
@@ -949,6 +969,7 @@ int parietal_snn_register_precision_callback(
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_registe", 0.0f);
 
+    BRIDGE_BBB_VALIDATE(bridge, user_data, sizeof(*user_data));
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->precision_callback = callback;
@@ -1036,6 +1057,13 @@ int parietal_snn_bridge_training_end(parietal_snn_bridge_t* bridge) {
 
 int parietal_snn_bridge_training_step(parietal_snn_bridge_t* bridge, float progress) {
     if (!bridge) return -1;
+
+    /* Safety gates: ethics + LGSS pre-check */
+    BRIDGE_ETHICS_GATE(bridge, "parietal_snn_bridge_training_step");
+    BRIDGE_LGSS_GATE(bridge, "parietal_snn_bridge_training_step");
     parietal_snn_bridge_heartbeat_instance(bridge->health_agent, "parietal_snn_bridge_training_step", progress);
+
+    /* Notify coordinator of update cycle completion */
+    bridge_base_notify_coordinator_tick(&bridge->base, 0);
     return 0;
 }
