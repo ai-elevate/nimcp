@@ -682,7 +682,10 @@ int occipital_cognitive_bridge_get_effects(
     const occipital_cognitive_bridge_t* bridge,
     occipital_cognitive_effects_t* effects) {
 
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_cognitive_bridge_get_effects: required parameter is NULL");
+        return -1;
+    }
 
     *effects = bridge->effects;
 
@@ -693,7 +696,10 @@ int occipital_cognitive_get_modulation(
     const occipital_cognitive_bridge_t* bridge,
     cognitive_modulation_t* modulation) {
 
-    if (!bridge || !modulation) return -1;
+    if (!bridge || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_cognitive_get_modulation: required parameter is NULL");
+        return -1;
+    }
 
     *modulation = bridge->current_modulation;
 
@@ -770,7 +776,10 @@ int occipital_cognitive_query_memory(
     float* match_score,
     uint32_t* match_id) {
 
-    if (!bridge || !pattern) return -1;
+    if (!bridge || !pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_cognitive_query_memory: required parameter is NULL");
+        return -1;
+    }
 
     visual_cognitive_event_t event = {
         .target = COG_MODULE_MEMORY,
@@ -836,7 +845,10 @@ int occipital_cognitive_bridge_get_stats(
     const occipital_cognitive_bridge_t* bridge,
     occipital_cognitive_stats_t* stats) {
 
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_cognitive_bridge_get_stats: required parameter is NULL");
+        return -1;
+    }
 
     *stats = bridge->stats;
 
@@ -844,7 +856,10 @@ int occipital_cognitive_bridge_get_stats(
 }
 
 void occipital_cognitive_bridge_reset_stats(occipital_cognitive_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_cognitive_bridge_reset_stats: bridge is NULL");
+        return;
+    }
 
     memset(&bridge->stats, 0, sizeof(bridge->stats));
 }
@@ -853,7 +868,11 @@ bool occipital_cognitive_is_module_connected(
     const occipital_cognitive_bridge_t* bridge,
     cognitive_module_type_t type) {
 
-    if (!bridge || type >= COG_MODULE_COUNT) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_cognitive_is_module_connected: bridge is NULL");
+        return false;
+    }
+    if (type >= COG_MODULE_COUNT) return false;
 
     return bridge->modules[type].connected;
 }
@@ -861,7 +880,10 @@ bool occipital_cognitive_is_module_connected(
 uint32_t occipital_cognitive_get_active_module_count(
     const occipital_cognitive_bridge_t* bridge) {
 
-    if (!bridge) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_cognitive_get_active_module_count: bridge is NULL");
+        return 0;
+    }
 
     uint32_t count = 0;
     for (int i = 0; i < COG_MODULE_COUNT; i++) {
@@ -878,7 +900,10 @@ int occipital_cognitive_bridge_get_config(
     const occipital_cognitive_bridge_t* bridge,
     occipital_cognitive_config_t* config) {
 
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_cognitive_bridge_get_config: required parameter is NULL");
+        return -1;
+    }
 
     *config = bridge->config;
 
@@ -890,7 +915,11 @@ int occipital_cognitive_set_module_enabled(
     cognitive_module_type_t type,
     bool enabled) {
 
-    if (!bridge || type >= COG_MODULE_COUNT) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_cognitive_set_module_enabled: bridge is NULL");
+        return -1;
+    }
+    if (type >= COG_MODULE_COUNT) return -1;
 
     bridge->modules[type].enabled = enabled;
     bridge->config.modules[type].enabled = enabled;

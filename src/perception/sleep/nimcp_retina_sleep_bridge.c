@@ -237,7 +237,10 @@ int retina_sleep_get_effects(const retina_sleep_bridge_t bridge, retina_sleep_ef
 }
 
 float retina_sleep_get_pupil_response(const retina_sleep_bridge_t bridge, float base_response) {
-    if (!bridge) return base_response;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "retina_sleep_get_pupil_response: bridge is NULL");
+        return base_response;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     float result = base_response * bridge->effects.pupil_response_factor;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -245,7 +248,10 @@ float retina_sleep_get_pupil_response(const retina_sleep_bridge_t bridge, float 
 }
 
 float retina_sleep_get_light_sensitivity(const retina_sleep_bridge_t bridge, float base_sensitivity) {
-    if (!bridge) return base_sensitivity;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "retina_sleep_get_light_sensitivity: bridge is NULL");
+        return base_sensitivity;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     float result = base_sensitivity * bridge->effects.light_sensitivity_factor;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -253,7 +259,10 @@ float retina_sleep_get_light_sensitivity(const retina_sleep_bridge_t bridge, flo
 }
 
 float retina_sleep_get_adaptation_rate(const retina_sleep_bridge_t bridge, float base_rate) {
-    if (!bridge) return base_rate;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "retina_sleep_get_adaptation_rate: bridge is NULL");
+        return base_rate;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     float result = base_rate * bridge->effects.adaptation_rate_factor;
     nimcp_mutex_unlock(bridge->base.mutex);

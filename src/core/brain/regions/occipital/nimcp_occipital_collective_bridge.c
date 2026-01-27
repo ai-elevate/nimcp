@@ -680,7 +680,10 @@ int occipital_collective_initiate_attention(
     float salience,
     uint32_t* target_id
 ) {
-    if (!bridge || !target_id) return -1;
+    if (!bridge || !target_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_collective_initiate_attention: required parameter is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -821,7 +824,10 @@ int occipital_collective_get_targets(
     uint32_t max_targets,
     uint32_t* count
 ) {
-    if (!bridge || !targets || !count) return -1;
+    if (!bridge || !targets || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_collective_get_targets: required parameter is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(((occipital_collective_bridge_t*)bridge)->base.mutex);
 
@@ -844,7 +850,10 @@ int occipital_collective_share_feature(
     occipital_collective_bridge_t* bridge,
     const shared_visual_feature_t* feature
 ) {
-    if (!bridge || !feature) return -1;
+    if (!bridge || !feature) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_collective_share_feature: required parameter is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -898,7 +907,10 @@ int occipital_collective_get_features(
     uint32_t max_features,
     uint32_t* count
 ) {
-    if (!bridge || !features || !count) return -1;
+    if (!bridge || !features || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_collective_get_features: required parameter is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(((occipital_collective_bridge_t*)bridge)->base.mutex);
 
@@ -990,7 +1002,10 @@ int occipital_collective_get_summary(
     const occipital_collective_bridge_t* bridge,
     collective_visual_summary_t* summary
 ) {
-    if (!bridge || !summary) return -1;
+    if (!bridge || !summary) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_collective_get_summary: required parameter is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(((occipital_collective_bridge_t*)bridge)->base.mutex);
 
@@ -1038,7 +1053,10 @@ int occipital_collective_get_instance_state(
     uint32_t instance_id,
     collective_visual_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_collective_get_instance_state: required parameter is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(((occipital_collective_bridge_t*)bridge)->base.mutex);
 
@@ -1058,7 +1076,10 @@ int occipital_collective_get_instance_state(
 uint32_t occipital_collective_get_local_id(
     const occipital_collective_bridge_t* bridge
 ) {
-    if (!bridge) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_collective_get_local_id: bridge is NULL");
+        return 0;
+    }
 
     nimcp_mutex_lock(((occipital_collective_bridge_t*)bridge)->base.mutex);
     uint32_t id = bridge->local_instance_id;
@@ -1070,7 +1091,10 @@ uint32_t occipital_collective_get_local_id(
 bool occipital_collective_is_attention_leader(
     const occipital_collective_bridge_t* bridge
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_collective_is_attention_leader: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(((occipital_collective_bridge_t*)bridge)->base.mutex);
     bool is_leader = bridge->is_attention_leader;
@@ -1082,7 +1106,10 @@ bool occipital_collective_is_attention_leader(
 float occipital_collective_get_coherence(
     const occipital_collective_bridge_t* bridge
 ) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_collective_get_coherence: bridge is NULL");
+        return 0.0f;
+    }
 
     nimcp_mutex_lock(((occipital_collective_bridge_t*)bridge)->base.mutex);
     float coherence = bridge->attention_coherence;
@@ -1099,7 +1126,10 @@ int occipital_collective_get_stats(
     const occipital_collective_bridge_t* bridge,
     occipital_collective_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_collective_get_stats: required parameter is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(((occipital_collective_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
@@ -1109,7 +1139,10 @@ int occipital_collective_get_stats(
 }
 
 void occipital_collective_reset_stats(occipital_collective_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_collective_reset_stats: bridge is NULL");
+        return;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));

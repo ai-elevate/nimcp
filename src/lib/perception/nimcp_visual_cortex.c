@@ -377,17 +377,29 @@ bool conv_layer_forward(conv_layer_t* layer, const float* input, float* output)
  */
 uint32_t conv_layer_get_output_width(const conv_layer_t* layer)
 {
-    return layer ? layer->output_width : 0;
+    if (!layer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "conv_layer_get_output_width: layer is NULL");
+        return 0;
+    }
+    return layer->output_width;
 }
 
 uint32_t conv_layer_get_output_height(const conv_layer_t* layer)
 {
-    return layer ? layer->output_height : 0;
+    if (!layer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "conv_layer_get_output_height: layer is NULL");
+        return 0;
+    }
+    return layer->output_height;
 }
 
 uint32_t conv_layer_get_output_channels(const conv_layer_t* layer)
 {
-    return layer ? layer->num_filters : 0;
+    if (!layer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "conv_layer_get_output_channels: layer is NULL");
+        return 0;
+    }
+    return layer->num_filters;
 }
 
 //=============================================================================
@@ -762,6 +774,7 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
 
     visual_cortex_t* cortex = (visual_cortex_t*)nimcp_calloc(1, sizeof(visual_cortex_t));
     if (!cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortex_create: cortex allocation failed");
         LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate visual cortex");
         return NULL;
     }
@@ -1696,6 +1709,7 @@ bool visual_cortex_consolidate_memory(
 void visual_cortex_set_brain(visual_cortex_t* cortex, brain_t brain)
 {
     if (!cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortex_set_brain: cortex is NULL");
         return;
     }
     cortex->brain = brain;
@@ -2167,6 +2181,7 @@ void visual_cortex_boost_region_attention(visual_cortex_t* cortex,
 {
     // Guard: Validate cortex
     if (!cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortex_boost_region_attention: cortex is NULL");
         return;
     }
 
@@ -2208,7 +2223,11 @@ bool visual_cortex_detect_agent(visual_cortex_t* cortex,
                                  uint32_t num_features)
 {
     // Guard: Validate inputs
-    if (!cortex || !features || num_features == 0) {
+    if (!cortex || !features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortex_detect_agent: required parameter is NULL");
+        return false;
+    }
+    if (num_features == 0) {
         return false;
     }
 
@@ -2260,7 +2279,11 @@ bool visual_cortex_detect_agent(visual_cortex_t* cortex,
  */
 bio_module_context_t visual_cortex_get_bio_context(visual_cortex_t* cortex)
 {
-    if (!cortex || !cortex->bio_async_enabled) {
+    if (!cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortex_get_bio_context: cortex is NULL");
+        return NULL;
+    }
+    if (!cortex->bio_async_enabled) {
         return NULL;
     }
     return cortex->bio_ctx;
@@ -2274,7 +2297,11 @@ bio_module_context_t visual_cortex_get_bio_context(visual_cortex_t* cortex)
  */
 uint32_t visual_cortex_process_bio_messages(visual_cortex_t* cortex, uint32_t max_messages)
 {
-    if (!cortex || !cortex->bio_async_enabled || !cortex->bio_ctx) {
+    if (!cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortex_process_bio_messages: cortex is NULL");
+        return 0;
+    }
+    if (!cortex->bio_async_enabled || !cortex->bio_ctx) {
         return 0;
     }
 
@@ -2298,6 +2325,7 @@ nimcp_error_t visual_cortex_broadcast_input(
     float salience)
 {
     if (!cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_broadcast_input: cortex is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -2305,7 +2333,11 @@ nimcp_error_t visual_cortex_broadcast_input(
         return NIMCP_ERROR_NOT_INITIALIZED;
     }
 
-    if (!features || num_features == 0) {
+    if (!features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_broadcast_input: features is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+    if (num_features == 0) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -2349,6 +2381,7 @@ nimcp_error_t visual_cortex_broadcast_attention_shift(
     float salience)
 {
     if (!cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_broadcast_attention_shift: cortex is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -2407,6 +2440,7 @@ int visual_cortex_get_training_state(
 {
     /* Guard: Validate inputs */
     if (!cortex || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortex_get_training_state: required parameter is NULL");
         return -1;
     }
 
@@ -2460,7 +2494,11 @@ int visual_cortex_apply_gradient_feedback(
     float scale)
 {
     /* Guard: Validate inputs */
-    if (!cortex || !gradients || gradient_size == 0) {
+    if (!cortex || !gradients) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortex_apply_gradient_feedback: required parameter is NULL");
+        return -1;
+    }
+    if (gradient_size == 0) {
         return -1;
     }
 
@@ -2553,6 +2591,7 @@ int visual_cortex_extract_features_tensor(
 {
     /* Guard: Validate inputs */
     if (!cortex || !image || !features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortex_extract_features_tensor: required parameter is NULL");
         return -1;
     }
 
@@ -2637,6 +2676,7 @@ int visual_cortex_extract_features_tensor(
 uint32_t visual_cortex_get_feature_dim(const visual_cortex_t* cortex)
 {
     if (!cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortex_get_feature_dim: cortex is NULL");
         return 0;
     }
     return cortex->feature_dim;
@@ -2697,6 +2737,7 @@ int visual_cortex_set_training_mode(visual_cortex_t* cortex, bool enable)
 bool visual_cortex_is_training_mode(const visual_cortex_t* cortex)
 {
     if (!cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortex_is_training_mode: cortex is NULL");
         return false;
     }
     return cortex->training_mode;

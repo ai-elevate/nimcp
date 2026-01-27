@@ -113,7 +113,10 @@ int visual_cortex_extract_features(
     uint32_t channels,
     visual_features_t* features
 ) {
-    if (!features) return -1;
+    if (!features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_extract_features: features is NULL");
+        return -1;
+    }
 
     memset(features, 0, sizeof(*features));
     features->timestamp_us = get_time_us();
@@ -184,7 +187,10 @@ visual_bridge_config_t visual_bridge_default_config(void) {
 }
 
 bool visual_bridge_validate_config(const visual_bridge_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_bridge_validate_config: config is NULL");
+        return false;
+    }
 
     if (config->min_motion_speed < 0.0f) return false;
     if (config->min_blob_size <= 0.0f) return false;
@@ -612,7 +618,11 @@ float dragonfly_visual_bridge_estimate_depth(
     const dragonfly_visual_bridge_t* bridge,
     float blob_size_pixels
 ) {
-    if (!bridge || blob_size_pixels <= 0.0f) return -1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_visual_bridge_estimate_depth: bridge is NULL");
+        return -1.0f;
+    }
+    if (blob_size_pixels <= 0.0f) return -1.0f;
 
     /* Estimate depth from angular size:
      * angular_size = actual_size / depth
@@ -629,7 +639,10 @@ float dragonfly_visual_bridge_pixel_velocity_to_angular(
     const dragonfly_visual_bridge_t* bridge,
     float vel_pixels_per_frame
 ) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_visual_bridge_pixel_velocity_to_angular: bridge is NULL");
+        return 0.0f;
+    }
 
     /* Convert pixels/frame to radians/second */
     float radians_per_pixel = 1.0f / bridge->config.calibration.focal_length;

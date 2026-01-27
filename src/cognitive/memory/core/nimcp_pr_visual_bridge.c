@@ -383,6 +383,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_reset(
     pr_visual_bridge_t* bridge) {
 
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_reset: bridge is NULL");
         return set_error(NULL, PR_VISUAL_ERROR_NULL_PARAM);
     }
 
@@ -438,6 +439,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_connect_visual_cortex(
     visual_cortex_t* cortex) {
 
     if (!bridge || !cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_connect_visual_cortex: required parameter is NULL");
         return set_error(bridge, PR_VISUAL_ERROR_NULL_PARAM);
     }
 
@@ -460,6 +462,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_connect_fep_bridge(
     visual_cortex_fep_bridge_t* fep_bridge) {
 
     if (!bridge || !fep_bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_connect_fep_bridge: required parameter is NULL");
         return set_error(bridge, PR_VISUAL_ERROR_NULL_PARAM);
     }
 
@@ -482,6 +485,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_connect_retina(
     retina_t* retina) {
 
     if (!bridge || !retina) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_connect_retina: required parameter is NULL");
         return set_error(bridge, PR_VISUAL_ERROR_NULL_PARAM);
     }
 
@@ -504,6 +508,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_connect_theta_gamma(
     theta_gamma_manager_t* tg_manager) {
 
     if (!bridge || !tg_manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_connect_theta_gamma: required parameter is NULL");
         return set_error(bridge, PR_VISUAL_ERROR_NULL_PARAM);
     }
 
@@ -530,6 +535,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_extract_features(
     pr_visual_feature_vector_t* features) {
 
     if (!bridge || !features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_extract_features: required parameter is NULL");
         return set_error(bridge, PR_VISUAL_ERROR_NULL_PARAM);
     }
 
@@ -582,6 +588,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_compute_visual_prime_sig(
     prime_signature_t* signature) {
 
     if (!bridge || !features || !signature) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_compute_visual_prime_sig: required parameter is NULL");
         return set_error(bridge, PR_VISUAL_ERROR_NULL_PARAM);
     }
 
@@ -719,6 +726,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_signature_similarity(
     float* similarity) {
 
     if (!bridge || !sig1 || !sig2 || !similarity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_signature_similarity: required parameter is NULL");
         return set_error(bridge, PR_VISUAL_ERROR_NULL_PARAM);
     }
 
@@ -736,6 +744,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_compute_visual_quaternion
     nimcp_quaternion_t* quat) {
 
     if (!bridge || !quat) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_compute_visual_quaternion: required parameter is NULL");
         return set_error(bridge, PR_VISUAL_ERROR_NULL_PARAM);
     }
 
@@ -777,6 +786,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_apply_attention_to_salien
     nimcp_quaternion_t* quat) {
 
     if (!bridge || !attention_map || !quat) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_apply_attention_to_salience: required parameter is NULL");
         return set_error(bridge, PR_VISUAL_ERROR_NULL_PARAM);
     }
 
@@ -825,6 +835,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_apply_novelty_to_accessib
     nimcp_quaternion_t* quat) {
 
     if (!bridge || !quat) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_apply_novelty_to_accessibility: required parameter is NULL");
         return set_error(bridge, PR_VISUAL_ERROR_NULL_PARAM);
     }
 
@@ -845,6 +856,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_apply_warmth_to_emotion(
     nimcp_quaternion_t* quat) {
 
     if (!bridge || !quat) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_apply_warmth_to_emotion: required parameter is NULL");
         return set_error(bridge, PR_VISUAL_ERROR_NULL_PARAM);
     }
 
@@ -868,6 +880,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_encode_to_memory(
     pr_memory_node_t** memory_node) {
 
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_encode_to_memory: bridge is NULL");
         return set_error(bridge, PR_VISUAL_ERROR_NULL_PARAM);
     }
 
@@ -940,6 +953,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_encode_explicit(
     pr_memory_node_t** memory_node) {
 
     if (!bridge || !signature || !quat) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_encode_explicit: required parameter is NULL");
         return set_error(bridge, PR_VISUAL_ERROR_NULL_PARAM);
     }
 
@@ -971,6 +985,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_retrieve_similar_visual(
     uint32_t* result_count) {
 
     if (!bridge || !query_signature || !results || !result_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_retrieve_similar_visual: required parameter is NULL");
         return set_error(bridge, PR_VISUAL_ERROR_NULL_PARAM);
     }
 
@@ -1090,6 +1105,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_retrieve_current(
     uint32_t* result_count) {
 
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_retrieve_current: bridge is NULL");
         return set_error(bridge, PR_VISUAL_ERROR_NULL_PARAM);
     }
 
@@ -1111,6 +1127,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_process_frame(
     uint64_t frame_id) {
 
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_process_frame: bridge is NULL");
         return set_error(bridge, PR_VISUAL_ERROR_NULL_PARAM);
     }
 
@@ -1182,6 +1199,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_update_from_fep(
     pr_visual_bridge_t* bridge) {
 
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_update_from_fep: bridge is NULL");
         return set_error(bridge, PR_VISUAL_ERROR_NULL_PARAM);
     }
 
@@ -1226,6 +1244,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_get_memory_pe(
     float* prediction_error) {
 
     if (!bridge || !memory_node || !prediction_error) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_get_memory_pe: required parameter is NULL");
         return set_error(bridge, PR_VISUAL_ERROR_NULL_PARAM);
     }
 
@@ -1245,7 +1264,10 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_get_memory_pe(
 NIMCP_EXPORT entangle_graph_t pr_visual_bridge_get_visual_entanglement(
     pr_visual_bridge_t* bridge) {
 
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_get_visual_entanglement: bridge is NULL");
+        return NULL;
+    }
     return bridge->visual_entanglement;
 }
 
@@ -1257,6 +1279,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_entangle_memories(
     float strength) {
 
     if (!bridge || !node1 || !node2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_entangle_memories: required parameter is NULL");
         return set_error(bridge, PR_VISUAL_ERROR_NULL_PARAM);
     }
 
@@ -1299,6 +1322,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_auto_entangle(
     uint32_t* edges_created) {
 
     if (!bridge || !edges_created) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_auto_entangle: required parameter is NULL");
         return set_error(bridge, PR_VISUAL_ERROR_NULL_PARAM);
     }
 
@@ -1354,7 +1378,11 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_auto_entangle(
  * ============================================================================ */
 
 NIMCP_EXPORT bool pr_visual_bridge_in_encode_phase(pr_visual_bridge_t* bridge) {
-    if (!bridge || !bridge->theta_gamma || !*bridge->theta_gamma) return true;  /* Default to allow */
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_in_encode_phase: bridge is NULL");
+        return true;  /* Default to allow */
+    }
+    if (!bridge->theta_gamma || !*bridge->theta_gamma) return true;  /* Default to allow */
 
     float phase = theta_gamma_get_theta_phase(*bridge->theta_gamma);
     /* Encode phase: 0-90 degrees */
@@ -1362,7 +1390,11 @@ NIMCP_EXPORT bool pr_visual_bridge_in_encode_phase(pr_visual_bridge_t* bridge) {
 }
 
 NIMCP_EXPORT bool pr_visual_bridge_in_retrieve_phase(pr_visual_bridge_t* bridge) {
-    if (!bridge || !bridge->theta_gamma || !*bridge->theta_gamma) return true;  /* Default to allow */
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_in_retrieve_phase: bridge is NULL");
+        return true;  /* Default to allow */
+    }
+    if (!bridge->theta_gamma || !*bridge->theta_gamma) return true;  /* Default to allow */
 
     float phase = theta_gamma_get_theta_phase(*bridge->theta_gamma);
     /* Retrieve phase: 180-270 degrees */
@@ -1370,7 +1402,11 @@ NIMCP_EXPORT bool pr_visual_bridge_in_retrieve_phase(pr_visual_bridge_t* bridge)
 }
 
 NIMCP_EXPORT float pr_visual_bridge_get_theta_phase(pr_visual_bridge_t* bridge) {
-    if (!bridge || !bridge->theta_gamma || !*bridge->theta_gamma) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_get_theta_phase: bridge is NULL");
+        return 0.0f;
+    }
+    if (!bridge->theta_gamma || !*bridge->theta_gamma) return 0.0f;
 
     return theta_gamma_get_theta_phase(*bridge->theta_gamma);
 }
@@ -1380,6 +1416,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_set_theta_phase(
     float phase_degrees) {
 
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_set_theta_phase: bridge is NULL");
         return set_error(bridge, PR_VISUAL_ERROR_NULL_PARAM);
     }
 
@@ -1407,6 +1444,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_get_stats(
     pr_visual_bridge_stats_t* stats) {
 
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_get_stats: required parameter is NULL");
         return set_error(bridge, PR_VISUAL_ERROR_NULL_PARAM);
     }
 
@@ -1426,6 +1464,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_reset_stats(
     pr_visual_bridge_t* bridge) {
 
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_reset_stats: bridge is NULL");
         return set_error(bridge, PR_VISUAL_ERROR_NULL_PARAM);
     }
 
@@ -1447,6 +1486,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_get_last_error(
     pr_visual_bridge_t* bridge) {
 
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_get_last_error: bridge is NULL");
         return g_last_error;
     }
     return bridge->last_error;
@@ -1468,7 +1508,10 @@ NIMCP_EXPORT const char* pr_visual_bridge_error_string(
 }
 
 NIMCP_EXPORT bool pr_visual_bridge_is_connected(pr_visual_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_is_connected: bridge is NULL");
+        return false;
+    }
 
     return (bridge->visual_cortex != NULL &&
             bridge->fep_bridge != NULL &&
@@ -1480,6 +1523,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_get_current_quaternion(
     nimcp_quaternion_t* quat) {
 
     if (!bridge || !quat) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_get_current_quaternion: required parameter is NULL");
         return set_error(bridge, PR_VISUAL_ERROR_NULL_PARAM);
     }
 
@@ -1500,6 +1544,7 @@ NIMCP_EXPORT pr_visual_bridge_error_t pr_visual_bridge_get_current_signature(
     prime_signature_t* signature) {
 
     if (!bridge || !signature) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_get_current_signature: required parameter is NULL");
         return set_error(bridge, PR_VISUAL_ERROR_NULL_PARAM);
     }
 

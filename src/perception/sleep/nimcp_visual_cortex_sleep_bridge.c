@@ -234,7 +234,10 @@ int visual_sleep_get_effects(const visual_sleep_bridge_t bridge, visual_sleep_ef
 }
 
 float visual_sleep_get_acuity(const visual_sleep_bridge_t bridge, float base_acuity) {
-    if (!bridge) return base_acuity;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_sleep_get_acuity: bridge is NULL");
+        return base_acuity;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     float result = base_acuity * bridge->effects.acuity_factor;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -242,7 +245,10 @@ float visual_sleep_get_acuity(const visual_sleep_bridge_t bridge, float base_acu
 }
 
 float visual_sleep_get_contrast_sensitivity(const visual_sleep_bridge_t bridge, float base_contrast) {
-    if (!bridge) return base_contrast;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_sleep_get_contrast_sensitivity: bridge is NULL");
+        return base_contrast;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     float result = base_contrast * bridge->effects.contrast_sensitivity_factor;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -250,7 +256,10 @@ float visual_sleep_get_contrast_sensitivity(const visual_sleep_bridge_t bridge, 
 }
 
 float visual_sleep_get_attention_gate(const visual_sleep_bridge_t bridge) {
-    if (!bridge) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_sleep_get_attention_gate: bridge is NULL");
+        return 1.0f;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.attention_gate;
     nimcp_mutex_unlock(bridge->base.mutex);

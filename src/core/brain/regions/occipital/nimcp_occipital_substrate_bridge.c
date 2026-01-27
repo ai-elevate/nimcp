@@ -509,6 +509,7 @@ int occipital_substrate_bridge_get_effects(
     occipital_substrate_effects_t* effects)
 {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_substrate_bridge_get_effects: required parameter is NULL");
         return -1;
     }
     *effects = bridge->effects;
@@ -534,6 +535,7 @@ float occipital_substrate_bridge_get_area_capacity(
     uint32_t area)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_substrate_bridge_get_area_capacity: bridge is NULL");
         return -1.0f;
     }
 
@@ -638,6 +640,7 @@ int occipital_substrate_bridge_get_stats(
     occipital_substrate_stats_t* stats)
 {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_substrate_bridge_get_stats: required parameter is NULL");
         return -1;
     }
     *stats = bridge->stats;
@@ -645,10 +648,12 @@ int occipital_substrate_bridge_get_stats(
 }
 
 void occipital_substrate_bridge_reset_stats(occipital_substrate_bridge_t* bridge) {
-    if (bridge) {
-        memset(&bridge->stats, 0, sizeof(occipital_substrate_stats_t));
-        bridge->stats.min_observed_capacity = 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_substrate_bridge_reset_stats: bridge is NULL");
+        return;
     }
+    memset(&bridge->stats, 0, sizeof(occipital_substrate_stats_t));
+    bridge->stats.min_observed_capacity = 1.0f;
 }
 
 /*=============================================================================
@@ -659,6 +664,7 @@ bool occipital_substrate_bridge_is_impaired(
     const occipital_substrate_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_substrate_bridge_is_impaired: bridge is NULL");
         return false;
     }
     return bridge->effects.overall_capacity < 0.5f;
@@ -668,6 +674,7 @@ bool occipital_substrate_bridge_is_atp_critical(
     const occipital_substrate_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_substrate_bridge_is_atp_critical: bridge is NULL");
         return false;
     }
     return bridge->last_atp < OCCIPITAL_ATP_CRITICAL;
@@ -678,6 +685,7 @@ int occipital_substrate_bridge_get_config(
     occipital_substrate_config_t* config)
 {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_substrate_bridge_get_config: required parameter is NULL");
         return -1;
     }
     *config = bridge->config;

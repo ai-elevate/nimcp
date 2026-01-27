@@ -406,7 +406,10 @@ int visual_immune_apply_sickness_effects(visual_immune_bridge_t* bridge) {
 }
 
 float visual_immune_compute_tunnel_vision(const visual_immune_bridge_t* bridge) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_immune_compute_tunnel_vision: bridge is NULL");
+        return 0.0f;
+    }
     if (!bridge->enable_tunnel_vision) return 0.0f;
 
     /* Return stored tunnel vision severity */
@@ -663,7 +666,10 @@ bool visual_immune_is_sick_behavior(const visual_immune_bridge_t* bridge) {
 }
 
 float visual_immune_get_processing_speed_factor(const visual_immune_bridge_t* bridge) {
-    if (!bridge) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_immune_get_processing_speed_factor: bridge is NULL");
+        return 1.0f;
+    }
 
     /* Combine cytokine and sickness effects */
     float factor = bridge->cytokine_effects.total_processing_factor;
@@ -674,7 +680,10 @@ float visual_immune_get_processing_speed_factor(const visual_immune_bridge_t* br
 }
 
 float visual_immune_get_accuracy_factor(const visual_immune_bridge_t* bridge) {
-    if (!bridge) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_immune_get_accuracy_factor: bridge is NULL");
+        return 1.0f;
+    }
 
     /* Combine cytokine and inflammation effects */
     float factor = bridge->cytokine_effects.total_accuracy_factor;
@@ -684,7 +693,10 @@ float visual_immune_get_accuracy_factor(const visual_immune_bridge_t* bridge) {
 }
 
 float visual_immune_get_attention_capacity(const visual_immune_bridge_t* bridge) {
-    if (!bridge) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_immune_get_attention_capacity: bridge is NULL");
+        return 1.0f;
+    }
 
     /* Combine cytokine effects and tunnel vision */
     float capacity = bridge->cytokine_effects.total_attention_factor;
@@ -694,7 +706,10 @@ float visual_immune_get_attention_capacity(const visual_immune_bridge_t* bridge)
 }
 
 float visual_immune_get_threat_salience_boost(const visual_immune_bridge_t* bridge) {
-    if (!bridge) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_immune_get_threat_salience_boost: bridge is NULL");
+        return 1.0f;
+    }
     if (!bridge->enable_threat_salience_boost) return 1.0f;
 
     /* Sickness behavior and inflammation enhance threat detection */

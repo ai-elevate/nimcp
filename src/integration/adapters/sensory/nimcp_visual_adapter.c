@@ -145,11 +145,18 @@ void nimcp_visual_adapter_destroy(nimcp_visual_adapter_t adapter) {
 }
 
 nimcp_module_interface_t* nimcp_visual_adapter_get_interface(nimcp_visual_adapter_t adapter) {
-    return adapter ? &adapter->interface : NULL;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_visual_adapter_get_interface: adapter is NULL");
+        return NULL;
+    }
+    return &adapter->interface;
 }
 
 nimcp_layer_error_t nimcp_visual_adapter_process_frame(nimcp_visual_adapter_t adapter, const float* pixels, uint32_t size) {
-    if (!adapter || !pixels) return NIMCP_LAYER_ERR_NULL_PTR;
+    if (!adapter || !pixels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_visual_adapter_process_frame: required parameter is NULL");
+        return NIMCP_LAYER_ERR_NULL_PTR;
+    }
     if (!adapter->is_initialized) return NIMCP_LAYER_ERR_NOT_INITIALIZED;
     float sum = 0.0f;
     for (uint32_t i = 0; i < size && i < 1000; i++) sum += pixels[i];
@@ -159,7 +166,10 @@ nimcp_layer_error_t nimcp_visual_adapter_process_frame(nimcp_visual_adapter_t ad
 }
 
 nimcp_layer_error_t nimcp_visual_adapter_get_features(nimcp_visual_adapter_t adapter, float* features_out, uint32_t max_features, uint32_t* count_out) {
-    if (!adapter || !features_out || !count_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    if (!adapter || !features_out || !count_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_visual_adapter_get_features: required parameter is NULL");
+        return NIMCP_LAYER_ERR_NULL_PTR;
+    }
     uint32_t count = adapter->num_features < max_features ? adapter->num_features : max_features;
     memcpy(features_out, adapter->feature_buffer, count * sizeof(float));
     *count_out = count;
@@ -167,19 +177,28 @@ nimcp_layer_error_t nimcp_visual_adapter_get_features(nimcp_visual_adapter_t ada
 }
 
 nimcp_layer_error_t nimcp_visual_adapter_get_state(nimcp_visual_adapter_t adapter, nimcp_visual_adapter_state_t* state_out) {
-    if (!adapter || !state_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    if (!adapter || !state_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_visual_adapter_get_state: required parameter is NULL");
+        return NIMCP_LAYER_ERR_NULL_PTR;
+    }
     *state_out = adapter->state;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_visual_adapter_get_stats(nimcp_visual_adapter_t adapter, nimcp_visual_adapter_stats_t* stats_out) {
-    if (!adapter || !stats_out) return NIMCP_LAYER_ERR_NULL_PTR;
+    if (!adapter || !stats_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_visual_adapter_get_stats: required parameter is NULL");
+        return NIMCP_LAYER_ERR_NULL_PTR;
+    }
     *stats_out = adapter->stats;
     return NIMCP_LAYER_OK;
 }
 
 nimcp_layer_error_t nimcp_visual_adapter_reset_stats(nimcp_visual_adapter_t adapter) {
-    if (!adapter) return NIMCP_LAYER_ERR_NULL_PTR;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_visual_adapter_reset_stats: adapter is NULL");
+        return NIMCP_LAYER_ERR_NULL_PTR;
+    }
     memset(&adapter->stats, 0, sizeof(adapter->stats));
     return NIMCP_LAYER_OK;
 }

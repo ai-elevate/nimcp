@@ -204,11 +204,19 @@ void occipital_quantum_bridge_destroy(occipital_quantum_bridge_t* bridge) {
 }
 
 bool occipital_quantum_bridge_is_enabled(const occipital_quantum_bridge_t* bridge) {
-    return bridge && bridge->config.enabled;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_quantum_bridge_is_enabled: bridge is NULL");
+        return false;
+    }
+    return bridge->config.enabled;
 }
 
 void occipital_quantum_bridge_set_enabled(occipital_quantum_bridge_t* bridge, bool enabled) {
-    if (bridge) bridge->config.enabled = enabled;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_quantum_bridge_set_enabled: bridge is NULL");
+        return;
+    }
+    bridge->config.enabled = enabled;
 }
 
 /*=============================================================================
@@ -221,7 +229,10 @@ int occipital_quantum_visual_search(
     uint32_t num_locations,
     quantum_search_result_t* result
 ) {
-    if (!bridge || !target || !result) return -1;
+    if (!bridge || !target || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_quantum_visual_search: required parameter is NULL");
+        return -1;
+    }
     if (!bridge->config.enabled) return -1;
 
     memset(result, 0, sizeof(*result));
@@ -347,7 +358,10 @@ int occipital_quantum_feature_binding(
     uint32_t num_features,
     quantum_binding_result_t* result
 ) {
-    if (!bridge || !feature_locations || !feature_types || !result) return -1;
+    if (!bridge || !feature_locations || !feature_types || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_quantum_feature_binding: required parameter is NULL");
+        return -1;
+    }
     if (!bridge->config.enabled) return -1;
 
     memset(result, 0, sizeof(*result));
@@ -452,7 +466,10 @@ int occipital_quantum_segment_scene(
     uint32_t height,
     quantum_segmentation_result_t* result
 ) {
-    if (!bridge || !edge_map || !result) return -1;
+    if (!bridge || !edge_map || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_quantum_segment_scene: required parameter is NULL");
+        return -1;
+    }
     if (!bridge->config.enabled) return -1;
 
     memset(result, 0, sizeof(*result));
@@ -540,7 +557,10 @@ int occipital_quantum_integrate_motion(
     uint32_t num_motions,
     quantum_motion_result_t* result
 ) {
-    if (!bridge || !local_dx || !local_dy || !result) return -1;
+    if (!bridge || !local_dx || !local_dy || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_quantum_integrate_motion: required parameter is NULL");
+        return -1;
+    }
     if (!bridge->config.enabled) return -1;
     if (num_motions == 0) return -1;
 
@@ -627,22 +647,30 @@ int occipital_quantum_get_stats(
     const occipital_quantum_bridge_t* bridge,
     occipital_quantum_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_quantum_get_stats: required parameter is NULL");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 void occipital_quantum_reset_stats(occipital_quantum_bridge_t* bridge) {
-    if (bridge) {
-        memset(&bridge->stats, 0, sizeof(bridge->stats));
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_quantum_reset_stats: bridge is NULL");
+        return;
     }
+    memset(&bridge->stats, 0, sizeof(bridge->stats));
 }
 
 int occipital_quantum_get_config(
     const occipital_quantum_bridge_t* bridge,
     occipital_quantum_config_t* config
 ) {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_quantum_get_config: required parameter is NULL");
+        return -1;
+    }
     *config = bridge->config;
     return 0;
 }

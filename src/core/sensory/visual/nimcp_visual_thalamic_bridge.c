@@ -87,7 +87,10 @@ void visual_thalamic_bridge_destroy(visual_thalamic_bridge_t* bridge) {
 }
 
 int visual_thalamic_bridge_reset(visual_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_thalamic_bridge_reset: bridge is NULL");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(visual_thalamic_stats_t));
     bridge->attention_weight = 1.0f;
     return 0;
@@ -95,7 +98,10 @@ int visual_thalamic_bridge_reset(visual_thalamic_bridge_t* bridge) {
 
 int visual_thalamic_route_signal(visual_thalamic_bridge_t* bridge,
                                   const visual_thalamic_signal_t* signal) {
-    if (!bridge || !signal) return -1;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_thalamic_route_signal: required parameter is NULL");
+        return -1;
+    }
 
     if (bridge->config.enable_attention_gating &&
         signal->visual_salience < bridge->config.min_salience_threshold) {
@@ -118,7 +124,10 @@ int visual_thalamic_route_signal(visual_thalamic_bridge_t* bridge,
 
 int visual_thalamic_route_attention(visual_thalamic_bridge_t* bridge,
                                      uint32_t x, uint32_t y, float weight) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_thalamic_route_attention: bridge is NULL");
+        return -1;
+    }
 
     visual_thalamic_signal_t signal = {
         .signal_type = VISUAL_SIGNAL_ATTENTION,
@@ -139,20 +148,29 @@ int visual_thalamic_route_attention(visual_thalamic_bridge_t* bridge,
 }
 
 int visual_thalamic_set_attention(visual_thalamic_bridge_t* bridge, float attention) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_thalamic_set_attention: bridge is NULL");
+        return -1;
+    }
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
     return 0;
 }
 
 int visual_thalamic_get_attention(const visual_thalamic_bridge_t* bridge, float* attention) {
-    if (!bridge || !attention) return -1;
+    if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_thalamic_get_attention: required parameter is NULL");
+        return -1;
+    }
     *attention = bridge->attention_weight;
     return 0;
 }
 
 int visual_thalamic_bridge_get_stats(const visual_thalamic_bridge_t* bridge,
                                       visual_thalamic_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_thalamic_bridge_get_stats: required parameter is NULL");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }

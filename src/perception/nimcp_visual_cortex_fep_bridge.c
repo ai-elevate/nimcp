@@ -296,7 +296,10 @@ int visual_cortex_fep_compute_prediction_error(
     NIMCP_CHECK_THROW(visual_features, NIMCP_ERROR_NULL_POINTER, "visual_features is NULL");
     NIMCP_CHECK_THROW(prediction_error, NIMCP_ERROR_NULL_POINTER, "prediction_error is NULL");
     NIMCP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "fep_system not connected");
-    if (num_features == 0) return NIMCP_ERROR_INVALID_PARAM;
+    if (num_features == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_fep_compute_prediction_error: num_features is 0");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -343,7 +346,10 @@ int visual_cortex_fep_report_observations(
     NIMCP_CHECK_THROW(visual_features, NIMCP_ERROR_NULL_POINTER, "visual_features is NULL");
     NIMCP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "fep_system not connected");
     if (!bridge->config.enable_visual_pe_updates) return NIMCP_SUCCESS;
-    if (num_features == 0) return NIMCP_ERROR_INVALID_PARAM;
+    if (num_features == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_fep_report_observations: num_features is 0");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -518,5 +524,9 @@ int visual_cortex_fep_bridge_disconnect_bio_async(
 bool visual_cortex_fep_bridge_is_bio_async_connected(
     const visual_cortex_fep_bridge_t* bridge
 ) {
-    return bridge ? bridge->base.bio_async_enabled : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortex_fep_bridge_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }

@@ -407,12 +407,18 @@ int omni_occipital_set_stream(omni_occipital_bridge_t* bridge,
 }
 
 float omni_occipital_get_dorsal_pe(const omni_occipital_bridge_t* bridge) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "omni_occipital_get_dorsal_pe: bridge is NULL");
+        return 0.0f;
+    }
     return bridge->occipital_effects.dorsal_pe;
 }
 
 float omni_occipital_get_ventral_pe(const omni_occipital_bridge_t* bridge) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "omni_occipital_get_ventral_pe: bridge is NULL");
+        return 0.0f;
+    }
     return bridge->occipital_effects.ventral_pe;
 }
 
@@ -441,7 +447,11 @@ int omni_occipital_set_precision(omni_occipital_bridge_t* bridge,
 
 float omni_occipital_get_precision(const omni_occipital_bridge_t* bridge,
                                     omni_visual_area_t area) {
-    if (!bridge || area >= OMNI_OCCIPITAL_NUM_AREAS) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "omni_occipital_get_precision: bridge is NULL");
+        return 0.0f;
+    }
+    if (area >= OMNI_OCCIPITAL_NUM_AREAS) return 0.0f;
     return bridge->area_states[area].precision;
 }
 
@@ -669,7 +679,10 @@ int omni_occipital_disconnect_bio_async(omni_occipital_bridge_t* bridge) {
 }
 
 bool omni_occipital_is_bio_async_connected(const omni_occipital_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "omni_occipital_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->bio_async_connected;
 }
 

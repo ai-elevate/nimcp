@@ -432,7 +432,10 @@ int visual_jepa_bridge_disconnect_visual_cortex(visual_jepa_bridge_t* bridge) {
 }
 
 bool visual_jepa_bridge_is_connected(const visual_jepa_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_jepa_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     return bridge->visual_cortex != NULL;
 }
 
@@ -838,7 +841,10 @@ visual_jepa_batch_t* visual_jepa_batch_create(
     uint32_t latent_dim) {
 
     /* Require at least one patch */
-    if (num_patches == 0) return NULL;
+    if (num_patches == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_jepa_batch_create: num_patches is 0");
+        return NULL;
+    }
 
     visual_jepa_batch_t* batch = nimcp_malloc(sizeof(visual_jepa_batch_t));
     if (!batch) {

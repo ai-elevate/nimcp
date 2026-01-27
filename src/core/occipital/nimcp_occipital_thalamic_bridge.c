@@ -120,6 +120,7 @@ int occipital_thalamic_bridge_reset(occipital_thalamic_bridge_t* bridge) {
 int occipital_thalamic_route_signal(occipital_thalamic_bridge_t* bridge,
                                      const occipital_thalamic_signal_t* signal) {
     if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_thalamic_route_signal: required parameter is NULL");
         return -1;
     }
 
@@ -193,6 +194,7 @@ int occipital_thalamic_set_attention(occipital_thalamic_bridge_t* bridge, float 
 
 int occipital_thalamic_get_attention(const occipital_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_thalamic_get_attention: required parameter is NULL");
         return -1;
     }
 
@@ -203,6 +205,7 @@ int occipital_thalamic_get_attention(const occipital_thalamic_bridge_t* bridge, 
 int occipital_thalamic_bridge_get_stats(const occipital_thalamic_bridge_t* bridge,
                                          occipital_thalamic_stats_t* stats) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_thalamic_bridge_get_stats: required parameter is NULL");
         return -1;
     }
 

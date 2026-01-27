@@ -1132,7 +1132,10 @@ void occipital_destroy(occipital_adapter_t* adapter) {
 }
 
 bool occipital_reset(occipital_adapter_t* adapter) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_reset: adapter is NULL");
+        return false;
+    }
 
     LOG_DEBUG(OCCIPITAL_LOG_MODULE, "Resetting adapter state");
 
@@ -1191,7 +1194,10 @@ bool occipital_set_input(occipital_adapter_t* adapter, const visual_input_t* inp
 }
 
 bool occipital_process(occipital_adapter_t* adapter, visual_processing_result_t* result) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_process: adapter is NULL");
+        return false;
+    }
 
     if (!adapter->has_input) {
         set_error(adapter, OCCIPITAL_ERROR_NO_INPUT);
@@ -1303,7 +1309,11 @@ bool occipital_process(occipital_adapter_t* adapter, visual_processing_result_t*
 }
 
 bool occipital_process_v1(occipital_adapter_t* adapter) {
-    if (!adapter || !adapter->has_input) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_process_v1: adapter is NULL");
+        return false;
+    }
+    if (!adapter->has_input) return false;
 
     adapter->status = OCCIPITAL_STATUS_V1_PROCESSING;
     bool success = v1_process(adapter->v1, adapter->input_buffer,
@@ -1316,7 +1326,11 @@ bool occipital_process_v1(occipital_adapter_t* adapter) {
 }
 
 bool occipital_process_v2(occipital_adapter_t* adapter) {
-    if (!adapter || !adapter->v1) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_process_v2: adapter is NULL");
+        return false;
+    }
+    if (!adapter->v1) return false;
 
     adapter->status = OCCIPITAL_STATUS_V2_PROCESSING;
     bool success = v2_process(adapter->v2, adapter->v1,
@@ -1329,7 +1343,11 @@ bool occipital_process_v2(occipital_adapter_t* adapter) {
 }
 
 bool occipital_process_v4(occipital_adapter_t* adapter) {
-    if (!adapter || !adapter->has_input) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_process_v4: adapter is NULL");
+        return false;
+    }
+    if (!adapter->has_input) return false;
 
     adapter->status = OCCIPITAL_STATUS_V4_PROCESSING;
     bool success = v4_process(adapter->v4, adapter->input_buffer,
@@ -1342,7 +1360,11 @@ bool occipital_process_v4(occipital_adapter_t* adapter) {
 }
 
 bool occipital_process_v5(occipital_adapter_t* adapter) {
-    if (!adapter || !adapter->has_input) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_process_v5: adapter is NULL");
+        return false;
+    }
+    if (!adapter->has_input) return false;
 
     adapter->status = OCCIPITAL_STATUS_V5_PROCESSING;
     bool success = v5_process(adapter->v5, adapter->input_buffer,
@@ -1359,7 +1381,10 @@ bool occipital_process_v5(occipital_adapter_t* adapter) {
  *===========================================================================*/
 
 uint32_t occipital_get_feature_count(const occipital_adapter_t* adapter, visual_area_t area) {
-    if (!adapter) return 0;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_get_feature_count: adapter is NULL");
+        return 0;
+    }
 
     switch (area) {
         case VISUAL_AREA_V1: return adapter->v1 ? adapter->v1->edge_count : 0;
@@ -1376,7 +1401,10 @@ uint32_t occipital_get_feature_count(const occipital_adapter_t* adapter, visual_
 
 bool occipital_get_feature(const occipital_adapter_t* adapter, visual_area_t area,
                            uint32_t index, visual_feature_t* feature) {
-    if (!adapter || !feature) return false;
+    if (!adapter || !feature) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_get_feature: required parameter is NULL");
+        return false;
+    }
 
     switch (area) {
         case VISUAL_AREA_V1:
@@ -1405,7 +1433,10 @@ bool occipital_get_feature(const occipital_adapter_t* adapter, visual_area_t are
 
 bool occipital_get_features(const occipital_adapter_t* adapter, visual_area_t area,
                             visual_feature_t* features, uint32_t* count) {
-    if (!adapter || !features || !count) return false;
+    if (!adapter || !features || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_get_features: required parameter is NULL");
+        return false;
+    }
 
     uint32_t available = occipital_get_feature_count(adapter, area);
     uint32_t to_copy = (*count < available) ? *count : available;
@@ -1437,7 +1468,11 @@ bool occipital_get_features(const occipital_adapter_t* adapter, visual_area_t ar
 
 bool occipital_get_motion_vectors(const occipital_adapter_t* adapter,
                                   motion_vector_t* vectors, uint32_t* count) {
-    if (!adapter || !vectors || !count || !adapter->v5) return false;
+    if (!adapter || !vectors || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_get_motion_vectors: required parameter is NULL");
+        return false;
+    }
+    if (!adapter->v5) return false;
 
     uint32_t to_copy = (*count < adapter->v5->motion_count) ? *count : adapter->v5->motion_count;
     memcpy(vectors, adapter->v5->motion_vectors, to_copy * sizeof(motion_vector_t));
@@ -1447,7 +1482,11 @@ bool occipital_get_motion_vectors(const occipital_adapter_t* adapter,
 
 bool occipital_get_color_percepts(const occipital_adapter_t* adapter,
                                   color_percept_t* percepts, uint32_t* count) {
-    if (!adapter || !percepts || !count || !adapter->v4) return false;
+    if (!adapter || !percepts || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_get_color_percepts: required parameter is NULL");
+        return false;
+    }
+    if (!adapter->v4) return false;
 
     uint32_t to_copy = (*count < adapter->v4->color_count) ? *count : adapter->v4->color_count;
     memcpy(percepts, adapter->v4->color_percepts, to_copy * sizeof(color_percept_t));
@@ -1461,7 +1500,10 @@ bool occipital_get_color_percepts(const occipital_adapter_t* adapter,
 
 bool occipital_apply_spatial_attention(occipital_adapter_t* adapter,
                                        float x, float y, float radius, float gain) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_apply_spatial_attention: adapter is NULL");
+        return false;
+    }
 
     adapter->attention_x = clamp_f(x, 0.0f, 1.0f);
     adapter->attention_y = clamp_f(y, 0.0f, 1.0f);
@@ -1476,7 +1518,10 @@ bool occipital_apply_spatial_attention(occipital_adapter_t* adapter,
 
 bool occipital_apply_feature_attention(occipital_adapter_t* adapter,
                                        visual_feature_type_t feature_type, float gain) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_apply_feature_attention: adapter is NULL");
+        return false;
+    }
 
     adapter->attended_feature_type = feature_type;
     adapter->feature_attention_gain = gain;
@@ -1492,7 +1537,10 @@ bool occipital_apply_feature_attention(occipital_adapter_t* adapter,
 
 bool occipital_set_feature_callback(occipital_adapter_t* adapter,
                                     occipital_feature_callback_t callback, void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_set_feature_callback: adapter is NULL");
+        return false;
+    }
     adapter->feature_callback = callback;
     adapter->feature_user_data = user_data;
     return true;
@@ -1500,7 +1548,10 @@ bool occipital_set_feature_callback(occipital_adapter_t* adapter,
 
 bool occipital_set_motion_callback(occipital_adapter_t* adapter,
                                    occipital_motion_callback_t callback, void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_set_motion_callback: adapter is NULL");
+        return false;
+    }
     adapter->motion_callback = callback;
     adapter->motion_user_data = user_data;
     return true;
@@ -1508,7 +1559,10 @@ bool occipital_set_motion_callback(occipital_adapter_t* adapter,
 
 bool occipital_set_event_callback(occipital_adapter_t* adapter,
                                   occipital_event_callback_t callback, void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_set_event_callback: adapter is NULL");
+        return false;
+    }
     adapter->event_callback = callback;
     adapter->event_user_data = user_data;
     return true;
@@ -1520,7 +1574,11 @@ bool occipital_set_event_callback(occipital_adapter_t* adapter,
 
 bool occipital_train(occipital_adapter_t* adapter, const visual_feature_t* target_features,
                      uint32_t num_features, float learning_rate) {
-    if (!adapter || !target_features || num_features == 0) return false;
+    if (!adapter || !target_features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_train: required parameter is NULL");
+        return false;
+    }
+    if (num_features == 0) return false;
     if (!adapter->config.enable_training) return false;
 
     /* Simple training: compare detected features to target and compute loss */
@@ -1543,12 +1601,18 @@ bool occipital_train(occipital_adapter_t* adapter, const visual_feature_t* targe
  *===========================================================================*/
 
 occipital_status_t occipital_get_status(const occipital_adapter_t* adapter) {
-    if (!adapter) return OCCIPITAL_STATUS_ERROR;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_get_status: adapter is NULL");
+        return OCCIPITAL_STATUS_ERROR;
+    }
     return adapter->status;
 }
 
 occipital_error_t occipital_get_last_error(const occipital_adapter_t* adapter) {
-    if (!adapter) return OCCIPITAL_ERROR_INTERNAL;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_get_last_error: adapter is NULL");
+        return OCCIPITAL_ERROR_INTERNAL;
+    }
     return adapter->last_error;
 }
 
@@ -1583,13 +1647,19 @@ const char* occipital_status_string(occipital_status_t status) {
 }
 
 bool occipital_get_stats(const occipital_adapter_t* adapter, occipital_stats_t* stats) {
-    if (!adapter || !stats) return false;
+    if (!adapter || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_get_stats: required parameter is NULL");
+        return false;
+    }
     *stats = adapter->stats;
     return true;
 }
 
 bool occipital_get_config(const occipital_adapter_t* adapter, occipital_config_t* config) {
-    if (!adapter || !config) return false;
+    if (!adapter || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_get_config: required parameter is NULL");
+        return false;
+    }
     *config = adapter->config;
     return true;
 }
@@ -1599,19 +1669,35 @@ bool occipital_get_config(const occipital_adapter_t* adapter, occipital_config_t
  *===========================================================================*/
 
 v1_processor_t* occipital_get_v1_processor(occipital_adapter_t* adapter) {
-    return adapter ? adapter->v1 : NULL;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_get_v1_processor: adapter is NULL");
+        return NULL;
+    }
+    return adapter->v1;
 }
 
 v2_processor_t* occipital_get_v2_processor(occipital_adapter_t* adapter) {
-    return adapter ? adapter->v2 : NULL;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_get_v2_processor: adapter is NULL");
+        return NULL;
+    }
+    return adapter->v2;
 }
 
 v4_processor_t* occipital_get_v4_processor(occipital_adapter_t* adapter) {
-    return adapter ? adapter->v4 : NULL;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_get_v4_processor: adapter is NULL");
+        return NULL;
+    }
+    return adapter->v4;
 }
 
 v5_mt_processor_t* occipital_get_v5_processor(occipital_adapter_t* adapter) {
-    return adapter ? adapter->v5 : NULL;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_get_v5_processor: adapter is NULL");
+        return NULL;
+    }
+    return adapter->v5;
 }
 
 /*=============================================================================
@@ -1619,11 +1705,19 @@ v5_mt_processor_t* occipital_get_v5_processor(occipital_adapter_t* adapter) {
  *===========================================================================*/
 
 bio_module_context_t occipital_get_bio_context(occipital_adapter_t* adapter) {
-    return adapter ? adapter->bio_ctx : NULL;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_get_bio_context: adapter is NULL");
+        return NULL;
+    }
+    return adapter->bio_ctx;
 }
 
 uint32_t occipital_process_bio_messages(occipital_adapter_t* adapter, uint32_t max_messages) {
-    if (!adapter || !adapter->bio_ctx) return 0;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_process_bio_messages: adapter is NULL");
+        return 0;
+    }
+    if (!adapter->bio_ctx) return 0;
 
     uint32_t processed = bio_router_process_inbox(adapter->bio_ctx, max_messages);
     if (processed > 0) {
@@ -1633,7 +1727,11 @@ uint32_t occipital_process_bio_messages(occipital_adapter_t* adapter, uint32_t m
 }
 
 nimcp_bio_future_t occipital_request_lgn_input_async(occipital_adapter_t* adapter) {
-    if (!adapter || !adapter->bio_ctx) {
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_request_lgn_input_async: adapter is NULL");
+        return NULL;
+    }
+    if (!adapter->bio_ctx) {
         LOG_WARNING(OCCIPITAL_LOG_MODULE, "Cannot request LGN input: bio-async not available");
         return NULL;
     }
@@ -1664,6 +1762,7 @@ nimcp_bio_future_t occipital_request_lgn_input_async(occipital_adapter_t* adapte
 nimcp_error_t occipital_broadcast_features(occipital_adapter_t* adapter,
                                            const visual_processing_result_t* result) {
     if (!adapter || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_broadcast_features: required parameter is NULL");
         return NIMCP_BIO_ERROR_NOT_INITIALIZED;
     }
 
@@ -1692,7 +1791,10 @@ nimcp_error_t occipital_handle_attention(occipital_adapter_t* adapter,
                                          float x, float y,
                                          visual_feature_type_t feature_type,
                                          float gain) {
-    if (!adapter) return NIMCP_BIO_ERROR_NOT_INITIALIZED;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_handle_attention: adapter is NULL");
+        return NIMCP_BIO_ERROR_NOT_INITIALIZED;
+    }
 
     LOG_DEBUG(OCCIPITAL_LOG_MODULE, "Handling attention: pos=(%.2f,%.2f), type=%d, gain=%.2f",
               x, y, feature_type, gain);

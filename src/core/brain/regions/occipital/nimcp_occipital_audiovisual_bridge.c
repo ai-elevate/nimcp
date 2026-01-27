@@ -654,7 +654,10 @@ int occipital_av_process_observation(
     occipital_audiovisual_bridge_t* bridge,
     const visual_speech_observation_t* observation) {
 
-    if (!bridge || !observation) return -1;
+    if (!bridge || !observation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_av_process_observation: required parameter is NULL");
+        return -1;
+    }
 
     /* Store observation in circular buffer */
     uint32_t idx = bridge->observation_write_idx;
@@ -805,7 +808,10 @@ int occipital_av_bridge_get_effects(
     const occipital_audiovisual_bridge_t* bridge,
     occipital_av_effects_t* effects) {
 
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_av_bridge_get_effects: required parameter is NULL");
+        return -1;
+    }
 
     *effects = bridge->effects;
 
@@ -969,7 +975,10 @@ int occipital_av_bridge_get_stats(
     const occipital_audiovisual_bridge_t* bridge,
     occipital_av_stats_t* stats) {
 
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_av_bridge_get_stats: required parameter is NULL");
+        return -1;
+    }
 
     *stats = bridge->stats;
 
@@ -990,7 +999,10 @@ int occipital_av_bridge_get_stats(
 }
 
 void occipital_av_bridge_reset_stats(occipital_audiovisual_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_av_bridge_reset_stats: bridge is NULL");
+        return;
+    }
 
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     memset(bridge->prediction_errors, 0, sizeof(bridge->prediction_errors));
@@ -998,18 +1010,29 @@ void occipital_av_bridge_reset_stats(occipital_audiovisual_bridge_t* bridge) {
 }
 
 bool occipital_av_is_audio_connected(const occipital_audiovisual_bridge_t* bridge) {
-    return bridge && bridge->audio_cortex != NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_av_is_audio_connected: bridge is NULL");
+        return false;
+    }
+    return bridge->audio_cortex != NULL;
 }
 
 bool occipital_av_is_broca_connected(const occipital_audiovisual_bridge_t* bridge) {
-    return bridge && bridge->broca != NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_av_is_broca_connected: bridge is NULL");
+        return false;
+    }
+    return bridge->broca != NULL;
 }
 
 int occipital_av_bridge_get_config(
     const occipital_audiovisual_bridge_t* bridge,
     occipital_av_config_t* config) {
 
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_av_bridge_get_config: required parameter is NULL");
+        return -1;
+    }
 
     *config = bridge->config;
 

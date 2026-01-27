@@ -394,6 +394,7 @@ int occipital_thalamic_route_signal(
     const occipital_thalamic_signal_t* signal)
 {
     if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_thalamic_route_signal: required parameter is NULL");
         return -1;
     }
 
@@ -538,6 +539,7 @@ int occipital_thalamic_route_advanced(
     occipital_thalamic_response_t* response)
 {
     if (!bridge || !request || !response) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_thalamic_route_advanced: required parameter is NULL");
         return -1;
     }
 
@@ -632,6 +634,7 @@ int occipital_thalamic_get_attention(
     float* attention)
 {
     if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_thalamic_get_attention: required parameter is NULL");
         return -1;
     }
 
@@ -677,6 +680,7 @@ int occipital_thalamic_get_state(
     occipital_thalamic_state_t* state)
 {
     if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_thalamic_get_state: required parameter is NULL");
         return -1;
     }
 
@@ -799,6 +803,7 @@ int occipital_thalamic_bridge_get_stats(
     occipital_thalamic_stats_t* stats)
 {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_thalamic_bridge_get_stats: required parameter is NULL");
         return -1;
     }
 
@@ -807,9 +812,11 @@ int occipital_thalamic_bridge_get_stats(
 }
 
 void occipital_thalamic_bridge_reset_stats(occipital_thalamic_bridge_t* bridge) {
-    if (bridge) {
-        memset(&bridge->stats, 0, sizeof(occipital_thalamic_stats_t));
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_thalamic_bridge_reset_stats: bridge is NULL");
+        return;
     }
+    memset(&bridge->stats, 0, sizeof(occipital_thalamic_stats_t));
 }
 
 /*=============================================================================
@@ -820,6 +827,7 @@ bool occipital_thalamic_is_lgn_active(
     const occipital_thalamic_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_thalamic_is_lgn_active: bridge is NULL");
         return false;
     }
     return bridge->state.lgn_gain > 0.0f;
@@ -830,6 +838,7 @@ int occipital_thalamic_bridge_get_config(
     occipital_thalamic_config_t* config)
 {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_thalamic_bridge_get_config: required parameter is NULL");
         return -1;
     }
 

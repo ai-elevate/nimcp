@@ -623,7 +623,10 @@ int occipital_cortical_map_visual_to_cortical(
     float visual_x, float visual_y,
     float* cortical_x, float* cortical_y) {
 
-    if (!bridge || !cortical_x || !cortical_y) return -1;
+    if (!bridge || !cortical_x || !cortical_y) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_cortical_map_visual_to_cortical: required parameter is NULL");
+        return -1;
+    }
 
     if (bridge->config.map_mode == OCC_MAP_LOG_POLAR) {
         log_polar_map(visual_x, visual_y,
@@ -825,7 +828,10 @@ int occipital_cortical_get_column_activity(
     float x, float y,
     column_activity_t* activity) {
 
-    if (!bridge || !activity) return -1;
+    if (!bridge || !activity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_cortical_get_column_activity: required parameter is NULL");
+        return -1;
+    }
 
     /* Find nearest hypercolumn */
     float min_dist = INFINITY;
@@ -860,7 +866,10 @@ int occipital_cortical_get_hypercolumn_response(
     uint32_t hypercolumn_id,
     hypercolumn_response_t* response) {
 
-    if (!bridge || !response) return -1;
+    if (!bridge || !response) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_cortical_get_hypercolumn_response: required parameter is NULL");
+        return -1;
+    }
     if (hypercolumn_id >= bridge->num_hypercolumns) return -1;
 
     const hypercolumn_t* hc = &bridge->hypercolumns[hypercolumn_id];
@@ -886,7 +895,10 @@ int occipital_cortical_bridge_get_effects(
     const occipital_cortical_bridge_t* bridge,
     occipital_cortical_effects_t* effects) {
 
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_cortical_bridge_get_effects: required parameter is NULL");
+        return -1;
+    }
 
     *effects = bridge->effects;
 
@@ -901,7 +913,10 @@ int occipital_cortical_bridge_get_stats(
     const occipital_cortical_bridge_t* bridge,
     occipital_cortical_stats_t* stats) {
 
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_cortical_bridge_get_stats: required parameter is NULL");
+        return -1;
+    }
 
     *stats = bridge->stats;
 
@@ -909,26 +924,40 @@ int occipital_cortical_bridge_get_stats(
 }
 
 void occipital_cortical_bridge_reset_stats(occipital_cortical_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_cortical_bridge_reset_stats: bridge is NULL");
+        return;
+    }
 
     memset(&bridge->stats, 0, sizeof(bridge->stats));
 }
 
 bool occipital_cortical_is_hypercolumns_connected(
     const occipital_cortical_bridge_t* bridge) {
-    return bridge && bridge->hypercolumns_external != NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_cortical_is_hypercolumns_connected: bridge is NULL");
+        return false;
+    }
+    return bridge->hypercolumns_external != NULL;
 }
 
 bool occipital_cortical_is_map_connected(
     const occipital_cortical_bridge_t* bridge) {
-    return bridge && bridge->topographic_map != NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_cortical_is_map_connected: bridge is NULL");
+        return false;
+    }
+    return bridge->topographic_map != NULL;
 }
 
 int occipital_cortical_bridge_get_config(
     const occipital_cortical_bridge_t* bridge,
     occipital_cortical_config_t* config) {
 
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_cortical_bridge_get_config: required parameter is NULL");
+        return -1;
+    }
 
     *config = bridge->config;
 
@@ -938,7 +967,10 @@ int occipital_cortical_bridge_get_config(
 uint32_t occipital_cortical_get_active_column_count(
     const occipital_cortical_bridge_t* bridge) {
 
-    if (!bridge) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_cortical_get_active_column_count: bridge is NULL");
+        return 0;
+    }
 
     uint32_t count = 0;
     for (uint32_t h = 0; h < bridge->num_hypercolumns; h++) {

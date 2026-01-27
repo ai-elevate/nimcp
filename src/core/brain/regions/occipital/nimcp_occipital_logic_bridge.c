@@ -813,7 +813,10 @@ int occipital_logic_assert_predicate(
     occipital_logic_bridge_t* bridge,
     const visual_predicate_t* predicate) {
 
-    if (!bridge || !predicate) return -1;
+    if (!bridge || !predicate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_logic_assert_predicate: required parameter is NULL");
+        return -1;
+    }
 
     int result = add_predicate(bridge, predicate);
     if (result == 0) {
@@ -868,7 +871,10 @@ int occipital_logic_get_predicates(
     uint32_t max_predicates,
     uint32_t* count) {
 
-    if (!bridge || !predicates || !count) return -1;
+    if (!bridge || !predicates || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_logic_get_predicates: required parameter is NULL");
+        return -1;
+    }
 
     uint32_t to_copy = bridge->predicate_count;
     if (to_copy > max_predicates) to_copy = max_predicates;
@@ -922,7 +928,10 @@ int occipital_logic_get_inferences(
     uint32_t max_results,
     uint32_t* count) {
 
-    if (!bridge || !results || !count) return -1;
+    if (!bridge || !results || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_logic_get_inferences: required parameter is NULL");
+        return -1;
+    }
 
     uint32_t to_copy = bridge->inference_count;
     if (to_copy > max_results) to_copy = max_results;
@@ -940,7 +949,10 @@ int occipital_logic_prove_goal(
     bool* provable,
     float* confidence) {
 
-    if (!bridge || !goal || !provable) return -1;
+    if (!bridge || !goal || !provable) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_logic_prove_goal: required parameter is NULL");
+        return -1;
+    }
 
     /* Check if goal already exists */
     for (uint32_t i = 0; i < bridge->predicate_count; i++) {
@@ -1044,7 +1056,10 @@ int occipital_logic_bridge_get_effects(
     const occipital_logic_bridge_t* bridge,
     occipital_logic_effects_t* effects) {
 
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_logic_bridge_get_effects: required parameter is NULL");
+        return -1;
+    }
 
     *effects = bridge->effects;
 
@@ -1059,7 +1074,10 @@ int occipital_logic_bridge_get_stats(
     const occipital_logic_bridge_t* bridge,
     occipital_logic_stats_t* stats) {
 
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_logic_bridge_get_stats: required parameter is NULL");
+        return -1;
+    }
 
     *stats = bridge->stats;
 
@@ -1067,20 +1085,30 @@ int occipital_logic_bridge_get_stats(
 }
 
 void occipital_logic_bridge_reset_stats(occipital_logic_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_logic_bridge_reset_stats: bridge is NULL");
+        return;
+    }
 
     memset(&bridge->stats, 0, sizeof(bridge->stats));
 }
 
 bool occipital_logic_is_brain_connected(const occipital_logic_bridge_t* bridge) {
-    return bridge && bridge->brain != NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_logic_is_brain_connected: bridge is NULL");
+        return false;
+    }
+    return bridge->brain != NULL;
 }
 
 int occipital_logic_bridge_get_config(
     const occipital_logic_bridge_t* bridge,
     occipital_logic_config_t* config) {
 
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_logic_bridge_get_config: required parameter is NULL");
+        return -1;
+    }
 
     *config = bridge->config;
 

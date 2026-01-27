@@ -164,7 +164,10 @@ void visual_logic_bridge_destroy(visual_logic_bridge_t* bridge) {
 }
 
 int visual_logic_bridge_reset(visual_logic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_logic_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     visual_logic_bridge_heartbeat("visual_logic_reset", 0.0f);
@@ -219,7 +222,10 @@ int visual_logic_ground_observation(
     visual_logic_bridge_t* bridge,
     const visual_logic_observation_t* obs
 ) {
-    if (!bridge || !obs) return -1;
+    if (!bridge || !obs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_logic_ground_observation: required parameter is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_object_grounding) return 0;
 
     /* Filter by confidence and salience */
@@ -275,7 +281,10 @@ int visual_logic_report_relation(
     visual_logic_bridge_t* bridge,
     const visual_logic_relation_t* relation
 ) {
-    if (!bridge || !relation) return -1;
+    if (!bridge || !relation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_logic_report_relation: required parameter is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_relation_extraction) return 0;
 
     /* Validate both objects are grounded */
@@ -312,7 +321,10 @@ int visual_logic_process_frame(
     const visual_logic_relation_t* relations,
     uint32_t num_relations
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_logic_process_frame: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     visual_logic_bridge_heartbeat("visual_logic_visual_logic_process", 0.0f);
@@ -366,7 +378,10 @@ int visual_logic_request_attention(
     const char* concept_name,
     float priority
 ) {
-    if (!bridge || !concept_name) return -1;
+    if (!bridge || !concept_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_logic_request_attention: required parameter is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_top_down_attention) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -402,7 +417,10 @@ int visual_logic_verify_predicate(
     bool* verified,
     float* confidence
 ) {
-    if (!bridge || !predicate_name || !verified || !confidence) return -1;
+    if (!bridge || !predicate_name || !verified || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_logic_verify_predicate: required parameter is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_verification) {
         *verified = false;
         *confidence = 0.0f;
@@ -448,7 +466,10 @@ int visual_logic_send_command(
     visual_logic_bridge_t* bridge,
     const logic_visual_command_t* command
 ) {
-    if (!bridge || !command) return -1;
+    if (!bridge || !command) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_logic_send_command: required parameter is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     visual_logic_bridge_heartbeat("visual_logic_visual_logic_send_co", 0.0f);
@@ -484,7 +505,10 @@ int visual_logic_is_grounded(
     uint32_t object_id,
     bool* grounded
 ) {
-    if (!bridge || !grounded) return -1;
+    if (!bridge || !grounded) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_logic_is_grounded: required parameter is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     visual_logic_bridge_heartbeat("visual_logic_visual_logic_is_grou", 0.0f);
@@ -508,7 +532,10 @@ int visual_logic_is_grounded(
 }
 
 int visual_logic_get_grounded_count(const visual_logic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_logic_get_grounded_count: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     visual_logic_bridge_heartbeat("visual_logic_visual_logic_get_gro", 0.0f);
 
@@ -524,7 +551,10 @@ int visual_logic_bridge_get_stats(
     const visual_logic_bridge_t* bridge,
     visual_logic_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_logic_bridge_get_stats: required parameter is NULL");
+        return -1;
+    }
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
     visual_logic_bridge_heartbeat("visual_logic_get_stats", 0.0f);
@@ -538,13 +568,15 @@ void visual_logic_bridge_reset_stats(visual_logic_bridge_t* bridge) {
     visual_logic_bridge_heartbeat("visual_logic_reset_stats", 0.0f);
 
 
-    if (bridge) {
-        memset(&bridge->stats, 0, sizeof(bridge->stats));
-        bridge->confidence_sum = 0.0f;
-        bridge->relation_confidence_sum = 0.0f;
-        bridge->confidence_count = 0;
-        bridge->relation_count = 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_logic_bridge_reset_stats: bridge is NULL");
+        return;
     }
+    memset(&bridge->stats, 0, sizeof(bridge->stats));
+    bridge->confidence_sum = 0.0f;
+    bridge->relation_confidence_sum = 0.0f;
+    bridge->confidence_count = 0;
+    bridge->relation_count = 0;
 }
 
 /* ============================================================================
