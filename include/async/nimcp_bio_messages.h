@@ -1107,6 +1107,14 @@ typedef enum {
     BIO_MSG_SURPRISE_BRIDGE_HEALTH,                /**< Bridge health status broadcast */
     BIO_MSG_SURPRISE_BRIDGE_SYNC,                  /**< Bridge synchronization signal */
 
+    /* Inner Dialogue messages (0x6EC0 - 0x6ECF) */
+    BIO_MSG_INNER_DIALOGUE_START = 0x6EC0,       /**< Conversation started */
+    BIO_MSG_INNER_DIALOGUE_TURN,                 /**< Turn produced */
+    BIO_MSG_INNER_DIALOGUE_CONVERGENCE,          /**< Convergence event */
+    BIO_MSG_INNER_DIALOGUE_END,                  /**< Conversation ended */
+    BIO_MSG_INNER_DIALOGUE_DEADLOCK,             /**< Deadlock detected */
+    BIO_MSG_INNER_DIALOGUE_RUMINATION,           /**< Rumination detected */
+
     /* Cycle Coordinator messages (0x6F00 - 0x6F0F) */
     BIO_MSG_CYCLE_HEALTH_CHANGED = 0x6F00,           /**< Cycle health state changed */
     BIO_MSG_CYCLE_STALL_DETECTED,                     /**< Cycle stall detected */
@@ -1946,6 +1954,9 @@ typedef enum {
     BIO_MODULE_SURPRISE_PINK_NOISE,             /**< Surprise ↔ pink noise bridge (0x1E0A) */
     BIO_MODULE_SURPRISE_IMAGINATION,            /**< Surprise ↔ imagination bridge (0x1E0B) */
     BIO_MODULE_SURPRISE_SELF_MODEL,             /**< Surprise ↔ self-model bridge (0x1E0C) */
+
+    /* Inner Dialogue modules (0x1E10 - 0x1E1F) */
+    BIO_MODULE_INNER_DIALOGUE = 0x1E10,         /**< Inner dialogue engine */
 
     /* Special values (Phase 7: Runtime Message Orchestration) */
     BIO_MODULE_KG_DISPATCH = 0xFFFE, /**< KG-driven dispatch: route to all handlers for message type */

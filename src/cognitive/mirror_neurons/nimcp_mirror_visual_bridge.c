@@ -15,6 +15,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 #include <string.h>
 #include <math.h>
 
@@ -46,6 +47,17 @@ static inline void mirror_visual_bridge_heartbeat(const char* operation, float p
     }
 }
 
+static inline void mirror_visual_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_mirror_visual_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_mirror_visual_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_mirror_visual_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* ============================================================================
  * Internal Constants
@@ -59,15 +71,6 @@ static inline void mirror_visual_bridge_heartbeat(const char* operation, float p
 /* ============================================================================
  * Internal Helper Functions
  * ============================================================================ */
-
-/**
- * @brief Clamp float value to range
- */
-static inline float clamp_f(float value, float min_val, float max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
 
 /**
  * @brief Compute sigmoid function
@@ -228,7 +231,7 @@ static void compute_social_salience_unlocked(
     salience->empathic_resonance = bridge->state.last_face_detection.face_detected ?
                                    bridge->state.last_face_detection.face_confidence * 0.5f : 0.0f;
     salience->action_prediction_strength = bridge->effects.action_recognition_input;
-    salience->overall_salience = clamp_f(
+    salience->overall_salience = nimcp_myelin_clamp(
         mirror_salience * 0.4f +
         observation_activity * 0.3f +
         salience->empathic_resonance * 0.2f +
@@ -281,11 +284,11 @@ static void update_sts_state_unlocked(mirror_visual_bridge_t* bridge) {
     sts->mirror_input_strength += bridge->state.current_salience.overall_salience * 0.4f;
 
     /* Clamp values */
-    sts->visual_input_strength = clamp_f(sts->visual_input_strength, 0.0f, 1.0f);
-    sts->mirror_input_strength = clamp_f(sts->mirror_input_strength, 0.0f, 1.0f);
-    sts->agent_representation = clamp_f(sts->agent_representation, 0.0f, 1.0f);
-    sts->action_understanding = clamp_f(sts->action_understanding, 0.0f, 1.0f);
-    sts->social_context = clamp_f(sts->social_context, 0.0f, 1.0f);
+    sts->visual_input_strength = nimcp_myelin_clamp(sts->visual_input_strength, 0.0f, 1.0f);
+    sts->mirror_input_strength = nimcp_myelin_clamp(sts->mirror_input_strength, 0.0f, 1.0f);
+    sts->agent_representation = nimcp_myelin_clamp(sts->agent_representation, 0.0f, 1.0f);
+    sts->action_understanding = nimcp_myelin_clamp(sts->action_understanding, 0.0f, 1.0f);
+    sts->social_context = nimcp_myelin_clamp(sts->social_context, 0.0f, 1.0f);
 
     /* Compute integration level */
     sts->integration_level = (sts->visual_input_strength + sts->mirror_input_strength) / 2.0f;
@@ -1142,5 +1145,34 @@ int mirror_visual_broadcast_social_salience(
     NIMCP_LOGGING_DEBUG("Broadcasting social salience: level=%.2f, boost=%.2f",
                         salience->overall_salience, salience->attention_boost_factor);
 
+    return 0;
+}
+
+/* ============================================================================
+ * B22: Instance Health Agent Setter
+ * ============================================================================ */
+
+void mirror_visual_bridge_set_instance_health_agent(
+    mirror_visual_bridge_t* bridge,
+    nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * B22: Training Hook Stubs
+ * ============================================================================ */
+
+int mirror_visual_bridge_training_begin(mirror_visual_bridge_t* bridge) {
+    if (!bridge) return -1;
+    mirror_visual_bridge_heartbeat("mirror_visua_training_begin", 0.0f);
+    return 0;
+}
+
+int mirror_visual_bridge_training_end(mirror_visual_bridge_t* bridge) {
+    if (!bridge) return -1;
+    mirror_visual_bridge_heartbeat("mirror_visua_training_end", 1.0f);
     return 0;
 }

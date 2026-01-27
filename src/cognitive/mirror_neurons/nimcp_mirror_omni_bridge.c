@@ -15,6 +15,7 @@
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -44,16 +45,24 @@ static inline void mirror_omni_bridge_heartbeat(const char* operation, float pro
     }
 }
 
+/** @brief Send heartbeat from mirror_omni_bridge module (instance-level) */
+static inline void mirror_omni_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_mirror_omni_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_mirror_omni_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_mirror_omni_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
 
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
+/* clamp_f replaced by nimcp_myelin_clamp (B22 Upgrade) */
 
 static inline float normalize_weight(float w1, float w2, float w3, float target) {
     float sum = w1 + w2 + w3;
@@ -672,7 +681,7 @@ int mirror_omni_modulate_precision(
     float avg_confidence = bridge->state.avg_prediction_confidence;
 
     /* Map confidence to precision gain */
-    float precision_gain = clamp_f(
+    float precision_gain = nimcp_myelin_clamp(
         avg_confidence * (bridge->config.precision_gain_max - bridge->config.precision_gain_min)
             + bridge->config.precision_gain_min,
         bridge->config.precision_gain_min,
@@ -1505,4 +1514,38 @@ void mirror_omni_agent_state_free(mirror_omni_agent_state_t* state) {
         state->predicted_state = NULL;
     }
     state->state_dim = 0;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B22 Upgrade)
+//=============================================================================
+
+void mirror_omni_bridge_set_instance_health_agent(
+    mirror_omni_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B22 Upgrade)
+//=============================================================================
+
+int mirror_omni_bridge_training_begin(mirror_omni_bridge_t* bridge) {
+    if (!bridge) return -1;
+    mirror_omni_bridge_heartbeat_instance(bridge->health_agent, "mirror_omni_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int mirror_omni_bridge_training_end(mirror_omni_bridge_t* bridge) {
+    if (!bridge) return -1;
+    mirror_omni_bridge_heartbeat_instance(bridge->health_agent, "mirror_omni_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int mirror_omni_bridge_training_step(mirror_omni_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    mirror_omni_bridge_heartbeat_instance(bridge->health_agent, "mirror_omni_bridge_training_step", progress);
+    return 0;
 }

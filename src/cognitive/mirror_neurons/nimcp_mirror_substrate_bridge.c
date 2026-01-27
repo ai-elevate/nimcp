@@ -46,9 +46,22 @@ static inline void mirror_substrate_bridge_heartbeat(const char* operation, floa
     }
 }
 
+/** @brief Send heartbeat from mirror_substrate_bridge module (instance-level) */
+static inline void mirror_substrate_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_mirror_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_mirror_substrate_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_mirror_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 struct mirror_substrate_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+    nimcp_health_agent_t* health_agent; /**< Instance-level health agent */
     void* mirror;
     neural_substrate_t* substrate;
     mirror_substrate_config_t config;
@@ -88,10 +101,11 @@ mirror_substrate_bridge_t* mirror_substrate_bridge_create(void* mirror, neural_s
     /* Phase 8: Heartbeat at operation start */
     mirror_substrate_bridge_heartbeat("mirror_subst_create", 0.0f);
 
+    NIMCP_LOGGING_DEBUG("Creating mirror_substrate_bridge");
 
     mirror_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(mirror_substrate_bridge_t));
     if (!bridge) {
-
+        NIMCP_LOGGING_WARN("Failed to allocate mirror_substrate_bridge");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
         return NULL;
@@ -113,8 +127,13 @@ mirror_substrate_bridge_t* mirror_substrate_bridge_create(void* mirror, neural_s
 
 void mirror_substrate_bridge_destroy(mirror_substrate_bridge_t* bridge) {
     /* Phase 8: Heartbeat at operation start */
-    mirror_substrate_bridge_heartbeat("mirror_subst_destroy", 0.0f);
+    if (bridge) {
+        mirror_substrate_bridge_heartbeat_instance(bridge->health_agent, "mirror_subst_destroy", 0.0f);
+    } else {
+        mirror_substrate_bridge_heartbeat("mirror_subst_destroy", 0.0f);
+    }
 
+    NIMCP_LOGGING_DEBUG("Destroying mirror_substrate_bridge");
 
     if (bridge) nimcp_free(bridge);
 }
@@ -126,7 +145,7 @@ int mirror_substrate_bridge_update(mirror_substrate_bridge_t* bridge) {
     }
 
     /* Phase 8: Heartbeat at operation start */
-    mirror_substrate_bridge_heartbeat("mirror_subst_update", 0.0f);
+    mirror_substrate_bridge_heartbeat_instance(bridge->health_agent, "mirror_subst_update", 0.0f);
 
 
     substrate_metabolic_state_t metabolic;
@@ -162,7 +181,7 @@ int mirror_substrate_bridge_get_effects(const mirror_substrate_bridge_t* bridge,
     }
     *effects = bridge->effects;
     /* Phase 8: Heartbeat at operation start */
-    mirror_substrate_bridge_heartbeat("mirror_subst_get_effects", 0.0f);
+    mirror_substrate_bridge_heartbeat_instance(bridge->health_agent, "mirror_subst_get_effects", 0.0f);
 
 
     return 0;
@@ -179,7 +198,7 @@ int mirror_substrate_bridge_apply_effects(mirror_substrate_bridge_t* bridge) {
     }
 
     /* Phase 8: Heartbeat at operation start */
-    mirror_substrate_bridge_heartbeat("mirror_subst_apply_effects", 0.0f);
+    mirror_substrate_bridge_heartbeat_instance(bridge->health_agent, "mirror_subst_apply_effects", 0.0f);
 
 
     substrate_metabolic_state_t metabolic;
@@ -247,7 +266,7 @@ int mirror_substrate_bridge_register_bio_async(mirror_substrate_bridge_t* bridge
     }
 
     /* Phase 8: Heartbeat at operation start */
-    mirror_substrate_bridge_heartbeat("mirror_subst_register_bio_async", 0.0f);
+    mirror_substrate_bridge_heartbeat_instance(bridge->health_agent, "mirror_subst_register_bio_async", 0.0f);
 
 
     if (bridge->bio_async_connected && bridge->ctx) {
@@ -303,4 +322,32 @@ int mirror_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Mirror_Substrate_Bridge");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Instance Health Agent Setter
+ * ============================================================================ */
+
+void mirror_substrate_bridge_set_instance_health_agent(
+    mirror_substrate_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Training Hook Stubs (Phase 8: Training-Immune Integration)
+ * ============================================================================ */
+
+int mirror_substrate_bridge_pre_training_hook(mirror_substrate_bridge_t* bridge) {
+    if (!bridge) return -1;
+    mirror_substrate_bridge_heartbeat_instance(bridge->health_agent, "mirror_subst_pre_train", 0.0f);
+    return 0;
+}
+
+int mirror_substrate_bridge_post_training_hook(mirror_substrate_bridge_t* bridge) {
+    if (!bridge) return -1;
+    mirror_substrate_bridge_heartbeat_instance(bridge->health_agent, "mirror_subst_post_train", 1.0f);
+    return 0;
 }

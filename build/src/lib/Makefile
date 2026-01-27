@@ -6305,6 +6305,102 @@ __/cognitive/immune/nimcp_wellbeing_immune_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/immune/nimcp_wellbeing_immune_bridge.c.s
 .PHONY : __/cognitive/immune/nimcp_wellbeing_immune_bridge.c.s
 
+__/cognitive/inner_dialogue/nimcp_inner_dialogue.o: __/cognitive/inner_dialogue/nimcp_inner_dialogue.c.o
+.PHONY : __/cognitive/inner_dialogue/nimcp_inner_dialogue.o
+
+# target to build an object file
+__/cognitive/inner_dialogue/nimcp_inner_dialogue.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/inner_dialogue/nimcp_inner_dialogue.c.o
+.PHONY : __/cognitive/inner_dialogue/nimcp_inner_dialogue.c.o
+
+__/cognitive/inner_dialogue/nimcp_inner_dialogue.i: __/cognitive/inner_dialogue/nimcp_inner_dialogue.c.i
+.PHONY : __/cognitive/inner_dialogue/nimcp_inner_dialogue.i
+
+# target to preprocess a source file
+__/cognitive/inner_dialogue/nimcp_inner_dialogue.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/inner_dialogue/nimcp_inner_dialogue.c.i
+.PHONY : __/cognitive/inner_dialogue/nimcp_inner_dialogue.c.i
+
+__/cognitive/inner_dialogue/nimcp_inner_dialogue.s: __/cognitive/inner_dialogue/nimcp_inner_dialogue.c.s
+.PHONY : __/cognitive/inner_dialogue/nimcp_inner_dialogue.s
+
+# target to generate assembly for a file
+__/cognitive/inner_dialogue/nimcp_inner_dialogue.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/inner_dialogue/nimcp_inner_dialogue.c.s
+.PHONY : __/cognitive/inner_dialogue/nimcp_inner_dialogue.c.s
+
+__/cognitive/inner_dialogue/nimcp_inner_dialogue_convergence.o: __/cognitive/inner_dialogue/nimcp_inner_dialogue_convergence.c.o
+.PHONY : __/cognitive/inner_dialogue/nimcp_inner_dialogue_convergence.o
+
+# target to build an object file
+__/cognitive/inner_dialogue/nimcp_inner_dialogue_convergence.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/inner_dialogue/nimcp_inner_dialogue_convergence.c.o
+.PHONY : __/cognitive/inner_dialogue/nimcp_inner_dialogue_convergence.c.o
+
+__/cognitive/inner_dialogue/nimcp_inner_dialogue_convergence.i: __/cognitive/inner_dialogue/nimcp_inner_dialogue_convergence.c.i
+.PHONY : __/cognitive/inner_dialogue/nimcp_inner_dialogue_convergence.i
+
+# target to preprocess a source file
+__/cognitive/inner_dialogue/nimcp_inner_dialogue_convergence.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/inner_dialogue/nimcp_inner_dialogue_convergence.c.i
+.PHONY : __/cognitive/inner_dialogue/nimcp_inner_dialogue_convergence.c.i
+
+__/cognitive/inner_dialogue/nimcp_inner_dialogue_convergence.s: __/cognitive/inner_dialogue/nimcp_inner_dialogue_convergence.c.s
+.PHONY : __/cognitive/inner_dialogue/nimcp_inner_dialogue_convergence.s
+
+# target to generate assembly for a file
+__/cognitive/inner_dialogue/nimcp_inner_dialogue_convergence.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/inner_dialogue/nimcp_inner_dialogue_convergence.c.s
+.PHONY : __/cognitive/inner_dialogue/nimcp_inner_dialogue_convergence.c.s
+
+__/cognitive/inner_dialogue/nimcp_inner_dialogue_perspective.o: __/cognitive/inner_dialogue/nimcp_inner_dialogue_perspective.c.o
+.PHONY : __/cognitive/inner_dialogue/nimcp_inner_dialogue_perspective.o
+
+# target to build an object file
+__/cognitive/inner_dialogue/nimcp_inner_dialogue_perspective.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/inner_dialogue/nimcp_inner_dialogue_perspective.c.o
+.PHONY : __/cognitive/inner_dialogue/nimcp_inner_dialogue_perspective.c.o
+
+__/cognitive/inner_dialogue/nimcp_inner_dialogue_perspective.i: __/cognitive/inner_dialogue/nimcp_inner_dialogue_perspective.c.i
+.PHONY : __/cognitive/inner_dialogue/nimcp_inner_dialogue_perspective.i
+
+# target to preprocess a source file
+__/cognitive/inner_dialogue/nimcp_inner_dialogue_perspective.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/inner_dialogue/nimcp_inner_dialogue_perspective.c.i
+.PHONY : __/cognitive/inner_dialogue/nimcp_inner_dialogue_perspective.c.i
+
+__/cognitive/inner_dialogue/nimcp_inner_dialogue_perspective.s: __/cognitive/inner_dialogue/nimcp_inner_dialogue_perspective.c.s
+.PHONY : __/cognitive/inner_dialogue/nimcp_inner_dialogue_perspective.s
+
+# target to generate assembly for a file
+__/cognitive/inner_dialogue/nimcp_inner_dialogue_perspective.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/inner_dialogue/nimcp_inner_dialogue_perspective.c.s
+.PHONY : __/cognitive/inner_dialogue/nimcp_inner_dialogue_perspective.c.s
+
+__/cognitive/inner_dialogue/nimcp_inner_dialogue_turn.o: __/cognitive/inner_dialogue/nimcp_inner_dialogue_turn.c.o
+.PHONY : __/cognitive/inner_dialogue/nimcp_inner_dialogue_turn.o
+
+# target to build an object file
+__/cognitive/inner_dialogue/nimcp_inner_dialogue_turn.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/inner_dialogue/nimcp_inner_dialogue_turn.c.o
+.PHONY : __/cognitive/inner_dialogue/nimcp_inner_dialogue_turn.c.o
+
+__/cognitive/inner_dialogue/nimcp_inner_dialogue_turn.i: __/cognitive/inner_dialogue/nimcp_inner_dialogue_turn.c.i
+.PHONY : __/cognitive/inner_dialogue/nimcp_inner_dialogue_turn.i
+
+# target to preprocess a source file
+__/cognitive/inner_dialogue/nimcp_inner_dialogue_turn.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/inner_dialogue/nimcp_inner_dialogue_turn.c.i
+.PHONY : __/cognitive/inner_dialogue/nimcp_inner_dialogue_turn.c.i
+
+__/cognitive/inner_dialogue/nimcp_inner_dialogue_turn.s: __/cognitive/inner_dialogue/nimcp_inner_dialogue_turn.c.s
+.PHONY : __/cognitive/inner_dialogue/nimcp_inner_dialogue_turn.s
+
+# target to generate assembly for a file
+__/cognitive/inner_dialogue/nimcp_inner_dialogue_turn.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/inner_dialogue/nimcp_inner_dialogue_turn.c.s
+.PHONY : __/cognitive/inner_dialogue/nimcp_inner_dialogue_turn.c.s
+
 __/cognitive/integration/nimcp_attention_wm_bridge.o: __/cognitive/integration/nimcp_attention_wm_bridge.c.o
 .PHONY : __/cognitive/integration/nimcp_attention_wm_bridge.o
 
@@ -46228,6 +46324,18 @@ help:
 	@echo "... __/cognitive/immune/nimcp_wellbeing_immune_bridge.o"
 	@echo "... __/cognitive/immune/nimcp_wellbeing_immune_bridge.i"
 	@echo "... __/cognitive/immune/nimcp_wellbeing_immune_bridge.s"
+	@echo "... __/cognitive/inner_dialogue/nimcp_inner_dialogue.o"
+	@echo "... __/cognitive/inner_dialogue/nimcp_inner_dialogue.i"
+	@echo "... __/cognitive/inner_dialogue/nimcp_inner_dialogue.s"
+	@echo "... __/cognitive/inner_dialogue/nimcp_inner_dialogue_convergence.o"
+	@echo "... __/cognitive/inner_dialogue/nimcp_inner_dialogue_convergence.i"
+	@echo "... __/cognitive/inner_dialogue/nimcp_inner_dialogue_convergence.s"
+	@echo "... __/cognitive/inner_dialogue/nimcp_inner_dialogue_perspective.o"
+	@echo "... __/cognitive/inner_dialogue/nimcp_inner_dialogue_perspective.i"
+	@echo "... __/cognitive/inner_dialogue/nimcp_inner_dialogue_perspective.s"
+	@echo "... __/cognitive/inner_dialogue/nimcp_inner_dialogue_turn.o"
+	@echo "... __/cognitive/inner_dialogue/nimcp_inner_dialogue_turn.i"
+	@echo "... __/cognitive/inner_dialogue/nimcp_inner_dialogue_turn.s"
 	@echo "... __/cognitive/integration/nimcp_attention_wm_bridge.o"
 	@echo "... __/cognitive/integration/nimcp_attention_wm_bridge.i"
 	@echo "... __/cognitive/integration/nimcp_attention_wm_bridge.s"

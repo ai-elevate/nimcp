@@ -52,6 +52,18 @@ static inline void mirror_snn_bridge_heartbeat(const char* operation, float prog
     }
 }
 
+/** @brief Send heartbeat from mirror_snn_bridge module (instance-level) */
+static inline void mirror_snn_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_mirror_snn_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_mirror_snn_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_mirror_snn_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Internal Structures
@@ -102,6 +114,9 @@ struct mirror_snn_bridge {
     /* Timing */
     uint64_t last_update_us;
     snn_state_health_t last_health;
+
+    /* Health agent (instance-level) */
+    nimcp_health_agent_t* health_agent;
 };
 
 //=============================================================================
@@ -1354,4 +1369,38 @@ int mirror_snn_get_snn_stats(
 
 
     return snn_network_get_stats(bridge->snn, stats);
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B22 Upgrade)
+//=============================================================================
+
+void mirror_snn_bridge_set_instance_health_agent(
+    mirror_snn_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B22 Upgrade)
+//=============================================================================
+
+int mirror_snn_bridge_training_begin(mirror_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+    mirror_snn_bridge_heartbeat_instance(bridge->health_agent, "mirror_snn_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int mirror_snn_bridge_training_end(mirror_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+    mirror_snn_bridge_heartbeat_instance(bridge->health_agent, "mirror_snn_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int mirror_snn_bridge_training_step(mirror_snn_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    mirror_snn_bridge_heartbeat_instance(bridge->health_agent, "mirror_snn_bridge_training_step", progress);
+    return 0;
 }

@@ -9194,6 +9194,32 @@ e2e_fault_tolerance_test_heartbeat_B19_remaining_modules_e2e/fast:
 .PHONY : e2e_fault_tolerance_test_heartbeat_B19_remaining_modules_e2e/fast
 
 #=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_surprise_bridges_B20_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_surprise_bridges_B20_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_surprise_bridges_B20_e2e
+.PHONY : e2e_fault_tolerance_test_surprise_bridges_B20_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_surprise_bridges_B20_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_surprise_bridges_B20_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_surprise_bridges_B20_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_surprise_bridges_B20_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_mirror_bridges_B22_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_mirror_bridges_B22_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_mirror_bridges_B22_e2e
+.PHONY : e2e_fault_tolerance_test_mirror_bridges_B22_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_mirror_bridges_B22_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_mirror_bridges_B22_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_mirror_bridges_B22_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_mirror_bridges_B22_e2e/fast
+
+#=============================================================================
 # Target rules for targets named e2e_cognitive_test_predictive_bridge_exception_e2e
 
 # Build rule for target.
@@ -9400,6 +9426,19 @@ e2e_parietal_exception: cmake_check_build_system
 e2e_parietal_exception/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/cognitive/parietal/CMakeFiles/e2e_parietal_exception.dir/build.make test/e2e/cognitive/parietal/CMakeFiles/e2e_parietal_exception.dir/build
 .PHONY : e2e_parietal_exception/fast
+
+#=============================================================================
+# Target rules for targets named e2e_cognitive_fault_tolerance_test_health_diagnostic_bridge_e2e
+
+# Build rule for target.
+e2e_cognitive_fault_tolerance_test_health_diagnostic_bridge_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_cognitive_fault_tolerance_test_health_diagnostic_bridge_e2e
+.PHONY : e2e_cognitive_fault_tolerance_test_health_diagnostic_bridge_e2e
+
+# fast build rule for target.
+e2e_cognitive_fault_tolerance_test_health_diagnostic_bridge_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/cognitive/fault_tolerance/CMakeFiles/e2e_cognitive_fault_tolerance_test_health_diagnostic_bridge_e2e.dir/build.make test/e2e/cognitive/fault_tolerance/CMakeFiles/e2e_cognitive_fault_tolerance_test_health_diagnostic_bridge_e2e.dir/build
+.PHONY : e2e_cognitive_fault_tolerance_test_health_diagnostic_bridge_e2e/fast
 
 #=============================================================================
 # Target rules for targets named e2e_test_metabolic_processing
@@ -11976,6 +12015,19 @@ integration_cognitive_fault_tolerance_health_self_repair/fast:
 .PHONY : integration_cognitive_fault_tolerance_health_self_repair/fast
 
 #=============================================================================
+# Target rules for targets named integration_cognitive_fault_tolerance_health_diagnostic_bridge
+
+# Build rule for target.
+integration_cognitive_fault_tolerance_health_diagnostic_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_fault_tolerance_health_diagnostic_bridge
+.PHONY : integration_cognitive_fault_tolerance_health_diagnostic_bridge
+
+# fast build rule for target.
+integration_cognitive_fault_tolerance_health_diagnostic_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/fault_tolerance/CMakeFiles/integration_cognitive_fault_tolerance_health_diagnostic_bridge.dir/build.make test/integration/cognitive/fault_tolerance/CMakeFiles/integration_cognitive_fault_tolerance_health_diagnostic_bridge.dir/build
+.PHONY : integration_cognitive_fault_tolerance_health_diagnostic_bridge/fast
+
+#=============================================================================
 # Target rules for targets named regression_cognitive_fault_tolerance_emotional_tagging
 
 # Build rule for target.
@@ -12000,6 +12052,19 @@ regression_cognitive_fault_tolerance_health_repair_bridge: cmake_check_build_sys
 regression_cognitive_fault_tolerance_health_repair_bridge/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/fault_tolerance/CMakeFiles/regression_cognitive_fault_tolerance_health_repair_bridge.dir/build.make test/regression/cognitive/fault_tolerance/CMakeFiles/regression_cognitive_fault_tolerance_health_repair_bridge.dir/build
 .PHONY : regression_cognitive_fault_tolerance_health_repair_bridge/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_fault_tolerance_health_diagnostic_bridge
+
+# Build rule for target.
+regression_cognitive_fault_tolerance_health_diagnostic_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_fault_tolerance_health_diagnostic_bridge
+.PHONY : regression_cognitive_fault_tolerance_health_diagnostic_bridge
+
+# fast build rule for target.
+regression_cognitive_fault_tolerance_health_diagnostic_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/fault_tolerance/CMakeFiles/regression_cognitive_fault_tolerance_health_diagnostic_bridge.dir/build.make test/regression/cognitive/fault_tolerance/CMakeFiles/regression_cognitive_fault_tolerance_health_diagnostic_bridge.dir/build
+.PHONY : regression_cognitive_fault_tolerance_health_diagnostic_bridge/fast
 
 #=============================================================================
 # Target rules for targets named integration_fault_tolerance
@@ -12299,6 +12364,32 @@ integration_heartbeat_B19_remaining_modules: cmake_check_build_system
 integration_heartbeat_B19_remaining_modules/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B19_remaining_modules.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B19_remaining_modules.dir/build
 .PHONY : integration_heartbeat_B19_remaining_modules/fast
+
+#=============================================================================
+# Target rules for targets named integration_heartbeat_B20_surprise_bridges
+
+# Build rule for target.
+integration_heartbeat_B20_surprise_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_heartbeat_B20_surprise_bridges
+.PHONY : integration_heartbeat_B20_surprise_bridges
+
+# fast build rule for target.
+integration_heartbeat_B20_surprise_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B20_surprise_bridges.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B20_surprise_bridges.dir/build
+.PHONY : integration_heartbeat_B20_surprise_bridges/fast
+
+#=============================================================================
+# Target rules for targets named integration_heartbeat_B22_mirror_bridges
+
+# Build rule for target.
+integration_heartbeat_B22_mirror_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_heartbeat_B22_mirror_bridges
+.PHONY : integration_heartbeat_B22_mirror_bridges
+
+# fast build rule for target.
+integration_heartbeat_B22_mirror_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B22_mirror_bridges.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B22_mirror_bridges.dir/build
+.PHONY : integration_heartbeat_B22_mirror_bridges/fast
 
 #=============================================================================
 # Target rules for targets named test_symbolic_logic_attachment
@@ -21622,6 +21713,32 @@ regression_heartbeat_B19_remaining_modules/fast:
 .PHONY : regression_heartbeat_B19_remaining_modules/fast
 
 #=============================================================================
+# Target rules for targets named regression_heartbeat_B20_surprise_bridges
+
+# Build rule for target.
+regression_heartbeat_B20_surprise_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_heartbeat_B20_surprise_bridges
+.PHONY : regression_heartbeat_B20_surprise_bridges
+
+# fast build rule for target.
+regression_heartbeat_B20_surprise_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B20_surprise_bridges.dir/build.make test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B20_surprise_bridges.dir/build
+.PHONY : regression_heartbeat_B20_surprise_bridges/fast
+
+#=============================================================================
+# Target rules for targets named regression_heartbeat_B22_mirror_bridges
+
+# Build rule for target.
+regression_heartbeat_B22_mirror_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_heartbeat_B22_mirror_bridges
+.PHONY : regression_heartbeat_B22_mirror_bridges
+
+# fast build rule for target.
+regression_heartbeat_B22_mirror_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B22_mirror_bridges.dir/build.make test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B22_mirror_bridges.dir/build
+.PHONY : regression_heartbeat_B22_mirror_bridges/fast
+
+#=============================================================================
 # Target rules for targets named unit_utils_vcs_integration
 
 # Build rule for target.
@@ -22049,6 +22166,32 @@ unit_heartbeat_B19_remaining_modules: cmake_check_build_system
 unit_heartbeat_B19_remaining_modules/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B19_remaining_modules.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B19_remaining_modules.dir/build
 .PHONY : unit_heartbeat_B19_remaining_modules/fast
+
+#=============================================================================
+# Target rules for targets named unit_heartbeat_B20_surprise_bridges
+
+# Build rule for target.
+unit_heartbeat_B20_surprise_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_heartbeat_B20_surprise_bridges
+.PHONY : unit_heartbeat_B20_surprise_bridges
+
+# fast build rule for target.
+unit_heartbeat_B20_surprise_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B20_surprise_bridges.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B20_surprise_bridges.dir/build
+.PHONY : unit_heartbeat_B20_surprise_bridges/fast
+
+#=============================================================================
+# Target rules for targets named unit_heartbeat_B22_mirror_bridges
+
+# Build rule for target.
+unit_heartbeat_B22_mirror_bridges: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_heartbeat_B22_mirror_bridges
+.PHONY : unit_heartbeat_B22_mirror_bridges
+
+# fast build rule for target.
+unit_heartbeat_B22_mirror_bridges/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B22_mirror_bridges.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B22_mirror_bridges.dir/build
+.PHONY : unit_heartbeat_B22_mirror_bridges/fast
 
 #=============================================================================
 # Target rules for targets named unit_brain_test_kg_module_wiring
@@ -34799,6 +34942,7 @@ help:
 	@echo "... distributed_cow_demo"
 	@echo "... e2e_attention_exception"
 	@echo "... e2e_brain_cycle_coordinator"
+	@echo "... e2e_cognitive_fault_tolerance_test_health_diagnostic_bridge_e2e"
 	@echo "... e2e_cognitive_immune_tick"
 	@echo "... e2e_cognitive_immune_tick_enhanced"
 	@echo "... e2e_cognitive_memory_pr_exception"
@@ -34856,12 +35000,14 @@ help:
 	@echo "... e2e_fault_tolerance_test_heartbeat_B18_empathy_ethics_epistemic_e2e"
 	@echo "... e2e_fault_tolerance_test_heartbeat_B19_remaining_modules_e2e"
 	@echo "... e2e_fault_tolerance_test_heartbeat_module_e2e"
+	@echo "... e2e_fault_tolerance_test_mirror_bridges_B22_e2e"
 	@echo "... e2e_fault_tolerance_test_perception_cortical_health_e2e"
 	@echo "... e2e_fault_tolerance_test_plasticity_health_e2e"
 	@echo "... e2e_fault_tolerance_test_resilience_stress"
 	@echo "... e2e_fault_tolerance_test_self_repair_bio_async_e2e"
 	@echo "... e2e_fault_tolerance_test_state_checkpoint_recovery_e2e"
 	@echo "... e2e_fault_tolerance_test_substrate_health_e2e"
+	@echo "... e2e_fault_tolerance_test_surprise_bridges_B20_e2e"
 	@echo "... e2e_fault_tolerance_test_symbolic_logic_health_e2e"
 	@echo "... e2e_fault_tolerance_test_thalamic_middleware_health_e2e"
 	@echo "... e2e_fault_tolerance_test_world_imagination_health_e2e"
@@ -35115,6 +35261,7 @@ help:
 	@echo "... integration_cognitive_exception_integration"
 	@echo "... integration_cognitive_executive_snn_plasticity"
 	@echo "... integration_cognitive_fault_tolerance_emotional_tagging"
+	@echo "... integration_cognitive_fault_tolerance_health_diagnostic_bridge"
 	@echo "... integration_cognitive_fault_tolerance_health_self_repair"
 	@echo "... integration_cognitive_grief_test_grief_and_loss_integration"
 	@echo "... integration_cognitive_gt_fep"
@@ -35347,6 +35494,8 @@ help:
 	@echo "... integration_heartbeat_B17_emotion_cluster"
 	@echo "... integration_heartbeat_B18_empathy_ethics_epistemic"
 	@echo "... integration_heartbeat_B19_remaining_modules"
+	@echo "... integration_heartbeat_B20_surprise_bridges"
+	@echo "... integration_heartbeat_B22_mirror_bridges"
 	@echo "... integration_hemispheric_brain"
 	@echo "... integration_hypergraph_knowledge"
 	@echo "... integration_imagination_fep"
@@ -35634,6 +35783,7 @@ help:
 	@echo "... regression_cognitive_ethics_snn_plasticity"
 	@echo "... regression_cognitive_executive_snn_plasticity"
 	@echo "... regression_cognitive_fault_tolerance_emotional_tagging"
+	@echo "... regression_cognitive_fault_tolerance_health_diagnostic_bridge"
 	@echo "... regression_cognitive_fault_tolerance_health_repair_bridge"
 	@echo "... regression_cognitive_grief_test_grief_and_loss_backward_compat"
 	@echo "... regression_cognitive_guardian_intervention"
@@ -35788,6 +35938,8 @@ help:
 	@echo "... regression_heartbeat_B17_emotion_cluster"
 	@echo "... regression_heartbeat_B18_empathy_ethics_epistemic"
 	@echo "... regression_heartbeat_B19_remaining_modules"
+	@echo "... regression_heartbeat_B20_surprise_bridges"
+	@echo "... regression_heartbeat_B22_mirror_bridges"
 	@echo "... regression_hemispheric_brain_regression"
 	@echo "... regression_imagination_fep"
 	@echo "... regression_information_test_quantum_shannon_backward_compat"
@@ -36893,6 +37045,8 @@ help:
 	@echo "... unit_heartbeat_B17_emotion_cluster"
 	@echo "... unit_heartbeat_B18_empathy_ethics_epistemic"
 	@echo "... unit_heartbeat_B19_remaining_modules"
+	@echo "... unit_heartbeat_B20_surprise_bridges"
+	@echo "... unit_heartbeat_B22_mirror_bridges"
 	@echo "... unit_information_test_quantum_shannon"
 	@echo "... unit_information_test_shannon"
 	@echo "... unit_integration_adapters_chemistry_test_calcium_adapter"

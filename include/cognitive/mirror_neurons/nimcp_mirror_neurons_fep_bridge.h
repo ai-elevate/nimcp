@@ -234,6 +234,7 @@ typedef struct {
  */
 struct mirror_neurons_fep_bridge {
     bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+    struct nimcp_health_agent* health_agent; /**< Instance-level health agent */
 
     /* Configuration */
     mirror_neurons_fep_config_t config;

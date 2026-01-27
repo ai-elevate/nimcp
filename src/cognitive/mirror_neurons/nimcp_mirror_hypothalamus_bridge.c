@@ -20,6 +20,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 
 #include <string.h>
 #include <math.h>
@@ -53,6 +54,18 @@ static inline void mirror_hypothalamus_bridge_heartbeat(const char* operation, f
     }
 }
 
+/** @brief Send heartbeat from mirror_hypothalamus_bridge module (instance-level) */
+static inline void mirror_hypothalamus_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_mirror_hypothalamus_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_mirror_hypothalamus_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_mirror_hypothalamus_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* ============================================================================
  * Helper Functions
@@ -69,15 +82,6 @@ static uint64_t get_current_time_us(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000 + (uint64_t)ts.tv_nsec / 1000;
-}
-
-/**
- * @brief Clamp value to range
- */
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
 }
 
 /**
@@ -393,7 +397,7 @@ float mirror_hypo_compute_stress_suppression(const mirror_hypo_bridge_t* bridge)
     float max_supp = bridge->config.max_stress_suppression;
 
     float suppression = cortisol * sensitivity;
-    return clamp_f(suppression, 0.0f, max_supp);
+    return nimcp_myelin_clamp(suppression, 0.0f, max_supp);
 }
 
 float mirror_hypo_compute_circadian_modifier(const mirror_hypo_bridge_t* bridge) {
@@ -468,7 +472,7 @@ float mirror_hypo_compute_drive_suppression(const mirror_hypo_bridge_t* bridge) 
     /* Take max of drives (competing survival needs) */
     float max_drive = (hunger_contrib > thirst_contrib) ? hunger_contrib : thirst_contrib;
 
-    return clamp_f(max_drive * gain, 0.0f, 1.0f);
+    return nimcp_myelin_clamp(max_drive * gain, 0.0f, 1.0f);
 }
 
 circadian_social_phase_t mirror_hypo_get_social_phase(const mirror_hypo_bridge_t* bridge) {
@@ -551,7 +555,7 @@ int mirror_hypo_trigger_empathic_arousal(mirror_hypo_bridge_t* bridge, float aro
     mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_trigger_", 0.0f);
 
 
-    arousal_level = clamp_f(arousal_level, 0.0f, 1.0f);
+    arousal_level = nimcp_myelin_clamp(arousal_level, 0.0f, 1.0f);
 
     /* Apply stress proportional to arousal (empathic stress transfer) */
     float stress_level = arousal_level * bridge->config.empathic_arousal_gain;
@@ -788,7 +792,7 @@ float mirror_hypo_get_total_suppression(const mirror_hypo_bridge_t* bridge) {
     /* Add minor contribution from secondary effects */
     float total = max_supp + (stress + circadian + drive - max_supp) * 0.3f;
 
-    return clamp_f(total, 0.0f, 1.0f);
+    return nimcp_myelin_clamp(total, 0.0f, 1.0f);
 }
 
 /* ============================================================================
@@ -865,7 +869,7 @@ void mirror_hypo_notify_empathic_resonance(mirror_hypo_bridge_t* bridge, float r
 
 
     nimcp_mutex_lock(bridge->base.mutex);
-    bridge->state.empathic_resonance_level = clamp_f(resonance_level, 0.0f, 1.0f);
+    bridge->state.empathic_resonance_level = nimcp_myelin_clamp(resonance_level, 0.0f, 1.0f);
     nimcp_mutex_unlock(bridge->base.mutex);
 }
 

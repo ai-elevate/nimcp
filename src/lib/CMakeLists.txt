@@ -2573,6 +2573,12 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/neuro_symbolic/bridges/nimcp_hypergraph_kg_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/neuro_symbolic/bridges/nimcp_genius_game_theory_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/neuro_symbolic/bridges/nimcp_quantum_mcts_fep_bridge.c
+
+    # Inner Dialogue Engine (Phase 1: Core Engine + Turn Infrastructure)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/inner_dialogue/nimcp_inner_dialogue.c              # Inner dialogue engine — state machine, orchestration, integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/inner_dialogue/nimcp_inner_dialogue_turn.c         # Turn history circular buffer and analysis helpers
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/inner_dialogue/nimcp_inner_dialogue_perspective.c  # Perspective registry, scheduling, built-in stubs
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/inner_dialogue/nimcp_inner_dialogue_convergence.c  # Convergence/deadlock/rumination detection
 )
 
 # Core library

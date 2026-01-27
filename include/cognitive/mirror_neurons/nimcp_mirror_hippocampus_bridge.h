@@ -86,6 +86,10 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 
+/* Forward declaration for health agent */
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -295,6 +299,10 @@ typedef struct {
     float avg_retrieval_latency_ms;   /**< Average retrieval time */
 } mirror_hippocampus_stats_t;
 
+/* Forward declaration for health agent (B22 Upgrade) */
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
 /**
  * @brief Mirror-hippocampus bridge state
  */
@@ -337,6 +345,9 @@ struct mirror_hippocampus_bridge {
 
     /* Internal state */
     uint64_t last_update_ms;
+
+    /* Health agent (instance-level) */
+    nimcp_health_agent_t* health_agent;
 };
 
 /* ============================================================================

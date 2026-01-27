@@ -52,6 +52,18 @@ static inline void mirror_language_bridge_heartbeat(const char* operation, float
     }
 }
 
+/** @brief Send heartbeat from mirror_language_bridge module (instance-level) */
+static inline void mirror_language_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_mirror_language_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_mirror_language_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_mirror_language_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Internal Constants
@@ -148,6 +160,9 @@ struct mirror_language_bridge {
     void* simulation_callback_data;
     ml_semantic_callback_t semantic_callback;
     void* semantic_callback_data;
+
+    /* Health agent (instance-level) */
+    nimcp_health_agent_t* health_agent;
 };
 
 //=============================================================================
@@ -1636,4 +1651,38 @@ bool mirror_language_has_wernicke(const mirror_language_bridge_t* bridge)
 
 
     return bridge->wernicke != NULL;
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B22 Upgrade)
+//=============================================================================
+
+void mirror_language_bridge_set_instance_health_agent(
+    mirror_language_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B22 Upgrade)
+//=============================================================================
+
+int mirror_language_bridge_training_begin(mirror_language_bridge_t* bridge) {
+    if (!bridge) return -1;
+    mirror_language_bridge_heartbeat_instance(bridge->health_agent, "mirror_language_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int mirror_language_bridge_training_end(mirror_language_bridge_t* bridge) {
+    if (!bridge) return -1;
+    mirror_language_bridge_heartbeat_instance(bridge->health_agent, "mirror_language_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int mirror_language_bridge_training_step(mirror_language_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    mirror_language_bridge_heartbeat_instance(bridge->health_agent, "mirror_language_bridge_training_step", progress);
+    return 0;
 }

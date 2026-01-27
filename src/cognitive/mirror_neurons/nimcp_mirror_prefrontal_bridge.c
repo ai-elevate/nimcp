@@ -48,6 +48,17 @@ static inline void mirror_prefrontal_bridge_heartbeat(const char* operation, flo
     }
 }
 
+static inline void mirror_prefrontal_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_mirror_prefrontal_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_mirror_prefrontal_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_mirror_prefrontal_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /*=============================================================================
  * INTERNAL STRUCTURES
@@ -93,6 +104,9 @@ struct mirror_prefrontal_bridge_struct {
 
     /* Thread safety */
     nimcp_mutex_t* mutex;
+
+    /* Instance-level health agent (B22) */
+    nimcp_health_agent_t* health_agent;
 };
 
 /*=============================================================================
@@ -1209,4 +1223,33 @@ float mirror_prefrontal_default_inhibition_for_context(
 
 
     return get_context_inhibition(context);
+}
+
+/*=============================================================================
+ * B22: Instance Health Agent Setter
+ *===========================================================================*/
+
+void mirror_prefrontal_bridge_set_instance_health_agent(
+    mirror_prefrontal_bridge_t bridge,
+    nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+/*=============================================================================
+ * B22: Training Hook Stubs
+ *===========================================================================*/
+
+int mirror_prefrontal_bridge_training_begin(mirror_prefrontal_bridge_t bridge) {
+    if (!bridge) return -1;
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_training_begin", 0.0f);
+    return 0;
+}
+
+int mirror_prefrontal_bridge_training_end(mirror_prefrontal_bridge_t bridge) {
+    if (!bridge) return -1;
+    mirror_prefrontal_bridge_heartbeat("mirror_prefr_training_end", 1.0f);
+    return 0;
 }

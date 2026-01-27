@@ -19,6 +19,7 @@
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
+#include "utils/rng/nimcp_rand.h"
 
 #define LOG_MODULE "mirror_plasticity_bridge"
 
@@ -47,6 +48,18 @@ void mirror_plasticity_bridge_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void mirror_plasticity_bridge_heartbeat(const char* operation, float progress) {
     if (g_mirror_plasticity_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_mirror_plasticity_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from mirror_plasticity_bridge module (instance-level) */
+static inline void mirror_plasticity_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_mirror_plasticity_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_mirror_plasticity_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_mirror_plasticity_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -100,6 +113,9 @@ struct mirror_plasticity_bridge {
     /* Timing */
     uint64_t last_update_us;
     uint64_t last_consolidation_us;
+
+    /* Health agent (instance-level) */
+    nimcp_health_agent_t* health_agent;
 };
 
 //=============================================================================
@@ -806,7 +822,7 @@ int mirror_plasticity_observation(
         if (bridge->synapses[i].action_id == action_id &&
             bridge->synapses[i].type == MIRROR_SYNAPSE_OBS_TO_HIDDEN) {
             /* Probabilistic spike based on strength */
-            if (strength > 0.5f || ((float)rand() / RAND_MAX) < strength) {
+            if (strength > 0.5f || nimcp_rand_uniform() < strength) {
                 pre_spike_unlocked(bridge, bridge->synapses[i].synapse_id, timestamp_us);
             }
         }
@@ -842,7 +858,7 @@ int mirror_plasticity_execution(
         }
 
         if (bridge->synapses[i].action_id == action_id) {
-            if (strength > 0.5f || ((float)rand() / RAND_MAX) < strength) {
+            if (strength > 0.5f || nimcp_rand_uniform() < strength) {
                 post_spike_unlocked(bridge, bridge->synapses[i].synapse_id, timestamp_us);
             }
         }
@@ -1480,4 +1496,38 @@ int mirror_plasticity_get_orchestrator_stats(
 
 
     return plasticity_orchestrator_get_stats(bridge->orchestrator, stats);
+}
+
+//=============================================================================
+// Instance Health Agent Setter (B22 Upgrade)
+//=============================================================================
+
+void mirror_plasticity_bridge_set_instance_health_agent(
+    mirror_plasticity_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B22 Upgrade)
+//=============================================================================
+
+int mirror_plasticity_bridge_training_begin(mirror_plasticity_bridge_t* bridge) {
+    if (!bridge) return -1;
+    mirror_plasticity_bridge_heartbeat_instance(bridge->health_agent, "mirror_plasticity_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int mirror_plasticity_bridge_training_end(mirror_plasticity_bridge_t* bridge) {
+    if (!bridge) return -1;
+    mirror_plasticity_bridge_heartbeat_instance(bridge->health_agent, "mirror_plasticity_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int mirror_plasticity_bridge_training_step(mirror_plasticity_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    mirror_plasticity_bridge_heartbeat_instance(bridge->health_agent, "mirror_plasticity_bridge_training_step", progress);
+    return 0;
 }

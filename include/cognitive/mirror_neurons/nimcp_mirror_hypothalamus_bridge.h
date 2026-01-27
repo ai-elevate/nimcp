@@ -271,6 +271,7 @@ typedef struct {
  */
 typedef struct mirror_hypo_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+    struct nimcp_health_agent* health_agent; /**< Instance-level health agent */
     mirror_hypo_config_t config;
     mirror_hypo_state_t state;
     mirror_hypo_stats_t stats;

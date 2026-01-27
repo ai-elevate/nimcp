@@ -14,6 +14,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 #include <string.h>
 #include <math.h>
 
@@ -45,16 +46,22 @@ static inline void mirror_neurons_fep_bridge_heartbeat(const char* operation, fl
     }
 }
 
+/** @brief Send heartbeat from mirror_neurons_fep_bridge module (instance-level) */
+static inline void mirror_neurons_fep_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_mirror_neurons_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_mirror_neurons_fep_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_mirror_neurons_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-static inline float clamp_f(float value, float min, float max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
 
 /* ============================================================================
  * Lifecycle Implementation
@@ -101,11 +108,12 @@ mirror_neurons_fep_bridge_t* mirror_neurons_fep_bridge_create(
     /* Phase 8: Heartbeat at operation start */
     mirror_neurons_fep_bridge_heartbeat("mirror_neuro_create", 0.0f);
 
+    NIMCP_LOGGING_DEBUG("Creating mirror_neurons_fep_bridge");
 
     mirror_neurons_fep_bridge_t* bridge = (mirror_neurons_fep_bridge_t*)nimcp_calloc(
         1, sizeof(mirror_neurons_fep_bridge_t));
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate mirror neurons-FEP bridge");
+        NIMCP_LOGGING_WARN("Failed to allocate mirror_neurons_fep_bridge");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
         return NULL;
@@ -148,7 +156,9 @@ void mirror_neurons_fep_bridge_destroy(mirror_neurons_fep_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Phase 8: Heartbeat at operation start */
-    mirror_neurons_fep_bridge_heartbeat("mirror_neuro_destroy", 0.0f);
+    mirror_neurons_fep_bridge_heartbeat_instance(bridge->health_agent, "mirror_neuro_destroy", 0.0f);
+
+    NIMCP_LOGGING_DEBUG("Destroying mirror_neurons_fep_bridge");
 
 
     if (bridge->base.bio_async_enabled) {
@@ -181,7 +191,7 @@ int mirror_neurons_fep_bridge_connect_fep(
     /* Allow NULL fep to disconnect/reset FEP connection */
 
     /* Phase 8: Heartbeat at operation start */
-    mirror_neurons_fep_bridge_heartbeat("mirror_neuro_connect_fep", 0.0f);
+    mirror_neurons_fep_bridge_heartbeat_instance(bridge->health_agent, "mirror_neuro_connect_fep", 0.0f);
 
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -202,7 +212,7 @@ int mirror_neurons_fep_bridge_connect_mirror_neurons(
     }
 
     /* Phase 8: Heartbeat at operation start */
-    mirror_neurons_fep_bridge_heartbeat("mirror_neuro_connect_mirror_neuro", 0.0f);
+    mirror_neurons_fep_bridge_heartbeat_instance(bridge->health_agent, "mirror_neuro_connect_mirror_neuro", 0.0f);
 
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -227,7 +237,7 @@ int mirror_neurons_fep_apply_precision_modulation(
     if (!bridge->config.enable_precision_modulation) return 0;
 
     /* Phase 8: Heartbeat at operation start */
-    mirror_neurons_fep_bridge_heartbeat("mirror_neuro_mirror_neurons_fep_a", 0.0f);
+    mirror_neurons_fep_bridge_heartbeat_instance(bridge->health_agent, "mirror_neuro_mirror_neurons_fep_a", 0.0f);
 
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -261,7 +271,7 @@ int mirror_neurons_fep_apply_precision_modulation(
     bridge->state.current_precision = avg_precision;
 
     /* Map precision to mirror gain */
-    float gain = clamp_f(
+    float gain = nimcp_myelin_clamp(
         avg_precision * bridge->config.precision_gain_factor,
         bridge->config.min_mirror_gain,
         bridge->config.max_mirror_gain
@@ -293,7 +303,7 @@ int mirror_neurons_fep_update_goals_from_beliefs(
     if (!bridge->config.enable_goal_belief_coupling) return 0;
 
     /* Phase 8: Heartbeat at operation start */
-    mirror_neurons_fep_bridge_heartbeat("mirror_neuro_mirror_neurons_fep_u", 0.0f);
+    mirror_neurons_fep_bridge_heartbeat_instance(bridge->health_agent, "mirror_neuro_mirror_neurons_fep_u", 0.0f);
 
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -342,7 +352,7 @@ int mirror_neurons_fep_propagate_prediction_errors(
     if (!bridge->config.enable_pe_propagation) return 0;
 
     /* Phase 8: Heartbeat at operation start */
-    mirror_neurons_fep_bridge_heartbeat("mirror_neuro_mirror_neurons_fep_p", 0.0f);
+    mirror_neurons_fep_bridge_heartbeat_instance(bridge->health_agent, "mirror_neuro_mirror_neurons_fep_p", 0.0f);
 
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -488,7 +498,7 @@ int mirror_neurons_fep_set_precision_from_resonance(
 
         /* Map resonance to FEP precision */
         fep_system_t* fep = bridge->fep_system;
-        float precision_scale = clamp_f(resonance, 0.5f, 1.5f);
+        float precision_scale = nimcp_myelin_clamp(resonance, 0.5f, 1.5f);
 
         /* Apply to lowest FEP level (sensory) */
         if (fep->num_levels > 0) {

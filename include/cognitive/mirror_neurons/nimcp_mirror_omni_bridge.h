@@ -104,6 +104,10 @@
 #include "cognitive/omni/nimcp_omni_active_inference.h"
 #include "cognitive/omni/nimcp_omni_world_model.h"
 
+/* Forward declaration for health agent */
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -339,6 +343,10 @@ typedef struct {
     uint64_t bio_async_messages_received;
 } mirror_omni_stats_t;
 
+/* Forward declaration for health agent (B22 Upgrade) */
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
 /**
  * @brief Mirror-omni bridge state
  */
@@ -368,6 +376,9 @@ struct mirror_omni_bridge {
 
     /* Statistics */
     mirror_omni_stats_t stats;
+
+    /* Health agent (instance-level) */
+    nimcp_health_agent_t* health_agent;
 };
 
 /* ============================================================================

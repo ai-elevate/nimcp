@@ -564,3 +564,27 @@ set_tests_properties(integration_heartbeat_B20_surprise_bridges PROPERTIES
     LABELS "integration;fault_tolerance;heartbeat;B20;surprise_bridges"
     TIMEOUT 180
 )
+
+# B22: Mirror neuron bridge heartbeat/utility integration tests
+add_executable(integration_heartbeat_B22_mirror_bridges
+    test_mirror_bridges_B22_integration.cpp
+)
+target_link_libraries(integration_heartbeat_B22_mirror_bridges
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        pthread
+)
+
+target_include_directories(integration_heartbeat_B22_mirror_bridges
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME integration_heartbeat_B22_mirror_bridges
+         COMMAND integration_heartbeat_B22_mirror_bridges)
+set_tests_properties(integration_heartbeat_B22_mirror_bridges PROPERTIES
+    LABELS "integration;fault_tolerance;heartbeat;B22;mirror_bridges"
+    TIMEOUT 180
+)

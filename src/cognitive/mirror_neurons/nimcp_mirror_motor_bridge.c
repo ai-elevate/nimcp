@@ -17,6 +17,7 @@
 #include "utils/error/nimcp_error_codes.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -50,6 +51,18 @@ static inline void mirror_motor_bridge_heartbeat(const char* operation, float pr
     }
 }
 
+/** @brief Send heartbeat from mirror_motor_bridge module (instance-level) */
+static inline void mirror_motor_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_mirror_motor_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_mirror_motor_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_mirror_motor_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* ============================================================================
  * Internal Constants
@@ -60,12 +73,6 @@ static inline void mirror_motor_bridge_heartbeat(const char* operation, float pr
 /* ============================================================================
  * Helper Functions
  * ============================================================================ */
-
-static inline float clamp_f(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
-}
 
 static inline float vec3_distance(const motor_vec3_t* a, const motor_vec3_t* b) {
     float dx = a->x - b->x;
@@ -348,7 +355,7 @@ uint32_t mirror_motor_extract_program(
         extracted_motor_program_t* prog = &bridge->programs[existing];
         prog->observation_count++;
         prog->observation_strength = fmaxf(prog->observation_strength, observation_strength);
-        prog->extraction_confidence = clamp_f(
+        prog->extraction_confidence = nimcp_myelin_clamp(
             prog->extraction_confidence + 0.1f, 0.0f, 1.0f
         );
         return prog->program_id;
@@ -699,7 +706,7 @@ int mirror_motor_enter_learning_mode(
     mirror_motor_bridge_heartbeat("mirror_motor_mirror_motor_enter_l", 0.0f);
 
 
-    strength = clamp_f(strength, 0.0f, 1.0f);
+    strength = nimcp_myelin_clamp(strength, 0.0f, 1.0f);
 
     bridge->learning_mode = true;
     bridge->current_suppression_release = strength * bridge->config.learning_release_strength;
@@ -815,7 +822,7 @@ int mirror_motor_bridge_update(
         if (!exec->is_executing) continue;
 
         exec->elapsed_ms += delta_ms;
-        exec->execution_progress = clamp_f(
+        exec->execution_progress = nimcp_myelin_clamp(
             (float)exec->elapsed_ms / exec->planned_duration_ms,
             0.0f, 1.0f
         );
@@ -858,7 +865,7 @@ int mirror_motor_bridge_update(
     }
 
     /* Update execution readiness */
-    bridge->effects.execution_readiness = clamp_f(
+    bridge->effects.execution_readiness = nimcp_myelin_clamp(
         bridge->effects.motor_priming - (1.0f - bridge->current_suppression_release) * 0.5f,
         0.0f, 1.0f
     );

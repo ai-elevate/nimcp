@@ -249,6 +249,7 @@ typedef enum {
     MODULE_MENTAL_HEALTH,          /**< Disorder detection */
     MODULE_GOAL_MOTIVATION,        /**< Goal hierarchy, rewards */
     MODULE_COGNITIVE_CONTROL,      /**< Error/conflict monitoring */
+    MODULE_INNER_DIALOGUE,         /**< Inner dialogue engine (multi-perspective deliberation) */
     MODULE_CUSTOM_START = 100      /**< User-defined modules start here */
 } cognitive_module_t;
 

@@ -644,4 +644,32 @@ gtest_discover_tests(regression_heartbeat_B20_surprise_bridges
         TIMEOUT 180
 )
 
+# B22: Mirror neuron bridge heartbeat/utility regression tests
+add_executable(regression_heartbeat_B22_mirror_bridges
+    test_mirror_bridges_B22_regression.cpp
+)
+target_link_libraries(regression_heartbeat_B22_mirror_bridges
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        pthread
+)
+
+target_include_directories(regression_heartbeat_B22_mirror_bridges
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_heartbeat_B22_mirror_bridges PRIVATE cxx_std_17)
+target_compile_definitions(regression_heartbeat_B22_mirror_bridges PRIVATE NIMCP_TESTING)
+
+gtest_discover_tests(regression_heartbeat_B22_mirror_bridges
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;fault_tolerance;heartbeat;B22;mirror_bridges"
+        TIMEOUT 180
+)
+
 message(STATUS "Added fault tolerance regression tests")

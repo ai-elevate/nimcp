@@ -50,6 +50,17 @@ static inline void mirror_emotion_bridge_heartbeat(const char* operation, float 
     }
 }
 
+static inline void mirror_emotion_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_mirror_emotion_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_mirror_emotion_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_mirror_emotion_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Internal Structures
@@ -81,6 +92,9 @@ struct mirror_emotion_bridge {
     /* Bio-async registration */
     bool bio_async_registered;
     uint32_t handler_id;
+
+    /* Instance-level health agent (B22) */
+    nimcp_health_agent_t* health_agent;
 };
 
 //=============================================================================
@@ -1020,4 +1034,33 @@ void mirror_emotion_reset_stats(mirror_emotion_bridge_t* bridge) {
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(mirror_emotion_stats_t));
     nimcp_mutex_unlock(bridge->base.mutex);
+}
+
+//=============================================================================
+// B22: Instance Health Agent Setter
+//=============================================================================
+
+void mirror_emotion_bridge_set_instance_health_agent(
+    mirror_emotion_bridge_t* bridge,
+    nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// B22: Training Hook Stubs
+//=============================================================================
+
+int mirror_emotion_bridge_training_begin(mirror_emotion_bridge_t* bridge) {
+    if (!bridge) return -1;
+    mirror_emotion_bridge_heartbeat("mirror_emoti_training_begin", 0.0f);
+    return 0;
+}
+
+int mirror_emotion_bridge_training_end(mirror_emotion_bridge_t* bridge) {
+    if (!bridge) return -1;
+    mirror_emotion_bridge_heartbeat("mirror_emoti_training_end", 1.0f);
+    return 0;
 }

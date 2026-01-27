@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "glial/myelin_sheath/nimcp_myelin_math.h"
 
 //=============================================================================
 #include <stddef.h>  /* for NULL */
@@ -50,6 +51,18 @@ static inline void mirror_hippocampus_bridge_heartbeat(const char* operation, fl
     }
 }
 
+/** @brief Send heartbeat from mirror_hippocampus_bridge module (instance-level) */
+static inline void mirror_hippocampus_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_mirror_hippocampus_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_mirror_hippocampus_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_mirror_hippocampus_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* ============================================================================
  * Internal Constants
@@ -61,11 +74,7 @@ static inline void mirror_hippocampus_bridge_heartbeat(const char* operation, fl
  * Helper Functions
  * ============================================================================ */
 
-static inline float clamp_f(float val, float min_val, float max_val) {
-    if (val < min_val) return min_val;
-    if (val > max_val) return max_val;
-    return val;
-}
+/* clamp_f replaced by nimcp_myelin_clamp (B22 Upgrade) */
 
 /**
  * @brief Compute similarity between two action feature vectors
@@ -744,7 +753,7 @@ int mirror_hippocampus_retrieve_by_action(
         result->episodes[i]->retrieval_count++;
 
         /* Strengthen retrieved memories */
-        result->episodes[i]->episode_strength = clamp_f(
+        result->episodes[i]->episode_strength = nimcp_myelin_clamp(
             result->episodes[i]->episode_strength + 0.05f, 0.0f, 1.0f
         );
     }
@@ -1009,7 +1018,7 @@ int mirror_hippocampus_step_replay(
         episode->replay_count++;
 
         /* Strengthen episode from replay */
-        episode->episode_strength = clamp_f(
+        episode->episode_strength = nimcp_myelin_clamp(
             episode->episode_strength + bridge->config.replay_strengthening,
             0.0f, 1.0f
         );
@@ -1324,3 +1333,37 @@ int mirror_hippocampus_bridge_reset_stats(
  * ============================================================================ */
 
 BRIDGE_DEFINE_BIO_ASYNC_FUNCS_TYPE(mirror_hippocampus_bridge, mirror_hippocampus_bridge_t)
+
+//=============================================================================
+// Instance Health Agent Setter (B22 Upgrade)
+//=============================================================================
+
+void mirror_hippocampus_bridge_set_instance_health_agent(
+    mirror_hippocampus_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+//=============================================================================
+// Training Hook Stubs (B22 Upgrade)
+//=============================================================================
+
+int mirror_hippocampus_bridge_training_begin(mirror_hippocampus_bridge_t* bridge) {
+    if (!bridge) return -1;
+    mirror_hippocampus_bridge_heartbeat_instance(bridge->health_agent, "mirror_hippocampus_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int mirror_hippocampus_bridge_training_end(mirror_hippocampus_bridge_t* bridge) {
+    if (!bridge) return -1;
+    mirror_hippocampus_bridge_heartbeat_instance(bridge->health_agent, "mirror_hippocampus_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int mirror_hippocampus_bridge_training_step(mirror_hippocampus_bridge_t* bridge, float progress) {
+    if (!bridge) return -1;
+    mirror_hippocampus_bridge_heartbeat_instance(bridge->health_agent, "mirror_hippocampus_bridge_training_step", progress);
+    return 0;
+}

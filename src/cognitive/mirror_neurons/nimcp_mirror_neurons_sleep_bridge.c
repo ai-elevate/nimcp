@@ -44,6 +44,18 @@ static inline void mirror_neurons_sleep_bridge_heartbeat(const char* operation, 
     }
 }
 
+/** @brief Send heartbeat from mirror_neurons_sleep_bridge module (instance-level) */
+static inline void mirror_neurons_sleep_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_mirror_neurons_sleep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_mirror_neurons_sleep_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_mirror_neurons_sleep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /**
  * WHAT: Internal structure for mirror neurons sleep bridge
@@ -52,6 +64,7 @@ static inline void mirror_neurons_sleep_bridge_heartbeat(const char* operation, 
  */
 struct mirror_neurons_sleep_bridge_struct {
     bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+    nimcp_health_agent_t* health_agent; /**< Instance-level health agent */
 
     mirror_neurons_sleep_config_t config;      /**< Bridge configuration */
     sleep_system_t sleep_system;               /**< Reference to sleep system */
@@ -201,12 +214,13 @@ mirror_neurons_sleep_bridge_t mirror_neurons_sleep_bridge_create(
     /* Phase 8: Heartbeat at operation start */
     mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_create", 0.0f);
 
+    NIMCP_LOGGING_DEBUG("Creating mirror_neurons_sleep_bridge");
 
     struct mirror_neurons_sleep_bridge_struct* bridge =
         (struct mirror_neurons_sleep_bridge_struct*)nimcp_malloc(
             sizeof(struct mirror_neurons_sleep_bridge_struct));
     if (!bridge) {
-
+        NIMCP_LOGGING_WARN("Failed to allocate mirror_neurons_sleep_bridge");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
         return NULL;
@@ -272,7 +286,9 @@ void mirror_neurons_sleep_bridge_destroy(mirror_neurons_sleep_bridge_t bridge)
 
     /* Disconnect from bio-async if connected */
     /* Phase 8: Heartbeat at operation start */
-    mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_destroy", 0.0f);
+    mirror_neurons_sleep_bridge_heartbeat_instance(bridge->health_agent, "mirror_neuro_destroy", 0.0f);
+
+    NIMCP_LOGGING_DEBUG("Destroying mirror_neurons_sleep_bridge");
 
 
     if (bridge->base.bio_async_enabled) {
@@ -309,7 +325,7 @@ int mirror_neurons_sleep_update(mirror_neurons_sleep_bridge_t bridge)
     }
 
     /* Phase 8: Heartbeat at operation start */
-    mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_mirror_neurons_sleep", 0.0f);
+    mirror_neurons_sleep_bridge_heartbeat_instance(bridge->health_agent, "mirror_neuro_mirror_neurons_sleep", 0.0f);
 
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -346,7 +362,7 @@ int mirror_neurons_sleep_get_effects(
     }
 
     /* Phase 8: Heartbeat at operation start */
-    mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_mirror_neurons_sleep", 0.0f);
+    mirror_neurons_sleep_bridge_heartbeat_instance(bridge->health_agent, "mirror_neuro_mirror_neurons_sleep", 0.0f);
 
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -365,7 +381,7 @@ float mirror_neurons_sleep_get_activity(const mirror_neurons_sleep_bridge_t brid
     }
 
     /* Phase 8: Heartbeat at operation start */
-    mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_mirror_neurons_sleep", 0.0f);
+    mirror_neurons_sleep_bridge_heartbeat_instance(bridge->health_agent, "mirror_neuro_mirror_neurons_sleep", 0.0f);
 
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -384,7 +400,7 @@ bool mirror_neurons_sleep_is_replay_active(const mirror_neurons_sleep_bridge_t b
     }
 
     /* Phase 8: Heartbeat at operation start */
-    mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_mirror_neurons_sleep", 0.0f);
+    mirror_neurons_sleep_bridge_heartbeat_instance(bridge->health_agent, "mirror_neuro_mirror_neurons_sleep", 0.0f);
 
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -478,7 +494,7 @@ int mirror_neurons_sleep_connect_bio_async(mirror_neurons_sleep_bridge_t bridge)
 
     /* Guard clause: Already connected */
     /* Phase 8: Heartbeat at operation start */
-    mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_mirror_neurons_sleep", 0.0f);
+    mirror_neurons_sleep_bridge_heartbeat_instance(bridge->health_agent, "mirror_neuro_mirror_neurons_sleep", 0.0f);
 
 
     if (bridge->base.bio_async_enabled) {
@@ -528,7 +544,7 @@ int mirror_neurons_sleep_disconnect_bio_async(mirror_neurons_sleep_bridge_t brid
     }
 
     /* Phase 8: Heartbeat at operation start */
-    mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_mirror_neurons_sleep", 0.0f);
+    mirror_neurons_sleep_bridge_heartbeat_instance(bridge->health_agent, "mirror_neuro_mirror_neurons_sleep", 0.0f);
 
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -560,7 +576,7 @@ bool mirror_neurons_sleep_is_bio_async_connected(const mirror_neurons_sleep_brid
     }
 
     /* Phase 8: Heartbeat at operation start */
-    mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_mirror_neurons_sleep", 0.0f);
+    mirror_neurons_sleep_bridge_heartbeat_instance(bridge->health_agent, "mirror_neuro_mirror_neurons_sleep", 0.0f);
 
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -597,4 +613,32 @@ int mirror_neurons_sleep_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Mirror_Neurons_Sleep_Bridge");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Instance Health Agent Setter
+ * ============================================================================ */
+
+void mirror_neurons_sleep_bridge_set_instance_health_agent(
+    mirror_neurons_sleep_bridge_t bridge, nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Training Hook Stubs (Phase 8: Training-Immune Integration)
+ * ============================================================================ */
+
+int mirror_neurons_sleep_bridge_pre_training_hook(mirror_neurons_sleep_bridge_t bridge) {
+    if (!bridge) return -1;
+    mirror_neurons_sleep_bridge_heartbeat_instance(bridge->health_agent, "mirror_neuro_pre_train", 0.0f);
+    return 0;
+}
+
+int mirror_neurons_sleep_bridge_post_training_hook(mirror_neurons_sleep_bridge_t bridge) {
+    if (!bridge) return -1;
+    mirror_neurons_sleep_bridge_heartbeat_instance(bridge->health_agent, "mirror_neuro_post_train", 1.0f);
+    return 0;
 }

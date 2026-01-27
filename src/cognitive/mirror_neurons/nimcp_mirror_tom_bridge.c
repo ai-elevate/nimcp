@@ -49,6 +49,17 @@ static inline void mirror_tom_bridge_heartbeat(const char* operation, float prog
     }
 }
 
+static inline void mirror_tom_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_mirror_tom_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_mirror_tom_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_mirror_tom_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* ============================================================================
  * Internal Constants
@@ -94,6 +105,9 @@ struct mirror_tom_bridge {
     /* Bio-async registration */
     bool bio_async_registered;
     uint32_t handler_id;
+
+    /* Instance-level health agent (B22) */
+    nimcp_health_agent_t* health_agent;
 };
 
 /* ============================================================================
@@ -1074,4 +1088,33 @@ void mirror_tom_print_mental_state(const mirror_tom_mental_state_t* state,
         nimcp_log(LOG_LEVEL_DEBUG, "%s  predicted: %s (conf=%.2f)",
                   pfx, state->predicted_intention, state->intention_confidence);
     }
+}
+
+/* ============================================================================
+ * B22: Instance Health Agent Setter
+ * ============================================================================ */
+
+void mirror_tom_bridge_set_instance_health_agent(
+    mirror_tom_bridge_t bridge,
+    nimcp_health_agent_t* agent)
+{
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * B22: Training Hook Stubs
+ * ============================================================================ */
+
+int mirror_tom_bridge_training_begin(mirror_tom_bridge_t bridge) {
+    if (!bridge) return -1;
+    mirror_tom_bridge_heartbeat("mirror_tom_b_training_begin", 0.0f);
+    return 0;
+}
+
+int mirror_tom_bridge_training_end(mirror_tom_bridge_t bridge) {
+    if (!bridge) return -1;
+    mirror_tom_bridge_heartbeat("mirror_tom_b_training_end", 1.0f);
+    return 0;
 }

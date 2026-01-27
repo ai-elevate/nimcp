@@ -115,6 +115,10 @@
 extern "C" {
 #endif
 
+/* Forward declaration for health agent (B22) */
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
 /* ============================================================================
  * Constants
  * ============================================================================ */
@@ -380,6 +384,9 @@ struct mirror_visual_bridge {
     /* Internal buffers */
     float* visual_features_buffer;         /**< Buffer for visual features */
     uint32_t visual_features_size;         /**< Size of features buffer */
+
+    /* Instance-level health agent (B22) */
+    nimcp_health_agent_t* health_agent;
 };
 
 /* ============================================================================
