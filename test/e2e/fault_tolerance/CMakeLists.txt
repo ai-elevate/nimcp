@@ -231,3 +231,7 @@ set_tests_properties(e2e_fault_tolerance_test_heartbeat_B16_executive_consolidat
 # B17: cognitive/emotion + emotional_tagging + emotion_recognition + emotions + emotion_tensor + grief + joy + remorse
 add_e2e_fault_tolerance_test(test_heartbeat_B17_emotion_cluster_e2e)
 set_tests_properties(e2e_fault_tolerance_test_heartbeat_B17_emotion_cluster_e2e PROPERTIES TIMEOUT 300)
+
+# B18: cognitive/empathetic_response + cognitive/ethics + cognitive/epistemic
+add_e2e_fault_tolerance_test(test_heartbeat_B18_empathy_ethics_epistemic_e2e)
+set_tests_properties(e2e_fault_tolerance_test_heartbeat_B18_empathy_ethics_epistemic_e2e PROPERTIES TIMEOUT 300)

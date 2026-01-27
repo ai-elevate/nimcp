@@ -586,4 +586,33 @@ gtest_discover_tests(unit_heartbeat_B17_emotion_cluster
         TIMEOUT 120
 )
 
+# B18: cognitive/empathetic_response + cognitive/ethics + cognitive/epistemic
+add_executable(unit_heartbeat_B18_empathy_ethics_epistemic
+    test_heartbeat_B18_empathy_ethics_epistemic_functions.cpp
+)
+
+target_link_libraries(unit_heartbeat_B18_empathy_ethics_epistemic
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        pthread
+)
+
+target_include_directories(unit_heartbeat_B18_empathy_ethics_epistemic
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(unit_heartbeat_B18_empathy_ethics_epistemic PRIVATE cxx_std_17)
+target_compile_definitions(unit_heartbeat_B18_empathy_ethics_epistemic PRIVATE NIMCP_TESTING)
+
+gtest_discover_tests(unit_heartbeat_B18_empathy_ethics_epistemic
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;fault_tolerance;heartbeat;B18;empathy_ethics_epistemic"
+        TIMEOUT 120
+)
+
 message(STATUS "Added fault tolerance unit tests")

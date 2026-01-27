@@ -836,6 +836,8 @@
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B14_curiosity_collective_logic_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B15_tom_symboliclogic_selfmodel_predictive_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B16_executive_consolidation_autobio_attention_e2e.dir
+/home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B17_emotion_cluster_e2e.dir
+/home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B18_empathy_ethics_epistemic_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/rebuild_cache.dir
@@ -846,6 +848,7 @@
 /home/bbrelin/nimcp/build/test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_predictive_bridge_exception_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_surprise_amplifier_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_surprise_bridges_e2e.dir
+/home/bbrelin/nimcp/build/test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_surprise_bridges_phase1b_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_tom_exception_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_wm_bridges_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_world_model_e2e.dir
@@ -1449,6 +1452,8 @@
 /home/bbrelin/nimcp/build/test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B14_curiosity_collective_logic.dir
 /home/bbrelin/nimcp/build/test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B15_tom_symboliclogic_selfmodel_predictive.dir
 /home/bbrelin/nimcp/build/test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B16_executive_consolidation_autobio_attention.dir
+/home/bbrelin/nimcp/build/test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B17_emotion_cluster.dir
+/home/bbrelin/nimcp/build/test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B18_empathy_ethics_epistemic.dir
 /home/bbrelin/nimcp/build/test/integration/fault_tolerance/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/fault_tolerance/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/fault_tolerance/CMakeFiles/rebuild_cache.dir
@@ -1896,6 +1901,7 @@
 /home/bbrelin/nimcp/build/test/unit/cognitive/salience/CMakeFiles/unit_cognitive_salience_plasticity_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/salience/CMakeFiles/unit_cognitive_surprise_amplifier.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/salience/CMakeFiles/unit_cognitive_surprise_bridges.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/salience/CMakeFiles/unit_cognitive_surprise_bridges_phase1b.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/salience/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/salience/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/salience/CMakeFiles/rebuild_cache.dir
@@ -3205,6 +3211,8 @@
 /home/bbrelin/nimcp/build/test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B14_curiosity_collective_logic.dir
 /home/bbrelin/nimcp/build/test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B15_tom_symboliclogic_selfmodel_predictive.dir
 /home/bbrelin/nimcp/build/test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B16_executive_consolidation_autobio_attention.dir
+/home/bbrelin/nimcp/build/test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B17_emotion_cluster.dir
+/home/bbrelin/nimcp/build/test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B18_empathy_ethics_epistemic.dir
 /home/bbrelin/nimcp/build/test/regression/fault_tolerance/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/fault_tolerance/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/fault_tolerance/CMakeFiles/rebuild_cache.dir
@@ -3270,6 +3278,8 @@
 /home/bbrelin/nimcp/build/test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B14_curiosity_collective_logic.dir
 /home/bbrelin/nimcp/build/test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B15_tom_symboliclogic_selfmodel_predictive.dir
 /home/bbrelin/nimcp/build/test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B16_executive_consolidation_autobio_attention.dir
+/home/bbrelin/nimcp/build/test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B17_emotion_cluster.dir
+/home/bbrelin/nimcp/build/test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B18_empathy_ethics_epistemic.dir
 /home/bbrelin/nimcp/build/test/unit/fault_tolerance/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/fault_tolerance/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/fault_tolerance/CMakeFiles/rebuild_cache.dir
@@ -3729,6 +3739,7 @@
 /home/bbrelin/nimcp/build/test/integration/cognitive/salience/CMakeFiles/integration_cognitive_salience_snn_plasticity.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/salience/CMakeFiles/integration_cognitive_surprise_amplifier.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/salience/CMakeFiles/integration_cognitive_surprise_bridges.dir
+/home/bbrelin/nimcp/build/test/integration/cognitive/salience/CMakeFiles/integration_cognitive_surprise_bridges_phase1b.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/salience/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/salience/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/salience/CMakeFiles/rebuild_cache.dir
@@ -3966,6 +3977,7 @@
 /home/bbrelin/nimcp/build/test/regression/cognitive/salience/CMakeFiles/regression_cognitive_salience_snn_plasticity.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/salience/CMakeFiles/regression_cognitive_surprise_amplifier.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/salience/CMakeFiles/regression_cognitive_surprise_bridges.dir
+/home/bbrelin/nimcp/build/test/regression/cognitive/salience/CMakeFiles/regression_cognitive_surprise_bridges_phase1b.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/salience/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/salience/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/salience/CMakeFiles/rebuild_cache.dir

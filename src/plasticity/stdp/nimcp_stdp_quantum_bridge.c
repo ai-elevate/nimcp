@@ -28,3 +28,12 @@ static inline void stdp_quantum_bridge_heartbeat(const char* operation, float pr
 }
 
 //=============================================================================
+// STDP Quantum Bridge Implementation
+//=============================================================================
+
+/*
+ * Define NIMCP_STDP_QUANTUM_BRIDGE_IMPLEMENTATION to pull in the struct
+ * definition and all function bodies from the header.
+ */
+#define NIMCP_STDP_QUANTUM_BRIDGE_IMPLEMENTATION
+#include "plasticity/stdp/nimcp_stdp_quantum_bridge.h"

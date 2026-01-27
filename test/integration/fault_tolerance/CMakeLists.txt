@@ -489,3 +489,28 @@ set_tests_properties(integration_heartbeat_B17_emotion_cluster PROPERTIES
     LABELS "integration;fault_tolerance;heartbeat;B17;emotion_cluster"
     TIMEOUT 180
 )
+
+# B18: cognitive/empathetic_response + cognitive/ethics + cognitive/epistemic
+add_executable(integration_heartbeat_B18_empathy_ethics_epistemic
+    test_heartbeat_B18_empathy_ethics_epistemic_integration.cpp
+)
+
+target_link_libraries(integration_heartbeat_B18_empathy_ethics_epistemic
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        pthread
+)
+
+target_include_directories(integration_heartbeat_B18_empathy_ethics_epistemic
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME integration_heartbeat_B18_empathy_ethics_epistemic
+         COMMAND integration_heartbeat_B18_empathy_ethics_epistemic)
+set_tests_properties(integration_heartbeat_B18_empathy_ethics_epistemic PROPERTIES
+    LABELS "integration;fault_tolerance;heartbeat;B18;empathy_ethics_epistemic"
+    TIMEOUT 180
+)

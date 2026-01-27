@@ -49,7 +49,7 @@ static nimcp_health_agent_t* g_core_directives_health_agent = NULL;
  * @brief Set health agent for core_directives heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void core_directives_set_health_agent(nimcp_health_agent_t* agent) {
+void core_directives_set_health_agent(nimcp_health_agent_t* agent) {
     g_core_directives_health_agent = agent;
 }
 

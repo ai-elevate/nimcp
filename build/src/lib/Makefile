@@ -2369,6 +2369,30 @@ __/cognitive/emotions/nimcp_emotional_system.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/emotions/nimcp_emotional_system.c.s
 .PHONY : __/cognitive/emotions/nimcp_emotional_system.c.s
 
+__/cognitive/emotions/nimcp_emotional_system_sleep_bridge.o: __/cognitive/emotions/nimcp_emotional_system_sleep_bridge.c.o
+.PHONY : __/cognitive/emotions/nimcp_emotional_system_sleep_bridge.o
+
+# target to build an object file
+__/cognitive/emotions/nimcp_emotional_system_sleep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/emotions/nimcp_emotional_system_sleep_bridge.c.o
+.PHONY : __/cognitive/emotions/nimcp_emotional_system_sleep_bridge.c.o
+
+__/cognitive/emotions/nimcp_emotional_system_sleep_bridge.i: __/cognitive/emotions/nimcp_emotional_system_sleep_bridge.c.i
+.PHONY : __/cognitive/emotions/nimcp_emotional_system_sleep_bridge.i
+
+# target to preprocess a source file
+__/cognitive/emotions/nimcp_emotional_system_sleep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/emotions/nimcp_emotional_system_sleep_bridge.c.i
+.PHONY : __/cognitive/emotions/nimcp_emotional_system_sleep_bridge.c.i
+
+__/cognitive/emotions/nimcp_emotional_system_sleep_bridge.s: __/cognitive/emotions/nimcp_emotional_system_sleep_bridge.c.s
+.PHONY : __/cognitive/emotions/nimcp_emotional_system_sleep_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/emotions/nimcp_emotional_system_sleep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/emotions/nimcp_emotional_system_sleep_bridge.c.s
+.PHONY : __/cognitive/emotions/nimcp_emotional_system_sleep_bridge.c.s
+
 __/cognitive/empathetic_response/nimcp_empathetic_response.o: __/cognitive/empathetic_response/nimcp_empathetic_response.c.o
 .PHONY : __/cognitive/empathetic_response/nimcp_empathetic_response.o
 
@@ -45712,6 +45736,9 @@ help:
 	@echo "... __/cognitive/emotions/nimcp_emotional_system.o"
 	@echo "... __/cognitive/emotions/nimcp_emotional_system.i"
 	@echo "... __/cognitive/emotions/nimcp_emotional_system.s"
+	@echo "... __/cognitive/emotions/nimcp_emotional_system_sleep_bridge.o"
+	@echo "... __/cognitive/emotions/nimcp_emotional_system_sleep_bridge.i"
+	@echo "... __/cognitive/emotions/nimcp_emotional_system_sleep_bridge.s"
 	@echo "... __/cognitive/empathetic_response/nimcp_empathetic_response.o"
 	@echo "... __/cognitive/empathetic_response/nimcp_empathetic_response.i"
 	@echo "... __/cognitive/empathetic_response/nimcp_empathetic_response.s"

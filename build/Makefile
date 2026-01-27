@@ -9155,6 +9155,32 @@ e2e_fault_tolerance_test_heartbeat_B16_executive_consolidation_autobio_attention
 .PHONY : e2e_fault_tolerance_test_heartbeat_B16_executive_consolidation_autobio_attention_e2e/fast
 
 #=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_heartbeat_B17_emotion_cluster_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_heartbeat_B17_emotion_cluster_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_heartbeat_B17_emotion_cluster_e2e
+.PHONY : e2e_fault_tolerance_test_heartbeat_B17_emotion_cluster_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_heartbeat_B17_emotion_cluster_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B17_emotion_cluster_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B17_emotion_cluster_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_heartbeat_B17_emotion_cluster_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_heartbeat_B18_empathy_ethics_epistemic_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_heartbeat_B18_empathy_ethics_epistemic_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_heartbeat_B18_empathy_ethics_epistemic_e2e
+.PHONY : e2e_fault_tolerance_test_heartbeat_B18_empathy_ethics_epistemic_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_heartbeat_B18_empathy_ethics_epistemic_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B18_empathy_ethics_epistemic_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_B18_empathy_ethics_epistemic_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_heartbeat_B18_empathy_ethics_epistemic_e2e/fast
+
+#=============================================================================
 # Target rules for targets named e2e_cognitive_test_predictive_bridge_exception_e2e
 
 # Build rule for target.
@@ -9192,6 +9218,19 @@ e2e_cognitive_test_surprise_bridges_e2e: cmake_check_build_system
 e2e_cognitive_test_surprise_bridges_e2e/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_surprise_bridges_e2e.dir/build.make test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_surprise_bridges_e2e.dir/build
 .PHONY : e2e_cognitive_test_surprise_bridges_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_cognitive_test_surprise_bridges_phase1b_e2e
+
+# Build rule for target.
+e2e_cognitive_test_surprise_bridges_phase1b_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_cognitive_test_surprise_bridges_phase1b_e2e
+.PHONY : e2e_cognitive_test_surprise_bridges_phase1b_e2e
+
+# fast build rule for target.
+e2e_cognitive_test_surprise_bridges_phase1b_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_surprise_bridges_phase1b_e2e.dir/build.make test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_surprise_bridges_phase1b_e2e.dir/build
+.PHONY : e2e_cognitive_test_surprise_bridges_phase1b_e2e/fast
 
 #=============================================================================
 # Target rules for targets named e2e_cognitive_test_tom_exception_e2e
@@ -12210,6 +12249,32 @@ integration_heartbeat_B16_executive_consolidation_autobio_attention/fast:
 .PHONY : integration_heartbeat_B16_executive_consolidation_autobio_attention/fast
 
 #=============================================================================
+# Target rules for targets named integration_heartbeat_B17_emotion_cluster
+
+# Build rule for target.
+integration_heartbeat_B17_emotion_cluster: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_heartbeat_B17_emotion_cluster
+.PHONY : integration_heartbeat_B17_emotion_cluster
+
+# fast build rule for target.
+integration_heartbeat_B17_emotion_cluster/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B17_emotion_cluster.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B17_emotion_cluster.dir/build
+.PHONY : integration_heartbeat_B17_emotion_cluster/fast
+
+#=============================================================================
+# Target rules for targets named integration_heartbeat_B18_empathy_ethics_epistemic
+
+# Build rule for target.
+integration_heartbeat_B18_empathy_ethics_epistemic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_heartbeat_B18_empathy_ethics_epistemic
+.PHONY : integration_heartbeat_B18_empathy_ethics_epistemic
+
+# fast build rule for target.
+integration_heartbeat_B18_empathy_ethics_epistemic/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B18_empathy_ethics_epistemic.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_heartbeat_B18_empathy_ethics_epistemic.dir/build
+.PHONY : integration_heartbeat_B18_empathy_ethics_epistemic/fast
+
+#=============================================================================
 # Target rules for targets named test_symbolic_logic_attachment
 
 # Build rule for target.
@@ -14743,6 +14808,19 @@ unit_cognitive_surprise_bridges: cmake_check_build_system
 unit_cognitive_surprise_bridges/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/salience/CMakeFiles/unit_cognitive_surprise_bridges.dir/build.make test/unit/cognitive/salience/CMakeFiles/unit_cognitive_surprise_bridges.dir/build
 .PHONY : unit_cognitive_surprise_bridges/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_surprise_bridges_phase1b
+
+# Build rule for target.
+unit_cognitive_surprise_bridges_phase1b: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_surprise_bridges_phase1b
+.PHONY : unit_cognitive_surprise_bridges_phase1b
+
+# fast build rule for target.
+unit_cognitive_surprise_bridges_phase1b/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/salience/CMakeFiles/unit_cognitive_surprise_bridges_phase1b.dir/build.make test/unit/cognitive/salience/CMakeFiles/unit_cognitive_surprise_bridges_phase1b.dir/build
+.PHONY : unit_cognitive_surprise_bridges_phase1b/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_test_emotion_executive_bridge
@@ -21479,6 +21557,32 @@ regression_heartbeat_B16_executive_consolidation_autobio_attention/fast:
 .PHONY : regression_heartbeat_B16_executive_consolidation_autobio_attention/fast
 
 #=============================================================================
+# Target rules for targets named regression_heartbeat_B17_emotion_cluster
+
+# Build rule for target.
+regression_heartbeat_B17_emotion_cluster: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_heartbeat_B17_emotion_cluster
+.PHONY : regression_heartbeat_B17_emotion_cluster
+
+# fast build rule for target.
+regression_heartbeat_B17_emotion_cluster/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B17_emotion_cluster.dir/build.make test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B17_emotion_cluster.dir/build
+.PHONY : regression_heartbeat_B17_emotion_cluster/fast
+
+#=============================================================================
+# Target rules for targets named regression_heartbeat_B18_empathy_ethics_epistemic
+
+# Build rule for target.
+regression_heartbeat_B18_empathy_ethics_epistemic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_heartbeat_B18_empathy_ethics_epistemic
+.PHONY : regression_heartbeat_B18_empathy_ethics_epistemic
+
+# fast build rule for target.
+regression_heartbeat_B18_empathy_ethics_epistemic/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B18_empathy_ethics_epistemic.dir/build.make test/regression/fault_tolerance/CMakeFiles/regression_heartbeat_B18_empathy_ethics_epistemic.dir/build
+.PHONY : regression_heartbeat_B18_empathy_ethics_epistemic/fast
+
+#=============================================================================
 # Target rules for targets named unit_utils_vcs_integration
 
 # Build rule for target.
@@ -21867,6 +21971,32 @@ unit_heartbeat_B16_executive_consolidation_autobio_attention: cmake_check_build_
 unit_heartbeat_B16_executive_consolidation_autobio_attention/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B16_executive_consolidation_autobio_attention.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B16_executive_consolidation_autobio_attention.dir/build
 .PHONY : unit_heartbeat_B16_executive_consolidation_autobio_attention/fast
+
+#=============================================================================
+# Target rules for targets named unit_heartbeat_B17_emotion_cluster
+
+# Build rule for target.
+unit_heartbeat_B17_emotion_cluster: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_heartbeat_B17_emotion_cluster
+.PHONY : unit_heartbeat_B17_emotion_cluster
+
+# fast build rule for target.
+unit_heartbeat_B17_emotion_cluster/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B17_emotion_cluster.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B17_emotion_cluster.dir/build
+.PHONY : unit_heartbeat_B17_emotion_cluster/fast
+
+#=============================================================================
+# Target rules for targets named unit_heartbeat_B18_empathy_ethics_epistemic
+
+# Build rule for target.
+unit_heartbeat_B18_empathy_ethics_epistemic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_heartbeat_B18_empathy_ethics_epistemic
+.PHONY : unit_heartbeat_B18_empathy_ethics_epistemic
+
+# fast build rule for target.
+unit_heartbeat_B18_empathy_ethics_epistemic/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B18_empathy_ethics_epistemic.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_heartbeat_B18_empathy_ethics_epistemic.dir/build
+.PHONY : unit_heartbeat_B18_empathy_ethics_epistemic/fast
 
 #=============================================================================
 # Target rules for targets named unit_brain_test_kg_module_wiring
@@ -23377,6 +23507,19 @@ integration_cognitive_surprise_bridges/fast:
 .PHONY : integration_cognitive_surprise_bridges/fast
 
 #=============================================================================
+# Target rules for targets named integration_cognitive_surprise_bridges_phase1b
+
+# Build rule for target.
+integration_cognitive_surprise_bridges_phase1b: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_surprise_bridges_phase1b
+.PHONY : integration_cognitive_surprise_bridges_phase1b
+
+# fast build rule for target.
+integration_cognitive_surprise_bridges_phase1b/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/salience/CMakeFiles/integration_cognitive_surprise_bridges_phase1b.dir/build.make test/integration/cognitive/salience/CMakeFiles/integration_cognitive_surprise_bridges_phase1b.dir/build
+.PHONY : integration_cognitive_surprise_bridges_phase1b/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_test_hub_module_integration
 
 # Build rule for target.
@@ -24181,6 +24324,19 @@ regression_cognitive_surprise_bridges: cmake_check_build_system
 regression_cognitive_surprise_bridges/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/salience/CMakeFiles/regression_cognitive_surprise_bridges.dir/build.make test/regression/cognitive/salience/CMakeFiles/regression_cognitive_surprise_bridges.dir/build
 .PHONY : regression_cognitive_surprise_bridges/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_surprise_bridges_phase1b
+
+# Build rule for target.
+regression_cognitive_surprise_bridges_phase1b: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_surprise_bridges_phase1b
+.PHONY : regression_cognitive_surprise_bridges_phase1b
+
+# fast build rule for target.
+regression_cognitive_surprise_bridges_phase1b/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/salience/CMakeFiles/regression_cognitive_surprise_bridges_phase1b.dir/build.make test/regression/cognitive/salience/CMakeFiles/regression_cognitive_surprise_bridges_phase1b.dir/build
+.PHONY : regression_cognitive_surprise_bridges_phase1b/fast
 
 #=============================================================================
 # Target rules for targets named regression_cognitive_test_hub_regression
@@ -34597,6 +34753,7 @@ help:
 	@echo "... e2e_cognitive_test_predictive_bridge_exception_e2e"
 	@echo "... e2e_cognitive_test_surprise_amplifier_e2e"
 	@echo "... e2e_cognitive_test_surprise_bridges_e2e"
+	@echo "... e2e_cognitive_test_surprise_bridges_phase1b_e2e"
 	@echo "... e2e_cognitive_test_tom_exception_e2e"
 	@echo "... e2e_cognitive_test_wm_bridges_e2e"
 	@echo "... e2e_cognitive_test_world_model_e2e"
@@ -34643,6 +34800,8 @@ help:
 	@echo "... e2e_fault_tolerance_test_heartbeat_B14_curiosity_collective_logic_e2e"
 	@echo "... e2e_fault_tolerance_test_heartbeat_B15_tom_symboliclogic_selfmodel_predictive_e2e"
 	@echo "... e2e_fault_tolerance_test_heartbeat_B16_executive_consolidation_autobio_attention_e2e"
+	@echo "... e2e_fault_tolerance_test_heartbeat_B17_emotion_cluster_e2e"
+	@echo "... e2e_fault_tolerance_test_heartbeat_B18_empathy_ethics_epistemic_e2e"
 	@echo "... e2e_fault_tolerance_test_heartbeat_module_e2e"
 	@echo "... e2e_fault_tolerance_test_perception_cortical_health_e2e"
 	@echo "... e2e_fault_tolerance_test_plasticity_health_e2e"
@@ -34946,6 +35105,7 @@ help:
 	@echo "... integration_cognitive_substrate_bridges"
 	@echo "... integration_cognitive_surprise_amplifier"
 	@echo "... integration_cognitive_surprise_bridges"
+	@echo "... integration_cognitive_surprise_bridges_phase1b"
 	@echo "... integration_cognitive_test_attention_wm_integration"
 	@echo "... integration_cognitive_test_emotion_memory_integration"
 	@echo "... integration_cognitive_test_game_theory_executive_integration"
@@ -35131,6 +35291,8 @@ help:
 	@echo "... integration_heartbeat_B14_curiosity_collective_logic"
 	@echo "... integration_heartbeat_B15_tom_symboliclogic_selfmodel_predictive"
 	@echo "... integration_heartbeat_B16_executive_consolidation_autobio_attention"
+	@echo "... integration_heartbeat_B17_emotion_cluster"
+	@echo "... integration_heartbeat_B18_empathy_ethics_epistemic"
 	@echo "... integration_hemispheric_brain"
 	@echo "... integration_hypergraph_knowledge"
 	@echo "... integration_imagination_fep"
@@ -35452,6 +35614,7 @@ help:
 	@echo "... regression_cognitive_sleep_test_cognitive_sleep_regression"
 	@echo "... regression_cognitive_surprise_amplifier"
 	@echo "... regression_cognitive_surprise_bridges"
+	@echo "... regression_cognitive_surprise_bridges_phase1b"
 	@echo "... regression_cognitive_test_bridge_regression"
 	@echo "... regression_cognitive_test_hub_regression"
 	@echo "... regression_cognitive_test_integration_performance_regression"
@@ -35568,6 +35731,8 @@ help:
 	@echo "... regression_heartbeat_B14_curiosity_collective_logic"
 	@echo "... regression_heartbeat_B15_tom_symboliclogic_selfmodel_predictive"
 	@echo "... regression_heartbeat_B16_executive_consolidation_autobio_attention"
+	@echo "... regression_heartbeat_B17_emotion_cluster"
+	@echo "... regression_heartbeat_B18_empathy_ethics_epistemic"
 	@echo "... regression_hemispheric_brain_regression"
 	@echo "... regression_imagination_fep"
 	@echo "... regression_information_test_quantum_shannon_backward_compat"
@@ -36231,6 +36396,7 @@ help:
 	@echo "... unit_cognitive_sleep_wake_test_sleep_wake"
 	@echo "... unit_cognitive_surprise_amplifier"
 	@echo "... unit_cognitive_surprise_bridges"
+	@echo "... unit_cognitive_surprise_bridges_phase1b"
 	@echo "... unit_cognitive_symbolic_logic_test_symbolic_logic_integration"
 	@echo "... unit_cognitive_test_attention_wm_bridge"
 	@echo "... unit_cognitive_test_bio_async"
@@ -36669,6 +36835,8 @@ help:
 	@echo "... unit_heartbeat_B14_curiosity_collective_logic"
 	@echo "... unit_heartbeat_B15_tom_symboliclogic_selfmodel_predictive"
 	@echo "... unit_heartbeat_B16_executive_consolidation_autobio_attention"
+	@echo "... unit_heartbeat_B17_emotion_cluster"
+	@echo "... unit_heartbeat_B18_empathy_ethics_epistemic"
 	@echo "... unit_information_test_quantum_shannon"
 	@echo "... unit_information_test_shannon"
 	@echo "... unit_integration_adapters_chemistry_test_calcium_adapter"
