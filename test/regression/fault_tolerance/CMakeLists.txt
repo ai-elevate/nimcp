@@ -528,4 +528,33 @@ gtest_discover_tests(regression_heartbeat_B16_executive_consolidation_autobio_at
         TIMEOUT 180
 )
 
+# B17: cognitive/emotion + emotional_tagging + emotion_recognition + emotions + emotion_tensor + grief + joy + remorse
+add_executable(regression_heartbeat_B17_emotion_cluster
+    test_heartbeat_B17_emotion_cluster_regression.cpp
+)
+
+target_link_libraries(regression_heartbeat_B17_emotion_cluster
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        pthread
+)
+
+target_include_directories(regression_heartbeat_B17_emotion_cluster
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_heartbeat_B17_emotion_cluster PRIVATE cxx_std_17)
+target_compile_definitions(regression_heartbeat_B17_emotion_cluster PRIVATE NIMCP_TESTING)
+
+gtest_discover_tests(regression_heartbeat_B17_emotion_cluster
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;fault_tolerance;heartbeat;B17;emotion_cluster"
+        TIMEOUT 180
+)
+
 message(STATUS "Added fault tolerance regression tests")

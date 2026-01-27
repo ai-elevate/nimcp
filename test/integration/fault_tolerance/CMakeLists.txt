@@ -464,3 +464,28 @@ set_tests_properties(integration_heartbeat_B16_executive_consolidation_autobio_a
     LABELS "integration;fault_tolerance;heartbeat;B16;executive_consolidation_autobio_attention"
     TIMEOUT 180
 )
+
+# B17: cognitive/emotion + emotional_tagging + emotion_recognition + emotions + emotion_tensor + grief + joy + remorse
+add_executable(integration_heartbeat_B17_emotion_cluster
+    test_heartbeat_B17_emotion_cluster_integration.cpp
+)
+
+target_link_libraries(integration_heartbeat_B17_emotion_cluster
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        pthread
+)
+
+target_include_directories(integration_heartbeat_B17_emotion_cluster
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME integration_heartbeat_B17_emotion_cluster
+         COMMAND integration_heartbeat_B17_emotion_cluster)
+set_tests_properties(integration_heartbeat_B17_emotion_cluster PROPERTIES
+    LABELS "integration;fault_tolerance;heartbeat;B17;emotion_cluster"
+    TIMEOUT 180
+)

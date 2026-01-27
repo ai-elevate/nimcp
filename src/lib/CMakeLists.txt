@@ -550,6 +550,7 @@ set(NIMCP_CORE_SOURCES
     # NOTE: No centralized hub - coordination emerges from distributed event bus (mimics thalamus + white matter tracts)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/nimcp_emotional_tagging.c  # Phase 10.3: General Emotional Tagging (Russell's circumplex model)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotions/nimcp_emotional_system.c  # Phase 10.2: Integrated Emotional System
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotions/nimcp_emotional_system_sleep_bridge.c  # Emotional system sleep integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotion_tensor/nimcp_emotion_tensor.c  # Advanced Concepts: Tensor-Based Emotional Representation
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/emotion_tensor/nimcp_emotion_tensor_bridge.c  # Bridge to swarm emotional contagion
     # Emotion-Attention Integration (now with positional encoding support)

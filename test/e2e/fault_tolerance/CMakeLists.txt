@@ -227,3 +227,7 @@ set_tests_properties(e2e_fault_tolerance_test_heartbeat_B15_tom_symboliclogic_se
 # B16: cognitive/executive + cognitive/consolidation + cognitive/autobiographical_memory + cognitive/attention
 add_e2e_fault_tolerance_test(test_heartbeat_B16_executive_consolidation_autobio_attention_e2e)
 set_tests_properties(e2e_fault_tolerance_test_heartbeat_B16_executive_consolidation_autobio_attention_e2e PROPERTIES TIMEOUT 300)
+
+# B17: cognitive/emotion + emotional_tagging + emotion_recognition + emotions + emotion_tensor + grief + joy + remorse
+add_e2e_fault_tolerance_test(test_heartbeat_B17_emotion_cluster_e2e)
+set_tests_properties(e2e_fault_tolerance_test_heartbeat_B17_emotion_cluster_e2e PROPERTIES TIMEOUT 300)
