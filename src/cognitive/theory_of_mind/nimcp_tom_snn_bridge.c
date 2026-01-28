@@ -49,6 +49,18 @@ static inline void tom_snn_bridge_heartbeat(const char* operation, float progres
     }
 }
 
+/** @brief Send heartbeat from tom_snn_bridge module (instance-level) */
+static inline void tom_snn_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_tom_snn_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_tom_snn_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_tom_snn_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "TOM_SNN_BRIDGE"
 
 
@@ -189,7 +201,7 @@ tom_snn_bridge_t* tom_snn_create(const tom_snn_config_t* config) {
     tom_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(tom_snn_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -1018,4 +1030,47 @@ bool tom_snn_is_bio_async_connected(tom_snn_bridge_t* bridge) {
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void tom_snn_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_tom_snn_bridge_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training stubs
+ * ============================================================================ */
+int tom_snn_bridge_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "tom_snn_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    tom_snn_bridge_heartbeat_instance(NULL, "tom_snn_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int tom_snn_bridge_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "tom_snn_bridge_training_end: NULL argument");
+        return -1;
+    }
+    tom_snn_bridge_heartbeat_instance(NULL, "tom_snn_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int tom_snn_bridge_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "tom_snn_bridge_training_step: NULL argument");
+        return -1;
+    }
+    tom_snn_bridge_heartbeat_instance(NULL, "tom_snn_bridge_training_step", progress);
+    return 0;
 }

@@ -40,6 +40,18 @@ static inline void predictive_hierarchy_heartbeat(const char* operation, float p
     }
 }
 
+/** @brief Send heartbeat from predictive_hierarchy module (instance-level) */
+static inline void predictive_hierarchy_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_predictive_hierarchy_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_predictive_hierarchy_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_predictive_hierarchy_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* Logging macros - wrap LOG_* for consistent usage */
 #define NIMCP_LOG_INFO(...)  LOG_INFO(__VA_ARGS__)
@@ -63,7 +75,7 @@ static pred_level_t* create_level(const pred_level_config_t* config,
 
     pred_level_t* level = nimcp_calloc(1, sizeof(pred_level_t));
     if (!level) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "level is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate level");
 
         return NULL;
     }
@@ -1159,7 +1171,7 @@ pred_hier_result_t* pred_hier_result_create(uint32_t num_levels,
 
     pred_hier_result_t* result = nimcp_calloc(1, sizeof(pred_hier_result_t));
     if (!result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate result");
 
         return NULL;
     }
@@ -1241,4 +1253,47 @@ const char* pred_hier_gen_model_to_string(pred_hier_gen_model_t type) {
         case PRED_HIER_GEN_ATTENTION: return "ATTENTION";
         default: return "UNKNOWN";
     }
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void predictive_hierarchy_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_predictive_hierarchy_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training stubs
+ * ============================================================================ */
+int predictive_hierarchy_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "predictive_hierarchy_training_begin: NULL argument");
+        return -1;
+    }
+    predictive_hierarchy_heartbeat_instance(NULL, "predictive_hierarchy_training_begin", 0.0f);
+    return 0;
+}
+
+int predictive_hierarchy_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "predictive_hierarchy_training_end: NULL argument");
+        return -1;
+    }
+    predictive_hierarchy_heartbeat_instance(NULL, "predictive_hierarchy_training_end", 1.0f);
+    return 0;
+}
+
+int predictive_hierarchy_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "predictive_hierarchy_training_step: NULL argument");
+        return -1;
+    }
+    predictive_hierarchy_heartbeat_instance(NULL, "predictive_hierarchy_training_step", progress);
+    return 0;
 }

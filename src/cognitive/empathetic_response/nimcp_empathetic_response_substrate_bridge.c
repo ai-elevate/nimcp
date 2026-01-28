@@ -106,7 +106,7 @@ empathetic_response_substrate_bridge_t* empathetic_response_substrate_bridge_cre
     empathetic_response_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(empathetic_response_substrate_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -348,23 +348,40 @@ int empathetic_response_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
 }
 
 void empathetic_response_substrate_bridge_set_instance_health_agent(empathetic_response_substrate_bridge_t* bridge, nimcp_health_agent_t* agent) {
-    if (bridge) { bridge->health_agent = agent; }
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "empathetic_response_substrate_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
 }
 
 int empathetic_response_substrate_bridge_training_begin(empathetic_response_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "empathetic_response_substrate_bridge_training_begin: NULL argument");
+        return -1;
+    }
     empathetic_response_substrate_bridge_heartbeat_instance(bridge->health_agent, "empathetic_response_substrate_training_begin", 0.0f);
     return 0;
 }
 
 int empathetic_response_substrate_bridge_training_end(empathetic_response_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "empathetic_response_substrate_bridge_training_end: NULL argument");
+        return -1;
+    }
     empathetic_response_substrate_bridge_heartbeat_instance(bridge->health_agent, "empathetic_response_substrate_training_end", 1.0f);
     return 0;
 }
 
 int empathetic_response_substrate_bridge_training_step(empathetic_response_substrate_bridge_t* bridge, float progress) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "empathetic_response_substrate_bridge_training_step: NULL argument");
+        return -1;
+    }
     empathetic_response_substrate_bridge_heartbeat_instance(bridge->health_agent, "empathetic_response_substrate_training_step", progress);
     return 0;
 }

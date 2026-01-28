@@ -48,6 +48,18 @@ static inline void mathematical_genius_heartbeat(const char* operation, float pr
     }
 }
 
+/** @brief Send heartbeat from mathematical_genius module (instance-level) */
+static inline void mathematical_genius_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_mathematical_genius_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_mathematical_genius_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_mathematical_genius_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
@@ -321,7 +333,7 @@ NIMCP_API mathematical_genius_t* genius_create(const genius_config_t* config) {
     mathematical_genius_t* genius = nimcp_calloc(1, sizeof(mathematical_genius_t));
     if (!genius) {
         NIMCP_LOG_ERROR("Failed to allocate mathematical genius");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate genius");
 
         return NULL;
     }
@@ -1097,4 +1109,98 @@ NIMCP_API uint64_t genius_gauss_modular_pow(
     }
 
     return result;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void mathematical_genius_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_mathematical_genius_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Functions
+ * ============================================================================ */
+
+int mathematical_genius_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mathematical_genius_training_begin: NULL argument");
+        return -1;
+    }
+    mathematical_genius_heartbeat_instance(NULL, "mathematical_genius_training_begin", 0.0f);
+    mathematical_genius_t* mg = (mathematical_genius_t*)instance;
+    mg->stats.problems_attempted = 0;
+    mg->stats.problems_solved = 0;
+    mg->stats.proofs_constructed = 0;
+    mg->stats.conjectures_generated = 0;
+    mg->stats.insights_discovered = 0;
+    mg->stats.avg_elegance = 0.0f;
+    mg->stats.avg_novelty = 0.0f;
+    mg->stats.avg_rigor = 0.0f;
+    mg->stats.total_thinking_time_us = 0;
+    mg->stats.avg_thinking_time_us = 0.0f;
+    mg->stats.total_atp_consumed = 0.0f;
+    for (int i = 0; i < GENIUS_MODE_COUNT; i++) {
+        mg->stats.mode_usage[i] = 0;
+        mg->stats.mode_success_rate[i] = 0.5f;
+    }
+    NIMCP_LOGGING_INFO("Mathematical genius training begin: counters reset, mode=%d",
+                       (int)mg->active_mode);
+    return 0;
+}
+
+int mathematical_genius_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mathematical_genius_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    mathematical_genius_heartbeat_instance(NULL, "mathematical_genius_training_step", progress);
+    mathematical_genius_t* mg = (mathematical_genius_t*)instance;
+    mg->stats.problems_attempted++;
+    /* Progressive creativity/rigor balance during training */
+    mg->effective_creativity = mg->config.creativity_level * (0.7f + 0.3f * progress);
+    if (mg->effective_creativity > 1.0f) mg->effective_creativity = 1.0f;
+    mg->effective_rigor = mg->config.rigor_level * (0.8f + 0.2f * progress);
+    if (mg->effective_rigor > 1.0f) mg->effective_rigor = 1.0f;
+    /* Mode success rate adaptation */
+    int mode_idx = (int)mg->active_mode;
+    if (mode_idx >= 0 && mode_idx < GENIUS_MODE_COUNT) {
+        mg->stats.mode_success_rate[mode_idx] =
+            mg->stats.mode_success_rate[mode_idx] * (1.0f - 0.1f * progress) +
+            progress * 0.1f;
+    }
+    /* ATP consumption tracking */
+    mg->stats.total_atp_consumed += 0.01f * (1.0f + progress);
+    return 0;
+}
+
+int mathematical_genius_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mathematical_genius_training_end: NULL argument");
+        return -1;
+    }
+    mathematical_genius_heartbeat_instance(NULL, "mathematical_genius_training_end", 1.0f);
+    mathematical_genius_t* mg = (mathematical_genius_t*)instance;
+    if (mg->stats.problems_attempted > 0) {
+        mg->stats.avg_thinking_time_us =
+            (float)mg->stats.total_thinking_time_us / (float)mg->stats.problems_attempted;
+    }
+    float solve_rate = (mg->stats.problems_attempted > 0)
+        ? (float)mg->stats.problems_solved / (float)mg->stats.problems_attempted
+        : 0.0f;
+    NIMCP_LOGGING_INFO("Mathematical genius training end: %lu attempted, %lu solved, solve_rate=%.4f, atp=%.2f",
+                       (unsigned long)mg->stats.problems_attempted,
+                       (unsigned long)mg->stats.problems_solved,
+                       solve_rate,
+                       mg->stats.total_atp_consumed);
+    return 0;
 }

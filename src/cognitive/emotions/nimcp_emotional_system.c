@@ -458,7 +458,7 @@ emotional_system_t* emotion_system_create(const emotion_config_t* config) {
     emotional_system_t* system = (emotional_system_t*)nimcp_calloc(1, sizeof(emotional_system_t));
     if (!system) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate emotional system");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate system");
 
         return NULL;
     }
@@ -1191,19 +1191,31 @@ void emotional_system_set_instance_health_agent(emotional_system_t* bridge, nimc
  * Phase 8: Training stubs
  * ============================================================================ */
 int emotional_system_training_begin(emotional_system_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "emotional_system_training_begin: NULL argument");
+        return -1;
+    }
     emotional_system_heartbeat_instance(bridge->health_agent, "emotional_sy_training_begin", 0.0f);
     return 0;
 }
 
 int emotional_system_training_end(emotional_system_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "emotional_system_training_end: NULL argument");
+        return -1;
+    }
     emotional_system_heartbeat_instance(bridge->health_agent, "emotional_sy_training_end", 1.0f);
     return 0;
 }
 
 int emotional_system_training_step(emotional_system_t* bridge, float progress) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "emotional_system_training_step: NULL argument");
+        return -1;
+    }
     emotional_system_heartbeat_instance(bridge->health_agent, "emotional_sy_training_step", progress);
     return 0;
 }

@@ -44,6 +44,18 @@ static inline void mirror_multimodal_heartbeat(const char* operation, float prog
     }
 }
 
+/** @brief Send heartbeat from mirror_multimodal module (instance-level) */
+static inline void mirror_multimodal_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_mirror_multimodal_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_mirror_multimodal_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_mirror_multimodal_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* ============================================================================
  * Internal Constants
@@ -888,4 +900,47 @@ void multimodal_print(const multimodal_action_features_t* features,
               features->auditory_weight, features->semantic_weight);
     nimcp_log(LOG_LEVEL_DEBUG, "%s  Overall confidence: %.2f, fused=%s",
               pfx, features->overall_confidence, features->fused_valid ? "yes" : "no");
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void mirror_multimodal_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_mirror_multimodal_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training stubs
+ * ============================================================================ */
+int mirror_multimodal_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_multimodal_training_begin: NULL argument");
+        return -1;
+    }
+    mirror_multimodal_heartbeat_instance(NULL, "mirror_multimodal_training_begin", 0.0f);
+    return 0;
+}
+
+int mirror_multimodal_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_multimodal_training_end: NULL argument");
+        return -1;
+    }
+    mirror_multimodal_heartbeat_instance(NULL, "mirror_multimodal_training_end", 1.0f);
+    return 0;
+}
+
+int mirror_multimodal_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_multimodal_training_step: NULL argument");
+        return -1;
+    }
+    mirror_multimodal_heartbeat_instance(NULL, "mirror_multimodal_training_step", progress);
+    return 0;
 }

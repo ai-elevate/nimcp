@@ -81,6 +81,9 @@
 #include "utils/error/nimcp_error_codes.h"
 #include "async/nimcp_bio_messages.h"  /* BIO_MSG_WM_SECURITY_* message types */
 #include "security/nimcp_blood_brain_barrier.h"  /* bbb_system_t */
+/* Phase 8: Forward declaration for health agent */
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -528,6 +531,9 @@ typedef struct omni_wm_security_immune_bridge {
 
     /* Statistics */
     omni_wm_security_immune_stats_t stats; /**< Bridge statistics */
+
+    /* Phase 8: Instance-level health agent */
+    nimcp_health_agent_t* health_agent;     /**< Per-instance health agent */
 } omni_wm_security_immune_bridge_t;
 
 /* ============================================================================

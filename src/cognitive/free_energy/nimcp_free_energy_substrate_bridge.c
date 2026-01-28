@@ -31,6 +31,9 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
 /** Global health agent for free_energy_substrate_bridge module */
 static nimcp_health_agent_t* g_free_energy_substrate_bridge_health_agent = NULL;
 
+/** Instance-level health agent for free_energy_substrate_bridge (opaque struct fallback) */
+static nimcp_health_agent_t* g_free_energy_substrate_bridge_instance_health_agent = NULL;
+
 /**
  * @brief Set health agent for free_energy_substrate_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
@@ -46,9 +49,22 @@ static inline void free_energy_substrate_bridge_heartbeat(const char* operation,
     }
 }
 
+/** @brief Send heartbeat from free_energy_substrate_bridge module (instance-level) */
+static inline void free_energy_substrate_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_free_energy_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_free_energy_substrate_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_free_energy_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 struct free_energy_substrate_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+    nimcp_health_agent_t* health_agent;  /**< Instance-level health agent */
     void* free_energy;
     neural_substrate_t* substrate;
     free_energy_substrate_config_t config;
@@ -92,7 +108,7 @@ free_energy_substrate_bridge_t* free_energy_substrate_bridge_create(void* free_e
     free_energy_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(free_energy_substrate_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -300,4 +316,79 @@ int free_energy_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Free_Energy_Substrate_Bridge");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void free_energy_substrate_bridge_set_instance_health_agent(free_energy_substrate_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Full Training Implementation
+ * ============================================================================ */
+int free_energy_substrate_bridge_training_begin(free_energy_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "free_energy_substrate_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    free_energy_substrate_bridge_heartbeat_instance(bridge->health_agent, "fe_sub_training_begin", 0.0f);
+    struct free_energy_substrate_bridge* b = (struct free_energy_substrate_bridge*)bridge;
+    b->update_count = 0;
+    b->effects.precision_weighting = (b->effects.precision_weighting > 0.0f) ? b->effects.precision_weighting : 1.0f;
+    b->effects.prediction_depth = (b->effects.prediction_depth > 0.0f) ? b->effects.prediction_depth : 1.0f;
+    NIMCP_LOGGING_INFO("free_energy_substrate_bridge: training begun, counters reset");
+    return 0;
+}
+
+int free_energy_substrate_bridge_training_step(free_energy_substrate_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "free_energy_substrate_bridge_training_step: NULL argument");
+        return -1;
+    }
+    float clamped = progress < 0.0f ? 0.0f : (progress > 1.0f ? 1.0f : progress);
+    free_energy_substrate_bridge_heartbeat_instance(bridge->health_agent, "fe_sub_training_step", clamped);
+    struct free_energy_substrate_bridge* b = (struct free_energy_substrate_bridge*)bridge;
+    float p = clamped;
+    b->effects.precision_weighting += (1.0f - p) * 0.001f;
+    if (b->effects.precision_weighting > 2.0f) b->effects.precision_weighting = 2.0f;
+    if (b->effects.precision_weighting < 0.0f) b->effects.precision_weighting = 0.0f;
+    b->effects.prediction_depth += (1.0f - p) * 0.001f;
+    if (b->effects.prediction_depth > 2.0f) b->effects.prediction_depth = 2.0f;
+    if (b->effects.prediction_depth < 0.0f) b->effects.prediction_depth = 0.0f;
+    b->effects.active_inference += (1.0f - p) * 0.001f;
+    if (b->effects.active_inference > 2.0f) b->effects.active_inference = 2.0f;
+    if (b->effects.active_inference < 0.0f) b->effects.active_inference = 0.0f;
+    b->effects.model_complexity += (1.0f - p) * 0.001f;
+    if (b->effects.model_complexity > 2.0f) b->effects.model_complexity = 2.0f;
+    if (b->effects.model_complexity < 0.0f) b->effects.model_complexity = 0.0f;
+    b->effects.overall_capacity += (1.0f - p) * 0.001f;
+    if (b->effects.overall_capacity > 2.0f) b->effects.overall_capacity = 2.0f;
+    if (b->effects.overall_capacity < 0.0f) b->effects.overall_capacity = 0.0f;
+    b->update_count++;
+    return 0;
+}
+
+int free_energy_substrate_bridge_training_end(free_energy_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "free_energy_substrate_bridge_training_end: NULL argument");
+        return -1;
+    }
+    free_energy_substrate_bridge_heartbeat_instance(bridge->health_agent, "fe_sub_training_end", 1.0f);
+    struct free_energy_substrate_bridge* b = (struct free_energy_substrate_bridge*)bridge;
+    float metric_sum = 0.0f;
+    metric_sum += b->effects.precision_weighting;
+    metric_sum += b->effects.prediction_depth;
+    metric_sum += b->effects.active_inference;
+    metric_sum += b->effects.model_complexity;
+    metric_sum += b->effects.overall_capacity;
+    float avg_metric = metric_sum / 5.0f;
+    NIMCP_LOGGING_INFO("free_energy_substrate_bridge: training complete, avg_metric=%.4f", avg_metric);
+    return 0;
 }

@@ -55,6 +55,19 @@ static inline void surprise_snn_heartbeat(const char* op, float progress) {
     }
 }
 
+/** @brief Send heartbeat from surprise_snn module (instance-level) */
+static inline void surprise_snn_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_surprise_snn_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_surprise_snn_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_surprise_snn_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 /* ============================================================================
  * Bio-Async Forward Declarations
  * ============================================================================ */
@@ -817,5 +830,55 @@ int surprise_snn_bridge_set_health_agent(
     bridge->health_agent = agent;
 
     NIMCP_LOGGING_DEBUG("surprise_snn: set health agent %p (instance-level)", (void*)agent);
+    return 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void surprise_snn_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_surprise_snn_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int surprise_snn_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "surprise_snn_training_begin: NULL argument");
+        return -1;
+    }
+    surprise_snn_heartbeat_instance(NULL, "surprise_snn_training_begin", 0.0f);
+    (void)instance;
+    return 0;
+}
+
+int surprise_snn_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "surprise_snn_training_end: NULL argument");
+        return -1;
+    }
+    surprise_snn_heartbeat_instance(NULL, "surprise_snn_training_end", 1.0f);
+    (void)instance;
+    return 0;
+}
+
+int surprise_snn_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "surprise_snn_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    surprise_snn_heartbeat_instance(NULL, "surprise_snn_training_step", progress);
+    (void)instance;
     return 0;
 }

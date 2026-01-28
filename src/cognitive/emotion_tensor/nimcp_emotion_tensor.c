@@ -552,7 +552,7 @@ emotion_tensor_system_t* emotion_tensor_create(const emotion_tensor_config_t* co
     emotion_tensor_system_t* system = calloc(1, sizeof(emotion_tensor_system_t));
     if (!system) {
         TENSOR_LOG_ERROR("Failed to allocate emotion tensor system");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate system");
 
         return NULL;
     }

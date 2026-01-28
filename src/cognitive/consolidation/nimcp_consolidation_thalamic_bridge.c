@@ -39,11 +39,29 @@ static inline void consolidation_thalamic_bridge_heartbeat(const char* operation
     }
 }
 
+/* ============================================================================
+ * Phase 8 Instance-Level Health Agent Support
+ * ============================================================================ */
+
+static nimcp_health_agent_t* g_consolidation_thalamic_bridge_instance_health_agent = NULL;
+
+static inline void consolidation_thalamic_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_consolidation_thalamic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_consolidation_thalamic_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_consolidation_thalamic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "CONSOLIDATION_THALAMIC_BRIDGE"
 
 
 struct consolidation_thalamic_bridge {
     bridge_base_t base;  /* MUST be first - provides mutex protection */
+    nimcp_health_agent_t* health_agent;  /**< Phase 8: instance-level health agent */
     void* consolidation;
     thalamic_router_t* router;
     consolidation_thalamic_config_t config;
@@ -73,7 +91,7 @@ consolidation_thalamic_bridge_t* consolidation_thalamic_bridge_create(void* cons
     consolidation_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(consolidation_thalamic_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -222,4 +240,50 @@ int consolidation_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+void consolidation_thalamic_bridge_set_instance_health_agent(consolidation_thalamic_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "consolidation_thalamic_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
+    g_consolidation_thalamic_bridge_instance_health_agent = agent;
+    NIMCP_LOGGING_DEBUG("consolidation_thalamic_bridge: instance health agent %s", agent ? "set" : "cleared");
+}
+
+int consolidation_thalamic_bridge_training_begin(consolidation_thalamic_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "consolidation_thalamic_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    consolidation_thalamic_bridge_heartbeat_instance(bridge, "consol_thl_training_begin", 0.0f);
+    (void)bridge;
+    return 0;
+}
+
+int consolidation_thalamic_bridge_training_end(consolidation_thalamic_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "consolidation_thalamic_bridge_training_end: NULL argument");
+        return -1;
+    }
+    consolidation_thalamic_bridge_heartbeat_instance(bridge, "consol_thl_training_end", 1.0f);
+    (void)bridge;
+    return 0;
+}
+
+int consolidation_thalamic_bridge_training_step(consolidation_thalamic_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "consolidation_thalamic_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    consolidation_thalamic_bridge_heartbeat_instance(bridge, "consol_thl_training_step", progress);
+    (void)bridge;
+    return 0;
 }

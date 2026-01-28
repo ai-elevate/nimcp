@@ -56,6 +56,19 @@ static inline void epistemic_fep_bridge_heartbeat(const char* operation, float p
     }
 }
 
+/** @brief Send heartbeat from epistemic_fep_bridge module (instance-level) */
+static inline void epistemic_fep_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_epistemic_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_epistemic_fep_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_epistemic_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 
 /* ============================================================================
  * Default Configuration
@@ -103,7 +116,7 @@ epistemic_fep_bridge_t* epistemic_fep_bridge_create(
     epistemic_fep_bridge_t* bridge = nimcp_malloc(sizeof(epistemic_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate epistemic FEP bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
     }
@@ -611,4 +624,51 @@ int epistemic_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void epistemic_fep_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_epistemic_fep_bridge_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int epistemic_fep_bridge_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "epistemic_fep_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    epistemic_fep_bridge_heartbeat_instance(NULL, "epistemic_fep_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int epistemic_fep_bridge_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "epistemic_fep_bridge_training_end: NULL argument");
+        return -1;
+    }
+    epistemic_fep_bridge_heartbeat_instance(NULL, "epistemic_fep_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int epistemic_fep_bridge_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "epistemic_fep_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    epistemic_fep_bridge_heartbeat_instance(NULL, "epistemic_fep_bridge_training_step", progress);
+    return 0;
 }

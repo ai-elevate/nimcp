@@ -16,6 +16,7 @@
 #include "cognitive/parietal/nimcp_intuitive_reasoning.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -48,6 +49,18 @@ void intuitive_reasoning_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void intuitive_reasoning_heartbeat(const char* operation, float progress) {
     if (g_intuitive_reasoning_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_intuitive_reasoning_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from intuitive_reasoning module (instance-level) */
+static inline void intuitive_reasoning_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_intuitive_reasoning_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_intuitive_reasoning_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_intuitive_reasoning_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -368,7 +381,7 @@ intuitive_engine_t* intuitive_engine_create_custom(const intuitive_config_t* con
     intuitive_engine_t* engine = nimcp_calloc(1, sizeof(intuitive_engine_t));
     if (!engine) {
         set_error("Failed to allocate engine");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate engine");
 
         return NULL;
     }
@@ -488,7 +501,7 @@ hunch_t* intuitive_form_hunch(
     hunch_t* hunch = nimcp_calloc(1, sizeof(hunch_t));
     if (!hunch) {
         set_error("Failed to allocate hunch");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hunch is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate hunch");
 
         return NULL;
     }
@@ -1104,7 +1117,7 @@ insight_t* intuitive_leap_with_strategy(
     insight_t* insight = nimcp_calloc(1, sizeof(insight_t));
     if (!insight) {
         set_error("Failed to allocate insight");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insight is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate insight");
 
         return NULL;
     }
@@ -2052,4 +2065,91 @@ int intuitive_reasoning_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Intuitive_Reasoning");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void intuitive_reasoning_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_intuitive_reasoning_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Functions
+ * ============================================================================ */
+
+int intuitive_reasoning_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "intuitive_reasoning_training_begin: NULL argument");
+        return -1;
+    }
+    intuitive_reasoning_heartbeat_instance(NULL, "intuitive_reasoning_training_begin", 0.0f);
+    intuitive_engine_t* eng = (intuitive_engine_t*)instance;
+    eng->stats.hunches_formed = 0;
+    eng->stats.hunches_verified = 0;
+    eng->stats.hunches_rejected = 0;
+    eng->stats.insights_generated = 0;
+    eng->stats.intuitive_leaps = 0;
+    eng->stats.patterns_matched = 0;
+    eng->stats.gestalt_perceptions = 0;
+    eng->stats.avg_plausibility = 0.0f;
+    eng->stats.avg_confidence = 0.0f;
+    eng->stats.hunch_accuracy = 0.0f;
+    eng->stats.avg_processing_time_us = 0.0f;
+    eng->accumulated_insight_potential = 0.0f;
+    NIMCP_LOGGING_INFO("Intuitive reasoning training begin: counters reset, %u patterns in memory",
+                       eng->num_patterns);
+    return 0;
+}
+
+int intuitive_reasoning_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "intuitive_reasoning_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    intuitive_reasoning_heartbeat_instance(NULL, "intuitive_reasoning_training_step", progress);
+    intuitive_engine_t* eng = (intuitive_engine_t*)instance;
+    eng->stats.hunches_formed++;
+    /* Progressively sharpen pattern matching sensitivity */
+    float decay = 1.0f - 0.3f * progress;
+    if (decay < 0.5f) decay = 0.5f;
+    eng->config.inflammation_sensitivity *= decay;
+    eng->config.fatigue_sensitivity *= decay;
+    /* Build up insight potential during training */
+    eng->accumulated_insight_potential += 0.02f * (1.0f - progress);
+    if (eng->accumulated_insight_potential > 1.0f)
+        eng->accumulated_insight_potential = 1.0f;
+    /* Improve average plausibility running estimate */
+    eng->stats.avg_plausibility = eng->stats.avg_plausibility * 0.95f + 0.05f * progress;
+    return 0;
+}
+
+int intuitive_reasoning_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "intuitive_reasoning_training_end: NULL argument");
+        return -1;
+    }
+    intuitive_reasoning_heartbeat_instance(NULL, "intuitive_reasoning_training_end", 1.0f);
+    intuitive_engine_t* eng = (intuitive_engine_t*)instance;
+    float accuracy = 0.0f;
+    if (eng->stats.hunches_formed > 0) {
+        accuracy = (float)eng->stats.hunches_verified /
+                   (float)eng->stats.hunches_formed;
+    }
+    eng->stats.hunch_accuracy = accuracy;
+    NIMCP_LOGGING_INFO("Intuitive reasoning training end: %lu hunches, %lu verified, accuracy=%.4f, insight_potential=%.4f",
+                       (unsigned long)eng->stats.hunches_formed,
+                       (unsigned long)eng->stats.hunches_verified,
+                       accuracy,
+                       eng->accumulated_insight_potential);
+    return 0;
 }

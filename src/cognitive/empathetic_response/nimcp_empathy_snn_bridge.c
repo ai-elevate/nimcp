@@ -197,7 +197,7 @@ empathy_snn_bridge_t* empathy_snn_create(const empathy_snn_config_t* config) {
     empathy_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(empathy_snn_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -1033,23 +1033,40 @@ bool empathy_snn_is_bio_async_connected(empathy_snn_bridge_t* bridge) {
 }
 
 void empathy_snn_bridge_set_instance_health_agent(empathy_snn_bridge_t* bridge, nimcp_health_agent_t* agent) {
-    if (bridge) { bridge->health_agent = agent; }
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "empathy_snn_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
 }
 
 int empathy_snn_bridge_training_begin(empathy_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "empathy_snn_bridge_training_begin: NULL argument");
+        return -1;
+    }
     empathy_snn_bridge_heartbeat_instance(bridge->health_agent, "empathy_snn_training_begin", 0.0f);
     return 0;
 }
 
 int empathy_snn_bridge_training_end(empathy_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "empathy_snn_bridge_training_end: NULL argument");
+        return -1;
+    }
     empathy_snn_bridge_heartbeat_instance(bridge->health_agent, "empathy_snn_training_end", 1.0f);
     return 0;
 }
 
 int empathy_snn_bridge_training_step(empathy_snn_bridge_t* bridge, float progress) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "empathy_snn_bridge_training_step: NULL argument");
+        return -1;
+    }
     empathy_snn_bridge_heartbeat_instance(bridge->health_agent, "empathy_snn_training_step", progress);
     return 0;
 }

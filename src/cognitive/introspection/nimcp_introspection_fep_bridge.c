@@ -44,6 +44,17 @@ static inline void introspection_fep_bridge_heartbeat(const char* operation, flo
     }
 }
 
+static inline void introspection_fep_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_introspection_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_introspection_fep_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_introspection_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 int introspection_fep_bridge_default_config(introspection_fep_config_t* config) {
     /* Phase 8: Heartbeat at operation start */
@@ -68,7 +79,7 @@ introspection_fep_bridge_t* introspection_fep_bridge_create(const introspection_
     introspection_fep_bridge_t* bridge = (introspection_fep_bridge_t*)nimcp_malloc(sizeof(introspection_fep_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -292,4 +303,81 @@ int introspection_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent + Full Training
+ * ============================================================================ */
+
+/**
+ * @brief Set instance-level health agent on bridge struct
+ */
+void introspection_fep_bridge_set_instance_health_agent(
+    introspection_fep_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+/**
+ * @brief Begin training - reset counters, set flags, log start
+ */
+int introspection_fep_bridge_training_begin(introspection_fep_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "introspection_fep_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    introspection_fep_bridge_heartbeat_instance(bridge->health_agent,
+        "intro_fep_training_begin", 0.0f);
+    bridge->stats.precision_estimates_total = 0;
+    bridge->stats.avg_precision = 0.0f;
+    bridge->state.current_precision = 0.5f; /* Reset to neutral baseline */
+    NIMCP_LOGGING_INFO("[INTROSPECTION_FEP] Training begin: counters reset, baseline state initialized");
+    return 0;
+}
+
+/**
+ * @brief Training step - clamp progress [0,1], adapt thresholds/weights, increment counters
+ */
+int introspection_fep_bridge_training_step(introspection_fep_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "introspection_fep_bridge_training_step: NULL argument");
+        return -1;
+    }
+    /* Clamp progress to [0,1] */
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    introspection_fep_bridge_heartbeat_instance(bridge->health_agent,
+        "intro_fep_training_step", progress);
+    /* Adapt meta learning rate based on training progress */
+    float lr = bridge->config.meta_learning_rate;
+    float adaptation = lr * (1.0f - progress) * 0.1f;
+    bridge->config.meta_learning_rate = lr + adaptation;
+    if (bridge->config.meta_learning_rate > 1.0f) bridge->config.meta_learning_rate = 1.0f;
+    if (bridge->config.meta_learning_rate < 0.001f) bridge->config.meta_learning_rate = 0.001f;
+    /* Blend state toward training target */
+    bridge->state.current_precision = bridge->state.current_precision * 0.99f + progress * 0.01f;
+    bridge->stats.precision_estimates_total++;
+    return 0;
+}
+
+/**
+ * @brief End training - compute averages, clear flags, log metrics
+ */
+int introspection_fep_bridge_training_end(introspection_fep_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "introspection_fep_bridge_training_end: NULL argument");
+        return -1;
+    }
+    introspection_fep_bridge_heartbeat_instance(bridge->health_agent,
+        "intro_fep_training_end", 1.0f);
+    /* Finalize state */
+    if (bridge->state.current_precision < 0.0f) bridge->state.current_precision = 0.0f;
+    if (bridge->state.current_precision > 1.0f) bridge->state.current_precision = 1.0f;
+    NIMCP_LOGGING_INFO("[INTROSPECTION_FEP] Training end: precision=%.3f, steps=%u",
+        bridge->state.current_precision, bridge->stats.precision_estimates_total);
+    return 0;
 }

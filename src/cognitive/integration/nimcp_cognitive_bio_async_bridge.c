@@ -48,6 +48,19 @@ static inline void cognitive_bio_async_bridge_heartbeat(const char* operation, f
     }
 }
 
+/** @brief Send heartbeat from cognitive_bio_async_bridge module (instance-level) */
+static inline void cognitive_bio_async_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_cognitive_bio_async_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_cognitive_bio_async_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_cognitive_bio_async_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 #define LOG_MODULE "COGNITIVE_BIO_ASYNC_BRIDGE"
 
 
@@ -92,6 +105,7 @@ typedef struct {
  */
 struct cognitive_bio_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+    nimcp_health_agent_t* health_agent;  /**< Phase 8: instance-level health agent */
     /* Configuration */
     cognitive_bio_bridge_config_t config;
 
@@ -306,7 +320,7 @@ cognitive_bio_bridge_t* cognitive_bio_bridge_create(
 
     cognitive_bio_bridge_t* bridge = nimcp_calloc(1, sizeof(cognitive_bio_bridge_t));
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
     }
@@ -1673,4 +1687,53 @@ uint32_t cognitive_bio_module_id(cog_module_type_t type) {
         case COG_MODULE_TYPE_EXECUTIVE:      return COG_BIO_MODULE_EXECUTIVE;
         default:                             return COG_BIO_MODULE_ROOT;
     }
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void cognitive_bio_async_bridge_set_instance_health_agent(cognitive_bio_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "cognitive_bio_async_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int cognitive_bio_async_bridge_training_begin(cognitive_bio_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "cognitive_bio_async_bridge_training_begin: NULL bridge");
+        return -1;
+    }
+    cognitive_bio_async_bridge_heartbeat_instance(bridge->health_agent, "cognitive_bio_async_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int cognitive_bio_async_bridge_training_end(cognitive_bio_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "cognitive_bio_async_bridge_training_end: NULL bridge");
+        return -1;
+    }
+    cognitive_bio_async_bridge_heartbeat_instance(bridge->health_agent, "cognitive_bio_async_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int cognitive_bio_async_bridge_training_step(cognitive_bio_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "cognitive_bio_async_bridge_training_step: NULL bridge");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    cognitive_bio_async_bridge_heartbeat_instance(bridge->health_agent, "cognitive_bio_async_bridge_training_step", progress);
+    return 0;
 }

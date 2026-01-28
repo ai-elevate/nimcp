@@ -2065,7 +2065,7 @@ NIMCP_EXPORT pr_pink_history_t* pr_pink_history_create(size_t max_samples) {
 
     pr_pink_history_t* history = calloc(1, sizeof(pr_pink_history_t));
     if (history == NULL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "history is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate history");
 
         return NULL;
     }
@@ -2201,19 +2201,31 @@ void pr_pink_noise_bridge_set_instance_health_agent(
 //=============================================================================
 
 int pr_pink_bridge_training_begin(pr_pink_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "pr_pink_bridge_training_begin: NULL argument");
+        return -1;
+    }
     pr_pink_bridge_heartbeat_instance(bridge->health_agent, "pr_pink_bridge_training_begin", 0.0f);
     return 0;
 }
 
 int pr_pink_bridge_training_end(pr_pink_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "pr_pink_bridge_training_end: NULL argument");
+        return -1;
+    }
     pr_pink_bridge_heartbeat_instance(bridge->health_agent, "pr_pink_bridge_training_end", 1.0f);
     return 0;
 }
 
 int pr_pink_bridge_training_step(pr_pink_bridge_t bridge, float progress) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "pr_pink_bridge_training_step: NULL argument");
+        return -1;
+    }
     pr_pink_bridge_heartbeat_instance(bridge->health_agent, "pr_pink_bridge_training_step", progress);
     return 0;
 }

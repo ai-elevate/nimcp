@@ -27,6 +27,9 @@
 #include "cognitive/free_energy/nimcp_free_energy.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+/* Phase 8: Forward declaration for health agent */
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -69,6 +72,9 @@ struct knowledge_fep_bridge {
     knowledge_fep_effects_t effects;
     knowledge_fep_state_t state;
     knowledge_fep_stats_t stats;
+
+    /* Phase 8: Instance-level health agent */
+    nimcp_health_agent_t* health_agent;
 };
 
 int knowledge_fep_bridge_default_config(knowledge_fep_config_t* config);

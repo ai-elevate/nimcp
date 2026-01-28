@@ -46,6 +46,18 @@ static inline void mirror_social_context_heartbeat(const char* operation, float 
     }
 }
 
+/** @brief Send heartbeat from mirror_social_context module (instance-level) */
+static inline void mirror_social_context_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_mirror_social_context_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_mirror_social_context_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_mirror_social_context_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* ============================================================================
  * Internal Constants
@@ -282,7 +294,7 @@ social_context_t social_context_create(const social_context_config_t* config) {
     struct social_context_system* sys = nimcp_malloc(sizeof(struct social_context_system));
     if (!sys) {
         nimcp_log(LOG_LEVEL_ERROR, "Social context: failed to allocate system");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate sys");
 
         return NULL;
     }
@@ -933,4 +945,47 @@ void social_modulation_print(const social_modulation_t* modulation,
               emotional_context_name(modulation->emotional_type));
     nimcp_log(LOG_LEVEL_DEBUG, "%s  Gain: %.2f (valid=%s)",
               pfx, modulation->computed_gain, modulation->gain_valid ? "yes" : "no");
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void mirror_social_context_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_mirror_social_context_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training stubs
+ * ============================================================================ */
+int mirror_social_context_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_social_context_training_begin: NULL argument");
+        return -1;
+    }
+    mirror_social_context_heartbeat_instance(NULL, "mirror_social_context_training_begin", 0.0f);
+    return 0;
+}
+
+int mirror_social_context_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_social_context_training_end: NULL argument");
+        return -1;
+    }
+    mirror_social_context_heartbeat_instance(NULL, "mirror_social_context_training_end", 1.0f);
+    return 0;
+}
+
+int mirror_social_context_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_social_context_training_step: NULL argument");
+        return -1;
+    }
+    mirror_social_context_heartbeat_instance(NULL, "mirror_social_context_training_step", progress);
+    return 0;
 }

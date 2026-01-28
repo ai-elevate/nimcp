@@ -41,11 +41,31 @@ static inline void autobio_substrate_bridge_heartbeat(const char* operation, flo
     }
 }
 
+/* ============================================================================
+ * Phase 8 Instance-Level Health Agent Support
+ * ============================================================================ */
+
+/** @brief Instance-level health agent for per-object monitoring */
+static nimcp_health_agent_t* g_autobio_substrate_bridge_instance_health_agent = NULL;
+
+/** @brief Instance-level heartbeat: reports to both global and instance agents */
+static inline void autobio_substrate_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_autobio_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_autobio_substrate_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_autobio_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "AUTOBIO_SUBSTRATE_BRIDGE"
 
 
 struct autobio_substrate_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+    nimcp_health_agent_t* health_agent;  /**< Phase 8: instance-level health agent */
     void* autobio;
     neural_substrate_t* substrate;
     autobio_substrate_config_t config;
@@ -82,7 +102,7 @@ autobio_substrate_bridge_t* autobio_substrate_bridge_create(void* autobio, neura
     autobio_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(autobio_substrate_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -248,4 +268,109 @@ int autobio_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent Setter
+ * ============================================================================ */
+
+/**
+ * @brief Set instance-level health agent for a specific autobio_substrate_bridge
+ * @param bridge Bridge instance
+ * @param agent Health agent for this instance (NULL to disable)
+ */
+void autobio_substrate_bridge_set_instance_health_agent(autobio_substrate_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+    /* Also update module-level instance agent as fallback */
+    g_autobio_substrate_bridge_instance_health_agent = agent;
+    NIMCP_LOGGING_DEBUG("autobio_substrate_bridge: instance health agent %s",
+                        agent ? "set" : "cleared");
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+/**
+ * @brief Begin training session for autobio_substrate_bridge
+ * @param bridge Bridge instance
+ * @return 0 on success, -1 on error
+ */
+int autobio_substrate_bridge_training_begin(autobio_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "autobio_substrate_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    autobio_substrate_bridge_heartbeat_instance(bridge->health_agent, "autobio_sub_training_begin", 0.0f);
+
+    /* Reset update counter for this training session */
+    bridge->update_count = 0;
+
+    /* Reset effects to baseline for training calibration */
+    bridge->effects.overall_capacity = 1.0f;
+    bridge->prev_overall_capacity = 1.0f;
+
+    NIMCP_LOGGING_INFO("autobio_substrate_bridge: training session begun, counters reset");
+    return 0;
+}
+
+/**
+ * @brief End training session for autobio_substrate_bridge
+ * @param bridge Bridge instance
+ * @return 0 on success, -1 on error
+ */
+int autobio_substrate_bridge_training_end(autobio_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "autobio_substrate_bridge_training_end: NULL argument");
+        return -1;
+    }
+    autobio_substrate_bridge_heartbeat_instance(bridge->health_agent, "autobio_sub_training_end", 1.0f);
+
+    /* Compute average capacity across training session */
+    float avg_capacity = bridge->effects.overall_capacity;
+    if (bridge->update_count > 0) {
+        avg_capacity = bridge->effects.overall_capacity;
+    }
+
+    /* Log training session metrics */
+    NIMCP_LOGGING_INFO("autobio_substrate_bridge: training ended, updates=%llu avg_capacity=%.3f min_cap=%.3f",
+                       (unsigned long long)bridge->update_count,
+                       avg_capacity,
+                       bridge->config.min_capacity);
+    return 0;
+}
+
+/**
+ * @brief Execute single training step for autobio_substrate_bridge
+ * @param bridge Bridge instance
+ * @param progress Training progress [0.0, 1.0]
+ * @return 0 on success, -1 on error
+ */
+int autobio_substrate_bridge_training_step(autobio_substrate_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "autobio_substrate_bridge_training_step: NULL argument");
+        return -1;
+    }
+
+    /* Clamp progress to [0, 1] */
+    float p = progress < 0.0f ? 0.0f : (progress > 1.0f ? 1.0f : progress);
+    autobio_substrate_bridge_heartbeat_instance(bridge->health_agent, "autobio_sub_training_step", p);
+
+    /* Adapt min_capacity threshold based on training progress */
+    float base_min = 0.2f;
+    bridge->config.min_capacity = base_min + (1.0f - base_min) * p * 0.1f;
+
+    /* Adapt sensitivity weights during training */
+    bridge->config.atp_sensitivity = 1.0f + p * 0.05f;
+    bridge->config.fatigue_sensitivity = 1.0f + p * 0.03f;
+
+    /* Increment step counter */
+    bridge->update_count++;
+
+    return 0;
 }

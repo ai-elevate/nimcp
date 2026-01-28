@@ -39,6 +39,23 @@ static inline void autobiographical_memory_heartbeat(const char* operation, floa
     }
 }
 
+/* ============================================================================
+ * Phase 8 Instance-Level Health Agent Support
+ * ============================================================================ */
+
+static nimcp_health_agent_t* g_autobiographical_memory_instance_health_agent = NULL;
+
+static inline void autobiographical_memory_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_autobiographical_memory_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_autobiographical_memory_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_autobiographical_memory_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 #include "cognitive/nimcp_autobiographical_memory.h"
 #include "cognitive/autobiographical_memory/nimcp_autobio_snn_bridge.h"
@@ -1233,4 +1250,55 @@ int autobiographical_memory_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent Setter
+ * ============================================================================ */
+
+void autobiographical_memory_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    (void)instance;
+    g_autobiographical_memory_instance_health_agent = agent;
+    NIMCP_LOGGING_DEBUG("autobiographical_memory: instance health agent %s",
+                        agent ? "set" : "cleared");
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int autobiographical_memory_training_begin(void* ctx) {
+    if (!ctx) return -1;
+    struct autobiographical_memory_system* sys = (struct autobiographical_memory_system*)ctx;
+    autobiographical_memory_heartbeat_instance(g_autobiographical_memory_instance_health_agent, "autobio_mem_training_begin", 0.0f);
+
+    memset(&sys->stats, 0, sizeof(sys->stats));
+
+    NIMCP_LOGGING_INFO("autobiographical_memory: training begun, count=%u capacity=%u",
+                       sys->count, sys->capacity);
+    return 0;
+}
+
+int autobiographical_memory_training_end(void* ctx) {
+    if (!ctx) return -1;
+    struct autobiographical_memory_system* sys = (struct autobiographical_memory_system*)ctx;
+    autobiographical_memory_heartbeat_instance(g_autobiographical_memory_instance_health_agent, "autobio_mem_training_end", 1.0f);
+
+    float avg_retrievals = (float)sys->stats.total_retrievals;
+
+    NIMCP_LOGGING_INFO("autobiographical_memory: training ended, memories=%u retrievals=%.0f",
+                       sys->count, avg_retrievals);
+    return 0;
+}
+
+int autobiographical_memory_training_step(void* ctx, float progress) {
+    if (!ctx) return -1;
+    struct autobiographical_memory_system* sys = (struct autobiographical_memory_system*)ctx;
+
+    float p = progress < 0.0f ? 0.0f : (progress > 1.0f ? 1.0f : progress);
+    autobiographical_memory_heartbeat_instance(g_autobiographical_memory_instance_health_agent, "autobio_mem_training_step", p);
+
+    sys->stats.total_retrievals++;
+
+    return 0;
 }

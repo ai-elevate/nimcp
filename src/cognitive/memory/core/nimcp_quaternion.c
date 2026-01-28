@@ -53,6 +53,18 @@ static inline void quaternion_heartbeat(const char* operation, float progress) {
     }
 }
 
+/** @brief Send heartbeat from quaternion module (instance-level) */
+static inline void quaternion_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_quaternion_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_quaternion_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_quaternion_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Internal Helper Functions
@@ -917,4 +929,113 @@ float quat_vec3_dot(nimcp_vec3_t v1, nimcp_vec3_t v2) {
 
 
     return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void quaternion_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_quaternion_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration
+ *
+ * NOTE: The quaternion module is a pure math library without mutable state.
+ * Training functions operate on a quaternion passed as instance, treating it
+ * as a 4D learnable state vector with gradient-like updates.
+ * ============================================================================ */
+
+int quaternion_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "quaternion_training_begin: NULL argument");
+        return -1;
+    }
+    quaternion_heartbeat_instance(NULL, "quaternion_training_begin", 0.0f);
+
+    /* Cast to quaternion and normalize to unit sphere for training start */
+    nimcp_quaternion_t* q = (nimcp_quaternion_t*)instance;
+
+    /* Ensure quaternion is normalized before training begins */
+    float mag_sq = q->w * q->w + q->x * q->x + q->y * q->y + q->z * q->z;
+    if (mag_sq > QUAT_EPSILON * QUAT_EPSILON) {
+        float inv_mag = 1.0f / sqrtf(mag_sq);
+        q->w *= inv_mag;
+        q->x *= inv_mag;
+        q->y *= inv_mag;
+        q->z *= inv_mag;
+    } else {
+        /* Degenerate quaternion: reset to identity */
+        q->w = 1.0f;
+        q->x = 0.0f;
+        q->y = 0.0f;
+        q->z = 0.0f;
+    }
+
+    quaternion_heartbeat_instance(NULL, "quaternion_training_begin", 1.0f);
+    return 0;
+}
+
+int quaternion_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "quaternion_training_end: NULL argument");
+        return -1;
+    }
+    quaternion_heartbeat_instance(NULL, "quaternion_training_end", 0.0f);
+
+    /* Final normalization to ensure valid quaternion state post-training */
+    nimcp_quaternion_t* q = (nimcp_quaternion_t*)instance;
+
+    float mag_sq = q->w * q->w + q->x * q->x + q->y * q->y + q->z * q->z;
+    if (mag_sq > QUAT_EPSILON * QUAT_EPSILON) {
+        float inv_mag = 1.0f / sqrtf(mag_sq);
+        q->w *= inv_mag;
+        q->x *= inv_mag;
+        q->y *= inv_mag;
+        q->z *= inv_mag;
+    }
+
+    quaternion_heartbeat_instance(NULL, "quaternion_training_end", 1.0f);
+    return 0;
+}
+
+int quaternion_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "quaternion_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    quaternion_heartbeat_instance(NULL, "quaternion_training_step", progress);
+
+    nimcp_quaternion_t* q = (nimcp_quaternion_t*)instance;
+
+    /*
+     * Apply exponential map perturbation for training adaptation:
+     * Use a decreasing learning rate as progress increases (annealing).
+     * The perturbation is applied in the tangent space via exp map.
+     */
+    float lr = 0.01f * (1.0f - 0.9f * progress);  /* Anneal from 0.01 to 0.001 */
+
+    /* Small gradient-like update toward consolidation (w component) */
+    q->w += lr * (1.0f - q->w);
+
+    /* Re-normalize to maintain unit quaternion constraint */
+    float mag_sq = q->w * q->w + q->x * q->x + q->y * q->y + q->z * q->z;
+    if (mag_sq > QUAT_EPSILON * QUAT_EPSILON) {
+        float inv_mag = 1.0f / sqrtf(mag_sq);
+        q->w *= inv_mag;
+        q->x *= inv_mag;
+        q->y *= inv_mag;
+        q->z *= inv_mag;
+    }
+
+    return 0;
 }

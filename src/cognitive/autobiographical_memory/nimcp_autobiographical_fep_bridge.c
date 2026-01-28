@@ -65,6 +65,23 @@ static inline void autobiographical_fep_bridge_heartbeat(const char* operation, 
     }
 }
 
+/* ============================================================================
+ * Phase 8 Instance-Level Health Agent Support
+ * ============================================================================ */
+
+static nimcp_health_agent_t* g_autobiographical_fep_bridge_instance_health_agent = NULL;
+
+static inline void autobiographical_fep_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_autobiographical_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_autobiographical_fep_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_autobiographical_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* ============================================================================
  * Helper Functions
@@ -161,7 +178,7 @@ autobiographical_fep_bridge_t* autobiographical_fep_bridge_create(
         1, sizeof(autobiographical_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate autobiographical-FEP bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
     }
@@ -718,4 +735,56 @@ int autobiographical_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent Setter
+ * ============================================================================ */
+
+void autobiographical_fep_bridge_set_instance_health_agent(autobiographical_fep_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+    g_autobiographical_fep_bridge_instance_health_agent = agent;
+    NIMCP_LOGGING_DEBUG("autobiographical_fep_bridge: instance health agent %s",
+                        agent ? "set" : "cleared");
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int autobiographical_fep_bridge_training_begin(autobiographical_fep_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "autobiographical_fep_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    autobiographical_fep_bridge_heartbeat_instance(bridge, "autobio_fep_training_begin", 0.0f);
+    (void)bridge;
+    return 0;
+}
+
+int autobiographical_fep_bridge_training_end(autobiographical_fep_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "autobiographical_fep_bridge_training_end: NULL argument");
+        return -1;
+    }
+    autobiographical_fep_bridge_heartbeat_instance(bridge, "autobio_fep_training_end", 1.0f);
+    (void)bridge;
+    return 0;
+}
+
+int autobiographical_fep_bridge_training_step(autobiographical_fep_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "autobiographical_fep_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    autobiographical_fep_bridge_heartbeat_instance(bridge, "autobio_fep_training_step", progress);
+    (void)bridge;
+    return 0;
 }

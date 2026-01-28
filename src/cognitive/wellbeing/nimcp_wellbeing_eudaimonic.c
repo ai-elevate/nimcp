@@ -46,6 +46,19 @@ static inline void wellbeing_eudaimonic_heartbeat(const char* operation, float p
     }
 }
 
+/** @brief Send heartbeat from wellbeing_eudaimonic module (instance-level) */
+static inline void wellbeing_eudaimonic_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_wellbeing_eudaimonic_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_wellbeing_eudaimonic_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_wellbeing_eudaimonic_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 
 /* ============================================================================
  * Helper Functions - Eudaimonic Dimension Computation
@@ -739,4 +752,51 @@ int wellbeing_eudaimonic_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Wellbeing_Eudaimonic_Module");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void wellbeing_eudaimonic_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_wellbeing_eudaimonic_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int wellbeing_eudaimonic_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "wellbeing_eudaimonic_training_begin: NULL argument");
+        return -1;
+    }
+    wellbeing_eudaimonic_heartbeat_instance(NULL, "wellbeing_eudaimonic_training_begin", 0.0f);
+    return 0;
+}
+
+int wellbeing_eudaimonic_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "wellbeing_eudaimonic_training_end: NULL argument");
+        return -1;
+    }
+    wellbeing_eudaimonic_heartbeat_instance(NULL, "wellbeing_eudaimonic_training_end", 1.0f);
+    return 0;
+}
+
+int wellbeing_eudaimonic_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "wellbeing_eudaimonic_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    wellbeing_eudaimonic_heartbeat_instance(NULL, "wellbeing_eudaimonic_training_step", progress);
+    return 0;
 }

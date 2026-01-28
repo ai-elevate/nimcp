@@ -46,6 +46,69 @@ static inline void rcog_delegation_pool_heartbeat(const char* operation, float p
     }
 }
 
+/** @brief Send heartbeat from rcog_delegation_pool module (instance-level) */
+static inline void rcog_delegation_pool_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_rcog_delegation_pool_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_rcog_delegation_pool_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_rcog_delegation_pool_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+/** @brief Instance-level health agent (global fallback for non-bridge) */
+static nimcp_health_agent_t* g_rcog_delegation_pool_instance_health_agent = NULL;
+
+void rcog_delegation_pool_set_instance_health_agent(void* ctx, nimcp_health_agent_t* agent) {
+    (void)ctx;
+    g_rcog_delegation_pool_instance_health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level Training Functions
+ * ============================================================================ */
+
+int rcog_delegation_pool_training_begin(void* ctx) {
+    rcog_delegation_pool_t* pool = (rcog_delegation_pool_t*)ctx;
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "rcog_delegation_pool_training_begin: NULL argument");
+        return -1;
+    }
+    rcog_delegation_pool_heartbeat_instance(
+        g_rcog_delegation_pool_instance_health_agent,
+        "rcog_pool_training_begin", 0.0f);
+    return 0;
+}
+
+int rcog_delegation_pool_training_step(void* ctx, float progress) {
+    rcog_delegation_pool_t* pool = (rcog_delegation_pool_t*)ctx;
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "rcog_delegation_pool_training_step: NULL argument");
+        return -1;
+    }
+    float clamped = progress < 0.0f ? 0.0f : (progress > 1.0f ? 1.0f : progress);
+    rcog_delegation_pool_heartbeat_instance(
+        g_rcog_delegation_pool_instance_health_agent,
+        "rcog_pool_training_step", clamped);
+    return 0;
+}
+
+int rcog_delegation_pool_training_end(void* ctx) {
+    rcog_delegation_pool_t* pool = (rcog_delegation_pool_t*)ctx;
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "rcog_delegation_pool_training_end: NULL argument");
+        return -1;
+    }
+    rcog_delegation_pool_heartbeat_instance(
+        g_rcog_delegation_pool_instance_health_agent,
+        "rcog_pool_training_end", 1.0f);
+    return 0;
+}
 
 /*=============================================================================
  * INTERNAL CONSTANTS
@@ -252,7 +315,7 @@ static rcog_task_node_t* create_task_node(rcog_subtask_t* subtask,
     rcog_task_node_t* node = nimcp_calloc(1, sizeof(rcog_task_node_t));
     if (!node) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate node");
 
         return NULL;
 
@@ -431,7 +494,7 @@ rcog_delegation_pool_t* rcog_delegation_pool_create(
     rcog_delegation_pool_t* pool = nimcp_calloc(1, sizeof(rcog_delegation_pool_t));
     if (!pool) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate pool");
 
         return NULL;
 

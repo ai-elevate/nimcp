@@ -39,11 +39,29 @@ static inline void autobio_thalamic_bridge_heartbeat(const char* operation, floa
     }
 }
 
+/* ============================================================================
+ * Phase 8 Instance-Level Health Agent Support
+ * ============================================================================ */
+
+static nimcp_health_agent_t* g_autobio_thalamic_bridge_instance_health_agent = NULL;
+
+static inline void autobio_thalamic_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_autobio_thalamic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_autobio_thalamic_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_autobio_thalamic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "AUTOBIO_THALAMIC_BRIDGE"
 
 
 struct autobio_thalamic_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+    nimcp_health_agent_t* health_agent;  /**< Phase 8: instance-level health agent */
     void* autobio;
     thalamic_router_t* router;
     autobio_thalamic_config_t config;
@@ -73,7 +91,7 @@ autobio_thalamic_bridge_t* autobio_thalamic_bridge_create(void* autobio, thalami
     autobio_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(autobio_thalamic_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -199,4 +217,70 @@ int autobio_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent Setter
+ * ============================================================================ */
+
+void autobio_thalamic_bridge_set_instance_health_agent(autobio_thalamic_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+    g_autobio_thalamic_bridge_instance_health_agent = agent;
+    NIMCP_LOGGING_DEBUG("autobio_thalamic_bridge: instance health agent %s",
+                        agent ? "set" : "cleared");
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int autobio_thalamic_bridge_training_begin(autobio_thalamic_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "autobio_thalamic_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    autobio_thalamic_bridge_heartbeat_instance(bridge->health_agent, "autobio_thl_training_begin", 0.0f);
+
+    memset(&bridge->stats, 0, sizeof(bridge->stats));
+    bridge->attention_weight = 1.0f;
+
+    NIMCP_LOGGING_INFO("autobio_thalamic_bridge: training session begun, stats reset");
+    return 0;
+}
+
+int autobio_thalamic_bridge_training_end(autobio_thalamic_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "autobio_thalamic_bridge_training_end: NULL argument");
+        return -1;
+    }
+    autobio_thalamic_bridge_heartbeat_instance(bridge->health_agent, "autobio_thl_training_end", 1.0f);
+
+    float avg_attention = bridge->attention_weight;
+
+    NIMCP_LOGGING_INFO("autobio_thalamic_bridge: training ended, routed=%u avg_attention=%.3f threshold=%.3f",
+                       bridge->stats.recalls_routed,
+                       avg_attention,
+                       bridge->config.min_vividness_threshold);
+    return 0;
+}
+
+int autobio_thalamic_bridge_training_step(autobio_thalamic_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "autobio_thalamic_bridge_training_step: NULL argument");
+        return -1;
+    }
+
+    float p = progress < 0.0f ? 0.0f : (progress > 1.0f ? 1.0f : progress);
+    autobio_thalamic_bridge_heartbeat_instance(bridge->health_agent, "autobio_thl_training_step", p);
+
+    float base_threshold = 0.3f;
+    bridge->config.min_vividness_threshold = base_threshold * (1.0f - 0.15f * p);
+    bridge->attention_weight = 1.0f - 0.1f * (1.0f - p);
+
+    return 0;
 }

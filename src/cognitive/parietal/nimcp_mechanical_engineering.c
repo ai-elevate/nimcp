@@ -8,6 +8,7 @@
 
 #include "cognitive/parietal/nimcp_mechanical_engineering.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
@@ -38,6 +39,18 @@ void mechanical_engineering_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void mechanical_engineering_heartbeat(const char* operation, float progress) {
     if (g_mechanical_engineering_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_mechanical_engineering_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from mechanical_engineering module (instance-level) */
+static inline void mechanical_engineering_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_mechanical_engineering_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_mechanical_engineering_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_mechanical_engineering_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -101,7 +114,7 @@ mechanical_eng_t* mechanical_eng_create_custom(const me_config_t* config) {
     mechanical_eng_t* me = calloc(1, sizeof(mechanical_eng_t));
     if (!me) {
         set_error("Failed to allocate mechanical_eng");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate me");
 
         return NULL;
     }
@@ -651,4 +664,78 @@ int mechanical_engineering_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Mechanical_Engineering");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void mechanical_engineering_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_mechanical_engineering_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Functions
+ * ============================================================================ */
+
+int mechanical_engineering_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mechanical_engineering_training_begin: NULL argument");
+        return -1;
+    }
+    mechanical_engineering_heartbeat_instance(NULL, "mechanical_engineering_training_begin", 0.0f);
+    mechanical_eng_t* me = (mechanical_eng_t*)instance;
+    memset(&me->stats, 0, sizeof(me->stats));
+    NIMCP_LOGGING_INFO("Mechanical engineering training begin: stats reset");
+    return 0;
+}
+
+int mechanical_engineering_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mechanical_engineering_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    mechanical_engineering_heartbeat_instance(NULL, "mechanical_engineering_training_step", progress);
+    mechanical_eng_t* me = (mechanical_eng_t*)instance;
+    me->stats.structural_analyses++;
+    /* Tighten convergence tolerance as training progresses */
+    float decay = 1.0f - 0.3f * progress;
+    if (decay < 0.5f) decay = 0.5f;
+    me->config.convergence_tolerance *= decay;
+    if (me->config.convergence_tolerance < 1e-9f)
+        me->config.convergence_tolerance = 1e-9f;
+    /* Increase safety factor target slightly during training */
+    me->config.safety_factor_target += 0.01f * progress;
+    if (me->config.safety_factor_target > 5.0f)
+        me->config.safety_factor_target = 5.0f;
+    /* Reduce inflammation sensitivity through adaptation */
+    me->config.inflammation_sensitivity *= decay;
+    if (me->config.inflammation_sensitivity < 0.1f)
+        me->config.inflammation_sensitivity = 0.1f;
+    return 0;
+}
+
+int mechanical_engineering_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mechanical_engineering_training_end: NULL argument");
+        return -1;
+    }
+    mechanical_engineering_heartbeat_instance(NULL, "mechanical_engineering_training_end", 1.0f);
+    mechanical_eng_t* me = (mechanical_eng_t*)instance;
+    NIMCP_LOGGING_INFO("Mechanical engineering training end: %lu structural, %lu vibration, "
+                       "%lu thermal, %lu fatigue analyses, convergence_tol=%.2e",
+                       (unsigned long)me->stats.structural_analyses,
+                       (unsigned long)me->stats.vibration_analyses,
+                       (unsigned long)me->stats.thermal_analyses,
+                       (unsigned long)me->stats.fatigue_analyses,
+                       (double)me->config.convergence_tolerance);
+    return 0;
 }

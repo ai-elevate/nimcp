@@ -54,6 +54,18 @@ static inline void schemas_heartbeat(const char* operation, float progress) {
     }
 }
 
+/** @brief Send heartbeat from schemas module (instance-level) */
+static inline void schemas_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_schemas_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_schemas_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_schemas_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Internal Structures
@@ -2700,5 +2712,55 @@ uint64_t schema_current_time_ms(void) {
     if (clock_gettime(CLOCK_REALTIME, &ts) == 0) {
         return (uint64_t)ts.tv_sec * 1000ULL + (uint64_t)ts.tv_nsec / 1000000ULL;
     }
+    return 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void schemas_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_schemas_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration
+ * ============================================================================ */
+
+int schemas_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "schemas_training_begin: NULL argument");
+        return -1;
+    }
+    schemas_heartbeat_instance(NULL, "schemas_training_begin", 0.0f);
+    (void)instance;
+    return 0;
+}
+
+int schemas_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "schemas_training_end: NULL argument");
+        return -1;
+    }
+    schemas_heartbeat_instance(NULL, "schemas_training_end", 1.0f);
+    (void)instance;
+    return 0;
+}
+
+int schemas_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "schemas_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    schemas_heartbeat_instance(NULL, "schemas_training_step", progress);
+    (void)instance;
     return 0;
 }

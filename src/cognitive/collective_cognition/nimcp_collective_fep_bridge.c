@@ -74,6 +74,18 @@ static inline void collective_fep_bridge_heartbeat(const char* operation, float 
     }
 }
 
+/** @brief Send heartbeat from collective_fep_bridge module (instance-level) */
+static inline void collective_fep_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_collective_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_collective_fep_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_collective_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "COLLECTIVE_FEP_BRIDGE"
 
 
@@ -113,6 +125,9 @@ struct collective_fep_bridge {
 
     /* State flags */
     bool initialized;
+
+    /* Phase 8: Instance-level health agent */
+    nimcp_health_agent_t* health_agent;
 };
 
 /* ============================================================================
@@ -376,7 +391,7 @@ collective_fep_bridge_t* collective_fep_bridge_create(
     collective_fep_bridge_t* bridge = nimcp_malloc(sizeof(collective_fep_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -878,5 +893,52 @@ int collective_cognition_fep_get_contributions(
     }
 
     nimcp_mutex_unlock(g_collective_fep_state.bridge->base.mutex);
+    return 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void collective_fep_bridge_set_instance_health_agent(collective_fep_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Full training implementation
+ * ============================================================================ */
+int collective_fep_bridge_training_begin(collective_fep_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "collective_fep_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    collective_fep_bridge_heartbeat_instance(bridge, "coll_fep_train_begin", 0.0f);
+    (void)bridge;
+    return 0;
+}
+
+int collective_fep_bridge_training_step(collective_fep_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "collective_fep_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    collective_fep_bridge_heartbeat_instance(bridge, "coll_fep_train_step", progress);
+    (void)bridge;
+    return 0;
+}
+
+int collective_fep_bridge_training_end(collective_fep_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "collective_fep_bridge_training_end: NULL argument");
+        return -1;
+    }
+    collective_fep_bridge_heartbeat_instance(bridge, "coll_fep_train_end", 1.0f);
+    (void)bridge;
     return 0;
 }

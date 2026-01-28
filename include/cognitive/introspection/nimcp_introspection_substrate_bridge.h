@@ -53,6 +53,9 @@ extern "C" {
 #include "utils/thread/nimcp_thread.h"
 #include <stdint.h>
 #include <stdbool.h>
+/* Phase 8: Forward declaration for health agent */
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
 
 /* Forward declaration for introspection system (opaque pointer) */
 typedef struct nimcp_introspection nimcp_introspection_t;
@@ -201,6 +204,9 @@ typedef struct {
     introspection_substrate_config_t config;  /**< Bridge configuration */
     introspection_substrate_effects_t effects; /**< Current substrate effects */
     introspection_substrate_stats_t stats;     /**< Bridge statistics */
+
+    /* Phase 8: Instance-level health agent */
+    nimcp_health_agent_t* health_agent;
 
     } introspection_substrate_bridge_t;
 

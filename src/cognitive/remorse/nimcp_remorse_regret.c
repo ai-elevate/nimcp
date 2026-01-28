@@ -234,7 +234,7 @@ remorse_regret_system_t* remorse_regret_system_create(void) {
     remorse_regret_system_t* system = (remorse_regret_system_t*)nimcp_calloc(1, sizeof(remorse_regret_system_t));
     if (!system) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate system");
 
         return NULL;
 

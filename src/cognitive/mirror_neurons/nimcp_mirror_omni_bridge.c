@@ -130,7 +130,7 @@ mirror_omni_bridge_t* mirror_omni_bridge_create(
         1, sizeof(mirror_omni_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate mirror-omni bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
     }
@@ -1537,19 +1537,31 @@ void mirror_omni_bridge_set_instance_health_agent(
 //=============================================================================
 
 int mirror_omni_bridge_training_begin(mirror_omni_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_omni_bridge_training_begin: NULL argument");
+        return -1;
+    }
     mirror_omni_bridge_heartbeat_instance(bridge->health_agent, "mirror_omni_bridge_training_begin", 0.0f);
     return 0;
 }
 
 int mirror_omni_bridge_training_end(mirror_omni_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_omni_bridge_training_end: NULL argument");
+        return -1;
+    }
     mirror_omni_bridge_heartbeat_instance(bridge->health_agent, "mirror_omni_bridge_training_end", 1.0f);
     return 0;
 }
 
 int mirror_omni_bridge_training_step(mirror_omni_bridge_t* bridge, float progress) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_omni_bridge_training_step: NULL argument");
+        return -1;
+    }
 
     /* Safety gates: ethics + LGSS pre-check */
     BRIDGE_ETHICS_GATE(bridge, "mirror_omni_bridge_training_step");

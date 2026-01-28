@@ -41,6 +41,18 @@ static inline void jepa_substrate_bridge_heartbeat(const char* operation, float 
     }
 }
 
+/** @brief Send heartbeat from jepa_substrate_bridge module (instance + global) */
+static inline void jepa_substrate_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_jepa_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_jepa_substrate_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_jepa_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "JEPA_SUBSTRATE_BRIDGE"
 
 
@@ -55,6 +67,9 @@ struct jepa_substrate_bridge {
     bool bio_async_connected;
     uint64_t update_count;
     float prev_overall_capacity;
+
+    /* Phase 8: Instance-level health agent */
+    nimcp_health_agent_t* health_agent;
 };
 
 jepa_substrate_config_t jepa_substrate_default_config(void) {
@@ -82,7 +97,7 @@ jepa_substrate_bridge_t* jepa_substrate_bridge_create(void* jepa, neural_substra
     jepa_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(jepa_substrate_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -248,4 +263,109 @@ int jepa_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent + Training Lifecycle
+ * ============================================================================ */
+
+void jepa_substrate_bridge_set_instance_health_agent(jepa_substrate_bridge_t* bridge,
+                                                      nimcp_health_agent_t* agent) {
+    if (!bridge) return;
+    bridge->health_agent = agent;
+}
+
+int jepa_substrate_bridge_training_begin(jepa_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "jepa_substrate_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    jepa_substrate_bridge_heartbeat_instance(bridge->health_agent,
+                                             "jepa_substra_training_begin", 0.0f);
+
+    /* Snapshot initial metabolic effects */
+    bridge->prev_overall_capacity = bridge->effects.overall_capacity;
+
+    /* Reset update count for training epoch */
+    bridge->update_count = 0;
+
+    /* Reset effects to baseline for clean training start */
+    bridge->effects.prediction_horizon = 1.0f;
+    bridge->effects.model_precision = 1.0f;
+    bridge->effects.embedding_quality = 1.0f;
+    bridge->effects.update_rate = 1.0f;
+    bridge->effects.overall_capacity = 1.0f;
+
+    jepa_substrate_bridge_heartbeat_instance(bridge->health_agent,
+                                             "jepa_substra_training_begin", 1.0f);
+    return 0;
+}
+
+int jepa_substrate_bridge_training_end(jepa_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "jepa_substrate_bridge_training_end: NULL argument");
+        return -1;
+    }
+    jepa_substrate_bridge_heartbeat_instance(bridge->health_agent,
+                                             "jepa_substra_training_end", 0.0f);
+
+    /* Compute capacity delta over training */
+    float delta = bridge->effects.overall_capacity - bridge->prev_overall_capacity;
+    (void)delta;  /* Available for diagnostics */
+
+    /* Log final update count */
+    NIMCP_LOGGING_DEBUG("Substrate bridge training ended: %lu updates, capacity=%.3f",
+                       (unsigned long)bridge->update_count,
+                       bridge->effects.overall_capacity);
+
+    jepa_substrate_bridge_heartbeat_instance(bridge->health_agent,
+                                             "jepa_substra_training_end", 1.0f);
+    return 0;
+}
+
+int jepa_substrate_bridge_training_step(jepa_substrate_bridge_t* bridge, uint32_t step) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "jepa_substrate_bridge_training_step: NULL argument");
+        return -1;
+    }
+    float progress = (step % 100) / 100.0f;
+    jepa_substrate_bridge_heartbeat_instance(bridge->health_agent,
+                                             "jepa_substra_training_step", progress);
+
+    /* Fetch and apply metabolic modulation for this step */
+    if (bridge->substrate) {
+        substrate_metabolic_state_t metabolic;
+        if (substrate_get_metabolic_state(bridge->substrate, &metabolic) == 0) {
+            float atp = metabolic.atp_level;
+            float cap = metabolic.metabolic_capacity;
+            float min = bridge->config.min_capacity;
+
+            /* Modulate training effects based on metabolic state */
+            if (bridge->config.enable_atp_modulation) {
+                bridge->effects.prediction_horizon =
+                    nimcp_clamp_f(atp * bridge->config.atp_sensitivity, min, 1.0f);
+                bridge->effects.model_precision =
+                    nimcp_clamp_f(atp * 1.05f * bridge->config.atp_sensitivity, min, 1.0f);
+            }
+            if (bridge->config.enable_fatigue_modulation) {
+                bridge->effects.embedding_quality =
+                    nimcp_clamp_f(cap * bridge->config.fatigue_sensitivity, min, 1.0f);
+                bridge->effects.update_rate =
+                    nimcp_clamp_f(cap * 0.9f * bridge->config.fatigue_sensitivity, min, 1.0f);
+            }
+
+            bridge->effects.overall_capacity =
+                (bridge->effects.prediction_horizon + bridge->effects.model_precision +
+                 bridge->effects.embedding_quality + bridge->effects.update_rate) / 4.0f;
+        }
+    }
+
+    bridge->update_count++;
+
+    jepa_substrate_bridge_heartbeat_instance(bridge->health_agent,
+                                             "jepa_substra_training_step", 1.0f);
+    return 0;
 }

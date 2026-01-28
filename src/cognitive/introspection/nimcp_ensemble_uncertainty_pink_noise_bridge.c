@@ -54,6 +54,17 @@ static inline void ensemble_uncertainty_pink_noise_bridge_heartbeat(const char* 
     }
 }
 
+static inline void ensemble_uncertainty_pink_noise_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_ensemble_uncertainty_pink_noise_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_ensemble_uncertainty_pink_noise_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_ensemble_uncertainty_pink_noise_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Helper Functions
@@ -138,7 +149,7 @@ ensemble_pink_bridge_t* ensemble_pink_create(const ensemble_pink_config_t* confi
     );
     if (!bridge) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to allocate bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
     }
@@ -1066,4 +1077,65 @@ int ensemble_pink_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent + Full Training
+ * ============================================================================ */
+
+void ensemble_uncertainty_pink_noise_bridge_set_instance_health_agent(
+    ensemble_pink_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+int ensemble_uncertainty_pink_noise_bridge_training_begin(ensemble_pink_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "ensemble_uncertainty_pink_noise_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    ensemble_uncertainty_pink_noise_bridge_heartbeat_instance(bridge->health_agent,
+        "ens_pink_training_begin", 0.0f);
+    bridge->stats.total_injections = 0;
+    bridge->stats.avg_amplitude = 0.0f;
+    bridge->state.current_amplitude = 0.5f;
+    NIMCP_LOGGING_INFO("[ENS_PINK] Training begin: counters reset, baseline state initialized");
+    return 0;
+}
+
+int ensemble_uncertainty_pink_noise_bridge_training_step(ensemble_pink_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "ensemble_uncertainty_pink_noise_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    ensemble_uncertainty_pink_noise_bridge_heartbeat_instance(bridge->health_agent,
+        "ens_pink_training_step", progress);
+    float lr = bridge->config.base_amplitude;
+    float adaptation = lr * (1.0f - progress) * 0.1f;
+    bridge->config.base_amplitude = lr + adaptation;
+    if (bridge->config.base_amplitude > 1.0f) bridge->config.base_amplitude = 1.0f;
+    if (bridge->config.base_amplitude < 0.001f) bridge->config.base_amplitude = 0.001f;
+    bridge->state.current_amplitude = bridge->state.current_amplitude * 0.99f + progress * 0.01f;
+    bridge->stats.total_injections++;
+    return 0;
+}
+
+int ensemble_uncertainty_pink_noise_bridge_training_end(ensemble_pink_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "ensemble_uncertainty_pink_noise_bridge_training_end: NULL argument");
+        return -1;
+    }
+    ensemble_uncertainty_pink_noise_bridge_heartbeat_instance(bridge->health_agent,
+        "ens_pink_training_end", 1.0f);
+    if (bridge->state.current_amplitude < 0.0f) bridge->state.current_amplitude = 0.0f;
+    if (bridge->state.current_amplitude > 1.0f) bridge->state.current_amplitude = 1.0f;
+    NIMCP_LOGGING_INFO("[ENS_PINK] Training end: amplitude=%.3f, injections=%u",
+        bridge->state.current_amplitude, bridge->stats.total_injections);
+    return 0;
 }

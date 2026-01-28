@@ -34,6 +34,9 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
 /** Global health agent for fep_immune_bridge module */
 static nimcp_health_agent_t* g_fep_immune_bridge_health_agent = NULL;
 
+/** Instance-level health agent for fep_immune_bridge (opaque struct fallback) */
+static nimcp_health_agent_t* g_fep_immune_bridge_instance_health_agent = NULL;
+
 /**
  * @brief Set health agent for fep_immune_bridge heartbeats
  * @param agent Health agent (can be NULL to disable)
@@ -46,6 +49,18 @@ void fep_immune_bridge_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void fep_immune_bridge_heartbeat(const char* operation, float progress) {
     if (g_fep_immune_bridge_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_fep_immune_bridge_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from fep_immune_bridge module (instance-level) */
+static inline void fep_immune_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_fep_immune_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_fep_immune_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_fep_immune_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -133,7 +148,7 @@ fep_immune_bridge_t* fep_immune_bridge_create(const fep_immune_config_t* config)
         1, sizeof(fep_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate FEP-immune bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
     }
@@ -918,4 +933,42 @@ int fep_immune_bridge_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "FEP_Immune_Bridge");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+void fep_immune_bridge_set_instance_health_agent(fep_immune_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) { g_fep_immune_bridge_instance_health_agent = agent; }
+}
+
+int fep_immune_bridge_training_begin(fep_immune_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "fep_immune_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    fep_immune_bridge_heartbeat_instance(g_fep_immune_bridge_instance_health_agent, "fep_imm_training_begin", 0.0f);
+    NIMCP_LOGGING_INFO("fep_immune_bridge: training begun");
+    return 0;
+}
+
+int fep_immune_bridge_training_step(fep_immune_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "fep_immune_bridge_training_step: NULL argument");
+        return -1;
+    }
+    float clamped = progress < 0.0f ? 0.0f : (progress > 1.0f ? 1.0f : progress);
+    fep_immune_bridge_heartbeat_instance(g_fep_immune_bridge_instance_health_agent, "fep_imm_training_step", clamped);
+    (void)clamped;
+    return 0;
+}
+
+int fep_immune_bridge_training_end(fep_immune_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "fep_immune_bridge_training_end: NULL argument");
+        return -1;
+    }
+    fep_immune_bridge_heartbeat_instance(g_fep_immune_bridge_instance_health_agent, "fep_imm_training_end", 1.0f);
+    NIMCP_LOGGING_INFO("fep_immune_bridge: training complete");
+    return 0;
 }

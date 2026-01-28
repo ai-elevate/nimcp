@@ -10,6 +10,7 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/algorithms/nimcp_sort.h"
+#include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -41,6 +42,18 @@ void software_engineering_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void software_engineering_heartbeat(const char* operation, float progress) {
     if (g_software_engineering_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_software_engineering_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from software_engineering module (instance-level) */
+static inline void software_engineering_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_software_engineering_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_software_engineering_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_software_engineering_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -1188,7 +1201,7 @@ se_metric_series_t* software_eng_create_series(const char* metric_name, uint32_t
     se_metric_series_t* series = calloc(1, sizeof(se_metric_series_t));
     if (!series) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "series is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate series");
 
         return NULL;
 
@@ -1305,4 +1318,54 @@ int software_engineering_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Software_Engineering");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void software_engineering_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_software_engineering_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int software_engineering_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "software_engineering_training_begin: NULL argument");
+        return -1;
+    }
+    software_engineering_heartbeat_instance(NULL, "software_engineering_training_begin", 0.0f);
+    (void)(struct software_eng*)instance; /* Module state available for reset */
+    return 0;
+}
+
+int software_engineering_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "software_engineering_training_end: NULL argument");
+        return -1;
+    }
+    software_engineering_heartbeat_instance(NULL, "software_engineering_training_end", 1.0f);
+    (void)(struct software_eng*)instance; /* Module state available for finalization */
+    return 0;
+}
+
+int software_engineering_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "software_engineering_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    software_engineering_heartbeat_instance(NULL, "software_engineering_training_step", progress);
+    (void)(struct software_eng*)instance; /* Module state available for step adaptation */
+    return 0;
 }

@@ -42,6 +42,19 @@ static inline void compositional_systematic_heartbeat(const char* operation, flo
     }
 }
 
+/** @brief Send heartbeat from compositional_systematic module (instance-level) */
+static inline void compositional_systematic_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_compositional_systematic_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_compositional_systematic_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_compositional_systematic_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 
 /*=============================================================================
  * STATIC HELPERS - MEMORY
@@ -528,7 +541,7 @@ nimcp_compositional_t* cs_create(const cs_config_t* config) {
     nimcp_compositional_t* cs = calloc(1, sizeof(nimcp_compositional_t));
     if (!cs) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cs is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate cs");
 
         return NULL;
 
@@ -1601,4 +1614,51 @@ const char* cs_binding_type_string(cs_binding_type_t type) {
         case CS_BIND_MANNER: return "Manner";
         default: return "Unknown";
     }
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void compositional_systematic_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_compositional_systematic_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int compositional_systematic_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "compositional_systematic_training_begin: NULL argument");
+        return -1;
+    }
+    compositional_systematic_heartbeat_instance(NULL, "compositional_systematic_training_begin", 0.0f);
+    return 0;
+}
+
+int compositional_systematic_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "compositional_systematic_training_end: NULL argument");
+        return -1;
+    }
+    compositional_systematic_heartbeat_instance(NULL, "compositional_systematic_training_end", 1.0f);
+    return 0;
+}
+
+int compositional_systematic_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "compositional_systematic_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    compositional_systematic_heartbeat_instance(NULL, "compositional_systematic_training_step", progress);
+    return 0;
 }

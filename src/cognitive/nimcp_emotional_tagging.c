@@ -53,6 +53,19 @@ static inline void emotional_tagging_heartbeat(const char* operation, float prog
     }
 }
 
+/** @brief Send heartbeat from emotional_tagging module (instance-level) */
+static inline void emotional_tagging_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_emotional_tagging_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_emotional_tagging_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_emotional_tagging_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 
 //=============================================================================
 // Helper Macros
@@ -443,4 +456,51 @@ int cognitive_emotional_tagging_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void emotional_tagging_module_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_emotional_tagging_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int emotional_tagging_module_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "emotional_tagging_module_training_begin: NULL argument");
+        return -1;
+    }
+    emotional_tagging_heartbeat_instance(NULL, "emotional_tagging_module_training_begin", 0.0f);
+    return 0;
+}
+
+int emotional_tagging_module_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "emotional_tagging_module_training_end: NULL argument");
+        return -1;
+    }
+    emotional_tagging_heartbeat_instance(NULL, "emotional_tagging_module_training_end", 1.0f);
+    return 0;
+}
+
+int emotional_tagging_module_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "emotional_tagging_module_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    emotional_tagging_heartbeat_instance(NULL, "emotional_tagging_module_training_step", progress);
+    return 0;
 }

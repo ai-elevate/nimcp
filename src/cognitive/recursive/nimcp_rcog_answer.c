@@ -50,6 +50,69 @@ static inline void rcog_answer_heartbeat(const char* operation, float progress) 
     }
 }
 
+/** @brief Send heartbeat from rcog_answer module (instance-level) */
+static inline void rcog_answer_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_rcog_answer_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_rcog_answer_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_rcog_answer_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+/** @brief Instance-level health agent (global fallback for non-bridge) */
+static nimcp_health_agent_t* g_rcog_answer_instance_health_agent = NULL;
+
+void rcog_answer_set_instance_health_agent(void* ctx, nimcp_health_agent_t* agent) {
+    (void)ctx;
+    g_rcog_answer_instance_health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level Training Functions
+ * ============================================================================ */
+
+int rcog_answer_training_begin(void* ctx) {
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "rcog_answer_training_begin: NULL argument");
+        return -1;
+    }
+    rcog_answer_heartbeat_instance(
+        g_rcog_answer_instance_health_agent,
+        "rcog_answer_training_begin", 0.0f);
+    (void)ctx;
+    return 0;
+}
+
+int rcog_answer_training_step(void* ctx, float progress) {
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "rcog_answer_training_step: NULL argument");
+        return -1;
+    }
+    float clamped = progress < 0.0f ? 0.0f : (progress > 1.0f ? 1.0f : progress);
+    rcog_answer_heartbeat_instance(
+        g_rcog_answer_instance_health_agent,
+        "rcog_answer_training_step", clamped);
+    (void)ctx;
+    return 0;
+}
+
+int rcog_answer_training_end(void* ctx) {
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "rcog_answer_training_end: NULL argument");
+        return -1;
+    }
+    rcog_answer_heartbeat_instance(
+        g_rcog_answer_instance_health_agent,
+        "rcog_answer_training_end", 1.0f);
+    (void)ctx;
+    return 0;
+}
 
 //=============================================================================
 // Internal Structures
@@ -226,7 +289,7 @@ static rcog_answer_history_t* create_history(size_t initial_capacity)
     rcog_answer_history_t* history = nimcp_calloc(1, sizeof(rcog_answer_history_t));
     if (!history) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "history is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate history");
 
         return NULL;
 
@@ -362,7 +425,7 @@ rcog_answer_refiner_t* rcog_answer_refiner_create(
     rcog_answer_refiner_t* refiner = nimcp_calloc(1, sizeof(rcog_answer_refiner_t));
     if (!refiner) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "refiner is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate refiner");
 
         return NULL;
 
@@ -499,7 +562,7 @@ rcog_answer_state_t* rcog_answer_state_create(
     rcog_answer_state_t* state = nimcp_calloc(1, sizeof(rcog_answer_state_t));
     if (!state) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate state");
 
         return NULL;
 

@@ -48,6 +48,18 @@ static inline void parietal_heartbeat(const char* operation, float progress) {
     }
 }
 
+/** @brief Send heartbeat from parietal module (instance-level) */
+static inline void parietal_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_parietal_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_parietal_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_parietal_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* ============================================================================
  * CONSTANTS
@@ -217,7 +229,7 @@ static physics_nn_t* physics_nn_create(uint32_t state_dim, uint32_t hidden_size,
     physics_nn_t* nn = calloc(1, sizeof(physics_nn_t));
     if (!nn) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nn is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate nn");
 
         return NULL;
 
@@ -2314,4 +2326,100 @@ int parietal_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void parietal_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_parietal_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Functions
+ * ============================================================================ */
+
+int parietal_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "parietal_training_begin: NULL argument");
+        return -1;
+    }
+    parietal_heartbeat_instance(NULL, "parietal_training_begin", 0.0f);
+    parietal_lobe_t* pl = (parietal_lobe_t*)instance;
+    pl->total_requests = 0;
+    pl->failed_requests = 0;
+    pl->neural_network_activations = 0;
+    pl->thalamic_gates_applied = 0;
+    pl->substrate_accelerations = 0;
+    pl->immune_modulations = 0;
+    pl->fep_predictions = 0;
+    pl->fep_belief_updates = 0;
+    pl->fep_active_inferences = 0;
+    pl->total_fep_free_energy = 0.0;
+    pl->quantum_optimizations = 0;
+    pl->quantum_vqe_runs = 0;
+    pl->quantum_walks = 0;
+    pl->total_quantum_speedup = 0.0;
+    pl->total_processing_time_us = 0.0;
+    pl->total_confidence = 0.0;
+    pl->num_pending = 0;
+    for (int i = 0; i < PARIETAL_REQUEST_TYPE_COUNT; i++) {
+        pl->requests_by_type[i] = 0;
+    }
+    NIMCP_LOGGING_INFO("Parietal lobe training begin: all counters reset");
+    return 0;
+}
+
+int parietal_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "parietal_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    parietal_heartbeat_instance(NULL, "parietal_training_step", progress);
+    parietal_lobe_t* pl = (parietal_lobe_t*)instance;
+    pl->total_requests++;
+    pl->neural_network_activations++;
+    /* Progressive modulation resilience */
+    float decay = 1.0f - 0.2f * progress;
+    if (decay < 0.5f) decay = 0.5f;
+    pl->inflammation_level *= decay;
+    pl->fatigue_level *= decay;
+    /* Improve sleep quality effect during training */
+    pl->sleep_quality += 0.005f * progress;
+    if (pl->sleep_quality > 1.0f) pl->sleep_quality = 1.0f;
+    /* Track confidence improvement */
+    pl->total_confidence += (double)(0.5f + 0.5f * progress);
+    return 0;
+}
+
+int parietal_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "parietal_training_end: NULL argument");
+        return -1;
+    }
+    parietal_heartbeat_instance(NULL, "parietal_training_end", 1.0f);
+    parietal_lobe_t* pl = (parietal_lobe_t*)instance;
+    float avg_confidence = (pl->total_requests > 0)
+        ? (float)(pl->total_confidence / (double)pl->total_requests)
+        : 0.0f;
+    float failure_rate = (pl->total_requests > 0)
+        ? (float)pl->failed_requests / (float)pl->total_requests
+        : 0.0f;
+    NIMCP_LOGGING_INFO("Parietal lobe training end: %lu requests, %lu failures (%.2f%%), "
+                       "avg_confidence=%.4f, %lu nn_activations",
+                       (unsigned long)pl->total_requests,
+                       (unsigned long)pl->failed_requests,
+                       failure_rate * 100.0f,
+                       avg_confidence,
+                       (unsigned long)pl->neural_network_activations);
+    return 0;
 }

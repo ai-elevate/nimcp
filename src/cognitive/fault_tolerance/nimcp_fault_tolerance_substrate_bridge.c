@@ -46,6 +46,18 @@ static inline void fault_tolerance_substrate_bridge_heartbeat(const char* operat
     }
 }
 
+/** @brief Send heartbeat from fault_tolerance_substrate_bridge module (instance-level) */
+static inline void fault_tolerance_substrate_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_fault_tolerance_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_fault_tolerance_substrate_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_fault_tolerance_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 struct fault_tolerance_substrate_bridge {
     bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
@@ -56,6 +68,9 @@ struct fault_tolerance_substrate_bridge {
     bio_router_t* router;
     bool bio_async_connected;
     uint64_t update_count;
+
+    /* Phase 8: Instance health agent */
+    nimcp_health_agent_t* health_agent;         /**< Health agent (Phase 8) */
 };
 
 fault_tolerance_substrate_config_t fault_tolerance_substrate_default_config(void) {
@@ -90,7 +105,7 @@ fault_tolerance_substrate_bridge_t* fault_tolerance_substrate_bridge_create(void
     fault_tolerance_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(fault_tolerance_substrate_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -139,7 +154,12 @@ void fault_tolerance_substrate_bridge_destroy(fault_tolerance_substrate_bridge_t
 }
 
 int fault_tolerance_substrate_bridge_update(fault_tolerance_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->substrate) return -1;
+    if (!bridge || !bridge->substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "fault_tolerance_substrate_bridge_update: NULL argument "
+                              "(bridge=%p)", (const void*)bridge);
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fault_tolerance_substrate_bridge_heartbeat("fault_tolera_update", 0.0f);
@@ -183,7 +203,11 @@ int fault_tolerance_substrate_bridge_update(fault_tolerance_substrate_bridge_t* 
 }
 
 int fault_tolerance_substrate_bridge_get_effects(const fault_tolerance_substrate_bridge_t* bridge, fault_tolerance_substrate_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "fault_tolerance_substrate_bridge_get_effects: NULL argument");
+        return -1;
+    }
     *effects = bridge->effects;
     /* Phase 8: Heartbeat at operation start */
     fault_tolerance_substrate_bridge_heartbeat("fault_tolera_get_effects", 0.0f);
@@ -193,7 +217,11 @@ int fault_tolerance_substrate_bridge_get_effects(const fault_tolerance_substrate
 }
 
 int fault_tolerance_substrate_bridge_apply_effects(fault_tolerance_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "fault_tolerance_substrate_bridge_apply_effects: NULL bridge");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     fault_tolerance_substrate_bridge_heartbeat("fault_tolera_apply_effects", 0.0f);
 
@@ -202,7 +230,11 @@ int fault_tolerance_substrate_bridge_apply_effects(fault_tolerance_substrate_bri
 }
 
 int fault_tolerance_substrate_bridge_register_bio_async(fault_tolerance_substrate_bridge_t* bridge, bio_router_t* router) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "fault_tolerance_substrate_bridge_register_bio_async: NULL bridge");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     fault_tolerance_substrate_bridge_heartbeat("fault_tolera_register_bio_async", 0.0f);
 
@@ -247,4 +279,69 @@ int fault_tolerance_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void fault_tolerance_substrate_bridge_set_instance_health_agent(fault_tolerance_substrate_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) {
+        struct fault_tolerance_substrate_bridge* ctx = (struct fault_tolerance_substrate_bridge*)bridge;
+        ctx->health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Functions (FULL implementation)
+ * ============================================================================ */
+int fault_tolerance_substrate_bridge_training_begin(fault_tolerance_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "fault_tolerance_substrate_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    struct fault_tolerance_substrate_bridge* ctx = (struct fault_tolerance_substrate_bridge*)bridge;
+    fault_tolerance_substrate_bridge_heartbeat_instance(ctx->health_agent, "fault_tolera_training_begin", 0.0f);
+    ctx->update_count = 0;
+    ctx->effects.detection_sensitivity = 1.0f;
+    ctx->effects.recovery_speed = 1.0f;
+    ctx->effects.redundancy_capacity = 1.0f;
+    ctx->effects.monitoring_depth = 1.0f;
+    ctx->effects.overall_capacity = 1.0f;
+    NIMCP_LOGGING_INFO("%s training begin: counters reset", "fault_tolerance_substrate_bridge");
+    return 0;
+}
+
+int fault_tolerance_substrate_bridge_training_step(fault_tolerance_substrate_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "fault_tolerance_substrate_bridge_training_step: NULL argument");
+        return -1;
+    }
+    struct fault_tolerance_substrate_bridge* ctx = (struct fault_tolerance_substrate_bridge*)bridge;
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    fault_tolerance_substrate_bridge_heartbeat_instance(ctx->health_agent, "fault_tolera_training_step", progress);
+    ctx->update_count++;
+    /* Modulate effects capacity with training progress */
+    ctx->effects.overall_capacity = 0.5f + 0.5f * progress;
+    ctx->effects.detection_sensitivity = 0.5f + 0.5f * progress;
+    ctx->effects.recovery_speed = 0.5f + 0.5f * progress;
+    return 0;
+}
+
+int fault_tolerance_substrate_bridge_training_end(fault_tolerance_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "fault_tolerance_substrate_bridge_training_end: NULL argument");
+        return -1;
+    }
+    struct fault_tolerance_substrate_bridge* ctx = (struct fault_tolerance_substrate_bridge*)bridge;
+    fault_tolerance_substrate_bridge_heartbeat_instance(ctx->health_agent, "fault_tolera_training_end", 1.0f);
+    ctx->effects.overall_capacity = 1.0f;
+    ctx->effects.detection_sensitivity = 1.0f;
+    ctx->effects.recovery_speed = 1.0f;
+    NIMCP_LOGGING_INFO("%s training end: updates=%lu",
+                       "fault_tolerance_substrate_bridge", (unsigned long)ctx->update_count);
+    return 0;
 }

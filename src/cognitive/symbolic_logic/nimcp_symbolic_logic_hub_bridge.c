@@ -46,6 +46,18 @@ static inline void symbolic_logic_hub_bridge_heartbeat(const char* operation, fl
     }
 }
 
+/** @brief Send heartbeat from symbolic_logic_hub_bridge module (instance-level) */
+static inline void symbolic_logic_hub_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_symbolic_logic_hub_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_symbolic_logic_hub_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_symbolic_logic_hub_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* ============================================================================
  * Event Callback Declarations
@@ -102,7 +114,7 @@ symbolic_logic_hub_bridge_t* symbolic_logic_hub_bridge_create(
     symbolic_logic_hub_bridge_t* bridge = nimcp_malloc(sizeof(symbolic_logic_hub_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -585,5 +597,48 @@ static int on_learning_complete(const cognitive_event_data_t* event, void* user_
     nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Learning complete event received");
+    return 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void symbolic_logic_hub_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_symbolic_logic_hub_bridge_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training stubs
+ * ============================================================================ */
+int symbolic_logic_hub_bridge_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "symbolic_logic_hub_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    symbolic_logic_hub_bridge_heartbeat_instance(NULL, "symbolic_logic_hub_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int symbolic_logic_hub_bridge_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "symbolic_logic_hub_bridge_training_end: NULL argument");
+        return -1;
+    }
+    symbolic_logic_hub_bridge_heartbeat_instance(NULL, "symbolic_logic_hub_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int symbolic_logic_hub_bridge_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "symbolic_logic_hub_bridge_training_step: NULL argument");
+        return -1;
+    }
+    symbolic_logic_hub_bridge_heartbeat_instance(NULL, "symbolic_logic_hub_bridge_training_step", progress);
     return 0;
 }

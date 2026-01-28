@@ -240,7 +240,7 @@ static binding_entry_t* add_binding_entry(
     /* Create new entry */
     binding_entry_t* entry = nimcp_malloc(sizeof(binding_entry_t));
     if (!entry) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate entry");
 
         return NULL;
     }
@@ -620,7 +620,7 @@ mirror_language_bridge_t* mirror_language_bridge_create(
 
     mirror_language_bridge_t* bridge = nimcp_malloc(sizeof(mirror_language_bridge_t));
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
     }
@@ -1679,19 +1679,31 @@ void mirror_language_bridge_set_instance_health_agent(
 //=============================================================================
 
 int mirror_language_bridge_training_begin(mirror_language_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_language_bridge_training_begin: NULL argument");
+        return -1;
+    }
     mirror_language_bridge_heartbeat_instance(bridge->health_agent, "mirror_language_bridge_training_begin", 0.0f);
     return 0;
 }
 
 int mirror_language_bridge_training_end(mirror_language_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_language_bridge_training_end: NULL argument");
+        return -1;
+    }
     mirror_language_bridge_heartbeat_instance(bridge->health_agent, "mirror_language_bridge_training_end", 1.0f);
     return 0;
 }
 
 int mirror_language_bridge_training_step(mirror_language_bridge_t* bridge, float progress) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_language_bridge_training_step: NULL argument");
+        return -1;
+    }
 
     /* Safety gates: ethics + LGSS pre-check */
     BRIDGE_ETHICS_GATE(bridge, "mirror_language_bridge_training_step");

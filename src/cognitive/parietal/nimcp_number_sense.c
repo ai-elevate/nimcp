@@ -9,6 +9,7 @@
 #include "cognitive/parietal/nimcp_number_sense.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
@@ -40,6 +41,18 @@ void number_sense_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void number_sense_heartbeat(const char* operation, float progress) {
     if (g_number_sense_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_number_sense_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from number_sense module (instance-level) */
+static inline void number_sense_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_number_sense_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_number_sense_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_number_sense_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -247,7 +260,7 @@ number_sense_t* number_sense_create_custom(const number_sense_config_t* config) 
     number_sense_t* ns = calloc(1, sizeof(number_sense_t));
     if (!ns) {
         set_error("Failed to allocate number sense");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ns is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate ns");
 
         return NULL;
     }
@@ -917,4 +930,88 @@ int number_sense_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Number_Sense");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void number_sense_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_number_sense_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Functions
+ * ============================================================================ */
+
+int number_sense_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "number_sense_training_begin: NULL argument");
+        return -1;
+    }
+    number_sense_heartbeat_instance(NULL, "number_sense_training_begin", 0.0f);
+    number_sense_t* ns = (number_sense_t*)instance;
+    ns->estimates_performed = 0;
+    ns->subitizing_count = 0;
+    ns->comparisons_performed = 0;
+    ns->arithmetic_operations = 0;
+    ns->total_estimation_error = 0.0;
+    ns->total_processing_time_us = 0.0;
+    ns->effective_weber_fraction = ns->config.weber_fraction;
+    NIMCP_LOGGING_INFO("Number sense training begin: counters reset, weber_fraction=%.4f",
+                       ns->config.weber_fraction);
+    return 0;
+}
+
+int number_sense_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "number_sense_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    number_sense_heartbeat_instance(NULL, "number_sense_training_step", progress);
+    number_sense_t* ns = (number_sense_t*)instance;
+    ns->estimates_performed++;
+    /* Sharpen Weber fraction with training (better discrimination) */
+    float weber_decay = 1.0f - 0.2f * progress;
+    if (weber_decay < 0.6f) weber_decay = 0.6f;
+    ns->effective_weber_fraction = ns->config.weber_fraction * weber_decay;
+    if (ns->effective_weber_fraction < 0.05f)
+        ns->effective_weber_fraction = 0.05f;
+    /* Reduce estimation noise with training experience */
+    ns->config.estimation_noise *= (1.0f - 0.05f * progress);
+    if (ns->config.estimation_noise < 0.01f)
+        ns->config.estimation_noise = 0.01f;
+    /* Improve sleep deprivation resilience */
+    ns->config.sleep_deprivation_factor *= (1.0f - 0.03f * progress);
+    if (ns->config.sleep_deprivation_factor < 0.1f)
+        ns->config.sleep_deprivation_factor = 0.1f;
+    return 0;
+}
+
+int number_sense_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "number_sense_training_end: NULL argument");
+        return -1;
+    }
+    number_sense_heartbeat_instance(NULL, "number_sense_training_end", 1.0f);
+    number_sense_t* ns = (number_sense_t*)instance;
+    float avg_error = (ns->estimates_performed > 0)
+        ? (float)(ns->total_estimation_error / (double)ns->estimates_performed)
+        : 0.0f;
+    float avg_time = (ns->estimates_performed > 0)
+        ? (float)(ns->total_processing_time_us / (double)ns->estimates_performed)
+        : 0.0f;
+    NIMCP_LOGGING_INFO("Number sense training end: %lu estimates, avg_error=%.4f, "
+                       "avg_time=%.2f us, weber=%.4f",
+                       (unsigned long)ns->estimates_performed, avg_error,
+                       avg_time, ns->effective_weber_fraction);
+    return 0;
 }

@@ -55,6 +55,18 @@ static inline void mirror_resonance_heartbeat(const char* operation, float progr
     }
 }
 
+/** @brief Send heartbeat from mirror_resonance module (instance-level) */
+static inline void mirror_resonance_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_mirror_resonance_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_mirror_resonance_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_mirror_resonance_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Internal Constants
@@ -257,7 +269,7 @@ motor_resonance_t motor_resonance_create(const motor_resonance_config_t* config,
     motor_resonance_t resonance = (motor_resonance_t)nimcp_calloc(1, sizeof(struct motor_resonance_system));
     if (!resonance) {
         LOG_ERROR("Failed to allocate motor resonance system");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "resonance is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate resonance");
 
         return NULL;
     }
@@ -1001,4 +1013,47 @@ int motor_resonance_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Motor_Resonance");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void mirror_resonance_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_mirror_resonance_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training stubs
+ * ============================================================================ */
+int mirror_resonance_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_resonance_training_begin: NULL argument");
+        return -1;
+    }
+    mirror_resonance_heartbeat_instance(NULL, "mirror_resonance_training_begin", 0.0f);
+    return 0;
+}
+
+int mirror_resonance_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_resonance_training_end: NULL argument");
+        return -1;
+    }
+    mirror_resonance_heartbeat_instance(NULL, "mirror_resonance_training_end", 1.0f);
+    return 0;
+}
+
+int mirror_resonance_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_resonance_training_step: NULL argument");
+        return -1;
+    }
+    mirror_resonance_heartbeat_instance(NULL, "mirror_resonance_training_step", progress);
+    return 0;
 }

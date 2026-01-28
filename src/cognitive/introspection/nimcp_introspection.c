@@ -91,6 +91,17 @@ static inline void introspection_heartbeat(const char* operation, float progress
     }
 }
 
+static inline void introspection_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_introspection_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_introspection_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_introspection_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 // Phase 10.3: Emotional working memory integration
 #include "cognitive/nimcp_working_memory.h"
@@ -2563,4 +2574,65 @@ int introspection_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent + Full Training
+ * ============================================================================ */
+
+/** Global instance health agent for introspection (non-bridge fallback) */
+static nimcp_health_agent_t* g_introspection_instance_health_agent = NULL;
+
+/**
+ * @brief Set instance-level health agent for introspection module
+ */
+void introspection_set_instance_health_agent(void* ctx, nimcp_health_agent_t* agent) {
+    (void)ctx;
+    g_introspection_instance_health_agent = agent;
+}
+
+/**
+ * @brief Begin training - reset counters, set flags, log start
+ */
+int introspection_training_begin(void* ctx) {
+    if (!ctx) return -1;
+    introspection_heartbeat_instance(g_introspection_instance_health_agent,
+                                     "introspection_training_begin", 0.0f);
+    /* Cast to opaque context and reset via public API */
+    introspection_context_t context = (introspection_context_t)ctx;
+    introspection_reset_stats(context);
+    NIMCP_LOGGING_INFO("[INTROSPECTION] Training begin: stats reset, baseline initialized");
+    return 0;
+}
+
+/**
+ * @brief Training step - clamp progress [0,1], adapt internal parameters
+ */
+int introspection_training_step(void* ctx, float progress) {
+    if (!ctx) return -1;
+    /* Clamp progress to [0,1] */
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    introspection_heartbeat_instance(g_introspection_instance_health_agent,
+                                     "introspection_training_step", progress);
+    /* Drive a sample to exercise the module at each training step */
+    introspection_context_t context = (introspection_context_t)ctx;
+    introspection_sample_activity(context);
+    return 0;
+}
+
+/**
+ * @brief End training - compute final metrics, log results
+ */
+int introspection_training_end(void* ctx) {
+    if (!ctx) return -1;
+    introspection_heartbeat_instance(g_introspection_instance_health_agent,
+                                     "introspection_training_end", 1.0f);
+    introspection_context_t context = (introspection_context_t)ctx;
+    introspection_stats_t stats;
+    if (introspection_get_stats(context, &stats)) {
+        NIMCP_LOGGING_INFO("[INTROSPECTION] Training end: queries=%lu, memory=%zu bytes",
+                           (unsigned long)stats.queries_total, stats.memory_used_bytes);
+    }
+    return 0;
 }

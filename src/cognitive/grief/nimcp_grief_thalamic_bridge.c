@@ -99,7 +99,7 @@ grief_thalamic_bridge_t* grief_thalamic_bridge_create(void* grief, thalamic_rout
     grief_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(grief_thalamic_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -358,7 +358,12 @@ int grief_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
  * ============================================================================ */
 
 void grief_thalamic_bridge_set_instance_health_agent(grief_thalamic_bridge_t* bridge, nimcp_health_agent_t* agent) {
-    if (bridge) { bridge->health_agent = agent; }
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "grief_thalamic_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
 }
 
 /* ============================================================================
@@ -366,19 +371,31 @@ void grief_thalamic_bridge_set_instance_health_agent(grief_thalamic_bridge_t* br
  * ============================================================================ */
 
 int grief_thalamic_bridge_training_begin(grief_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "grief_thalamic_bridge_training_begin: NULL argument");
+        return -1;
+    }
     grief_thalamic_bridge_heartbeat_instance(bridge->health_agent, "grief_thalamic_bridge_training_begin", 0.0f);
     return 0;
 }
 
 int grief_thalamic_bridge_training_end(grief_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "grief_thalamic_bridge_training_end: NULL argument");
+        return -1;
+    }
     grief_thalamic_bridge_heartbeat_instance(bridge->health_agent, "grief_thalamic_bridge_training_end", 1.0f);
     return 0;
 }
 
 int grief_thalamic_bridge_training_step(grief_thalamic_bridge_t* bridge, float progress) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "grief_thalamic_bridge_training_step: NULL argument");
+        return -1;
+    }
     grief_thalamic_bridge_heartbeat_instance(bridge->health_agent, "grief_thalamic_bridge_training_step", progress);
     return 0;
 }

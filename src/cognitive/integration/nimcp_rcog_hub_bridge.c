@@ -56,6 +56,19 @@ static inline void rcog_hub_bridge_heartbeat(const char* operation, float progre
     }
 }
 
+/** @brief Send heartbeat from rcog_hub_bridge module (instance-level) */
+static inline void rcog_hub_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_rcog_hub_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_rcog_hub_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_rcog_hub_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 #define LOG_MODULE "RCOG_HUB_BRIDGE"
 
 
@@ -74,6 +87,7 @@ static inline void rcog_hub_bridge_heartbeat(const char* operation, float progre
  */
 struct rcog_hub_bridge {
     bridge_base_t base;                      /**< MUST be first: base bridge infrastructure */
+    nimcp_health_agent_t* health_agent;  /**< Phase 8: instance-level health agent */
     rcog_hub_bridge_config_t config;         /**< Bridge configuration */
     cognitive_integration_hub_t hub;          /**< Connected cognitive hub */
     rcog_engine_t* engine;                    /**< Connected rcog engine */
@@ -400,7 +414,7 @@ rcog_hub_bridge_t* rcog_hub_bridge_create(
     rcog_hub_bridge_t* bridge = (rcog_hub_bridge_t*)nimcp_calloc(
         1, sizeof(rcog_hub_bridge_t));
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
     }
@@ -1075,5 +1089,54 @@ int rcog_hub_bridge_reset_stats(rcog_hub_bridge_t* bridge) {
     memset(&bridge->stats, 0, sizeof(rcog_hub_bridge_stats_t));
     nimcp_mutex_unlock(bridge->base.mutex);
 
+    return 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void rcog_hub_bridge_set_instance_health_agent(rcog_hub_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "rcog_hub_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int rcog_hub_bridge_training_begin(rcog_hub_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "rcog_hub_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    rcog_hub_bridge_heartbeat_instance(bridge->health_agent, "rcog_hub_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int rcog_hub_bridge_training_end(rcog_hub_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "rcog_hub_bridge_training_end: NULL argument");
+        return -1;
+    }
+    rcog_hub_bridge_heartbeat_instance(bridge->health_agent, "rcog_hub_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int rcog_hub_bridge_training_step(rcog_hub_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "rcog_hub_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    rcog_hub_bridge_heartbeat_instance(bridge->health_agent, "rcog_hub_bridge_training_step", progress);
     return 0;
 }

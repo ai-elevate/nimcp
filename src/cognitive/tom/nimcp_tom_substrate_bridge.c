@@ -52,6 +52,19 @@ static inline void tom_substrate_bridge_heartbeat(const char* operation, float p
     }
 }
 
+/** @brief Send heartbeat from tom_substrate_bridge module (instance-level) */
+static inline void tom_substrate_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_tom_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_tom_substrate_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_tom_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 
 /* ============================================================================
  * Helper Functions (using shared nimcp_clamp_f from nimcp_metabolic_modulation.h)
@@ -358,7 +371,7 @@ tom_substrate_bridge_t* tom_substrate_bridge_create(
     );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate ToM substrate bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
     }
@@ -800,4 +813,51 @@ int tom_substrate_bridge_get_effects(const tom_substrate_bridge_t* bridge,
 int tom_substrate_bridge_register_bio_async(tom_substrate_bridge_t* bridge, bio_router_t* router) {
     (void)router;  /* Router is global in new API */
     return tom_substrate_connect_bio_async(bridge);
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void tom_substrate_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_tom_substrate_bridge_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int tom_substrate_bridge_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "tom_substrate_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    tom_substrate_bridge_heartbeat_instance(NULL, "tom_substrate_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int tom_substrate_bridge_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "tom_substrate_bridge_training_end: NULL argument");
+        return -1;
+    }
+    tom_substrate_bridge_heartbeat_instance(NULL, "tom_substrate_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int tom_substrate_bridge_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "tom_substrate_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    tom_substrate_bridge_heartbeat_instance(NULL, "tom_substrate_bridge_training_step", progress);
+    return 0;
 }

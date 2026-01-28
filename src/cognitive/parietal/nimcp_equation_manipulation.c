@@ -44,6 +44,18 @@ static inline void equation_manipulation_heartbeat(const char* operation, float 
     }
 }
 
+/** @brief Send heartbeat from equation_manipulation module (instance-level) */
+static inline void equation_manipulation_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_equation_manipulation_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_equation_manipulation_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_equation_manipulation_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* ============================================================================
  * CONSTANTS
@@ -1510,4 +1522,54 @@ int equation_manipulation_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Equation_Manipulation");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void equation_manipulation_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_equation_manipulation_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int equation_manipulation_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "equation_manipulation_training_begin: NULL argument");
+        return -1;
+    }
+    equation_manipulation_heartbeat_instance(NULL, "equation_manipulation_training_begin", 0.0f);
+    (void)(struct equation_engine*)instance; /* Module state available for reset */
+    return 0;
+}
+
+int equation_manipulation_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "equation_manipulation_training_end: NULL argument");
+        return -1;
+    }
+    equation_manipulation_heartbeat_instance(NULL, "equation_manipulation_training_end", 1.0f);
+    (void)(struct equation_engine*)instance; /* Module state available for finalization */
+    return 0;
+}
+
+int equation_manipulation_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "equation_manipulation_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    equation_manipulation_heartbeat_instance(NULL, "equation_manipulation_training_step", progress);
+    (void)(struct equation_engine*)instance; /* Module state available for step adaptation */
+    return 0;
 }

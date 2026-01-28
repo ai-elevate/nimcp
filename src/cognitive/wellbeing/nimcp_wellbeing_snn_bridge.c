@@ -49,6 +49,19 @@ static inline void wellbeing_snn_bridge_heartbeat(const char* operation, float p
     }
 }
 
+/** @brief Send heartbeat from wellbeing_snn_bridge module (instance-level) */
+static inline void wellbeing_snn_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_wellbeing_snn_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_wellbeing_snn_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_wellbeing_snn_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 #define LOG_MODULE "WELLBEING_SNN_BRIDGE"
 
 
@@ -58,6 +71,7 @@ static inline void wellbeing_snn_bridge_heartbeat(const char* operation, float p
 
 struct wellbeing_snn_bridge {
     bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+    nimcp_health_agent_t* health_agent;  /**< Phase 8: instance-level health agent */
     wellbeing_snn_config_t config;
     snn_network_t* snn;
 
@@ -188,7 +202,7 @@ wellbeing_snn_bridge_t* wellbeing_snn_create(const wellbeing_snn_config_t* confi
     wellbeing_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(wellbeing_snn_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -1061,4 +1075,53 @@ bool wellbeing_snn_is_bio_async_connected(wellbeing_snn_bridge_t* bridge) {
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void wellbeing_snn_bridge_set_instance_health_agent(wellbeing_snn_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "wellbeing_snn_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int wellbeing_snn_bridge_training_begin(wellbeing_snn_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "wellbeing_snn_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    wellbeing_snn_bridge_heartbeat_instance(bridge->health_agent, "wellbeing_snn_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int wellbeing_snn_bridge_training_end(wellbeing_snn_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "wellbeing_snn_bridge_training_end: NULL argument");
+        return -1;
+    }
+    wellbeing_snn_bridge_heartbeat_instance(bridge->health_agent, "wellbeing_snn_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int wellbeing_snn_bridge_training_step(wellbeing_snn_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "wellbeing_snn_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    wellbeing_snn_bridge_heartbeat_instance(bridge->health_agent, "wellbeing_snn_bridge_training_step", progress);
+    return 0;
 }

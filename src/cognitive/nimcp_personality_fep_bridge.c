@@ -45,6 +45,19 @@ static inline void personality_fep_bridge_heartbeat(const char* operation, float
     }
 }
 
+/** @brief Send heartbeat from personality_fep_bridge module (instance-level) */
+static inline void personality_fep_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_personality_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_personality_fep_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_personality_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 
 int personality_fep_bridge_default_config(personality_fep_config_t* config) {
     /* Phase 8: Heartbeat at operation start */
@@ -68,7 +81,7 @@ personality_fep_bridge_t* personality_fep_bridge_create(const personality_fep_co
     personality_fep_bridge_t* bridge = nimcp_malloc(sizeof(personality_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate personality FEP bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
     }
@@ -276,4 +289,51 @@ int personality_fep_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void personality_fep_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_personality_fep_bridge_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int personality_fep_bridge_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "personality_fep_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    personality_fep_bridge_heartbeat_instance(NULL, "personality_fep_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int personality_fep_bridge_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "personality_fep_bridge_training_end: NULL argument");
+        return -1;
+    }
+    personality_fep_bridge_heartbeat_instance(NULL, "personality_fep_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int personality_fep_bridge_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "personality_fep_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    personality_fep_bridge_heartbeat_instance(NULL, "personality_fep_bridge_training_step", progress);
+    return 0;
 }

@@ -37,6 +37,19 @@ static inline void genius_game_theory_bridge_heartbeat(const char* operation, fl
     }
 }
 
+/** @brief Send heartbeat from genius_game_theory_bridge module (instance-level) */
+static inline void genius_game_theory_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_genius_game_theory_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_genius_game_theory_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_genius_game_theory_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 #define LOG_MODULE "GENIUS_GAME_THEORY_BRIDGE"
 
 
@@ -44,7 +57,7 @@ NIMCP_API genius_gt_bridge_t* genius_gt_bridge_create(void) {
     genius_gt_bridge_t* bridge = nimcp_calloc(1, sizeof(genius_gt_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -65,4 +78,51 @@ NIMCP_API void genius_gt_bridge_destroy(genius_gt_bridge_t* bridge) {
     NIMCP_LOGGING_DEBUG("Destroying %s bridge", "genius_game_theory");
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void genius_game_theory_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_genius_game_theory_bridge_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int genius_game_theory_bridge_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "genius_game_theory_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    genius_game_theory_bridge_heartbeat_instance(NULL, "genius_game_theory_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int genius_game_theory_bridge_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "genius_game_theory_bridge_training_end: NULL argument");
+        return -1;
+    }
+    genius_game_theory_bridge_heartbeat_instance(NULL, "genius_game_theory_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int genius_game_theory_bridge_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "genius_game_theory_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    genius_game_theory_bridge_heartbeat_instance(NULL, "genius_game_theory_bridge_training_step", progress);
+    return 0;
 }

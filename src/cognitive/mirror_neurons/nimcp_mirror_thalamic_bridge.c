@@ -100,7 +100,7 @@ mirror_thalamic_bridge_t* mirror_thalamic_bridge_create(void* mirror, thalamic_r
     if (!bridge) {
         NIMCP_LOGGING_WARN("Mirror thalamic bridge: allocation failed (%zu bytes)",
                            sizeof(mirror_thalamic_bridge_t));
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
         return NULL;
     }
     if (bridge_base_init(&bridge->base, 0, "mirror_thalamic") != 0) { nimcp_free(bridge); return NULL; }
@@ -318,4 +318,36 @@ void mirror_thalamic_bridge_on_training_epoch(mirror_thalamic_bridge_t* bridge, 
 void mirror_thalamic_bridge_on_cognitive_event(mirror_thalamic_bridge_t* bridge, uint32_t event_type) {
     (void)bridge; (void)event_type;
     /* TODO: Wire to cognitive event bus */
+}
+
+int mirror_thalamic_bridge_training_begin(void* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_thalamic_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    mirror_thalamic_bridge_heartbeat_instance(NULL, "mirror_thalamic_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int mirror_thalamic_bridge_training_end(void* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_thalamic_bridge_training_end: NULL argument");
+        return -1;
+    }
+    mirror_thalamic_bridge_heartbeat_instance(NULL, "mirror_thalamic_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int mirror_thalamic_bridge_training_step(void* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_thalamic_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    mirror_thalamic_bridge_heartbeat_instance(NULL, "mirror_thalamic_bridge_training_step", progress);
+    return 0;
 }

@@ -684,3 +684,27 @@ set_tests_properties(integration_heartbeat_B26_emotion_cluster_bridges PROPERTIE
     LABELS "integration;fault_tolerance;heartbeat;B26;emotion_cluster_bridges"
     TIMEOUT 180
 )
+
+# B25nb: Memory/Core non-bridge module heartbeat/utility integration tests
+add_executable(integration_heartbeat_B25nb_memory_core_nonbridge
+    test_memory_core_nonbridge_B25nb_integration.cpp
+)
+target_link_libraries(integration_heartbeat_B25nb_memory_core_nonbridge
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        pthread
+)
+
+target_include_directories(integration_heartbeat_B25nb_memory_core_nonbridge
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME integration_heartbeat_B25nb_memory_core_nonbridge
+         COMMAND integration_heartbeat_B25nb_memory_core_nonbridge)
+set_tests_properties(integration_heartbeat_B25nb_memory_core_nonbridge PROPERTIES
+    LABELS "integration;fault_tolerance;heartbeat;B25nb;memory_core_nonbridge"
+    TIMEOUT 180
+)

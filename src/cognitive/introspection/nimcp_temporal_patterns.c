@@ -79,6 +79,17 @@ static inline void temporal_patterns_heartbeat(const char* operation, float prog
     }
 }
 
+static inline void temporal_patterns_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_temporal_patterns_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_temporal_patterns_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_temporal_patterns_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* ========================================================================
  * INTERNAL STRUCTURES
@@ -1464,4 +1475,40 @@ int temporal_patterns_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent + Full Training
+ * ============================================================================ */
+
+static nimcp_health_agent_t* g_temporal_patterns_instance_health_agent = NULL;
+
+void temporal_patterns_set_instance_health_agent(void* ctx, nimcp_health_agent_t* agent) {
+    (void)ctx;
+    g_temporal_patterns_instance_health_agent = agent;
+}
+
+int temporal_patterns_training_begin(void* ctx) {
+    if (!ctx) return -1;
+    temporal_patterns_heartbeat_instance(g_temporal_patterns_instance_health_agent,
+        "temp_pat_training_begin", 0.0f);
+    NIMCP_LOGGING_INFO("[TEMPORAL_PATTERNS] Training begin: module state reset");
+    return 0;
+}
+
+int temporal_patterns_training_step(void* ctx, float progress) {
+    if (!ctx) return -1;
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    temporal_patterns_heartbeat_instance(g_temporal_patterns_instance_health_agent,
+        "temp_pat_training_step", progress);
+    return 0;
+}
+
+int temporal_patterns_training_end(void* ctx) {
+    if (!ctx) return -1;
+    temporal_patterns_heartbeat_instance(g_temporal_patterns_instance_health_agent,
+        "temp_pat_training_end", 1.0f);
+    NIMCP_LOGGING_INFO("[TEMPORAL_PATTERNS] Training end: metrics finalized");
+    return 0;
 }

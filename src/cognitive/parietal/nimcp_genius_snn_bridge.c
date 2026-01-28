@@ -225,7 +225,7 @@ genius_snn_bridge_t* genius_snn_create(const genius_snn_config_t* config) {
 
     genius_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(genius_snn_bridge_t));
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge allocation failed");
         return NULL;
     }
 
@@ -1128,19 +1128,31 @@ void genius_snn_bridge_set_instance_health_agent(
 //=============================================================================
 
 int genius_snn_bridge_training_begin(genius_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "genius_snn_bridge_training_begin: NULL argument");
+        return -1;
+    }
     genius_snn_bridge_heartbeat_instance(bridge->health_agent, "genius_snn_bridge_training_begin", 0.0f);
     return 0;
 }
 
 int genius_snn_bridge_training_end(genius_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "genius_snn_bridge_training_end: NULL argument");
+        return -1;
+    }
     genius_snn_bridge_heartbeat_instance(bridge->health_agent, "genius_snn_bridge_training_end", 1.0f);
     return 0;
 }
 
 int genius_snn_bridge_training_step(genius_snn_bridge_t* bridge, float progress) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "genius_snn_bridge_training_step: NULL argument");
+        return -1;
+    }
 
     /* Safety gates: ethics + LGSS pre-check */
     BRIDGE_ETHICS_GATE(bridge, "genius_snn_bridge_training_step");

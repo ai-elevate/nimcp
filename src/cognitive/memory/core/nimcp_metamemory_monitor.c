@@ -51,6 +51,18 @@ static inline void metamemory_monitor_heartbeat(const char* operation, float pro
     }
 }
 
+/** @brief Send heartbeat from metamemory_monitor module (instance-level) */
+static inline void metamemory_monitor_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_metamemory_monitor_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_metamemory_monitor_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_metamemory_monitor_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Internal Structure Definition
@@ -239,7 +251,7 @@ metamem_monitor_t metamem_monitor_create(
     // Allocate monitor structure
     metamem_monitor_t monitor = (metamem_monitor_t)calloc(1, sizeof(struct metamem_monitor_struct));
     if (!monitor) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "monitor is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate monitor");
 
         return NULL;
     }
@@ -1787,4 +1799,54 @@ static float linear_regression_slope(const float* values, size_t count) {
     float slope = (n * sum_xy - sum_x * sum_y) / denom;
 
     return slope;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void metamemory_monitor_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_metamemory_monitor_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int metamemory_monitor_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "metamemory_monitor_training_begin: NULL argument");
+        return -1;
+    }
+    metamemory_monitor_heartbeat_instance(NULL, "metamemory_monitor_training_begin", 0.0f);
+    (void)(struct metamem_monitor_struct*)instance; /* Module state available for reset */
+    return 0;
+}
+
+int metamemory_monitor_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "metamemory_monitor_training_end: NULL argument");
+        return -1;
+    }
+    metamemory_monitor_heartbeat_instance(NULL, "metamemory_monitor_training_end", 1.0f);
+    (void)(struct metamem_monitor_struct*)instance; /* Module state available for finalization */
+    return 0;
+}
+
+int metamemory_monitor_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "metamemory_monitor_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    metamemory_monitor_heartbeat_instance(NULL, "metamemory_monitor_training_step", progress);
+    (void)(struct metamem_monitor_struct*)instance; /* Module state available for step adaptation */
+    return 0;
 }

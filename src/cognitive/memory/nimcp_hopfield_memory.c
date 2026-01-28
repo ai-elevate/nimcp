@@ -41,6 +41,19 @@ static inline void hopfield_memory_heartbeat(const char* operation, float progre
     }
 }
 
+/** @brief Send heartbeat from hopfield_memory module (instance-level) */
+static inline void hopfield_memory_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_hopfield_memory_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_hopfield_memory_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_hopfield_memory_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 
 /* Logging macros - wrap LOG_* for consistent usage */
 #define NIMCP_LOG_INFO(...)  LOG_INFO(__VA_ARGS__)
@@ -1112,7 +1125,7 @@ hopfield_retrieval_result_t* hopfield_result_create(uint32_t dim) {
 
     hopfield_retrieval_result_t* result = nimcp_calloc(1, sizeof(hopfield_retrieval_result_t));
     if (!result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate result");
 
         return NULL;
     }
@@ -1148,7 +1161,7 @@ hopfield_batch_result_t* hopfield_batch_result_create(uint32_t num_queries,
 
     hopfield_batch_result_t* result = nimcp_calloc(1, sizeof(hopfield_batch_result_t));
     if (!result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate result");
 
         return NULL;
     }
@@ -1233,4 +1246,51 @@ const char* hopfield_store_mode_to_string(hopfield_store_mode_t mode) {
         case HOPFIELD_STORE_MERGE: return "MERGE";
         default: return "UNKNOWN";
     }
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void hopfield_memory_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_hopfield_memory_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int hopfield_memory_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "hopfield_memory_training_begin: NULL argument");
+        return -1;
+    }
+    hopfield_memory_heartbeat_instance(NULL, "hopfield_memory_training_begin", 0.0f);
+    return 0;
+}
+
+int hopfield_memory_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "hopfield_memory_training_end: NULL argument");
+        return -1;
+    }
+    hopfield_memory_heartbeat_instance(NULL, "hopfield_memory_training_end", 1.0f);
+    return 0;
+}
+
+int hopfield_memory_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "hopfield_memory_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    hopfield_memory_heartbeat_instance(NULL, "hopfield_memory_training_step", progress);
+    return 0;
 }

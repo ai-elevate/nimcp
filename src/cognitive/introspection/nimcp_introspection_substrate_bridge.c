@@ -66,6 +66,17 @@ static inline void introspection_substrate_bridge_heartbeat(const char* operatio
     }
 }
 
+static inline void introspection_substrate_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_introspection_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_introspection_substrate_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_introspection_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* ============================================================================
  * Helper Functions
@@ -762,4 +773,65 @@ int introspection_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent + Full Training
+ * ============================================================================ */
+
+void introspection_substrate_bridge_set_instance_health_agent(
+    introspection_substrate_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+int introspection_substrate_bridge_training_begin(introspection_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "introspection_substrate_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    introspection_substrate_bridge_heartbeat_instance(bridge->health_agent,
+        "intro_sub_training_begin", 0.0f);
+    bridge->stats.update_count = 0;
+    bridge->stats.avg_atp = 0.0f;
+    bridge->effects.self_awareness_depth = 0.5f;
+    NIMCP_LOGGING_INFO("[INTRO_SUBSTRATE] Training begin: counters reset, baseline state initialized");
+    return 0;
+}
+
+int introspection_substrate_bridge_training_step(introspection_substrate_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "introspection_substrate_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    introspection_substrate_bridge_heartbeat_instance(bridge->health_agent,
+        "intro_sub_training_step", progress);
+    float lr = bridge->config.atp_sensitivity;
+    float adaptation = lr * (1.0f - progress) * 0.1f;
+    bridge->config.atp_sensitivity = lr + adaptation;
+    if (bridge->config.atp_sensitivity > 1.0f) bridge->config.atp_sensitivity = 1.0f;
+    if (bridge->config.atp_sensitivity < 0.001f) bridge->config.atp_sensitivity = 0.001f;
+    bridge->effects.self_awareness_depth = bridge->effects.self_awareness_depth * 0.99f + progress * 0.01f;
+    bridge->stats.update_count++;
+    return 0;
+}
+
+int introspection_substrate_bridge_training_end(introspection_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "introspection_substrate_bridge_training_end: NULL argument");
+        return -1;
+    }
+    introspection_substrate_bridge_heartbeat_instance(bridge->health_agent,
+        "intro_sub_training_end", 1.0f);
+    if (bridge->effects.self_awareness_depth < 0.0f) bridge->effects.self_awareness_depth = 0.0f;
+    if (bridge->effects.self_awareness_depth > 1.0f) bridge->effects.self_awareness_depth = 1.0f;
+    NIMCP_LOGGING_INFO("[INTRO_SUBSTRATE] Training end: depth=%.3f, steps=%u",
+        bridge->effects.self_awareness_depth, bridge->stats.update_count);
+    return 0;
 }

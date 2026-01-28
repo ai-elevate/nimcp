@@ -784,4 +784,32 @@ gtest_discover_tests(regression_heartbeat_B26_emotion_cluster_bridges
         TIMEOUT 180
 )
 
+# B25nb: Memory/Core non-bridge module heartbeat/utility regression tests
+add_executable(regression_heartbeat_B25nb_memory_core_nonbridge
+    test_memory_core_nonbridge_B25nb_regression.cpp
+)
+target_link_libraries(regression_heartbeat_B25nb_memory_core_nonbridge
+    PRIVATE
+        GTest::gtest
+        GTest::gtest_main
+        nimcp
+        pthread
+)
+
+target_include_directories(regression_heartbeat_B25nb_memory_core_nonbridge
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_heartbeat_B25nb_memory_core_nonbridge PRIVATE cxx_std_17)
+target_compile_definitions(regression_heartbeat_B25nb_memory_core_nonbridge PRIVATE NIMCP_TESTING)
+
+gtest_discover_tests(regression_heartbeat_B25nb_memory_core_nonbridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;fault_tolerance;heartbeat;B25nb;memory_core_nonbridge"
+        TIMEOUT 180
+)
+
 message(STATUS "Added fault tolerance regression tests")

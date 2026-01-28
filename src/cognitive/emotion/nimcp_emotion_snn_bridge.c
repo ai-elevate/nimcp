@@ -179,7 +179,7 @@ emotion_snn_bridge_t* emotion_snn_create(const emotion_snn_config_t* config) {
     emotion_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(emotion_snn_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -1059,19 +1059,31 @@ void emotion_snn_bridge_set_instance_health_agent(emotion_snn_bridge_t* bridge, 
  * Phase 8: Training stubs
  * ============================================================================ */
 int emotion_snn_bridge_training_begin(emotion_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "emotion_snn_bridge_training_begin: NULL argument");
+        return -1;
+    }
     emotion_snn_bridge_heartbeat_instance(bridge->health_agent, "emotion_snn_training_begin", 0.0f);
     return 0;
 }
 
 int emotion_snn_bridge_training_end(emotion_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "emotion_snn_bridge_training_end: NULL argument");
+        return -1;
+    }
     emotion_snn_bridge_heartbeat_instance(bridge->health_agent, "emotion_snn_training_end", 1.0f);
     return 0;
 }
 
 int emotion_snn_bridge_training_step(emotion_snn_bridge_t* bridge, float progress) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "emotion_snn_bridge_training_step: NULL argument");
+        return -1;
+    }
     emotion_snn_bridge_heartbeat_instance(bridge->health_agent, "emotion_snn_training_step", progress);
     return 0;
 }

@@ -76,6 +76,18 @@ static inline void theory_of_mind_heartbeat(const char* operation, float progres
     }
 }
 
+/** @brief Send heartbeat from theory_of_mind module (instance-level) */
+static inline void theory_of_mind_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_theory_of_mind_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_theory_of_mind_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_theory_of_mind_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define BIO_MODULE_COGNITIVE_THEORY_OF_MIND 0x034E
 
 
@@ -1448,4 +1460,47 @@ int theory_of_mind_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void theory_of_mind_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_theory_of_mind_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training stubs
+ * ============================================================================ */
+int theory_of_mind_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "theory_of_mind_training_begin: NULL argument");
+        return -1;
+    }
+    theory_of_mind_heartbeat_instance(NULL, "theory_of_mind_training_begin", 0.0f);
+    return 0;
+}
+
+int theory_of_mind_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "theory_of_mind_training_end: NULL argument");
+        return -1;
+    }
+    theory_of_mind_heartbeat_instance(NULL, "theory_of_mind_training_end", 1.0f);
+    return 0;
+}
+
+int theory_of_mind_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "theory_of_mind_training_step: NULL argument");
+        return -1;
+    }
+    theory_of_mind_heartbeat_instance(NULL, "theory_of_mind_training_step", progress);
+    return 0;
 }

@@ -193,7 +193,7 @@ empathetic_response_engine_t empathetic_response_create(
 
     empathetic_response_engine_t engine = nimcp_calloc(1, sizeof(struct empathetic_response_engine_struct));
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate engine");
 
         return NULL;
     }

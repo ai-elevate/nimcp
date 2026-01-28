@@ -89,7 +89,7 @@ social_bond_fep_bridge_t* social_bond_fep_bridge_create(const social_bond_fep_co
     social_bond_fep_bridge_t* bridge = nimcp_malloc(sizeof(social_bond_fep_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 

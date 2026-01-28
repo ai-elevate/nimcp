@@ -1359,19 +1359,31 @@ void mirror_hippocampus_bridge_set_instance_health_agent(
 //=============================================================================
 
 int mirror_hippocampus_bridge_training_begin(mirror_hippocampus_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_hippocampus_bridge_training_begin: NULL argument");
+        return -1;
+    }
     mirror_hippocampus_bridge_heartbeat_instance(bridge->health_agent, "mirror_hippocampus_bridge_training_begin", 0.0f);
     return 0;
 }
 
 int mirror_hippocampus_bridge_training_end(mirror_hippocampus_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_hippocampus_bridge_training_end: NULL argument");
+        return -1;
+    }
     mirror_hippocampus_bridge_heartbeat_instance(bridge->health_agent, "mirror_hippocampus_bridge_training_end", 1.0f);
     return 0;
 }
 
 int mirror_hippocampus_bridge_training_step(mirror_hippocampus_bridge_t* bridge, float progress) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_hippocampus_bridge_training_step: NULL argument");
+        return -1;
+    }
 
     /* Safety gates: ethics + LGSS pre-check */
     BRIDGE_ETHICS_GATE(bridge, "mirror_hippocampus_bridge_training_step");

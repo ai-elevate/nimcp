@@ -6,6 +6,7 @@
 #include "cognitive/parietal/nimcp_meta_reasoning.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -37,6 +38,18 @@ void meta_reasoning_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void meta_reasoning_heartbeat(const char* operation, float progress) {
     if (g_meta_reasoning_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_meta_reasoning_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from meta_reasoning module (instance-level) */
+static inline void meta_reasoning_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_meta_reasoning_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_meta_reasoning_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_meta_reasoning_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -98,7 +111,7 @@ meta_engine_t* meta_engine_create_custom(const meta_config_t* config) {
     meta_engine_t* e = nimcp_calloc(1, sizeof(meta_engine_t));
     if (!e) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "e is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate e");
 
         return NULL;
 
@@ -139,7 +152,7 @@ meta_strategy_t* meta_select_strategy(meta_engine_t* engine, const meta_problem_
     meta_strategy_t* s = nimcp_calloc(1, sizeof(meta_strategy_t));
     if (!s) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "s is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate s");
 
         return NULL;
 
@@ -484,4 +497,89 @@ int meta_reasoning_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Meta_Reasoning");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void meta_reasoning_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_meta_reasoning_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Functions
+ * ============================================================================ */
+
+int meta_reasoning_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "meta_reasoning_training_begin: NULL argument");
+        return -1;
+    }
+    meta_reasoning_heartbeat_instance(NULL, "meta_reasoning_training_begin", 0.0f);
+    meta_engine_t* mr = (meta_engine_t*)instance;
+    memset(&mr->stats, 0, sizeof(mr->stats));
+    mr->calibration_bias = 0.0f;
+    for (int i = 0; i < 8; i++) {
+        mr->strategy_success[i] = 0.5f;
+        mr->strategy_uses[i] = 0;
+    }
+    NIMCP_LOGGING_INFO("Meta-reasoning training begin: stats and strategy history reset");
+    return 0;
+}
+
+int meta_reasoning_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "meta_reasoning_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    meta_reasoning_heartbeat_instance(NULL, "meta_reasoning_training_step", progress);
+    meta_engine_t* mr = (meta_engine_t*)instance;
+    mr->stats.strategies_selected++;
+    /* Progressive learning rate decay for strategy adaptation */
+    float decay = 1.0f - 0.3f * progress;
+    if (decay < 0.5f) decay = 0.5f;
+    mr->config.strategy_adaptation_rate *= decay;
+    if (mr->config.strategy_adaptation_rate < 0.01f)
+        mr->config.strategy_adaptation_rate = 0.01f;
+    /* Sharpen confidence calibration with experience */
+    mr->config.confidence_calibration_strength += 0.01f * progress;
+    if (mr->config.confidence_calibration_strength > 1.0f)
+        mr->config.confidence_calibration_strength = 1.0f;
+    /* Reduce calibration bias toward zero */
+    mr->calibration_bias *= (1.0f - 0.05f * progress);
+    return 0;
+}
+
+int meta_reasoning_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "meta_reasoning_training_end: NULL argument");
+        return -1;
+    }
+    meta_reasoning_heartbeat_instance(NULL, "meta_reasoning_training_end", 1.0f);
+    meta_engine_t* mr = (meta_engine_t*)instance;
+    /* Compute average strategy success */
+    float total_success = 0.0f;
+    uint32_t total_uses = 0;
+    for (int i = 0; i < 8; i++) {
+        total_success += mr->strategy_success[i] * (float)mr->strategy_uses[i];
+        total_uses += mr->strategy_uses[i];
+    }
+    mr->stats.avg_strategy_success = (total_uses > 0)
+        ? total_success / (float)total_uses : 0.0f;
+    NIMCP_LOGGING_INFO("Meta-reasoning training end: %lu strategies selected, %lu switches, "
+                       "avg_success=%.4f, calibration_bias=%.4f",
+                       (unsigned long)mr->stats.strategies_selected,
+                       (unsigned long)mr->stats.strategy_switches,
+                       mr->stats.avg_strategy_success,
+                       mr->calibration_bias);
+    return 0;
 }

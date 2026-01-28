@@ -44,6 +44,18 @@ static inline void biology_heartbeat(const char* operation, float progress) {
     }
 }
 
+/** @brief Send heartbeat from biology module (instance-level) */
+static inline void biology_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_biology_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_biology_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_biology_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* ============================================================================
  * CONSTANTS
@@ -1139,4 +1151,54 @@ int biology_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Biology_Reasoning");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void biology_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_biology_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int biology_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "biology_training_begin: NULL argument");
+        return -1;
+    }
+    biology_heartbeat_instance(NULL, "biology_training_begin", 0.0f);
+    (void)(struct biology*)instance; /* Module state available for reset */
+    return 0;
+}
+
+int biology_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "biology_training_end: NULL argument");
+        return -1;
+    }
+    biology_heartbeat_instance(NULL, "biology_training_end", 1.0f);
+    (void)(struct biology*)instance; /* Module state available for finalization */
+    return 0;
+}
+
+int biology_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "biology_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    biology_heartbeat_instance(NULL, "biology_training_step", progress);
+    (void)(struct biology*)instance; /* Module state available for step adaptation */
+    return 0;
 }

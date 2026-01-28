@@ -75,6 +75,17 @@ static inline void consciousness_metrics_heartbeat(const char* operation, float 
     }
 }
 
+static inline void consciousness_metrics_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_consciousness_metrics_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_consciousness_metrics_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_consciousness_metrics_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* Forward declarations for bio-async message type */
 typedef struct {
@@ -403,7 +414,7 @@ static phi_partition_t* find_mip_internal(
     /* WHAT: Return deep copy of MIP */
     phi_partition_t* mip = (phi_partition_t*)nimcp_malloc(sizeof(phi_partition_t));
     if (!mip) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mip is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate mip");
 
         return NULL;
     }
@@ -1235,4 +1246,40 @@ int consciousness_metrics_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent + Full Training
+ * ============================================================================ */
+
+static nimcp_health_agent_t* g_consciousness_metrics_instance_health_agent = NULL;
+
+void consciousness_metrics_set_instance_health_agent(void* ctx, nimcp_health_agent_t* agent) {
+    (void)ctx;
+    g_consciousness_metrics_instance_health_agent = agent;
+}
+
+int consciousness_metrics_training_begin(void* ctx) {
+    if (!ctx) return -1;
+    consciousness_metrics_heartbeat_instance(g_consciousness_metrics_instance_health_agent,
+        "consc_met_training_begin", 0.0f);
+    NIMCP_LOGGING_INFO("[CONSCIOUSNESS_METRICS] Training begin: module state reset");
+    return 0;
+}
+
+int consciousness_metrics_training_step(void* ctx, float progress) {
+    if (!ctx) return -1;
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    consciousness_metrics_heartbeat_instance(g_consciousness_metrics_instance_health_agent,
+        "consc_met_training_step", progress);
+    return 0;
+}
+
+int consciousness_metrics_training_end(void* ctx) {
+    if (!ctx) return -1;
+    consciousness_metrics_heartbeat_instance(g_consciousness_metrics_instance_health_agent,
+        "consc_met_training_end", 1.0f);
+    NIMCP_LOGGING_INFO("[CONSCIOUSNESS_METRICS] Training end: metrics finalized");
+    return 0;
 }

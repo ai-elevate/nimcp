@@ -350,7 +350,7 @@ pr_attention_bridge_t* pr_attention_bridge_create(
     pr_attention_bridge_t* bridge = (pr_attention_bridge_t*)calloc(1, sizeof(pr_attention_bridge_t));
     if (!bridge) {
         set_last_error("Failed to allocate bridge structure");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
     }
@@ -2076,19 +2076,31 @@ void pr_attention_bridge_set_instance_health_agent(
 //=============================================================================
 
 int pr_attention_bridge_training_begin(pr_attention_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "pr_attention_bridge_training_begin: NULL argument");
+        return -1;
+    }
     pr_attention_bridge_heartbeat_instance(bridge->health_agent, "pr_attention_bridge_training_begin", 0.0f);
     return 0;
 }
 
 int pr_attention_bridge_training_end(pr_attention_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "pr_attention_bridge_training_end: NULL argument");
+        return -1;
+    }
     pr_attention_bridge_heartbeat_instance(bridge->health_agent, "pr_attention_bridge_training_end", 1.0f);
     return 0;
 }
 
 int pr_attention_bridge_training_step(pr_attention_bridge_t* bridge, float progress) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "pr_attention_bridge_training_step: NULL argument");
+        return -1;
+    }
     pr_attention_bridge_heartbeat_instance(bridge->health_agent, "pr_attention_bridge_training_step", progress);
     return 0;
 }

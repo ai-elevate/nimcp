@@ -1064,13 +1064,33 @@ void mirror_emotion_bridge_set_instance_health_agent(
 //=============================================================================
 
 int mirror_emotion_bridge_training_begin(mirror_emotion_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_emotion_bridge_training_begin: NULL argument");
+        return -1;
+    }
     mirror_emotion_bridge_heartbeat("mirror_emoti_training_begin", 0.0f);
     return 0;
 }
 
 int mirror_emotion_bridge_training_end(mirror_emotion_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_emotion_bridge_training_end: NULL argument");
+        return -1;
+    }
     mirror_emotion_bridge_heartbeat("mirror_emoti_training_end", 1.0f);
+    return 0;
+}
+
+int mirror_emotion_bridge_training_step(mirror_emotion_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_emotion_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    mirror_emotion_bridge_heartbeat_instance(bridge->health_agent, "mirror_emotion_bridge_training_step", progress);
     return 0;
 }

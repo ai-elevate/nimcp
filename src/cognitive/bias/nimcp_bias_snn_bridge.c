@@ -45,6 +45,19 @@ static inline void bias_snn_bridge_heartbeat(const char* operation, float progre
     }
 }
 
+/** @brief Send heartbeat from bias_snn_bridge module (instance-level) */
+static inline void bias_snn_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_bias_snn_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_bias_snn_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_bias_snn_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 #define LOG_MODULE "BIAS_SNN_BRIDGE"
 
 
@@ -64,6 +77,7 @@ typedef struct {
 
 struct bias_snn_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+    nimcp_health_agent_t* health_agent;  /**< Phase 8: instance-level health agent */
     bias_snn_config_t config;
     bias_snn_state_t state;
 
@@ -214,7 +228,7 @@ bias_snn_bridge_t* bias_snn_create(const bias_snn_config_t* config) {
     bias_snn_bridge_t* bridge = calloc(1, sizeof(bias_snn_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -1051,4 +1065,53 @@ bool bias_snn_is_bio_async_connected(bias_snn_bridge_t* bridge) {
 const char* bias_snn_type_name(bias_snn_type_t type) {
     if (type >= BIAS_SNN_TYPE_COUNT) return "unknown";
     return bias_type_names[type];
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void bias_snn_bridge_set_instance_health_agent(bias_snn_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "bias_snn_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int bias_snn_bridge_training_begin(bias_snn_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "bias_snn_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    bias_snn_bridge_heartbeat_instance(bridge->health_agent, "bias_snn_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int bias_snn_bridge_training_end(bias_snn_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "bias_snn_bridge_training_end: NULL argument");
+        return -1;
+    }
+    bias_snn_bridge_heartbeat_instance(bridge->health_agent, "bias_snn_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int bias_snn_bridge_training_step(bias_snn_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "bias_snn_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    bias_snn_bridge_heartbeat_instance(bridge->health_agent, "bias_snn_bridge_training_step", progress);
+    return 0;
 }

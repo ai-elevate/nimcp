@@ -57,6 +57,18 @@ static inline void prospective_scheduler_heartbeat(const char* operation, float 
     }
 }
 
+/** @brief Send heartbeat from prospective_scheduler module (instance-level) */
+static inline void prospective_scheduler_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_prospective_scheduler_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_prospective_scheduler_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_prospective_scheduler_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Internal Constants
@@ -272,7 +284,7 @@ static scheduled_intention_t* scheduled_intention_create(prospective_intention_t
 
     scheduled_intention_t* scheduled = (scheduled_intention_t*)malloc(sizeof(scheduled_intention_t));
     if (!scheduled) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scheduled is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate scheduled");
 
         return NULL;
     }
@@ -550,7 +562,7 @@ prospective_scheduler_t* prospective_scheduler_create(
     prospective_scheduler_t* scheduler = (prospective_scheduler_t*)malloc(
         sizeof(prospective_scheduler_t));
     if (!scheduler) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scheduler is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate scheduler");
 
         return NULL;
     }
@@ -752,7 +764,7 @@ prospective_intention_t* prospective_intention_create(
     prospective_intention_t* intention = (prospective_intention_t*)malloc(
         sizeof(prospective_intention_t));
     if (!intention) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intention is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate intention");
 
         return NULL;
     }
@@ -2531,4 +2543,51 @@ reminder_level_t pr_sched_compute_reminder_level(
 
 
     return REMINDER_NONE;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void prospective_scheduler_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_prospective_scheduler_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int prospective_scheduler_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "prospective_scheduler_training_begin: NULL argument");
+        return -1;
+    }
+    prospective_scheduler_heartbeat_instance(NULL, "prospective_scheduler_training_begin", 0.0f);
+    return 0;
+}
+
+int prospective_scheduler_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "prospective_scheduler_training_end: NULL argument");
+        return -1;
+    }
+    prospective_scheduler_heartbeat_instance(NULL, "prospective_scheduler_training_end", 1.0f);
+    return 0;
+}
+
+int prospective_scheduler_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "prospective_scheduler_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    prospective_scheduler_heartbeat_instance(NULL, "prospective_scheduler_training_step", progress);
+    return 0;
 }

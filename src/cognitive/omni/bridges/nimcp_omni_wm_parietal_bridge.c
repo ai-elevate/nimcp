@@ -71,6 +71,67 @@ static inline void omni_wm_parietal_bridge_heartbeat(const char* operation, floa
     }
 }
 
+/** @brief Send heartbeat from omni_wm_parietal_bridge module (instance-level) */
+static inline void omni_wm_parietal_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_omni_wm_parietal_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_omni_wm_parietal_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_omni_wm_parietal_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+void omni_wm_parietal_bridge_set_instance_health_agent(
+    omni_wm_parietal_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "omni_wm_parietal_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level Training Functions
+ * ============================================================================ */
+
+int omni_wm_parietal_bridge_training_begin(omni_wm_parietal_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "omni_wm_parietal_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    omni_wm_parietal_bridge_heartbeat_instance(g_omni_wm_parietal_bridge_health_agent, "training_begin", 0.0f);
+    (void)bridge;
+    return 0;
+}
+
+int omni_wm_parietal_bridge_training_step(omni_wm_parietal_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "omni_wm_parietal_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    omni_wm_parietal_bridge_heartbeat_instance(g_omni_wm_parietal_bridge_health_agent, "training_step", progress);
+    (void)bridge;
+    return 0;
+}
+
+int omni_wm_parietal_bridge_training_end(omni_wm_parietal_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "omni_wm_parietal_bridge_training_end: NULL argument");
+        return -1;
+    }
+    omni_wm_parietal_bridge_heartbeat_instance(g_omni_wm_parietal_bridge_health_agent, "training_end", 1.0f);
+    (void)bridge;
+    return 0;
+}
 
 /** Default tracked objects capacity */
 #define DEFAULT_TRACKED_OBJECTS_CAPACITY 32
@@ -2348,7 +2409,7 @@ wm_parietal_trajectory_t* omni_wm_parietal_trajectory_create(uint32_t max_length
     wm_parietal_trajectory_t* traj = nimcp_calloc(1, sizeof(wm_parietal_trajectory_t));
     if (!traj) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "traj is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate traj");
 
         return NULL;
 

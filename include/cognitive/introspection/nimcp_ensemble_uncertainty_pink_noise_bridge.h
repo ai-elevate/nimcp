@@ -72,6 +72,9 @@
 #include "plasticity/noise/nimcp_pink_noise.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+/* Phase 8: Forward declaration for health agent */
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -259,6 +262,9 @@ typedef struct {
 
     // Bio-async integration
     // Thread safety
+
+    /* Phase 8: Instance-level health agent */
+    nimcp_health_agent_t* health_agent;
 } ensemble_pink_bridge_t;
 
 //=============================================================================

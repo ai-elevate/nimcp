@@ -60,6 +60,19 @@ static inline void collective_hub_bridge_heartbeat(const char* operation, float 
     }
 }
 
+/** @brief Send heartbeat from collective_hub_bridge module (instance-level) */
+static inline void collective_hub_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_collective_hub_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_collective_hub_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_collective_hub_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 #define LOG_MODULE "COLLECTIVE_HUB_BRIDGE"
 
 
@@ -90,6 +103,7 @@ typedef struct {
  */
 struct collective_hub_bridge {
     bridge_base_t base;                        /**< MUST be first: base bridge infrastructure */
+    nimcp_health_agent_t* health_agent;  /**< Phase 8: instance-level health agent */
     collective_hub_bridge_config_t config;     /**< Bridge configuration */
     cognitive_integration_hub_t hub;           /**< Connected hub */
     collective_cognition_t* collective;        /**< Connected collective */
@@ -365,7 +379,7 @@ collective_hub_bridge_t* collective_hub_bridge_create(
 
     collective_hub_bridge_t* bridge = nimcp_calloc(1, sizeof(collective_hub_bridge_t));
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
     }
@@ -1092,4 +1106,53 @@ const char* collective_event_subtype_to_string(collective_event_subtype_t subtyp
         default:
             return "UNKNOWN";
     }
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void collective_hub_bridge_set_instance_health_agent(collective_hub_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "collective_hub_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int collective_hub_bridge_training_begin(collective_hub_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "collective_hub_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    collective_hub_bridge_heartbeat_instance(bridge->health_agent, "collective_hub_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int collective_hub_bridge_training_end(collective_hub_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "collective_hub_bridge_training_end: NULL argument");
+        return -1;
+    }
+    collective_hub_bridge_heartbeat_instance(bridge->health_agent, "collective_hub_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int collective_hub_bridge_training_step(collective_hub_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "collective_hub_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    collective_hub_bridge_heartbeat_instance(bridge->health_agent, "collective_hub_bridge_training_step", progress);
+    return 0;
 }

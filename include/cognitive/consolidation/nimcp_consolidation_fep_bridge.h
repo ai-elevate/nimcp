@@ -68,6 +68,9 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/error/nimcp_error_codes.h"
+/* Phase 8: Forward declaration for health agent */
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -147,6 +150,7 @@ typedef struct {
 
 struct consolidation_fep_bridge {
     bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+    nimcp_health_agent_t* health_agent;  /**< Phase 8: instance-level health agent */
 
     consolidation_fep_config_t config;
     fep_system_t* fep_system;

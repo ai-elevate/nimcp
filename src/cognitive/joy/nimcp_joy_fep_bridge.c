@@ -107,7 +107,7 @@ joy_fep_bridge_t* joy_fep_create(
     joy_fep_bridge_t* bridge = nimcp_malloc(sizeof(joy_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate joy FEP bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
     }
@@ -510,19 +510,31 @@ void joy_fep_bridge_set_instance_health_agent(joy_fep_bridge_t* bridge, nimcp_he
  * ============================================================================ */
 
 int joy_fep_bridge_training_begin(joy_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "joy_fep_bridge_training_begin: NULL argument");
+        return -1;
+    }
     joy_fep_bridge_heartbeat_instance(g_joy_fep_bridge_instance_health_agent, "joy_fep_bridge_training_begin", 0.0f);
     return 0;
 }
 
 int joy_fep_bridge_training_end(joy_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "joy_fep_bridge_training_end: NULL argument");
+        return -1;
+    }
     joy_fep_bridge_heartbeat_instance(g_joy_fep_bridge_instance_health_agent, "joy_fep_bridge_training_end", 1.0f);
     return 0;
 }
 
 int joy_fep_bridge_training_step(joy_fep_bridge_t* bridge, float progress) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "joy_fep_bridge_training_step: NULL argument");
+        return -1;
+    }
     joy_fep_bridge_heartbeat_instance(g_joy_fep_bridge_instance_health_agent, "joy_fep_bridge_training_step", progress);
     return 0;
 }

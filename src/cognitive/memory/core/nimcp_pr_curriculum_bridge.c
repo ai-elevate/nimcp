@@ -558,7 +558,7 @@ pr_curriculum_bridge_t pr_curriculum_bridge_create(
     pr_curriculum_bridge_t bridge = nimcp_calloc(1, sizeof(struct pr_curriculum_bridge_struct));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -2271,19 +2271,31 @@ void pr_curriculum_bridge_set_instance_health_agent(
 //=============================================================================
 
 int pr_curriculum_bridge_training_begin(pr_curriculum_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "pr_curriculum_bridge_training_begin: NULL argument");
+        return -1;
+    }
     pr_curriculum_bridge_heartbeat_instance(bridge->health_agent, "pr_curriculum_bridge_training_begin", 0.0f);
     return 0;
 }
 
 int pr_curriculum_bridge_training_end(pr_curriculum_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "pr_curriculum_bridge_training_end: NULL argument");
+        return -1;
+    }
     pr_curriculum_bridge_heartbeat_instance(bridge->health_agent, "pr_curriculum_bridge_training_end", 1.0f);
     return 0;
 }
 
 int pr_curriculum_bridge_training_step(pr_curriculum_bridge_t bridge, float progress) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "pr_curriculum_bridge_training_step: NULL argument");
+        return -1;
+    }
     pr_curriculum_bridge_heartbeat_instance(bridge->health_agent, "pr_curriculum_bridge_training_step", progress);
     return 0;
 }

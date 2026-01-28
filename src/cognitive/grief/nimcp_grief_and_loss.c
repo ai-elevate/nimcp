@@ -185,7 +185,7 @@ grief_system_t* grief_system_create(void) {
     grief_system_t* system = (grief_system_t*)nimcp_calloc(1, sizeof(grief_system_t));
     if (!system) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate system");
 
         return NULL;
 

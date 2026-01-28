@@ -53,6 +53,19 @@ static inline void salience_attention_fep_bridge_heartbeat(const char* operation
     }
 }
 
+/** @brief Send heartbeat from salience_attention_fep_bridge module (instance-level) */
+static inline void salience_attention_fep_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_salience_attention_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_salience_attention_fep_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_salience_attention_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 #define LOG_MODULE "SALIENCE_ATTENTION_FEP_BRIDGE"
 
 
@@ -62,6 +75,7 @@ static inline void salience_attention_fep_bridge_heartbeat(const char* operation
 
 struct sa_fep_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+    nimcp_health_agent_t* health_agent;  /**< Phase 8: instance-level health agent */
 
     /* Configuration */
     sa_fep_config_t config;
@@ -71,7 +85,7 @@ struct sa_fep_bridge {
 
     /* References */
     fep_orchestrator_t* orchestrator;
-    salience_attention_bridge_t* sa_bridge;
+    sa_fep_bridge_t* sa_bridge;
     uint32_t bridge_id;
     bool registered;
 
@@ -341,7 +355,7 @@ sa_fep_bridge_t* sa_fep_bridge_create(const sa_fep_config_t* config) {
     sa_fep_bridge_t* bridge = nimcp_calloc(1, sizeof(sa_fep_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -409,7 +423,11 @@ void sa_fep_bridge_destroy(sa_fep_bridge_t* bridge) {
 }
 
 int sa_fep_bridge_reset(sa_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "sa_fep_bridge_reset: NULL argument");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_reset", 0.0f);
@@ -454,7 +472,11 @@ int sa_fep_bridge_register(
     salience_attention_bridge_t* sa_bridge,
     uint32_t* bridge_id_out
 ) {
-    if (!bridge || !orchestrator) return -1;
+    if (!bridge || !orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "sa_fep_bridge_register: NULL argument");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_regist", 0.0f);
@@ -511,7 +533,11 @@ int sa_fep_bridge_register(
 }
 
 int sa_fep_bridge_unregister(sa_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "sa_fep_bridge_unregister: NULL argument");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_unregi", 0.0f);
@@ -577,7 +603,11 @@ int sa_fep_update_callback(void* handle) {
 
 
     sa_fep_bridge_t* bridge = (sa_fep_bridge_t*)handle;
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "sa_fep_update_callback: NULL argument");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -686,7 +716,11 @@ void sa_fep_destroy_callback(void* handle) {
  *===========================================================================*/
 
 int sa_fep_bridge_force_update(sa_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "sa_fep_bridge_force_update: NULL argument");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_force_", 0.0f);
@@ -720,7 +754,11 @@ int sa_fep_bridge_update_salience_error(
     sa_fep_bridge_t* bridge,
     float error
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "sa_fep_bridge_update_salience_error: NULL argument");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_update", 0.0f);
@@ -738,7 +776,11 @@ int sa_fep_bridge_update_attention_error(
     sa_fep_bridge_t* bridge,
     float error
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "sa_fep_bridge_update_attention_error: NULL argument");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_update", 0.0f);
@@ -756,7 +798,11 @@ int sa_fep_bridge_update_priority_error(
     sa_fep_bridge_t* bridge,
     float error
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "sa_fep_bridge_update_priority_error: NULL argument");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_update", 0.0f);
@@ -774,7 +820,11 @@ int sa_fep_bridge_update_attention_efficiency(
     sa_fep_bridge_t* bridge,
     float efficiency
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "sa_fep_bridge_update_attention_efficiency: NULL argument");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_update", 0.0f);
@@ -795,7 +845,11 @@ int sa_fep_bridge_get_metrics(
     const sa_fep_bridge_t* bridge,
     sa_fep_metrics_t* metrics_out
 ) {
-    if (!bridge || !metrics_out) return -1;
+    if (!bridge || !metrics_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "sa_fep_bridge_get_metrics: NULL argument");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_get_me", 0.0f);
@@ -812,7 +866,11 @@ int sa_fep_bridge_get_stats(
     const sa_fep_bridge_t* bridge,
     sa_fep_stats_t* stats_out
 ) {
-    if (!bridge || !stats_out) return -1;
+    if (!bridge || !stats_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "sa_fep_bridge_get_stats: NULL argument");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_get_st", 0.0f);
@@ -826,7 +884,11 @@ int sa_fep_bridge_get_stats(
 }
 
 int sa_fep_bridge_reset_stats(sa_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "sa_fep_bridge_reset_stats: NULL argument");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_reset_", 0.0f);
@@ -964,7 +1026,11 @@ int sa_fep_bridge_set_high_fe_callback(
     sa_fep_high_fe_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "sa_fep_bridge_set_high_fe_callback: NULL argument");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_set_hi", 0.0f);
@@ -983,7 +1049,11 @@ int sa_fep_bridge_set_surprise_callback(
     sa_fep_surprise_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "sa_fep_bridge_set_surprise_callback: NULL argument");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_set_su", 0.0f);
@@ -1002,7 +1072,11 @@ int sa_fep_bridge_set_metrics_callback(
     sa_fep_metrics_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "sa_fep_bridge_set_metrics_callback: NULL argument");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_set_me", 0.0f);
@@ -1024,7 +1098,11 @@ int sa_fep_bridge_set_config(
     sa_fep_bridge_t* bridge,
     const sa_fep_config_t* config
 ) {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "sa_fep_bridge_set_config: NULL argument");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_set_co", 0.0f);
@@ -1041,7 +1119,11 @@ int sa_fep_bridge_get_config(
     const sa_fep_bridge_t* bridge,
     sa_fep_config_t* config_out
 ) {
-    if (!bridge || !config_out) return -1;
+    if (!bridge || !config_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "sa_fep_bridge_get_config: NULL argument");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_get_co", 0.0f);
@@ -1051,5 +1133,54 @@ int sa_fep_bridge_get_config(
     *config_out = bridge->config;
     nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->base.mutex);
 
+    return 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void salience_attention_fep_bridge_set_instance_health_agent(sa_fep_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "salience_attention_fep_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int salience_attention_fep_bridge_training_begin(sa_fep_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "salience_attention_fep_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    salience_attention_fep_bridge_heartbeat_instance(bridge->health_agent, "salience_attention_fep_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int salience_attention_fep_bridge_training_end(sa_fep_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "salience_attention_fep_bridge_training_end: NULL argument");
+        return -1;
+    }
+    salience_attention_fep_bridge_heartbeat_instance(bridge->health_agent, "salience_attention_fep_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int salience_attention_fep_bridge_training_step(sa_fep_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "salience_attention_fep_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    salience_attention_fep_bridge_heartbeat_instance(bridge->health_agent, "salience_attention_fep_bridge_training_step", progress);
     return 0;
 }

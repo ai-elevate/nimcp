@@ -2568,19 +2568,31 @@ void pr_snn_bridge_set_instance_health_agent(
 //=============================================================================
 
 int pr_snn_bridge_training_begin(pr_snn_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "pr_snn_bridge_training_begin: NULL argument");
+        return -1;
+    }
     pr_snn_bridge_heartbeat_instance(bridge->health_agent, "pr_snn_bridge_training_begin", 0.0f);
     return 0;
 }
 
 int pr_snn_bridge_training_end(pr_snn_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "pr_snn_bridge_training_end: NULL argument");
+        return -1;
+    }
     pr_snn_bridge_heartbeat_instance(bridge->health_agent, "pr_snn_bridge_training_end", 1.0f);
     return 0;
 }
 
 int pr_snn_bridge_training_step(pr_snn_bridge_t bridge, float progress) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "pr_snn_bridge_training_step: NULL argument");
+        return -1;
+    }
     pr_snn_bridge_heartbeat_instance(bridge->health_agent, "pr_snn_bridge_training_step", progress);
     return 0;
 }

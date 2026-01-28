@@ -56,6 +56,69 @@ static inline void rcog_engine_heartbeat(const char* operation, float progress) 
     }
 }
 
+/** @brief Send heartbeat from rcog_engine module (instance-level) */
+static inline void rcog_engine_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_rcog_engine_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_rcog_engine_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_rcog_engine_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+/** @brief Instance-level health agent (global fallback for non-bridge) */
+static nimcp_health_agent_t* g_rcog_engine_instance_health_agent = NULL;
+
+void rcog_engine_set_instance_health_agent(void* ctx, nimcp_health_agent_t* agent) {
+    (void)ctx;
+    g_rcog_engine_instance_health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level Training Functions
+ * ============================================================================ */
+
+int rcog_engine_training_begin(void* ctx) {
+    rcog_engine_t* engine = (rcog_engine_t*)ctx;
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "rcog_engine_training_begin: NULL argument");
+        return -1;
+    }
+    rcog_engine_heartbeat_instance(
+        g_rcog_engine_instance_health_agent,
+        "rcog_engine_training_begin", 0.0f);
+    return 0;
+}
+
+int rcog_engine_training_step(void* ctx, float progress) {
+    rcog_engine_t* engine = (rcog_engine_t*)ctx;
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "rcog_engine_training_step: NULL argument");
+        return -1;
+    }
+    float clamped = progress < 0.0f ? 0.0f : (progress > 1.0f ? 1.0f : progress);
+    rcog_engine_heartbeat_instance(
+        g_rcog_engine_instance_health_agent,
+        "rcog_engine_training_step", clamped);
+    return 0;
+}
+
+int rcog_engine_training_end(void* ctx) {
+    rcog_engine_t* engine = (rcog_engine_t*)ctx;
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "rcog_engine_training_end: NULL argument");
+        return -1;
+    }
+    rcog_engine_heartbeat_instance(
+        g_rcog_engine_instance_health_agent,
+        "rcog_engine_training_end", 1.0f);
+    return 0;
+}
 
 /*=============================================================================
  * INTERNAL STRUCTURES
@@ -238,7 +301,7 @@ rcog_engine_t* rcog_engine_create(const rcog_engine_config_t* config) {
 
     rcog_engine_t* engine = nimcp_calloc(1, sizeof(rcog_engine_t));
     if (!engine) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate engine");
 
         return NULL;
     }

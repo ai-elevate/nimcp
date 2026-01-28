@@ -45,6 +45,17 @@ static inline void introspection_plasticity_bridge_heartbeat(const char* operati
     }
 }
 
+static inline void introspection_plasticity_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_introspection_plasticity_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_introspection_plasticity_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_introspection_plasticity_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "INTROSPECTION_PLASTICITY_BRIDGE"
 
 
@@ -81,6 +92,9 @@ struct introspection_plasticity_bridge {
 
     /* Statistics */
     introspection_plasticity_stats_t stats;
+
+    /* Phase 8: Instance-level health agent */
+    nimcp_health_agent_t* health_agent;
 };
 
 //=============================================================================
@@ -161,7 +175,7 @@ introspection_plasticity_bridge_t* introspection_plasticity_create(
     introspection_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(introspection_plasticity_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -996,4 +1010,68 @@ bool introspection_plasticity_is_bio_async_connected(introspection_plasticity_br
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent + Full Training
+ * ============================================================================ */
+
+void introspection_plasticity_bridge_set_instance_health_agent(
+    introspection_plasticity_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+int introspection_plasticity_bridge_training_begin(introspection_plasticity_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "introspection_plasticity_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    introspection_plasticity_bridge_heartbeat_instance(bridge->health_agent,
+        "intro_plast_training_begin", 0.0f);
+    bridge->stats.total_learning_events = 0;
+    bridge->stats.mean_weight_change = 0.0f;
+    bridge->calibration.confidence_calibration = 0.5f;
+    NIMCP_LOGGING_INFO("[INTRO_PLASTICITY] Training begin: counters reset, baseline state initialized");
+    return 0;
+}
+
+int introspection_plasticity_bridge_training_step(introspection_plasticity_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "introspection_plasticity_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    introspection_plasticity_bridge_heartbeat_instance(bridge->health_agent,
+        "intro_plast_training_step", progress);
+    float lr = bridge->config.base_learning_rate;
+    float adaptation = lr * (1.0f - progress) * 0.1f;
+    bridge->config.base_learning_rate = lr + adaptation;
+    if (bridge->config.base_learning_rate > 1.0f) bridge->config.base_learning_rate = 1.0f;
+    if (bridge->config.base_learning_rate < 0.001f) bridge->config.base_learning_rate = 0.001f;
+    bridge->calibration.confidence_calibration =
+        bridge->calibration.confidence_calibration * 0.99f + progress * 0.01f;
+    bridge->stats.total_learning_events++;
+    return 0;
+}
+
+int introspection_plasticity_bridge_training_end(introspection_plasticity_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "introspection_plasticity_bridge_training_end: NULL argument");
+        return -1;
+    }
+    introspection_plasticity_bridge_heartbeat_instance(bridge->health_agent,
+        "intro_plast_training_end", 1.0f);
+    if (bridge->calibration.confidence_calibration < 0.0f)
+        bridge->calibration.confidence_calibration = 0.0f;
+    if (bridge->calibration.confidence_calibration > 1.0f)
+        bridge->calibration.confidence_calibration = 1.0f;
+    NIMCP_LOGGING_INFO("[INTRO_PLASTICITY] Training end: calibration=%.3f, events=%u",
+        bridge->calibration.confidence_calibration, bridge->stats.total_learning_events);
+    return 0;
 }

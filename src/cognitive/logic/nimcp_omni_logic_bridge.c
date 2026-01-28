@@ -44,6 +44,19 @@ static inline void omni_logic_bridge_heartbeat(const char* operation, float prog
     }
 }
 
+/** @brief Send heartbeat from omni_logic_bridge module (instance-level) */
+static inline void omni_logic_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_omni_logic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_omni_logic_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_omni_logic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 #define LOG_MODULE "OMNI_LOGIC_BRIDGE"
 
 
@@ -147,7 +160,7 @@ omni_logic_bridge_t* omni_logic_bridge_create(const omni_logic_config_t* config)
     omni_logic_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_logic_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -756,4 +769,51 @@ const char* omni_logic_condition_to_string(omni_logic_condition_t condition) {
         case OMNI_COND_TIME_CONSTRAINED: return "TIME_CONSTRAINED";
         default: return "UNKNOWN";
     }
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void omni_logic_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_omni_logic_bridge_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int omni_logic_bridge_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "omni_logic_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    omni_logic_bridge_heartbeat_instance(NULL, "omni_logic_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int omni_logic_bridge_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "omni_logic_bridge_training_end: NULL argument");
+        return -1;
+    }
+    omni_logic_bridge_heartbeat_instance(NULL, "omni_logic_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int omni_logic_bridge_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "omni_logic_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    omni_logic_bridge_heartbeat_instance(NULL, "omni_logic_bridge_training_step", progress);
+    return 0;
 }

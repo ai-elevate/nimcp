@@ -52,6 +52,65 @@ static inline void rcog_fep_bridge_heartbeat(const char* operation, float progre
     }
 }
 
+/** @brief Send heartbeat from rcog_fep_bridge module (instance-level) */
+static inline void rcog_fep_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_rcog_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_rcog_fep_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_rcog_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+static nimcp_health_agent_t* g_rcog_fep_bridge_instance_health_agent = NULL;
+
+void rcog_fep_bridge_set_instance_health_agent(
+    rcog_fep_bridge_t* bridge, nimcp_health_agent_t* agent)
+{
+    (void)bridge;
+    g_rcog_fep_bridge_instance_health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level Training Functions
+ * ============================================================================ */
+
+int rcog_fep_bridge_training_begin(rcog_fep_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "rcog_fep_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    rcog_fep_bridge_heartbeat_instance(
+        g_rcog_fep_bridge_instance_health_agent, "rcog_fep_training_begin", 0.0f);
+    return 0;
+}
+
+int rcog_fep_bridge_training_step(rcog_fep_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "rcog_fep_bridge_training_step: NULL argument");
+        return -1;
+    }
+    float clamped = progress < 0.0f ? 0.0f : (progress > 1.0f ? 1.0f : progress);
+    rcog_fep_bridge_heartbeat_instance(
+        g_rcog_fep_bridge_instance_health_agent, "rcog_fep_training_step", clamped);
+    return 0;
+}
+
+int rcog_fep_bridge_training_end(rcog_fep_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "rcog_fep_bridge_training_end: NULL argument");
+        return -1;
+    }
+    rcog_fep_bridge_heartbeat_instance(
+        g_rcog_fep_bridge_instance_health_agent, "rcog_fep_training_end", 1.0f);
+    return 0;
+}
+
 #define LOG_MODULE "RCOG_FEP_BRIDGE"
 
 
@@ -76,6 +135,9 @@ struct rcog_fep_bridge {
 
     /* Metrics */
     rcog_fep_metrics_t metrics;
+
+    /* Phase 8: Instance-level health agent */
+    nimcp_health_agent_t* health_agent;
 
     /* Previous state for change detection */
     float prev_free_energy;
@@ -348,7 +410,7 @@ rcog_fep_bridge_t* rcog_fep_bridge_create(const rcog_fep_config_t* config) {
     rcog_fep_bridge_t* bridge = nimcp_calloc(1, sizeof(rcog_fep_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 

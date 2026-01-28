@@ -358,7 +358,7 @@ mirror_prefrontal_bridge_t mirror_prefrontal_bridge_create(
     mirror_prefrontal_bridge_t bridge = nimcp_calloc(1, sizeof(struct mirror_prefrontal_bridge_struct));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Mirror-PFC bridge: Failed to allocate bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
     }
@@ -1251,13 +1251,33 @@ void mirror_prefrontal_bridge_set_instance_health_agent(
  *===========================================================================*/
 
 int mirror_prefrontal_bridge_training_begin(mirror_prefrontal_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_prefrontal_bridge_training_begin: NULL argument");
+        return -1;
+    }
     mirror_prefrontal_bridge_heartbeat("mirror_prefr_training_begin", 0.0f);
     return 0;
 }
 
 int mirror_prefrontal_bridge_training_end(mirror_prefrontal_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_prefrontal_bridge_training_end: NULL argument");
+        return -1;
+    }
     mirror_prefrontal_bridge_heartbeat("mirror_prefr_training_end", 1.0f);
+    return 0;
+}
+
+int mirror_prefrontal_bridge_training_step(mirror_prefrontal_bridge_t bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_prefrontal_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    mirror_prefrontal_bridge_heartbeat_instance(bridge->health_agent, "mirror_prefrontal_bridge_training_step", progress);
     return 0;
 }

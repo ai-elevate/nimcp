@@ -95,7 +95,7 @@ emotion_recognition_substrate_bridge_t* emotion_recognition_substrate_bridge_cre
     emotion_recognition_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(emotion_recognition_substrate_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -274,19 +274,31 @@ void emotion_recognition_substrate_bridge_set_instance_health_agent(emotion_reco
 }
 
 int emotion_recognition_substrate_bridge_training_begin(emotion_recognition_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "emotion_recognition_substrate_bridge_training_begin: NULL argument");
+        return -1;
+    }
     emotion_recognition_substrate_bridge_heartbeat_instance(bridge->health_agent, "erec_sub_training_begin", 0.0f);
     return 0;
 }
 
 int emotion_recognition_substrate_bridge_training_end(emotion_recognition_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "emotion_recognition_substrate_bridge_training_end: NULL argument");
+        return -1;
+    }
     emotion_recognition_substrate_bridge_heartbeat_instance(bridge->health_agent, "erec_sub_training_end", 1.0f);
     return 0;
 }
 
 int emotion_recognition_substrate_bridge_training_step(emotion_recognition_substrate_bridge_t* bridge, float progress) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "emotion_recognition_substrate_bridge_training_step: NULL argument");
+        return -1;
+    }
     emotion_recognition_substrate_bridge_heartbeat_instance(bridge->health_agent, "erec_sub_training_step", progress);
     return 0;
 }

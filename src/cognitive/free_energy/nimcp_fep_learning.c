@@ -31,6 +31,9 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
 /** Global health agent for fep_learning module */
 static nimcp_health_agent_t* g_fep_learning_health_agent = NULL;
 
+/** Instance-level health agent for fep_learning (non-bridge fallback) */
+static nimcp_health_agent_t* g_fep_learning_instance_health_agent = NULL;
+
 /**
  * @brief Set health agent for fep_learning heartbeats
  * @param agent Health agent (can be NULL to disable)
@@ -43,6 +46,18 @@ void fep_learning_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void fep_learning_heartbeat(const char* operation, float progress) {
     if (g_fep_learning_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_fep_learning_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from fep_learning module (instance-level) */
+static inline void fep_learning_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_fep_learning_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_fep_learning_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_fep_learning_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -1178,4 +1193,30 @@ int fep_learning_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "FEP_Learning");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+void fep_learning_set_instance_health_agent(void* ctx, nimcp_health_agent_t* agent) {
+    (void)ctx; g_fep_learning_instance_health_agent = agent;
+}
+
+int fep_learning_training_begin(void* ctx) {
+    if (!ctx) return -1;
+    fep_learning_heartbeat_instance(g_fep_learning_instance_health_agent, "fep_lrn_training_begin", 0.0f);
+    NIMCP_LOGGING_INFO("fep_learning: training begun");
+    return 0;
+}
+
+int fep_learning_training_step(void* ctx, float progress) {
+    if (!ctx) return -1;
+    float clamped = progress < 0.0f ? 0.0f : (progress > 1.0f ? 1.0f : progress);
+    fep_learning_heartbeat_instance(g_fep_learning_instance_health_agent, "fep_lrn_training_step", clamped);
+    (void)clamped;
+    return 0;
+}
+
+int fep_learning_training_end(void* ctx) {
+    if (!ctx) return -1;
+    fep_learning_heartbeat_instance(g_fep_learning_instance_health_agent, "fep_lrn_training_end", 1.0f);
+    NIMCP_LOGGING_INFO("fep_learning: training complete");
+    return 0;
 }

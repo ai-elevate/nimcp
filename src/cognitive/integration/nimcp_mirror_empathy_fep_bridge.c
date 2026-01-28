@@ -52,6 +52,19 @@ static inline void mirror_empathy_fep_bridge_heartbeat(const char* operation, fl
     }
 }
 
+/** @brief Send heartbeat from mirror_empathy_fep_bridge module (instance-level) */
+static inline void mirror_empathy_fep_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_mirror_empathy_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_mirror_empathy_fep_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_mirror_empathy_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 #define LOG_MODULE "MIRROR_EMPATHY_FEP_BRIDGE"
 
 
@@ -61,6 +74,7 @@ static inline void mirror_empathy_fep_bridge_heartbeat(const char* operation, fl
 
 struct me_fep_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+    nimcp_health_agent_t* health_agent;  /**< Phase 8: instance-level health agent */
 
     /* Configuration */
     me_fep_config_t config;
@@ -70,7 +84,7 @@ struct me_fep_bridge {
 
     /* References */
     fep_orchestrator_t* orchestrator;
-    mirror_empathy_bridge_t* me_bridge;
+    me_fep_bridge_t* me_bridge;
     uint32_t bridge_id;
     bool registered;
 
@@ -335,7 +349,7 @@ me_fep_bridge_t* me_fep_bridge_create(const me_fep_config_t* config) {
     me_fep_bridge_t* bridge = nimcp_calloc(1, sizeof(me_fep_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -990,5 +1004,54 @@ int me_fep_bridge_get_config(
     *config_out = bridge->config;
     nimcp_mutex_unlock(((me_fep_bridge_t*)bridge)->base.mutex);
 
+    return 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void mirror_empathy_fep_bridge_set_instance_health_agent(me_fep_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "mirror_empathy_fep_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int mirror_empathy_fep_bridge_training_begin(me_fep_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_empathy_fep_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    mirror_empathy_fep_bridge_heartbeat_instance(bridge->health_agent, "mirror_empathy_fep_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int mirror_empathy_fep_bridge_training_end(me_fep_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_empathy_fep_bridge_training_end: NULL argument");
+        return -1;
+    }
+    mirror_empathy_fep_bridge_heartbeat_instance(bridge->health_agent, "mirror_empathy_fep_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int mirror_empathy_fep_bridge_training_step(me_fep_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_empathy_fep_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    mirror_empathy_fep_bridge_heartbeat_instance(bridge->health_agent, "mirror_empathy_fep_bridge_training_step", progress);
     return 0;
 }

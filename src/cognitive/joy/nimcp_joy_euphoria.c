@@ -196,7 +196,7 @@ joy_system_t* joy_system_create(void) {
     joy_system_t* system = (joy_system_t*)nimcp_calloc(1, sizeof(joy_system_t));
     if (!system) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate system");
 
         return NULL;
 

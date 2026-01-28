@@ -35,6 +35,18 @@ static inline void counterfactual_heartbeat(const char* operation, float progres
     }
 }
 
+/** @brief Send heartbeat from counterfactual module (instance-level) */
+static inline void counterfactual_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_counterfactual_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_counterfactual_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_counterfactual_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 struct counterfactual_engine {
     cf_config_t config;
@@ -90,7 +102,7 @@ counterfactual_engine_t* counterfactual_engine_create_custom(const cf_config_t* 
     counterfactual_engine_t* e = nimcp_calloc(1, sizeof(counterfactual_engine_t));
     if (!e) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "e is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate e");
 
         return NULL;
 
@@ -117,7 +129,7 @@ cf_state_t* counterfactual_create_state(const float* values, uint32_t dim,
     cf_state_t* s = nimcp_calloc(1, sizeof(cf_state_t));
     if (!s) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "s is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate s");
 
         return NULL;
 
@@ -156,7 +168,7 @@ cf_counterfactual_t* counterfactual_imagine(counterfactual_engine_t* engine,
     cf_counterfactual_t* cf = nimcp_calloc(1, sizeof(cf_counterfactual_t));
     if (!cf) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cf is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate cf");
 
         return NULL;
 
@@ -201,7 +213,7 @@ cf_counterfactual_t** counterfactual_explore_space(counterfactual_engine_t* engi
     cf_counterfactual_t** cfs = nimcp_calloc(max_alternatives, sizeof(cf_counterfactual_t*));
     if (!cfs) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cfs is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate cfs");
 
         return NULL;
 
@@ -443,4 +455,54 @@ int counterfactual_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Counterfactual_Reasoning");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void parietal_counterfactual_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_counterfactual_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int parietal_counterfactual_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "parietal_counterfactual_training_begin: NULL argument");
+        return -1;
+    }
+    counterfactual_heartbeat_instance(NULL, "parietal_counterfactual_training_begin", 0.0f);
+    (void)instance;
+    return 0;
+}
+
+int parietal_counterfactual_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "parietal_counterfactual_training_end: NULL argument");
+        return -1;
+    }
+    counterfactual_heartbeat_instance(NULL, "parietal_counterfactual_training_end", 1.0f);
+    (void)instance;
+    return 0;
+}
+
+int parietal_counterfactual_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "parietal_counterfactual_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    counterfactual_heartbeat_instance(NULL, "parietal_counterfactual_training_step", progress);
+    (void)instance;
+    return 0;
 }

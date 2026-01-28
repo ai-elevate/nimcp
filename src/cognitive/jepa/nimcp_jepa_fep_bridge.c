@@ -52,6 +52,18 @@ static inline void jepa_fep_bridge_heartbeat(const char* operation, float progre
     }
 }
 
+/** @brief Send heartbeat from jepa_fep_bridge module (instance + global) */
+static inline void jepa_fep_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_jepa_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_jepa_fep_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_jepa_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "JEPA_FEP_BRIDGE"
 
 
@@ -102,6 +114,9 @@ struct jepa_fep_bridge {
     void* high_fe_user_data;
     jepa_fep_collapse_callback_t collapse_callback;
     void* collapse_user_data;
+
+    /* Phase 8: Instance-level health agent */
+    nimcp_health_agent_t* health_agent;
 };
 
 /*=============================================================================
@@ -273,7 +288,7 @@ jepa_fep_bridge_t* jepa_fep_bridge_create(const jepa_fep_config_t* config) {
     jepa_fep_bridge_t* bridge = nimcp_calloc(1, sizeof(jepa_fep_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -894,4 +909,48 @@ const char* jepa_fep_state_name(jepa_fep_state_t state) {
         case JEPA_FEP_STATE_ERROR:         return "error";
         default:                            return "unknown";
     }
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent + Training Lifecycle
+ * ============================================================================ */
+
+void jepa_fep_bridge_set_instance_health_agent(jepa_fep_bridge_t* bridge,
+                                                nimcp_health_agent_t* agent) {
+    if (!bridge) return;
+    bridge->health_agent = agent;
+}
+
+int jepa_fep_bridge_training_begin(jepa_fep_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "jepa_fep_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    jepa_fep_bridge_heartbeat_instance(bridge, "training_begin", 0.0f);
+    (void)bridge;
+    return 0;
+}
+
+int jepa_fep_bridge_training_end(jepa_fep_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "jepa_fep_bridge_training_end: NULL argument");
+        return -1;
+    }
+    jepa_fep_bridge_heartbeat_instance(bridge, "training_end", 1.0f);
+    (void)bridge;
+    return 0;
+}
+
+int jepa_fep_bridge_training_step(jepa_fep_bridge_t* bridge, uint32_t step) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "jepa_fep_bridge_training_step: NULL argument");
+        return -1;
+    }
+    float progress = (step % 100) / 100.0f;
+    jepa_fep_bridge_heartbeat_instance(bridge, "training_step", progress);
+    (void)bridge;
+    return 0;
 }

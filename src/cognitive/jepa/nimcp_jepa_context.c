@@ -51,6 +51,18 @@ static inline void jepa_context_heartbeat(const char* operation, float progress)
     }
 }
 
+/** @brief Send heartbeat from jepa_context module (instance + global) */
+static inline void jepa_context_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_jepa_context_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_jepa_context_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_jepa_context_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* ============================================================================
  * Internal Constants
@@ -1772,4 +1784,51 @@ int jepa_context_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent + Training Lifecycle
+ * ============================================================================ */
+
+void jepa_context_set_instance_health_agent(void* instance,
+                                             nimcp_health_agent_t* agent) {
+    (void)instance;
+    g_jepa_context_health_agent = agent;
+}
+
+int jepa_context_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "jepa_context_training_begin: NULL argument");
+        return -1;
+    }
+    jepa_context_heartbeat_instance(g_jepa_context_health_agent,
+                                     "jepa_context_training_begin", 0.0f);
+    (void)instance;
+    return 0;
+}
+
+int jepa_context_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "jepa_context_training_end: NULL argument");
+        return -1;
+    }
+    jepa_context_heartbeat_instance(g_jepa_context_health_agent,
+                                     "jepa_context_training_end", 1.0f);
+    (void)instance;
+    return 0;
+}
+
+int jepa_context_training_step(void* instance, uint32_t step) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "jepa_context_training_step: NULL argument");
+        return -1;
+    }
+    float progress = (step % 100) / 100.0f;
+    jepa_context_heartbeat_instance(g_jepa_context_health_agent,
+                                     "jepa_context_training_step", progress);
+    (void)instance;
+    return 0;
 }

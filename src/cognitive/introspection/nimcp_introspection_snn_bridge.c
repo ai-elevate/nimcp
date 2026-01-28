@@ -49,6 +49,17 @@ static inline void introspection_snn_bridge_heartbeat(const char* operation, flo
     }
 }
 
+static inline void introspection_snn_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_introspection_snn_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_introspection_snn_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_introspection_snn_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "INTROSPECTION_SNN_BRIDGE"
 
 
@@ -92,6 +103,9 @@ struct introspection_snn_bridge {
 
     /* Statistics */
     introspection_snn_stats_t stats;
+
+    /* Phase 8: Instance-level health agent */
+    nimcp_health_agent_t* health_agent;
 };
 
 //=============================================================================
@@ -992,4 +1006,65 @@ bool introspection_snn_is_bio_async_connected(introspection_snn_bridge_t* bridge
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent + Full Training
+ * ============================================================================ */
+
+void introspection_snn_bridge_set_instance_health_agent(
+    introspection_snn_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+int introspection_snn_bridge_training_begin(introspection_snn_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "introspection_snn_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    introspection_snn_bridge_heartbeat_instance(bridge->health_agent,
+        "intro_snn_training_begin", 0.0f);
+    bridge->stats.total_evaluations = 0;
+    bridge->stats.mean_confidence = 0.0f;
+    bridge->uncertainty_signal = 0.5f;
+    NIMCP_LOGGING_INFO("[INTRO_SNN] Training begin: counters reset, baseline state initialized");
+    return 0;
+}
+
+int introspection_snn_bridge_training_step(introspection_snn_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "introspection_snn_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    introspection_snn_bridge_heartbeat_instance(bridge->health_agent,
+        "intro_snn_training_step", progress);
+    float lr = bridge->config.encoding_gain;
+    float adaptation = lr * (1.0f - progress) * 0.1f;
+    bridge->config.encoding_gain = lr + adaptation;
+    if (bridge->config.encoding_gain > 1.0f) bridge->config.encoding_gain = 1.0f;
+    if (bridge->config.encoding_gain < 0.001f) bridge->config.encoding_gain = 0.001f;
+    bridge->uncertainty_signal = bridge->uncertainty_signal * 0.99f + progress * 0.01f;
+    bridge->stats.total_evaluations++;
+    return 0;
+}
+
+int introspection_snn_bridge_training_end(introspection_snn_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "introspection_snn_bridge_training_end: NULL argument");
+        return -1;
+    }
+    introspection_snn_bridge_heartbeat_instance(bridge->health_agent,
+        "intro_snn_training_end", 1.0f);
+    if (bridge->uncertainty_signal < 0.0f) bridge->uncertainty_signal = 0.0f;
+    if (bridge->uncertainty_signal > 1.0f) bridge->uncertainty_signal = 1.0f;
+    NIMCP_LOGGING_INFO("[INTRO_SNN] Training end: uncertainty=%.3f, evals=%u",
+        bridge->uncertainty_signal, bridge->stats.total_evaluations);
+    return 0;
 }

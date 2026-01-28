@@ -135,7 +135,7 @@ fep_parietal_bridge_t* fep_parietal_bridge_create(const fep_parietal_config_t* c
     fep_parietal_bridge_t* bridge = calloc(1, sizeof(fep_parietal_bridge_t));
     if (!bridge) {
         set_error("Failed to allocate fep_parietal_bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
     }
@@ -679,19 +679,31 @@ void fep_parietal_bridge_set_instance_health_agent(
 //=============================================================================
 
 int fep_parietal_bridge_training_begin(fep_parietal_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "fep_parietal_bridge_training_begin: NULL argument");
+        return -1;
+    }
     fep_parietal_bridge_heartbeat_instance(bridge->health_agent, "fep_parietal_bridge_training_begin", 0.0f);
     return 0;
 }
 
 int fep_parietal_bridge_training_end(fep_parietal_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "fep_parietal_bridge_training_end: NULL argument");
+        return -1;
+    }
     fep_parietal_bridge_heartbeat_instance(bridge->health_agent, "fep_parietal_bridge_training_end", 1.0f);
     return 0;
 }
 
 int fep_parietal_bridge_training_step(fep_parietal_bridge_t* bridge, float progress) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "fep_parietal_bridge_training_step: NULL argument");
+        return -1;
+    }
 
     /* Safety gates: ethics + LGSS pre-check */
     BRIDGE_ETHICS_GATE(bridge, "fep_parietal_bridge_training_step");

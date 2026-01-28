@@ -108,7 +108,7 @@ grief_fep_bridge_t* grief_fep_create(
     grief_fep_bridge_t* bridge = nimcp_malloc(sizeof(grief_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate grief FEP bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
     }
@@ -522,19 +522,31 @@ void grief_fep_bridge_set_instance_health_agent(grief_fep_bridge_t* bridge, nimc
  * ============================================================================ */
 
 int grief_fep_bridge_training_begin(grief_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "grief_fep_bridge_training_begin: NULL argument");
+        return -1;
+    }
     grief_fep_bridge_heartbeat_instance(g_grief_fep_bridge_instance_health_agent, "grief_fep_bridge_training_begin", 0.0f);
     return 0;
 }
 
 int grief_fep_bridge_training_end(grief_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "grief_fep_bridge_training_end: NULL argument");
+        return -1;
+    }
     grief_fep_bridge_heartbeat_instance(g_grief_fep_bridge_instance_health_agent, "grief_fep_bridge_training_end", 1.0f);
     return 0;
 }
 
 int grief_fep_bridge_training_step(grief_fep_bridge_t* bridge, float progress) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "grief_fep_bridge_training_step: NULL argument");
+        return -1;
+    }
     grief_fep_bridge_heartbeat_instance(g_grief_fep_bridge_instance_health_agent, "grief_fep_bridge_training_step", progress);
     return 0;
 }

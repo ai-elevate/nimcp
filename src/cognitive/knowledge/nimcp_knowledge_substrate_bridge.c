@@ -48,6 +48,17 @@ static inline void knowledge_substrate_bridge_heartbeat(const char* operation, f
     }
 }
 
+static inline void knowledge_substrate_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_knowledge_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_knowledge_substrate_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_knowledge_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "KNOWLEDGE_SUBSTRATE_BRIDGE"
 
 
@@ -63,6 +74,9 @@ struct knowledge_substrate_bridge {
     bool bio_async_connected;
     uint64_t update_count;
     float prev_overall_capacity;
+
+    /* Phase 8: Instance-level health agent */
+    nimcp_health_agent_t* health_agent;
 };
 
 knowledge_substrate_config_t knowledge_substrate_default_config(void) {
@@ -329,4 +343,53 @@ int knowledge_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void knowledge_substrate_bridge_set_instance_health_agent(knowledge_substrate_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "knowledge_substrate_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int knowledge_substrate_bridge_training_begin(knowledge_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "knowledge_substrate_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    knowledge_substrate_bridge_heartbeat_instance(bridge->health_agent, "knowledge_substrate_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int knowledge_substrate_bridge_training_end(knowledge_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "knowledge_substrate_bridge_training_end: NULL argument");
+        return -1;
+    }
+    knowledge_substrate_bridge_heartbeat_instance(bridge->health_agent, "knowledge_substrate_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int knowledge_substrate_bridge_training_step(knowledge_substrate_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "knowledge_substrate_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    knowledge_substrate_bridge_heartbeat_instance(bridge->health_agent, "knowledge_substrate_bridge_training_step", progress);
+    return 0;
 }

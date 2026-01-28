@@ -45,6 +45,18 @@ static inline void health_diagnostic_bridge_heartbeat(const char* operation, flo
     }
 }
 
+/** @brief Send heartbeat from health_diagnostic_bridge module (instance-level) */
+static inline void health_diagnostic_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_health_diagnostic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_health_diagnostic_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_health_diagnostic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "HEALTH_DIAGNOSTIC_BRIDGE"
 
 
@@ -75,6 +87,9 @@ struct health_diag_bridge {
 
     /* State */
     bool initialized;
+
+    /* Phase 8: Instance health agent */
+    nimcp_health_agent_t* health_agent;         /**< Health agent (Phase 8) */
 };
 
 /* ============================================================================
@@ -263,8 +278,8 @@ static const agent_error_mapping_t* find_agent_mapping(
 static diagnostic_result_t* allocate_diagnostic_result(void) {
     diagnostic_result_t* result = nimcp_calloc(1, sizeof(diagnostic_result_t));
     if (!result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                              "Failed to allocate diagnostic_result_t");
         return NULL;
     }
 
@@ -387,8 +402,8 @@ health_diag_bridge_t* health_diag_bridge_create(
 
     health_diag_bridge_t* bridge = nimcp_calloc(1, sizeof(health_diag_bridge_t));
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                              "health_diag_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -426,8 +441,9 @@ health_diag_bridge_t* health_diag_bridge_create(
 void health_diag_bridge_destroy(health_diag_bridge_t* bridge) {
     if (!bridge) {
         return;
-        NIMCP_LOGGING_DEBUG("Destroying %s bridge", "health_diagnostic");
     }
+
+    NIMCP_LOGGING_DEBUG("Destroying %s bridge", "health_diagnostic");
 
     /* Phase 8: Heartbeat at operation start */
     health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_d", 0.0f);
@@ -466,25 +482,34 @@ int health_diag_bridge_convert_anomaly(
     diagnostic_result_t** result
 ) {
     if (!bridge || !anomaly || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "health_diag_bridge_convert_anomaly: NULL argument "
+                              "(bridge=%p, anomaly=%p, result=%p)",
+                              (const void*)bridge, (const void*)anomaly, (const void*)result);
         return -1;
     }
 
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED,
+                              "health_diag_bridge_convert_anomaly: bridge not initialized");
         return -1;
     }
 
-    /* Check minimum severity filter */
     /* Phase 8: Heartbeat at operation start */
     health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_c", 0.0f);
 
-
+    /* Check minimum severity filter (not an error — intentional filtering) */
     if (anomaly->severity < bridge->config.min_severity) {
         return -1;
     }
 
     uint64_t start_time = nimcp_time_get_us();
 
-    nimcp_mutex_lock(bridge->base.mutex);
+    if (nimcp_mutex_lock(bridge->base.mutex) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+                              "health_diag_bridge_convert_anomaly: mutex lock failed");
+        return -1;
+    }
 
     /* Allocate result */
     diagnostic_result_t* diag = allocate_diagnostic_result();
@@ -496,6 +521,8 @@ int health_diag_bridge_convert_anomaly(
     /* Find mapping for this anomaly type */
     const anomaly_error_mapping_t* mapping = find_anomaly_mapping(bridge, anomaly->type);
     if (!mapping) {
+        NIMCP_THROW(NIMCP_ERROR_NOT_FOUND,
+                    "No mapping found for anomaly type %d", (int)anomaly->type);
         nimcp_free(diag);
         nimcp_mutex_unlock(bridge->base.mutex);
         bridge->stats.conversions_failed++;
@@ -574,6 +601,8 @@ int health_diag_bridge_convert_anomalies(
     uint32_t* converted_count
 ) {
     if (!bridge || !anomalies || !results || !converted_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "health_diag_bridge_convert_anomalies: NULL argument");
         return -1;
     }
 
@@ -581,7 +610,6 @@ int health_diag_bridge_convert_anomalies(
 
     /* Phase 8: Heartbeat at operation start */
     health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_c", 0.0f);
-
 
     for (uint32_t i = 0; i < anomaly_count; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -610,25 +638,34 @@ int health_diag_bridge_convert_agent_message(
     diagnostic_result_t** result
 ) {
     if (!bridge || !message || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "health_diag_bridge_convert_agent_message: NULL argument "
+                              "(bridge=%p, message=%p, result=%p)",
+                              (const void*)bridge, (const void*)message, (const void*)result);
         return -1;
     }
 
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED,
+                              "health_diag_bridge_convert_agent_message: bridge not initialized");
         return -1;
     }
 
-    /* Check minimum severity filter */
     /* Phase 8: Heartbeat at operation start */
     health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_c", 0.0f);
 
-
+    /* Check minimum severity filter (not an error — intentional filtering) */
     if (message->severity < bridge->config.min_agent_severity) {
         return -1;
     }
 
     uint64_t start_time = nimcp_time_get_us();
 
-    nimcp_mutex_lock(bridge->base.mutex);
+    if (nimcp_mutex_lock(bridge->base.mutex) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+                              "health_diag_bridge_convert_agent_message: mutex lock failed");
+        return -1;
+    }
 
     /* Allocate result */
     diagnostic_result_t* diag = allocate_diagnostic_result();
@@ -757,12 +794,15 @@ int health_diag_bridge_enrich_stack_trace(
     diagnostic_result_t* result
 ) {
     if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "health_diag_bridge_enrich_stack_trace: NULL argument "
+                              "(bridge=%p, result=%p)",
+                              (const void*)bridge, (const void*)result);
         return -1;
     }
 
     /* Phase 8: Heartbeat at operation start */
     health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_e", 0.0f);
-
 
     nimcp_mutex_lock(bridge->base.mutex);
     int ret = capture_stack_trace(result);
@@ -779,12 +819,15 @@ int health_diag_bridge_enrich_memory_snapshot(
     diagnostic_result_t* result
 ) {
     if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "health_diag_bridge_enrich_memory_snapshot: NULL argument "
+                              "(bridge=%p, result=%p)",
+                              (const void*)bridge, (const void*)result);
         return -1;
     }
 
     /* Phase 8: Heartbeat at operation start */
     health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_e", 0.0f);
-
 
     nimcp_mutex_lock(bridge->base.mutex);
     int ret = capture_memory_snapshot(result);
@@ -822,12 +865,15 @@ int health_diag_bridge_analyze_patterns(
     diagnostic_result_t* result
 ) {
     if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "health_diag_bridge_analyze_patterns: NULL argument "
+                              "(bridge=%p, result=%p)",
+                              (const void*)bridge, (const void*)result);
         return -1;
     }
 
     /* Phase 8: Heartbeat at operation start */
     health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_a", 0.0f);
-
 
     nimcp_mutex_lock(bridge->base.mutex);
     int ret = analyze_patterns_unlocked(bridge, result);
@@ -845,16 +891,19 @@ int health_diag_bridge_add_anomaly_mapping(
     const anomaly_error_mapping_t* mapping
 ) {
     if (!bridge || !mapping) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "health_diag_bridge_add_anomaly_mapping: NULL argument");
         return -1;
     }
 
     /* Phase 8: Heartbeat at operation start */
     health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_a", 0.0f);
 
-
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->custom_anomaly_mapping_count >= HEALTH_DIAG_BRIDGE_MAX_MAPPINGS) {
+        NIMCP_THROW(NIMCP_ERROR_OUT_OF_RANGE,
+                    "Anomaly mapping table full (max=%d)", HEALTH_DIAG_BRIDGE_MAX_MAPPINGS);
         nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
@@ -870,16 +919,19 @@ int health_diag_bridge_add_agent_mapping(
     const agent_error_mapping_t* mapping
 ) {
     if (!bridge || !mapping) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "health_diag_bridge_add_agent_mapping: NULL argument");
         return -1;
     }
 
     /* Phase 8: Heartbeat at operation start */
     health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_a", 0.0f);
 
-
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->custom_agent_mapping_count >= HEALTH_DIAG_BRIDGE_MAX_MAPPINGS) {
+        NIMCP_THROW(NIMCP_ERROR_OUT_OF_RANGE,
+                    "Agent mapping table full (max=%d)", HEALTH_DIAG_BRIDGE_MAX_MAPPINGS);
         nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
@@ -946,12 +998,15 @@ int health_diag_bridge_get_stats(
     health_diag_bridge_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "health_diag_bridge_get_stats: NULL argument "
+                              "(bridge=%p, stats=%p)",
+                              (const void*)bridge, (const void*)stats);
         return -1;
     }
 
     /* Phase 8: Heartbeat at operation start */
     health_diagnostic_bridge_heartbeat("health_diagn_health_diag_bridge_g", 0.0f);
-
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *stats = bridge->stats;
@@ -1026,4 +1081,71 @@ const char* health_diag_bridge_agent_msg_type_name(health_agent_msg_type_t type)
 
 const char* health_diag_bridge_version(void) {
     return HEALTH_DIAG_BRIDGE_VERSION;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void health_diagnostic_bridge_set_instance_health_agent(health_diag_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "health_diagnostic_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int health_diagnostic_bridge_training_begin(health_diag_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "health_diagnostic_bridge_training_begin: NULL bridge");
+        return -1;
+    }
+    if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED,
+                              "health_diagnostic_bridge_training_begin: bridge not initialized");
+        return -1;
+    }
+    health_diagnostic_bridge_heartbeat_instance(bridge->health_agent,
+                                                "health_diagnostic_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int health_diagnostic_bridge_training_end(health_diag_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "health_diagnostic_bridge_training_end: NULL bridge");
+        return -1;
+    }
+    if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED,
+                              "health_diagnostic_bridge_training_end: bridge not initialized");
+        return -1;
+    }
+    health_diagnostic_bridge_heartbeat_instance(bridge->health_agent,
+                                                "health_diagnostic_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int health_diagnostic_bridge_training_step(health_diag_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "health_diagnostic_bridge_training_step: NULL bridge");
+        return -1;
+    }
+    if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED,
+                              "health_diagnostic_bridge_training_step: bridge not initialized");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    health_diagnostic_bridge_heartbeat_instance(bridge->health_agent,
+                                                "health_diagnostic_bridge_training_step", progress);
+    return 0;
 }

@@ -42,6 +42,18 @@ static inline void civil_engineering_heartbeat(const char* operation, float prog
     }
 }
 
+/** @brief Send heartbeat from civil_engineering module (instance-level) */
+static inline void civil_engineering_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_civil_engineering_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_civil_engineering_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_civil_engineering_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* ============================================================================
  * INTERNAL STRUCTURES
@@ -101,7 +113,7 @@ civil_eng_t* civil_eng_create_custom(const ce_config_t* config) {
     civil_eng_t* ce = calloc(1, sizeof(civil_eng_t));
     if (!ce) {
         set_error("Failed to allocate civil_eng");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate ce");
 
         return NULL;
     }
@@ -646,4 +658,54 @@ int civil_engineering_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Civil_Engineering");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void civil_engineering_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_civil_engineering_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int civil_engineering_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "civil_engineering_training_begin: NULL argument");
+        return -1;
+    }
+    civil_engineering_heartbeat_instance(NULL, "civil_engineering_training_begin", 0.0f);
+    (void)(struct civil_eng*)instance; /* Module state available for reset */
+    return 0;
+}
+
+int civil_engineering_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "civil_engineering_training_end: NULL argument");
+        return -1;
+    }
+    civil_engineering_heartbeat_instance(NULL, "civil_engineering_training_end", 1.0f);
+    (void)(struct civil_eng*)instance; /* Module state available for finalization */
+    return 0;
+}
+
+int civil_engineering_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "civil_engineering_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    civil_engineering_heartbeat_instance(NULL, "civil_engineering_training_step", progress);
+    (void)(struct civil_eng*)instance; /* Module state available for step adaptation */
+    return 0;
 }

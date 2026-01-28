@@ -55,6 +55,18 @@ static inline void prime_signature_heartbeat(const char* operation, float progre
     }
 }
 
+/** @brief Send heartbeat from prime_signature module (instance-level) */
+static inline void prime_signature_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_prime_signature_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_prime_signature_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_prime_signature_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Internal Constants
@@ -222,7 +234,7 @@ prime_signature_t* prime_sig_create(void) {
 
     prime_signature_t* sig = (prime_signature_t*)malloc(sizeof(prime_signature_t));
     if (!sig) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sig is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate sig");
 
         return NULL;
     }
@@ -450,7 +462,7 @@ prime_signature_t* prime_sig_copy(const prime_signature_t* sig) {
 
     prime_signature_t* copy = (prime_signature_t*)malloc(sizeof(prime_signature_t));
     if (!copy) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "copy is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate copy");
 
         return NULL;
     }
@@ -1145,4 +1157,51 @@ bool prime_sig_normalize(prime_signature_t* sig) {
     sig->hash = compute_signature_hash(sig->exponents);
 
     return true;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void prime_signature_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_prime_signature_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int prime_signature_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "prime_signature_training_begin: NULL argument");
+        return -1;
+    }
+    prime_signature_heartbeat_instance(NULL, "prime_signature_training_begin", 0.0f);
+    return 0;
+}
+
+int prime_signature_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "prime_signature_training_end: NULL argument");
+        return -1;
+    }
+    prime_signature_heartbeat_instance(NULL, "prime_signature_training_end", 1.0f);
+    return 0;
+}
+
+int prime_signature_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "prime_signature_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    prime_signature_heartbeat_instance(NULL, "prime_signature_training_step", progress);
+    return 0;
 }

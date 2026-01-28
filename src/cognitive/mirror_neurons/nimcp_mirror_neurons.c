@@ -73,6 +73,18 @@ static inline void mirror_neurons_heartbeat(const char* operation, float progres
     }
 }
 
+/** @brief Send heartbeat from mirror_neurons module (instance-level) */
+static inline void mirror_neurons_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_mirror_neurons_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_mirror_neurons_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_mirror_neurons_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 // Logging macros
 #define MIRROR_LOG_ERROR NIMCP_LOGGING_ERROR
@@ -2093,7 +2105,7 @@ mirror_neurons_t mirror_neurons_load(FILE* file)
     // HOW:  Use nimcp_calloc for zero-initialization
     mirror_neurons_t mirror = (mirror_neurons_t)nimcp_calloc(1, sizeof(struct mirror_neurons_system));
     if (!mirror) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate mirror");
 
         return NULL;
     }
@@ -2984,4 +2996,47 @@ int mirror_neurons_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Mirror_Neurons");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void mirror_neurons_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_mirror_neurons_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training stubs
+ * ============================================================================ */
+int mirror_neurons_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_neurons_training_begin: NULL argument");
+        return -1;
+    }
+    mirror_neurons_heartbeat_instance(NULL, "mirror_neurons_training_begin", 0.0f);
+    return 0;
+}
+
+int mirror_neurons_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_neurons_training_end: NULL argument");
+        return -1;
+    }
+    mirror_neurons_heartbeat_instance(NULL, "mirror_neurons_training_end", 1.0f);
+    return 0;
+}
+
+int mirror_neurons_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_neurons_training_step: NULL argument");
+        return -1;
+    }
+    mirror_neurons_heartbeat_instance(NULL, "mirror_neurons_training_step", progress);
+    return 0;
 }

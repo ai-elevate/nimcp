@@ -46,6 +46,69 @@ static inline void rcog_tool_router_heartbeat(const char* operation, float progr
     }
 }
 
+/** @brief Send heartbeat from rcog_tool_router module (instance-level) */
+static inline void rcog_tool_router_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_rcog_tool_router_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_rcog_tool_router_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_rcog_tool_router_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+/** @brief Instance-level health agent (global fallback for non-bridge) */
+static nimcp_health_agent_t* g_rcog_tool_router_instance_health_agent = NULL;
+
+void rcog_tool_router_set_instance_health_agent(void* ctx, nimcp_health_agent_t* agent) {
+    (void)ctx;
+    g_rcog_tool_router_instance_health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level Training Functions
+ * ============================================================================ */
+
+int rcog_tool_router_training_begin(void* ctx) {
+    rcog_tool_router_t* router = (rcog_tool_router_t*)ctx;
+    if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "rcog_tool_router_training_begin: NULL argument");
+        return -1;
+    }
+    rcog_tool_router_heartbeat_instance(
+        g_rcog_tool_router_instance_health_agent,
+        "rcog_router_training_begin", 0.0f);
+    return 0;
+}
+
+int rcog_tool_router_training_step(void* ctx, float progress) {
+    rcog_tool_router_t* router = (rcog_tool_router_t*)ctx;
+    if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "rcog_tool_router_training_step: NULL argument");
+        return -1;
+    }
+    float clamped = progress < 0.0f ? 0.0f : (progress > 1.0f ? 1.0f : progress);
+    rcog_tool_router_heartbeat_instance(
+        g_rcog_tool_router_instance_health_agent,
+        "rcog_router_training_step", clamped);
+    return 0;
+}
+
+int rcog_tool_router_training_end(void* ctx) {
+    rcog_tool_router_t* router = (rcog_tool_router_t*)ctx;
+    if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "rcog_tool_router_training_end: NULL argument");
+        return -1;
+    }
+    rcog_tool_router_heartbeat_instance(
+        g_rcog_tool_router_instance_health_agent,
+        "rcog_router_training_end", 1.0f);
+    return 0;
+}
 
 /*=============================================================================
  * INTERNAL STRUCTURES
@@ -294,7 +357,7 @@ rcog_tool_router_t* rcog_tool_router_create(
     rcog_tool_router_t* router = nimcp_calloc(1, sizeof(rcog_tool_router_t));
     if (!router) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate router");
 
         return NULL;
 

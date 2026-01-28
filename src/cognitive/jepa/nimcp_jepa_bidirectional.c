@@ -40,6 +40,18 @@ static inline void jepa_bidirectional_heartbeat(const char* operation, float pro
     }
 }
 
+/** @brief Send heartbeat from jepa_bidirectional module (instance + global) */
+static inline void jepa_bidirectional_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_jepa_bidirectional_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_jepa_bidirectional_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_jepa_bidirectional_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* Logging macros - wrap LOG_* for consistent usage */
 #define NIMCP_LOG_INFO(...)  LOG_INFO(__VA_ARGS__)
@@ -912,7 +924,7 @@ jepa_bidir_result_t* jepa_bidir_result_create(uint32_t dim) {
 
     jepa_bidir_result_t* result = nimcp_calloc(1, sizeof(jepa_bidir_result_t));
     if (!result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate result");
 
         return NULL;
     }
@@ -948,7 +960,7 @@ jepa_bidir_multi_result_t* jepa_bidir_multi_result_create(uint32_t num_direction
 
     jepa_bidir_multi_result_t* result = nimcp_calloc(1, sizeof(jepa_bidir_multi_result_t));
     if (!result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate result");
 
         return NULL;
     }
@@ -1010,4 +1022,52 @@ void jepa_bidir_multi_result_destroy(jepa_bidir_multi_result_t* result) {
         nimcp_free(result->results);
     }
     nimcp_free(result);
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent + Training Lifecycle
+ * ============================================================================ */
+
+void jepa_bidirectional_set_instance_health_agent(void* instance,
+                                                   nimcp_health_agent_t* agent) {
+    (void)instance;
+    /* Non-bridge: set global agent as fallback */
+    g_jepa_bidirectional_health_agent = agent;
+}
+
+int jepa_bidirectional_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "jepa_bidirectional_training_begin: NULL argument");
+        return -1;
+    }
+    jepa_bidirectional_heartbeat_instance(g_jepa_bidirectional_health_agent,
+                                          "jepa_bidirec_training_begin", 0.0f);
+    (void)instance;
+    return 0;
+}
+
+int jepa_bidirectional_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "jepa_bidirectional_training_end: NULL argument");
+        return -1;
+    }
+    jepa_bidirectional_heartbeat_instance(g_jepa_bidirectional_health_agent,
+                                          "jepa_bidirec_training_end", 1.0f);
+    (void)instance;
+    return 0;
+}
+
+int jepa_bidirectional_training_step(void* instance, uint32_t step) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "jepa_bidirectional_training_step: NULL argument");
+        return -1;
+    }
+    float progress = (step % 100) / 100.0f;
+    jepa_bidirectional_heartbeat_instance(g_jepa_bidirectional_health_agent,
+                                          "jepa_bidirec_training_step", progress);
+    (void)instance;
+    return 0;
 }

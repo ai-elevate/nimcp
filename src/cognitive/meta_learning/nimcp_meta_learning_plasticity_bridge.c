@@ -45,6 +45,19 @@ static inline void meta_learning_plasticity_bridge_heartbeat(const char* operati
     }
 }
 
+/** @brief Send heartbeat from meta_learning_plasticity_bridge module (instance-level) */
+static inline void meta_learning_plasticity_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_meta_learning_plasticity_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_meta_learning_plasticity_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_meta_learning_plasticity_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 #define LOG_MODULE "META_LEARNING_PLASTICITY_BRIDGE"
 
 
@@ -54,6 +67,7 @@ static inline void meta_learning_plasticity_bridge_heartbeat(const char* operati
 
 struct meta_learning_plasticity_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+    nimcp_health_agent_t* health_agent;  /**< Phase 8: instance-level health agent */
 
     meta_learning_plasticity_config_t config;
 
@@ -162,7 +176,7 @@ meta_learning_plasticity_bridge_t* meta_learning_plasticity_create(
     meta_learning_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(meta_learning_plasticity_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -995,4 +1009,53 @@ bool meta_learning_plasticity_is_bio_async_connected(meta_learning_plasticity_br
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void meta_learning_plasticity_bridge_set_instance_health_agent(meta_learning_plasticity_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "meta_learning_plasticity_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int meta_learning_plasticity_bridge_training_begin(meta_learning_plasticity_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "meta_learning_plasticity_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    meta_learning_plasticity_bridge_heartbeat_instance(bridge->health_agent, "meta_learning_plasticity_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int meta_learning_plasticity_bridge_training_end(meta_learning_plasticity_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "meta_learning_plasticity_bridge_training_end: NULL argument");
+        return -1;
+    }
+    meta_learning_plasticity_bridge_heartbeat_instance(bridge->health_agent, "meta_learning_plasticity_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int meta_learning_plasticity_bridge_training_step(meta_learning_plasticity_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "meta_learning_plasticity_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    meta_learning_plasticity_bridge_heartbeat_instance(bridge->health_agent, "meta_learning_plasticity_bridge_training_step", progress);
+    return 0;
 }

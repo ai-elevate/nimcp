@@ -52,6 +52,19 @@ static inline void predictive_attention_fep_bridge_heartbeat(const char* operati
     }
 }
 
+/** @brief Send heartbeat from predictive_attention_fep_bridge module (instance-level) */
+static inline void predictive_attention_fep_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_predictive_attention_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_predictive_attention_fep_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_predictive_attention_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 #define LOG_MODULE "PREDICTIVE_ATTENTION_FEP_BRIDGE"
 
 
@@ -61,6 +74,7 @@ static inline void predictive_attention_fep_bridge_heartbeat(const char* operati
 
 struct pa_fep_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+    nimcp_health_agent_t* health_agent;  /**< Phase 8: instance-level health agent */
 
     /* Configuration */
     pa_fep_config_t config;
@@ -331,7 +345,7 @@ pa_fep_bridge_t* pa_fep_bridge_create(const pa_fep_config_t* config) {
     pa_fep_bridge_t* bridge = nimcp_calloc(1, sizeof(pa_fep_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -1024,5 +1038,54 @@ int pa_fep_bridge_get_config(
     *config_out = bridge->config;
     nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->base.mutex);
 
+    return 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void predictive_attention_fep_bridge_set_instance_health_agent(pa_fep_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "predictive_attention_fep_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int predictive_attention_fep_bridge_training_begin(pa_fep_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "predictive_attention_fep_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    predictive_attention_fep_bridge_heartbeat_instance(bridge->health_agent, "predictive_attention_fep_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int predictive_attention_fep_bridge_training_end(pa_fep_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "predictive_attention_fep_bridge_training_end: NULL argument");
+        return -1;
+    }
+    predictive_attention_fep_bridge_heartbeat_instance(bridge->health_agent, "predictive_attention_fep_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int predictive_attention_fep_bridge_training_step(pa_fep_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "predictive_attention_fep_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    predictive_attention_fep_bridge_heartbeat_instance(bridge->health_agent, "predictive_attention_fep_bridge_training_step", progress);
     return 0;
 }

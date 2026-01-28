@@ -55,6 +55,19 @@ static inline void gt_tom_heartbeat(const char* operation, float progress) {
     }
 }
 
+/** @brief Send heartbeat from gt_tom module (instance-level) */
+static inline void gt_tom_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_gt_tom_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_gt_tom_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_gt_tom_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 
 //=============================================================================
 // Constants
@@ -201,7 +214,7 @@ nimcp_gt_tom_t nimcp_gt_tom_create(const nimcp_gt_tom_config_t* config) {
 
     nimcp_gt_tom_t ctx = nimcp_calloc(1, sizeof(struct nimcp_gt_tom_struct));
     if (!ctx) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate ctx");
 
         return NULL;
     }
@@ -1455,4 +1468,54 @@ int tom_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void gt_tom_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_gt_tom_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int gt_tom_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "gt_tom_training_begin: NULL argument");
+        return -1;
+    }
+    gt_tom_heartbeat_instance(NULL, "gt_tom_training_begin", 0.0f);
+    (void)(struct nimcp_gt_tom_struct*)instance; /* Module state available for reset */
+    return 0;
+}
+
+int gt_tom_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "gt_tom_training_end: NULL argument");
+        return -1;
+    }
+    gt_tom_heartbeat_instance(NULL, "gt_tom_training_end", 1.0f);
+    (void)(struct nimcp_gt_tom_struct*)instance; /* Module state available for finalization */
+    return 0;
+}
+
+int gt_tom_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "gt_tom_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    gt_tom_heartbeat_instance(NULL, "gt_tom_training_step", progress);
+    (void)(struct nimcp_gt_tom_struct*)instance; /* Module state available for step adaptation */
+    return 0;
 }

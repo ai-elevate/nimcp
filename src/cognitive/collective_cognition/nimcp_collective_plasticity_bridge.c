@@ -45,6 +45,18 @@ static inline void collective_plasticity_bridge_heartbeat(const char* operation,
     }
 }
 
+/** @brief Send heartbeat from collective_plasticity_bridge module (instance-level) */
+static inline void collective_plasticity_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_collective_plasticity_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_collective_plasticity_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_collective_plasticity_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "COLLECTIVE_PLASTICITY_BRIDGE"
 
 
@@ -87,6 +99,9 @@ struct collective_plasticity_bridge {
 
     /* Statistics */
     collective_plasticity_stats_t stats;
+
+    /* Phase 8: Instance-level health agent */
+    nimcp_health_agent_t* health_agent;
 };
 
 //=============================================================================
@@ -185,7 +200,7 @@ collective_plasticity_bridge_t* collective_plasticity_create(
     collective_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(collective_plasticity_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -1035,4 +1050,51 @@ bool collective_plasticity_is_bio_async_connected(collective_plasticity_bridge_t
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void collective_plasticity_bridge_set_instance_health_agent(collective_plasticity_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Full training implementation
+ * ============================================================================ */
+int collective_plasticity_bridge_training_begin(collective_plasticity_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "collective_plasticity_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    collective_plasticity_bridge_heartbeat_instance(bridge, "coll_plas_train_beg", 0.0f);
+    (void)bridge;
+    return 0;
+}
+
+int collective_plasticity_bridge_training_step(collective_plasticity_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "collective_plasticity_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    collective_plasticity_bridge_heartbeat_instance(bridge, "coll_plas_train_stp", progress);
+    (void)bridge;
+    return 0;
+}
+
+int collective_plasticity_bridge_training_end(collective_plasticity_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "collective_plasticity_bridge_training_end: NULL argument");
+        return -1;
+    }
+    collective_plasticity_bridge_heartbeat_instance(bridge, "coll_plas_train_end", 1.0f);
+    (void)bridge;
+    return 0;
 }

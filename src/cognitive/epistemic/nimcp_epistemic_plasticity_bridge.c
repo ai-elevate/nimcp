@@ -45,6 +45,19 @@ static inline void epistemic_plasticity_bridge_heartbeat(const char* operation, 
     }
 }
 
+/** @brief Send heartbeat from epistemic_plasticity_bridge module (instance-level) */
+static inline void epistemic_plasticity_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_epistemic_plasticity_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_epistemic_plasticity_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_epistemic_plasticity_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 #define LOG_MODULE "EPISTEMIC_PLASTICITY_BRIDGE"
 
 
@@ -54,6 +67,7 @@ static inline void epistemic_plasticity_bridge_heartbeat(const char* operation, 
 
 struct epistemic_plasticity_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+    nimcp_health_agent_t* health_agent;  /**< Phase 8: instance-level health agent */
     epistemic_plasticity_config_t config;
     epistemic_plasticity_state_t state;
 
@@ -1007,4 +1021,53 @@ bool epistemic_plasticity_is_bio_async_connected(const epistemic_plasticity_brid
 
 
     return bridge->bio_async_connected;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void epistemic_plasticity_bridge_set_instance_health_agent(epistemic_plasticity_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "epistemic_plasticity_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int epistemic_plasticity_bridge_training_begin(epistemic_plasticity_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "epistemic_plasticity_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    epistemic_plasticity_bridge_heartbeat_instance(bridge->health_agent, "epistemic_plasticity_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int epistemic_plasticity_bridge_training_end(epistemic_plasticity_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "epistemic_plasticity_bridge_training_end: NULL argument");
+        return -1;
+    }
+    epistemic_plasticity_bridge_heartbeat_instance(bridge->health_agent, "epistemic_plasticity_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int epistemic_plasticity_bridge_training_step(epistemic_plasticity_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "epistemic_plasticity_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    epistemic_plasticity_bridge_heartbeat_instance(bridge->health_agent, "epistemic_plasticity_bridge_training_step", progress);
+    return 0;
 }

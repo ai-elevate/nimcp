@@ -9,6 +9,7 @@
 #include "cognitive/parietal/nimcp_mathematical_intuition.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
@@ -39,6 +40,18 @@ void mathematical_intuition_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void mathematical_intuition_heartbeat(const char* operation, float progress) {
     if (g_mathematical_intuition_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_mathematical_intuition_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from mathematical_intuition module (instance-level) */
+static inline void mathematical_intuition_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_mathematical_intuition_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_mathematical_intuition_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_mathematical_intuition_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -389,7 +402,7 @@ math_intuition_t* math_intuition_create_custom(const math_intuition_config_t* co
     math_intuition_t* mi = calloc(1, sizeof(math_intuition_t));
     if (!mi) {
         set_math_error("Failed to allocate math intuition");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mi is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate mi");
 
         return NULL;
     }
@@ -1497,4 +1510,86 @@ int mathematical_intuition_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Mathematical_Intuition");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void mathematical_intuition_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_mathematical_intuition_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Functions
+ * ============================================================================ */
+
+int mathematical_intuition_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mathematical_intuition_training_begin: NULL argument");
+        return -1;
+    }
+    mathematical_intuition_heartbeat_instance(NULL, "mathematical_intuition_training_begin", 0.0f);
+    math_intuition_t* mi = (math_intuition_t*)instance;
+    mi->patterns_detected = 0;
+    mi->symmetries_detected = 0;
+    mi->analogies_solved = 0;
+    mi->geometric_analyses = 0;
+    mi->total_pattern_confidence = 0.0;
+    mi->total_symmetry_confidence = 0.0;
+    NIMCP_LOGGING_INFO("Mathematical intuition training begin: counters reset");
+    return 0;
+}
+
+int mathematical_intuition_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mathematical_intuition_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    mathematical_intuition_heartbeat_instance(NULL, "mathematical_intuition_training_step", progress);
+    math_intuition_t* mi = (math_intuition_t*)instance;
+    mi->patterns_detected++;
+    /* Sharpen pattern confidence threshold with training */
+    float threshold_adjust = 0.01f * progress;
+    mi->config.pattern_confidence_threshold += threshold_adjust;
+    if (mi->config.pattern_confidence_threshold > 0.95f)
+        mi->config.pattern_confidence_threshold = 0.95f;
+    /* Tighten symmetry tolerance as pattern recognition improves */
+    mi->config.symmetry_tolerance *= (1.0f - 0.05f * progress);
+    if (mi->config.symmetry_tolerance < 0.001f)
+        mi->config.symmetry_tolerance = 0.001f;
+    /* Reduce inflammation impact through adaptation */
+    mi->config.inflammation_sensitivity *= (1.0f - 0.1f * progress);
+    if (mi->config.inflammation_sensitivity < 0.1f)
+        mi->config.inflammation_sensitivity = 0.1f;
+    return 0;
+}
+
+int mathematical_intuition_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mathematical_intuition_training_end: NULL argument");
+        return -1;
+    }
+    mathematical_intuition_heartbeat_instance(NULL, "mathematical_intuition_training_end", 1.0f);
+    math_intuition_t* mi = (math_intuition_t*)instance;
+    float avg_pattern_conf = (mi->patterns_detected > 0)
+        ? (float)(mi->total_pattern_confidence / (double)mi->patterns_detected)
+        : 0.0f;
+    float avg_sym_conf = (mi->symmetries_detected > 0)
+        ? (float)(mi->total_symmetry_confidence / (double)mi->symmetries_detected)
+        : 0.0f;
+    NIMCP_LOGGING_INFO("Mathematical intuition training end: %lu patterns (avg_conf=%.4f), "
+                       "%lu symmetries (avg_conf=%.4f), %lu analogies",
+                       (unsigned long)mi->patterns_detected, avg_pattern_conf,
+                       (unsigned long)mi->symmetries_detected, avg_sym_conf,
+                       (unsigned long)mi->analogies_solved);
+    return 0;
 }

@@ -64,6 +64,64 @@ static inline void omni_world_model_heartbeat(const char* operation, float progr
     }
 }
 
+/** @brief Send heartbeat from omni_world_model module (instance-level) */
+static inline void omni_world_model_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_omni_world_model_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_omni_world_model_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_omni_world_model_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+/** @brief Instance-level health agent (global fallback for non-bridge) */
+static nimcp_health_agent_t* g_omni_world_model_instance_health_agent = NULL;
+
+void omni_world_model_set_instance_health_agent(void* ctx, nimcp_health_agent_t* agent) {
+    (void)ctx;
+    g_omni_world_model_instance_health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level Training Functions
+ * ============================================================================ */
+
+int omni_world_model_training_begin(void* ctx) {
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "omni_world_model_training_begin: NULL argument");
+        return -1;
+    }
+    omni_world_model_heartbeat_instance(g_omni_world_model_health_agent, "training_begin", 0.0f);
+    (void)ctx;
+    return 0;
+}
+
+int omni_world_model_training_step(void* ctx, float progress) {
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "omni_world_model_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    omni_world_model_heartbeat_instance(g_omni_world_model_health_agent, "training_step", progress);
+    (void)ctx;
+    return 0;
+}
+
+int omni_world_model_training_end(void* ctx) {
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "omni_world_model_training_end: NULL argument");
+        return -1;
+    }
+    omni_world_model_heartbeat_instance(g_omni_world_model_health_agent, "training_end", 1.0f);
+    (void)ctx;
+    return 0;
+}
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846

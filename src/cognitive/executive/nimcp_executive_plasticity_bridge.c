@@ -46,6 +46,18 @@ static inline void executive_plasticity_bridge_heartbeat(const char* operation, 
     }
 }
 
+/** @brief Send heartbeat (instance-level) */
+static inline void executive_plasticity_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_executive_plasticity_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_executive_plasticity_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_executive_plasticity_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "EXECUTIVE_PLASTICITY_BRIDGE"
 
 //=============================================================================
@@ -54,6 +66,7 @@ static inline void executive_plasticity_bridge_heartbeat(const char* operation, 
 
 struct executive_plasticity_bridge {
     bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+    nimcp_health_agent_t* health_agent;  /**< Phase 8: instance-level health agent */
     executive_plasticity_config_t config;
 
     /* State */
@@ -163,7 +176,7 @@ executive_plasticity_bridge_t* executive_plasticity_create(
     executive_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(executive_plasticity_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -1014,4 +1027,53 @@ bool executive_plasticity_is_bio_async_connected(executive_plasticity_bridge_t* 
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void executive_plasticity_bridge_set_instance_health_agent(executive_plasticity_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "executive_plasticity_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int executive_plasticity_bridge_training_begin(executive_plasticity_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "executive_plasticity_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    executive_plasticity_bridge_heartbeat_instance(bridge->health_agent, "executive_plasticity_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int executive_plasticity_bridge_training_end(executive_plasticity_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "executive_plasticity_bridge_training_end: NULL argument");
+        return -1;
+    }
+    executive_plasticity_bridge_heartbeat_instance(bridge->health_agent, "executive_plasticity_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int executive_plasticity_bridge_training_step(executive_plasticity_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "executive_plasticity_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    executive_plasticity_bridge_heartbeat_instance(bridge->health_agent, "executive_plasticity_bridge_training_step", progress);
+    return 0;
 }

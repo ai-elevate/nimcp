@@ -52,6 +52,19 @@ static inline void counterfactual_imagination_heartbeat(const char* operation, f
     }
 }
 
+/** @brief Send heartbeat from counterfactual_imagination module (instance-level) */
+static inline void counterfactual_imagination_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_counterfactual_imagination_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_counterfactual_imagination_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_counterfactual_imagination_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 
 /*=============================================================================
  * INTERNAL HELPERS - DECLARATIONS
@@ -106,7 +119,7 @@ nimcp_counterfactual_t* cf_create(const cf_config_t* config) {
     nimcp_counterfactual_t* cf = calloc(1, sizeof(nimcp_counterfactual_t));
     if (!cf) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cf is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate cf");
 
         return NULL;
 
@@ -1139,7 +1152,7 @@ static cf_causal_model_t* causal_model_create(uint32_t capacity) {
     cf_causal_model_t* model = calloc(1, sizeof(cf_causal_model_t));
     if (!model) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "model is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate model");
 
         return NULL;
 
@@ -1450,4 +1463,51 @@ static void add_history_entry(
     entry->timestamp = get_current_time_us();
 
     cf->history_count++;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void counterfactual_imagination_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_counterfactual_imagination_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int counterfactual_imagination_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "counterfactual_imagination_training_begin: NULL argument");
+        return -1;
+    }
+    counterfactual_imagination_heartbeat_instance(NULL, "counterfactual_imagination_training_begin", 0.0f);
+    return 0;
+}
+
+int counterfactual_imagination_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "counterfactual_imagination_training_end: NULL argument");
+        return -1;
+    }
+    counterfactual_imagination_heartbeat_instance(NULL, "counterfactual_imagination_training_end", 1.0f);
+    return 0;
+}
+
+int counterfactual_imagination_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "counterfactual_imagination_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    counterfactual_imagination_heartbeat_instance(NULL, "counterfactual_imagination_training_step", progress);
+    return 0;
 }

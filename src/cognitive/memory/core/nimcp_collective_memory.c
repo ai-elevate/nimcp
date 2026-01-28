@@ -53,6 +53,18 @@ static inline void collective_memory_heartbeat(const char* operation, float prog
     }
 }
 
+/** @brief Send heartbeat from collective_memory module (instance-level) */
+static inline void collective_memory_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_collective_memory_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_collective_memory_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_collective_memory_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Internal Constants
@@ -228,7 +240,7 @@ static collective_memory_t* create_collective_memory(uint64_t memory_id,
     collective_memory_t* memory = calloc(1, sizeof(collective_memory_t));
     if (!memory) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate memory");
 
         return NULL;
 
@@ -391,7 +403,7 @@ NIMCP_EXPORT collective_memory_system_t* collective_memory_create(
     collective_memory_system_t* system = calloc(1, sizeof(collective_memory_system_t));
     if (!system) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate system");
 
         return NULL;
 
@@ -1639,4 +1651,51 @@ NIMCP_EXPORT void collective_memory_print_summary(
     printf("Consensus Method: %s\n", consensus_method_name(system->config.consensus_method));
     printf("Propagation Model: %s\n", propagation_model_name(system->config.propagation_model));
     printf("========================================\n");
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void collective_memory_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_collective_memory_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int collective_memory_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "collective_memory_training_begin: NULL argument");
+        return -1;
+    }
+    collective_memory_heartbeat_instance(NULL, "collective_memory_training_begin", 0.0f);
+    return 0;
+}
+
+int collective_memory_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "collective_memory_training_end: NULL argument");
+        return -1;
+    }
+    collective_memory_heartbeat_instance(NULL, "collective_memory_training_end", 1.0f);
+    return 0;
+}
+
+int collective_memory_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "collective_memory_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    collective_memory_heartbeat_instance(NULL, "collective_memory_training_step", progress);
+    return 0;
 }

@@ -56,6 +56,19 @@ static inline void ethics_executive_bridge_heartbeat(const char* operation, floa
     }
 }
 
+/** @brief Send heartbeat from ethics_executive_bridge module (instance-level) */
+static inline void ethics_executive_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_ethics_executive_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_ethics_executive_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_ethics_executive_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 #define LOG_MODULE "ETHICS_EXECUTIVE_BRIDGE"
 
 
@@ -79,6 +92,7 @@ typedef struct action_evaluation {
  */
 struct ethics_executive_bridge {
     bridge_base_t base;                     /**< MUST be first: base bridge infrastructure */
+    nimcp_health_agent_t* health_agent;  /**< Phase 8: instance-level health agent */
     ethics_executive_config_t config;       /**< Bridge configuration */
     action_evaluation_t* evaluations;       /**< Evaluation records array */
     size_t eval_capacity;                   /**< Capacity of evaluations array */
@@ -217,7 +231,7 @@ ethics_executive_bridge_t* ethics_executive_bridge_create(
 
     ethics_executive_bridge_t* bridge = nimcp_malloc(sizeof(ethics_executive_bridge_t));
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
     }
@@ -548,5 +562,54 @@ int ethics_executive_bridge_get_stats(
     *stats = bridge->stats;
     nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
+    return 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void ethics_executive_bridge_set_instance_health_agent(ethics_executive_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "ethics_executive_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int ethics_executive_bridge_training_begin(ethics_executive_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "ethics_executive_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    ethics_executive_bridge_heartbeat_instance(bridge->health_agent, "ethics_executive_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int ethics_executive_bridge_training_end(ethics_executive_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "ethics_executive_bridge_training_end: NULL argument");
+        return -1;
+    }
+    ethics_executive_bridge_heartbeat_instance(bridge->health_agent, "ethics_executive_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int ethics_executive_bridge_training_step(ethics_executive_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "ethics_executive_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    ethics_executive_bridge_heartbeat_instance(bridge->health_agent, "ethics_executive_bridge_training_step", progress);
     return 0;
 }

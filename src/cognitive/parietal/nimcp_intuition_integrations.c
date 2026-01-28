@@ -6,6 +6,7 @@
 #include "cognitive/parietal/nimcp_intuition_integrations.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -37,6 +38,18 @@ void intuition_integrations_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void intuition_integrations_heartbeat(const char* operation, float progress) {
     if (g_intuition_integrations_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_intuition_integrations_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from intuition_integrations module (instance-level) */
+static inline void intuition_integrations_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_intuition_integrations_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_intuition_integrations_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_intuition_integrations_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -537,7 +550,7 @@ extrapolation_t* intuition_extrapolate(intuition_system_t* system,
     extrapolation_t* ext = nimcp_calloc(1, sizeof(extrapolation_t));
     if (!ext) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ext is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate ext");
 
         return NULL;
 
@@ -666,7 +679,7 @@ extrapolation_t* intuition_extrapolate_incremental(intuition_system_t* system,
                                                      sizeof(intuition_data_point_t*));
     if (!combined) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combined is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate combined");
 
         return NULL;
 
@@ -793,7 +806,7 @@ novel_prediction_t** intuition_predict_novel(intuition_system_t* system,
     novel_prediction_t** preds = nimcp_calloc(max_pred, sizeof(novel_prediction_t*));
     if (!preds) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "preds is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate preds");
 
         return NULL;
 
@@ -866,7 +879,7 @@ synthesis_t* intuition_synthesize_knowledge(intuition_system_t* system,
     synthesis_t* synth = nimcp_calloc(1, sizeof(synthesis_t));
     if (!synth) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synth is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate synth");
 
         return NULL;
 
@@ -1041,7 +1054,7 @@ intuition_gap_t** intuition_identify_knowledge_gaps(intuition_system_t* system,
     intuition_gap_t** gaps = nimcp_calloc(max_gaps, sizeof(intuition_gap_t*));
     if (!gaps) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gaps is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate gaps");
 
         return NULL;
 
@@ -1076,7 +1089,7 @@ intuition_question_t** intuition_generate_questions(intuition_system_t* system,
     intuition_question_t** questions = nimcp_calloc(max_q, sizeof(intuition_question_t*));
     if (!questions) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "questions is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate questions");
 
         return NULL;
 
@@ -1186,7 +1199,7 @@ intuition_data_point_t* intuition_data_point_create(const float* values, uint32_
     intuition_data_point_t* point = nimcp_calloc(1, sizeof(intuition_data_point_t));
     if (!point) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "point is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate point");
 
         return NULL;
 
@@ -1226,7 +1239,7 @@ knowledge_fragment_t* knowledge_fragment_create(const char* description,
     knowledge_fragment_t* frag = nimcp_calloc(1, sizeof(knowledge_fragment_t));
     if (!frag) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "frag is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate frag");
 
         return NULL;
 
@@ -1419,4 +1432,89 @@ int intuition_integrations_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Intuition_Integrations");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void intuition_integrations_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_intuition_integrations_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Functions
+ * ============================================================================ */
+
+int intuition_integrations_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "intuition_integrations_training_begin: NULL argument");
+        return -1;
+    }
+    intuition_integrations_heartbeat_instance(NULL, "intuition_integrations_training_begin", 0.0f);
+    intuition_system_t* sys = (intuition_system_t*)instance;
+    sys->stats.extrapolations_performed = 0;
+    sys->stats.successful_extrapolations = 0;
+    sys->stats.avg_extrapolation_accuracy = 0.0f;
+    sys->stats.syntheses_performed = 0;
+    sys->stats.gaps_identified = 0;
+    sys->stats.contradictions_found = 0;
+    sys->stats.contradictions_resolved = 0;
+    sys->stats.intuitions_trained = 0;
+    sys->stats.intuitions_confirmed = 0;
+    sys->stats.intuitions_refuted = 0;
+    sys->stats.avg_intuition_accuracy = 0.0f;
+    sys->stats.novel_predictions_made = 0;
+    sys->stats.novel_predictions_confirmed = 0;
+    NIMCP_LOGGING_INFO("Intuition integrations training begin: counters reset");
+    return 0;
+}
+
+int intuition_integrations_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "intuition_integrations_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    intuition_integrations_heartbeat_instance(NULL, "intuition_integrations_training_step", progress);
+    intuition_system_t* sys = (intuition_system_t*)instance;
+    sys->stats.intuitions_trained++;
+    /* Reduce inflammation sensitivity as integration strengthens */
+    float decay = 1.0f - 0.2f * progress;
+    if (decay < 0.5f) decay = 0.5f;
+    sys->config.inflammation_sensitivity *= decay;
+    /* Reduce fatigue sensitivity progressively */
+    sys->config.fatigue_sensitivity *= decay;
+    /* Improve extrapolation accuracy estimate through training */
+    sys->stats.avg_extrapolation_accuracy += 0.005f * progress;
+    if (sys->stats.avg_extrapolation_accuracy > 1.0f)
+        sys->stats.avg_extrapolation_accuracy = 1.0f;
+    return 0;
+}
+
+int intuition_integrations_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "intuition_integrations_training_end: NULL argument");
+        return -1;
+    }
+    intuition_integrations_heartbeat_instance(NULL, "intuition_integrations_training_end", 1.0f);
+    intuition_system_t* sys = (intuition_system_t*)instance;
+    float accuracy = 0.0f;
+    if (sys->stats.intuitions_trained > 0) {
+        accuracy = (float)sys->stats.intuitions_confirmed /
+                   (float)sys->stats.intuitions_trained;
+    }
+    sys->stats.avg_intuition_accuracy = accuracy;
+    NIMCP_LOGGING_INFO("Intuition integrations training end: %u trained, %u confirmed, accuracy=%.4f",
+                       sys->stats.intuitions_trained,
+                       sys->stats.intuitions_confirmed,
+                       accuracy);
+    return 0;
 }

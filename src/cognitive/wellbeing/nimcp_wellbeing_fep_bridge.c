@@ -47,6 +47,19 @@ static inline void wellbeing_fep_bridge_heartbeat(const char* operation, float p
     }
 }
 
+/** @brief Send heartbeat from wellbeing_fep_bridge module (instance-level) */
+static inline void wellbeing_fep_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_wellbeing_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_wellbeing_fep_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_wellbeing_fep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 
 int wellbeing_fep_bridge_default_config(wellbeing_fep_config_t* config) {
     /* Phase 8: Heartbeat at operation start */
@@ -81,7 +94,7 @@ wellbeing_fep_bridge_t* wellbeing_fep_bridge_create(const wellbeing_fep_config_t
     wellbeing_fep_bridge_t* bridge = nimcp_malloc(sizeof(wellbeing_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate wellbeing FEP bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
     }
@@ -267,4 +280,51 @@ int wellbeing_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Wellbeing_FEP_Bridge");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void wellbeing_fep_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_wellbeing_fep_bridge_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int wellbeing_fep_bridge_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "wellbeing_fep_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    wellbeing_fep_bridge_heartbeat_instance(NULL, "wellbeing_fep_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int wellbeing_fep_bridge_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "wellbeing_fep_bridge_training_end: NULL argument");
+        return -1;
+    }
+    wellbeing_fep_bridge_heartbeat_instance(NULL, "wellbeing_fep_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int wellbeing_fep_bridge_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "wellbeing_fep_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    wellbeing_fep_bridge_heartbeat_instance(NULL, "wellbeing_fep_bridge_training_step", progress);
+    return 0;
 }

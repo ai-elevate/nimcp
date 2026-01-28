@@ -49,6 +49,13 @@ static inline void consolidation_snn_bridge_heartbeat(const char* operation, flo
     }
 }
 
+static nimcp_health_agent_t* g_consolidation_snn_bridge_instance_health_agent = NULL;
+static inline void consolidation_snn_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress) {
+    if (g_consolidation_snn_bridge_health_agent) { nimcp_health_agent_heartbeat_ex(g_consolidation_snn_bridge_health_agent, operation, progress); }
+    if (instance_agent && instance_agent != g_consolidation_snn_bridge_health_agent) { nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress); }
+}
+
 #define LOG_MODULE "CONSOLIDATION_SNN_BRIDGE"
 
 
@@ -58,6 +65,7 @@ static inline void consolidation_snn_bridge_heartbeat(const char* operation, flo
 
 struct consolidation_snn_bridge {
     bridge_base_t base;  /* MUST be first member for bridge_base pattern */
+    nimcp_health_agent_t* health_agent;  /**< Phase 8: instance-level health agent */
     consolidation_snn_config_t config;
     snn_network_t* snn;
 
@@ -188,7 +196,7 @@ consolidation_snn_bridge_t* consolidation_snn_create(const consolidation_snn_con
     consolidation_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(consolidation_snn_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -993,4 +1001,50 @@ bool consolidation_snn_is_bio_async_connected(consolidation_snn_bridge_t* bridge
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
+}
+
+void consolidation_snn_bridge_set_instance_health_agent(consolidation_snn_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "consolidation_snn_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
+    g_consolidation_snn_bridge_instance_health_agent = agent;
+    NIMCP_LOGGING_DEBUG("consolidation_snn_bridge: instance health agent %s", agent ? "set" : "cleared");
+}
+
+int consolidation_snn_bridge_training_begin(consolidation_snn_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "consolidation_snn_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    consolidation_snn_bridge_heartbeat_instance(bridge, "consol_snn_training_begin", 0.0f);
+    (void)bridge;
+    return 0;
+}
+
+int consolidation_snn_bridge_training_end(consolidation_snn_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "consolidation_snn_bridge_training_end: NULL argument");
+        return -1;
+    }
+    consolidation_snn_bridge_heartbeat_instance(bridge, "consol_snn_training_end", 1.0f);
+    (void)bridge;
+    return 0;
+}
+
+int consolidation_snn_bridge_training_step(consolidation_snn_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "consolidation_snn_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    consolidation_snn_bridge_heartbeat_instance(bridge, "consol_snn_training_step", progress);
+    (void)bridge;
+    return 0;
 }

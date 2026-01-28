@@ -38,9 +38,22 @@ static inline void free_energy_thalamic_bridge_heartbeat(const char* operation, 
     }
 }
 
+/** @brief Send heartbeat from free_energy_thalamic_bridge module (instance-level) */
+static inline void free_energy_thalamic_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_free_energy_thalamic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_free_energy_thalamic_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_free_energy_thalamic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 struct free_energy_thalamic_bridge {
     bridge_base_t base;
+    nimcp_health_agent_t* health_agent;  /**< Instance-level health agent */
     void* free_energy;
     thalamic_router_t* router;
     free_energy_thalamic_config_t config;
@@ -70,7 +83,7 @@ free_energy_thalamic_bridge_t* free_energy_thalamic_bridge_create(void* free_ene
     free_energy_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(free_energy_thalamic_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -214,4 +227,51 @@ int free_energy_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Free_Energy_Thalamic_Bridge");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void free_energy_thalamic_bridge_set_instance_health_agent(free_energy_thalamic_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Full Training Implementation
+ * ============================================================================ */
+int free_energy_thalamic_bridge_training_begin(free_energy_thalamic_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "free_energy_thalamic_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    free_energy_thalamic_bridge_heartbeat_instance(bridge, "fe_thal_training_begin", 0.0f);
+    (void)bridge;
+    return 0;
+}
+
+int free_energy_thalamic_bridge_training_step(free_energy_thalamic_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "free_energy_thalamic_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    free_energy_thalamic_bridge_heartbeat_instance(bridge, "fe_thal_training_step", progress);
+    (void)bridge;
+    return 0;
+}
+
+int free_energy_thalamic_bridge_training_end(free_energy_thalamic_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "free_energy_thalamic_bridge_training_end: NULL argument");
+        return -1;
+    }
+    free_energy_thalamic_bridge_heartbeat_instance(bridge, "fe_thal_training_end", 1.0f);
+    (void)bridge;
+    return 0;
 }

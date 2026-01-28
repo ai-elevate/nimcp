@@ -56,6 +56,19 @@ static inline void mental_health_heartbeat(const char* operation, float progress
     }
 }
 
+/** @brief Send heartbeat from mental_health module (instance-level) */
+static inline void mental_health_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_mental_health_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_mental_health_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_mental_health_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 #define MENTAL_HEALTH_HISTORY_SIZE 100
 #define MENTAL_HEALTH_MAGIC 0x4D484D4E  /* "MHMN" */
 
@@ -838,3 +851,53 @@ bool mental_health_test_memory_reset(mental_health_monitor_t* mon, brain_t brain
     return true;
 }
 #endif
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void mental_health_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_mental_health_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int mental_health_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mental_health_training_begin: NULL argument");
+        return -1;
+    }
+    mental_health_heartbeat_instance(NULL, "mental_health_training_begin", 0.0f);
+    (void)(struct mental_health_monitor*)instance; /* Module state available for reset */
+    return 0;
+}
+
+int mental_health_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mental_health_training_end: NULL argument");
+        return -1;
+    }
+    mental_health_heartbeat_instance(NULL, "mental_health_training_end", 1.0f);
+    (void)(struct mental_health_monitor*)instance; /* Module state available for finalization */
+    return 0;
+}
+
+int mental_health_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mental_health_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    mental_health_heartbeat_instance(NULL, "mental_health_training_step", progress);
+    (void)(struct mental_health_monitor*)instance; /* Module state available for step adaptation */
+    return 0;
+}

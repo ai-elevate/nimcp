@@ -40,6 +40,17 @@ static inline void introspection_thalamic_bridge_heartbeat(const char* operation
     }
 }
 
+static inline void introspection_thalamic_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_introspection_thalamic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_introspection_thalamic_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_introspection_thalamic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 struct introspection_thalamic_bridge {
     bridge_base_t base;
@@ -48,6 +59,9 @@ struct introspection_thalamic_bridge {
     introspection_thalamic_config_t config;
     introspection_thalamic_stats_t stats;
     float attention_weight;
+
+    /* Phase 8: Instance-level health agent */
+    nimcp_health_agent_t* health_agent;
 };
 
 introspection_thalamic_config_t introspection_thalamic_default_config(void) {
@@ -75,7 +89,7 @@ introspection_thalamic_bridge_t* introspection_thalamic_bridge_create(
     introspection_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(introspection_thalamic_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -315,4 +329,65 @@ int introspection_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent + Full Training
+ * ============================================================================ */
+
+void introspection_thalamic_bridge_set_instance_health_agent(
+    introspection_thalamic_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+int introspection_thalamic_bridge_training_begin(introspection_thalamic_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "introspection_thalamic_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    introspection_thalamic_bridge_heartbeat_instance(bridge->health_agent,
+        "intro_thal_training_begin", 0.0f);
+    bridge->stats.monitors_routed = 0;
+    bridge->stats.avg_depth = 0.0f;
+    bridge->attention_weight = 0.5f;
+    NIMCP_LOGGING_INFO("[INTRO_THALAMIC] Training begin: counters reset, baseline state initialized");
+    return 0;
+}
+
+int introspection_thalamic_bridge_training_step(introspection_thalamic_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "introspection_thalamic_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    introspection_thalamic_bridge_heartbeat_instance(bridge->health_agent,
+        "intro_thal_training_step", progress);
+    float lr = bridge->config.min_urgency_threshold;
+    float adaptation = lr * (1.0f - progress) * 0.1f;
+    bridge->config.min_urgency_threshold = lr + adaptation;
+    if (bridge->config.min_urgency_threshold > 1.0f) bridge->config.min_urgency_threshold = 1.0f;
+    if (bridge->config.min_urgency_threshold < 0.001f) bridge->config.min_urgency_threshold = 0.001f;
+    bridge->attention_weight = bridge->attention_weight * 0.99f + progress * 0.01f;
+    bridge->stats.monitors_routed++;
+    return 0;
+}
+
+int introspection_thalamic_bridge_training_end(introspection_thalamic_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "introspection_thalamic_bridge_training_end: NULL argument");
+        return -1;
+    }
+    introspection_thalamic_bridge_heartbeat_instance(bridge->health_agent,
+        "intro_thal_training_end", 1.0f);
+    if (bridge->attention_weight < 0.0f) bridge->attention_weight = 0.0f;
+    if (bridge->attention_weight > 1.0f) bridge->attention_weight = 1.0f;
+    NIMCP_LOGGING_INFO("[INTRO_THALAMIC] Training end: attention=%.3f, routed=%u",
+        bridge->attention_weight, bridge->stats.monitors_routed);
+    return 0;
 }

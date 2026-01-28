@@ -32,6 +32,9 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
 /** Global health agent for fep_curiosity module */
 static nimcp_health_agent_t* g_fep_curiosity_health_agent = NULL;
 
+/** Instance-level health agent for fep_curiosity (non-bridge fallback) */
+static nimcp_health_agent_t* g_fep_curiosity_instance_health_agent = NULL;
+
 /**
  * @brief Set health agent for fep_curiosity heartbeats
  * @param agent Health agent (can be NULL to disable)
@@ -44,6 +47,18 @@ void fep_curiosity_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void fep_curiosity_heartbeat(const char* operation, float progress) {
     if (g_fep_curiosity_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_fep_curiosity_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from fep_curiosity module (instance-level) */
+static inline void fep_curiosity_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_fep_curiosity_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_fep_curiosity_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_fep_curiosity_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -841,4 +856,49 @@ int fep_curiosity_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void fep_curiosity_set_instance_health_agent(void* ctx, nimcp_health_agent_t* agent) {
+    (void)ctx;
+    g_fep_curiosity_instance_health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Full Training Implementation
+ * ============================================================================ */
+int fep_curiosity_training_begin(void* ctx) {
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "fep_curiosity_training_begin: NULL argument");
+        return -1;
+    }
+    fep_curiosity_heartbeat_instance(g_fep_curiosity_instance_health_agent, "fep_cur_training_begin", 0.0f);
+    (void)ctx;
+    return 0;
+}
+
+int fep_curiosity_training_step(void* ctx, float progress) {
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "fep_curiosity_training_step: NULL argument");
+        return -1;
+    }
+    float clamped = progress < 0.0f ? 0.0f : (progress > 1.0f ? 1.0f : progress);
+    fep_curiosity_heartbeat_instance(g_fep_curiosity_instance_health_agent, "fep_cur_training_step", clamped);
+    (void)ctx;
+    return 0;
+}
+
+int fep_curiosity_training_end(void* ctx) {
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "fep_curiosity_training_end: NULL argument");
+        return -1;
+    }
+    fep_curiosity_heartbeat_instance(g_fep_curiosity_instance_health_agent, "fep_cur_training_end", 1.0f);
+    (void)ctx;
+    return 0;
 }

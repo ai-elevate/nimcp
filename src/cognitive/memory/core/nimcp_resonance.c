@@ -51,6 +51,18 @@ static inline void resonance_heartbeat(const char* operation, float progress) {
     }
 }
 
+/** @brief Send heartbeat from resonance module (instance-level) */
+static inline void resonance_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_resonance_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_resonance_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_resonance_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Static Variables
@@ -853,4 +865,118 @@ void resonance_reset_stats(void) {
 
 const char* resonance_get_last_error(void) {
     return s_last_error[0] ? s_last_error : NULL;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void resonance_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_resonance_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration
+ * ============================================================================ */
+
+int resonance_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "resonance_training_begin: NULL argument");
+        return -1;
+    }
+    resonance_heartbeat_instance(NULL, "resonance_training_begin", 0.0f);
+
+    resonance_config_t* cfg = (resonance_config_t*)instance;
+
+    /* Reset stats for training baseline measurement */
+    memset(&s_stats, 0, sizeof(s_stats));
+
+    /* Clear error state */
+    clear_error();
+
+    /* Initialize weights to balanced starting point for training */
+    cfg->weight_jaccard = RESONANCE_DEFAULT_WEIGHT_JACCARD;
+    cfg->weight_phase = RESONANCE_DEFAULT_WEIGHT_PHASE;
+    cfg->weight_quaternion = RESONANCE_DEFAULT_WEIGHT_QUATERNION;
+    cfg->weight_kuramoto = RESONANCE_DEFAULT_WEIGHT_KURAMOTO;
+
+    resonance_heartbeat_instance(NULL, "resonance_training_begin", 1.0f);
+    return 0;
+}
+
+int resonance_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "resonance_training_end: NULL argument");
+        return -1;
+    }
+    resonance_heartbeat_instance(NULL, "resonance_training_end", 0.0f);
+
+    resonance_config_t* cfg = (resonance_config_t*)instance;
+
+    /* Normalize weights after training to ensure they sum to 1.0 */
+    float weight_sum = cfg->weight_jaccard + cfg->weight_phase +
+                       cfg->weight_quaternion + cfg->weight_kuramoto;
+    if (weight_sum > 1e-6f) {
+        cfg->weight_jaccard /= weight_sum;
+        cfg->weight_phase /= weight_sum;
+        cfg->weight_quaternion /= weight_sum;
+        cfg->weight_kuramoto /= weight_sum;
+    }
+
+    /* Capture training quality metrics */
+    uint64_t total_comps = s_stats.total_computations;
+    float mean_res = s_stats.mean_resonance;
+    (void)total_comps;
+    (void)mean_res;
+
+    resonance_heartbeat_instance(NULL, "resonance_training_end", 1.0f);
+    return 0;
+}
+
+int resonance_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "resonance_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    resonance_heartbeat_instance(NULL, "resonance_training_step", progress);
+
+    resonance_config_t* cfg = (resonance_config_t*)instance;
+
+    /*
+     * Adapt resonance weights during training based on progress:
+     * - Early: emphasize content (Jaccard) for establishing base associations
+     * - Mid: balanced across all components
+     * - Late: emphasize quaternion (emotional/state) for fine-tuning
+     */
+    float lr = 0.01f * (1.0f - 0.8f * progress);  /* Anneal learning rate */
+
+    /* Shift toward quaternion/phase emphasis as training progresses */
+    float jaccard_target = 0.35f - 0.1f * progress;    /* 0.35 -> 0.25 */
+    float phase_target = 0.15f + 0.05f * progress;     /* 0.15 -> 0.20 */
+    float quat_target = 0.25f + 0.1f * progress;       /* 0.25 -> 0.35 */
+    float kuramoto_target = 0.25f - 0.05f * progress;  /* 0.25 -> 0.20 */
+
+    cfg->weight_jaccard += lr * (jaccard_target - cfg->weight_jaccard);
+    cfg->weight_phase += lr * (phase_target - cfg->weight_phase);
+    cfg->weight_quaternion += lr * (quat_target - cfg->weight_quaternion);
+    cfg->weight_kuramoto += lr * (kuramoto_target - cfg->weight_kuramoto);
+
+    /* Ensure weights stay positive */
+    if (cfg->weight_jaccard < 0.01f) cfg->weight_jaccard = 0.01f;
+    if (cfg->weight_phase < 0.01f) cfg->weight_phase = 0.01f;
+    if (cfg->weight_quaternion < 0.01f) cfg->weight_quaternion = 0.01f;
+    if (cfg->weight_kuramoto < 0.01f) cfg->weight_kuramoto = 0.01f;
+
+    /* Adapt threshold: lower early for exploration, higher late for precision */
+    cfg->threshold = 0.15f + 0.2f * progress;
+
+    return 0;
 }

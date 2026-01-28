@@ -40,9 +40,23 @@ static inline void brain_immune_thalamic_bridge_heartbeat(const char* operation,
     }
 }
 
+/** @brief Send heartbeat from brain_immune_thalamic_bridge module (instance-level) */
+static inline void brain_immune_thalamic_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_brain_immune_thalamic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_brain_immune_thalamic_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_brain_immune_thalamic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 
 struct brain_immune_thalamic_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+    nimcp_health_agent_t* health_agent;  /**< Phase 8: instance-level health agent */
     void* brain_immune;
     thalamic_router_t* router;
     brain_immune_thalamic_config_t config;
@@ -72,7 +86,7 @@ brain_immune_thalamic_bridge_t* brain_immune_thalamic_bridge_create(void* brain_
     brain_immune_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(brain_immune_thalamic_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -199,4 +213,53 @@ int brain_immune_thalamic_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Brain_Immune_Thalamic_Bridge");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void brain_immune_thalamic_bridge_set_instance_health_agent(brain_immune_thalamic_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "brain_immune_thalamic_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int brain_immune_thalamic_bridge_training_begin(brain_immune_thalamic_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "brain_immune_thalamic_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    brain_immune_thalamic_bridge_heartbeat_instance(bridge->health_agent, "brain_immune_thalamic_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int brain_immune_thalamic_bridge_training_end(brain_immune_thalamic_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "brain_immune_thalamic_bridge_training_end: NULL argument");
+        return -1;
+    }
+    brain_immune_thalamic_bridge_heartbeat_instance(bridge->health_agent, "brain_immune_thalamic_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int brain_immune_thalamic_bridge_training_step(brain_immune_thalamic_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "brain_immune_thalamic_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    brain_immune_thalamic_bridge_heartbeat_instance(bridge->health_agent, "brain_immune_thalamic_bridge_training_step", progress);
+    return 0;
 }

@@ -131,6 +131,18 @@ static inline void engine_heartbeat(const inner_dialogue_engine_t* engine,
     }
 }
 
+/** @brief Send heartbeat from engine module (instance-level) */
+static inline void engine_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_inner_dialogue_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_inner_dialogue_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_inner_dialogue_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 /** Validate engine pointer and magic */
 static inline bool engine_valid(const inner_dialogue_engine_t* engine) {
     return engine && engine->magic == INNER_DIALOGUE_MAGIC;
@@ -1265,5 +1277,55 @@ int inner_dialogue_engine_get_stats(const inner_dialogue_engine_t* engine,
         return NIMCP_INNER_DIALOGUE_ERROR_NULL;
     }
     memcpy(stats, &engine->stats, sizeof(inner_dialogue_engine_stats_t));
+    return 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void engine_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_inner_dialogue_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int engine_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "engine_training_begin: NULL argument");
+        return -1;
+    }
+    engine_heartbeat_instance(NULL, "engine_training_begin", 0.0f);
+    (void)instance;
+    return 0;
+}
+
+int engine_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "engine_training_end: NULL argument");
+        return -1;
+    }
+    engine_heartbeat_instance(NULL, "engine_training_end", 1.0f);
+    (void)instance;
+    return 0;
+}
+
+int engine_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "engine_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    engine_heartbeat_instance(NULL, "engine_training_step", progress);
+    (void)instance;
     return 0;
 }

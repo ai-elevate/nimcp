@@ -803,19 +803,31 @@ void emotion_substrate_bridge_set_instance_health_agent(emotion_substrate_bridge
  * Phase 8: Training stubs
  * ============================================================================ */
 int emotion_substrate_bridge_training_begin(emotion_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "emotion_substrate_bridge_training_begin: NULL argument");
+        return -1;
+    }
     emotion_substrate_bridge_heartbeat_instance(NULL, "emotion_subs_training_begin", 0.0f);
     return 0;
 }
 
 int emotion_substrate_bridge_training_end(emotion_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "emotion_substrate_bridge_training_end: NULL argument");
+        return -1;
+    }
     emotion_substrate_bridge_heartbeat_instance(NULL, "emotion_subs_training_end", 1.0f);
     return 0;
 }
 
 int emotion_substrate_bridge_training_step(emotion_substrate_bridge_t* bridge, float progress) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "emotion_substrate_bridge_training_step: NULL argument");
+        return -1;
+    }
     emotion_substrate_bridge_heartbeat_instance(NULL, "emotion_subs_training_step", progress);
     return 0;
 }

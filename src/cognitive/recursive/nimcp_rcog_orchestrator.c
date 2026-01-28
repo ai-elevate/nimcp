@@ -49,6 +49,69 @@ static inline void rcog_orchestrator_heartbeat(const char* operation, float prog
     }
 }
 
+/** @brief Send heartbeat from rcog_orchestrator module (instance-level) */
+static inline void rcog_orchestrator_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_rcog_orchestrator_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_rcog_orchestrator_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_rcog_orchestrator_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+/** @brief Instance-level health agent (global fallback for non-bridge) */
+static nimcp_health_agent_t* g_rcog_orchestrator_instance_health_agent = NULL;
+
+void rcog_orchestrator_set_instance_health_agent(void* ctx, nimcp_health_agent_t* agent) {
+    (void)ctx;
+    g_rcog_orchestrator_instance_health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level Training Functions
+ * ============================================================================ */
+
+int rcog_orchestrator_training_begin(void* ctx) {
+    rcog_orchestrator_t* orch = (rcog_orchestrator_t*)ctx;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "rcog_orchestrator_training_begin: NULL argument");
+        return -1;
+    }
+    rcog_orchestrator_heartbeat_instance(
+        g_rcog_orchestrator_instance_health_agent,
+        "rcog_orch_training_begin", 0.0f);
+    return 0;
+}
+
+int rcog_orchestrator_training_step(void* ctx, float progress) {
+    rcog_orchestrator_t* orch = (rcog_orchestrator_t*)ctx;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "rcog_orchestrator_training_step: NULL argument");
+        return -1;
+    }
+    float clamped = progress < 0.0f ? 0.0f : (progress > 1.0f ? 1.0f : progress);
+    rcog_orchestrator_heartbeat_instance(
+        g_rcog_orchestrator_instance_health_agent,
+        "rcog_orch_training_step", clamped);
+    return 0;
+}
+
+int rcog_orchestrator_training_end(void* ctx) {
+    rcog_orchestrator_t* orch = (rcog_orchestrator_t*)ctx;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "rcog_orchestrator_training_end: NULL argument");
+        return -1;
+    }
+    rcog_orchestrator_heartbeat_instance(
+        g_rcog_orchestrator_instance_health_agent,
+        "rcog_orch_training_end", 1.0f);
+    return 0;
+}
 
 /*=============================================================================
  * INTERNAL STRUCTURES
@@ -334,7 +397,7 @@ rcog_orchestrator_t* rcog_orchestrator_create(
 
     rcog_orchestrator_t* orch = nimcp_calloc(1, sizeof(rcog_orchestrator_t));
     if (!orch) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "orch is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate orch");
 
         return NULL;
     }
@@ -895,7 +958,7 @@ static void* rcog_mcts_apply_action(const void* state, uint32_t action, void* us
     rcog_mcts_state_t* new_state = nimcp_malloc(sizeof(rcog_mcts_state_t));
     if (!new_state) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_state is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate new_state");
 
         return NULL;
 
@@ -981,7 +1044,7 @@ static void* rcog_mcts_clone_state(const void* state, void* user_data) {
     rcog_mcts_state_t* clone = nimcp_malloc(sizeof(rcog_mcts_state_t));
     if (!clone) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate clone");
 
         return NULL;
 

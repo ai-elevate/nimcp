@@ -110,7 +110,7 @@ mirror_substrate_bridge_t* mirror_substrate_bridge_create(void* mirror, neural_s
     mirror_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(mirror_substrate_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_WARN("Failed to allocate mirror_substrate_bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -356,5 +356,37 @@ int mirror_substrate_bridge_pre_training_hook(mirror_substrate_bridge_t* bridge)
 int mirror_substrate_bridge_post_training_hook(mirror_substrate_bridge_t* bridge) {
     if (!bridge) return -1;
     mirror_substrate_bridge_heartbeat_instance(bridge->health_agent, "mirror_subst_post_train", 1.0f);
+    return 0;
+}
+
+int mirror_substrate_bridge_training_begin(mirror_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_substrate_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    mirror_substrate_bridge_heartbeat_instance(bridge->health_agent, "mirror_substrate_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int mirror_substrate_bridge_training_end(mirror_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_substrate_bridge_training_end: NULL argument");
+        return -1;
+    }
+    mirror_substrate_bridge_heartbeat_instance(bridge->health_agent, "mirror_substrate_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int mirror_substrate_bridge_training_step(mirror_substrate_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_substrate_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    mirror_substrate_bridge_heartbeat_instance(bridge->health_agent, "mirror_substrate_bridge_training_step", progress);
     return 0;
 }

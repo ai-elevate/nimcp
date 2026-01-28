@@ -99,7 +99,7 @@ joy_thalamic_bridge_t* joy_thalamic_bridge_create(void* joy, thalamic_router_t* 
     joy_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(joy_thalamic_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -366,7 +366,12 @@ int joy_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
  * ============================================================================ */
 
 void joy_thalamic_bridge_set_instance_health_agent(joy_thalamic_bridge_t* bridge, nimcp_health_agent_t* agent) {
-    if (bridge) { bridge->health_agent = agent; }
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "joy_thalamic_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
 }
 
 /* ============================================================================
@@ -374,19 +379,31 @@ void joy_thalamic_bridge_set_instance_health_agent(joy_thalamic_bridge_t* bridge
  * ============================================================================ */
 
 int joy_thalamic_bridge_training_begin(joy_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "joy_thalamic_bridge_training_begin: NULL argument");
+        return -1;
+    }
     joy_thalamic_bridge_heartbeat_instance(bridge->health_agent, "joy_thalamic_bridge_training_begin", 0.0f);
     return 0;
 }
 
 int joy_thalamic_bridge_training_end(joy_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "joy_thalamic_bridge_training_end: NULL argument");
+        return -1;
+    }
     joy_thalamic_bridge_heartbeat_instance(bridge->health_agent, "joy_thalamic_bridge_training_end", 1.0f);
     return 0;
 }
 
 int joy_thalamic_bridge_training_step(joy_thalamic_bridge_t* bridge, float progress) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "joy_thalamic_bridge_training_step: NULL argument");
+        return -1;
+    }
     joy_thalamic_bridge_heartbeat_instance(bridge->health_agent, "joy_thalamic_bridge_training_step", progress);
     return 0;
 }

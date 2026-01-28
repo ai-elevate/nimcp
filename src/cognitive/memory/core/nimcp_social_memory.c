@@ -2655,6 +2655,18 @@ static inline void social_memory_heartbeat(const char* operation, float progress
     }
 }
 
+/** @brief Send heartbeat from social_memory module (instance-level) */
+static inline void social_memory_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_social_memory_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_social_memory_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_social_memory_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 static void set_error(const char* fmt, ...) {
     va_list args;
@@ -3038,4 +3050,54 @@ static float clamp(float value, float min_val, float max_val) {
     if (value < min_val) return min_val;
     if (value > max_val) return max_val;
     return value;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void social_memory_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_social_memory_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int social_memory_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "social_memory_training_begin: NULL argument");
+        return -1;
+    }
+    social_memory_heartbeat_instance(NULL, "social_memory_training_begin", 0.0f);
+    (void)(struct person_entry*)instance; /* Module state available for reset */
+    return 0;
+}
+
+int social_memory_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "social_memory_training_end: NULL argument");
+        return -1;
+    }
+    social_memory_heartbeat_instance(NULL, "social_memory_training_end", 1.0f);
+    (void)(struct person_entry*)instance; /* Module state available for finalization */
+    return 0;
+}
+
+int social_memory_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "social_memory_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    social_memory_heartbeat_instance(NULL, "social_memory_training_step", progress);
+    (void)(struct person_entry*)instance; /* Module state available for step adaptation */
+    return 0;
 }

@@ -51,6 +51,18 @@ static inline void pr_training_plasticity_heartbeat(const char* operation, float
     }
 }
 
+/** @brief Send heartbeat from pr_training_plasticity module (instance-level) */
+static inline void pr_training_plasticity_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_pr_training_plasticity_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pr_training_plasticity_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_pr_training_plasticity_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Internal Structure Definition
@@ -420,7 +432,7 @@ pr_training_plasticity_t pr_training_plasticity_create(
     pr_training_plasticity_t tp = nimcp_calloc(1, sizeof(struct pr_training_plasticity_struct));
     if (!tp) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tp is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate tp");
 
         return NULL;
 
@@ -2106,4 +2118,114 @@ size_t pr_training_get_memory_usage(pr_training_plasticity_t tp) {
     nimcp_mutex_unlock(tp->mutex);
 
     return usage;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void pr_training_plasticity_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_pr_training_plasticity_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration
+ *
+ * NOTE: This module already has extensive training functions
+ * (pr_training_epoch_start, pr_training_unified_step, pr_training_epoch_end).
+ * These wrapper functions delegate to the existing implementations rather
+ * than duplicating logic.
+ * ============================================================================ */
+
+int pr_training_plasticity_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "pr_training_plasticity_training_begin: NULL argument");
+        return -1;
+    }
+    pr_training_plasticity_heartbeat_instance(NULL, "pr_training_plasticity_training_begin", 0.0f);
+
+    pr_training_plasticity_t tp = (pr_training_plasticity_t)instance;
+
+    /* Delegate to existing epoch_start with epoch 0 for fresh training */
+    int rc = pr_training_epoch_start(tp, 0);
+    if (rc != 0) return rc;
+
+    /* Also reset cumulative statistics */
+    nimcp_mutex_lock(tp->mutex);
+    tp->stats.total_steps = 0;
+    tp->stats.total_gradient_contribution = 0.0;
+    tp->stats.total_plasticity_contribution = 0.0;
+    tp->total_steps = 0;
+    tp->loss_ema = 0.0f;
+    tp->loss_variance_ema = 0.0f;
+    tp->last_supervised_loss = 0.0f;
+    tp->last_unsupervised_loss = 0.0f;
+    nimcp_mutex_unlock(tp->mutex);
+
+    pr_training_plasticity_heartbeat_instance(NULL, "pr_training_plasticity_training_begin", 1.0f);
+    return 0;
+}
+
+int pr_training_plasticity_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "pr_training_plasticity_training_end: NULL argument");
+        return -1;
+    }
+    pr_training_plasticity_heartbeat_instance(NULL, "pr_training_plasticity_training_end", 0.0f);
+
+    pr_training_plasticity_t tp = (pr_training_plasticity_t)instance;
+
+    /* Delegate to existing epoch_end with consolidation enabled */
+    int rc = pr_training_epoch_end(tp, true);
+
+    /* Capture final metrics */
+    nimcp_mutex_lock(tp->mutex);
+    uint64_t total_steps = tp->total_steps;
+    float final_loss_ema = tp->loss_ema;
+    (void)total_steps;
+    (void)final_loss_ema;
+    nimcp_mutex_unlock(tp->mutex);
+
+    pr_training_plasticity_heartbeat_instance(NULL, "pr_training_plasticity_training_end", 1.0f);
+    return rc;
+}
+
+int pr_training_plasticity_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "pr_training_plasticity_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    pr_training_plasticity_heartbeat_instance(NULL, "pr_training_plasticity_training_step", progress);
+
+    pr_training_plasticity_t tp = (pr_training_plasticity_t)instance;
+
+    /* Adapt learning weights based on training progress */
+    nimcp_mutex_lock(tp->mutex);
+
+    /* Adjust supervised/unsupervised balance during training:
+     * Early: higher unsupervised weight for exploration
+     * Late: higher supervised weight for convergence */
+    float supervised_target = 0.3f + 0.4f * progress;   /* 0.3 -> 0.7 */
+    float unsupervised_target = 1.0f - supervised_target;
+
+    tp->current_supervised_weight +=
+        (supervised_target - tp->current_supervised_weight) * 0.1f;
+    tp->current_unsupervised_weight +=
+        (unsupervised_target - tp->current_unsupervised_weight) * 0.1f;
+
+    /* Increment step counters */
+    tp->total_steps++;
+    tp->epoch_step_count++;
+
+    nimcp_mutex_unlock(tp->mutex);
+
+    return 0;
 }

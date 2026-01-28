@@ -46,6 +46,18 @@ static inline void genius_erdos_heartbeat(const char* operation, float progress)
     }
 }
 
+/** @brief Send heartbeat from genius_erdos module (instance-level) */
+static inline void genius_erdos_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_genius_erdos_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_genius_erdos_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_genius_erdos_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* ============================================================================
  * Erdős Mode Analysis Implementation
@@ -118,4 +130,51 @@ uint32_t genius_erdos_ramsey_lower_bound(
 
     /* Return floor of the bound */
     return (uint32_t)floor(lower_bound);
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void genius_erdos_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_genius_erdos_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int genius_erdos_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "genius_erdos_training_begin: NULL argument");
+        return -1;
+    }
+    genius_erdos_heartbeat_instance(NULL, "genius_erdos_training_begin", 0.0f);
+    return 0;
+}
+
+int genius_erdos_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "genius_erdos_training_end: NULL argument");
+        return -1;
+    }
+    genius_erdos_heartbeat_instance(NULL, "genius_erdos_training_end", 1.0f);
+    return 0;
+}
+
+int genius_erdos_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "genius_erdos_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    genius_erdos_heartbeat_instance(NULL, "genius_erdos_training_step", progress);
+    return 0;
 }

@@ -39,11 +39,25 @@ static inline void meta_learning_thalamic_bridge_heartbeat(const char* operation
     }
 }
 
+/** @brief Send heartbeat from meta_learning_thalamic_bridge module (instance-level) */
+static inline void meta_learning_thalamic_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_meta_learning_thalamic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_meta_learning_thalamic_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_meta_learning_thalamic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 #define LOG_MODULE "META_LEARNING_THALAMIC_BRIDGE"
 
 
 struct meta_learning_thalamic_bridge {
     bridge_base_t base;
+    nimcp_health_agent_t* health_agent;  /**< Phase 8: instance-level health agent */
     void* meta_learning;
     thalamic_router_t* router;
     meta_learning_thalamic_config_t config;
@@ -73,7 +87,7 @@ meta_learning_thalamic_bridge_t* meta_learning_thalamic_bridge_create(void* meta
     meta_learning_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(meta_learning_thalamic_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -220,4 +234,53 @@ int meta_learning_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void meta_learning_thalamic_bridge_set_instance_health_agent(meta_learning_thalamic_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "meta_learning_thalamic_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int meta_learning_thalamic_bridge_training_begin(meta_learning_thalamic_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "meta_learning_thalamic_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    meta_learning_thalamic_bridge_heartbeat_instance(bridge->health_agent, "meta_learning_thalamic_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int meta_learning_thalamic_bridge_training_end(meta_learning_thalamic_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "meta_learning_thalamic_bridge_training_end: NULL argument");
+        return -1;
+    }
+    meta_learning_thalamic_bridge_heartbeat_instance(bridge->health_agent, "meta_learning_thalamic_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int meta_learning_thalamic_bridge_training_step(meta_learning_thalamic_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "meta_learning_thalamic_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    meta_learning_thalamic_bridge_heartbeat_instance(bridge->health_agent, "meta_learning_thalamic_bridge_training_step", progress);
+    return 0;
 }

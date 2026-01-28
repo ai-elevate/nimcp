@@ -65,6 +65,17 @@ static inline void connectivity_health_heartbeat(const char* operation, float pr
     }
 }
 
+static inline void connectivity_health_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_connectivity_health_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_connectivity_health_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_connectivity_health_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Internal Constants
@@ -1100,4 +1111,40 @@ int connectivity_health_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent + Full Training
+ * ============================================================================ */
+
+static nimcp_health_agent_t* g_connectivity_health_instance_health_agent = NULL;
+
+void connectivity_health_set_instance_health_agent(void* ctx, nimcp_health_agent_t* agent) {
+    (void)ctx;
+    g_connectivity_health_instance_health_agent = agent;
+}
+
+int connectivity_health_training_begin(void* ctx) {
+    if (!ctx) return -1;
+    connectivity_health_heartbeat_instance(g_connectivity_health_instance_health_agent,
+        "conn_health_training_begin", 0.0f);
+    NIMCP_LOGGING_INFO("[CONNECTIVITY_HEALTH] Training begin: module state reset");
+    return 0;
+}
+
+int connectivity_health_training_step(void* ctx, float progress) {
+    if (!ctx) return -1;
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    connectivity_health_heartbeat_instance(g_connectivity_health_instance_health_agent,
+        "conn_health_training_step", progress);
+    return 0;
+}
+
+int connectivity_health_training_end(void* ctx) {
+    if (!ctx) return -1;
+    connectivity_health_heartbeat_instance(g_connectivity_health_instance_health_agent,
+        "conn_health_training_end", 1.0f);
+    NIMCP_LOGGING_INFO("[CONNECTIVITY_HEALTH] Training end: metrics finalized");
+    return 0;
 }

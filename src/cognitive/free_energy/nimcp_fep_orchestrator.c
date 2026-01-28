@@ -29,6 +29,9 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
 /** Global health agent for fep_orchestrator module */
 static nimcp_health_agent_t* g_fep_orchestrator_health_agent = NULL;
 
+/** Instance-level health agent for fep_orchestrator (non-bridge fallback) */
+static nimcp_health_agent_t* g_fep_orchestrator_instance_health_agent = NULL;
+
 /**
  * @brief Set health agent for fep_orchestrator heartbeats
  * @param agent Health agent (can be NULL to disable)
@@ -41,6 +44,18 @@ void fep_orchestrator_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void fep_orchestrator_heartbeat(const char* operation, float progress) {
     if (g_fep_orchestrator_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_fep_orchestrator_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from fep_orchestrator module (instance-level) */
+static inline void fep_orchestrator_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_fep_orchestrator_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_fep_orchestrator_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_fep_orchestrator_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -1340,4 +1355,51 @@ int fep_orchestrator_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void fep_orchestrator_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_fep_orchestrator_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int fep_orchestrator_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "fep_orchestrator_training_begin: NULL argument");
+        return -1;
+    }
+    fep_orchestrator_heartbeat_instance(NULL, "fep_orchestrator_training_begin", 0.0f);
+    return 0;
+}
+
+int fep_orchestrator_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "fep_orchestrator_training_end: NULL argument");
+        return -1;
+    }
+    fep_orchestrator_heartbeat_instance(NULL, "fep_orchestrator_training_end", 1.0f);
+    return 0;
+}
+
+int fep_orchestrator_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "fep_orchestrator_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    fep_orchestrator_heartbeat_instance(NULL, "fep_orchestrator_training_step", progress);
+    return 0;
 }

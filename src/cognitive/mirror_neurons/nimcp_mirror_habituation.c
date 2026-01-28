@@ -46,6 +46,18 @@ static inline void mirror_habituation_heartbeat(const char* operation, float pro
     }
 }
 
+/** @brief Send heartbeat from mirror_habituation module (instance-level) */
+static inline void mirror_habituation_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_mirror_habituation_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_mirror_habituation_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_mirror_habituation_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Internal Structure
@@ -948,4 +960,47 @@ void habituation_reset_stats(habituation_system_t* system) {
     memset(&system->stats, 0, sizeof(habituation_stats_t));
     system->stats.pattern_capacity = capacity;
     nimcp_mutex_unlock(system->mutex);
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void mirror_habituation_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_mirror_habituation_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training stubs
+ * ============================================================================ */
+int mirror_habituation_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_habituation_training_begin: NULL argument");
+        return -1;
+    }
+    mirror_habituation_heartbeat_instance(NULL, "mirror_habituation_training_begin", 0.0f);
+    return 0;
+}
+
+int mirror_habituation_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_habituation_training_end: NULL argument");
+        return -1;
+    }
+    mirror_habituation_heartbeat_instance(NULL, "mirror_habituation_training_end", 1.0f);
+    return 0;
+}
+
+int mirror_habituation_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_habituation_training_step: NULL argument");
+        return -1;
+    }
+    mirror_habituation_heartbeat_instance(NULL, "mirror_habituation_training_step", progress);
+    return 0;
 }

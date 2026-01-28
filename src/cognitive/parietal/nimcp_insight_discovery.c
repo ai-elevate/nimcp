@@ -42,6 +42,18 @@ static inline void insight_discovery_heartbeat(const char* operation, float prog
     }
 }
 
+/** @brief Send heartbeat from insight_discovery module (instance-level) */
+static inline void insight_discovery_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_insight_discovery_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_insight_discovery_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_insight_discovery_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* ============================================================================
  * INTERNAL TYPES
@@ -187,7 +199,7 @@ insight_problem_t* insight_create_problem(const char* description) {
     insight_problem_t* problem = nimcp_calloc(1, sizeof(insight_problem_t));
     if (!problem) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "problem is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate problem");
 
         return NULL;
 
@@ -501,7 +513,7 @@ insight_restructuring_t* insight_attempt_restructure(insight_engine_t* engine,
     insight_restructuring_t* r = nimcp_calloc(1, sizeof(insight_restructuring_t));
     if (!r) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "r is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate r");
 
         return NULL;
 
@@ -786,4 +798,88 @@ int insight_discovery_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void insight_discovery_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_insight_discovery_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Functions
+ * ============================================================================ */
+
+int insight_discovery_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "insight_discovery_training_begin: NULL argument");
+        return -1;
+    }
+    insight_discovery_heartbeat_instance(NULL, "insight_discovery_training_begin", 0.0f);
+    insight_engine_t* eng = (insight_engine_t*)instance;
+    eng->stats.problems_processed = 0;
+    eng->stats.insights_generated = 0;
+    eng->stats.impasses_detected = 0;
+    eng->stats.impasses_resolved = 0;
+    eng->stats.constraints_relaxed = 0;
+    eng->stats.perspectives_shifted = 0;
+    eng->stats.avg_incubation_time_us = 0.0f;
+    eng->stats.avg_surprise_magnitude = 0.0f;
+    eng->stats.insight_success_rate = 0.0f;
+    eng->num_incubating = 0;
+    NIMCP_LOGGING_INFO("Insight discovery training begin: counters reset");
+    return 0;
+}
+
+int insight_discovery_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "insight_discovery_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    insight_discovery_heartbeat_instance(NULL, "insight_discovery_training_step", progress);
+    insight_engine_t* eng = (insight_engine_t*)instance;
+    eng->stats.problems_processed++;
+    /* Progressive incubation rate adaptation */
+    float decay = 1.0f - 0.25f * progress;
+    if (decay < 0.5f) decay = 0.5f;
+    eng->config.incubation_rate *= decay;
+    /* Sharpen restructuring threshold as training progresses */
+    eng->config.restructuring_threshold += 0.01f * progress;
+    if (eng->config.restructuring_threshold > 0.9f)
+        eng->config.restructuring_threshold = 0.9f;
+    /* Reduce impasse threshold to catch more insight opportunities */
+    eng->config.impasse_threshold -= 0.005f * progress;
+    if (eng->config.impasse_threshold < 0.3f)
+        eng->config.impasse_threshold = 0.3f;
+    return 0;
+}
+
+int insight_discovery_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "insight_discovery_training_end: NULL argument");
+        return -1;
+    }
+    insight_discovery_heartbeat_instance(NULL, "insight_discovery_training_end", 1.0f);
+    insight_engine_t* eng = (insight_engine_t*)instance;
+    float success_rate = 0.0f;
+    if (eng->stats.problems_processed > 0) {
+        success_rate = (float)eng->stats.insights_generated /
+                       (float)eng->stats.problems_processed;
+    }
+    eng->stats.insight_success_rate = success_rate;
+    NIMCP_LOGGING_INFO("Insight discovery training end: %lu problems, %lu insights, success_rate=%.4f",
+                       (unsigned long)eng->stats.problems_processed,
+                       (unsigned long)eng->stats.insights_generated,
+                       success_rate);
+    return 0;
 }

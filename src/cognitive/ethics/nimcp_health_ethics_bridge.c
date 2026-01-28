@@ -47,6 +47,18 @@ static inline void health_ethics_bridge_heartbeat(const char* operation, float p
     }
 }
 
+/** @brief Send heartbeat (instance-level) */
+static inline void health_ethics_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_health_ethics_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_health_ethics_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_health_ethics_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "HEALTH_ETHICS_BRIDGE"
 
 
@@ -799,4 +811,51 @@ float health_psych_get_confidence_threshold(
     float stress_modifier = state->stress_level * 0.3f;
 
     return base_threshold + stress_modifier;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void health_ethics_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_health_ethics_bridge_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int health_ethics_bridge_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "health_ethics_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    health_ethics_bridge_heartbeat_instance(NULL, "health_ethics_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int health_ethics_bridge_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "health_ethics_bridge_training_end: NULL argument");
+        return -1;
+    }
+    health_ethics_bridge_heartbeat_instance(NULL, "health_ethics_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int health_ethics_bridge_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "health_ethics_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    health_ethics_bridge_heartbeat_instance(NULL, "health_ethics_bridge_training_step", progress);
+    return 0;
 }

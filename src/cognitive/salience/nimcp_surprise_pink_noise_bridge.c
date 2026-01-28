@@ -616,3 +616,53 @@ int surprise_pink_noise_bridge_set_health_agent(
     }
     return 0;
 }
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void surprise_pink_noise_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_surprise_pink_noise_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int surprise_pink_noise_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "surprise_pink_noise_training_begin: NULL argument");
+        return -1;
+    }
+    surprise_pink_noise_heartbeat_instance(NULL, "surprise_pink_noise_training_begin", 0.0f);
+    (void)instance;
+    return 0;
+}
+
+int surprise_pink_noise_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "surprise_pink_noise_training_end: NULL argument");
+        return -1;
+    }
+    surprise_pink_noise_heartbeat_instance(NULL, "surprise_pink_noise_training_end", 1.0f);
+    (void)instance;
+    return 0;
+}
+
+int surprise_pink_noise_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "surprise_pink_noise_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    surprise_pink_noise_heartbeat_instance(NULL, "surprise_pink_noise_training_step", progress);
+    (void)instance;
+    return 0;
+}

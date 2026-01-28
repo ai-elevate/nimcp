@@ -58,6 +58,18 @@ static inline void fault_attention_heartbeat(const char* operation, float progre
     }
 }
 
+/** @brief Send heartbeat from fault_attention module (instance-level) */
+static inline void fault_attention_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_fault_attention_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_fault_attention_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_fault_attention_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define BIO_MODULE_COGNITIVE_FAULT_ATTENTION 0x0357
 
 
@@ -1050,4 +1062,67 @@ int fault_attention_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void fault_attention_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)instance;
+        g_fault_attention_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Functions (FULL implementation)
+ * ============================================================================ */
+int fault_attention_training_begin(fault_attention_t* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "fault_attention_training_begin: NULL argument");
+        return -1;
+    }
+    struct fault_attention* ctx = (struct fault_attention*)instance;
+    fault_attention_heartbeat_instance(NULL, "fault_attent_training_begin", 0.0f);
+    memset(&ctx->stats, 0, sizeof(ctx->stats));
+    ctx->fault_count = 0;
+    ctx->has_focus = false;
+    ctx->focused_fault_idx = 0;
+    NIMCP_LOGGING_INFO("%s training begin: counters reset", "fault_attention");
+    return 0;
+}
+
+int fault_attention_training_step(fault_attention_t* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "fault_attention_training_step: NULL argument");
+        return -1;
+    }
+    struct fault_attention* ctx = (struct fault_attention*)instance;
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    fault_attention_heartbeat_instance(NULL, "fault_attent_training_step", progress);
+    ctx->stats.total_computations++;
+    /* Adaptive attention decay during training */
+    float decay = 1.0f - 0.1f * progress;
+    if (decay < 0.5f) decay = 0.5f;
+    for (uint32_t i = 0; i < ctx->fault_count; i++) {
+        ctx->weights[i] *= decay;
+    }
+    return 0;
+}
+
+int fault_attention_training_end(fault_attention_t* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "fault_attention_training_end: NULL argument");
+        return -1;
+    }
+    struct fault_attention* ctx = (struct fault_attention*)instance;
+    fault_attention_heartbeat_instance(NULL, "fault_attent_training_end", 1.0f);
+    NIMCP_LOGGING_INFO("%s training end: %u faults, %lu computations",
+                       "fault_attention", ctx->fault_count,
+                       (unsigned long)ctx->stats.total_computations);
+    return 0;
 }

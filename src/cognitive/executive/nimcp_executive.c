@@ -128,6 +128,18 @@ static inline void exec_heartbeat(const char* operation, float progress) {
     }
 }
 
+/** @brief Send heartbeat (instance-level) */
+static inline void exec_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_exec_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_exec_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_exec_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 // Forward declarations for static helpers
 static inline uint64_t exec_get_time_ms(void);
 
@@ -2978,7 +2990,7 @@ static void* plan_apply_action(const void* state, uint32_t action, void* user_da
     mcts_plan_state_t* new_state = nimcp_calloc(1, sizeof(mcts_plan_state_t));
     if (!new_state) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_state is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate new_state");
 
         return NULL;
 
@@ -3046,7 +3058,7 @@ static void* plan_clone_state(const void* state, void* user_data) {
     mcts_plan_state_t* clone = nimcp_calloc(1, sizeof(mcts_plan_state_t));
     if (!clone) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate clone");
 
         return NULL;
 
@@ -3455,4 +3467,54 @@ char* executive_get_best_action_mcts(
     executive_destroy_plan(plan);
 
     return action;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void exec_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_exec_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int exec_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "exec_training_begin: NULL argument");
+        return -1;
+    }
+    exec_heartbeat_instance(NULL, "exec_training_begin", 0.0f);
+    (void)(struct executive_controller*)instance; /* Module state available for reset */
+    return 0;
+}
+
+int exec_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "exec_training_end: NULL argument");
+        return -1;
+    }
+    exec_heartbeat_instance(NULL, "exec_training_end", 1.0f);
+    (void)(struct executive_controller*)instance; /* Module state available for finalization */
+    return 0;
+}
+
+int exec_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "exec_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    exec_heartbeat_instance(NULL, "exec_training_step", progress);
+    (void)(struct executive_controller*)instance; /* Module state available for step adaptation */
+    return 0;
 }

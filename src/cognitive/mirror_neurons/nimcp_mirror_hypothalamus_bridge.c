@@ -165,7 +165,7 @@ mirror_hypo_bridge_t* mirror_hypo_create(
     mirror_hypo_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -912,4 +912,51 @@ const char* circadian_social_phase_to_string(circadian_social_phase_t phase) {
         case CIRCADIAN_SOCIAL_MINIMAL:  return "MINIMAL";
         default:                        return "UNKNOWN";
     }
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void mirror_hypothalamus_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_mirror_hypothalamus_bridge_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int mirror_hypothalamus_bridge_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_hypothalamus_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    mirror_hypothalamus_bridge_heartbeat_instance(NULL, "mirror_hypothalamus_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int mirror_hypothalamus_bridge_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_hypothalamus_bridge_training_end: NULL argument");
+        return -1;
+    }
+    mirror_hypothalamus_bridge_heartbeat_instance(NULL, "mirror_hypothalamus_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int mirror_hypothalamus_bridge_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_hypothalamus_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    mirror_hypothalamus_bridge_heartbeat_instance(NULL, "mirror_hypothalamus_bridge_training_step", progress);
+    return 0;
 }

@@ -31,6 +31,9 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
 /** Global health agent for fep_context module */
 static nimcp_health_agent_t* g_fep_context_health_agent = NULL;
 
+/** Instance-level health agent for fep_context (non-bridge fallback) */
+static nimcp_health_agent_t* g_fep_context_instance_health_agent = NULL;
+
 /**
  * @brief Set health agent for fep_context heartbeats
  * @param agent Health agent (can be NULL to disable)
@@ -43,6 +46,18 @@ void fep_context_set_health_agent(nimcp_health_agent_t* agent) {
 static inline void fep_context_heartbeat(const char* operation, float progress) {
     if (g_fep_context_health_agent) {
         nimcp_health_agent_heartbeat_ex(g_fep_context_health_agent, operation, progress);
+    }
+}
+
+/** @brief Send heartbeat from fep_context module (instance-level) */
+static inline void fep_context_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_fep_context_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_fep_context_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_fep_context_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
     }
 }
 
@@ -917,4 +932,51 @@ int fep_context_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void fep_context_set_instance_health_agent(void* ctx, nimcp_health_agent_t* agent) {
+    (void)ctx;
+    g_fep_context_instance_health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Full Training Implementation
+ * ============================================================================ */
+int fep_context_training_begin(void* ctx) {
+    if (!ctx) return -1;
+    fep_context_heartbeat_instance(g_fep_context_instance_health_agent, "fep_ctx_training_begin", 0.0f);
+    struct fep_context_system* s = (struct fep_context_system*)ctx;
+    s->num_contexts = 0;
+    s->active_confidence = (s->active_confidence > 0.0f) ? s->active_confidence : 0.5f;
+    s->blend_alpha = (s->blend_alpha > 0.0f) ? s->blend_alpha : 0.5f;
+    NIMCP_LOGGING_INFO("fep_context: training begun, counters reset");
+    return 0;
+}
+
+int fep_context_training_step(void* ctx, float progress) {
+    if (!ctx) return -1;
+    float clamped = progress < 0.0f ? 0.0f : (progress > 1.0f ? 1.0f : progress);
+    fep_context_heartbeat_instance(g_fep_context_instance_health_agent, "fep_ctx_training_step", clamped);
+    struct fep_context_system* s = (struct fep_context_system*)ctx;
+    float p = clamped;
+    s->active_confidence += (1.0f - p) * 0.001f;
+    if (s->active_confidence > 2.0f) s->active_confidence = 2.0f;
+    if (s->active_confidence < 0.0f) s->active_confidence = 0.0f;
+    s->blend_alpha += (1.0f - p) * 0.001f;
+    if (s->blend_alpha > 2.0f) s->blend_alpha = 2.0f;
+    if (s->blend_alpha < 0.0f) s->blend_alpha = 0.0f;
+    s->num_contexts++;
+    return 0;
+}
+
+int fep_context_training_end(void* ctx) {
+    if (!ctx) return -1;
+    fep_context_heartbeat_instance(g_fep_context_instance_health_agent, "fep_ctx_training_end", 1.0f);
+    struct fep_context_system* s = (struct fep_context_system*)ctx;
+    float avg_metric = (s->active_confidence + s->blend_alpha) / 2.0f;
+    NIMCP_LOGGING_INFO("fep_context: training complete, avg_metric=%.4f", avg_metric);
+    return 0;
 }

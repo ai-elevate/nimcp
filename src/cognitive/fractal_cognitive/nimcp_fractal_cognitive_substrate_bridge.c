@@ -47,9 +47,23 @@ static inline void fractal_cognitive_substrate_bridge_heartbeat(const char* oper
     }
 }
 
+/** @brief Send heartbeat from fractal_cognitive_substrate_bridge module (instance-level) */
+static inline void fractal_cognitive_substrate_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_fractal_cognitive_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_fractal_cognitive_substrate_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_fractal_cognitive_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 
 struct fractal_cognitive_substrate_bridge {
     bridge_base_t base;                 /* MUST be first: base bridge infrastructure */
+    nimcp_health_agent_t* health_agent;  /**< Phase 8: instance-level health agent */
     void* fractal_cognitive;
     neural_substrate_t* substrate;
     fractal_cognitive_substrate_config_t config;
@@ -93,7 +107,7 @@ fractal_cognitive_substrate_bridge_t* fractal_cognitive_substrate_bridge_create(
     fractal_cognitive_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(fractal_cognitive_substrate_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -332,4 +346,53 @@ int fractal_cognitive_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void fractal_cognitive_substrate_bridge_set_instance_health_agent(fractal_cognitive_substrate_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "fractal_cognitive_substrate_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int fractal_cognitive_substrate_bridge_training_begin(fractal_cognitive_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "fractal_cognitive_substrate_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    fractal_cognitive_substrate_bridge_heartbeat_instance(bridge->health_agent, "fractal_cognitive_substrate_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int fractal_cognitive_substrate_bridge_training_end(fractal_cognitive_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "fractal_cognitive_substrate_bridge_training_end: NULL argument");
+        return -1;
+    }
+    fractal_cognitive_substrate_bridge_heartbeat_instance(bridge->health_agent, "fractal_cognitive_substrate_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int fractal_cognitive_substrate_bridge_training_step(fractal_cognitive_substrate_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "fractal_cognitive_substrate_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    fractal_cognitive_substrate_bridge_heartbeat_instance(bridge->health_agent, "fractal_cognitive_substrate_bridge_training_step", progress);
+    return 0;
 }

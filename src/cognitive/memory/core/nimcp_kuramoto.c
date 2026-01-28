@@ -51,6 +51,18 @@ static inline void kuramoto_heartbeat(const char* operation, float progress) {
     }
 }
 
+/** @brief Send heartbeat from kuramoto module (instance-level) */
+static inline void kuramoto_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_kuramoto_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_kuramoto_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_kuramoto_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Internal Constants
@@ -1627,4 +1639,51 @@ NIMCP_EXPORT float kuramoto_phase_difference(float phase1, float phase2) {
 
 NIMCP_EXPORT const char* kuramoto_get_last_error(void) {
     return (g_kuramoto_error[0] != '\0') ? g_kuramoto_error : NULL;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void kuramoto_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_kuramoto_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int kuramoto_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "kuramoto_training_begin: NULL argument");
+        return -1;
+    }
+    kuramoto_heartbeat_instance(NULL, "kuramoto_training_begin", 0.0f);
+    return 0;
+}
+
+int kuramoto_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "kuramoto_training_end: NULL argument");
+        return -1;
+    }
+    kuramoto_heartbeat_instance(NULL, "kuramoto_training_end", 1.0f);
+    return 0;
+}
+
+int kuramoto_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "kuramoto_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    kuramoto_heartbeat_instance(NULL, "kuramoto_training_step", progress);
+    return 0;
 }

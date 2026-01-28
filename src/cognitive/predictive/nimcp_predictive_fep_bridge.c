@@ -119,7 +119,7 @@ predictive_fep_bridge_t* predictive_fep_bridge_create(
     predictive_fep_bridge_t* bridge = nimcp_malloc(sizeof(predictive_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate predictive FEP bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
     }
@@ -649,19 +649,31 @@ void predictive_fep_bridge_set_instance_health_agent(
 //=============================================================================
 
 int predictive_fep_bridge_training_begin(predictive_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "predictive_fep_bridge_training_begin: NULL argument");
+        return -1;
+    }
     predictive_fep_bridge_heartbeat_instance(bridge->health_agent, "predictive_fep_bridge_training_begin", 0.0f);
     return 0;
 }
 
 int predictive_fep_bridge_training_end(predictive_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "predictive_fep_bridge_training_end: NULL argument");
+        return -1;
+    }
     predictive_fep_bridge_heartbeat_instance(bridge->health_agent, "predictive_fep_bridge_training_end", 1.0f);
     return 0;
 }
 
 int predictive_fep_bridge_training_step(predictive_fep_bridge_t* bridge, float progress) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "predictive_fep_bridge_training_step: NULL argument");
+        return -1;
+    }
     predictive_fep_bridge_heartbeat_instance(bridge->health_agent, "predictive_fep_bridge_training_step", progress);
     return 0;
 }

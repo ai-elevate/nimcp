@@ -44,6 +44,19 @@ static inline void visual_logic_bridge_heartbeat(const char* operation, float pr
     }
 }
 
+/** @brief Send heartbeat from visual_logic_bridge module (instance-level) */
+static inline void visual_logic_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_visual_logic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_visual_logic_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_visual_logic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 #define LOG_MODULE "VISUAL_LOGIC_BRIDGE"
 
 
@@ -76,6 +89,7 @@ typedef struct {
  */
 struct visual_logic_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+    nimcp_health_agent_t* health_agent;  /**< Phase 8: instance-level health agent */
     void* visual;                           /**< Visual cortex handle */
     void* logic;                            /**< Logic module handle */
     visual_logic_config_t config;           /**< Configuration */
@@ -133,7 +147,7 @@ visual_logic_bridge_t* visual_logic_bridge_create(
     visual_logic_bridge_t* bridge = nimcp_calloc(1, sizeof(visual_logic_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -617,4 +631,53 @@ int visual_logic_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void visual_logic_bridge_set_instance_health_agent(visual_logic_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "visual_logic_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int visual_logic_bridge_training_begin(visual_logic_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "visual_logic_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    visual_logic_bridge_heartbeat_instance(bridge->health_agent, "visual_logic_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int visual_logic_bridge_training_end(visual_logic_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "visual_logic_bridge_training_end: NULL argument");
+        return -1;
+    }
+    visual_logic_bridge_heartbeat_instance(bridge->health_agent, "visual_logic_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int visual_logic_bridge_training_step(visual_logic_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "visual_logic_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    visual_logic_bridge_heartbeat_instance(bridge->health_agent, "visual_logic_bridge_training_step", progress);
+    return 0;
 }

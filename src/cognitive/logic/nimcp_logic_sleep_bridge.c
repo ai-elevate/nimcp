@@ -43,6 +43,19 @@ static inline void logic_sleep_bridge_heartbeat(const char* operation, float pro
     }
 }
 
+/** @brief Send heartbeat from logic_sleep_bridge module (instance-level) */
+static inline void logic_sleep_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_logic_sleep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_logic_sleep_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_logic_sleep_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 
 /* Forward declarations */
 static void logic_on_sleep_state_change(sleep_state_t new_state, void* user_data);
@@ -679,4 +692,51 @@ int logic_sleep_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void logic_sleep_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_logic_sleep_bridge_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int logic_sleep_bridge_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "logic_sleep_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    logic_sleep_bridge_heartbeat_instance(NULL, "logic_sleep_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int logic_sleep_bridge_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "logic_sleep_bridge_training_end: NULL argument");
+        return -1;
+    }
+    logic_sleep_bridge_heartbeat_instance(NULL, "logic_sleep_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int logic_sleep_bridge_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "logic_sleep_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    logic_sleep_bridge_heartbeat_instance(NULL, "logic_sleep_bridge_training_step", progress);
+    return 0;
 }

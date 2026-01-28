@@ -44,6 +44,64 @@ static inline void omni_kg_sync_heartbeat(const char* operation, float progress)
     }
 }
 
+/** @brief Send heartbeat from omni_kg_sync module (instance-level) */
+static inline void omni_kg_sync_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_omni_kg_sync_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_omni_kg_sync_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_omni_kg_sync_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+/** @brief Instance-level health agent (global fallback for non-bridge) */
+static nimcp_health_agent_t* g_omni_kg_sync_instance_health_agent = NULL;
+
+void omni_kg_sync_set_instance_health_agent(void* ctx, nimcp_health_agent_t* agent) {
+    (void)ctx;
+    g_omni_kg_sync_instance_health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level Training Functions
+ * ============================================================================ */
+
+int omni_kg_sync_training_begin(void* ctx) {
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "omni_kg_sync_training_begin: NULL argument");
+        return -1;
+    }
+    omni_kg_sync_heartbeat_instance(g_omni_kg_sync_health_agent, "training_begin", 0.0f);
+    (void)ctx;
+    return 0;
+}
+
+int omni_kg_sync_training_step(void* ctx, float progress) {
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "omni_kg_sync_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    omni_kg_sync_heartbeat_instance(g_omni_kg_sync_health_agent, "training_step", progress);
+    (void)ctx;
+    return 0;
+}
+
+int omni_kg_sync_training_end(void* ctx) {
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "omni_kg_sync_training_end: NULL argument");
+        return -1;
+    }
+    omni_kg_sync_heartbeat_instance(g_omni_kg_sync_health_agent, "training_end", 1.0f);
+    (void)ctx;
+    return 0;
+}
 
 /* ============================================================================
  * Static Helpers
@@ -188,7 +246,7 @@ omni_kg_sync_t* omni_kg_sync_create(brain_kg_t* kg,
     omni_kg_sync_t* sync = nimcp_calloc(1, sizeof(omni_kg_sync_t));
     if (!sync) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sync is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate sync");
 
         return NULL;
 

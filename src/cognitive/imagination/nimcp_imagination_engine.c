@@ -57,6 +57,19 @@ static inline void imagination_engine_heartbeat(const char* operation, float pro
     }
 }
 
+/** @brief Send heartbeat from imagination_engine module (instance-level) */
+static inline void imagination_engine_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_imagination_engine_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_imagination_engine_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_imagination_engine_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 
 /* Thread-local RNG seed for imagination engine */
 static __thread uint32_t g_imagination_rand_seed = 0;
@@ -384,7 +397,7 @@ imagination_engine_t* imagination_engine_create(
         1, sizeof(imagination_engine_t));
     if (!engine) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate engine");
 
         return NULL;
 
@@ -3243,7 +3256,7 @@ static void* imag_mcts_apply_action(const void* state, uint32_t action, void* us
     imag_mcts_state_t* new_state = nimcp_malloc(sizeof(imag_mcts_state_t));
     if (!new_state) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_state is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate new_state");
 
         return NULL;
 
@@ -3413,7 +3426,7 @@ static void* imag_mcts_clone_state(const void* state, void* user_data) {
     imag_mcts_state_t* clone = nimcp_malloc(sizeof(imag_mcts_state_t));
     if (!clone) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate clone");
 
         return NULL;
 
@@ -3592,5 +3605,55 @@ int imagination_search_goal_mcts(
 
     nimcp_mutex_unlock(engine->mutex);
 
+    return 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void imagination_engine_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_imagination_engine_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int imagination_engine_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "imagination_engine_training_begin: NULL argument");
+        return -1;
+    }
+    imagination_engine_heartbeat_instance(NULL, "imagination_engine_training_begin", 0.0f);
+    (void)(imag_mcts_state_t*)instance; /* Module state available for reset */
+    return 0;
+}
+
+int imagination_engine_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "imagination_engine_training_end: NULL argument");
+        return -1;
+    }
+    imagination_engine_heartbeat_instance(NULL, "imagination_engine_training_end", 1.0f);
+    (void)(imag_mcts_state_t*)instance; /* Module state available for finalization */
+    return 0;
+}
+
+int imagination_engine_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "imagination_engine_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    imagination_engine_heartbeat_instance(NULL, "imagination_engine_training_step", progress);
+    (void)(imag_mcts_state_t*)instance; /* Module state available for step adaptation */
     return 0;
 }

@@ -41,11 +41,24 @@ static inline void symbolic_logic_substrate_bridge_heartbeat(const char* operati
     }
 }
 
+/** @brief Send heartbeat from symbolic_logic_substrate_bridge module (instance-level) */
+static inline void symbolic_logic_substrate_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_symbolic_logic_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_symbolic_logic_substrate_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_symbolic_logic_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "SYMBOLIC_LOGIC_SUBSTRATE_BRIDGE"
 
 
 struct symbolic_logic_substrate_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+    nimcp_health_agent_t* health_agent;  /**< Phase 8: instance-level health agent */
     void* symbolic_logic;
     neural_substrate_t* substrate;
     symbolic_logic_substrate_config_t config;
@@ -82,7 +95,7 @@ symbolic_logic_substrate_bridge_t* symbolic_logic_substrate_bridge_create(void* 
     symbolic_logic_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(symbolic_logic_substrate_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -248,4 +261,53 @@ int symbolic_logic_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void symbolic_logic_substrate_bridge_set_instance_health_agent(symbolic_logic_substrate_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "symbolic_logic_substrate_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int symbolic_logic_substrate_bridge_training_begin(symbolic_logic_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "symbolic_logic_substrate_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    symbolic_logic_substrate_bridge_heartbeat_instance(bridge->health_agent, "symbolic_logic_substrate_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int symbolic_logic_substrate_bridge_training_end(symbolic_logic_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "symbolic_logic_substrate_bridge_training_end: NULL argument");
+        return -1;
+    }
+    symbolic_logic_substrate_bridge_heartbeat_instance(bridge->health_agent, "symbolic_logic_substrate_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int symbolic_logic_substrate_bridge_training_step(symbolic_logic_substrate_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "symbolic_logic_substrate_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    symbolic_logic_substrate_bridge_heartbeat_instance(bridge->health_agent, "symbolic_logic_substrate_bridge_training_step", progress);
+    return 0;
 }

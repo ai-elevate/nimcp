@@ -53,6 +53,18 @@ static inline void reconsolidation_heartbeat(const char* operation, float progre
     }
 }
 
+/** @brief Send heartbeat from reconsolidation module (instance-level) */
+static inline void reconsolidation_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_reconsolidation_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_reconsolidation_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_reconsolidation_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Type Aliases
@@ -264,7 +276,7 @@ NIMCP_EXPORT reconsolidation_system_t* reconsolidation_create(
     reconsolidation_system_t* system = (reconsolidation_system_t*)calloc(
         1, sizeof(reconsolidation_system_t));
     if (system == NULL) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate system");
 
         return NULL;
     }
@@ -1750,4 +1762,127 @@ static float compute_signature_similarity(const prime_signature_t* s1, const pri
  */
 static float compute_quaternion_distance(nimcp_quaternion_t q1, nimcp_quaternion_t q2) {
     return quat_geodesic_distance(q1, q2);
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void reconsolidation_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_reconsolidation_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration
+ * ============================================================================ */
+
+int reconsolidation_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "reconsolidation_training_begin: NULL argument");
+        return -1;
+    }
+    reconsolidation_heartbeat_instance(NULL, "reconsolidation_training_begin", 0.0f);
+
+    reconsolidation_system_t* sys = (reconsolidation_system_t*)instance;
+
+    nimcp_mutex_lock(sys->mutex);
+
+    /* Reset training-relevant statistics */
+    atomic_store(&sys->total_retrievals, 0);
+    atomic_store(&sys->total_updates, 0);
+    atomic_store(&sys->total_strengthenings, 0);
+    atomic_store(&sys->total_interference_blocks, 0);
+    atomic_store(&sys->total_rollbacks, 0);
+    atomic_store(&sys->total_expired, 0);
+    sys->sum_lability_duration = 0.0;
+    sys->sum_update_magnitude = 0.0;
+    sys->sum_interference_strength = 0.0;
+
+    /* Disable protein synthesis blocking for training (allow all updates) */
+    sys->protein_synthesis_blocked = false;
+
+    nimcp_mutex_unlock(sys->mutex);
+
+    reconsolidation_heartbeat_instance(NULL, "reconsolidation_training_begin", 1.0f);
+    return 0;
+}
+
+int reconsolidation_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "reconsolidation_training_end: NULL argument");
+        return -1;
+    }
+    reconsolidation_heartbeat_instance(NULL, "reconsolidation_training_end", 0.0f);
+
+    reconsolidation_system_t* sys = (reconsolidation_system_t*)instance;
+
+    nimcp_mutex_lock(sys->mutex);
+
+    /* Capture final training metrics */
+    uint64_t total_updates = atomic_load(&sys->total_updates);
+    uint64_t total_strengthenings = atomic_load(&sys->total_strengthenings);
+    uint64_t total_rollbacks = atomic_load(&sys->total_rollbacks);
+    (void)total_updates;
+    (void)total_strengthenings;
+    (void)total_rollbacks;
+
+    /* Close any remaining active reconsolidation windows */
+    for (size_t i = 0; i < sys->max_windows; i++) {
+        if (sys->windows[i].state == RECON_LABILE ||
+            sys->windows[i].state == RECON_RESTABILIZING) {
+            sys->windows[i].state = RECON_STABLE;
+        }
+    }
+
+    nimcp_mutex_unlock(sys->mutex);
+
+    reconsolidation_heartbeat_instance(NULL, "reconsolidation_training_end", 1.0f);
+    return 0;
+}
+
+int reconsolidation_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "reconsolidation_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    reconsolidation_heartbeat_instance(NULL, "reconsolidation_training_step", progress);
+
+    reconsolidation_system_t* sys = (reconsolidation_system_t*)instance;
+
+    nimcp_mutex_lock(sys->mutex);
+
+    /*
+     * Adapt reconsolidation dynamics during training:
+     * - Early training: longer lability windows (more plasticity)
+     * - Late training: shorter windows (more stability)
+     */
+    float base_duration = sys->config.lability_duration;
+    float adapted_duration = base_duration * (1.5f - progress);  /* 1.5x -> 0.5x */
+    if (adapted_duration < 0.1f) adapted_duration = 0.1f;
+
+    /* Adapt update threshold: lower early (accept more updates), higher late */
+    float base_threshold = sys->config.update_threshold;
+    sys->config.update_threshold = base_threshold * (0.5f + 0.5f * progress);
+
+    /* Apply adapted lability to active windows */
+    for (size_t i = 0; i < sys->max_windows; i++) {
+        if (sys->windows[i].state == RECON_LABILE) {
+            sys->windows[i].lability_remaining = adapted_duration;
+        }
+    }
+
+    /* Restore base threshold */
+    sys->config.update_threshold = base_threshold;
+
+    nimcp_mutex_unlock(sys->mutex);
+
+    return 0;
 }

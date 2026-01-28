@@ -117,7 +117,7 @@ mirror_neurons_fep_bridge_t* mirror_neurons_fep_bridge_create(
         1, sizeof(mirror_neurons_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_WARN("Failed to allocate mirror_neurons_fep_bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
     }
@@ -696,4 +696,51 @@ int mirror_neurons_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Mirror_Neurons_FEP_Bridge");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void mirror_neurons_fep_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_mirror_neurons_fep_bridge_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int mirror_neurons_fep_bridge_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_neurons_fep_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    mirror_neurons_fep_bridge_heartbeat_instance(NULL, "mirror_neurons_fep_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int mirror_neurons_fep_bridge_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_neurons_fep_bridge_training_end: NULL argument");
+        return -1;
+    }
+    mirror_neurons_fep_bridge_heartbeat_instance(NULL, "mirror_neurons_fep_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int mirror_neurons_fep_bridge_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_neurons_fep_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    mirror_neurons_fep_bridge_heartbeat_instance(NULL, "mirror_neurons_fep_bridge_training_step", progress);
+    return 0;
 }

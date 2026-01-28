@@ -49,6 +49,19 @@ static inline void self_model_immune_bridge_heartbeat(const char* operation, flo
     }
 }
 
+/** @brief Send heartbeat from self_model_immune_bridge module (instance-level) */
+static inline void self_model_immune_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_self_model_immune_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_self_model_immune_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_self_model_immune_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
 
 /* ============================================================================
  * Helper Functions
@@ -927,4 +940,51 @@ int self_model_immune_query_self_knowledge(kg_reader_t* kg) {
     kg_relation_list_t* incoming = kg_reader_get_relations_to(kg, "Self_Model_Immune_Bridge");
     if (incoming) { kg_relation_list_destroy(incoming); }
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void self_model_immune_bridge_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_self_model_immune_bridge_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int self_model_immune_bridge_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "self_model_immune_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    self_model_immune_bridge_heartbeat_instance(NULL, "self_model_immune_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int self_model_immune_bridge_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "self_model_immune_bridge_training_end: NULL argument");
+        return -1;
+    }
+    self_model_immune_bridge_heartbeat_instance(NULL, "self_model_immune_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int self_model_immune_bridge_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "self_model_immune_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    self_model_immune_bridge_heartbeat_instance(NULL, "self_model_immune_bridge_training_step", progress);
+    return 0;
 }

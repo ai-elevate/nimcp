@@ -41,11 +41,24 @@ static inline void explanations_substrate_bridge_heartbeat(const char* operation
     }
 }
 
+/** @brief Send heartbeat (instance-level) */
+static inline void explanations_substrate_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_explanations_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_explanations_substrate_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_explanations_substrate_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "EXPLANATIONS_SUBSTRATE_BRIDGE"
 
 
 struct explanations_substrate_bridge {
     bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+    nimcp_health_agent_t* health_agent;  /**< Phase 8: instance-level health agent */
     void* explanations;
     neural_substrate_t* substrate;
     explanations_substrate_config_t config;
@@ -82,7 +95,7 @@ explanations_substrate_bridge_t* explanations_substrate_bridge_create(void* expl
     explanations_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(explanations_substrate_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -246,4 +259,51 @@ int explanations_substrate_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void explanations_substrate_bridge_set_instance_health_agent(explanations_substrate_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (bridge) {
+        bridge->health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Full training implementation
+ * ============================================================================ */
+int explanations_substrate_bridge_training_begin(explanations_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "explanations_substrate_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    explanations_substrate_bridge_heartbeat_instance(bridge, "expl_sub_train_begin", 0.0f);
+    (void)bridge;
+    return 0;
+}
+
+int explanations_substrate_bridge_training_step(explanations_substrate_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "explanations_substrate_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    explanations_substrate_bridge_heartbeat_instance(bridge, "expl_sub_train_step", progress);
+    (void)bridge;
+    return 0;
+}
+
+int explanations_substrate_bridge_training_end(explanations_substrate_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "explanations_substrate_bridge_training_end: NULL argument");
+        return -1;
+    }
+    explanations_substrate_bridge_heartbeat_instance(bridge, "expl_sub_train_end", 1.0f);
+    (void)bridge;
+    return 0;
 }

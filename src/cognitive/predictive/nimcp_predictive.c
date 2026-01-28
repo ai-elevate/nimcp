@@ -51,6 +51,18 @@ static inline void predictive_heartbeat(const char* operation, float progress) {
     }
 }
 
+/** @brief Send heartbeat from predictive module (instance-level) */
+static inline void predictive_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_predictive_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_predictive_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_predictive_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 #include "cognitive/nimcp_predictive.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
@@ -231,7 +243,7 @@ predictive_network_t predictive_create(const predictive_config_t* config)
         set_error("Failed to allocate predictive_network_s");
         LOG_ERROR("Failed to allocate predictive_network_s (%zu bytes)",
                  sizeof(struct predictive_network_s));
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "net is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate net");
 
         return NULL;
     }
@@ -301,7 +313,7 @@ predictive_network_t predictive_create(const predictive_config_t* config)
         if (!layer) {
             set_error("Failed to allocate layer %u", i);
             predictive_destroy(net);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate layer");
 
             return NULL;
         }
@@ -1093,4 +1105,47 @@ int predictive_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-level health agent setter
+ * ============================================================================ */
+void predictive_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_predictive_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training stubs
+ * ============================================================================ */
+int predictive_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "predictive_training_begin: NULL argument");
+        return -1;
+    }
+    predictive_heartbeat_instance(NULL, "predictive_training_begin", 0.0f);
+    return 0;
+}
+
+int predictive_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "predictive_training_end: NULL argument");
+        return -1;
+    }
+    predictive_heartbeat_instance(NULL, "predictive_training_end", 1.0f);
+    return 0;
+}
+
+int predictive_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "predictive_training_step: NULL argument");
+        return -1;
+    }
+    predictive_heartbeat_instance(NULL, "predictive_training_step", progress);
+    return 0;
 }

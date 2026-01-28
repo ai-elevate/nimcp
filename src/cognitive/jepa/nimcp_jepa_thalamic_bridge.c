@@ -40,6 +40,18 @@ static inline void jepa_thalamic_bridge_heartbeat(const char* operation, float p
     }
 }
 
+/** @brief Send heartbeat from jepa_thalamic_bridge module (instance + global) */
+static inline void jepa_thalamic_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_jepa_thalamic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_jepa_thalamic_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_jepa_thalamic_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "JEPA_THALAMIC_BRIDGE"
 
 
@@ -56,6 +68,9 @@ struct jepa_thalamic_bridge {
     float attention_weight;
     bool bio_async_registered;
     uint32_t handler_id;
+
+    /* Phase 8: Instance-level health agent */
+    nimcp_health_agent_t* health_agent;
 };
 
 jepa_thalamic_config_t jepa_thalamic_default_config(void) {
@@ -81,7 +96,7 @@ jepa_thalamic_bridge_t* jepa_thalamic_bridge_create(void* jepa, thalamic_router_
     jepa_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(jepa_thalamic_bridge_t));
     if (!bridge) {
 
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
 
@@ -242,4 +257,93 @@ int jepa_thalamic_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent + Training Lifecycle
+ * ============================================================================ */
+
+void jepa_thalamic_bridge_set_instance_health_agent(jepa_thalamic_bridge_t* bridge,
+                                                     nimcp_health_agent_t* agent) {
+    if (!bridge) return;
+    bridge->health_agent = agent;
+}
+
+int jepa_thalamic_bridge_training_begin(jepa_thalamic_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "jepa_thalamic_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    jepa_thalamic_bridge_heartbeat_instance(bridge->health_agent,
+                                             "jepa_thalami_training_begin", 0.0f);
+
+    /* Reset attention weight to full for training */
+    bridge->attention_weight = 1.0f;
+
+    /* Clear routing statistics for training epoch */
+    memset(&bridge->stats, 0, sizeof(bridge->stats));
+
+    jepa_thalamic_bridge_heartbeat_instance(bridge->health_agent,
+                                             "jepa_thalami_training_begin", 1.0f);
+    return 0;
+}
+
+int jepa_thalamic_bridge_training_end(jepa_thalamic_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "jepa_thalamic_bridge_training_end: NULL argument");
+        return -1;
+    }
+    jepa_thalamic_bridge_heartbeat_instance(bridge->health_agent,
+                                             "jepa_thalami_training_end", 0.0f);
+
+    /* Compute average prediction confidence from training */
+    if (bridge->stats.predictions_routed > 0) {
+        bridge->stats.avg_prediction_confidence /= (float)bridge->stats.predictions_routed;
+    }
+
+    /* Adjust attention weight based on training error rate */
+    float error_rate = (bridge->stats.predictions_routed > 0)
+        ? (float)bridge->stats.errors_propagated / (float)bridge->stats.predictions_routed
+        : 0.0f;
+    if (error_rate > 0.5f) {
+        bridge->attention_weight *= 0.9f;  /* Reduce attention if many errors */
+    }
+
+    jepa_thalamic_bridge_heartbeat_instance(bridge->health_agent,
+                                             "jepa_thalami_training_end", 1.0f);
+    return 0;
+}
+
+int jepa_thalamic_bridge_training_step(jepa_thalamic_bridge_t* bridge, uint32_t step) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "jepa_thalamic_bridge_training_step: NULL argument");
+        return -1;
+    }
+    float progress = (step % 100) / 100.0f;
+    jepa_thalamic_bridge_heartbeat_instance(bridge->health_agent,
+                                             "jepa_thalami_training_step", progress);
+
+    /* Adapt attention gating threshold during training */
+    if (bridge->config.enable_attention_gating) {
+        /* Gradually tighten confidence threshold as training progresses */
+        float warmup_factor = (step < 100) ? (float)step / 100.0f : 1.0f;
+        float adapted_threshold = bridge->config.min_prediction_confidence * warmup_factor;
+        (void)adapted_threshold;  /* Used internally for gating decisions */
+    }
+
+    /* Track routing statistics */
+    bridge->stats.predictions_routed++;
+
+    /* Decay attention slightly per step (will be refreshed by actual signals) */
+    bridge->attention_weight *= 0.999f;
+    if (bridge->attention_weight < 0.1f) {
+        bridge->attention_weight = 0.1f;
+    }
+
+    jepa_thalamic_bridge_heartbeat_instance(bridge->health_agent,
+                                             "jepa_thalami_training_step", 1.0f);
+    return 0;
 }

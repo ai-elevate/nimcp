@@ -53,6 +53,18 @@ static inline void recovery_parietal_bridge_heartbeat(const char* operation, flo
     }
 }
 
+/** @brief Send heartbeat from recovery_parietal_bridge module (instance-level) */
+static inline void recovery_parietal_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_recovery_parietal_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_recovery_parietal_bridge_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_recovery_parietal_bridge_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 #define LOG_MODULE "RECOVERY_PARIETAL_BRIDGE"
 
 
@@ -96,6 +108,9 @@ struct recovery_parietal_bridge {
 
     /* State */
     bool initialized;
+
+    /* Phase 8: Instance health agent */
+    nimcp_health_agent_t* health_agent;         /**< Health agent (Phase 8) */
 };
 
 //=============================================================================
@@ -1287,4 +1302,53 @@ int recovery_parietal_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void recovery_parietal_bridge_set_instance_health_agent(recovery_parietal_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "recovery_parietal_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int recovery_parietal_bridge_training_begin(recovery_parietal_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "recovery_parietal_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    recovery_parietal_bridge_heartbeat_instance(bridge->health_agent, "recovery_parietal_bridge_training_begin", 0.0f);
+    return 0;
+}
+
+int recovery_parietal_bridge_training_end(recovery_parietal_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "recovery_parietal_bridge_training_end: NULL argument");
+        return -1;
+    }
+    recovery_parietal_bridge_heartbeat_instance(bridge->health_agent, "recovery_parietal_bridge_training_end", 1.0f);
+    return 0;
+}
+
+int recovery_parietal_bridge_training_step(recovery_parietal_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "recovery_parietal_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    recovery_parietal_bridge_heartbeat_instance(bridge->health_agent, "recovery_parietal_bridge_training_step", progress);
+    return 0;
 }

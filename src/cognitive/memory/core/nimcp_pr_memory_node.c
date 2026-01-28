@@ -55,6 +55,18 @@ static inline void pr_memory_node_heartbeat(const char* operation, float progres
     }
 }
 
+/** @brief Send heartbeat from pr_memory_node module (instance-level) */
+static inline void pr_memory_node_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_pr_memory_node_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_pr_memory_node_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_pr_memory_node_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 //=============================================================================
 // Internal Constants
@@ -230,7 +242,7 @@ pr_node_manager_t pr_node_manager_create(const pr_node_manager_config_t* config)
     pr_node_manager_t manager = (pr_node_manager_t)malloc(
         sizeof(struct pr_node_manager_struct));
     if (!manager) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate manager");
 
         return NULL;
     }
@@ -365,7 +377,7 @@ pr_memory_node_t* pr_memory_node_create(
     // Allocate node structure
     pr_memory_node_t* node = (pr_memory_node_t*)malloc(sizeof(pr_memory_node_t));
     if (!node) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate node");
 
         return NULL;
     }
@@ -502,7 +514,7 @@ pr_memory_node_t* pr_memory_node_clone(
 
     pr_memory_node_t* clone = (pr_memory_node_t*)malloc(sizeof(pr_memory_node_t));
     if (!clone) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate clone");
 
         return NULL;
     }
@@ -1664,4 +1676,93 @@ float pr_memory_node_resonance(
     float resonance = sig_w * sig_similarity + state_w * state_similarity;
 
     return clampf(resonance, 0.0f, 1.0f);
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void pr_memory_node_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_pr_memory_node_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration
+ * ============================================================================ */
+
+int pr_memory_node_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "pr_memory_node_training_begin: NULL argument");
+        return -1;
+    }
+    pr_memory_node_heartbeat_instance(NULL, "pr_memory_node_training_begin", 0.0f);
+
+    struct pr_node_manager_struct* mgr = (struct pr_node_manager_struct*)instance;
+
+    /* Reset ID counters for training epoch tracking */
+    atomic_store(&mgr->total_created, 0);
+
+    /* Reset tracked node count to baseline for training measurement */
+    if (mgr->track_nodes) {
+        atomic_store(&mgr->tracked_count, 0);
+    }
+
+    pr_memory_node_heartbeat_instance(NULL, "pr_memory_node_training_begin", 1.0f);
+    return 0;
+}
+
+int pr_memory_node_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "pr_memory_node_training_end: NULL argument");
+        return -1;
+    }
+    pr_memory_node_heartbeat_instance(NULL, "pr_memory_node_training_end", 0.0f);
+
+    struct pr_node_manager_struct* mgr = (struct pr_node_manager_struct*)instance;
+
+    /* Compute final training metrics from node stats */
+    uint64_t nodes_created = atomic_load(&mgr->total_created);
+    size_t tracked = atomic_load(&mgr->tracked_count);
+    (void)nodes_created;
+    (void)tracked;
+
+    pr_memory_node_heartbeat_instance(NULL, "pr_memory_node_training_end", 1.0f);
+    return 0;
+}
+
+int pr_memory_node_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "pr_memory_node_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    pr_memory_node_heartbeat_instance(NULL, "pr_memory_node_training_step", progress);
+
+    struct pr_node_manager_struct* mgr = (struct pr_node_manager_struct*)instance;
+
+    /* Apply decay to all tracked nodes based on training progress */
+    if (mgr->track_nodes && mgr->tracked_nodes) {
+        size_t count = atomic_load(&mgr->tracked_count);
+        for (size_t i = 0; i < count && i < mgr->max_tracked; i++) {
+            pr_memory_node_t* node = mgr->tracked_nodes[i];
+            if (node) {
+                /* Gradually strengthen nodes during training via reinforcement */
+                float boost = 0.001f * progress;
+                node->current_strength = clampf(
+                    node->current_strength + boost, 0.0f, 1.0f);
+                /* Update quaternion consolidation component */
+                node->state.w = clampf(
+                    node->state.w + boost * 0.5f, 0.0f, 1.0f);
+            }
+        }
+    }
+
+    return 0;
 }

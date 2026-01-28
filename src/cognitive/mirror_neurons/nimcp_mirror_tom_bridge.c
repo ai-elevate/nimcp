@@ -377,7 +377,7 @@ mirror_tom_bridge_t mirror_tom_create(const mirror_tom_config_t* config) {
     struct mirror_tom_bridge* bridge = nimcp_malloc(sizeof(struct mirror_tom_bridge));
     if (!bridge) {
         nimcp_log(LOG_LEVEL_ERROR, "Mirror-ToM: failed to allocate bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
     }
@@ -1122,13 +1122,33 @@ void mirror_tom_bridge_set_instance_health_agent(
  * ============================================================================ */
 
 int mirror_tom_bridge_training_begin(mirror_tom_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_tom_bridge_training_begin: NULL argument");
+        return -1;
+    }
     mirror_tom_bridge_heartbeat("mirror_tom_b_training_begin", 0.0f);
     return 0;
 }
 
 int mirror_tom_bridge_training_end(mirror_tom_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_tom_bridge_training_end: NULL argument");
+        return -1;
+    }
     mirror_tom_bridge_heartbeat("mirror_tom_b_training_end", 1.0f);
+    return 0;
+}
+
+int mirror_tom_bridge_training_step(mirror_tom_bridge_t bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "mirror_tom_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    mirror_tom_bridge_heartbeat_instance(bridge->health_agent, "mirror_tom_bridge_training_step", progress);
     return 0;
 }

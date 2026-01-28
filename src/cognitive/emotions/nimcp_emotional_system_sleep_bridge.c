@@ -397,19 +397,31 @@ void emotional_system_sleep_bridge_set_instance_health_agent(emotional_sleep_bri
  * Phase 8: Training stubs
  * ============================================================================ */
 int emotional_system_sleep_bridge_training_begin(emotional_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "emotional_system_sleep_bridge_training_begin: NULL argument");
+        return -1;
+    }
     emotional_system_sleep_bridge_heartbeat_instance(bridge->health_agent, "emotional_sy_training_begin", 0.0f);
     return 0;
 }
 
 int emotional_system_sleep_bridge_training_end(emotional_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "emotional_system_sleep_bridge_training_end: NULL argument");
+        return -1;
+    }
     emotional_system_sleep_bridge_heartbeat_instance(bridge->health_agent, "emotional_sy_training_end", 1.0f);
     return 0;
 }
 
 int emotional_system_sleep_bridge_training_step(emotional_sleep_bridge_t bridge, float progress) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "emotional_system_sleep_bridge_training_step: NULL argument");
+        return -1;
+    }
     emotional_system_sleep_bridge_heartbeat_instance(bridge->health_agent, "emotional_sy_training_step", progress);
     return 0;
 }

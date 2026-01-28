@@ -45,6 +45,19 @@ static inline void interventions_heartbeat(const char* operation, float progress
     }
 }
 
+/** @brief Send heartbeat from interventions module (instance-level) */
+static inline void interventions_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_interventions_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_interventions_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_interventions_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
+
  * @note Bio-async, logging, and unified memory provided by parent file
  */
 
@@ -1055,4 +1068,51 @@ const char* mental_health_disorder_to_string(disorder_type_t disorder)
 
         default:                            return "Unknown";
     }
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void interventions_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_interventions_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int interventions_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "interventions_training_begin: NULL argument");
+        return -1;
+    }
+    interventions_heartbeat_instance(NULL, "interventions_training_begin", 0.0f);
+    return 0;
+}
+
+int interventions_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "interventions_training_end: NULL argument");
+        return -1;
+    }
+    interventions_heartbeat_instance(NULL, "interventions_training_end", 1.0f);
+    return 0;
+}
+
+int interventions_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "interventions_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    interventions_heartbeat_instance(NULL, "interventions_training_step", progress);
+    return 0;
 }

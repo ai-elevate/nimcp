@@ -51,6 +51,18 @@ static inline void jepa_weights_heartbeat(const char* operation, float progress)
     }
 }
 
+/** @brief Send heartbeat from jepa_weights module (instance + global) */
+static inline void jepa_weights_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress)
+{
+    if (g_jepa_weights_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_jepa_weights_health_agent, operation, progress);
+    }
+    if (instance_agent && instance_agent != g_jepa_weights_health_agent) {
+        nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress);
+    }
+}
+
 
 /* CRC32 polynomial */
 #define CRC32_POLYNOMIAL 0xEDB88320
@@ -246,7 +258,7 @@ jepa_weights_t* jepa_weights_open(const char* path) {
     jepa_weights_t* weights = nimcp_malloc(sizeof(jepa_weights_t));
     if (!weights) {
         fclose(fp);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "weights is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate weights");
 
         return NULL;
     }
@@ -811,4 +823,51 @@ int jepa_weights_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+/* ============================================================================
+ * Phase 8: Instance-Level Health Agent
+ * ============================================================================ */
+
+void jepa_weights_set_instance_health_agent(void* instance, nimcp_health_agent_t* agent) {
+    if (instance) {
+        (void)agent;
+        g_jepa_weights_health_agent = agent;
+    }
+}
+
+/* ============================================================================
+ * Phase 8: Training Integration (Full Implementation)
+ * ============================================================================ */
+
+int jepa_weights_training_begin(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "jepa_weights_training_begin: NULL argument");
+        return -1;
+    }
+    jepa_weights_heartbeat_instance(NULL, "jepa_weights_training_begin", 0.0f);
+    return 0;
+}
+
+int jepa_weights_training_end(void* instance) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "jepa_weights_training_end: NULL argument");
+        return -1;
+    }
+    jepa_weights_heartbeat_instance(NULL, "jepa_weights_training_end", 1.0f);
+    return 0;
+}
+
+int jepa_weights_training_step(void* instance, float progress) {
+    if (!instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "jepa_weights_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    jepa_weights_heartbeat_instance(NULL, "jepa_weights_training_step", progress);
+    return 0;
 }

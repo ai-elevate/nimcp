@@ -44,6 +44,13 @@ static inline void consolidation_fep_bridge_heartbeat(const char* operation, flo
     }
 }
 
+static nimcp_health_agent_t* g_consolidation_fep_bridge_instance_health_agent = NULL;
+static inline void consolidation_fep_bridge_heartbeat_instance(
+    nimcp_health_agent_t* instance_agent, const char* operation, float progress) {
+    if (g_consolidation_fep_bridge_health_agent) { nimcp_health_agent_heartbeat_ex(g_consolidation_fep_bridge_health_agent, operation, progress); }
+    if (instance_agent && instance_agent != g_consolidation_fep_bridge_health_agent) { nimcp_health_agent_heartbeat_ex(instance_agent, operation, progress); }
+}
+
 
 int consolidation_fep_bridge_default_config(consolidation_fep_config_t* config) {
     /* Phase 8: Heartbeat at operation start */
@@ -75,7 +82,7 @@ consolidation_fep_bridge_t* consolidation_fep_bridge_create(const consolidation_
     consolidation_fep_bridge_t* bridge = nimcp_malloc(sizeof(consolidation_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate consolidation FEP bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate bridge");
 
         return NULL;
     }
@@ -263,4 +270,50 @@ int consolidation_fep_bridge_query_self_knowledge(kg_reader_t* kg) {
     }
 
     return self ? 1 : 0;
+}
+
+void consolidation_fep_bridge_set_instance_health_agent(consolidation_fep_bridge_t* bridge, nimcp_health_agent_t* agent) {
+    if (!bridge) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
+                    "consolidation_fep_bridge_set_instance_health_agent: NULL bridge");
+        return;
+    }
+    bridge->health_agent = agent;
+    g_consolidation_fep_bridge_instance_health_agent = agent;
+    NIMCP_LOGGING_DEBUG("consolidation_fep_bridge: instance health agent %s", agent ? "set" : "cleared");
+}
+
+int consolidation_fep_bridge_training_begin(consolidation_fep_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "consolidation_fep_bridge_training_begin: NULL argument");
+        return -1;
+    }
+    consolidation_fep_bridge_heartbeat_instance(bridge, "consol_fep_training_begin", 0.0f);
+    (void)bridge;
+    return 0;
+}
+
+int consolidation_fep_bridge_training_end(consolidation_fep_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "consolidation_fep_bridge_training_end: NULL argument");
+        return -1;
+    }
+    consolidation_fep_bridge_heartbeat_instance(bridge, "consol_fep_training_end", 1.0f);
+    (void)bridge;
+    return 0;
+}
+
+int consolidation_fep_bridge_training_step(consolidation_fep_bridge_t* bridge, float progress) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                              "consolidation_fep_bridge_training_step: NULL argument");
+        return -1;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+    consolidation_fep_bridge_heartbeat_instance(bridge, "consol_fep_training_step", progress);
+    (void)bridge;
+    return 0;
 }
