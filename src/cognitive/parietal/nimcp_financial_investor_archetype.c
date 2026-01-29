@@ -58,8 +58,9 @@ void financial_investor_archetype_module_set_health_agent(nimcp_health_agent_t* 
 struct brain_immune_system;
 typedef struct brain_immune_system brain_immune_system_t;
 extern int brain_immune_validate_operation(brain_immune_system_t* immune, const char* operation, uint32_t severity);
-extern int brain_immune_present_antigen(brain_immune_system_t* immune, uint32_t antigen_type,
-                                         const uint8_t* signature, size_t sig_len, uint32_t severity);
+extern int brain_immune_present_antigen(brain_immune_system_t* immune, int source,
+                                         const uint8_t* epitope, size_t epitope_len, uint32_t severity,
+                                         uint32_t source_node, uint32_t* antigen_id);
 
 struct bbb_system_struct;
 typedef struct bbb_system_struct* bbb_system_t;
@@ -268,8 +269,10 @@ static void archetype_present_antigen(financial_investor_archetype_t* arch,
     if (arch && arch->immune) {
         uint8_t sig[64] = {0};
         snprintf((char*)sig, sizeof(sig), "fin_archetype:%s", anomaly);
+        uint32_t antigen_id = 0;
         brain_immune_present_antigen((brain_immune_system_t*)arch->immune,
-                                      2, sig, strlen((char*)sig), severity);
+                                      0, sig, strlen((char*)sig), severity,
+                                      0, &antigen_id);
     }
 }
 

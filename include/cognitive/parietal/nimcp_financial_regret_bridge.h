@@ -130,8 +130,10 @@ typedef enum {
 } fin_trade_direction_t;
 
 /**
- * @brief Action types for trading decisions
+ * @brief Action types for trading decisions (guarded)
  */
+#ifndef FIN_ACTION_TYPE_DEFINED
+#define FIN_ACTION_TYPE_DEFINED
 typedef enum {
     FIN_ACTION_NONE = 0,       /**< No action taken */
     FIN_ACTION_BUY,            /**< Buy/enter long */
@@ -142,6 +144,7 @@ typedef enum {
     FIN_ACTION_DECREASE,       /**< Decrease position size */
     FIN_ACTION_COUNT
 } fin_action_type_t;
+#endif /* FIN_ACTION_TYPE_DEFINED */
 
 /**
  * @brief Regret types
@@ -183,12 +186,28 @@ typedef struct {
 } fin_trade_t;
 
 /**
- * @brief Action representation
+ * @brief Action representation (guarded)
+ *
+ * NOTE: This provides a minimal fallback definition. For full functionality,
+ * include nimcp_financial_bridge.h before this header.
  */
+#ifndef FIN_ACTION_DEFINED
+#define FIN_ACTION_DEFINED
 typedef struct {
-    int action_type;       /**< Action type (fin_action_type_t) */
-    float magnitude;       /**< Action magnitude (e.g., position size change) */
+    fin_action_type_t type;  /**< Action type */
+    char symbol[32];         /**< Symbol for the action */
+    float magnitude;         /**< Action magnitude (e.g., position size change) */
+    float position_weight;   /**< Position weight in portfolio */
+    float leverage_ratio;    /**< Leverage ratio */
+    float current_portfolio_risk; /**< Current portfolio risk */
+    bool is_margin;          /**< Is margin trade */
+    bool is_suitable;        /**< Is suitable for client */
+    uint32_t client_age;     /**< Client age for suitability */
+    char counterparty[64];   /**< Counterparty name */
+    bool counterparty_sanctioned; /**< Is counterparty sanctioned */
+    char notes[256];         /**< Additional notes */
 } fin_action_t;
+#endif /* FIN_ACTION_DEFINED */
 
 /**
  * @brief Regret analysis result

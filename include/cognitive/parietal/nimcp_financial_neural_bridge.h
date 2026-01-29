@@ -80,7 +80,9 @@ typedef enum {
     FIN_NEURAL_STATE_ERROR
 } fin_neural_state_t;
 
-/** Market event types for spike encoding */
+/** Market event types for spike encoding (guarded) */
+#ifndef FIN_MARKET_EVENT_TYPE_DEFINED
+#define FIN_MARKET_EVENT_TYPE_DEFINED
 typedef enum {
     FIN_EVENT_PRICE_CHANGE, FIN_EVENT_VOLUME_SPIKE,
     FIN_EVENT_VOLATILITY_SHIFT, FIN_EVENT_REGIME_CHANGE,
@@ -88,6 +90,7 @@ typedef enum {
     FIN_EVENT_EARNINGS, FIN_EVENT_MACRO_RELEASE,
     FIN_EVENT_TYPE_COUNT
 } fin_market_event_type_t;
+#endif /* FIN_MARKET_EVENT_TYPE_DEFINED */
 
 /** Spike encoding schemes */
 typedef enum {
@@ -110,7 +113,9 @@ typedef enum {
 // Data Structures
 //=============================================================================
 
-/** Market event for neural encoding */
+/** Market event for neural encoding (guarded) */
+#ifndef FIN_MARKET_EVENT_DEFINED
+#define FIN_MARKET_EVENT_DEFINED
 typedef struct {
     fin_market_event_type_t type;
     float magnitude;
@@ -119,6 +124,7 @@ typedef struct {
     float context[8];
     uint32_t context_count;
 } fin_market_event_t;
+#endif /* FIN_MARKET_EVENT_DEFINED */
 
 /** Spike train from encoding */
 typedef struct {

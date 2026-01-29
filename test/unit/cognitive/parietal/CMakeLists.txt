@@ -1072,3 +1072,10 @@ add_custom_target(unit_parietal_financial_investment DEPENDS
     unit_parietal_financial_bridge
     unit_parietal_financial_neural_bridge
     unit_parietal_financial_investor_archetype)
+
+#=============================================================================
+# Financial Cognitive Integration Tests (Check Framework)
+# Tests for 27 financial cognitive bridges + enhanced core modules
+#=============================================================================
+
+add_subdirectory(financial)

@@ -197,3 +197,6 @@ gtest_discover_tests(integration_parietal_financial_investment
         LABELS "integration;cognitive;parietal;financial"
         TIMEOUT 180
 )
+
+# Financial Cognitive Integration Tests (Check Framework)
+add_subdirectory(financial)

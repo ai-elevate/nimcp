@@ -82,7 +82,9 @@ typedef enum {
     FIN_VALIDATION_ERROR
 } fin_validation_result_t;
 
-/** Action types subject to validation */
+/** Action types subject to validation (guarded to avoid redefinition) */
+#ifndef FIN_ACTION_TYPE_DEFINED
+#define FIN_ACTION_TYPE_DEFINED
 typedef enum {
     FIN_ACTION_BUY, FIN_ACTION_SELL, FIN_ACTION_SHORT,
     FIN_ACTION_TRANSFER, FIN_ACTION_REBALANCE,
@@ -90,6 +92,7 @@ typedef enum {
     FIN_ACTION_LEVERAGE_CHANGE, FIN_ACTION_WITHDRAWAL,
     FIN_ACTION_TYPE_COUNT
 } fin_action_type_t;
+#endif /* FIN_ACTION_TYPE_DEFINED */
 
 /** Risk drive levels from hypothalamus */
 typedef enum {
@@ -105,7 +108,9 @@ typedef enum {
 // Data Structures
 //=============================================================================
 
-/** Financial action descriptor for validation pipeline */
+/** Financial action descriptor for validation pipeline (guarded) */
+#ifndef FIN_ACTION_DEFINED
+#define FIN_ACTION_DEFINED
 typedef struct {
     fin_action_type_t type;
     char symbol[32];
@@ -121,6 +126,7 @@ typedef struct {
     bool counterparty_sanctioned;
     char notes[256];
 } fin_action_t;
+#endif /* FIN_ACTION_DEFINED */
 
 /** Detailed validation report */
 typedef struct {

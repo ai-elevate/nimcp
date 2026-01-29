@@ -574,8 +574,8 @@ static fin_regret_type_t determine_regret_type(
     float diff = optimal_outcome - actual;
 
     /* If action was taken and resulted in loss */
-    if (action_taken->action_type == FIN_ACTION_BUY ||
-        action_taken->action_type == FIN_ACTION_SELL) {
+    if (action_taken->type == FIN_ACTION_BUY ||
+        action_taken->type == FIN_ACTION_SELL) {
         if (actual < 0.0f && optimal_outcome > 0.0f) {
             /* Should not have entered - commission regret */
             return FIN_REGRET_COMMISSION;
@@ -583,8 +583,8 @@ static fin_regret_type_t determine_regret_type(
     }
 
     /* If no action was taken and missed opportunity */
-    if (action_taken->action_type == FIN_ACTION_NONE ||
-        action_taken->action_type == FIN_ACTION_HOLD) {
+    if (action_taken->type == FIN_ACTION_NONE ||
+        action_taken->type == FIN_ACTION_HOLD) {
         if (optimal_outcome > 0.5f) {
             /* Should have entered - omission regret */
             return FIN_REGRET_OMISSION;
@@ -629,21 +629,21 @@ static void compute_best_action(
 
     if (trade->outcome > 0.2f) {
         /* Good trade - optimal was to size up */
-        best_action->action_type = action_taken->action_type;
+        best_action->type = action_taken->type;
         best_action->magnitude = action_taken->magnitude * 1.5f;
     } else if (trade->outcome < -0.2f) {
         /* Bad trade - optimal was to avoid or reverse */
-        if (action_taken->action_type == FIN_ACTION_BUY) {
-            best_action->action_type = FIN_ACTION_SELL;
-        } else if (action_taken->action_type == FIN_ACTION_SELL) {
-            best_action->action_type = FIN_ACTION_BUY;
+        if (action_taken->type == FIN_ACTION_BUY) {
+            best_action->type = FIN_ACTION_SELL;
+        } else if (action_taken->type == FIN_ACTION_SELL) {
+            best_action->type = FIN_ACTION_BUY;
         } else {
-            best_action->action_type = FIN_ACTION_NONE;
+            best_action->type = FIN_ACTION_NONE;
         }
         best_action->magnitude = 0.0f;
     } else {
         /* Neutral - optimal was to reduce size */
-        best_action->action_type = action_taken->action_type;
+        best_action->type = action_taken->type;
         best_action->magnitude = action_taken->magnitude * 0.5f;
     }
 }
@@ -659,10 +659,10 @@ static void generate_counterfactual_description(
     char* buffer,
     size_t buffer_size)
 {
-    const char* action_str = fin_regret_action_name((fin_action_type_t)action_taken->action_type);
-    const char* best_str = fin_regret_action_name((fin_action_type_t)best_action->action_type);
+    const char* action_str = fin_regret_action_name((fin_action_type_t)action_taken->type);
+    const char* best_str = fin_regret_action_name((fin_action_type_t)best_action->type);
 
-    if (best_action->action_type != action_taken->action_type) {
+    if (best_action->type != action_taken->type) {
         snprintf(buffer, buffer_size,
                  "If %s instead of %s at %.2f, outcome would have improved by %.1f%%",
                  best_str, action_str, trade->price, regret_magnitude * 100.0f);
@@ -833,7 +833,7 @@ int financial_regret_bridge_analyze_full(
 
     /* Create action from record */
     fin_action_t action_taken;
-    action_taken.action_type = (record->trade.direction > 0) ? FIN_ACTION_BUY :
+    action_taken.type = (record->trade.direction > 0) ? FIN_ACTION_BUY :
                                (record->trade.direction < 0) ? FIN_ACTION_SELL :
                                FIN_ACTION_HOLD;
     action_taken.magnitude = record->trade.quantity;
@@ -910,7 +910,7 @@ int financial_regret_bridge_counterfactual(
     float actual_outcome = trade->outcome;
     float hypo = 0.0f;
 
-    switch ((fin_action_type_t)alternative_action->action_type) {
+    switch ((fin_action_type_t)alternative_action->type) {
         case FIN_ACTION_NONE:
             /* Did nothing - outcome would be 0 */
             hypo = 0.0f;
@@ -1018,7 +1018,7 @@ int financial_regret_bridge_generate_counterfactuals(
 
     for (size_t i = 0; i < sizeof(alternatives)/sizeof(alternatives[0]) && count < max_scenarios; i++) {
         fin_action_t alt_action;
-        alt_action.action_type = alternatives[i];
+        alt_action.type = alternatives[i];
         alt_action.magnitude = 0.5f;  /* Default magnitude */
 
         float hypo;

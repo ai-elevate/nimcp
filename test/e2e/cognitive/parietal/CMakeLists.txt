@@ -80,3 +80,6 @@ gtest_discover_tests(e2e_parietal_financial_investment
         TIMEOUT 300
         LABELS "e2e;cognitive;parietal;financial"
 )
+
+# Financial Cognitive E2E Tests (Check Framework)
+add_subdirectory(financial)

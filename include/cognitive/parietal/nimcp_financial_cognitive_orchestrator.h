@@ -160,8 +160,10 @@ typedef enum {
 } fin_orchestrator_state_t;
 
 /**
- * @brief Decision types
+ * @brief Decision types (guarded to avoid redefinition)
  */
+#ifndef FIN_DECISION_TYPE_DEFINED
+#define FIN_DECISION_TYPE_DEFINED
 typedef enum {
     FIN_DECISION_BUY = 0,
     FIN_DECISION_SELL,
@@ -175,6 +177,7 @@ typedef enum {
     FIN_DECISION_GATHER_INFO,
     FIN_DECISION_COUNT
 } fin_decision_type_t;
+#endif /* FIN_DECISION_TYPE_DEFINED */
 
 /**
  * @brief Pipeline stages for tracking

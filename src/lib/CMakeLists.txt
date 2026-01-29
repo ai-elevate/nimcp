@@ -843,6 +843,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_world_model_bridge.c # World model: state prediction, counterfactuals, policy rollout
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_tom_bridge.c   # Theory of Mind: investor modeling, action prediction, false beliefs
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_salience_bridge.c # Salience bridge: attention prioritization, novelty/surprise/urgency/relevance
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_emo_attention_bridge.c # Emo-attention bridge: emotional modulation of attention
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_mental_health_bridge.c # Mental health bridge: cognitive load, stress, burnout monitoring (Phase 10)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_basal_ganglia_bridge.c # Basal ganglia: Q-learning, action selection, habit detection (Phase 6)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_predictive_bridge.c # Predictive coding: FEP, active inference, EFE computation (Phase 6)
@@ -856,6 +857,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_regret_bridge.c # Regret bridge: counterfactual analysis, lesson extraction (Phase 9)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_curiosity_bridge.c # Curiosity bridge: hypothesis generation, exploration selection (Phase 9)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_cognitive_orchestrator.c # Cognitive orchestrator: master integration (Phase 10)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_validation_stubs.c # BBB/immune validation stubs (temporary)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_parietal.c               # Parietal orchestrator with Hamiltonian-Lagrangian NN
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_code_generation.c       # Self-repair code generation engine (FT integration)
 

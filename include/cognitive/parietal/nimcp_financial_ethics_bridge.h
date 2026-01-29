@@ -139,8 +139,10 @@ typedef enum {
 } fin_ethics_verdict_t;
 
 /**
- * @brief Trading action types for ethical evaluation
+ * @brief Trading action types for ethical evaluation (guarded)
  */
+#ifndef FIN_ACTION_TYPE_DEFINED
+#define FIN_ACTION_TYPE_DEFINED
 typedef enum {
     FIN_ACTION_BUY = 0,         /**< Buy/long position */
     FIN_ACTION_SELL,            /**< Sell/close long */
@@ -156,6 +158,7 @@ typedef enum {
     FIN_ACTION_WASH_TRADE,      /**< Wash trading (flagged) */
     FIN_ACTION_COUNT
 } fin_action_type_t;
+#endif /* FIN_ACTION_TYPE_DEFINED */
 
 /**
  * @brief Asimov law that was violated

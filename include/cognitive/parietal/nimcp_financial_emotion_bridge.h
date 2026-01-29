@@ -108,8 +108,10 @@ extern "C" {
  * ============================================================================ */
 
 /**
- * @brief Market event types that trigger emotional responses
+ * @brief Market event types that trigger emotional responses (guarded)
  */
+#ifndef FIN_MARKET_EVENT_TYPE_DEFINED
+#define FIN_MARKET_EVENT_TYPE_DEFINED
 typedef enum {
     FIN_MKT_EVENT_PRICE_INCREASE = 0,   /**< Price increased */
     FIN_MKT_EVENT_PRICE_DECREASE,       /**< Price decreased */
@@ -123,6 +125,7 @@ typedef enum {
     FIN_MKT_EVENT_MISSED_OPPORTUNITY,   /**< Missed trade opportunity */
     FIN_MKT_EVENT_COUNT
 } fin_market_event_type_t;
+#endif /* FIN_MARKET_EVENT_TYPE_DEFINED */
 
 /**
  * @brief Plutchik's primary emotion indices
@@ -234,14 +237,17 @@ typedef struct {
 } fin_emotion_state_t;
 
 /**
- * @brief Market event that triggers emotional response
+ * @brief Market event that triggers emotional response (guarded)
  */
+#ifndef FIN_MARKET_EVENT_DEFINED
+#define FIN_MARKET_EVENT_DEFINED
 typedef struct {
     fin_market_event_type_t event_type; /**< Type of market event */
     float magnitude;                    /**< Event magnitude [-1.0, 1.0] */
     float surprise_factor;              /**< How unexpected [0.0, 1.0] */
     uint64_t timestamp_ms;              /**< Event timestamp */
 } fin_market_event_t;
+#endif /* FIN_MARKET_EVENT_DEFINED */
 
 /**
  * @brief Result of dominant emotion query

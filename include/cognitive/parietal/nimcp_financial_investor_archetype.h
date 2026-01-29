@@ -117,7 +117,9 @@ typedef enum {
     FIN_HEURISTIC_TYPE_COUNT
 } fin_heuristic_type_t;
 
-/** Decision types */
+/** Decision types (guarded to avoid redefinition) */
+#ifndef FIN_DECISION_TYPE_DEFINED
+#define FIN_DECISION_TYPE_DEFINED
 typedef enum {
     FIN_DECISION_STRONG_BUY,
     FIN_DECISION_BUY,
@@ -128,6 +130,7 @@ typedef enum {
     FIN_DECISION_NO_ACTION,
     FIN_DECISION_TYPE_COUNT
 } fin_decision_type_t;
+#endif /* FIN_DECISION_TYPE_DEFINED */
 
 /** Time horizon preference */
 typedef enum {
