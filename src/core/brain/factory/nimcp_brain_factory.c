@@ -258,6 +258,9 @@ extern void set_error(const char* format, ...);
 #define destroy_gpu_subsystem                       nimcp_brain_factory_destroy_gpu_subsystem
 
 // Fault Tolerance subsystem macro (intelligent recovery with parietal integration)
+// Fuzzy Logic subsystem macro (cross-cutting utility)
+#define init_fuzzy_subsystem                       nimcp_brain_factory_init_fuzzy_subsystem
+
 #define init_fault_tolerance_subsystem              nimcp_brain_factory_init_fault_tolerance_subsystem
 
 // Health Agent subsystem macro (autonomous health monitoring)
@@ -835,6 +838,19 @@ brain_t brain_create_custom(const brain_config_t* config)
     if (!init_somatosensory_subsystem(brain)) { brain_destroy(brain); return NULL; }
     if (!init_olfactory_subsystem(brain)) { brain_destroy(brain); return NULL; }
     if (!init_gustatory_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // ========================================================================
+    // ========================================================================
+    // FUZZY LOGIC (CROSS-CUTTING UTILITY)
+    // ========================================================================
+
+    // Initialize fuzzy logic utility module:
+    // - Graded membership reasoning for all modules
+    // - Risk assessment with continuous risk grades
+    // - Training convergence detection via fuzzy inference
+    // - Plasticity rate scheduling via fuzzy rules
+    // BIOLOGICAL: Neural firing rates encode graded activation
+    if (!init_fuzzy_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // ========================================================================
     // PARIETAL LOBE (MATHEMATICAL/SCIENTIFIC REASONING)

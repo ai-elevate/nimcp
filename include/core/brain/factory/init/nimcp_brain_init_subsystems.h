@@ -190,6 +190,12 @@ bool nimcp_brain_factory_init_cycle_coordinator_subsystem(brain_t brain);
 void nimcp_brain_factory_destroy_cycle_coordinator_subsystem(brain_t brain);
 struct brain_cycle_coordinator* brain_get_cycle_coordinator(brain_t brain);
 
+// === FUZZY LOGIC SUBSYSTEM ===
+// Cross-cutting fuzzy logic utility providing graded membership reasoning
+// for risk assessment, market classification, training convergence,
+// plasticity rate scheduling, and ethical decision scoring
+bool nimcp_brain_factory_init_fuzzy_subsystem(brain_t brain);
+
 // Health agent accessor functions
 struct nimcp_health_agent* brain_get_health_agent(brain_t brain);
 bool brain_start_health_agent(brain_t brain);

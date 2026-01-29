@@ -65,6 +65,11 @@
 /* NOTE: nimcp_parietal_quantum_bridge.h NOT included here to avoid circular deps */
 /* Forward declarations for quantum types are provided below */
 #include "cognitive/parietal/nimcp_fep_parietal_bridge.h"
+#include "cognitive/parietal/nimcp_financial_investment.h"
+#include "cognitive/parietal/nimcp_financial_market.h"
+#include "cognitive/parietal/nimcp_financial_bridge.h"
+#include "cognitive/parietal/nimcp_financial_neural_bridge.h"
+#include "cognitive/parietal/nimcp_financial_investor_archetype.h"
 #include "cognitive/imagination/nimcp_imagination_callbacks.h"
 #include <stdint.h>
 #include <stdbool.h>
@@ -285,6 +290,21 @@ typedef enum {
     PARIETAL_FEP_SPATIAL_INFERENCE,     /**< FEP-based spatial reasoning */
     PARIETAL_FEP_PHYSICS_INFERENCE,     /**< FEP-based physics prediction */
 
+    /* Financial Analysis */
+    PARIETAL_FINANCIAL_PORTFOLIO_ANALYZE,    /**< Portfolio risk/return analysis */
+    PARIETAL_FINANCIAL_RISK_ASSESS,          /**< Full risk assessment */
+    PARIETAL_FINANCIAL_OPTION_PRICE,         /**< Derivatives pricing */
+    PARIETAL_FINANCIAL_VALUATION,            /**< Asset valuation (DCF/DDM/comparables) */
+    PARIETAL_FINANCIAL_OPTIMIZE,             /**< Portfolio optimization */
+    PARIETAL_FINANCIAL_MARKET_REGIME,        /**< Market regime detection (fuzzy) */
+    PARIETAL_FINANCIAL_SENTIMENT,            /**< Sentiment analysis (fuzzy) */
+    PARIETAL_FINANCIAL_GARCH_FIT,            /**< GARCH volatility model */
+    PARIETAL_FINANCIAL_INDICATOR,            /**< Technical indicator computation */
+    PARIETAL_FINANCIAL_SCENARIO,             /**< Scenario/stress test */
+    PARIETAL_FINANCIAL_MONTE_CARLO,          /**< Monte Carlo simulation */
+    PARIETAL_FINANCIAL_ARCHETYPE_EVAL,       /**< Investor archetype evaluation */
+    PARIETAL_FINANCIAL_ARCHETYPE_BLEND,      /**< Multi-archetype blending */
+
     PARIETAL_REQUEST_TYPE_COUNT
 } parietal_request_type_t;
 
@@ -449,6 +469,7 @@ typedef struct {
     bool enable_electrical_eng;         /**< Enable electrical engineering (default: true) */
     bool enable_mechanical_eng;         /**< Enable mechanical engineering (default: true) */
     bool enable_civil_eng;              /**< Enable civil engineering (default: true) */
+    bool enable_financial;              /**< Enable financial analysis (default: true) */
 
     /* Neural network settings */
     uint32_t nn_hidden_size;            /**< NN hidden layer size (default: 256) */

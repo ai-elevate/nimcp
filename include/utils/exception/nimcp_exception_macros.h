@@ -185,6 +185,68 @@ extern "C" {
     } while (0)
 
 /* ============================================================================
+ * Full Immune Recovery Macros
+ * ============================================================================ */
+
+/**
+ * @brief Throw exception with full immune processing and auto-recovery
+ *
+ * Creates exception, presents to immune system, captures response,
+ * executes recommended recovery action, and notifies result.
+ * Use this for full fault-tolerance integration.
+ *
+ * Flow:
+ * 1. Create exception with file/line/function metadata
+ * 2. Present to immune system and capture response
+ * 3. If recovery was recommended, execute the action
+ * 4. Notify immune system of recovery result
+ * 5. Dispatch through handler chain
+ */
+#define NIMCP_THROW_IMMUNE_RECOVER(code, fmt, ...) \
+    do { \
+        nimcp_exception_t* _ex = nimcp_exception_create( \
+            (code), \
+            nimcp_exception_get_severity_from_code(code), \
+            __FILE__, \
+            __LINE__, \
+            __func__, \
+            fmt, \
+            ##__VA_ARGS__ \
+        ); \
+        if (_ex) { \
+            nimcp_immune_response_t _response = {0}; \
+            nimcp_exception_present_to_immune(_ex, &_response); \
+            if (_response.recovery_attempted && _response.action_taken != EXCEPTION_RECOVERY_NONE) { \
+                int _rc = nimcp_exception_execute_recovery(_ex, _response.action_taken); \
+                nimcp_exception_notify_recovery_result(_ex, _response.action_taken, (_rc == 0)); \
+            } \
+            nimcp_exception_dispatch(_ex); \
+            nimcp_exception_unref(_ex); \
+        } \
+    } while (0)
+
+/**
+ * @brief Throw to immune with recovery if condition is false
+ */
+#define NIMCP_THROW_IMMUNE_RECOVER_IF(cond, code, fmt, ...) \
+    do { \
+        if (!(cond)) { \
+            NIMCP_THROW_IMMUNE_RECOVER((code), fmt, ##__VA_ARGS__); \
+        } \
+    } while (0)
+
+/**
+ * @brief Check, throw to immune with recovery, and return if false
+ */
+#define NIMCP_CHECK_THROW_IMMUNE_RECOVER(cond, code, fmt, ...) \
+    do { \
+        if (!(cond)) { \
+            NIMCP_THROW_IMMUNE_RECOVER((code), fmt, ##__VA_ARGS__); \
+            return (code); \
+        } \
+    } while (0)
+
+/* ============================================================================
  * Async/Non-Blocking Throw Macros
  * ============================================================================ */
 

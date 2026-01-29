@@ -1440,7 +1440,7 @@ int pr_pink_noise_training_begin(void* instance) {
     /* Clear thread-local error state for clean training run */
     last_error[0] = '\0';
 
-    NIMCP_LOG(LOG_LEVEL_INFO, LOG_MODULE, "pr_pink_noise training begin");
+    LOG_MODULE_INFO(LOG_MODULE, "pr_pink_noise training begin");
     return 0;
 }
 
@@ -1457,7 +1457,7 @@ int pr_pink_noise_training_end(void* instance) {
     memcpy(&final_stats, &module_stats, sizeof(pr_pink_noise_stats_t));
 
     /* Log training completion with sample generation metrics */
-    NIMCP_LOG(LOG_LEVEL_INFO, LOG_MODULE,
+    LOG_MODULE_INFO(LOG_MODULE,
               "pr_pink_noise training end: samples=%lu, fractal_events=%lu, measured_alpha=%.4f",
               (unsigned long)final_stats.quat_samples_generated,
               (unsigned long)final_stats.fractal_events,

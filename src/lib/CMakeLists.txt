@@ -80,6 +80,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_security_perception_bridge.c  # Security-Perception Bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_swarm_module_registry.c  # Swarm Module Registry
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_core_directives.c     # Core Directives subsystem
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_fuzzy.c               # Fuzzy logic subsystem
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_parietal.c            # Parietal lobe subsystem
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_dragonfly.c           # Dragonfly target tracking subsystem
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_kg_reader.c           # KG reader for self-awareness
@@ -824,6 +825,12 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_meta_reasoning.c         # Reasoning about reasoning (strategy selection)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_intuition_integrations.c # Phase 6.0: Integration & Extrapolation Framework
     # ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_physics_nn.c              # Physics-informed neural network (symplectic, HNN) - NOT YET IMPLEMENTED
+    # Financial Analysis Module (Phase B - Fuzzy-Integrated)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_investment.c   # Core investment: portfolio, risk, derivatives, optimization
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_market.c       # Market: GARCH, indicators, sentiment, regime, Monte Carlo
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_bridge.c       # System bridge: validation pipeline, brain region integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_neural_bridge.c # Neural bridge: SNN encoding, STDP, LNN, plasticity
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_investor_archetype.c # 10 investor archetypes with fuzzy heuristics
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_parietal.c               # Parietal orchestrator with Hamiltonian-Lagrangian NN
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_code_generation.c       # Self-repair code generation engine (FT integration)
 
@@ -1796,6 +1803,12 @@ set(NIMCP_CORE_SOURCES
 
     # Utils - Ternary Logic (Three-valued logic for SNN, ethics, voting)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/ternary/nimcp_ternary_tensor.c  # Ternary-tensor integration
+
+    # Utils - Fuzzy Logic (Graded membership reasoning for risk, market, decisions)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fuzzy/nimcp_fuzzy_types.c       # Core types, membership functions, hedges
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fuzzy/nimcp_fuzzy_operators.c   # T-norms, t-conorms, implications, aggregation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fuzzy/nimcp_fuzzy_inference.c   # Mamdani, Sugeno, Tsukamoto FIS + ANFIS
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/fuzzy/nimcp_fuzzy_bridge.c      # 18-subsystem integration bridge
 
     # Information Theory (Phase C4: Shannon Information Theory)
     ${CMAKE_CURRENT_SOURCE_DIR}/../information/nimcp_shannon.c

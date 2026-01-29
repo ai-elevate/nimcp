@@ -1619,6 +1619,18 @@ struct brain_struct {
     struct omni_wm_kg_bridge* wm_kg_bridge;                            // Knowledge Graph wiring integration
     struct omni_wm_tom_bridge* wm_tom_bridge;                          // Theory of Mind social world modeling
     struct omni_wm_plasticity_bridge* wm_plasticity_bridge;            // SNN/STDP/Plasticity direct integration
+
+    // === FUZZY LOGIC INTEGRATION ===
+    //
+    // Fuzzy logic provides graded membership reasoning across all modules:
+    // - Risk assessment with continuous risk grades
+    // - Market regime detection with multi-membership
+    // - Investor archetype heuristics with fuzzy evaluation
+    // - Training convergence detection with fuzzy inference
+    // - Plasticity rate scheduling via fuzzy rules
+    //
+    struct fuzzy_bridge* fuzzy_bridge;              // fuzzy_bridge_t* (opaque)
+    bool fuzzy_logic_enabled;                       // Enable fuzzy logic integration
 };
 
 //=============================================================================

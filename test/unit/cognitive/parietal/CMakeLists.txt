@@ -896,3 +896,179 @@ gtest_discover_tests(unit_parietal_exception_handling
         LABELS "unit;cognitive;parietal;exception-handling"
         TIMEOUT 120
 )
+
+#=============================================================================
+# Financial Investment Core Tests
+#=============================================================================
+
+add_executable(unit_parietal_financial_investment_core
+    test_financial_investment.cpp
+)
+
+target_link_libraries(unit_parietal_financial_investment_core
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_parietal_financial_investment_core
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_parietal_financial_investment_core PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_parietal_financial_investment_core
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;parietal;financial;investment"
+        TIMEOUT 120
+)
+
+#=============================================================================
+# Financial Market Tests
+#=============================================================================
+
+add_executable(unit_parietal_financial_market
+    test_financial_market.cpp
+)
+
+target_link_libraries(unit_parietal_financial_market
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_parietal_financial_market
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_parietal_financial_market PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_parietal_financial_market
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;parietal;financial;market"
+        TIMEOUT 120
+)
+
+#=============================================================================
+# Financial Bridge Tests
+#=============================================================================
+
+add_executable(unit_parietal_financial_bridge
+    test_financial_bridge.cpp
+)
+
+target_link_libraries(unit_parietal_financial_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_parietal_financial_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_parietal_financial_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_parietal_financial_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;parietal;financial;bridge"
+        TIMEOUT 120
+)
+
+#=============================================================================
+# Financial Neural Bridge Tests
+#=============================================================================
+
+add_executable(unit_parietal_financial_neural_bridge
+    test_financial_neural_bridge.cpp
+)
+
+target_link_libraries(unit_parietal_financial_neural_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_parietal_financial_neural_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_parietal_financial_neural_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_parietal_financial_neural_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;parietal;financial;neural-bridge"
+        TIMEOUT 120
+)
+
+#=============================================================================
+# Financial Investor Archetype Tests
+#=============================================================================
+
+add_executable(unit_parietal_financial_investor_archetype
+    test_financial_investor_archetype.cpp
+)
+
+target_link_libraries(unit_parietal_financial_investor_archetype
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_parietal_financial_investor_archetype
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_parietal_financial_investor_archetype PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_parietal_financial_investor_archetype
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;parietal;financial;investor-archetype"
+        TIMEOUT 120
+)
+
+#=============================================================================
+# Combined Financial Investment Target
+#=============================================================================
+
+add_custom_target(unit_parietal_financial_investment DEPENDS
+    unit_parietal_financial_investment_core
+    unit_parietal_financial_market
+    unit_parietal_financial_bridge
+    unit_parietal_financial_neural_bridge
+    unit_parietal_financial_investor_archetype)

@@ -1204,6 +1204,18 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/utils/ternary")
 endif()
 
 # ============================================================================
+# Utils Fuzzy Logic Tests
+# ============================================================================
+# WHAT: Unit tests for fuzzy logic module (types, operators, inference, bridge)
+# WHY:  Verify membership functions, operators, inference engines, and bridge
+# HOW:  ~185 tests across 4 executables
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/utils/fuzzy")
+    message(STATUS "Adding utils fuzzy logic unit tests...")
+    add_subdirectory(unit/utils/fuzzy)
+endif()
+
+# ============================================================================
 # Ternary Unit Tests (Exception Handling)
 # ============================================================================
 
@@ -2058,6 +2070,28 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/error")
     message(STATUS "Adding cross-module error propagation tests...")
     add_subdirectory(integration/error)
+endif()
+
+# ============================================================================
+# Utils Fuzzy Logic Tests
+# ============================================================================
+# WHAT: Integration, regression, and E2E tests for fuzzy logic subsystem
+# WHY:  Verify fuzzy types, operators, inference, and bridge modules
+# HOW:  Cross-module integration, mathematical invariants, full pipelines
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/utils/fuzzy")
+    message(STATUS "Adding fuzzy logic integration tests...")
+    add_subdirectory(integration/utils/fuzzy)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/utils/fuzzy")
+    message(STATUS "Adding fuzzy logic regression tests...")
+    add_subdirectory(regression/utils/fuzzy)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/e2e/utils/fuzzy")
+    message(STATUS "Adding fuzzy logic E2E tests...")
+    add_subdirectory(e2e/utils/fuzzy)
 endif()
 
 # ============================================================================

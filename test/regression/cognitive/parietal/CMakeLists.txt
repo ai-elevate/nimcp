@@ -109,3 +109,39 @@ gtest_discover_tests(regression_parietal_exception
         LABELS "regression;cognitive;parietal;exception-handling"
         TIMEOUT 300
 )
+
+# ============================================================================
+# Financial Investment Module Regression Tests
+# ============================================================================
+# WHAT: Verify API contract stability, NULL safety, output bounds, error codes
+# WHY:  Prevent regressions in financial module correctness and safety
+# HOW:  Test all public functions for consistent behavior across versions
+
+add_executable(regression_parietal_financial_investment
+    test_financial_regression.cpp
+)
+
+target_link_libraries(regression_parietal_financial_investment
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(regression_parietal_financial_investment
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_parietal_financial_investment PRIVATE cxx_std_17)
+target_compile_definitions(regression_parietal_financial_investment PRIVATE NIMCP_TESTING)
+
+gtest_discover_tests(regression_parietal_financial_investment
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;cognitive;parietal;financial"
+        TIMEOUT 120
+)

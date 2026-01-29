@@ -43,3 +43,40 @@ gtest_discover_tests(e2e_parietal_exception
         TIMEOUT 600
         LABELS "e2e;cognitive;parietal;exception;immune"
 )
+
+# =============================================================================
+# Financial Investment Module End-to-End Tests
+# =============================================================================
+# WHAT: Full system pipeline tests for all 5 financial sub-modules
+# WHY:  Verify complete workflows from market data through decision execution
+# HOW:  Create all engines, wire together, run multi-step pipelines
+#
+# @author NIMCP Development Team
+# @date 2026-01-29
+# =============================================================================
+
+add_executable(e2e_parietal_financial_investment
+    test_financial_e2e.cpp
+)
+
+target_include_directories(e2e_parietal_financial_investment
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(e2e_parietal_financial_investment
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_compile_features(e2e_parietal_financial_investment PRIVATE cxx_std_17)
+
+gtest_discover_tests(e2e_parietal_financial_investment
+    PROPERTIES
+        TIMEOUT 300
+        LABELS "e2e;cognitive;parietal;financial"
+)

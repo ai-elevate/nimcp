@@ -164,3 +164,36 @@ gtest_discover_tests(integration_parietal_exception
         LABELS "integration;cognitive;parietal;exception-handling;immune"
         TIMEOUT 180
 )
+
+# ----------------------------------------------------------------------------
+# Financial Investment Module Integration Test
+# Tests cross-module interactions across all 5 financial sub-modules
+# ----------------------------------------------------------------------------
+add_executable(integration_parietal_financial_investment
+    test_financial_integration.cpp
+)
+
+target_link_libraries(integration_parietal_financial_investment
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(integration_parietal_financial_investment
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(integration_parietal_financial_investment PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_parietal_financial_investment
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;cognitive;parietal;financial"
+        TIMEOUT 180
+)

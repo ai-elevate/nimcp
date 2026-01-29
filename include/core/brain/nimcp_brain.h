@@ -1772,6 +1772,9 @@ typedef struct {
     bool enable_wm_kg_bridge;                     /**< Knowledge Graph wiring integration bridge */
     bool enable_wm_tom_bridge;                    /**< Theory of Mind social world modeling bridge */
     bool enable_wm_plasticity_bridge;             /**< SNN/STDP/Plasticity direct integration bridge */
+
+    // === FUZZY LOGIC INTEGRATION ===
+    bool enable_fuzzy_logic;                      /**< Enable fuzzy logic utility module (default: true) */
 } brain_config_t;
 
 /**

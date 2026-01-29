@@ -143,6 +143,13 @@ struct parietal_lobe {
     /* Plasticity Bridge */
     parietal_plasticity_bridge_t* plasticity_bridge;
 
+    /* Financial Sub-Engines */
+    financial_investment_eng_t* financial_investment;
+    financial_market_eng_t* financial_market;
+    financial_bridge_t* financial_bridge;
+    financial_neural_bridge_t* financial_neural;
+    financial_investor_archetype_t* financial_archetype;
+
     /* Bridges enabled flag */
     bool bridges_enabled;
 
@@ -629,6 +636,18 @@ parietal_lobe_t* parietal_create_custom(const parietal_config_t* config) {
         parietal->fep_parietal_bridge = fep_parietal_bridge_create(&cfg.fep_parietal_config);
     }
 
+    /* Create financial sub-engines */
+    if (cfg.enable_financial) {
+        parietal->financial_investment = financial_investment_create();
+        parietal->financial_market = financial_market_create();
+        fin_bridge_config_t fb_cfg = financial_bridge_default_config();
+        parietal->financial_bridge = financial_bridge_create(&fb_cfg);
+        fin_neural_config_t fn_cfg = financial_neural_bridge_default_config();
+        parietal->financial_neural = financial_neural_bridge_create(&fn_cfg);
+        fin_archetype_config_t fa_cfg = financial_investor_archetype_default_config();
+        parietal->financial_archetype = financial_investor_archetype_create(&fa_cfg);
+    }
+
     /* Create SNN bridge with default config */
     parietal_snn_config_t snn_config = parietal_snn_config_default();
     parietal->snn_bridge = parietal_snn_create(&snn_config);
@@ -692,6 +711,13 @@ void parietal_destroy(parietal_lobe_t* parietal) {
 
     /* Destroy Plasticity bridge */
     parietal_plasticity_destroy(parietal->plasticity_bridge);
+
+    /* Destroy financial sub-engines */
+    financial_investment_destroy(parietal->financial_investment);
+    financial_market_destroy(parietal->financial_market);
+    financial_bridge_destroy(parietal->financial_bridge);
+    financial_neural_bridge_destroy(parietal->financial_neural);
+    financial_investor_archetype_destroy(parietal->financial_archetype);
 
     /* Destroy physics NN */
     physics_nn_destroy(parietal->physics_nn);
@@ -1382,6 +1408,50 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
                 }
                 result.success = true;
                 result.confidence = 0.89f;
+            }
+            break;
+        }
+
+        /* Financial Analysis Requests */
+        case PARIETAL_FINANCIAL_PORTFOLIO_ANALYZE:
+        case PARIETAL_FINANCIAL_RISK_ASSESS:
+        case PARIETAL_FINANCIAL_OPTION_PRICE:
+        case PARIETAL_FINANCIAL_VALUATION:
+        case PARIETAL_FINANCIAL_OPTIMIZE: {
+            if (!parietal->financial_investment) {
+                result.success = false;
+                strcpy(result.error_message, "Financial investment engine not available");
+            } else {
+                result.success = true;
+                result.confidence = 0.88f;
+            }
+            break;
+        }
+
+        case PARIETAL_FINANCIAL_MARKET_REGIME:
+        case PARIETAL_FINANCIAL_SENTIMENT:
+        case PARIETAL_FINANCIAL_GARCH_FIT:
+        case PARIETAL_FINANCIAL_INDICATOR:
+        case PARIETAL_FINANCIAL_SCENARIO:
+        case PARIETAL_FINANCIAL_MONTE_CARLO: {
+            if (!parietal->financial_market) {
+                result.success = false;
+                strcpy(result.error_message, "Financial market engine not available");
+            } else {
+                result.success = true;
+                result.confidence = 0.85f;
+            }
+            break;
+        }
+
+        case PARIETAL_FINANCIAL_ARCHETYPE_EVAL:
+        case PARIETAL_FINANCIAL_ARCHETYPE_BLEND: {
+            if (!parietal->financial_archetype) {
+                result.success = false;
+                strcpy(result.error_message, "Financial archetype engine not available");
+            } else {
+                result.success = true;
+                result.confidence = 0.82f;
             }
             break;
         }
