@@ -32,6 +32,16 @@ extern "C" {
 #define FIN_MKT_MAX_MA_PERIOD           200
 
 //=============================================================================
+// Error Codes
+//=============================================================================
+
+#define FIN_MKT_ERR_OK          0
+#define FIN_MKT_ERR_NULL       -1
+#define FIN_MKT_ERR_VALIDATION -2
+#define FIN_MKT_ERR_PARAM      -3
+#define FIN_MKT_ERR_MEMORY     -4
+
+//=============================================================================
 // Enumerations
 //=============================================================================
 
@@ -182,7 +192,30 @@ typedef struct {
     uint64_t scenario_analyses;
     uint64_t monte_carlo_simulations;
     float avg_processing_time_us;
+    uint64_t async_operations;  /**< Bio-async operations count (Change Set 4) */
 } fin_market_stats_t;
+
+//=============================================================================
+// Forward Declarations for Security Integration
+//=============================================================================
+
+struct brain_immune_system;
+typedef struct brain_immune_system brain_immune_system_t;
+struct bbb_system_struct;
+typedef struct bbb_system_struct* bbb_system_t;
+
+//=============================================================================
+// Forward Declarations for Bio-Async Integration (Change Set 4)
+//=============================================================================
+
+/* Forward declarations for bio-async types (guarded to avoid redefinition) */
+#ifndef NIMCP_BIO_ASYNC_FWD_DECL
+#define NIMCP_BIO_ASYNC_FWD_DECL
+struct bio_async_context;
+typedef struct bio_async_context bio_async_context_t;
+struct bio_router_struct;
+typedef struct bio_router_struct* bio_router_t;
+#endif
 
 //=============================================================================
 // Opaque Handle
@@ -283,6 +316,48 @@ int financial_market_set_fatigue(financial_market_eng_t* mkt, float level);
 int financial_market_get_stats(const financial_market_eng_t* mkt, fin_market_stats_t* stats);
 void financial_market_reset_stats(financial_market_eng_t* mkt);
 const char* financial_market_get_last_error(void);
+
+//=============================================================================
+// Security Integration (Per-Engine)
+//=============================================================================
+
+/** Set immune system for per-engine validation */
+void financial_market_eng_set_immune(financial_market_eng_t* mkt, brain_immune_system_t* immune);
+/** Set BBB system for per-engine validation */
+void financial_market_eng_set_bbb(financial_market_eng_t* mkt, bbb_system_t bbb);
+/** Enable/disable BBB validation on engine */
+void financial_market_eng_enable_bbb_validation(financial_market_eng_t* mkt, bool enable);
+/** Enable/disable immune validation on engine */
+void financial_market_eng_enable_immune_validation(financial_market_eng_t* mkt, bool enable);
+
+//=============================================================================
+// Bio-Async Integration (Change Set 4)
+//=============================================================================
+
+/** Set bio-async context for asynchronous processing */
+int financial_market_set_bio_async(financial_market_eng_t* mkt, bio_async_context_t* ctx);
+/** Set bio-router for message routing */
+int financial_market_set_bio_router(financial_market_eng_t* mkt, bio_router_t* router);
+
+//=============================================================================
+// KG Wiring Integration (Change Set 1)
+//=============================================================================
+
+/* Forward declaration for KG wiring */
+struct kg_wiring;
+typedef struct kg_wiring kg_wiring_t;
+
+/** Set KG wiring for financial market engine */
+int financial_market_set_kg_wiring(financial_market_eng_t* mkt, kg_wiring_t* kg);
+
+//=============================================================================
+// Health Agent and Logger Integration (Phase 8: Change Set 2/3)
+//=============================================================================
+
+/** Set health agent for instance-level heartbeats */
+int financial_market_set_health_agent(financial_market_eng_t* mkt, void* agent);
+/** Set logger for instance-level logging */
+int financial_market_set_logger(financial_market_eng_t* mkt, void* logger);
 
 #ifdef __cplusplus
 }

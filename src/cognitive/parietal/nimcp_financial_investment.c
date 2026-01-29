@@ -55,11 +55,31 @@ void financial_investment_set_bbb(bbb_system_t bbb) {
     g_fin_investment_bbb = bbb;
 }
 
+//=============================================================================
+// Bio-Async Integration (Change Set 4)
+//=============================================================================
+struct bio_async_context;
+typedef struct bio_async_context bio_async_context_t;
+struct bio_router_struct;
+typedef struct bio_router_struct* bio_router_t;
+
+//=============================================================================
+// KG Wiring Integration (Change Set 1)
+//=============================================================================
+struct kg_wiring;
+typedef struct kg_wiring kg_wiring_t;
+
+/* KG message type defines for investment module */
+#define KG_MSG_FIN_INV_REQUEST    "FIN_INV_REQUEST"
+#define KG_MSG_FIN_INV_RESPONSE   "FIN_INV_RESPONSE"
+#define KG_MSG_FIN_INV_ERROR      "FIN_INV_ERROR"
+#define KG_MSG_FIN_INV_UPDATE     "FIN_INV_UPDATE"
+
 /**
- * @brief Set health agent for financial_investment heartbeats
+ * @brief Set module-level health agent for financial_investment heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-void financial_investment_set_health_agent(nimcp_health_agent_t* agent) {
+void financial_investment_module_set_health_agent(nimcp_health_agent_t* agent) {
     g_financial_investment_health_agent = agent;
 }
 
@@ -104,8 +124,88 @@ static void set_error(const char* fmt, ...) {
 }
 
 //=============================================================================
-// Immune/BBB Validation Helper
+// Internal engine structure
 //=============================================================================
+
+struct financial_investment_eng {
+    fin_config_t config;
+    fin_stats_t stats;
+
+    /* Biological modulation */
+    float inflammation;
+    float fatigue;
+
+    /* Subsystem pointers */
+    void* fuzzy_bridge;
+    kg_wiring_t* kg_wiring;
+
+    /* Immune/BBB instance pointers (Phase 9) */
+    brain_immune_system_t* immune;
+    bbb_system_t bbb;
+    bool enable_immune_validation;
+    bool enable_bbb_validation;
+
+    /* Health agent and logger (Phase 8: Change Set 2/3) */
+    nimcp_health_agent_t* health_agent;
+    void* logger;
+
+    /* Bio-async integration (Change Set 4) */
+    bio_async_context_t* bio_async;
+    bio_router_t* bio_router;
+    bool async_enabled;
+
+    /* Internal state */
+    uint64_t total_ops;
+    double total_processing_time_us;
+};
+
+//=============================================================================
+// KG Wiring Helper (Change Set 1)
+//=============================================================================
+
+/**
+ * @brief Publish a message through KG wiring
+ * @param eng Investment engine instance
+ * @param msg_type Message type string
+ * @param payload Payload data
+ * @param size Payload size in bytes
+ * @return 0 on success
+ */
+static int investment_kg_publish(financial_investment_eng_t* eng, const char* msg_type,
+                                  const void* payload, size_t size) {
+    if (eng && eng->kg_wiring) {
+        /* kg_wiring_publish would be called here */
+        (void)msg_type; (void)payload; (void)size;
+        return 0;
+    }
+    return 0;
+}
+
+//=============================================================================
+// Instance-Level Heartbeat Helper (Phase 8: Change Set 2/3)
+//=============================================================================
+
+static inline void investment_heartbeat_instance(financial_investment_eng_t* eng,
+                                                   const char* op, float progress) {
+    if (eng && eng->health_agent) {
+        /* nimcp_health_agent_heartbeat_ex would be called here */
+        (void)op; (void)progress;
+    }
+}
+
+//=============================================================================
+// Logging Macros (Phase 8: Change Set 2/3)
+//=============================================================================
+
+#define FIN_INV_LOG_DEBUG(eng, fmt, ...) /* placeholder */
+#define FIN_INV_LOG_INFO(eng, fmt, ...)  /* placeholder */
+#define FIN_INV_LOG_WARN(eng, fmt, ...)  /* placeholder */
+#define FIN_INV_LOG_ERROR(eng, fmt, ...) /* placeholder */
+
+//=============================================================================
+// Immune/BBB Validation Helpers
+//=============================================================================
+
 static int fin_investment_validate_subsystems(const char* operation) {
     if (g_fin_investment_immune) {
         int rc = brain_immune_validate_operation(g_fin_investment_immune, operation, 5);
@@ -124,25 +224,40 @@ static int fin_investment_validate_subsystems(const char* operation) {
     return FIN_ERR_OK;
 }
 
-//=============================================================================
-// Internal engine structure
-//=============================================================================
+static int investment_validate_subsystems(financial_investment_eng_t* eng, const char* operation) {
+    if (!eng) return FIN_ERR_NULL;
 
-struct financial_investment_eng {
-    fin_config_t config;
-    fin_stats_t stats;
+    if (eng->enable_bbb_validation && eng->bbb) {
+        int rc = bbb_validate_data(eng->bbb, NULL, 0, operation);
+        if (rc != 0) {
+            set_error("BBB validation failed for %s", operation);
+            NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_BBB_VALIDATION,
+                "financial_investment: BBB validation failed for %s", operation);
+            return FIN_ERR_VALIDATION;
+        }
+    }
 
-    /* Biological modulation */
-    float inflammation;
-    float fatigue;
+    if (eng->enable_immune_validation && eng->immune) {
+        int rc = brain_immune_validate_operation(eng->immune, operation, 5);
+        if (rc != 0) {
+            set_error("Immune validation failed for %s", operation);
+            NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_BBB_VALIDATION,
+                "financial_investment: immune validation failed for %s", operation);
+            return FIN_ERR_VALIDATION;
+        }
+    }
 
-    /* Subsystem pointers */
-    void* fuzzy_bridge;
+    return FIN_ERR_OK;
+}
 
-    /* Internal state */
-    uint64_t total_ops;
-    double total_processing_time_us;
-};
+static void investment_present_antigen(financial_investment_eng_t* eng,
+                                        const char* anomaly, uint32_t severity) {
+    if (eng && eng->immune) {
+        uint8_t sig[64] = {0};
+        snprintf((char*)sig, sizeof(sig), "fin_investment:%s", anomaly);
+        brain_immune_present_antigen(eng->immune, 2, sig, strlen((char*)sig), severity);
+    }
+}
 
 //=============================================================================
 // Utility helpers
@@ -283,6 +398,17 @@ financial_investment_eng_t* financial_investment_create_custom(const fin_config_
     eng->inflammation = 0.0f;
     eng->fatigue = 0.0f;
     eng->fuzzy_bridge = config->fuzzy_bridge;
+    eng->immune = NULL;
+    eng->bbb = NULL;
+    eng->kg_wiring = NULL;
+    eng->enable_immune_validation = true;
+    eng->enable_bbb_validation = true;
+    eng->health_agent = NULL;
+    eng->logger = NULL;
+    /* Bio-async integration (Change Set 4) */
+    eng->bio_async = NULL;
+    eng->bio_router = NULL;
+    eng->async_enabled = false;
     eng->total_ops = 0;
     eng->total_processing_time_us = 0.0;
     return eng;
@@ -388,6 +514,8 @@ int financial_investment_portfolio_rebalance(financial_investment_eng_t* fin,
     }
     int val_rc = fin_investment_validate_subsystems("portfolio_rebalance");
     if (val_rc != FIN_ERR_OK) return val_rc;
+    int vrc = investment_validate_subsystems(fin, "portfolio_rebalance");
+    if (vrc != FIN_ERR_OK) return vrc;
     financial_investment_heartbeat("fin_portfolio_rebalance", 0.0f);
 
     uint32_t n = portfolio->asset_count;
@@ -502,6 +630,8 @@ int financial_investment_assess_risk(financial_investment_eng_t* fin,
     }
     int val_rc = fin_investment_validate_subsystems("assess_risk");
     if (val_rc != FIN_ERR_OK) return val_rc;
+    int vrc = investment_validate_subsystems(fin, "assess_risk");
+    if (vrc != FIN_ERR_OK) return vrc;
     financial_investment_heartbeat("fin_assess_risk", 0.0f);
 
     memset(out_metrics, 0, sizeof(fin_risk_metrics_t));
@@ -578,6 +708,11 @@ int financial_investment_assess_risk(financial_investment_eng_t* fin,
         }
         out_metrics->max_drawdown = financial_investment_max_drawdown(cum_values, history_length);
         free(cum_values);
+    }
+
+    /* Present antigen for extreme drawdown (Phase 9) */
+    if (out_metrics->max_drawdown > 0.20f) {
+        investment_present_antigen(fin, "extreme_drawdown", 8);
     }
 
     /* Calmar ratio */
@@ -677,6 +812,8 @@ float financial_investment_compute_var(financial_investment_eng_t* fin,
     }
     int val_rc = fin_investment_validate_subsystems("compute_var");
     if (val_rc != FIN_ERR_OK) return 0.0f;
+    int vrc = investment_validate_subsystems(fin, "compute_var");
+    if (vrc != FIN_ERR_OK) return 0.0f;
     financial_investment_heartbeat("fin_compute_var", 0.0f);
 
     /* Copy and sort returns ascending */
@@ -693,6 +830,12 @@ float financial_investment_compute_var(financial_investment_eng_t* fin,
     uint32_t index = (uint32_t)((1.0f - confidence) * (float)count);
     if (index >= count) index = count - 1;
     float var = -sorted[index]; /* Negative because VaR is a loss measure */
+
+    /* Check for VaR exceedance: if worst actual loss exceeds VaR (Phase 9) */
+    float worst_actual_loss = -sorted[0]; /* Most negative return = largest loss */
+    if (worst_actual_loss > var) {
+        investment_present_antigen(fin, "var_exceedance", 7);
+    }
 
     free(sorted);
     return var;
@@ -1430,6 +1573,8 @@ int financial_investment_optimize(financial_investment_eng_t* fin,
     }
     int val_rc = fin_investment_validate_subsystems("optimize");
     if (val_rc != FIN_ERR_OK) return val_rc;
+    int vrc = investment_validate_subsystems(fin, "optimize");
+    if (vrc != FIN_ERR_OK) return vrc;
     financial_investment_heartbeat("fin_optimize", 0.0f);
 
     memset(out_result, 0, sizeof(fin_optimization_result_t));
@@ -1590,6 +1735,14 @@ int financial_investment_optimize(financial_investment_eng_t* fin,
     } else if (out_result->converged) {
         out_result->convergence_degree = 1.0f;
     }
+
+    /* Present antigen for optimization divergence (Phase 9) */
+    if (out_result->iterations >= fin->config.max_iterations) {
+        investment_present_antigen(fin, "optimization_divergence", 5);
+    }
+
+    /* Instance heartbeat at end (Phase 8: Change Set 2/3) */
+    investment_heartbeat_instance((financial_investment_eng_t*)fin, "fin_optimize", 1.0f);
 
     fin->stats.optimizations++;
     return rc;
@@ -1945,6 +2098,84 @@ int financial_investment_set_fatigue(financial_investment_eng_t* fin, float leve
     return FIN_ERR_OK;
 }
 
+int financial_investment_set_instance_immune(financial_investment_eng_t* fin, brain_immune_system_t* immune) {
+    if (!fin) {
+        set_error("NULL engine in set_instance_immune");
+        return FIN_ERR_NULL;
+    }
+    fin->immune = immune;
+    return FIN_ERR_OK;
+}
+
+int financial_investment_set_instance_bbb(financial_investment_eng_t* fin, bbb_system_t bbb) {
+    if (!fin) {
+        set_error("NULL engine in set_instance_bbb");
+        return FIN_ERR_NULL;
+    }
+    fin->bbb = bbb;
+    return FIN_ERR_OK;
+}
+
+int financial_investment_enable_immune_validation(financial_investment_eng_t* fin, bool enable) {
+    if (!fin) {
+        set_error("NULL engine in enable_immune_validation");
+        return FIN_ERR_NULL;
+    }
+    fin->enable_immune_validation = enable;
+    return FIN_ERR_OK;
+}
+
+int financial_investment_enable_bbb_validation(financial_investment_eng_t* fin, bool enable) {
+    if (!fin) {
+        set_error("NULL engine in enable_bbb_validation");
+        return FIN_ERR_NULL;
+    }
+    fin->enable_bbb_validation = enable;
+    return FIN_ERR_OK;
+}
+
+//=============================================================================
+// KG Wiring Setter (Change Set 1)
+//=============================================================================
+
+int financial_investment_set_kg_wiring(financial_investment_eng_t* fin, kg_wiring_t* kg) {
+    if (!fin) {
+        set_error("set_kg_wiring: NULL eng");
+        NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER,
+            "financial_investment_set_kg_wiring: NULL eng");
+        return FIN_ERR_NULL;
+    }
+    fin->kg_wiring = kg;
+    return FIN_ERR_OK;
+}
+
+//=============================================================================
+// Bio-Async Integration Setters (Change Set 4)
+//=============================================================================
+
+int financial_investment_set_bio_async(financial_investment_eng_t* eng, bio_async_context_t* ctx) {
+    if (!eng) {
+        set_error("set_bio_async: NULL eng");
+        NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER,
+            "financial_investment_set_bio_async: NULL eng");
+        return FIN_ERR_NULL;
+    }
+    eng->bio_async = ctx;
+    eng->async_enabled = (ctx != NULL);
+    return FIN_ERR_OK;
+}
+
+int financial_investment_set_bio_router(financial_investment_eng_t* eng, bio_router_t* router) {
+    if (!eng) {
+        set_error("set_bio_router: NULL eng");
+        NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER,
+            "financial_investment_set_bio_router: NULL eng");
+        return FIN_ERR_NULL;
+    }
+    eng->bio_router = router;
+    return FIN_ERR_OK;
+}
+
 int financial_investment_get_stats(const financial_investment_eng_t* fin, fin_stats_t* stats) {
     if (!fin || !stats) {
         set_error("NULL parameter in get_stats");
@@ -1982,4 +2213,30 @@ void financial_investment_free_factor(fin_factor_result_t* result) {
     if (result) {
         memset(result, 0, sizeof(fin_factor_result_t));
     }
+}
+
+//=============================================================================
+// Health Agent and Logger Setters (Phase 8: Change Set 2/3)
+//=============================================================================
+
+int financial_investment_set_health_agent(financial_investment_eng_t* fin, void* agent) {
+    if (!fin) {
+        set_error("set_health_agent: NULL eng");
+        NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER,
+            "financial_investment_set_health_agent: NULL eng");
+        return FIN_ERR_NULL;
+    }
+    fin->health_agent = (nimcp_health_agent_t*)agent;
+    return FIN_ERR_OK;
+}
+
+int financial_investment_set_logger(financial_investment_eng_t* fin, void* logger) {
+    if (!fin) {
+        set_error("set_logger: NULL eng");
+        NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER,
+            "financial_investment_set_logger: NULL eng");
+        return FIN_ERR_NULL;
+    }
+    fin->logger = logger;
+    return FIN_ERR_OK;
 }

@@ -65,6 +65,7 @@ extern "C" {
 #define FIN_ARCH_ERR_CONFIG             (FIN_ARCH_ERROR_BASE + 8)
 #define FIN_ARCH_ERR_MIRROR             (FIN_ARCH_ERROR_BASE + 9)
 #define FIN_ARCH_ERR_SUBSYSTEM          (FIN_ARCH_ERROR_BASE + 10)
+#define FIN_ARCH_ERR_VALIDATION         (FIN_ARCH_ERROR_BASE + 11)
 
 //=============================================================================
 // Enumerations
@@ -360,6 +361,7 @@ typedef struct {
     /* Per-archetype usage counts */
     uint64_t archetype_usage[FIN_ARCH_COUNT];
     float archetype_accuracy[FIN_ARCH_COUNT];
+    uint64_t async_operations;  /**< Bio-async operations count (Change Set 4) */
 } fin_archetype_stats_t;
 
 //=============================================================================
@@ -389,8 +391,52 @@ int financial_investor_archetype_set_immune(
     financial_investor_archetype_t* arch, void* immune);
 int financial_investor_archetype_set_health_agent(
     financial_investor_archetype_t* arch, void* health_agent);
+int financial_investor_archetype_set_logger(
+    financial_investor_archetype_t* arch, void* logger);  /* Phase 8: Change Set 2/3 */
 int financial_investor_archetype_set_fuzzy(
     financial_investor_archetype_t* arch, void* fuzzy_bridge);
+int financial_investor_archetype_set_bbb(
+    financial_investor_archetype_t* arch, void* bbb);
+
+/** Enable/disable instance-level BBB validation */
+int financial_investor_archetype_enable_bbb_validation(
+    financial_investor_archetype_t* arch, bool enable);
+
+/** Enable/disable instance-level immune validation */
+int financial_investor_archetype_enable_immune_validation(
+    financial_investor_archetype_t* arch, bool enable);
+
+//=============================================================================
+// Bio-Async Integration (Change Set 4)
+//=============================================================================
+
+/* Forward declarations for bio-async types (guarded to avoid redefinition) */
+#ifndef NIMCP_BIO_ASYNC_FWD_DECL
+#define NIMCP_BIO_ASYNC_FWD_DECL
+struct bio_async_context;
+typedef struct bio_async_context bio_async_context_t;
+struct bio_router_struct;
+typedef struct bio_router_struct* bio_router_t;
+#endif
+
+/** Set bio-async context for asynchronous processing */
+int financial_investor_archetype_set_bio_async(
+    financial_investor_archetype_t* arch, bio_async_context_t* ctx);
+/** Set bio-router for message routing */
+int financial_investor_archetype_set_bio_router(
+    financial_investor_archetype_t* arch, bio_router_t* router);
+
+//=============================================================================
+// KG Wiring Integration (Change Set 1)
+//=============================================================================
+
+/* Forward declaration for KG wiring */
+struct kg_wiring;
+typedef struct kg_wiring kg_wiring_t;
+
+/** Set KG wiring for financial investor archetype */
+int financial_investor_archetype_set_kg_wiring(
+    financial_investor_archetype_t* arch, kg_wiring_t* kg);
 
 //=============================================================================
 // Archetype Profile Access

@@ -30,6 +30,16 @@ extern "C" {
 #endif
 
 //=============================================================================
+// Forward Declarations (KG Wiring Integration)
+//=============================================================================
+
+struct kg_wiring;
+typedef struct kg_wiring kg_wiring_t;
+
+struct kg_module_wiring;
+typedef struct kg_module_wiring kg_module_wiring_t;
+
+//=============================================================================
 // Constants
 //=============================================================================
 
@@ -120,6 +130,8 @@ typedef struct {
     uint64_t ethics_checks;
     uint64_t lgss_checks;
     uint64_t kg_sync_events;
+    uint64_t kg_messages_sent;
+    uint64_t kg_messages_received;
     uint64_t health_heartbeats;
     float avg_conversion_time_us;
 } fuzzy_bridge_stats_t;
@@ -146,7 +158,8 @@ fuzzy_bridge_state_t fuzzy_bridge_get_state(const fuzzy_bridge_t* bridge);
 int fuzzy_bridge_set_immune(fuzzy_bridge_t* bridge, void* immune);
 int fuzzy_bridge_set_bbb(fuzzy_bridge_t* bridge, void* bbb);
 int fuzzy_bridge_set_health_agent(fuzzy_bridge_t* bridge, void* health_agent);
-int fuzzy_bridge_set_kg_wiring(fuzzy_bridge_t* bridge, void* kg_wiring);
+int fuzzy_bridge_set_kg_wiring(fuzzy_bridge_t* bridge, kg_wiring_t* kg_wiring);
+kg_module_wiring_t* fuzzy_bridge_create_kg_wiring(void);
 int fuzzy_bridge_set_kg_registry(fuzzy_bridge_t* bridge, void* kg_registry);
 int fuzzy_bridge_set_logger(fuzzy_bridge_t* bridge, void* logger);
 int fuzzy_bridge_set_security(fuzzy_bridge_t* bridge, void* security);

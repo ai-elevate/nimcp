@@ -58,6 +58,8 @@ void financial_investor_archetype_module_set_health_agent(nimcp_health_agent_t* 
 struct brain_immune_system;
 typedef struct brain_immune_system brain_immune_system_t;
 extern int brain_immune_validate_operation(brain_immune_system_t* immune, const char* operation, uint32_t severity);
+extern int brain_immune_present_antigen(brain_immune_system_t* immune, uint32_t antigen_type,
+                                         const uint8_t* signature, size_t sig_len, uint32_t severity);
 
 struct bbb_system_struct;
 typedef struct bbb_system_struct* bbb_system_t;
@@ -70,9 +72,29 @@ void financial_investor_archetype_set_immune_system(brain_immune_system_t* immun
     g_fin_arch_immune = immune;
 }
 
-void financial_investor_archetype_set_bbb(bbb_system_t bbb) {
+void financial_investor_archetype_module_set_bbb(bbb_system_t bbb) {
     g_fin_arch_bbb = bbb;
 }
+
+//=============================================================================
+// KG Wiring Integration (Change Set 1)
+//=============================================================================
+struct kg_wiring;
+typedef struct kg_wiring kg_wiring_t;
+
+/* KG message type defines for investor archetype module */
+#define KG_MSG_FIN_ARCH_REQUEST    "FIN_ARCH_REQUEST"
+#define KG_MSG_FIN_ARCH_RESPONSE   "FIN_ARCH_RESPONSE"
+#define KG_MSG_FIN_ARCH_ERROR      "FIN_ARCH_ERROR"
+#define KG_MSG_FIN_ARCH_UPDATE     "FIN_ARCH_UPDATE"
+
+//=============================================================================
+// Bio-Async Integration (Change Set 4)
+//=============================================================================
+struct bio_async_context;
+typedef struct bio_async_context bio_async_context_t;
+struct bio_router_struct;
+typedef struct bio_router_struct* bio_router_t;
 
 /** @brief Send heartbeat from financial_investor_archetype module */
 static inline void fin_arch_heartbeat(const char* operation, float progress) {
@@ -108,7 +130,7 @@ static void set_error(const char* fmt, ...) {
 }
 
 //=============================================================================
-// Immune/BBB Validation Helper
+// Immune/BBB Validation Helper (Global)
 //=============================================================================
 static int fin_arch_validate_subsystems(const char* operation) {
     if (g_fin_arch_immune) {
@@ -128,6 +150,7 @@ static int fin_arch_validate_subsystems(const char* operation) {
     return FIN_ARCH_ERR_OK;
 }
 
+
 //=============================================================================
 // Internal Struct (Opaque)
 //=============================================================================
@@ -141,13 +164,114 @@ struct financial_investor_archetype {
     void* lgss;
     void* immune;
     void* health_agent;
+    void* logger;  /* Phase 8: Change Set 2/3 */
     void* fuzzy_bridge;
+    void* bbb;
+    kg_wiring_t* kg_wiring;
+    /* Validation enable flags (instance-level) */
+    bool enable_bbb_validation;
+    bool enable_immune_validation;
+    /* Bio-async integration (Change Set 4) */
+    bio_async_context_t* bio_async;
+    bio_router_t* bio_router;
+    bool async_enabled;
     /* Mirror learning state */
     fin_mirror_record_t mirror_history[256];
     uint32_t mirror_count;
     /* Adaptive selection state */
     float archetype_performance[FIN_ARCH_COUNT];
 };
+
+//=============================================================================
+// Instance-Level Heartbeat Helper (Phase 8: Change Set 2/3)
+//=============================================================================
+
+static inline void archetype_heartbeat_instance(financial_investor_archetype_t* arch,
+                                                 const char* op, float progress) {
+    if (arch && arch->health_agent) {
+        /* nimcp_health_agent_heartbeat_ex would be called here */
+        (void)op; (void)progress;
+    }
+}
+
+//=============================================================================
+// Logging Macros (Phase 8: Change Set 2/3)
+//=============================================================================
+
+#define FIN_ARCH_LOG_DEBUG(arch, fmt, ...) /* placeholder */
+#define FIN_ARCH_LOG_INFO(arch, fmt, ...)  /* placeholder */
+#define FIN_ARCH_LOG_WARN(arch, fmt, ...)  /* placeholder */
+#define FIN_ARCH_LOG_ERROR(arch, fmt, ...) /* placeholder */
+
+/**
+ * @brief Publish a message through KG wiring
+ * @param arch Archetype instance
+ * @param msg_type Message type string
+ * @param payload Payload data
+ * @param size Payload size in bytes
+ * @return 0 on success
+ */
+static int archetype_kg_publish(financial_investor_archetype_t* arch, const char* msg_type,
+                                 const void* payload, size_t size) {
+    if (arch && arch->kg_wiring) {
+        /* kg_wiring_publish would be called here */
+        (void)msg_type; (void)payload; (void)size;
+        return 0;
+    }
+    return 0;
+}
+
+//=============================================================================
+// Instance-Level Validation Helper (Phase 9: Enhanced Security Integration)
+//=============================================================================
+
+/**
+ * @brief Validate subsystems at instance level
+ * @param arch Archetype instance
+ * @param operation Operation name for audit
+ * @return FIN_ARCH_ERR_OK on success, error code otherwise
+ */
+static int archetype_validate_subsystems(financial_investor_archetype_t* arch, const char* operation) {
+    if (!arch) return FIN_ARCH_ERR_NULL;
+
+    if (arch->enable_bbb_validation && arch->bbb) {
+        int rc = bbb_validate_data((bbb_system_t)arch->bbb, NULL, 0, operation);
+        if (rc != 0) {
+            set_error("BBB validation failed for %s", operation);
+            NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_OPERATION_FAILED,
+                "financial_archetype: BBB validation failed for %s", operation);
+            return FIN_ARCH_ERR_SUBSYSTEM;
+        }
+    }
+
+    if (arch->enable_immune_validation && arch->immune) {
+        int rc = brain_immune_validate_operation((brain_immune_system_t*)arch->immune, operation, 5);
+        if (rc != 0) {
+            set_error("Immune validation failed for %s", operation);
+            NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_OPERATION_FAILED,
+                "financial_archetype: immune validation failed for %s", operation);
+            return FIN_ARCH_ERR_SUBSYSTEM;
+        }
+    }
+
+    return FIN_ARCH_ERR_OK;
+}
+
+/**
+ * @brief Present antigen to immune system for anomaly detection
+ * @param arch Archetype instance
+ * @param anomaly Anomaly description
+ * @param severity Severity level (1-10)
+ */
+static void archetype_present_antigen(financial_investor_archetype_t* arch,
+                                       const char* anomaly, uint32_t severity) {
+    if (arch && arch->immune) {
+        uint8_t sig[64] = {0};
+        snprintf((char*)sig, sizeof(sig), "fin_archetype:%s", anomaly);
+        brain_immune_present_antigen((brain_immune_system_t*)arch->immune,
+                                      2, sig, strlen((char*)sig), severity);
+    }
+}
 
 //=============================================================================
 // Inline Fuzzy Membership Function Helpers
@@ -451,6 +575,14 @@ financial_investor_archetype_t* financial_investor_archetype_create(
     arch->immune = NULL;
     arch->health_agent = NULL;
     arch->fuzzy_bridge = NULL;
+    arch->bbb = NULL;
+    arch->kg_wiring = NULL;
+    arch->enable_bbb_validation = true;
+    arch->enable_immune_validation = true;
+    /* Bio-async integration (Change Set 4) */
+    arch->bio_async = NULL;
+    arch->bio_router = NULL;
+    arch->async_enabled = false;
     arch->mirror_count = 0;
 
     for (uint32_t i = 0; i < FIN_ARCH_COUNT; i++) {
@@ -509,6 +641,78 @@ int financial_investor_archetype_set_fuzzy(
 {
     if (!arch) { set_error("NULL archetype"); NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "financial_investor_archetype_set_fuzzy: arch is NULL"); return FIN_ARCH_ERR_NULL; }
     arch->fuzzy_bridge = fuzzy_bridge;
+    return FIN_ARCH_ERR_OK;
+}
+
+int financial_investor_archetype_set_bbb(
+    financial_investor_archetype_t* arch, void* bbb)
+{
+    if (!arch) { set_error("NULL archetype"); NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "financial_investor_archetype_set_bbb: arch is NULL"); return FIN_ARCH_ERR_NULL; }
+    arch->bbb = bbb;
+    return FIN_ARCH_ERR_OK;
+}
+
+int financial_investor_archetype_enable_bbb_validation(
+    financial_investor_archetype_t* arch, bool enable)
+{
+    if (!arch) { set_error("NULL archetype"); NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "financial_investor_archetype_enable_bbb_validation: arch is NULL"); return FIN_ARCH_ERR_NULL; }
+    arch->enable_bbb_validation = enable;
+    return FIN_ARCH_ERR_OK;
+}
+
+int financial_investor_archetype_enable_immune_validation(
+    financial_investor_archetype_t* arch, bool enable)
+{
+    if (!arch) { set_error("NULL archetype"); NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "financial_investor_archetype_enable_immune_validation: arch is NULL"); return FIN_ARCH_ERR_NULL; }
+    arch->enable_immune_validation = enable;
+    return FIN_ARCH_ERR_OK;
+}
+
+//=============================================================================
+// Bio-Async Integration Setters (Change Set 4)
+//=============================================================================
+
+int financial_investor_archetype_set_bio_async(
+    financial_investor_archetype_t* arch, bio_async_context_t* ctx)
+{
+    if (!arch) {
+        set_error("set_bio_async: NULL arch");
+        NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER,
+            "financial_investor_archetype_set_bio_async: NULL arch");
+        return FIN_ARCH_ERR_NULL;
+    }
+    arch->bio_async = ctx;
+    arch->async_enabled = (ctx != NULL);
+    return FIN_ARCH_ERR_OK;
+}
+
+int financial_investor_archetype_set_bio_router(
+    financial_investor_archetype_t* arch, bio_router_t* router)
+{
+    if (!arch) {
+        set_error("set_bio_router: NULL arch");
+        NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER,
+            "financial_investor_archetype_set_bio_router: NULL arch");
+        return FIN_ARCH_ERR_NULL;
+    }
+    arch->bio_router = router;
+    return FIN_ARCH_ERR_OK;
+}
+
+//=============================================================================
+// KG Wiring Setter (Change Set 1)
+//=============================================================================
+
+int financial_investor_archetype_set_kg_wiring(
+    financial_investor_archetype_t* arch, kg_wiring_t* kg)
+{
+    if (!arch) {
+        set_error("set_kg_wiring: NULL arch");
+        NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER,
+            "financial_investor_archetype_set_kg_wiring: NULL arch");
+        return FIN_ARCH_ERR_NULL;
+    }
+    arch->kg_wiring = kg;
     return FIN_ARCH_ERR_OK;
 }
 
@@ -990,6 +1194,10 @@ int financial_investor_archetype_evaluate_heuristic(
         return FIN_ARCH_ERR_INVALID_HEURISTIC;
     }
 
+    /* Instance-level security validation */
+    int val_rc = archetype_validate_subsystems(arch, "evaluate_heuristic");
+    if (val_rc != FIN_ARCH_ERR_OK) return val_rc;
+
     fin_arch_heartbeat_instance(arch->health_agent, "evaluate_heuristic", 0.5f);
 
     evaluate_single_heuristic(heuristic, input, out_result);
@@ -1103,7 +1311,11 @@ int financial_investor_archetype_evaluate(
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_INVALID_PARAM, "financial_investor_archetype_score: Invalid archetype ID %d", (int)archetype);
         return FIN_ARCH_ERR_INVALID_ARCHETYPE;
     }
+    /* Global-level validation */
     int val_rc = fin_arch_validate_subsystems("evaluate");
+    if (val_rc != FIN_ARCH_ERR_OK) return val_rc;
+    /* Instance-level validation */
+    val_rc = archetype_validate_subsystems(arch, "evaluate");
     if (val_rc != FIN_ARCH_ERR_OK) return val_rc;
 
     fin_arch_heartbeat_instance(arch->health_agent, "evaluate", 0.0f);
@@ -1221,6 +1433,29 @@ int financial_investor_archetype_evaluate(
     arch->stats.avg_decision_entropy = arch->stats.avg_decision_entropy * ((n - 1.0f) / n)
                                        + out_decision->fuzzy_decision.decision_entropy / n;
 
+    /* Antigen presentation for anomalies */
+    /* Bias detected: emotional bias score > 0.7 (from emotional state) */
+    if (out_decision->emotional_state.emotional_bias > 0.7f ||
+        out_decision->emotional_state.emotional_bias < -0.7f) {
+        archetype_present_antigen(arch, "bias_detected", 5);
+    }
+
+    /* Decision entropy high (> 0.9 normalized) indicates high uncertainty */
+    {
+        float max_entropy = logf(7.0f); /* 7 decision types */
+        float normalized_entropy = (max_entropy > 0.0f)
+            ? out_decision->fuzzy_decision.decision_entropy / max_entropy : 0.0f;
+        if (normalized_entropy > 0.9f) {
+            archetype_present_antigen(arch, "decision_entropy_high", 5);
+        }
+    }
+
+    /* Conflicting signals: strong buy + strong sell both high */
+    if (out_decision->fuzzy_decision.strong_buy_degree > 0.5f &&
+        out_decision->fuzzy_decision.strong_sell_degree > 0.5f) {
+        archetype_present_antigen(arch, "conflicting_signals", 6);
+    }
+
     fin_arch_heartbeat_instance(arch->health_agent, "evaluate", 1.0f);
     return FIN_ARCH_ERR_OK;
 }
@@ -1245,7 +1480,11 @@ int financial_investor_archetype_evaluate_blend(
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_BUFFER_OVERFLOW, "financial_investor_archetype_evaluate_blend: Invalid blend count %u", count);
         return FIN_ARCH_ERR_BLEND;
     }
+    /* Global-level validation */
     int val_rc = fin_arch_validate_subsystems("evaluate_blend");
+    if (val_rc != FIN_ARCH_ERR_OK) return val_rc;
+    /* Instance-level validation */
+    val_rc = archetype_validate_subsystems(arch, "evaluate_blend");
     if (val_rc != FIN_ARCH_ERR_OK) return val_rc;
 
     fin_arch_heartbeat_instance(arch->health_agent, "blend", 0.0f);
@@ -1350,6 +1589,21 @@ int financial_investor_archetype_evaluate_blend(
         if (w > 1e-8f) {
             out_blend->blend_entropy -= w * logf(w);
         }
+    }
+
+    /* Antigen presentation for anomalies */
+    /* Conflicting signals: strong buy + strong sell both high */
+    if (out_blend->blended_fuzzy.strong_buy_degree > 0.5f &&
+        out_blend->blended_fuzzy.strong_sell_degree > 0.5f) {
+        archetype_present_antigen(arch, "conflicting_signals", 6);
+    }
+
+    /* Decision entropy high (> 0.9 normalized) indicates high uncertainty */
+    float max_entropy = logf(7.0f); /* 7 decision types */
+    float normalized_entropy = (max_entropy > 0.0f)
+        ? out_blend->blended_fuzzy.decision_entropy / max_entropy : 0.0f;
+    if (normalized_entropy > 0.9f) {
+        archetype_present_antigen(arch, "decision_entropy_high", 5);
     }
 
     arch->stats.total_blends++;
@@ -1729,4 +1983,21 @@ void financial_investor_archetype_reset_stats(
 
 const char* financial_investor_archetype_get_last_error(void) {
     return fin_arch_last_error;
+}
+
+//=============================================================================
+// Logger Setter (Phase 8: Change Set 2/3)
+//=============================================================================
+
+int financial_investor_archetype_set_logger(
+    financial_investor_archetype_t* arch, void* logger)
+{
+    if (!arch) {
+        set_error("set_logger: NULL archetype");
+        NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER,
+            "financial_investor_archetype_set_logger: NULL arch");
+        return FIN_ARCH_ERR_NULL;
+    }
+    arch->logger = logger;
+    return FIN_ARCH_ERR_OK;
 }

@@ -84,6 +84,15 @@ static inline float clampf(float v, float lo, float hi) {
 }
 
 //=============================================================================
+// KG Wiring Message Types
+//=============================================================================
+
+#define KG_MSG_FUZZY_INFERENCE_REQUEST   "FUZZY_INF_REQUEST"
+#define KG_MSG_FUZZY_INFERENCE_RESPONSE  "FUZZY_INF_RESPONSE"
+#define KG_MSG_FUZZY_ERROR               "FUZZY_ERROR"
+#define KG_MSG_FUZZY_HEALTH_UPDATE       "FUZZY_HEALTH_UPDATE"
+
+//=============================================================================
 // Internal Bridge Structure
 //=============================================================================
 
@@ -96,7 +105,7 @@ struct fuzzy_bridge {
     void* immune;
     void* bbb;
     nimcp_health_agent_t* health_agent;
-    void* kg_wiring;
+    kg_wiring_t* kg_wiring;
     void* kg_registry;
     void* logger;
     void* security;
@@ -120,6 +129,21 @@ struct fuzzy_bridge {
     float inflammation_level;
     float fatigue_level;
 };
+
+//=============================================================================
+// KG Wiring Helper
+//=============================================================================
+
+static int fuzzy_kg_publish(fuzzy_bridge_t* bridge, const char* msg_type,
+                            const void* payload, size_t size) {
+    if (bridge && bridge->kg_wiring) {
+        bridge->stats.kg_messages_sent++;
+        /* kg_wiring_publish would be called here - for now just count */
+        (void)msg_type; (void)payload; (void)size;
+        return 0;
+    }
+    return 0;
+}
 
 //=============================================================================
 // Immune/BBB Validation Helpers
@@ -278,6 +302,9 @@ fuzzy_bridge_t* fuzzy_bridge_create(const fuzzy_bridge_config_t* config) {
     bridge->lr_schedule_fis = NULL; /* Built on demand */
     bridge->plasticity_fis = NULL;  /* Built on demand */
 
+    /* KG wiring initialized to NULL (set via fuzzy_bridge_set_kg_wiring) */
+    bridge->kg_wiring = NULL;
+
     bridge->inflammation_level = 0.0f;
     bridge->fatigue_level = 0.0f;
     bridge->state = FUZZY_BRIDGE_STATE_ACTIVE;
@@ -317,7 +344,6 @@ fuzzy_bridge_state_t fuzzy_bridge_get_state(const fuzzy_bridge_t* bridge) {
 
 FUZZY_BRIDGE_SETTER(immune, immune)
 FUZZY_BRIDGE_SETTER(bbb, bbb)
-FUZZY_BRIDGE_SETTER(kg_wiring, kg_wiring)
 FUZZY_BRIDGE_SETTER(kg_registry, kg_registry)
 FUZZY_BRIDGE_SETTER(logger, logger)
 FUZZY_BRIDGE_SETTER(security, security)
@@ -352,6 +378,22 @@ int fuzzy_bridge_set_lgss(fuzzy_bridge_t* bridge, const void* lgss_kb) {
     }
     bridge->lgss_kb = lgss_kb;
     return FUZZY_BRIDGE_ERR_OK;
+}
+
+int fuzzy_bridge_set_kg_wiring(fuzzy_bridge_t* bridge, kg_wiring_t* kg) {
+    if (!bridge) {
+        set_error("set_kg_wiring: NULL bridge");
+        NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER,
+            "fuzzy_bridge_set_kg_wiring: NULL bridge");
+        return -1;
+    }
+    bridge->kg_wiring = kg;
+    return 0;
+}
+
+kg_module_wiring_t* fuzzy_bridge_create_kg_wiring(void) {
+    /* Placeholder - actual implementation would create wiring descriptor */
+    return NULL;
 }
 
 //=============================================================================

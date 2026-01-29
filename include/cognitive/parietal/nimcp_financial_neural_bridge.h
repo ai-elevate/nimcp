@@ -64,6 +64,7 @@ extern "C" {
 #define FIN_NEURAL_ERR_PREDICTION       (FIN_NEURAL_ERROR_BASE + 9)
 #define FIN_NEURAL_ERR_CONVERGENCE      (FIN_NEURAL_ERROR_BASE + 10)
 #define FIN_NEURAL_ERR_SUBSYSTEM        (FIN_NEURAL_ERROR_BASE + 11)
+#define FIN_NEURAL_ERR_VALIDATION       (FIN_NEURAL_ERROR_BASE + 12)
 
 //=============================================================================
 // Enumerations
@@ -278,8 +279,32 @@ int financial_neural_bridge_set_immune(financial_neural_bridge_t* bridge,
                                         void* immune);
 int financial_neural_bridge_set_health_agent(financial_neural_bridge_t* bridge,
                                               void* health_agent);
+int financial_neural_bridge_set_logger(financial_neural_bridge_t* bridge,
+                                        void* logger);  /* Phase 8: Change Set 2/3 */
 int financial_neural_bridge_set_fuzzy_bridge(financial_neural_bridge_t* bridge,
                                               void* fuzzy_bridge);
+
+/** Set instance-level BBB for validation */
+int financial_neural_bridge_set_instance_bbb(financial_neural_bridge_t* bridge, void* bbb);
+
+/** Enable/disable instance-level BBB validation */
+int financial_neural_bridge_enable_bbb_validation(financial_neural_bridge_t* bridge,
+                                                   bool enable);
+
+/** Enable/disable instance-level immune validation */
+int financial_neural_bridge_enable_immune_validation(financial_neural_bridge_t* bridge,
+                                                      bool enable);
+
+//=============================================================================
+// KG Wiring Integration (Change Set 1)
+//=============================================================================
+
+/* Forward declaration for KG wiring */
+struct kg_wiring;
+typedef struct kg_wiring kg_wiring_t;
+
+/** Set KG wiring for financial neural bridge */
+int financial_neural_bridge_set_kg_wiring(financial_neural_bridge_t* bridge, kg_wiring_t* kg);
 
 //=============================================================================
 // Spike Encoding

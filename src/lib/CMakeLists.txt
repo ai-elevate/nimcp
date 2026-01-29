@@ -830,7 +830,32 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_market.c       # Market: GARCH, indicators, sentiment, regime, Monte Carlo
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_bridge.c       # System bridge: validation pipeline, brain region integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_neural_bridge.c # Neural bridge: SNN encoding, STDP, LNN, plasticity
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_resonance_bridge.c # Resonance bridge: Kuramoto coherence, pattern similarity
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_mammillary_bridge.c # Mammillary memory bridge: trade episodic memory
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_working_memory_bridge.c # Working memory bridge: salience-based eviction (Phase 10)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_investor_archetype.c # 10 investor archetypes with fuzzy heuristics
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_motivation_bridge.c # Motivation bridge: nucleus accumbens, FOMO detection, rational override
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_neuromod_bridge.c # Neuromodulator bridge: DA/5HT/NE/ACh/adenosine state, archetype modulation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_autobio_bridge.c # Autobiographical memory: episodic trading episodes, emotional tagging
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_emotion_bridge.c # Emotion bridge: Plutchik model, bias detection, decision modulation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_ethics_bridge.c # Ethics bridge: Asimov laws, Golden Rule, harm assessment, empathy scoring (Phase 7)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_explanations_bridge.c # Explanations bridge: XAI for trading decisions, audit trails, regulatory compliance (Phase 7)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_world_model_bridge.c # World model: state prediction, counterfactuals, policy rollout
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_tom_bridge.c   # Theory of Mind: investor modeling, action prediction, false beliefs
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_salience_bridge.c # Salience bridge: attention prioritization, novelty/surprise/urgency/relevance
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_mental_health_bridge.c # Mental health bridge: cognitive load, stress, burnout monitoring (Phase 10)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_basal_ganglia_bridge.c # Basal ganglia: Q-learning, action selection, habit detection (Phase 6)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_predictive_bridge.c # Predictive coding: FEP, active inference, EFE computation (Phase 6)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_metacognition_bridge.c # Metacognition: bias detection, confidence calibration, reconsideration (Phase 9)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_reasoning_bridge.c # Reasoning bridge: forward/backward chaining, trading rules (Graham, Buffett, etc.)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_uncertainty_bridge.c # Uncertainty decomposition: epistemic/aleatoric, info gathering decisions (Phase 9)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_jepa_bridge.c  # JEPA masking: predict missing factors, cross-modal prediction (Phase 6)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_consolidation_bridge.c # Memory consolidation: pattern replay, winner strengthening, loser pruning (Phase 8)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_temporal_credit_bridge.c # Temporal credit: TD(lambda) eligibility traces, credit assignment to past decisions (Phase 8)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_stdp_bridge.c  # STDP bridge: signal-outcome timing correlations, reward-modulated plasticity (Phase 8)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_regret_bridge.c # Regret bridge: counterfactual analysis, lesson extraction (Phase 9)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_curiosity_bridge.c # Curiosity bridge: hypothesis generation, exploration selection (Phase 9)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_financial_cognitive_orchestrator.c # Cognitive orchestrator: master integration (Phase 10)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_parietal.c               # Parietal orchestrator with Hamiltonian-Lagrangian NN
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_code_generation.c       # Self-repair code generation engine (FT integration)
 

@@ -51,6 +51,7 @@ extern "C" {
 #define FIN_ERR_HISTORY_TOO_SHORT       (FIN_ERROR_BASE + 9)
 #define FIN_ERR_INVALID_CONFIDENCE      (FIN_ERROR_BASE + 10)
 #define FIN_ERR_SUBSYSTEM               (FIN_ERROR_BASE + 11)
+#define FIN_ERR_VALIDATION              (FIN_ERROR_BASE + 12)
 
 //=============================================================================
 // Enumerations
@@ -219,6 +220,7 @@ typedef struct {
     uint64_t scenario_runs;
     uint64_t monte_carlo_runs;
     float avg_processing_time_us;
+    uint64_t async_operations;  /**< Bio-async operations count (Change Set 4) */
 } fin_stats_t;
 
 //=============================================================================
@@ -371,6 +373,59 @@ void financial_investment_reset_stats(financial_investment_eng_t* fin);
 const char* financial_investment_get_last_error(void);
 void financial_investment_free_optimization(fin_optimization_result_t* result);
 void financial_investment_free_factor(fin_factor_result_t* result);
+
+//=============================================================================
+// Instance-Level Immune/BBB Integration (Phase 9)
+//=============================================================================
+
+/* Forward declarations for immune/bbb types */
+struct brain_immune_system;
+typedef struct brain_immune_system brain_immune_system_t;
+struct bbb_system_struct;
+typedef struct bbb_system_struct* bbb_system_t;
+
+int financial_investment_set_instance_immune(financial_investment_eng_t* fin, brain_immune_system_t* immune);
+int financial_investment_set_instance_bbb(financial_investment_eng_t* fin, bbb_system_t bbb);
+int financial_investment_enable_immune_validation(financial_investment_eng_t* fin, bool enable);
+int financial_investment_enable_bbb_validation(financial_investment_eng_t* fin, bool enable);
+
+//=============================================================================
+// KG Wiring Integration (Change Set 1)
+//=============================================================================
+
+/* Forward declaration for KG wiring */
+struct kg_wiring;
+typedef struct kg_wiring kg_wiring_t;
+
+/** Set KG wiring for financial investment engine */
+int financial_investment_set_kg_wiring(financial_investment_eng_t* fin, kg_wiring_t* kg);
+
+//=============================================================================
+// Bio-Async Integration (Change Set 4)
+//=============================================================================
+
+/* Forward declarations for bio-async types (guarded to avoid redefinition) */
+#ifndef NIMCP_BIO_ASYNC_FWD_DECL
+#define NIMCP_BIO_ASYNC_FWD_DECL
+struct bio_async_context;
+typedef struct bio_async_context bio_async_context_t;
+struct bio_router_struct;
+typedef struct bio_router_struct* bio_router_t;
+#endif
+
+/** Set bio-async context for asynchronous processing */
+int financial_investment_set_bio_async(financial_investment_eng_t* fin, bio_async_context_t* ctx);
+/** Set bio-router for message routing */
+int financial_investment_set_bio_router(financial_investment_eng_t* fin, bio_router_t* router);
+
+//=============================================================================
+// Health Agent and Logger Integration (Phase 8: Change Set 2/3)
+//=============================================================================
+
+/** Set health agent for instance-level heartbeats */
+int financial_investment_set_health_agent(financial_investment_eng_t* fin, void* agent);
+/** Set logger for instance-level logging */
+int financial_investment_set_logger(financial_investment_eng_t* fin, void* logger);
 
 #ifdef __cplusplus
 }

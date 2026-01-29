@@ -12,6 +12,7 @@
 
 #include "cognitive/parietal/nimcp_financial_neural_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/error/nimcp_error_codes.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,6 +36,7 @@ static nimcp_health_agent_t* g_fin_neural_health_agent = NULL;
 struct brain_immune_system;
 typedef struct brain_immune_system brain_immune_system_t;
 extern int brain_immune_validate_operation(brain_immune_system_t* immune, const char* operation, uint32_t severity);
+extern int brain_immune_present_antigen(brain_immune_system_t* immune, uint32_t antigen_type, const uint8_t* signature, size_t sig_len, uint32_t severity);
 
 struct bbb_system_struct;
 typedef struct bbb_system_struct* bbb_system_t;
@@ -50,6 +52,18 @@ void financial_neural_bridge_set_immune_system(brain_immune_system_t* immune) {
 void financial_neural_bridge_set_bbb(bbb_system_t bbb) {
     g_fin_neural_bridge_bbb = bbb;
 }
+
+//=============================================================================
+// KG Wiring Integration (Change Set 1)
+//=============================================================================
+struct kg_wiring;
+typedef struct kg_wiring kg_wiring_t;
+
+/* KG message type defines for neural bridge module */
+#define KG_MSG_FIN_NEURAL_REQUEST    "FIN_NEURAL_REQUEST"
+#define KG_MSG_FIN_NEURAL_RESPONSE   "FIN_NEURAL_RESPONSE"
+#define KG_MSG_FIN_NEURAL_ERROR      "FIN_NEURAL_ERROR"
+#define KG_MSG_FIN_NEURAL_UPDATE     "FIN_NEURAL_UPDATE"
 
 static inline void fin_neural_heartbeat(const char* operation, float progress) {
     if (g_fin_neural_health_agent) {
@@ -82,7 +96,7 @@ static void set_error(const char* fmt, ...) {
 }
 
 //=============================================================================
-// Immune/BBB Validation Helper
+// Immune/BBB Validation Helper (Global)
 //=============================================================================
 static int fin_neural_bridge_validate_subsystems(const char* operation) {
     if (g_fin_neural_bridge_immune) {
@@ -132,9 +146,15 @@ struct financial_neural_bridge {
     void* lnn;
     void* plasticity;
     void* quantum;
-    void* immune;
+    brain_immune_system_t* immune;
     void* health_agent;
+    void* logger;  /* Phase 8: Change Set 2/3 */
     void* fuzzy_bridge;
+    bbb_system_t bbb;
+    kg_wiring_t* kg_wiring;
+    /* Security validation flags */
+    bool enable_bbb_validation;
+    bool enable_immune_validation;
     /* LNN internal state */
     float lnn_state[FIN_NEURAL_MAX_LNN_STATE_DIM];
     uint32_t lnn_state_dim;
@@ -151,6 +171,91 @@ struct financial_neural_bridge {
     /* RNG state for MC/noise */
     uint64_t rng_state;
 };
+
+//=============================================================================
+// Instance-Level Heartbeat Helper (Phase 8: Change Set 2/3)
+//=============================================================================
+
+static inline void neural_heartbeat_instance(financial_neural_bridge_t* bridge,
+                                              const char* op, float progress) {
+    if (bridge && bridge->health_agent) {
+        /* nimcp_health_agent_heartbeat_ex would be called here */
+        (void)op; (void)progress;
+    }
+}
+
+//=============================================================================
+// Logging Macros (Phase 8: Change Set 2/3)
+//=============================================================================
+
+#define FIN_NEURAL_LOG_DEBUG(bridge, fmt, ...) /* placeholder */
+#define FIN_NEURAL_LOG_INFO(bridge, fmt, ...)  /* placeholder */
+#define FIN_NEURAL_LOG_WARN(bridge, fmt, ...)  /* placeholder */
+#define FIN_NEURAL_LOG_ERROR(bridge, fmt, ...) /* placeholder */
+
+/**
+ * @brief Publish a message through KG wiring
+ * @param bridge Neural bridge instance
+ * @param msg_type Message type string
+ * @param payload Payload data
+ * @param size Payload size in bytes
+ * @return 0 on success
+ */
+static int neural_kg_publish(financial_neural_bridge_t* bridge, const char* msg_type,
+                              const void* payload, size_t size) {
+    if (bridge && bridge->kg_wiring) {
+        /* kg_wiring_publish would be called here */
+        (void)msg_type; (void)payload; (void)size;
+        return 0;
+    }
+    return 0;
+}
+
+//=============================================================================
+// Instance-Level Validation Helper
+//=============================================================================
+
+#ifndef FIN_NEURAL_ERR_VALIDATION
+#define FIN_NEURAL_ERR_VALIDATION (FIN_NEURAL_ERROR_BASE + 12)
+#endif
+
+static int neural_validate_subsystems(financial_neural_bridge_t* bridge, const char* operation) {
+    if (!bridge) return FIN_NEURAL_ERR_NULL;
+
+    if (bridge->enable_bbb_validation && bridge->bbb) {
+        int rc = bbb_validate_data(bridge->bbb, NULL, 0, operation);
+        if (rc != 0) {
+            set_error("BBB validation failed for %s", operation);
+            NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_BBB_VALIDATION,
+                "financial_neural: BBB validation failed for %s", operation);
+            return FIN_NEURAL_ERR_VALIDATION;
+        }
+    }
+
+    if (bridge->enable_immune_validation && bridge->immune) {
+        int rc = brain_immune_validate_operation(bridge->immune, operation, 5);
+        if (rc != 0) {
+            set_error("Immune validation failed for %s", operation);
+            NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_BBB_VALIDATION,
+                "financial_neural: immune validation failed for %s", operation);
+            return FIN_NEURAL_ERR_VALIDATION;
+        }
+    }
+
+    return FIN_NEURAL_ERR_OK;
+}
+
+//=============================================================================
+// Antigen Presentation Helper
+//=============================================================================
+static void neural_present_antigen(financial_neural_bridge_t* bridge,
+                                    const char* anomaly, uint32_t severity) {
+    if (bridge && bridge->immune) {
+        uint8_t sig[64] = {0};
+        snprintf((char*)sig, sizeof(sig), "fin_neural:%s", anomaly);
+        brain_immune_present_antigen(bridge->immune, 2, sig, strlen((char*)sig), severity);
+    }
+}
 
 //=============================================================================
 // Helper: Fuzzy membership functions
@@ -269,6 +374,9 @@ financial_neural_bridge_t* financial_neural_bridge_create(
     /* RNG seed */
     bridge->rng_state = 42;
 
+    /* KG wiring (Change Set 1) */
+    bridge->kg_wiring = NULL;
+
     fin_neural_heartbeat("financial_neural_bridge_create", 1.0f);
     return bridge;
 }
@@ -373,7 +481,7 @@ int financial_neural_bridge_set_immune(financial_neural_bridge_t* bridge,
                                         void* immune)
 {
     if (!bridge) { set_error("NULL bridge"); NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "financial_neural_bridge_set_immune: bridge is NULL"); return FIN_NEURAL_ERR_NULL; }
-    bridge->immune = immune;
+    bridge->immune = (brain_immune_system_t*)immune;
     return FIN_NEURAL_ERR_OK;
 }
 
@@ -390,6 +498,44 @@ int financial_neural_bridge_set_fuzzy_bridge(financial_neural_bridge_t* bridge,
 {
     if (!bridge) { set_error("NULL bridge"); NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "financial_neural_bridge_set_fuzzy_bridge: bridge is NULL"); return FIN_NEURAL_ERR_NULL; }
     bridge->fuzzy_bridge = fuzzy_bridge;
+    return FIN_NEURAL_ERR_OK;
+}
+
+int financial_neural_bridge_set_instance_bbb(financial_neural_bridge_t* bridge, void* bbb)
+{
+    if (!bridge) { set_error("NULL bridge"); NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "financial_neural_bridge_set_instance_bbb: bridge is NULL"); return FIN_NEURAL_ERR_NULL; }
+    bridge->bbb = (bbb_system_t)bbb;
+    return FIN_NEURAL_ERR_OK;
+}
+
+int financial_neural_bridge_enable_bbb_validation(financial_neural_bridge_t* bridge,
+                                                   bool enable)
+{
+    if (!bridge) { set_error("NULL bridge"); NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "financial_neural_bridge_enable_bbb_validation: bridge is NULL"); return FIN_NEURAL_ERR_NULL; }
+    bridge->enable_bbb_validation = enable;
+    return FIN_NEURAL_ERR_OK;
+}
+
+int financial_neural_bridge_enable_immune_validation(financial_neural_bridge_t* bridge,
+                                                      bool enable)
+{
+    if (!bridge) { set_error("NULL bridge"); NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "financial_neural_bridge_enable_immune_validation: bridge is NULL"); return FIN_NEURAL_ERR_NULL; }
+    bridge->enable_immune_validation = enable;
+    return FIN_NEURAL_ERR_OK;
+}
+
+//=============================================================================
+// KG Wiring Setter (Change Set 1)
+//=============================================================================
+
+int financial_neural_bridge_set_kg_wiring(financial_neural_bridge_t* bridge, kg_wiring_t* kg) {
+    if (!bridge) {
+        set_error("set_kg_wiring: NULL bridge");
+        NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER,
+            "financial_neural_bridge_set_kg_wiring: NULL bridge");
+        return FIN_NEURAL_ERR_NULL;
+    }
+    bridge->kg_wiring = kg;
     return FIN_NEURAL_ERR_OK;
 }
 
@@ -423,6 +569,10 @@ int financial_neural_bridge_encode_market_event(
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "financial_neural_bridge_encode_market_event: NULL event or output");
         return FIN_NEURAL_ERR_NULL;
     }
+
+    /* Instance-level security validation */
+    int val_rc = neural_validate_subsystems(bridge, "encode_market_event");
+    if (val_rc != FIN_NEURAL_ERR_OK) return val_rc;
 
     fin_neural_heartbeat_instance(
         (nimcp_health_agent_t*)bridge->health_agent, "encode_market_event", 0.0f);
@@ -563,6 +713,14 @@ int financial_neural_bridge_encode_market_event(
 
     out_spikes->active_channels = active;
     out_spikes->total_activity = total_activity;
+
+    /* Check for spike rate anomaly (biological max ~500Hz) */
+    for (uint32_t i = 0; i < channels; i++) {
+        if (out_spikes->spike_rates[i] > 500.0f) {
+            neural_present_antigen(bridge, "spike_rate_anomaly", 3);
+            break; /* Only present once per encoding */
+        }
+    }
 
     bridge->stats.events_encoded++;
     bridge->state = FIN_NEURAL_STATE_IDLE;
@@ -724,6 +882,10 @@ int financial_neural_bridge_stdp_reward(
     if (!bridge) { set_error("NULL bridge"); NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "financial_neural_bridge_stdp_reward: bridge is NULL"); return FIN_NEURAL_ERR_NULL; }
     if (!out_reward) { set_error("NULL output"); NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "financial_neural_bridge_stdp_reward: out_reward is NULL"); return FIN_NEURAL_ERR_NULL; }
 
+    /* Instance-level security validation */
+    int val_rc = neural_validate_subsystems(bridge, "stdp_reward");
+    if (val_rc != FIN_NEURAL_ERR_OK) return val_rc;
+
     fin_neural_heartbeat_instance(
         (nimcp_health_agent_t*)bridge->health_agent, "stdp_reward", 0.0f);
 
@@ -777,7 +939,13 @@ int financial_neural_bridge_lnn_predict(
 {
     if (!bridge) { set_error("NULL bridge"); NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "financial_neural_bridge_lnn_predict: bridge is NULL"); return FIN_NEURAL_ERR_NULL; }
     if (!out_prediction) { set_error("NULL output"); NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER, "financial_neural_bridge_lnn_predict: out_prediction is NULL"); return FIN_NEURAL_ERR_NULL; }
+
+    /* Global validation (backward compatibility) */
     int val_rc = fin_neural_bridge_validate_subsystems("lnn_predict");
+    if (val_rc != FIN_NEURAL_ERR_OK) return val_rc;
+
+    /* Instance-level security validation */
+    val_rc = neural_validate_subsystems(bridge, "lnn_predict");
     if (val_rc != FIN_NEURAL_ERR_OK) return val_rc;
 
     fin_neural_heartbeat_instance(
@@ -1365,6 +1533,10 @@ int financial_neural_bridge_train_step(
         return FIN_NEURAL_ERR_NULL;
     }
 
+    /* Instance-level security validation */
+    int val_rc = neural_validate_subsystems(bridge, "train_step");
+    if (val_rc != FIN_NEURAL_ERR_OK) return val_rc;
+
     fin_neural_heartbeat_instance(
         (nimcp_health_agent_t*)bridge->health_agent, "train_step", 0.0f);
 
@@ -1381,6 +1553,9 @@ int financial_neural_bridge_train_step(
     if (health_mod < 0.1f) health_mod = 0.1f;
     lr *= health_mod;
 
+    /* Save previous loss for divergence detection */
+    float prev_loss = bridge->current_loss;
+
     /* Simple gradient descent on LNN state:
      * For each dim: predicted = state[i], target = target[i]
      * loss_i = (target[i] - state[i])^2
@@ -1388,6 +1563,7 @@ int financial_neural_bridge_train_step(
      * state[i] -= lr * grad_i = state[i] + lr * 2 * (target[i] - state[i]) */
 
     float total_loss = 0.0f;
+    float max_gradient = 0.0f;
     for (uint32_t i = 0; i < train_dim; i++) {
         /* Feed input to state first */
         float tc = bridge->config.lnn_time_constant;
@@ -1399,13 +1575,30 @@ int financial_neural_bridge_train_step(
         float err = target[i] - bridge->lnn_state[i];
         total_loss += err * err;
 
+        /* Track gradient magnitude for explosion detection */
+        float grad = 2.0f * fabsf(err);
+        if (grad > max_gradient) max_gradient = grad;
+
         /* Gradient update */
         bridge->lnn_state[i] += lr * 2.0f * err;
+    }
+
+    /* Check for gradient explosion (threshold: gradient > 1000) */
+    if (max_gradient > 1000.0f) {
+        neural_present_antigen(bridge, "gradient_explosion", 4);
     }
 
     /* Update training state */
     bridge->training_epoch++;
     bridge->current_loss = total_loss / (float)(train_dim > 0 ? train_dim : 1);
+
+    /* Check for training divergence (loss increasing by > 50%) */
+    if (bridge->training_epoch > 1 && prev_loss > 0.0f) {
+        float loss_ratio = bridge->current_loss / prev_loss;
+        if (loss_ratio > 1.5f) {
+            neural_present_antigen(bridge, "training_divergence", 3);
+        }
+    }
 
     /* Update convergence degree: how close to converged
      * convergence = 1 - loss (clamped, with smoothing) */
@@ -1484,4 +1677,19 @@ void financial_neural_bridge_reset_stats(financial_neural_bridge_t* bridge) {
 
 const char* financial_neural_bridge_get_last_error(void) {
     return fin_neural_last_error;
+}
+
+//=============================================================================
+// Logger Setter (Phase 8: Change Set 2/3)
+//=============================================================================
+
+int financial_neural_bridge_set_logger(financial_neural_bridge_t* bridge, void* logger) {
+    if (!bridge) {
+        set_error("set_logger: NULL bridge");
+        NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER,
+            "financial_neural_bridge_set_logger: NULL bridge");
+        return FIN_NEURAL_ERR_NULL;
+    }
+    bridge->logger = logger;
+    return FIN_NEURAL_ERR_OK;
 }

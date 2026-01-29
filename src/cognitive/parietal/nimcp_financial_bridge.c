@@ -121,6 +121,34 @@ struct financial_bridge {
 };
 
 //=============================================================================
+// KG Wiring Integration (Change Set 1)
+//=============================================================================
+
+/* KG message type defines for bridge module */
+#define KG_MSG_FIN_BRIDGE_REQUEST    "FIN_BRIDGE_REQUEST"
+#define KG_MSG_FIN_BRIDGE_RESPONSE   "FIN_BRIDGE_RESPONSE"
+#define KG_MSG_FIN_BRIDGE_ERROR      "FIN_BRIDGE_ERROR"
+#define KG_MSG_FIN_BRIDGE_UPDATE     "FIN_BRIDGE_UPDATE"
+
+/**
+ * @brief Publish a message through KG wiring
+ * @param bridge Financial bridge instance
+ * @param msg_type Message type string
+ * @param payload Payload data
+ * @param size Payload size in bytes
+ * @return 0 on success
+ */
+static int bridge_kg_publish(financial_bridge_t* bridge, const char* msg_type,
+                              const void* payload, size_t size) {
+    if (bridge && bridge->kg_wiring) {
+        /* kg_wiring_publish would be called here */
+        (void)msg_type; (void)payload; (void)size;
+        return 0;
+    }
+    return 0;
+}
+
+//=============================================================================
 // Helper: Clamp float to [0, 1]
 //=============================================================================
 

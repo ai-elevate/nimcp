@@ -11753,6 +11753,726 @@ __/cognitive/parietal/nimcp_fep_parietal_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_fep_parietal_bridge.c.s
 .PHONY : __/cognitive/parietal/nimcp_fep_parietal_bridge.c.s
 
+__/cognitive/parietal/nimcp_financial_autobio_bridge.o: __/cognitive/parietal/nimcp_financial_autobio_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_autobio_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_autobio_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_autobio_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_autobio_bridge.c.o
+
+__/cognitive/parietal/nimcp_financial_autobio_bridge.i: __/cognitive/parietal/nimcp_financial_autobio_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_autobio_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_autobio_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_autobio_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_autobio_bridge.c.i
+
+__/cognitive/parietal/nimcp_financial_autobio_bridge.s: __/cognitive/parietal/nimcp_financial_autobio_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_autobio_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_autobio_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_autobio_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_autobio_bridge.c.s
+
+__/cognitive/parietal/nimcp_financial_basal_ganglia_bridge.o: __/cognitive/parietal/nimcp_financial_basal_ganglia_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_basal_ganglia_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_basal_ganglia_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_basal_ganglia_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_basal_ganglia_bridge.c.o
+
+__/cognitive/parietal/nimcp_financial_basal_ganglia_bridge.i: __/cognitive/parietal/nimcp_financial_basal_ganglia_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_basal_ganglia_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_basal_ganglia_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_basal_ganglia_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_basal_ganglia_bridge.c.i
+
+__/cognitive/parietal/nimcp_financial_basal_ganglia_bridge.s: __/cognitive/parietal/nimcp_financial_basal_ganglia_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_basal_ganglia_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_basal_ganglia_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_basal_ganglia_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_basal_ganglia_bridge.c.s
+
+__/cognitive/parietal/nimcp_financial_bridge.o: __/cognitive/parietal/nimcp_financial_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_bridge.c.o
+
+__/cognitive/parietal/nimcp_financial_bridge.i: __/cognitive/parietal/nimcp_financial_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_bridge.c.i
+
+__/cognitive/parietal/nimcp_financial_bridge.s: __/cognitive/parietal/nimcp_financial_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_bridge.c.s
+
+__/cognitive/parietal/nimcp_financial_cognitive_orchestrator.o: __/cognitive/parietal/nimcp_financial_cognitive_orchestrator.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_cognitive_orchestrator.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_cognitive_orchestrator.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_cognitive_orchestrator.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_cognitive_orchestrator.c.o
+
+__/cognitive/parietal/nimcp_financial_cognitive_orchestrator.i: __/cognitive/parietal/nimcp_financial_cognitive_orchestrator.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_cognitive_orchestrator.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_cognitive_orchestrator.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_cognitive_orchestrator.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_cognitive_orchestrator.c.i
+
+__/cognitive/parietal/nimcp_financial_cognitive_orchestrator.s: __/cognitive/parietal/nimcp_financial_cognitive_orchestrator.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_cognitive_orchestrator.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_cognitive_orchestrator.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_cognitive_orchestrator.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_cognitive_orchestrator.c.s
+
+__/cognitive/parietal/nimcp_financial_consolidation_bridge.o: __/cognitive/parietal/nimcp_financial_consolidation_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_consolidation_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_consolidation_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_consolidation_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_consolidation_bridge.c.o
+
+__/cognitive/parietal/nimcp_financial_consolidation_bridge.i: __/cognitive/parietal/nimcp_financial_consolidation_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_consolidation_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_consolidation_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_consolidation_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_consolidation_bridge.c.i
+
+__/cognitive/parietal/nimcp_financial_consolidation_bridge.s: __/cognitive/parietal/nimcp_financial_consolidation_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_consolidation_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_consolidation_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_consolidation_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_consolidation_bridge.c.s
+
+__/cognitive/parietal/nimcp_financial_curiosity_bridge.o: __/cognitive/parietal/nimcp_financial_curiosity_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_curiosity_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_curiosity_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_curiosity_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_curiosity_bridge.c.o
+
+__/cognitive/parietal/nimcp_financial_curiosity_bridge.i: __/cognitive/parietal/nimcp_financial_curiosity_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_curiosity_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_curiosity_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_curiosity_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_curiosity_bridge.c.i
+
+__/cognitive/parietal/nimcp_financial_curiosity_bridge.s: __/cognitive/parietal/nimcp_financial_curiosity_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_curiosity_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_curiosity_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_curiosity_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_curiosity_bridge.c.s
+
+__/cognitive/parietal/nimcp_financial_emotion_bridge.o: __/cognitive/parietal/nimcp_financial_emotion_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_emotion_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_emotion_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_emotion_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_emotion_bridge.c.o
+
+__/cognitive/parietal/nimcp_financial_emotion_bridge.i: __/cognitive/parietal/nimcp_financial_emotion_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_emotion_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_emotion_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_emotion_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_emotion_bridge.c.i
+
+__/cognitive/parietal/nimcp_financial_emotion_bridge.s: __/cognitive/parietal/nimcp_financial_emotion_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_emotion_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_emotion_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_emotion_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_emotion_bridge.c.s
+
+__/cognitive/parietal/nimcp_financial_ethics_bridge.o: __/cognitive/parietal/nimcp_financial_ethics_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_ethics_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_ethics_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_ethics_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_ethics_bridge.c.o
+
+__/cognitive/parietal/nimcp_financial_ethics_bridge.i: __/cognitive/parietal/nimcp_financial_ethics_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_ethics_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_ethics_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_ethics_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_ethics_bridge.c.i
+
+__/cognitive/parietal/nimcp_financial_ethics_bridge.s: __/cognitive/parietal/nimcp_financial_ethics_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_ethics_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_ethics_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_ethics_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_ethics_bridge.c.s
+
+__/cognitive/parietal/nimcp_financial_explanations_bridge.o: __/cognitive/parietal/nimcp_financial_explanations_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_explanations_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_explanations_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_explanations_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_explanations_bridge.c.o
+
+__/cognitive/parietal/nimcp_financial_explanations_bridge.i: __/cognitive/parietal/nimcp_financial_explanations_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_explanations_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_explanations_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_explanations_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_explanations_bridge.c.i
+
+__/cognitive/parietal/nimcp_financial_explanations_bridge.s: __/cognitive/parietal/nimcp_financial_explanations_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_explanations_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_explanations_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_explanations_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_explanations_bridge.c.s
+
+__/cognitive/parietal/nimcp_financial_investment.o: __/cognitive/parietal/nimcp_financial_investment.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_investment.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_investment.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_investment.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_investment.c.o
+
+__/cognitive/parietal/nimcp_financial_investment.i: __/cognitive/parietal/nimcp_financial_investment.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_investment.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_investment.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_investment.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_investment.c.i
+
+__/cognitive/parietal/nimcp_financial_investment.s: __/cognitive/parietal/nimcp_financial_investment.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_investment.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_investment.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_investment.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_investment.c.s
+
+__/cognitive/parietal/nimcp_financial_investor_archetype.o: __/cognitive/parietal/nimcp_financial_investor_archetype.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_investor_archetype.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_investor_archetype.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_investor_archetype.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_investor_archetype.c.o
+
+__/cognitive/parietal/nimcp_financial_investor_archetype.i: __/cognitive/parietal/nimcp_financial_investor_archetype.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_investor_archetype.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_investor_archetype.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_investor_archetype.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_investor_archetype.c.i
+
+__/cognitive/parietal/nimcp_financial_investor_archetype.s: __/cognitive/parietal/nimcp_financial_investor_archetype.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_investor_archetype.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_investor_archetype.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_investor_archetype.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_investor_archetype.c.s
+
+__/cognitive/parietal/nimcp_financial_jepa_bridge.o: __/cognitive/parietal/nimcp_financial_jepa_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_jepa_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_jepa_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_jepa_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_jepa_bridge.c.o
+
+__/cognitive/parietal/nimcp_financial_jepa_bridge.i: __/cognitive/parietal/nimcp_financial_jepa_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_jepa_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_jepa_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_jepa_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_jepa_bridge.c.i
+
+__/cognitive/parietal/nimcp_financial_jepa_bridge.s: __/cognitive/parietal/nimcp_financial_jepa_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_jepa_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_jepa_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_jepa_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_jepa_bridge.c.s
+
+__/cognitive/parietal/nimcp_financial_mammillary_bridge.o: __/cognitive/parietal/nimcp_financial_mammillary_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_mammillary_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_mammillary_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_mammillary_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_mammillary_bridge.c.o
+
+__/cognitive/parietal/nimcp_financial_mammillary_bridge.i: __/cognitive/parietal/nimcp_financial_mammillary_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_mammillary_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_mammillary_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_mammillary_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_mammillary_bridge.c.i
+
+__/cognitive/parietal/nimcp_financial_mammillary_bridge.s: __/cognitive/parietal/nimcp_financial_mammillary_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_mammillary_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_mammillary_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_mammillary_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_mammillary_bridge.c.s
+
+__/cognitive/parietal/nimcp_financial_market.o: __/cognitive/parietal/nimcp_financial_market.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_market.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_market.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_market.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_market.c.o
+
+__/cognitive/parietal/nimcp_financial_market.i: __/cognitive/parietal/nimcp_financial_market.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_market.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_market.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_market.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_market.c.i
+
+__/cognitive/parietal/nimcp_financial_market.s: __/cognitive/parietal/nimcp_financial_market.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_market.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_market.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_market.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_market.c.s
+
+__/cognitive/parietal/nimcp_financial_mental_health_bridge.o: __/cognitive/parietal/nimcp_financial_mental_health_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_mental_health_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_mental_health_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_mental_health_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_mental_health_bridge.c.o
+
+__/cognitive/parietal/nimcp_financial_mental_health_bridge.i: __/cognitive/parietal/nimcp_financial_mental_health_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_mental_health_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_mental_health_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_mental_health_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_mental_health_bridge.c.i
+
+__/cognitive/parietal/nimcp_financial_mental_health_bridge.s: __/cognitive/parietal/nimcp_financial_mental_health_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_mental_health_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_mental_health_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_mental_health_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_mental_health_bridge.c.s
+
+__/cognitive/parietal/nimcp_financial_metacognition_bridge.o: __/cognitive/parietal/nimcp_financial_metacognition_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_metacognition_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_metacognition_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_metacognition_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_metacognition_bridge.c.o
+
+__/cognitive/parietal/nimcp_financial_metacognition_bridge.i: __/cognitive/parietal/nimcp_financial_metacognition_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_metacognition_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_metacognition_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_metacognition_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_metacognition_bridge.c.i
+
+__/cognitive/parietal/nimcp_financial_metacognition_bridge.s: __/cognitive/parietal/nimcp_financial_metacognition_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_metacognition_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_metacognition_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_metacognition_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_metacognition_bridge.c.s
+
+__/cognitive/parietal/nimcp_financial_motivation_bridge.o: __/cognitive/parietal/nimcp_financial_motivation_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_motivation_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_motivation_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_motivation_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_motivation_bridge.c.o
+
+__/cognitive/parietal/nimcp_financial_motivation_bridge.i: __/cognitive/parietal/nimcp_financial_motivation_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_motivation_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_motivation_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_motivation_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_motivation_bridge.c.i
+
+__/cognitive/parietal/nimcp_financial_motivation_bridge.s: __/cognitive/parietal/nimcp_financial_motivation_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_motivation_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_motivation_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_motivation_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_motivation_bridge.c.s
+
+__/cognitive/parietal/nimcp_financial_neural_bridge.o: __/cognitive/parietal/nimcp_financial_neural_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_neural_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_neural_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_neural_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_neural_bridge.c.o
+
+__/cognitive/parietal/nimcp_financial_neural_bridge.i: __/cognitive/parietal/nimcp_financial_neural_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_neural_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_neural_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_neural_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_neural_bridge.c.i
+
+__/cognitive/parietal/nimcp_financial_neural_bridge.s: __/cognitive/parietal/nimcp_financial_neural_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_neural_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_neural_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_neural_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_neural_bridge.c.s
+
+__/cognitive/parietal/nimcp_financial_neuromod_bridge.o: __/cognitive/parietal/nimcp_financial_neuromod_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_neuromod_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_neuromod_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_neuromod_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_neuromod_bridge.c.o
+
+__/cognitive/parietal/nimcp_financial_neuromod_bridge.i: __/cognitive/parietal/nimcp_financial_neuromod_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_neuromod_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_neuromod_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_neuromod_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_neuromod_bridge.c.i
+
+__/cognitive/parietal/nimcp_financial_neuromod_bridge.s: __/cognitive/parietal/nimcp_financial_neuromod_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_neuromod_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_neuromod_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_neuromod_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_neuromod_bridge.c.s
+
+__/cognitive/parietal/nimcp_financial_predictive_bridge.o: __/cognitive/parietal/nimcp_financial_predictive_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_predictive_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_predictive_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_predictive_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_predictive_bridge.c.o
+
+__/cognitive/parietal/nimcp_financial_predictive_bridge.i: __/cognitive/parietal/nimcp_financial_predictive_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_predictive_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_predictive_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_predictive_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_predictive_bridge.c.i
+
+__/cognitive/parietal/nimcp_financial_predictive_bridge.s: __/cognitive/parietal/nimcp_financial_predictive_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_predictive_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_predictive_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_predictive_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_predictive_bridge.c.s
+
+__/cognitive/parietal/nimcp_financial_reasoning_bridge.o: __/cognitive/parietal/nimcp_financial_reasoning_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_reasoning_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_reasoning_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_reasoning_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_reasoning_bridge.c.o
+
+__/cognitive/parietal/nimcp_financial_reasoning_bridge.i: __/cognitive/parietal/nimcp_financial_reasoning_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_reasoning_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_reasoning_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_reasoning_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_reasoning_bridge.c.i
+
+__/cognitive/parietal/nimcp_financial_reasoning_bridge.s: __/cognitive/parietal/nimcp_financial_reasoning_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_reasoning_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_reasoning_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_reasoning_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_reasoning_bridge.c.s
+
+__/cognitive/parietal/nimcp_financial_regret_bridge.o: __/cognitive/parietal/nimcp_financial_regret_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_regret_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_regret_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_regret_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_regret_bridge.c.o
+
+__/cognitive/parietal/nimcp_financial_regret_bridge.i: __/cognitive/parietal/nimcp_financial_regret_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_regret_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_regret_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_regret_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_regret_bridge.c.i
+
+__/cognitive/parietal/nimcp_financial_regret_bridge.s: __/cognitive/parietal/nimcp_financial_regret_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_regret_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_regret_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_regret_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_regret_bridge.c.s
+
+__/cognitive/parietal/nimcp_financial_resonance_bridge.o: __/cognitive/parietal/nimcp_financial_resonance_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_resonance_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_resonance_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_resonance_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_resonance_bridge.c.o
+
+__/cognitive/parietal/nimcp_financial_resonance_bridge.i: __/cognitive/parietal/nimcp_financial_resonance_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_resonance_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_resonance_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_resonance_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_resonance_bridge.c.i
+
+__/cognitive/parietal/nimcp_financial_resonance_bridge.s: __/cognitive/parietal/nimcp_financial_resonance_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_resonance_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_resonance_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_resonance_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_resonance_bridge.c.s
+
+__/cognitive/parietal/nimcp_financial_salience_bridge.o: __/cognitive/parietal/nimcp_financial_salience_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_salience_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_salience_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_salience_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_salience_bridge.c.o
+
+__/cognitive/parietal/nimcp_financial_salience_bridge.i: __/cognitive/parietal/nimcp_financial_salience_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_salience_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_salience_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_salience_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_salience_bridge.c.i
+
+__/cognitive/parietal/nimcp_financial_salience_bridge.s: __/cognitive/parietal/nimcp_financial_salience_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_salience_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_salience_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_salience_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_salience_bridge.c.s
+
+__/cognitive/parietal/nimcp_financial_stdp_bridge.o: __/cognitive/parietal/nimcp_financial_stdp_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_stdp_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_stdp_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_stdp_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_stdp_bridge.c.o
+
+__/cognitive/parietal/nimcp_financial_stdp_bridge.i: __/cognitive/parietal/nimcp_financial_stdp_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_stdp_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_stdp_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_stdp_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_stdp_bridge.c.i
+
+__/cognitive/parietal/nimcp_financial_stdp_bridge.s: __/cognitive/parietal/nimcp_financial_stdp_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_stdp_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_stdp_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_stdp_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_stdp_bridge.c.s
+
+__/cognitive/parietal/nimcp_financial_temporal_credit_bridge.o: __/cognitive/parietal/nimcp_financial_temporal_credit_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_temporal_credit_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_temporal_credit_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_temporal_credit_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_temporal_credit_bridge.c.o
+
+__/cognitive/parietal/nimcp_financial_temporal_credit_bridge.i: __/cognitive/parietal/nimcp_financial_temporal_credit_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_temporal_credit_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_temporal_credit_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_temporal_credit_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_temporal_credit_bridge.c.i
+
+__/cognitive/parietal/nimcp_financial_temporal_credit_bridge.s: __/cognitive/parietal/nimcp_financial_temporal_credit_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_temporal_credit_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_temporal_credit_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_temporal_credit_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_temporal_credit_bridge.c.s
+
+__/cognitive/parietal/nimcp_financial_tom_bridge.o: __/cognitive/parietal/nimcp_financial_tom_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_tom_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_tom_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_tom_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_tom_bridge.c.o
+
+__/cognitive/parietal/nimcp_financial_tom_bridge.i: __/cognitive/parietal/nimcp_financial_tom_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_tom_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_tom_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_tom_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_tom_bridge.c.i
+
+__/cognitive/parietal/nimcp_financial_tom_bridge.s: __/cognitive/parietal/nimcp_financial_tom_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_tom_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_tom_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_tom_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_tom_bridge.c.s
+
+__/cognitive/parietal/nimcp_financial_uncertainty_bridge.o: __/cognitive/parietal/nimcp_financial_uncertainty_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_uncertainty_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_uncertainty_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_uncertainty_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_uncertainty_bridge.c.o
+
+__/cognitive/parietal/nimcp_financial_uncertainty_bridge.i: __/cognitive/parietal/nimcp_financial_uncertainty_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_uncertainty_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_uncertainty_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_uncertainty_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_uncertainty_bridge.c.i
+
+__/cognitive/parietal/nimcp_financial_uncertainty_bridge.s: __/cognitive/parietal/nimcp_financial_uncertainty_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_uncertainty_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_uncertainty_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_uncertainty_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_uncertainty_bridge.c.s
+
+__/cognitive/parietal/nimcp_financial_working_memory_bridge.o: __/cognitive/parietal/nimcp_financial_working_memory_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_working_memory_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_working_memory_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_working_memory_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_working_memory_bridge.c.o
+
+__/cognitive/parietal/nimcp_financial_working_memory_bridge.i: __/cognitive/parietal/nimcp_financial_working_memory_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_working_memory_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_working_memory_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_working_memory_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_working_memory_bridge.c.i
+
+__/cognitive/parietal/nimcp_financial_working_memory_bridge.s: __/cognitive/parietal/nimcp_financial_working_memory_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_working_memory_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_working_memory_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_working_memory_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_working_memory_bridge.c.s
+
+__/cognitive/parietal/nimcp_financial_world_model_bridge.o: __/cognitive/parietal/nimcp_financial_world_model_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_world_model_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_financial_world_model_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_world_model_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_financial_world_model_bridge.c.o
+
+__/cognitive/parietal/nimcp_financial_world_model_bridge.i: __/cognitive/parietal/nimcp_financial_world_model_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_world_model_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_financial_world_model_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_world_model_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_financial_world_model_bridge.c.i
+
+__/cognitive/parietal/nimcp_financial_world_model_bridge.s: __/cognitive/parietal/nimcp_financial_world_model_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_world_model_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_financial_world_model_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_financial_world_model_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_financial_world_model_bridge.c.s
+
 __/cognitive/parietal/nimcp_genius_erdos.o: __/cognitive/parietal/nimcp_genius_erdos.c.o
 .PHONY : __/cognitive/parietal/nimcp_genius_erdos.o
 
@@ -16168,6 +16888,30 @@ __/core/brain/factory/init/nimcp_brain_init_fep_orchestrator.s: __/core/brain/fa
 __/core/brain/factory/init/nimcp_brain_init_fep_orchestrator.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_fep_orchestrator.c.s
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_fep_orchestrator.c.s
+
+__/core/brain/factory/init/nimcp_brain_init_fuzzy.o: __/core/brain/factory/init/nimcp_brain_init_fuzzy.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_fuzzy.o
+
+# target to build an object file
+__/core/brain/factory/init/nimcp_brain_init_fuzzy.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_fuzzy.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_fuzzy.c.o
+
+__/core/brain/factory/init/nimcp_brain_init_fuzzy.i: __/core/brain/factory/init/nimcp_brain_init_fuzzy.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_fuzzy.i
+
+# target to preprocess a source file
+__/core/brain/factory/init/nimcp_brain_init_fuzzy.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_fuzzy.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_fuzzy.c.i
+
+__/core/brain/factory/init/nimcp_brain_init_fuzzy.s: __/core/brain/factory/init/nimcp_brain_init_fuzzy.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_fuzzy.s
+
+# target to generate assembly for a file
+__/core/brain/factory/init/nimcp_brain_init_fuzzy.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_fuzzy.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_fuzzy.c.s
 
 __/core/brain/factory/init/nimcp_brain_init_gpu.o: __/core/brain/factory/init/nimcp_brain_init_gpu.c.o
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_gpu.o
@@ -43673,6 +44417,102 @@ __/utils/fault_tolerance/nimcp_stdp_health_metrics.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fault_tolerance/nimcp_stdp_health_metrics.c.s
 .PHONY : __/utils/fault_tolerance/nimcp_stdp_health_metrics.c.s
 
+__/utils/fuzzy/nimcp_fuzzy_bridge.o: __/utils/fuzzy/nimcp_fuzzy_bridge.c.o
+.PHONY : __/utils/fuzzy/nimcp_fuzzy_bridge.o
+
+# target to build an object file
+__/utils/fuzzy/nimcp_fuzzy_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fuzzy/nimcp_fuzzy_bridge.c.o
+.PHONY : __/utils/fuzzy/nimcp_fuzzy_bridge.c.o
+
+__/utils/fuzzy/nimcp_fuzzy_bridge.i: __/utils/fuzzy/nimcp_fuzzy_bridge.c.i
+.PHONY : __/utils/fuzzy/nimcp_fuzzy_bridge.i
+
+# target to preprocess a source file
+__/utils/fuzzy/nimcp_fuzzy_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fuzzy/nimcp_fuzzy_bridge.c.i
+.PHONY : __/utils/fuzzy/nimcp_fuzzy_bridge.c.i
+
+__/utils/fuzzy/nimcp_fuzzy_bridge.s: __/utils/fuzzy/nimcp_fuzzy_bridge.c.s
+.PHONY : __/utils/fuzzy/nimcp_fuzzy_bridge.s
+
+# target to generate assembly for a file
+__/utils/fuzzy/nimcp_fuzzy_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fuzzy/nimcp_fuzzy_bridge.c.s
+.PHONY : __/utils/fuzzy/nimcp_fuzzy_bridge.c.s
+
+__/utils/fuzzy/nimcp_fuzzy_inference.o: __/utils/fuzzy/nimcp_fuzzy_inference.c.o
+.PHONY : __/utils/fuzzy/nimcp_fuzzy_inference.o
+
+# target to build an object file
+__/utils/fuzzy/nimcp_fuzzy_inference.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fuzzy/nimcp_fuzzy_inference.c.o
+.PHONY : __/utils/fuzzy/nimcp_fuzzy_inference.c.o
+
+__/utils/fuzzy/nimcp_fuzzy_inference.i: __/utils/fuzzy/nimcp_fuzzy_inference.c.i
+.PHONY : __/utils/fuzzy/nimcp_fuzzy_inference.i
+
+# target to preprocess a source file
+__/utils/fuzzy/nimcp_fuzzy_inference.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fuzzy/nimcp_fuzzy_inference.c.i
+.PHONY : __/utils/fuzzy/nimcp_fuzzy_inference.c.i
+
+__/utils/fuzzy/nimcp_fuzzy_inference.s: __/utils/fuzzy/nimcp_fuzzy_inference.c.s
+.PHONY : __/utils/fuzzy/nimcp_fuzzy_inference.s
+
+# target to generate assembly for a file
+__/utils/fuzzy/nimcp_fuzzy_inference.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fuzzy/nimcp_fuzzy_inference.c.s
+.PHONY : __/utils/fuzzy/nimcp_fuzzy_inference.c.s
+
+__/utils/fuzzy/nimcp_fuzzy_operators.o: __/utils/fuzzy/nimcp_fuzzy_operators.c.o
+.PHONY : __/utils/fuzzy/nimcp_fuzzy_operators.o
+
+# target to build an object file
+__/utils/fuzzy/nimcp_fuzzy_operators.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fuzzy/nimcp_fuzzy_operators.c.o
+.PHONY : __/utils/fuzzy/nimcp_fuzzy_operators.c.o
+
+__/utils/fuzzy/nimcp_fuzzy_operators.i: __/utils/fuzzy/nimcp_fuzzy_operators.c.i
+.PHONY : __/utils/fuzzy/nimcp_fuzzy_operators.i
+
+# target to preprocess a source file
+__/utils/fuzzy/nimcp_fuzzy_operators.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fuzzy/nimcp_fuzzy_operators.c.i
+.PHONY : __/utils/fuzzy/nimcp_fuzzy_operators.c.i
+
+__/utils/fuzzy/nimcp_fuzzy_operators.s: __/utils/fuzzy/nimcp_fuzzy_operators.c.s
+.PHONY : __/utils/fuzzy/nimcp_fuzzy_operators.s
+
+# target to generate assembly for a file
+__/utils/fuzzy/nimcp_fuzzy_operators.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fuzzy/nimcp_fuzzy_operators.c.s
+.PHONY : __/utils/fuzzy/nimcp_fuzzy_operators.c.s
+
+__/utils/fuzzy/nimcp_fuzzy_types.o: __/utils/fuzzy/nimcp_fuzzy_types.c.o
+.PHONY : __/utils/fuzzy/nimcp_fuzzy_types.o
+
+# target to build an object file
+__/utils/fuzzy/nimcp_fuzzy_types.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fuzzy/nimcp_fuzzy_types.c.o
+.PHONY : __/utils/fuzzy/nimcp_fuzzy_types.c.o
+
+__/utils/fuzzy/nimcp_fuzzy_types.i: __/utils/fuzzy/nimcp_fuzzy_types.c.i
+.PHONY : __/utils/fuzzy/nimcp_fuzzy_types.i
+
+# target to preprocess a source file
+__/utils/fuzzy/nimcp_fuzzy_types.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fuzzy/nimcp_fuzzy_types.c.i
+.PHONY : __/utils/fuzzy/nimcp_fuzzy_types.c.i
+
+__/utils/fuzzy/nimcp_fuzzy_types.s: __/utils/fuzzy/nimcp_fuzzy_types.c.s
+.PHONY : __/utils/fuzzy/nimcp_fuzzy_types.s
+
+# target to generate assembly for a file
+__/utils/fuzzy/nimcp_fuzzy_types.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/fuzzy/nimcp_fuzzy_types.c.s
+.PHONY : __/utils/fuzzy/nimcp_fuzzy_types.c.s
+
 __/utils/gabor/nimcp_gabor.o: __/utils/gabor/nimcp_gabor.c.o
 .PHONY : __/utils/gabor/nimcp_gabor.o
 
@@ -47005,6 +47845,96 @@ help:
 	@echo "... __/cognitive/parietal/nimcp_fep_parietal_bridge.o"
 	@echo "... __/cognitive/parietal/nimcp_fep_parietal_bridge.i"
 	@echo "... __/cognitive/parietal/nimcp_fep_parietal_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_autobio_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_autobio_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_autobio_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_basal_ganglia_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_basal_ganglia_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_basal_ganglia_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_cognitive_orchestrator.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_cognitive_orchestrator.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_cognitive_orchestrator.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_consolidation_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_consolidation_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_consolidation_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_curiosity_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_curiosity_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_curiosity_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_emotion_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_emotion_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_emotion_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_ethics_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_ethics_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_ethics_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_explanations_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_explanations_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_explanations_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_investment.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_investment.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_investment.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_investor_archetype.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_investor_archetype.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_investor_archetype.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_jepa_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_jepa_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_jepa_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_mammillary_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_mammillary_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_mammillary_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_market.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_market.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_market.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_mental_health_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_mental_health_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_mental_health_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_metacognition_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_metacognition_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_metacognition_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_motivation_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_motivation_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_motivation_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_neural_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_neural_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_neural_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_neuromod_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_neuromod_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_neuromod_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_predictive_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_predictive_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_predictive_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_reasoning_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_reasoning_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_reasoning_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_regret_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_regret_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_regret_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_resonance_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_resonance_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_resonance_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_salience_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_salience_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_salience_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_stdp_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_stdp_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_stdp_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_temporal_credit_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_temporal_credit_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_temporal_credit_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_tom_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_tom_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_tom_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_uncertainty_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_uncertainty_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_uncertainty_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_working_memory_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_working_memory_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_working_memory_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_financial_world_model_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_financial_world_model_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_financial_world_model_bridge.s"
 	@echo "... __/cognitive/parietal/nimcp_genius_erdos.o"
 	@echo "... __/cognitive/parietal/nimcp_genius_erdos.i"
 	@echo "... __/cognitive/parietal/nimcp_genius_erdos.s"
@@ -47557,6 +48487,9 @@ help:
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_fep_orchestrator.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_fep_orchestrator.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_fep_orchestrator.s"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_fuzzy.o"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_fuzzy.i"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_fuzzy.s"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_gpu.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_gpu.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_gpu.s"
@@ -50995,6 +51928,18 @@ help:
 	@echo "... __/utils/fault_tolerance/nimcp_stdp_health_metrics.o"
 	@echo "... __/utils/fault_tolerance/nimcp_stdp_health_metrics.i"
 	@echo "... __/utils/fault_tolerance/nimcp_stdp_health_metrics.s"
+	@echo "... __/utils/fuzzy/nimcp_fuzzy_bridge.o"
+	@echo "... __/utils/fuzzy/nimcp_fuzzy_bridge.i"
+	@echo "... __/utils/fuzzy/nimcp_fuzzy_bridge.s"
+	@echo "... __/utils/fuzzy/nimcp_fuzzy_inference.o"
+	@echo "... __/utils/fuzzy/nimcp_fuzzy_inference.i"
+	@echo "... __/utils/fuzzy/nimcp_fuzzy_inference.s"
+	@echo "... __/utils/fuzzy/nimcp_fuzzy_operators.o"
+	@echo "... __/utils/fuzzy/nimcp_fuzzy_operators.i"
+	@echo "... __/utils/fuzzy/nimcp_fuzzy_operators.s"
+	@echo "... __/utils/fuzzy/nimcp_fuzzy_types.o"
+	@echo "... __/utils/fuzzy/nimcp_fuzzy_types.i"
+	@echo "... __/utils/fuzzy/nimcp_fuzzy_types.s"
 	@echo "... __/utils/gabor/nimcp_gabor.o"
 	@echo "... __/utils/gabor/nimcp_gabor.i"
 	@echo "... __/utils/gabor/nimcp_gabor.s"

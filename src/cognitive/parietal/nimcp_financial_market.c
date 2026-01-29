@@ -33,10 +33,10 @@ extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
 static nimcp_health_agent_t* g_fin_mkt_health_agent = NULL;
 
 /**
- * @brief Set health agent for financial market heartbeats
+ * @brief Set global health agent for financial market heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-void financial_market_set_health_agent(nimcp_health_agent_t* agent) {
+void financial_market_module_set_health_agent(nimcp_health_agent_t* agent) {
     g_fin_mkt_health_agent = agent;
 }
 
@@ -51,6 +51,26 @@ extern int brain_immune_present_antigen(brain_immune_system_t* immune, uint32_t 
 struct bbb_system_struct;
 typedef struct bbb_system_struct* bbb_system_t;
 extern int bbb_validate_data(bbb_system_t bbb, const void* data, size_t size, const char* context);
+
+//=============================================================================
+// Bio-Async Integration (Change Set 4)
+//=============================================================================
+struct bio_async_context;
+typedef struct bio_async_context bio_async_context_t;
+struct bio_router_struct;
+typedef struct bio_router_struct* bio_router_t;
+
+//=============================================================================
+// KG Wiring Integration (Change Set 1)
+//=============================================================================
+struct kg_wiring;
+typedef struct kg_wiring kg_wiring_t;
+
+/* KG message type defines for market module */
+#define KG_MSG_FIN_MKT_REQUEST    "FIN_MKT_REQUEST"
+#define KG_MSG_FIN_MKT_RESPONSE   "FIN_MKT_RESPONSE"
+#define KG_MSG_FIN_MKT_ERROR      "FIN_MKT_ERROR"
+#define KG_MSG_FIN_MKT_UPDATE     "FIN_MKT_UPDATE"
 
 static brain_immune_system_t* g_fin_market_immune = NULL;
 static bbb_system_t g_fin_market_bbb = NULL;
@@ -84,7 +104,7 @@ static void set_error(const char* fmt, ...) {
 }
 
 //=============================================================================
-// Immune/BBB Validation Helper
+// Immune/BBB Validation Helper (Global)
 //=============================================================================
 static int fin_market_validate_subsystems(const char* operation) {
     if (g_fin_market_immune) {
@@ -125,7 +145,100 @@ struct financial_market_eng {
     float               inflammation;
     float               fatigue;
     void*               fuzzy_bridge;
+    kg_wiring_t*        kg_wiring;
+    /* Per-engine security integration */
+    brain_immune_system_t* immune;
+    bbb_system_t           bbb;
+    bool                   enable_immune_validation;
+    bool                   enable_bbb_validation;
+    /* Health agent and logger (Phase 8: Change Set 2/3) */
+    nimcp_health_agent_t*  health_agent;
+    void*                  logger;
+    /* Bio-async integration (Change Set 4) */
+    bio_async_context_t*   bio_async;
+    bio_router_t*          bio_router;
+    bool                   async_enabled;
 };
+
+//=============================================================================
+// Instance-Level Heartbeat Helper (Phase 8: Change Set 2/3)
+//=============================================================================
+
+static inline void market_heartbeat_instance(financial_market_eng_t* eng,
+                                              const char* op, float progress) {
+    if (eng && eng->health_agent) {
+        /* nimcp_health_agent_heartbeat_ex would be called here */
+        (void)op; (void)progress;
+    }
+}
+
+//=============================================================================
+// Logging Macros (Phase 8: Change Set 2/3)
+//=============================================================================
+
+#define FIN_MKT_LOG_DEBUG(eng, fmt, ...) /* placeholder */
+#define FIN_MKT_LOG_INFO(eng, fmt, ...)  /* placeholder */
+#define FIN_MKT_LOG_WARN(eng, fmt, ...)  /* placeholder */
+#define FIN_MKT_LOG_ERROR(eng, fmt, ...) /* placeholder */
+
+/**
+ * @brief Publish a message through KG wiring
+ * @param eng Market engine instance
+ * @param msg_type Message type string
+ * @param payload Payload data
+ * @param size Payload size in bytes
+ * @return 0 on success
+ */
+static int market_kg_publish(financial_market_eng_t* eng, const char* msg_type,
+                              const void* payload, size_t size) {
+    if (eng && eng->kg_wiring) {
+        /* kg_wiring_publish would be called here */
+        (void)msg_type; (void)payload; (void)size;
+        return 0;
+    }
+    return 0;
+}
+
+//=============================================================================
+// Per-Engine Validation Helper
+//=============================================================================
+static int market_validate_subsystems(financial_market_eng_t* eng, const char* operation) {
+    if (!eng) return FIN_MKT_ERR_NULL;
+
+    if (eng->enable_bbb_validation && eng->bbb) {
+        int rc = bbb_validate_data(eng->bbb, NULL, 0, operation);
+        if (rc != 0) {
+            set_error("BBB validation failed for %s", operation);
+            NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_OPERATION_FAILED,
+                "financial_market: BBB validation failed for %s", operation);
+            return FIN_MKT_ERR_VALIDATION;
+        }
+    }
+
+    if (eng->enable_immune_validation && eng->immune) {
+        int rc = brain_immune_validate_operation(eng->immune, operation, 5);
+        if (rc != 0) {
+            set_error("Immune validation failed for %s", operation);
+            NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_OPERATION_FAILED,
+                "financial_market: immune validation failed for %s", operation);
+            return FIN_MKT_ERR_VALIDATION;
+        }
+    }
+
+    return FIN_MKT_ERR_OK;
+}
+
+//=============================================================================
+// Antigen Presentation Helper
+//=============================================================================
+static void market_present_antigen(financial_market_eng_t* eng,
+                                    const char* anomaly, uint32_t severity) {
+    if (eng && eng->immune) {
+        uint8_t sig[64] = {0};
+        snprintf((char*)sig, sizeof(sig), "fin_market:%s", anomaly);
+        brain_immune_present_antigen(eng->immune, 2, sig, strlen((char*)sig), severity);
+    }
+}
 
 //=============================================================================
 // Internal Helper: Fuzzy Membership Functions
@@ -266,7 +379,15 @@ financial_market_eng_t* financial_market_create_custom(const fin_market_config_t
     mkt->inflammation = 0.0f;
     mkt->fatigue      = 0.0f;
     mkt->fuzzy_bridge = config->fuzzy_bridge;
+    mkt->kg_wiring    = NULL;
     memset(&mkt->stats, 0, sizeof(mkt->stats));
+    /* Health agent and logger (Phase 8: Change Set 2/3) */
+    mkt->health_agent = NULL;
+    mkt->logger = NULL;
+    /* Bio-async integration (Change Set 4) */
+    mkt->bio_async = NULL;
+    mkt->bio_router = NULL;
+    mkt->async_enabled = false;
 
     fin_mkt_heartbeat("financial_market_create", 1.0f);
     return mkt;
@@ -301,10 +422,15 @@ int financial_market_garch_fit(financial_market_eng_t* mkt,
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_INVALID_PARAM, "financial_market_garch_fit: insufficient data length=%u", length);
         return -1;
     }
-    int val_rc = fin_market_validate_subsystems("garch_fit");
+    /* Per-engine validation */
+    int val_rc = market_validate_subsystems(mkt, "garch_fit");
+    if (val_rc != FIN_MKT_ERR_OK) return val_rc;
+    /* Global validation (legacy) */
+    val_rc = fin_market_validate_subsystems("garch_fit");
     if (val_rc != 0) return val_rc;
 
     fin_mkt_heartbeat("garch_fit_start", 0.0f);
+    market_heartbeat_instance(mkt, "garch_fit", 0.0f);  /* Phase 8: Change Set 2/3 */
 
     /* Compute sample variance for initialization */
     float mean = 0.0f;
@@ -443,6 +569,11 @@ int financial_market_garch_fit(financial_market_eng_t* mkt,
     out_result->log_likelihood = best_ll;
     out_result->converged = converged;
 
+    /* Present antigen if convergence failed */
+    if (!converged) {
+        market_present_antigen(mkt, "garch_non_convergence", 5);
+    }
+
     /* Compute current variance from best params */
     float cv = best_omega * inflammation_factor;
     for (uint32_t j = 0; j < q; j++) {
@@ -461,6 +592,7 @@ int financial_market_garch_fit(financial_market_eng_t* mkt,
     free(sigma2);
     mkt->stats.garch_fits++;
     fin_mkt_heartbeat("garch_fit_done", 1.0f);
+    market_heartbeat_instance(mkt, "garch_fit", 1.0f);  /* Phase 8: Change Set 2/3 */
     return 0;
 }
 
@@ -897,6 +1029,9 @@ int financial_market_analyze_sentiment(financial_market_eng_t* mkt,
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_INVALID_PARAM, "financial_market_analyze_sentiment: insufficient price data length=%u", price_series->length);
         return -1;
     }
+    /* Per-engine validation */
+    int val_rc = market_validate_subsystems(mkt, "analyze_sentiment");
+    if (val_rc != FIN_MKT_ERR_OK) return val_rc;
 
     fin_mkt_heartbeat("analyze_sentiment_start", 0.0f);
     memset(out_sentiment, 0, sizeof(*out_sentiment));
@@ -1043,12 +1178,19 @@ int financial_market_analyze_sentiment_fuzzy(financial_market_eng_t* mkt,
 // Market Regime Detection
 //=============================================================================
 
+/** Track previous regime for detecting shifts */
+static _Thread_local fin_market_condition_t prev_regime = FIN_MKT_SIDEWAYS;
+
 fin_market_condition_t financial_market_detect_regime(financial_market_eng_t* mkt,
                                                        const fin_time_series_t* series) {
     if (!mkt || !series || series->length < 20) {
         return FIN_MKT_SIDEWAYS;
     }
-    int val_rc = fin_market_validate_subsystems("detect_regime");
+    /* Per-engine validation */
+    int val_rc = market_validate_subsystems(mkt, "detect_regime");
+    if (val_rc != FIN_MKT_ERR_OK) return FIN_MKT_SIDEWAYS;
+    /* Global validation (legacy) */
+    val_rc = fin_market_validate_subsystems("detect_regime");
     if (val_rc != 0) return FIN_MKT_SIDEWAYS;
 
     fin_mkt_heartbeat("detect_regime_start", 0.0f);
@@ -1113,6 +1255,12 @@ fin_market_condition_t financial_market_detect_regime(financial_market_eng_t* mk
         condition = FIN_MKT_RECOVERY;
     } else {
         condition = FIN_MKT_SIDEWAYS;
+    }
+
+    /* Present antigen if regime has shifted */
+    if (condition != prev_regime) {
+        market_present_antigen(mkt, "regime_shift", 4);
+        prev_regime = condition;
     }
 
     fin_mkt_heartbeat("detect_regime_done", 1.0f);
@@ -1422,10 +1570,15 @@ int financial_market_monte_carlo(financial_market_eng_t* mkt,
         NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_INVALID_PARAM, "financial_market_monte_carlo: invalid horizon");
         return -1;
     }
-    int val_rc = fin_market_validate_subsystems("monte_carlo");
+    /* Per-engine validation */
+    int val_rc = market_validate_subsystems(mkt, "monte_carlo");
+    if (val_rc != FIN_MKT_ERR_OK) return val_rc;
+    /* Global validation (legacy) */
+    val_rc = fin_market_validate_subsystems("monte_carlo");
     if (val_rc != 0) return val_rc;
 
     fin_mkt_heartbeat("monte_carlo_start", 0.0f);
+    market_heartbeat_instance(mkt, "monte_carlo", 0.0f);  /* Phase 8: Change Set 2/3 */
     memset(out_result, 0, sizeof(*out_result));
 
     /* Fatigue reduces computation: fewer paths */
@@ -1436,6 +1589,9 @@ int financial_market_monte_carlo(financial_market_eng_t* mkt,
 
     /* Inflammation increases volatility estimate */
     float adj_vol = volatility * (1.0f + mkt->inflammation * mkt->config.inflammation_sensitivity * 0.2f);
+
+    /* Track average volatility for spike detection */
+    static _Thread_local float avg_volatility = 0.2f; /* typical market vol */
 
     /* GBM parameters */
     uint32_t steps = (uint32_t)(horizon_years * (float)FIN_MKT_TRADING_DAYS);
@@ -1520,11 +1676,19 @@ int financial_market_monte_carlo(financial_market_eng_t* mkt,
     /* Processing time placeholder (no high-res timer used) */
     out_result->processing_time_us = (float)effective_paths * 0.1f;
 
+    /* Detect volatility spike: if current volatility > 3x average */
+    if (adj_vol > 3.0f * avg_volatility) {
+        market_present_antigen(mkt, "volatility_spike", 7);
+    }
+    /* Update rolling average volatility (exponential smoothing) */
+    avg_volatility = 0.95f * avg_volatility + 0.05f * adj_vol;
+
     free(terminal_values);
     free(path_returns);
 
     mkt->stats.monte_carlo_simulations++;
     fin_mkt_heartbeat("monte_carlo_done", 1.0f);
+    market_heartbeat_instance(mkt, "monte_carlo", 1.0f);  /* Phase 8: Change Set 2/3 */
     return 0;
 }
 
@@ -1569,4 +1733,100 @@ void financial_market_reset_stats(financial_market_eng_t* mkt) {
 
 const char* financial_market_get_last_error(void) {
     return fin_mkt_last_error;
+}
+
+//=============================================================================
+// Per-Engine Security Integration Setters
+//=============================================================================
+
+void financial_market_eng_set_immune(financial_market_eng_t* mkt, brain_immune_system_t* immune) {
+    if (mkt) {
+        mkt->immune = immune;
+    }
+}
+
+void financial_market_eng_set_bbb(financial_market_eng_t* mkt, bbb_system_t bbb) {
+    if (mkt) {
+        mkt->bbb = bbb;
+    }
+}
+
+void financial_market_eng_enable_bbb_validation(financial_market_eng_t* mkt, bool enable) {
+    if (mkt) {
+        mkt->enable_bbb_validation = enable;
+    }
+}
+
+void financial_market_eng_enable_immune_validation(financial_market_eng_t* mkt, bool enable) {
+    if (mkt) {
+        mkt->enable_immune_validation = enable;
+    }
+}
+
+//=============================================================================
+// Bio-Async Integration Setters (Change Set 4)
+//=============================================================================
+
+int financial_market_set_bio_async(financial_market_eng_t* mkt, bio_async_context_t* ctx) {
+    if (!mkt) {
+        set_error("set_bio_async: NULL mkt");
+        NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER,
+            "financial_market_set_bio_async: NULL mkt");
+        return FIN_MKT_ERR_NULL;
+    }
+    mkt->bio_async = ctx;
+    mkt->async_enabled = (ctx != NULL);
+    return FIN_MKT_ERR_OK;
+}
+
+int financial_market_set_bio_router(financial_market_eng_t* mkt, bio_router_t* router) {
+    if (!mkt) {
+        set_error("set_bio_router: NULL mkt");
+        NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER,
+            "financial_market_set_bio_router: NULL mkt");
+        return FIN_MKT_ERR_NULL;
+    }
+    mkt->bio_router = router;
+    return FIN_MKT_ERR_OK;
+}
+
+//=============================================================================
+// KG Wiring Setter (Change Set 1)
+//=============================================================================
+
+int financial_market_set_kg_wiring(financial_market_eng_t* mkt, kg_wiring_t* kg) {
+    if (!mkt) {
+        set_error("set_kg_wiring: NULL mkt");
+        NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER,
+            "financial_market_set_kg_wiring: NULL mkt");
+        return FIN_MKT_ERR_NULL;
+    }
+    mkt->kg_wiring = kg;
+    return FIN_MKT_ERR_OK;
+}
+
+//=============================================================================
+// Health Agent and Logger Setters (Phase 8: Change Set 2/3)
+//=============================================================================
+
+int financial_market_set_health_agent(financial_market_eng_t* mkt, void* agent) {
+    if (!mkt) {
+        set_error("set_health_agent: NULL mkt");
+        NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER,
+            "financial_market_set_health_agent: NULL mkt");
+        return FIN_MKT_ERR_NULL;
+    }
+    mkt->health_agent = (nimcp_health_agent_t*)agent;
+    return FIN_MKT_ERR_OK;
+}
+
+int financial_market_set_logger(financial_market_eng_t* mkt, void* logger) {
+    if (!mkt) {
+        set_error("set_logger: NULL mkt");
+        NIMCP_THROW_IMMUNE_RECOVER(NIMCP_ERROR_NULL_POINTER,
+            "financial_market_set_logger: NULL mkt");
+        return FIN_MKT_ERR_NULL;
+    }
+    mkt->logger = logger;
+    return FIN_MKT_ERR_OK;
 }

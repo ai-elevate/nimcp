@@ -9493,6 +9493,19 @@ e2e_parietal_exception/fast:
 .PHONY : e2e_parietal_exception/fast
 
 #=============================================================================
+# Target rules for targets named e2e_parietal_financial_investment
+
+# Build rule for target.
+e2e_parietal_financial_investment: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_parietal_financial_investment
+.PHONY : e2e_parietal_financial_investment
+
+# fast build rule for target.
+e2e_parietal_financial_investment/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/cognitive/parietal/CMakeFiles/e2e_parietal_financial_investment.dir/build.make test/e2e/cognitive/parietal/CMakeFiles/e2e_parietal_financial_investment.dir/build
+.PHONY : e2e_parietal_financial_investment/fast
+
+#=============================================================================
 # Target rules for targets named e2e_cognitive_fault_tolerance_test_health_diagnostic_bridge_e2e
 
 # Build rule for target.
@@ -14704,6 +14717,84 @@ unit_parietal_exception_handling: cmake_check_build_system
 unit_parietal_exception_handling/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_exception_handling.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_exception_handling.dir/build
 .PHONY : unit_parietal_exception_handling/fast
+
+#=============================================================================
+# Target rules for targets named unit_parietal_financial_investment_core
+
+# Build rule for target.
+unit_parietal_financial_investment_core: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_financial_investment_core
+.PHONY : unit_parietal_financial_investment_core
+
+# fast build rule for target.
+unit_parietal_financial_investment_core/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_financial_investment_core.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_financial_investment_core.dir/build
+.PHONY : unit_parietal_financial_investment_core/fast
+
+#=============================================================================
+# Target rules for targets named unit_parietal_financial_market
+
+# Build rule for target.
+unit_parietal_financial_market: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_financial_market
+.PHONY : unit_parietal_financial_market
+
+# fast build rule for target.
+unit_parietal_financial_market/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_financial_market.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_financial_market.dir/build
+.PHONY : unit_parietal_financial_market/fast
+
+#=============================================================================
+# Target rules for targets named unit_parietal_financial_bridge
+
+# Build rule for target.
+unit_parietal_financial_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_financial_bridge
+.PHONY : unit_parietal_financial_bridge
+
+# fast build rule for target.
+unit_parietal_financial_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_financial_bridge.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_financial_bridge.dir/build
+.PHONY : unit_parietal_financial_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_parietal_financial_neural_bridge
+
+# Build rule for target.
+unit_parietal_financial_neural_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_financial_neural_bridge
+.PHONY : unit_parietal_financial_neural_bridge
+
+# fast build rule for target.
+unit_parietal_financial_neural_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_financial_neural_bridge.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_financial_neural_bridge.dir/build
+.PHONY : unit_parietal_financial_neural_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_parietal_financial_investor_archetype
+
+# Build rule for target.
+unit_parietal_financial_investor_archetype: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_financial_investor_archetype
+.PHONY : unit_parietal_financial_investor_archetype
+
+# fast build rule for target.
+unit_parietal_financial_investor_archetype/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_financial_investor_archetype.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_financial_investor_archetype.dir/build
+.PHONY : unit_parietal_financial_investor_archetype/fast
+
+#=============================================================================
+# Target rules for targets named unit_parietal_financial_investment
+
+# Build rule for target.
+unit_parietal_financial_investment: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_financial_investment
+.PHONY : unit_parietal_financial_investment
+
+# fast build rule for target.
+unit_parietal_financial_investment/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_financial_investment.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_financial_investment.dir/build
+.PHONY : unit_parietal_financial_investment/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_meta_learning_snn_bridge
@@ -22961,6 +23052,71 @@ unit_utils_ternary_test_ternary_core/fast:
 .PHONY : unit_utils_ternary_test_ternary_core/fast
 
 #=============================================================================
+# Target rules for targets named unit_fuzzy_types
+
+# Build rule for target.
+unit_fuzzy_types: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_fuzzy_types
+.PHONY : unit_fuzzy_types
+
+# fast build rule for target.
+unit_fuzzy_types/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/fuzzy/CMakeFiles/unit_fuzzy_types.dir/build.make test/unit/utils/fuzzy/CMakeFiles/unit_fuzzy_types.dir/build
+.PHONY : unit_fuzzy_types/fast
+
+#=============================================================================
+# Target rules for targets named unit_fuzzy_operators
+
+# Build rule for target.
+unit_fuzzy_operators: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_fuzzy_operators
+.PHONY : unit_fuzzy_operators
+
+# fast build rule for target.
+unit_fuzzy_operators/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/fuzzy/CMakeFiles/unit_fuzzy_operators.dir/build.make test/unit/utils/fuzzy/CMakeFiles/unit_fuzzy_operators.dir/build
+.PHONY : unit_fuzzy_operators/fast
+
+#=============================================================================
+# Target rules for targets named unit_fuzzy_inference
+
+# Build rule for target.
+unit_fuzzy_inference: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_fuzzy_inference
+.PHONY : unit_fuzzy_inference
+
+# fast build rule for target.
+unit_fuzzy_inference/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/fuzzy/CMakeFiles/unit_fuzzy_inference.dir/build.make test/unit/utils/fuzzy/CMakeFiles/unit_fuzzy_inference.dir/build
+.PHONY : unit_fuzzy_inference/fast
+
+#=============================================================================
+# Target rules for targets named unit_fuzzy_bridge
+
+# Build rule for target.
+unit_fuzzy_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_fuzzy_bridge
+.PHONY : unit_fuzzy_bridge
+
+# fast build rule for target.
+unit_fuzzy_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/fuzzy/CMakeFiles/unit_fuzzy_bridge.dir/build.make test/unit/utils/fuzzy/CMakeFiles/unit_fuzzy_bridge.dir/build
+.PHONY : unit_fuzzy_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_fuzzy_logic
+
+# Build rule for target.
+unit_fuzzy_logic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_fuzzy_logic
+.PHONY : unit_fuzzy_logic
+
+# fast build rule for target.
+unit_fuzzy_logic/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/fuzzy/CMakeFiles/unit_fuzzy_logic.dir/build.make test/unit/utils/fuzzy/CMakeFiles/unit_fuzzy_logic.dir/build
+.PHONY : unit_fuzzy_logic/fast
+
+#=============================================================================
 # Target rules for targets named unit_ternary_exception_handling
 
 # Build rule for target.
@@ -23323,6 +23479,19 @@ integration_parietal_exception: cmake_check_build_system
 integration_parietal_exception/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/parietal/CMakeFiles/integration_parietal_exception.dir/build.make test/integration/cognitive/parietal/CMakeFiles/integration_parietal_exception.dir/build
 .PHONY : integration_parietal_exception/fast
+
+#=============================================================================
+# Target rules for targets named integration_parietal_financial_investment
+
+# Build rule for target.
+integration_parietal_financial_investment: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_parietal_financial_investment
+.PHONY : integration_parietal_financial_investment
+
+# fast build rule for target.
+integration_parietal_financial_investment/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/parietal/CMakeFiles/integration_parietal_financial_investment.dir/build.make test/integration/cognitive/parietal/CMakeFiles/integration_parietal_financial_investment.dir/build
+.PHONY : integration_parietal_financial_investment/fast
 
 #=============================================================================
 # Target rules for targets named integration_thalamic_substrate_bridges
@@ -24935,6 +25104,19 @@ regression_parietal_exception: cmake_check_build_system
 regression_parietal_exception/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/parietal/CMakeFiles/regression_parietal_exception.dir/build.make test/regression/cognitive/parietal/CMakeFiles/regression_parietal_exception.dir/build
 .PHONY : regression_parietal_exception/fast
+
+#=============================================================================
+# Target rules for targets named regression_parietal_financial_investment
+
+# Build rule for target.
+regression_parietal_financial_investment: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_parietal_financial_investment
+.PHONY : regression_parietal_financial_investment
+
+# fast build rule for target.
+regression_parietal_financial_investment/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/parietal/CMakeFiles/regression_parietal_financial_investment.dir/build.make test/regression/cognitive/parietal/CMakeFiles/regression_parietal_financial_investment.dir/build
+.PHONY : regression_parietal_financial_investment/fast
 
 #=============================================================================
 # Target rules for targets named regression_imagination_fep
@@ -34843,6 +35025,45 @@ integration_error_propagation/fast:
 .PHONY : integration_error_propagation/fast
 
 #=============================================================================
+# Target rules for targets named integration_fuzzy_logic
+
+# Build rule for target.
+integration_fuzzy_logic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_fuzzy_logic
+.PHONY : integration_fuzzy_logic
+
+# fast build rule for target.
+integration_fuzzy_logic/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/utils/fuzzy/CMakeFiles/integration_fuzzy_logic.dir/build.make test/integration/utils/fuzzy/CMakeFiles/integration_fuzzy_logic.dir/build
+.PHONY : integration_fuzzy_logic/fast
+
+#=============================================================================
+# Target rules for targets named regression_fuzzy_logic
+
+# Build rule for target.
+regression_fuzzy_logic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_fuzzy_logic
+.PHONY : regression_fuzzy_logic
+
+# fast build rule for target.
+regression_fuzzy_logic/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/utils/fuzzy/CMakeFiles/regression_fuzzy_logic.dir/build.make test/regression/utils/fuzzy/CMakeFiles/regression_fuzzy_logic.dir/build
+.PHONY : regression_fuzzy_logic/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fuzzy_logic
+
+# Build rule for target.
+e2e_fuzzy_logic: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fuzzy_logic
+.PHONY : e2e_fuzzy_logic
+
+# fast build rule for target.
+e2e_fuzzy_logic/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/utils/fuzzy/CMakeFiles/e2e_fuzzy_logic.dir/build.make test/e2e/utils/fuzzy/CMakeFiles/e2e_fuzzy_logic.dir/build
+.PHONY : e2e_fuzzy_logic/fast
+
+#=============================================================================
 # Target rules for targets named simple_demo
 
 # Build rule for target.
@@ -35235,6 +35456,8 @@ help:
 	@echo "... test_exception_regression"
 	@echo "... test_exception_stability"
 	@echo "... test_portia_integration"
+	@echo "... unit_fuzzy_logic"
+	@echo "... unit_parietal_financial_investment"
 	@echo "... bench_benchmark_complex_fft"
 	@echo "... bench_benchmark_complex_pac_detection"
 	@echo "... bench_benchmark_complex_vs_real_oscillations"
@@ -35329,6 +35552,7 @@ help:
 	@echo "... e2e_fault_tolerance_test_symbolic_logic_health_e2e"
 	@echo "... e2e_fault_tolerance_test_thalamic_middleware_health_e2e"
 	@echo "... e2e_fault_tolerance_test_world_imagination_health_e2e"
+	@echo "... e2e_fuzzy_logic"
 	@echo "... e2e_gpu_test_e2e_brain_simulation_gpu"
 	@echo "... e2e_gpu_test_e2e_cognitive_processing_gpu"
 	@echo "... e2e_gpu_test_e2e_dragonfly_hunting_gpu"
@@ -35344,6 +35568,7 @@ help:
 	@echo "... e2e_neuro_symbolic_test_gauss_sum_formula_e2e"
 	@echo "... e2e_neuro_symbolic_test_quantum_planning_e2e"
 	@echo "... e2e_parietal_exception"
+	@echo "... e2e_parietal_financial_investment"
 	@echo "... e2e_plasticity_eligibility_utils_quantum"
 	@echo "... e2e_plasticity_module_exception"
 	@echo "... e2e_snn_bridge_exception"
@@ -35772,6 +35997,7 @@ help:
 	@echo "... integration_executive_cognitive"
 	@echo "... integration_fault_tolerance"
 	@echo "... integration_fep_enhanced"
+	@echo "... integration_fuzzy_logic"
 	@echo "... integration_genius_bridges_exception"
 	@echo "... integration_genius_orchestrator"
 	@echo "... integration_glial_test_glial_integration"
@@ -35884,6 +36110,7 @@ help:
 	@echo "... integration_optimization_test_multi_objective_integration"
 	@echo "... integration_parietal_exception"
 	@echo "... integration_parietal_fep"
+	@echo "... integration_parietal_financial_investment"
 	@echo "... integration_parietal_test_parietal_fep_integration"
 	@echo "... integration_parietal_training"
 	@echo "... integration_perception_exception_test_perception_exception_integration"
@@ -36230,6 +36457,7 @@ help:
 	@echo "... regression_exception_typed_regression"
 	@echo "... regression_fault_tolerance"
 	@echo "... regression_fep_bridges"
+	@echo "... regression_fuzzy_logic"
 	@echo "... regression_game_theory"
 	@echo "... regression_game_theory_fep"
 	@echo "... regression_genius_bridges_exception"
@@ -36341,6 +36569,7 @@ help:
 	@echo "... regression_parietal_exception"
 	@echo "... regression_parietal_fep"
 	@echo "... regression_parietal_fep_orchestrator_bridge"
+	@echo "... regression_parietal_financial_investment"
 	@echo "... regression_perception_test_lip_reading_backward_compat"
 	@echo "... regression_perception_test_lip_reading_signal_regression"
 	@echo "... regression_physics_biophysics_test_hh_regression"
@@ -37285,6 +37514,10 @@ help:
 	@echo "... unit_fep_planning"
 	@echo "... unit_fep_sleep"
 	@echo "... unit_flow_tracker_bio_async"
+	@echo "... unit_fuzzy_bridge"
+	@echo "... unit_fuzzy_inference"
+	@echo "... unit_fuzzy_operators"
+	@echo "... unit_fuzzy_types"
 	@echo "... unit_genius_bridges_exception_handling"
 	@echo "... unit_genius_plasticity_bridge"
 	@echo "... unit_genius_snn_bridge"
@@ -37559,6 +37792,11 @@ help:
 	@echo "... unit_parietal_equation_manipulation"
 	@echo "... unit_parietal_exception_handling"
 	@echo "... unit_parietal_fep_bridge"
+	@echo "... unit_parietal_financial_bridge"
+	@echo "... unit_parietal_financial_investment_core"
+	@echo "... unit_parietal_financial_investor_archetype"
+	@echo "... unit_parietal_financial_market"
+	@echo "... unit_parietal_financial_neural_bridge"
 	@echo "... unit_parietal_hypothesis_generation"
 	@echo "... unit_parietal_insight_discovery"
 	@echo "... unit_parietal_intuition_integrations"
