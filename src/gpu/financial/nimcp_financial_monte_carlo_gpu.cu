@@ -34,6 +34,16 @@
 #include "gpu/common/nimcp_cuda_utils.h"
 
 //=============================================================================
+// Forward Declarations
+//=============================================================================
+
+// RNG initialization kernel (defined in nimcp_financial_gpu_rng.cu or locally)
+__global__ void kernel_init_rng_states(
+    curandState* states,
+    uint64_t seed,
+    uint32_t num_states);
+
+//=============================================================================
 // Thread-Local Error Storage
 //=============================================================================
 
@@ -672,70 +682,77 @@ bool fin_monte_carlo_gpu_simulate(
     NIMCP_CUDA_CHECK_LAST();
 
     // Compute statistics using reduction
-    uint32_t reduce_blocks = (params->num_paths + block_size * 2 - 1) / (block_size * 2);
-    float* d_partial_sums = NULL;
-    float* d_partial_sq_sums = NULL;
+    {
+        uint32_t reduce_blocks = (params->num_paths + block_size * 2 - 1) / (block_size * 2);
+        float* d_partial_sums = NULL;
+        float* d_partial_sq_sums = NULL;
+        float* h_partial_sums = NULL;
+        float* h_partial_sq_sums = NULL;
+        float total_sum = 0.0f;
+        float total_sq_sum = 0.0f;
+        float n_paths, mean, variance, discount;
 
-    err = cudaMalloc(&d_partial_sums, reduce_blocks * sizeof(float));
-    if (err != cudaSuccess) {
-        goto cleanup;
-    }
-    err = cudaMalloc(&d_partial_sq_sums, reduce_blocks * sizeof(float));
-    if (err != cudaSuccess) {
-        cudaFree(d_partial_sums);
-        goto cleanup;
-    }
+        err = cudaMalloc(&d_partial_sums, reduce_blocks * sizeof(float));
+        if (err != cudaSuccess) {
+            goto cleanup;
+        }
+        err = cudaMalloc(&d_partial_sq_sums, reduce_blocks * sizeof(float));
+        if (err != cudaSuccess) {
+            cudaFree(d_partial_sums);
+            goto cleanup;
+        }
 
-    kernel_reduce_mean_variance<<<reduce_blocks, block_size,
-                                  2 * block_size * sizeof(float), stream>>>(
-        d_terminal_values, d_partial_sums, d_partial_sq_sums, params->num_paths);
+        kernel_reduce_mean_variance<<<reduce_blocks, block_size,
+                                      2 * block_size * sizeof(float), stream>>>(
+            d_terminal_values, d_partial_sums, d_partial_sq_sums, params->num_paths);
 
-    // Copy partial results to host and finalize
-    float* h_partial_sums = (float*)malloc(reduce_blocks * sizeof(float));
-    float* h_partial_sq_sums = (float*)malloc(reduce_blocks * sizeof(float));
+        // Copy partial results to host and finalize
+        h_partial_sums = (float*)malloc(reduce_blocks * sizeof(float));
+        h_partial_sq_sums = (float*)malloc(reduce_blocks * sizeof(float));
 
-    if (!h_partial_sums || !h_partial_sq_sums) {
+        if (!h_partial_sums || !h_partial_sq_sums) {
+            free(h_partial_sums);
+            free(h_partial_sq_sums);
+            cudaFree(d_partial_sums);
+            cudaFree(d_partial_sq_sums);
+            set_mc_error("Host allocation failed");
+            goto cleanup;
+        }
+
+        NIMCP_CUDA_CHECK(cudaMemcpyAsync(h_partial_sums, d_partial_sums,
+                                          reduce_blocks * sizeof(float),
+                                          cudaMemcpyDeviceToHost, stream));
+        NIMCP_CUDA_CHECK(cudaMemcpyAsync(h_partial_sq_sums, d_partial_sq_sums,
+                                          reduce_blocks * sizeof(float),
+                                          cudaMemcpyDeviceToHost, stream));
+        NIMCP_CUDA_CHECK(cudaStreamSynchronize(stream));
+
+        // Final reduction on CPU
+        for (uint32_t i = 0; i < reduce_blocks; i++) {
+            total_sum += h_partial_sums[i];
+            total_sq_sum += h_partial_sq_sums[i];
+        }
+
+        n_paths = (float)params->num_paths;
+        mean = total_sum / n_paths;
+        variance = (total_sq_sum / n_paths) - (mean * mean);
+
+        // Discount to present value
+        discount = expf(-params->drift * params->time_horizon);
+
+        result->mean_value = mean * discount;
+        result->std_error = sqrtf(variance / n_paths) * discount;
+        result->variance = variance * discount * discount;
+        result->num_paths = params->num_paths;
+
+        // Cleanup partial arrays
         free(h_partial_sums);
         free(h_partial_sq_sums);
         cudaFree(d_partial_sums);
         cudaFree(d_partial_sq_sums);
-        set_mc_error("Host allocation failed");
-        goto cleanup;
     }
 
-    NIMCP_CUDA_CHECK(cudaMemcpyAsync(h_partial_sums, d_partial_sums,
-                                      reduce_blocks * sizeof(float),
-                                      cudaMemcpyDeviceToHost, stream));
-    NIMCP_CUDA_CHECK(cudaMemcpyAsync(h_partial_sq_sums, d_partial_sq_sums,
-                                      reduce_blocks * sizeof(float),
-                                      cudaMemcpyDeviceToHost, stream));
-    NIMCP_CUDA_CHECK(cudaStreamSynchronize(stream));
-
-    // Final reduction on CPU
-    float total_sum = 0.0f;
-    float total_sq_sum = 0.0f;
-    for (uint32_t i = 0; i < reduce_blocks; i++) {
-        total_sum += h_partial_sums[i];
-        total_sq_sum += h_partial_sq_sums[i];
-    }
-
-    float n = (float)params->num_paths;
-    float mean = total_sum / n;
-    float variance = (total_sq_sum / n) - (mean * mean);
-
-    // Discount to present value
-    float discount = expf(-params->drift * params->time_horizon);
-
-    result->mean_value = mean * discount;
-    result->std_error = sqrtf(variance / n) * discount;
-    result->variance = variance * discount * discount;
-    result->num_paths = params->num_paths;
-
-    // Cleanup
-    free(h_partial_sums);
-    free(h_partial_sq_sums);
-    cudaFree(d_partial_sums);
-    cudaFree(d_partial_sq_sums);
+    // Cleanup main allocations
     cudaFree(d_terminal_values);
     cudaFree(d_rng_states);
 
@@ -1098,12 +1115,6 @@ cleanup_mc_multi:
 const char* fin_monte_carlo_gpu_get_last_error(void) {
     return g_mc_error;
 }
-
-// Forward declaration for RNG init kernel
-__global__ void kernel_init_rng_states(
-    curandState* states,
-    uint64_t seed,
-    uint32_t n);
 
 } // extern "C"
 

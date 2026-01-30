@@ -79,6 +79,16 @@ static inline float kahan_sum(const float* data, uint32_t n) {
     float sum = 0.0f;
     float c = 0.0f;
     for (uint32_t i = 0; i < n; i++) {
+        // Handle special values: NaN propagates, infinity propagates
+        if (isnan(data[i])) return NAN;
+        if (isinf(data[i])) {
+            // Check for inf - inf = NaN situation
+            if (isinf(sum) && ((data[i] > 0) != (sum > 0))) return NAN;
+            sum += data[i];
+            continue;
+        }
+        if (isinf(sum)) continue;  // inf + finite = inf, skip Kahan compensation
+
         float y = data[i] - c;
         float t = sum + y;
         c = (t - sum) - y;
@@ -727,7 +737,9 @@ float nimcp_stats_pdf_exponential(float x, float lambda) {
 }
 
 float nimcp_stats_pdf_gamma(float x, float shape, float scale) {
-    if (shape <= 0.0f || scale <= 0.0f || x <= 0.0f) return 0.0f;
+    if (shape <= 0.0f || scale <= 0.0f) return NAN;  // Invalid distribution params
+    if (x < 0.0f) return 0.0f;  // PDF is 0 for negative x
+    if (x == 0.0f) return (shape < 1.0f) ? INFINITY : (shape == 1.0f ? 1.0f / scale : 0.0f);
     double k = shape, theta = scale;
     return (float)(pow(x, k - 1) * exp(-x / theta) / (pow(theta, k) * exp(nimcp_stats_lgamma(k))));
 }
@@ -1200,6 +1212,7 @@ nimcp_stats_result_t nimcp_stats_ttest_one_sample(
 ) {
     if (!data || !result) return NIMCP_STATS_ERROR_NULL;
     if (n < 2) return NIMCP_STATS_ERROR_SIZE;
+    if (confidence <= 0.0f || confidence >= 1.0f) return NIMCP_STATS_ERROR_PARAMS;
 
     float mean = nimcp_stats_mean(data, n);
     float se = nimcp_stats_std_error(data, n);
@@ -1373,6 +1386,62 @@ nimcp_stats_result_t nimcp_stats_ttest_paired(
     return res;
 }
 
+nimcp_stats_result_t nimcp_stats_chi_squared_gof(
+    const float* observed,
+    const float* expected,
+    uint32_t n,
+    nimcp_test_result_t* result
+) {
+    if (!observed || !expected || !result) return NIMCP_STATS_ERROR_NULL;
+    if (n < 2) return NIMCP_STATS_ERROR_SIZE;
+
+    // Compute chi-squared statistic
+    float chi_sq = 0.0f;
+    for (uint32_t i = 0; i < n; i++) {
+        if (expected[i] <= 0.0f) {
+            return NIMCP_STATS_ERROR_PARAMS;  // Expected must be positive
+        }
+        float diff = observed[i] - expected[i];
+        chi_sq += (diff * diff) / expected[i];
+    }
+
+    // Degrees of freedom = n - 1
+    float df = (float)(n - 1);
+
+    // Compute p-value using chi-squared CDF
+    // Using incomplete gamma function approximation
+    // P(X > chi_sq) = 1 - gamma(df/2, chi_sq/2) / Gamma(df/2)
+    // Approximate using Wilson-Hilferty transformation for large df
+    float p_value;
+    if (df > 0) {
+        // Wilson-Hilferty approximation: transform to approximately normal
+        float k = df;
+        float z = powf(chi_sq / k, 1.0f / 3.0f) - (1.0f - 2.0f / (9.0f * k));
+        z /= sqrtf(2.0f / (9.0f * k));
+
+        // Standard normal CDF approximation
+        float t = 1.0f / (1.0f + 0.2316419f * fabsf(z));
+        float d = 0.3989423f * expf(-z * z / 2.0f);
+        float p = d * t * (0.3193815f + t * (-0.3565638f + t * (1.781478f + t * (-1.821256f + t * 1.330274f))));
+        if (z > 0) {
+            p_value = p;
+        } else {
+            p_value = 1.0f - p;
+        }
+    } else {
+        p_value = 1.0f;
+    }
+
+    result->statistic = chi_sq;
+    result->p_value = p_value;
+    result->df = df;
+    result->reject_null = (p_value < 0.05f);
+    result->ci_lower = 0.0f;  // Not applicable for chi-squared
+    result->ci_upper = 0.0f;
+
+    return NIMCP_STATS_OK;
+}
+
 //=============================================================================
 // Correlation Analysis
 //=============================================================================
@@ -1424,6 +1493,122 @@ nimcp_stats_result_t nimcp_stats_correlation_pearson(
     result->df = (float)(n - 2);
 
     // t-statistic for significance
+    result->t_statistic = result->r * sqrtf(result->df / (1.0f - result->r_squared + 1e-10f));
+    result->p_value = 2.0f * (1.0f - nimcp_stats_cdf_student_t(fabsf(result->t_statistic), result->df));
+
+    // Fisher z-transformation for CI
+    float z = 0.5f * logf((1.0f + result->r) / (1.0f - result->r + 1e-10f));
+    float se_z = 1.0f / sqrtf((float)(n - 3));
+    float z_crit = 1.96f;  // 95% CI
+    float z_lower = z - z_crit * se_z;
+    float z_upper = z + z_crit * se_z;
+    result->ci_lower = tanhf(z_lower);
+    result->ci_upper = tanhf(z_upper);
+
+    return NIMCP_STATS_OK;
+}
+
+/**
+ * @brief Helper to compute ranks for Spearman correlation
+ */
+static void compute_ranks(const float* data, float* ranks, uint32_t n) {
+    // Create index array
+    uint32_t* indices = (uint32_t*)malloc(n * sizeof(uint32_t));
+    for (uint32_t i = 0; i < n; i++) {
+        indices[i] = i;
+    }
+
+    // Sort indices by data values (insertion sort for simplicity)
+    for (uint32_t i = 1; i < n; i++) {
+        uint32_t key = indices[i];
+        int32_t j = (int32_t)i - 1;
+        while (j >= 0 && data[indices[j]] > data[key]) {
+            indices[j + 1] = indices[j];
+            j--;
+        }
+        indices[j + 1] = key;
+    }
+
+    // Assign ranks (handling ties by averaging)
+    uint32_t i = 0;
+    while (i < n) {
+        uint32_t j = i;
+        // Find all tied values
+        while (j < n - 1 && data[indices[j]] == data[indices[j + 1]]) {
+            j++;
+        }
+        // Average rank for tied values
+        float avg_rank = (float)(i + j) / 2.0f + 1.0f;
+        for (uint32_t k = i; k <= j; k++) {
+            ranks[indices[k]] = avg_rank;
+        }
+        i = j + 1;
+    }
+
+    free(indices);
+}
+
+nimcp_stats_result_t nimcp_stats_correlation_spearman(
+    const float* x,
+    const float* y,
+    uint32_t n,
+    nimcp_correlation_result_t* result
+) {
+    if (!x || !y || !result) return NIMCP_STATS_ERROR_NULL;
+    if (n < 3) return NIMCP_STATS_ERROR_SIZE;
+
+    // Allocate rank arrays
+    float* rank_x = (float*)malloc(n * sizeof(float));
+    float* rank_y = (float*)malloc(n * sizeof(float));
+    if (!rank_x || !rank_y) {
+        free(rank_x);
+        free(rank_y);
+        return NIMCP_STATS_ERROR_MEMORY;
+    }
+
+    // Compute ranks
+    compute_ranks(x, rank_x, n);
+    compute_ranks(y, rank_y, n);
+
+    // Compute Pearson correlation on ranks (this is Spearman's rho)
+    float mean_rx = 0.0f, mean_ry = 0.0f;
+    for (uint32_t i = 0; i < n; i++) {
+        mean_rx += rank_x[i];
+        mean_ry += rank_y[i];
+    }
+    mean_rx /= n;
+    mean_ry /= n;
+
+    float sum_xy = 0.0f, sum_x2 = 0.0f, sum_y2 = 0.0f;
+    for (uint32_t i = 0; i < n; i++) {
+        float dx = rank_x[i] - mean_rx;
+        float dy = rank_y[i] - mean_ry;
+        sum_xy += dx * dy;
+        sum_x2 += dx * dx;
+        sum_y2 += dy * dy;
+    }
+
+    free(rank_x);
+    free(rank_y);
+
+    if (sum_x2 == 0.0f || sum_y2 == 0.0f) {
+        result->r = 0.0f;
+        result->p_value = 1.0f;
+        result->r_squared = 0.0f;
+        result->n = n;
+        result->df = (float)(n - 2);
+        result->t_statistic = 0.0f;
+        result->ci_lower = 0.0f;
+        result->ci_upper = 0.0f;
+        return NIMCP_STATS_OK;
+    }
+
+    result->r = sum_xy / sqrtf(sum_x2 * sum_y2);
+    result->r_squared = result->r * result->r;
+    result->n = n;
+    result->df = (float)(n - 2);
+
+    // t-statistic for significance (same as Pearson)
     result->t_statistic = result->r * sqrtf(result->df / (1.0f - result->r_squared + 1e-10f));
     result->p_value = 2.0f * (1.0f - nimcp_stats_cdf_student_t(fabsf(result->t_statistic), result->df));
 
@@ -1859,7 +2044,8 @@ const char* nimcp_stats_error_string(nimcp_stats_result_t result) {
 //=============================================================================
 
 float nimcp_stats_channel_capacity(float bandwidth, float snr) {
-    if (bandwidth <= 0.0f || snr < 0.0f) return NAN;
+    if (bandwidth < 0.0f || snr < 0.0f) return NAN;  // Invalid params
+    if (bandwidth == 0.0f) return 0.0f;  // Zero bandwidth = zero capacity
     // Shannon-Hartley theorem: C = B × log₂(1 + SNR)
     return bandwidth * log2f(1.0f + snr);
 }

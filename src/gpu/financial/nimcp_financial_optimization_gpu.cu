@@ -431,6 +431,18 @@ bool fin_optimization_gpu_mean_variance(
     cublasHandle_t cublas = get_cublas_handle();
     cublasSetStream(cublas, stream);
 
+    // Pre-declare all variables to avoid "transfer of control bypasses initialization"
+    float init_weight = 0.0f;
+    float* h_init = NULL;
+    uint32_t block_size = 0;
+    uint32_t grid_size = 0;
+    float learning_rate = 0.0f;
+    float momentum_coef = 0.0f;
+    uint32_t max_iter = 0;
+    float one = 1.0f;
+    float h_variance = 0.0f;
+    float h_return = 0.0f;
+
     // Allocate device memory
     float* d_returns = NULL;
     float* d_covariance = NULL;
@@ -468,8 +480,8 @@ bool fin_optimization_gpu_mean_variance(
                     cudaMemcpyHostToDevice, stream);
 
     // Initialize weights uniformly
-    float init_weight = 1.0f / (float)n;
-    float* h_init = (float*)malloc(n * sizeof(float));
+    init_weight = 1.0f / (float)n;
+    h_init = (float*)malloc(n * sizeof(float));
     for (uint32_t i = 0; i < n; i++) {
         h_init[i] = init_weight;
     }
@@ -491,13 +503,13 @@ bool fin_optimization_gpu_mean_variance(
                         cudaMemcpyHostToDevice, stream);
     }
 
-    uint32_t block_size = min(256u, n);
-    uint32_t grid_size = NIMCP_CUDA_GRID_SIZE(n, block_size);
+    block_size = min(256u, n);
+    grid_size = NIMCP_CUDA_GRID_SIZE(n, block_size);
 
     // Optimization loop
-    float learning_rate = params->learning_rate > 0 ? params->learning_rate : 0.01f;
-    float momentum_coef = 0.9f;
-    uint32_t max_iter = params->max_iterations > 0 ? params->max_iterations : 1000;
+    learning_rate = params->learning_rate > 0 ? params->learning_rate : 0.01f;
+    momentum_coef = 0.9f;
+    max_iter = params->max_iterations > 0 ? params->max_iterations : 1000;
 
     for (uint32_t iter = 0; iter < max_iter; iter++) {
         // Compute gradient: 2 * Cov @ w - risk_aversion * mu
@@ -529,12 +541,10 @@ bool fin_optimization_gpu_mean_variance(
     kernel_portfolio_variance<<<grid_size, block_size, n * sizeof(float), stream>>>(
         d_covariance, d_weights, d_temp, n);
 
-    float h_variance;
-    float one = 1.0f;
+    one = 1.0f;
     cublasSdot(cublas, n, d_weights, 1, d_temp, 1, &h_variance);
 
     // Portfolio return: mu^T @ w
-    float h_return;
     cublasSdot(cublas, n, d_returns, 1, d_weights, 1, &h_return);
 
     cudaStreamSynchronize(stream);
@@ -683,6 +693,15 @@ bool fin_optimization_gpu_risk_parity(
     cublasHandle_t cublas = get_cublas_handle();
     cublasSetStream(cublas, stream);
 
+    // Pre-declare variables to avoid goto initialization issues
+    float init_weight = 0.0f;
+    float* h_weights = NULL;
+    uint32_t block_size = 0;
+    uint32_t grid_size = 0;
+    float rc_target = 0.0f;
+    float learning_rate = 0.0f;
+    uint32_t max_iter = 0;
+
     // Allocate device memory
     float* d_covariance = NULL;
     float* d_weights = NULL;
@@ -716,8 +735,8 @@ bool fin_optimization_gpu_risk_parity(
                     cudaMemcpyHostToDevice, stream);
 
     // Initialize weights uniformly
-    float init_weight = 1.0f / (float)n;
-    float* h_weights = (float*)malloc(n * sizeof(float));
+    init_weight = 1.0f / (float)n;
+    h_weights = (float*)malloc(n * sizeof(float));
     for (uint32_t i = 0; i < n; i++) {
         h_weights[i] = init_weight;
     }
@@ -725,12 +744,12 @@ bool fin_optimization_gpu_risk_parity(
                     cudaMemcpyHostToDevice, stream);
     free(h_weights);
 
-    uint32_t block_size = min(256u, n);
-    uint32_t grid_size = NIMCP_CUDA_GRID_SIZE(n, block_size);
+    block_size = min(256u, n);
+    grid_size = NIMCP_CUDA_GRID_SIZE(n, block_size);
 
-    float rc_target = 1.0f / (float)n;  // Equal risk contribution
-    float learning_rate = params->learning_rate > 0 ? params->learning_rate : 0.01f;
-    uint32_t max_iter = params->max_iterations > 0 ? params->max_iterations : 1000;
+    rc_target = 1.0f / (float)n;  // Equal risk contribution
+    learning_rate = params->learning_rate > 0 ? params->learning_rate : 0.01f;
+    max_iter = params->max_iterations > 0 ? params->max_iterations : 1000;
 
     for (uint32_t iter = 0; iter < max_iter; iter++) {
         // Compute Cov @ w
@@ -852,19 +871,6 @@ bool fin_optimization_gpu_mean_variance(
 {
     (void)ctx; (void)expected_returns; (void)covariance_matrix;
     (void)params; (void)result;
-    return false;
-}
-
-bool fin_optimization_gpu_efficient_frontier(
-    nimcp_gpu_context_t* ctx,
-    const float* expected_returns,
-    const float* covariance_matrix,
-    const fin_optimization_gpu_params_t* params,
-    uint32_t num_points,
-    fin_efficient_frontier_result_t* result)
-{
-    (void)ctx; (void)expected_returns; (void)covariance_matrix;
-    (void)params; (void)num_points; (void)result;
     return false;
 }
 

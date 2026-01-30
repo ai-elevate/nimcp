@@ -137,3 +137,21 @@ add_gpu_integration_test(test_gpu_integration)
 add_gpu_integration_test(test_gpu_execution_mode_integration)
 add_gpu_integration_test(test_gpu_neuron_integration)
 add_gpu_integration_test(test_gpu_spike_event_integration)
+
+# =============================================================================
+# Subdirectory Integration Tests
+# =============================================================================
+# Include exception GPU integration tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/exception/CMakeLists.txt)
+    add_subdirectory(exception)
+endif()
+
+# Include fuzzy GPU integration tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/fuzzy/CMakeLists.txt)
+    add_subdirectory(fuzzy)
+endif()
+
+# Include financial GPU integration tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/financial/CMakeLists.txt)
+    add_subdirectory(financial)
+endif()

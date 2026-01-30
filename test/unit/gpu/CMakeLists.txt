@@ -132,3 +132,13 @@ add_subdirectory(exception)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/cognitive/CMakeLists.txt)
     add_subdirectory(cognitive)
 endif()
+
+# Include fuzzy GPU tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/fuzzy/CMakeLists.txt)
+    add_subdirectory(fuzzy)
+endif()
+
+# Include financial GPU tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/financial/CMakeLists.txt)
+    add_subdirectory(financial)
+endif()

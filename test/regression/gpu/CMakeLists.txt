@@ -87,3 +87,23 @@ add_gpu_regression_test(test_visual_processing_regression)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/broca/CMakeLists.txt)
     add_subdirectory(broca)
 endif()
+
+# =============================================================================
+# GPU Fuzzy Regression Tests
+# =============================================================================
+# WHAT: Regression tests for GPU-accelerated fuzzy logic operations
+# WHY:  Prevent reintroduction of fuzzy GPU bugs (numerical, overflow, etc.)
+# HOW:  Test specific bug scenarios, numerical stability, edge cases
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_fuzzy_gpu_regression.cpp)
+    add_gpu_regression_test(test_fuzzy_gpu_regression)
+endif()
+
+# =============================================================================
+# GPU Financial Regression Tests
+# =============================================================================
+# WHAT: Regression tests for GPU-accelerated financial operations
+# WHY:  Prevent reintroduction of financial GPU bugs (Monte Carlo, options, etc.)
+# HOW:  Test specific bug scenarios, numerical stability, edge cases
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_financial_gpu_regression.cpp)
+    add_gpu_regression_test(test_financial_gpu_regression)
+endif()

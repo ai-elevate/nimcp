@@ -1013,7 +1013,7 @@ __global__ void kernel_argmax(
 /**
  * @brief Compute mean across frames
  */
-__global__ void kernel_compute_mean(
+static __global__ void kernel_compute_mean(
     const float* __restrict__ features,
     float* __restrict__ mean,
     int num_frames,

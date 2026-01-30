@@ -117,7 +117,7 @@ qmc_sat_gpu_config_t qmc_sat_gpu_default_config(uint32_t num_vars, uint32_t num_
 // RNG Kernels
 //=============================================================================
 
-__global__ void kernel_init_curand(curandState* states, uint64_t seed, uint32_t n)
+static __global__ void kernel_init_curand(curandState* states, uint64_t seed, uint32_t n)
 {
     uint32_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= n) return;
@@ -125,7 +125,7 @@ __global__ void kernel_init_curand(curandState* states, uint64_t seed, uint32_t 
     curand_init(seed, idx, 0, &states[idx]);
 }
 
-__global__ void kernel_generate_uniform(
+static __global__ void kernel_generate_uniform(
     curandState* states,
     float* output,
     uint32_t n)

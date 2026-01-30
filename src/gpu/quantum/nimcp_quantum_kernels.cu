@@ -423,7 +423,7 @@ __global__ void kernel_grover_oracle(
 /**
  * @brief Kernel to compute mean amplitude for diffusion
  */
-__global__ void kernel_compute_mean(
+static __global__ void kernel_compute_mean(
     const float* real, const float* imag,
     float* mean_real, float* mean_imag, size_t n_states)
 {

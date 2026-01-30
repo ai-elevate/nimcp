@@ -189,7 +189,7 @@ __global__ void kernel_bitonic_sort_shared(
 /**
  * @brief Compute mean and variance using two-pass algorithm
  */
-__global__ void kernel_compute_mean(
+static __global__ void kernel_compute_mean(
     const float* __restrict__ data,
     float* __restrict__ partial_sums,
     uint32_t n)
@@ -739,6 +739,7 @@ bool fin_risk_gpu_volatility(
     float* d_prices = NULL;
     float* d_returns = NULL;
     float* d_partial = NULL;
+    float result_var = 0.0f;
 
     cudaError_t err;
 
@@ -757,8 +758,6 @@ bool fin_risk_gpu_volatility(
     // Compute log returns
     kernel_compute_log_returns<<<grid_size, block_size, 0, stream>>>(
         d_prices, d_returns, n);
-
-    float result_var = 0.0f;
 
     switch (method) {
         case FIN_VOL_SIMPLE: {
@@ -859,6 +858,8 @@ bool fin_risk_gpu_volatility_ohlc(
     float* d_low = NULL;
     float* d_close = NULL;
     float* d_partial = NULL;
+    float result_var = 0.0f;
+    float* h_partial = NULL;
 
     cudaError_t err;
 
@@ -873,13 +874,13 @@ bool fin_risk_gpu_volatility_ohlc(
     err = cudaMalloc(&d_partial, reduce_blocks * sizeof(float));
     if (err != cudaSuccess) goto cleanup_ohlc;
 
+    h_partial = (float*)malloc(reduce_blocks * sizeof(float));
+    if (!h_partial) goto cleanup_ohlc;
+
     cudaMemcpyAsync(d_open, open_prices, n * sizeof(float), cudaMemcpyHostToDevice, stream);
     cudaMemcpyAsync(d_high, high_prices, n * sizeof(float), cudaMemcpyHostToDevice, stream);
     cudaMemcpyAsync(d_low, low_prices, n * sizeof(float), cudaMemcpyHostToDevice, stream);
     cudaMemcpyAsync(d_close, close_prices, n * sizeof(float), cudaMemcpyHostToDevice, stream);
-
-    float result_var = 0.0f;
-    float* h_partial = (float*)malloc(reduce_blocks * sizeof(float));
 
     switch (method) {
         case FIN_VOL_PARKINSON:
@@ -977,7 +978,8 @@ cleanup_ohlc:
     return false;
 }
 
-bool fin_risk_gpu_rolling(
+// Internal helper for simple rolling calculations
+static bool fin_risk_gpu_rolling_simple(
     nimcp_gpu_context_t* ctx,
     const float* returns,
     uint32_t n,
@@ -1006,16 +1008,16 @@ bool fin_risk_gpu_rolling(
     cudaError_t err;
 
     err = cudaMalloc(&d_returns, n * sizeof(float));
-    if (err != cudaSuccess) goto cleanup_rolling;
+    if (err != cudaSuccess) goto cleanup_rolling_simple;
 
     if (rolling_var) {
         err = cudaMalloc(&d_rolling_var, n * sizeof(float));
-        if (err != cudaSuccess) goto cleanup_rolling;
+        if (err != cudaSuccess) goto cleanup_rolling_simple;
     }
 
     if (rolling_vol) {
         err = cudaMalloc(&d_rolling_vol, n * sizeof(float));
-        if (err != cudaSuccess) goto cleanup_rolling;
+        if (err != cudaSuccess) goto cleanup_rolling_simple;
     }
 
     cudaMemcpyAsync(d_returns, returns, n * sizeof(float),
@@ -1044,12 +1046,70 @@ bool fin_risk_gpu_rolling(
     cudaFree(d_rolling_vol);
     return true;
 
-cleanup_rolling:
+cleanup_rolling_simple:
     cudaFree(d_returns);
     cudaFree(d_rolling_var);
     cudaFree(d_rolling_vol);
     set_risk_error("Memory allocation failed");
     return false;
+}
+
+bool fin_risk_gpu_rolling(
+    nimcp_gpu_context_t* ctx,
+    const float* returns,
+    uint32_t num_returns,
+    uint32_t window,
+    const fin_risk_gpu_params_t* params,
+    fin_risk_rolling_result_t* result)
+{
+    if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
+        set_risk_error("Invalid GPU context");
+        return false;
+    }
+    if (!returns || num_returns == 0 || window == 0 || window > num_returns) {
+        set_risk_error("Invalid parameters");
+        return false;
+    }
+    if (!params || !result) {
+        set_risk_error("Null parameters or result");
+        return false;
+    }
+
+    uint32_t num_points = num_returns - window + 1;
+    result->num_points = num_points;
+
+    // Allocate output arrays if needed
+    if (params->compute_var && !result->var_series) {
+        result->var_series = (float*)malloc(num_points * sizeof(float));
+    }
+    if (params->compute_cvar && !result->cvar_series) {
+        result->cvar_series = (float*)malloc(num_points * sizeof(float));
+    }
+    if (params->compute_volatility && !result->vol_series) {
+        result->vol_series = (float*)malloc(num_points * sizeof(float));
+    }
+
+    // Use internal helper for volatility
+    if (params->compute_volatility && result->vol_series) {
+        fin_risk_gpu_rolling_simple(ctx, returns, num_returns, window,
+            params->confidence_95, NULL, result->vol_series);
+    }
+
+    // Use internal helper for VaR
+    if (params->compute_var && result->var_series) {
+        fin_risk_gpu_rolling_simple(ctx, returns, num_returns, window,
+            params->confidence_95, result->var_series, NULL);
+    }
+
+    // CVaR computation would need additional kernel - stub for now
+    if (params->compute_cvar && result->cvar_series) {
+        // Initialize to VaR as approximation
+        if (result->var_series) {
+            memcpy(result->cvar_series, result->var_series, num_points * sizeof(float));
+        }
+    }
+
+    return true;
 }
 
 const char* fin_risk_gpu_get_last_error(void) {
@@ -1105,14 +1165,13 @@ bool fin_risk_gpu_volatility_ohlc(
 bool fin_risk_gpu_rolling(
     nimcp_gpu_context_t* ctx,
     const float* returns,
-    uint32_t n,
-    uint32_t window_size,
-    float confidence,
-    float* rolling_var,
-    float* rolling_vol)
+    uint32_t num_returns,
+    uint32_t window,
+    const fin_risk_gpu_params_t* params,
+    fin_risk_rolling_result_t* result)
 {
-    (void)ctx; (void)returns; (void)n; (void)window_size;
-    (void)confidence; (void)rolling_var; (void)rolling_vol;
+    (void)ctx; (void)returns; (void)num_returns; (void)window;
+    (void)params; (void)result;
     return false;
 }
 

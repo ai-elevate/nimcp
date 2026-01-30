@@ -1024,7 +1024,7 @@ extern "C" int nimcp_myelin_gpu_update_thickness(
 /**
  * @brief Compute network mean values via parallel reduction
  */
-__global__ void kernel_compute_mean(
+static __global__ void kernel_compute_mean(
     const float* __restrict__ values,    // [N]
     float* __restrict__ mean_out,        // [1]
     uint32_t n

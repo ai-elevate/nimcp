@@ -574,6 +574,11 @@ bool fin_derivatives_gpu_black_scholes_batch(
     uint32_t block_size = 256;
     uint32_t grid_size = NIMCP_CUDA_GRID_SIZE(n, block_size);
 
+    // Pre-declare host arrays to avoid goto initialization issues
+    float* h_spots = NULL;
+    float* h_rates = NULL;
+    int* h_types = NULL;
+
     // Allocate device memory
     float* d_spots = NULL;
     float* d_strikes = NULL;
@@ -601,9 +606,9 @@ bool fin_derivatives_gpu_black_scholes_batch(
     if (err != cudaSuccess) goto cleanup_bs;
 
     // Fill spot prices (all same)
-    float* h_spots = (float*)malloc(n * sizeof(float));
-    float* h_rates = (float*)malloc(n * sizeof(float));
-    int* h_types = (int*)malloc(n * sizeof(int));
+    h_spots = (float*)malloc(n * sizeof(float));
+    h_rates = (float*)malloc(n * sizeof(float));
+    h_types = (int*)malloc(n * sizeof(int));
 
     for (uint32_t i = 0; i < n; i++) {
         h_spots[i] = chain->spot;
@@ -682,6 +687,11 @@ bool fin_derivatives_gpu_greeks_batch(
 
     result->num_options = n;
 
+    // Pre-declare host arrays to avoid goto initialization issues
+    float* h_spots = NULL;
+    float* h_rates = NULL;
+    int* h_types = NULL;
+
     // Device allocations
     float* d_spots = NULL;
     float* d_strikes = NULL;
@@ -724,9 +734,9 @@ bool fin_derivatives_gpu_greeks_batch(
     if (err != cudaSuccess) goto cleanup_greeks;
 
     // Prepare input data
-    float* h_spots = (float*)malloc(n * sizeof(float));
-    float* h_rates = (float*)malloc(n * sizeof(float));
-    int* h_types = (int*)malloc(n * sizeof(int));
+    h_spots = (float*)malloc(n * sizeof(float));
+    h_rates = (float*)malloc(n * sizeof(float));
+    h_types = (int*)malloc(n * sizeof(int));
 
     for (uint32_t i = 0; i < n; i++) {
         h_spots[i] = chain->spot;
@@ -815,6 +825,11 @@ bool fin_derivatives_gpu_implied_vol_batch(
     uint32_t block_size = 256;
     uint32_t grid_size = NIMCP_CUDA_GRID_SIZE(n, block_size);
 
+    // Pre-declare host arrays to avoid goto initialization issues
+    float* h_spots = NULL;
+    float* h_rates = NULL;
+    int* h_types = NULL;
+
     // Device allocations
     float* d_market = NULL;
     float* d_spots = NULL;
@@ -842,9 +857,9 @@ bool fin_derivatives_gpu_implied_vol_batch(
     if (err != cudaSuccess) goto cleanup_iv;
 
     // Prepare inputs
-    float* h_spots = (float*)malloc(n * sizeof(float));
-    float* h_rates = (float*)malloc(n * sizeof(float));
-    int* h_types = (int*)malloc(n * sizeof(int));
+    h_spots = (float*)malloc(n * sizeof(float));
+    h_rates = (float*)malloc(n * sizeof(float));
+    h_types = (int*)malloc(n * sizeof(int));
 
     for (uint32_t i = 0; i < n; i++) {
         h_spots[i] = chain->spot;

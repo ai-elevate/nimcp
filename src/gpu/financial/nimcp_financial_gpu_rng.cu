@@ -74,7 +74,7 @@ __global__ void kernel_init_rng_states(
 /**
  * @brief Generate uniform random numbers in [0, 1)
  */
-__global__ void kernel_generate_uniform(
+static __global__ void kernel_generate_uniform(
     curandState* states,
     float* output,
     uint32_t n)

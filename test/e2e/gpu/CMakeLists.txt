@@ -55,3 +55,9 @@ add_gpu_e2e_test(test_e2e_visual_processing_gpu)
 # DISABLED - require unimplemented graph GPU module
 # add_gpu_e2e_test(e2e_gpu_test_brain_topology)
 # add_gpu_e2e_test(e2e_gpu_test_sparse_network)
+
+# GPU Fuzzy Controller E2E test
+add_gpu_e2e_test(test_e2e_fuzzy_controller_gpu)
+
+# GPU Financial Workflow E2E test
+add_gpu_e2e_test(test_e2e_financial_workflow_gpu)
