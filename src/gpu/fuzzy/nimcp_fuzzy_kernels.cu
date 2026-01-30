@@ -276,8 +276,9 @@ __device__ float mf_evaluate_device(float x, uint32_t type, const float* params,
 
 /**
  * @brief Apply linguistic hedge to membership value
+ * Note: Not __forceinline__ so it can be linked from other translation units
  */
-__device__ __forceinline__ float apply_hedge_device(float mu, uint32_t hedge) {
+__device__ float apply_hedge_device(float mu, uint32_t hedge) {
     switch (hedge) {
         case 0:  // FUZZY_HEDGE_NONE
             return mu;

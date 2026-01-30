@@ -489,9 +489,9 @@ extern "C" {
 bool nimcp_gpu_anfis_train(
     nimcp_gpu_context_t* ctx,
     nimcp_gpu_fuzzy_inference_state_t* state,
-    const nimcp_gpu_tensor_t* train_inputs,
-    const nimcp_gpu_tensor_t* train_targets,
-    uint32_t num_epochs,
+    const float* train_inputs,
+    const float* train_targets,
+    uint32_t num_samples,
     float* out_final_error,
     const nimcp_gpu_anfis_params_t* params)
 {
@@ -499,26 +499,28 @@ bool nimcp_gpu_anfis_train(
         set_anfis_error("Invalid GPU context");
         return false;
     }
-    if (!state || !train_inputs || !train_targets) {
+    if (!state || !train_inputs || !train_targets || num_samples == 0) {
         set_anfis_error("Invalid training data");
         return false;
     }
 
     cudaStream_t stream = nimcp_gpu_get_compute_stream(ctx);
 
-    // Get dimensions
-    uint32_t batch_size = train_inputs->dims[0];
-    uint32_t num_inputs = train_inputs->dims[1];
-    uint32_t num_mfs = params ? params->num_mfs_per_input : 3;
+    // Get dimensions from state
+    uint32_t batch_size = num_samples;
+    uint32_t num_inputs = state->num_inputs;
+    uint32_t num_mfs = 3;  // Default MFs per input
     uint32_t num_rules = 1;
     for (uint32_t i = 0; i < num_inputs; i++) {
         num_rules *= num_mfs;
     }
 
-    float lr_premise = params ? params->learning_rate_premise : 0.01f;
-    float lr_consequent = params ? params->learning_rate_consequent : 0.1f;
+    // Use single learning rate, apply different scales for premise vs consequent
+    float base_lr = params ? params->learning_rate : 0.01f;
+    float lr_premise = base_lr;         // Premise (MF params) learning rate
+    float lr_consequent = base_lr * 10.0f;  // Consequent params typically need higher LR
 
-    // Allocate device memory
+    // Pre-declare all variables before any goto to satisfy C++ rules
     float* d_inputs = NULL;
     float* d_targets = NULL;
     float* d_mf_params = NULL;
@@ -532,15 +534,22 @@ bool nimcp_gpu_anfis_train(
     float* d_loss = NULL;
     float* d_grad_mf = NULL;
     float* d_grad_consequent = NULL;
+    float* h_mf_params = NULL;
+    float* h_consequent = NULL;
 
     cudaError_t err;
 
+    // Pre-compute sizes before any goto statements (C++ requirement)
     size_t inputs_size = batch_size * num_inputs * sizeof(float);
     size_t mf_params_size = num_inputs * num_mfs * 3 * sizeof(float);
     size_t consequent_size = num_rules * (num_inputs + 1) * sizeof(float);
     size_t layer1_size = batch_size * num_inputs * num_mfs * sizeof(float);
     size_t layer2_size = batch_size * num_rules * sizeof(float);
 
+    float final_loss = 0.0f;
+    uint32_t num_epochs_local = params ? params->max_epochs : 1000;
+
+    // Allocate device memory
     err = cudaMalloc(&d_inputs, inputs_size);
     if (err != cudaSuccess) goto cleanup_anfis;
     err = cudaMalloc(&d_targets, batch_size * sizeof(float));
@@ -568,15 +577,15 @@ bool nimcp_gpu_anfis_train(
     err = cudaMalloc(&d_grad_consequent, consequent_size);
     if (err != cudaSuccess) goto cleanup_anfis;
 
-    // Copy inputs and targets
-    cudaMemcpy(d_inputs, train_inputs->data, inputs_size, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_targets, train_targets->data, batch_size * sizeof(float),
+    // Copy inputs and targets (direct float* pointers from host)
+    cudaMemcpy(d_inputs, train_inputs, inputs_size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_targets, train_targets, batch_size * sizeof(float),
                cudaMemcpyHostToDevice);
 
     // Initialize parameters
     {
-        float* h_mf_params = (float*)malloc(mf_params_size);
-        float* h_consequent = (float*)malloc(consequent_size);
+        h_mf_params = (float*)malloc(mf_params_size);
+        h_consequent = (float*)malloc(consequent_size);
 
         // Initialize MF params: spread centers evenly, reasonable sigmas
         for (uint32_t i = 0; i < num_inputs; i++) {
@@ -602,10 +611,8 @@ bool nimcp_gpu_anfis_train(
         free(h_consequent);
     }
 
-    float final_loss = 0.0f;
-
     // Training loop
-    for (uint32_t epoch = 0; epoch < num_epochs; epoch++) {
+    for (uint32_t epoch = 0; epoch < num_epochs_local; epoch++) {
         // Reset loss
         cudaMemset(d_loss, 0, sizeof(float));
 
@@ -661,7 +668,7 @@ bool nimcp_gpu_anfis_train(
             d_consequent, d_grad_consequent, lr_consequent, conseq_n);
 
         // Get loss for monitoring
-        if (epoch % 100 == 0 || epoch == num_epochs - 1) {
+        if (epoch % 100 == 0 || epoch == num_epochs_local - 1) {
             cudaMemcpy(&final_loss, d_loss, sizeof(float), cudaMemcpyDeviceToHost);
             final_loss /= (float)batch_size;
         }
@@ -723,14 +730,14 @@ extern "C" {
 bool nimcp_gpu_anfis_train(
     nimcp_gpu_context_t* ctx,
     nimcp_gpu_fuzzy_inference_state_t* state,
-    const nimcp_gpu_tensor_t* train_inputs,
-    const nimcp_gpu_tensor_t* train_targets,
-    uint32_t num_epochs,
+    const float* train_inputs,
+    const float* train_targets,
+    uint32_t num_samples,
     float* out_final_error,
     const nimcp_gpu_anfis_params_t* params)
 {
     (void)ctx; (void)state; (void)train_inputs; (void)train_targets;
-    (void)num_epochs; (void)out_final_error; (void)params;
+    (void)num_samples; (void)out_final_error; (void)params;
     return false;
 }
 

@@ -469,12 +469,9 @@ extern "C" {
 
 bool nimcp_gpu_fuzzy_relation_compose(
     nimcp_gpu_context_t* ctx,
-    const float* rel_a,
-    const float* rel_b,
+    const float* rel_a, uint32_t rows_a, uint32_t cols_a,
+    const float* rel_b, uint32_t cols_b,
     float* rel_out,
-    uint32_t rows_a,
-    uint32_t cols_a,
-    uint32_t cols_b,
     const nimcp_gpu_relation_params_t* params)
 {
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
@@ -491,6 +488,12 @@ bool nimcp_gpu_fuzzy_relation_compose(
     }
 
     cudaStream_t stream = nimcp_gpu_get_compute_stream(ctx);
+
+    // Pre-declare variables used after potential goto (CUDA C++ requirement)
+    dim3 block(TILE_SIZE, TILE_SIZE);
+    dim3 grid((cols_b + TILE_SIZE - 1) / TILE_SIZE,
+              (rows_a + TILE_SIZE - 1) / TILE_SIZE);
+    fuzzy_compose_type_t compose_type = FUZZY_COMPOSE_MAX_MIN;
 
     // Allocate device memory
     float* d_rel_a = NULL;
@@ -513,15 +516,10 @@ bool nimcp_gpu_fuzzy_relation_compose(
                     cudaMemcpyHostToDevice, stream);
     cudaMemcpyAsync(d_rel_b, rel_b, cols_a * cols_b * sizeof(float),
                     cudaMemcpyHostToDevice, stream);
-
-    // Launch kernel
-    dim3 block(TILE_SIZE, TILE_SIZE);
-    dim3 grid((cols_b + TILE_SIZE - 1) / TILE_SIZE,
-              (rows_a + TILE_SIZE - 1) / TILE_SIZE);
-
-    fuzzy_compose_type_t compose_type = FUZZY_COMPOSE_MAX_MIN;
     if (params) {
-        compose_type = (fuzzy_compose_type_t)params->composition_type;
+        // Use tnorm field to select composition type
+        // tnorm=0 (MIN) => MAX_MIN, tnorm=1 (PRODUCT) => MAX_PRODUCT, etc.
+        compose_type = (fuzzy_compose_type_t)params->tnorm;
     }
 
     switch (compose_type) {
@@ -716,12 +714,9 @@ extern "C" {
 
 bool nimcp_gpu_fuzzy_relation_compose(
     nimcp_gpu_context_t* ctx,
-    const float* rel_a,
-    const float* rel_b,
+    const float* rel_a, uint32_t rows_a, uint32_t cols_a,
+    const float* rel_b, uint32_t cols_b,
     float* rel_out,
-    uint32_t rows_a,
-    uint32_t cols_a,
-    uint32_t cols_b,
     const nimcp_gpu_relation_params_t* params)
 {
     (void)ctx; (void)rel_a; (void)rel_b; (void)rel_out;
