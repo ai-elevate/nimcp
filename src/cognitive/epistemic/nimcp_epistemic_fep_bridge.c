@@ -28,6 +28,15 @@
 
 #define LOG_MODULE "epistemic_fep_bridge"
 
+/**
+ * Inline EWMA update macro - equivalent to nimcp_ewma_update() from streaming statistics.
+ * Formula: EWMA_t = alpha * x_t + (1 - alpha) * EWMA_{t-1}
+ * Using alpha=0.1 for responsive tracking (equivalent ~9-sample window).
+ * @see include/utils/statistics/nimcp_streaming_statistics.h for full EWMA API
+ */
+#define NIMCP_EWMA_UPDATE(avg, new_val, alpha) \
+    ((avg) = ((avg) * (1.0f - (alpha))) + ((new_val) * (alpha)))
+
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -267,11 +276,9 @@ int epistemic_fep_compute_epistemic_value(
     bridge->state.current_epistemic_value = epistemic_value;
     bridge->state.seeking_information = bridge->fep_effects.information_seeking_active;
 
-    /* Update stats */
-    bridge->stats.avg_epistemic_value =
-        (bridge->stats.avg_epistemic_value * 0.9f) + (epistemic_value * 0.1f);
-    bridge->stats.avg_uncertainty =
-        (bridge->stats.avg_uncertainty * 0.9f) + (uncertainty * 0.1f);
+    /* Update stats using EWMA (alpha=0.1, ~9-sample window for responsive tracking) */
+    NIMCP_EWMA_UPDATE(bridge->stats.avg_epistemic_value, epistemic_value, 0.1f);
+    NIMCP_EWMA_UPDATE(bridge->stats.avg_uncertainty, uncertainty, 0.1f);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 

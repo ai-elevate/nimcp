@@ -22,6 +22,7 @@
 #include <random>
 #include <algorithm>
 #include <numeric>
+#include <memory>
 
 extern "C" {
 #include "utils/statistics/nimcp_statistics.h"
@@ -119,7 +120,8 @@ TEST_F(MLStatisticsRegressionTest, LogisticRegressionWellSeparated) {
     std::vector<uint8_t> y;
     generateBinaryClassification(200, X, y, 4.0f); // Large separation
 
-    std::vector<float> coefficients(3); // 2 features + intercept
+    // Function outputs p coefficients (no intercept)
+    std::vector<float> coefficients(2);
     nimcp_stats_result_t status = nimcp_stats_regression_logistic(
         X.data(), y.data(), 200, 2, coefficients.data(), 100
     );
@@ -127,7 +129,8 @@ TEST_F(MLStatisticsRegressionTest, LogisticRegressionWellSeparated) {
     EXPECT_EQ(status, NIMCP_STATS_OK);
 
     // First coefficient (for x1) should be positive (class 1 has larger x1)
-    EXPECT_GT(coefficients[1], 0.0f) << "Coefficient for separating feature should be positive";
+    // Index 0 = x1 coefficient, Index 1 = x2 coefficient
+    EXPECT_GT(coefficients[0], 0.0f) << "Coefficient for separating feature should be positive";
 }
 
 TEST_F(MLStatisticsRegressionTest, LogisticRegressionOverlapping) {
@@ -450,21 +453,23 @@ TEST_F(MLStatisticsRegressionTest, MinMaxNormalizeBounds) {
 TEST_F(MLStatisticsRegressionTest, OutlierDetectionIQR) {
     // Normal data with outliers
     std::vector<float> data = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 100}; // 100 is outlier
-    std::vector<bool> mask(data.size());
+    std::unique_ptr<bool[]> mask(new bool[data.size()]());
     uint32_t n_outliers;
 
-    nimcp_stats_detect_outliers_iqr(data.data(), data.size(), 1.5f, mask.data(), &n_outliers);
+    nimcp_stats_detect_outliers_iqr(data.data(), data.size(), 1.5f, mask.get(), &n_outliers);
 
     EXPECT_GE(n_outliers, 1u) << "Should detect at least one outlier";
     EXPECT_TRUE(mask[10]) << "100 should be marked as outlier";
 }
 
 TEST_F(MLStatisticsRegressionTest, OutlierDetectionZScore) {
-    std::vector<float> data = {0, 1, 0, 1, 0, 1, 0, 1, 10}; // 10 is outlier
-    std::vector<bool> mask(data.size());
+    // Data with clear outlier - 100 has z-score ~2.6 with this data
+    // Use threshold of 2.5 to reliably detect it
+    std::vector<float> data = {10, 11, 10, 11, 10, 11, 10, 11, 100};
+    std::unique_ptr<bool[]> mask(new bool[data.size()]());
     uint32_t n_outliers;
 
-    nimcp_stats_detect_outliers_zscore(data.data(), data.size(), 3.0f, mask.data(), &n_outliers);
+    nimcp_stats_detect_outliers_zscore(data.data(), data.size(), 2.5f, mask.get(), &n_outliers);
 
     EXPECT_GE(n_outliers, 1u);
 }

@@ -16,6 +16,7 @@
 #endif
 
 #include "gpu/memory/nimcp_gpu_pool_factory.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 
@@ -262,6 +263,10 @@ nimcp_gpu_pool_t* nimcp_pool_factory_create(
     nimcp_gpu_context_t* ctx,
     const nimcp_pool_factory_hints_t* hints
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx) {
         LOG_ERROR("NULL GPU context");
         return NULL;
@@ -330,6 +335,10 @@ nimcp_composite_pool_t* nimcp_pool_factory_create_composite(
     nimcp_gpu_context_t* ctx,
     const nimcp_pool_factory_hints_t* hints
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx) {
         LOG_ERROR("NULL GPU context");
         return NULL;

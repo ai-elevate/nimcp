@@ -176,7 +176,7 @@ TEST_F(EmotionalContagionTest, RejectDuplicateAgent) {
 
     /* Try to register again */
     EXPECT_EQ(emotional_contagion_register_agent(ec, agent_id, 0.5f),
-              NIMCP_ERROR_ALREADY_EXISTS);
+              NIMCP_ALREADY_EXISTS);
 }
 
 TEST_F(EmotionalContagionTest, RejectInvalidSusceptibility) {

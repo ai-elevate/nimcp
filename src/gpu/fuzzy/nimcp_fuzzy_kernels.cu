@@ -26,6 +26,8 @@
 #include "gpu/fuzzy/nimcp_fuzzy_gpu_types.h"
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/common/nimcp_device_utils.cuh"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Thread-Local Error Storage
@@ -476,17 +478,33 @@ bool nimcp_gpu_fuzzy_mf_evaluate_batch(
     float* memberships,
     const nimcp_gpu_mf_eval_params_t* params)
 {
+    // Initialize recovery system if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    // Parameter validation with recovery attempt
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
-        set_fuzzy_error("Invalid GPU context");
-        return false;
+        nimcp_gpu_recovery_result_t result;
+        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_CONTEXT_INVALID, cudaSuccess, &result)) {
+            set_fuzzy_error("Invalid GPU context");
+            NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context");
+            return false;
+        }
     }
     if (!inputs || !mfs || !memberships) {
         set_fuzzy_error("NULL input/output pointers");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "NULL input/output pointers");
         return false;
     }
     if (num_mfs == 0 || params->num_samples == 0) {
-        set_fuzzy_error("Zero samples or MFs");
-        return false;
+        // Try parameter correction
+        nimcp_gpu_recovery_result_t result;
+        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_INVALID_PARAMS, cudaSuccess, &result)) {
+            set_fuzzy_error("Zero samples or MFs");
+            NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Zero samples or MFs");
+            return false;
+        }
     }
 
     cudaStream_t stream = nimcp_gpu_get_compute_stream(ctx);
@@ -506,11 +524,12 @@ bool nimcp_gpu_fuzzy_mf_evaluate_batch(
     size_t types_size = num_mfs * sizeof(uint32_t);
     size_t params_size = num_mfs * FUZZY_GPU_MAX_PARAMS * sizeof(float);
 
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_types, types_size));
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_hedges, types_size));
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_params, params_size));
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_num_params, types_size));
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_alpha_cuts, num_mfs * sizeof(float)));
+    // Use recovery-aware allocation macros
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_types, types_size), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_hedges, types_size), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_params, params_size), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_num_params, types_size), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_alpha_cuts, num_mfs * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     // Prepare host arrays
     uint32_t* h_types = (uint32_t*)malloc(types_size);
@@ -534,18 +553,18 @@ bool nimcp_gpu_fuzzy_mf_evaluate_batch(
                FUZZY_GPU_MAX_PARAMS * sizeof(float));
     }
 
-    // Upload to device
-    NIMCP_CUDA_CHECK(cudaMemcpyAsync(d_types, h_types, types_size,
-                                      cudaMemcpyHostToDevice, stream));
-    NIMCP_CUDA_CHECK(cudaMemcpyAsync(d_hedges, h_hedges, types_size,
-                                      cudaMemcpyHostToDevice, stream));
-    NIMCP_CUDA_CHECK(cudaMemcpyAsync(d_params, h_params, params_size,
-                                      cudaMemcpyHostToDevice, stream));
-    NIMCP_CUDA_CHECK(cudaMemcpyAsync(d_num_params, h_num_params, types_size,
-                                      cudaMemcpyHostToDevice, stream));
-    NIMCP_CUDA_CHECK(cudaMemcpyAsync(d_alpha_cuts, h_alpha_cuts,
+    // Upload to device (with recovery)
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_types, h_types, types_size,
+                                      cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_hedges, h_hedges, types_size,
+                                      cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_params, h_params, params_size,
+                                      cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_num_params, h_num_params, types_size,
+                                      cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_alpha_cuts, h_alpha_cuts,
                                       num_mfs * sizeof(float),
-                                      cudaMemcpyHostToDevice, stream));
+                                      cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
 
     // Launch kernel
     total_elements = params->num_samples * num_mfs;
@@ -557,10 +576,11 @@ bool nimcp_gpu_fuzzy_mf_evaluate_batch(
         memberships, params->num_samples, num_mfs,
         params->apply_hedges, params->apply_alpha_cuts);
 
-    NIMCP_CUDA_CHECK_LAST();
+    // Check kernel launch with recovery
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Synchronize
-    NIMCP_CUDA_CHECK(cudaStreamSynchronize(stream));
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
 
     // Cleanup
     free(h_types);
@@ -597,17 +617,32 @@ bool nimcp_gpu_fuzzy_mf_discretize_batch(
     float* discretized,
     const nimcp_gpu_discretize_params_t* params)
 {
+    // Initialize recovery system if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    // Parameter validation with recovery attempt
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
-        set_fuzzy_error("Invalid GPU context");
-        return false;
+        nimcp_gpu_recovery_result_t result;
+        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_CONTEXT_INVALID, cudaSuccess, &result)) {
+            set_fuzzy_error("Invalid GPU context");
+            NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context");
+            return false;
+        }
     }
     if (!mfs || !discretized) {
         set_fuzzy_error("NULL input/output pointers");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "NULL input/output pointers");
         return false;
     }
     if (num_mfs == 0 || params->resolution == 0) {
-        set_fuzzy_error("Zero MFs or resolution");
-        return false;
+        nimcp_gpu_recovery_result_t result;
+        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_INVALID_PARAMS, cudaSuccess, &result)) {
+            set_fuzzy_error("Zero MFs or resolution");
+            NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Zero MFs or resolution");
+            return false;
+        }
     }
 
     cudaStream_t stream = nimcp_gpu_get_compute_stream(ctx);
@@ -626,10 +661,10 @@ bool nimcp_gpu_fuzzy_mf_discretize_batch(
     size_t types_size = num_mfs * sizeof(uint32_t);
     size_t params_size = num_mfs * FUZZY_GPU_MAX_PARAMS * sizeof(float);
 
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_types, types_size));
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_hedges, types_size));
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_params, params_size));
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_num_params, types_size));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_types, types_size), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_hedges, types_size), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_params, params_size), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_num_params, types_size), GPU_ERROR_OUT_OF_MEMORY);
 
     // Prepare and upload (same pattern as evaluate)
     uint32_t* h_types = (uint32_t*)malloc(types_size);
@@ -650,14 +685,14 @@ bool nimcp_gpu_fuzzy_mf_discretize_batch(
                FUZZY_GPU_MAX_PARAMS * sizeof(float));
     }
 
-    NIMCP_CUDA_CHECK(cudaMemcpyAsync(d_types, h_types, types_size,
-                                      cudaMemcpyHostToDevice, stream));
-    NIMCP_CUDA_CHECK(cudaMemcpyAsync(d_hedges, h_hedges, types_size,
-                                      cudaMemcpyHostToDevice, stream));
-    NIMCP_CUDA_CHECK(cudaMemcpyAsync(d_params, h_params, params_size,
-                                      cudaMemcpyHostToDevice, stream));
-    NIMCP_CUDA_CHECK(cudaMemcpyAsync(d_num_params, h_num_params, types_size,
-                                      cudaMemcpyHostToDevice, stream));
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_types, h_types, types_size,
+                                       cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_hedges, h_hedges, types_size,
+                                       cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_params, h_params, params_size,
+                                       cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_num_params, h_num_params, types_size,
+                                       cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
 
     // Launch kernel
     total = num_mfs * params->resolution;
@@ -669,8 +704,8 @@ bool nimcp_gpu_fuzzy_mf_discretize_batch(
         discretized, num_mfs, params->resolution,
         params->x_min, params->x_max);
 
-    NIMCP_CUDA_CHECK_LAST();
-    NIMCP_CUDA_CHECK(cudaStreamSynchronize(stream));
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
 
     free(h_types);
     free(h_hedges);

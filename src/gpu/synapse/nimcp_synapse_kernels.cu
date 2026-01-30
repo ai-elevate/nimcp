@@ -27,6 +27,7 @@
 
 // Now include our headers (which have extern "C" blocks)
 #include "gpu/synapse/nimcp_synapse_gpu.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
@@ -382,6 +383,10 @@ bool nimcp_gpu_synapse_transmit(
     nimcp_gpu_synapse_state_t* state,
     const nimcp_gpu_tensor_t* pre_activity)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !pre_activity) {
         LOG_ERROR("Invalid parameters");
         return false;
@@ -427,7 +432,7 @@ bool nimcp_gpu_synapse_transmit(
             state->n_synapses);
     }
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -453,6 +458,10 @@ bool nimcp_gpu_synapse_accumulate_psc(
     nimcp_gpu_context_t* ctx,
     nimcp_gpu_synapse_state_t* state)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) {
         LOG_ERROR("Invalid parameters");
         return false;
@@ -473,7 +482,7 @@ bool nimcp_gpu_synapse_accumulate_psc(
         (float*)state->psc->data,
         state->n_synapses);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -482,6 +491,10 @@ bool nimcp_gpu_synapse_forward(
     nimcp_gpu_synapse_state_t* state,
     const nimcp_gpu_tensor_t* pre_activity)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !pre_activity) {
         LOG_ERROR("Invalid parameters");
         return false;
@@ -548,6 +561,10 @@ bool nimcp_gpu_vesicle_update_release_prob(
     nimcp_gpu_vesicle_state_t* state,
     const nimcp_gpu_tensor_t* pre_spikes)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !pre_spikes) {
         LOG_ERROR("Invalid parameters");
         return false;
@@ -563,7 +580,7 @@ bool nimcp_gpu_vesicle_update_release_prob(
         state->params.dt,
         n_synapses);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -627,6 +644,10 @@ bool nimcp_gpu_vesicle_release(
     const nimcp_gpu_tensor_t* pre_spikes,
     float dt)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !pre_spikes) {
         LOG_ERROR("Invalid parameters");
         return false;
@@ -651,7 +672,7 @@ bool nimcp_gpu_vesicle_release(
         dt,
         n_synapses);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -677,6 +698,10 @@ bool nimcp_gpu_vesicle_get_efficacy(
     const nimcp_gpu_vesicle_state_t* state,
     nimcp_gpu_tensor_t* efficacy)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !efficacy) {
         LOG_ERROR("Invalid parameters");
         return false;
@@ -690,7 +715,7 @@ bool nimcp_gpu_vesicle_get_efficacy(
         (float*)efficacy->data,
         n_synapses);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -748,6 +773,10 @@ bool nimcp_gpu_receptor_update_binding(
     const nimcp_gpu_tensor_t* concentration,
     float dt)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !concentration) {
         LOG_ERROR("Invalid parameters");
         return false;
@@ -765,7 +794,7 @@ bool nimcp_gpu_receptor_update_binding(
         dt,
         n_synapses);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -797,6 +826,10 @@ bool nimcp_gpu_receptor_update_desensitization(
     nimcp_gpu_receptor_state_t* state,
     float dt)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) {
         LOG_ERROR("Invalid parameters");
         return false;
@@ -811,7 +844,7 @@ bool nimcp_gpu_receptor_update_desensitization(
         dt,
         n_synapses);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -840,6 +873,10 @@ bool nimcp_gpu_receptor_compute_conductance(
     nimcp_gpu_context_t* ctx,
     nimcp_gpu_receptor_state_t* state)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) {
         LOG_ERROR("Invalid parameters");
         return false;
@@ -854,7 +891,7 @@ bool nimcp_gpu_receptor_compute_conductance(
         state->params.max_conductance,
         n_synapses);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -913,6 +950,10 @@ bool nimcp_gpu_receptor_compute_current(
     const nimcp_gpu_tensor_t* post_voltage,
     nimcp_gpu_tensor_t* current)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !post_voltage || !current) {
         LOG_ERROR("Invalid parameters");
         return false;
@@ -946,7 +987,7 @@ bool nimcp_gpu_receptor_compute_current(
         n_synapses,
         n_post);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -986,6 +1027,10 @@ bool nimcp_gpu_nmda_mg_block(
     nimcp_gpu_tensor_t* mg_block,
     float mg_concentration)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !post_voltage || !mg_block) {
         LOG_ERROR("Invalid parameters");
         return false;
@@ -1003,7 +1048,7 @@ bool nimcp_gpu_nmda_mg_block(
         mg_concentration,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1059,6 +1104,10 @@ bool nimcp_gpu_neurotransmitter_diffusion(
     float tau_decay,
     float dt)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !release || !concentration) {
         LOG_ERROR("Invalid parameters");
         return false;
@@ -1078,7 +1127,7 @@ bool nimcp_gpu_neurotransmitter_diffusion(
         dt,
         n_synapses);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 

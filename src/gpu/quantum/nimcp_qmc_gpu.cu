@@ -6,6 +6,17 @@
  * WHY:  Massive parallelism for stochastic algorithms
  * HOW:  cuRAND, parallel reductions, atomic operations
  *
+ * RNG ARCHITECTURE:
+ *   This module maintains its own cuRAND state for Monte Carlo simulations.
+ *   The RNG pattern follows the central GPU statistics module:
+ *   - See: gpu/statistics/nimcp_statistics_gpu.h for stats_gpu_rng_create/destroy
+ *   - See: gpu/common/nimcp_device_utils.cuh for shared device RNG functions
+ *
+ *   Module-local RNG state is used here because:
+ *   1. Monte Carlo requires independent, reproducible sequences per simulation
+ *   2. Thread-local curandState arrays are performance-critical
+ *   3. Seed management is tied to simulation reproducibility
+ *
  * @version 1.0
  * @author NIMCP Development Team
  * @date 2025
@@ -27,6 +38,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "QMC_GPU"
 
@@ -174,6 +186,10 @@ qmc_gpu_rng_t qmc_gpu_rng_create(
     uint32_t num_generators,
     uint64_t seed)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     (void)ctx;
 
     if (num_generators == 0) {
@@ -216,6 +232,10 @@ void qmc_gpu_rng_destroy(qmc_gpu_rng_t rng)
 
 bool qmc_gpu_rng_reseed(qmc_gpu_rng_t rng, uint64_t seed)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!rng) return false;
 
     rng->seed = (seed == 0) ? (uint64_t)time(NULL) : seed;
@@ -223,7 +243,8 @@ bool qmc_gpu_rng_reseed(qmc_gpu_rng_t rng, uint64_t seed)
     kernel_init_curand<<<QMC_GRID_SIZE(rng->num_generators), QMC_BLOCK_SIZE>>>(
         rng->states, rng->seed, rng->num_generators);
 
-    return cudaGetLastError() == cudaSuccess;
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
 }
 
 //=============================================================================
@@ -235,6 +256,10 @@ bool qmc_gpu_sample_uniform(
     qmc_gpu_rng_t rng,
     nimcp_gpu_tensor_t* output)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     (void)ctx;
     if (!rng || !output || !output->data) return false;
 
@@ -243,7 +268,8 @@ bool qmc_gpu_sample_uniform(
     kernel_generate_uniform<<<QMC_GRID_SIZE(n), QMC_BLOCK_SIZE>>>(
         rng->states, (float*)output->data, n);
 
-    return cudaGetLastError() == cudaSuccess;
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
 }
 
 bool qmc_gpu_sample_normal(
@@ -253,6 +279,10 @@ bool qmc_gpu_sample_normal(
     float mean,
     float stddev)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     (void)ctx;
     if (!rng || !output || !output->data) return false;
 
@@ -261,7 +291,8 @@ bool qmc_gpu_sample_normal(
     kernel_generate_normal<<<QMC_GRID_SIZE(n), QMC_BLOCK_SIZE>>>(
         rng->states, (float*)output->data, mean, stddev, n);
 
-    return cudaGetLastError() == cudaSuccess;
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
 }
 
 bool qmc_gpu_sample_stratified(
@@ -270,6 +301,10 @@ bool qmc_gpu_sample_stratified(
     nimcp_gpu_tensor_t* output,
     uint32_t num_strata)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     (void)ctx;
     if (!rng || !output || !output->data || num_strata == 0) return false;
 
@@ -278,7 +313,8 @@ bool qmc_gpu_sample_stratified(
     kernel_generate_stratified<<<QMC_GRID_SIZE(n), QMC_BLOCK_SIZE>>>(
         rng->states, (float*)output->data, num_strata, n);
 
-    return cudaGetLastError() == cudaSuccess;
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
 }
 
 //=============================================================================
@@ -348,12 +384,16 @@ bool qmc_gpu_sample_categorical(
     nimcp_gpu_tensor_t* output,
     uint32_t num_samples)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     (void)ctx;
     if (!rng || !probabilities || !output) return false;
 
     /* Compute cumulative sum */
     float* d_cumsum;
-    cudaMalloc(&d_cumsum, num_categories * sizeof(float));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_cumsum, num_categories * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     kernel_cumsum<<<QMC_GRID_SIZE(num_categories), QMC_BLOCK_SIZE,
                     QMC_BLOCK_SIZE * sizeof(float)>>>(
@@ -361,16 +401,17 @@ bool qmc_gpu_sample_categorical(
 
     /* Get total probability */
     float total_prob;
-    cudaMemcpy(&total_prob, &d_cumsum[num_categories - 1], sizeof(float),
-               cudaMemcpyDeviceToHost);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(&total_prob, &d_cumsum[num_categories - 1], sizeof(float),
+               cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     /* Sample */
     kernel_sample_categorical<<<QMC_GRID_SIZE(num_samples), QMC_BLOCK_SIZE>>>(
         rng->states, d_cumsum, total_prob, (uint32_t*)output->data,
         num_categories, num_samples);
 
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     cudaFree(d_cumsum);
-    return cudaGetLastError() == cudaSuccess;
+    return true;
 }
 
 //=============================================================================
@@ -431,6 +472,10 @@ bool qmc_gpu_integrate(
     float domain_volume,
     qmc_gpu_integration_result_t* result)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     (void)ctx;
     (void)rng;
     if (!values || !result || num_samples == 0) return false;
@@ -540,6 +585,10 @@ qmc_gpu_mcts_t qmcts_gpu_create(
     const qmcts_gpu_config_t* config,
     uint32_t max_nodes)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     (void)ctx;
     if (!config || max_nodes == 0) return NULL;
 
@@ -607,12 +656,16 @@ bool qmcts_gpu_compute_ucb1(
     qmc_gpu_mcts_t mcts,
     float exploration_constant)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     (void)ctx;
     if (!mcts) return false;
 
     /* Get root visits for UCB1 calculation */
     uint32_t root_visits;
-    cudaMemcpy(&root_visits, &mcts->visit_counts[0], sizeof(uint32_t), cudaMemcpyDeviceToHost);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(&root_visits, &mcts->visit_counts[0], sizeof(uint32_t), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     kernel_compute_ucb1<<<QMC_GRID_SIZE(mcts->num_nodes), QMC_BLOCK_SIZE>>>(
         mcts->visit_counts,
@@ -623,7 +676,8 @@ bool qmcts_gpu_compute_ucb1(
         root_visits,
         mcts->num_nodes);
 
-    return cudaGetLastError() == cudaSuccess;
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
 }
 
 bool qmcts_gpu_backpropagate(
@@ -633,16 +687,20 @@ bool qmcts_gpu_backpropagate(
     const float* values,
     uint32_t num_leaves)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     (void)ctx;
     if (!mcts || !leaf_indices || !values || num_leaves == 0) return false;
 
     /* Copy to GPU */
     uint32_t* d_leaves;
     float* d_values;
-    cudaMalloc(&d_leaves, num_leaves * sizeof(uint32_t));
-    cudaMalloc(&d_values, num_leaves * sizeof(float));
-    cudaMemcpy(d_leaves, leaf_indices, num_leaves * sizeof(uint32_t), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_values, values, num_leaves * sizeof(float), cudaMemcpyHostToDevice);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_leaves, num_leaves * sizeof(uint32_t)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_values, num_leaves * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(d_leaves, leaf_indices, num_leaves * sizeof(uint32_t), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(d_values, values, num_leaves * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     kernel_backpropagate<<<QMC_GRID_SIZE(num_leaves), QMC_BLOCK_SIZE>>>(
         mcts->visit_counts,
@@ -653,10 +711,11 @@ bool qmcts_gpu_backpropagate(
         num_leaves,
         mcts->config.max_depth);
 
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     cudaFree(d_leaves);
     cudaFree(d_values);
 
-    return cudaGetLastError() == cudaSuccess;
+    return true;
 }
 
 //=============================================================================
@@ -767,6 +826,10 @@ qmc_gpu_sat_t qmc_sat_gpu_create(
     nimcp_gpu_context_t* ctx,
     const qmc_sat_gpu_config_t* config)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     (void)ctx;
     if (!config) return NULL;
 
@@ -813,6 +876,10 @@ bool qmc_sat_gpu_set_cnf(
     const uint32_t* clause_sizes,
     uint32_t num_clauses)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!sat || !clauses || !clause_sizes) return false;
 
     /* Compute offsets */
@@ -825,9 +892,9 @@ bool qmc_sat_gpu_set_cnf(
     sat->total_literals = offset;
 
     /* Copy to GPU */
-    cudaMemcpy(sat->clauses, clauses, offset * sizeof(int32_t), cudaMemcpyHostToDevice);
-    cudaMemcpy(sat->clause_offsets, h_offsets, num_clauses * sizeof(uint32_t), cudaMemcpyHostToDevice);
-    cudaMemcpy(sat->clause_sizes, clause_sizes, num_clauses * sizeof(uint32_t), cudaMemcpyHostToDevice);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(sat->clauses, clauses, offset * sizeof(int32_t), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(sat->clause_offsets, h_offsets, num_clauses * sizeof(uint32_t), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(sat->clause_sizes, clause_sizes, num_clauses * sizeof(uint32_t), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     free(h_offsets);
     return true;
@@ -841,6 +908,10 @@ bool qmc_sat_gpu_estimate_probability(
     float* probability,
     float* variance)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     (void)ctx;
     if (!sat || !rng || !probability) return false;
 
@@ -896,6 +967,10 @@ bool qmc_sat_gpu_solve_mcts(
     qmc_gpu_rng_t rng,
     qmc_sat_gpu_result_t* result)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!sat || !rng || !result) return false;
 
     cudaEvent_t start, stop;

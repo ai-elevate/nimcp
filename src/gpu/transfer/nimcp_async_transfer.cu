@@ -21,6 +21,8 @@
 #endif
 
 #include "gpu/transfer/nimcp_async_transfer.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 
@@ -70,6 +72,11 @@ nimcp_transfer_manager_t* nimcp_transfer_manager_create(
     int num_streams,
     size_t pinned_pool_size)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!nimcp_gpu_context_is_valid(ctx)) {
         LOG_ERROR("Invalid GPU context");
         return NULL;
@@ -637,6 +644,11 @@ void nimcp_transfer_reset_stats(nimcp_transfer_manager_t* mgr) {
 nimcp_double_buffer_t* nimcp_double_buffer_create(
     nimcp_gpu_context_t* ctx, size_t buffer_size)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!nimcp_gpu_context_is_valid(ctx) || buffer_size == 0) {
         LOG_ERROR("Invalid parameters for double buffer");
         return NULL;
@@ -890,6 +902,11 @@ bool nimcp_double_buffer_is_loading(const nimcp_double_buffer_t* db) {
 //=============================================================================
 
 nimcp_pipeline_t* nimcp_pipeline_create(nimcp_gpu_context_t* ctx, int num_stages) {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!nimcp_gpu_context_is_valid(ctx)) {
         LOG_ERROR("Invalid GPU context for pipeline");
         return NULL;

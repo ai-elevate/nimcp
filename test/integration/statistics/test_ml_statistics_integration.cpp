@@ -33,7 +33,6 @@
 #include "utils/memory/nimcp_memory.h"
 
 // Core types
-#include "common/nimcp_types.h"
 
 //=============================================================================
 // Test Configuration
@@ -624,9 +623,7 @@ TEST_F(MLStatisticsIntegrationTest, BiasVarianceTradeoff) {
     std::vector<float> train_errors, test_errors;
 
     for (uint32_t degree = 1; degree <= 10; degree++) {
-        nimcp_regression_result_t result;
-        result.coefficients = new float[degree + 1];
-        result.n_coefficients = degree + 1;
+        nimcp_regression_result_t result = {0};  // Zero-initialize
 
         nimcp_stats_regression_polynomial(x_train.data(), y_train.data(),
                                            n_train, degree, &result);

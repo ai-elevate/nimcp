@@ -107,6 +107,20 @@ add_test_binary(
     unit
 )
 
+# Test 15: Gossip Beliefs
+add_test_binary(
+    test_gossip_beliefs
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_gossip_beliefs.cpp
+    unit
+)
+
+# Test 16: Emotional Contagion
+add_test_binary(
+    test_emotional_contagion
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_emotional_contagion.cpp
+    unit
+)
+
 # ============================================================================
 # FEP Bridge Tests
 # ============================================================================

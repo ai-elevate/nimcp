@@ -15,6 +15,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/statistics/nimcp_statistics.h"
 
 #include <string.h>
 #include <math.h>
@@ -270,25 +271,30 @@ int inner_dialogue_turn_history_get_stats(
  *
  * WHAT: H = -sum(p_i * log2(p_i)) for non-zero probabilities
  * WHY:  Reusable entropy computation for act and perspective analysis
- * HOW:  Normalise counts to probabilities, sum negative log2 terms
+ * HOW:  Convert counts to probabilities, delegate to nimcp_stats_entropy()
  *
- * Uses log2f from math.h — equivalent to Shannon's formula.
+ * Uses central statistics module for entropy calculation.
  * For future quantum extension, this could invoke quantum_shannon_entropy().
  */
 static float compute_shannon_entropy(const uint32_t* counts, uint32_t num_bins,
                                       uint32_t total) {
-    if (total == 0 || !counts) {
+    if (total == 0 || !counts || num_bins == 0) {
         return 0.0f;
     }
-    float entropy = 0.0f;
+
+    /* Convert counts to probabilities for nimcp_stats_entropy() */
+    float probs[DIALOGUE_ACT_COUNT > 16 ? DIALOGUE_ACT_COUNT : 16];
+    if (num_bins > sizeof(probs) / sizeof(probs[0])) {
+        /* Fallback for unexpected large num_bins */
+        return 0.0f;
+    }
+
     float inv_total = 1.0f / (float)total;
     for (uint32_t i = 0; i < num_bins; i++) {
-        if (counts[i] > 0) {
-            float p = (float)counts[i] * inv_total;
-            entropy -= p * log2f(p);
-        }
+        probs[i] = (float)counts[i] * inv_total;
     }
-    return entropy;
+
+    return nimcp_stats_entropy(probs, num_bins);
 }
 
 float inner_dialogue_turn_history_act_entropy(

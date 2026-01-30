@@ -45,3 +45,35 @@ endmacro()
 # WHY:  Verify GPU lexical lookup, phoneme encoding, motor command generation
 # HOW:  Test individual kernel functions with GPU/CPU equivalence verification
 add_gpu_cognitive_test(test_broca_gpu)
+
+# =============================================================================
+# Wernicke GPU Unit Tests
+# =============================================================================
+# WHAT: Unit tests for GPU-accelerated Wernicke's region operations
+# WHY:  Verify GPU phoneme recognition, word recognition, semantic activation
+# HOW:  Test individual kernel functions with GPU/CPU equivalence verification
+add_gpu_cognitive_test(test_wernicke_gpu)
+
+# =============================================================================
+# JEPA GPU Unit Tests
+# =============================================================================
+# WHAT: Unit tests for GPU-accelerated JEPA predictor operations
+# WHY:  Verify GPU forward prediction, inverse model, masking, loss computation
+# HOW:  Test individual kernel functions with numerical stability checks
+add_gpu_cognitive_test(test_jepa_gpu)
+
+# =============================================================================
+# Omni GPU Unit Tests
+# =============================================================================
+# WHAT: Unit tests for GPU-accelerated Omnidirectional inference operations
+# WHY:  Verify GPU bidirectional prediction, Hopfield, hierarchy, replay
+# HOW:  Test individual kernel functions with multi-component integration
+add_gpu_cognitive_test(test_omni_gpu)
+
+# =============================================================================
+# Occipital GPU Bridge Unit Tests
+# =============================================================================
+# WHAT: Unit tests for GPU-accelerated Occipital cortex bridge operations
+# WHY:  Verify GPU V1-V5 visual processing, saliency computation
+# HOW:  Test individual kernel functions with CPU fallback verification
+add_gpu_cognitive_test(test_occipital_gpu_bridge)

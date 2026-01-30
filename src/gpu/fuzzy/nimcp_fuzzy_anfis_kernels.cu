@@ -34,6 +34,7 @@
 #include "gpu/fuzzy/nimcp_fuzzy_anfis_gpu.h"
 #include "gpu/tensor/nimcp_tensor_gpu.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/error/nimcp_error_codes.h"
 
@@ -500,9 +501,18 @@ bool nimcp_gpu_anfis_train_raw(
     float* out_final_error,
     const nimcp_gpu_anfis_params_t* params)
 {
+    // Initialize recovery system if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    // Parameter validation with recovery attempt
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
-        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context for ANFIS training");
-        return false;
+        nimcp_gpu_recovery_result_t result;
+        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_CONTEXT_INVALID, cudaSuccess, &result)) {
+            NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context for ANFIS training");
+            return false;
+        }
     }
     if (!state || !train_inputs || !train_targets || num_samples == 0) {
         NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid training data for ANFIS");
@@ -554,38 +564,116 @@ bool nimcp_gpu_anfis_train_raw(
     float final_loss = 0.0f;
     uint32_t num_epochs_local = params ? params->max_epochs : 1000;
 
-    // Allocate device memory
+    // Allocate device memory with recovery support
     err = cudaMalloc(&d_inputs, inputs_size);
-    if (err != cudaSuccess) goto cleanup_anfis;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+            err = cudaMalloc(&d_inputs, inputs_size);
+        }
+        if (err != cudaSuccess) goto cleanup_anfis;
+    }
     err = cudaMalloc(&d_targets, batch_size * sizeof(float));
-    if (err != cudaSuccess) goto cleanup_anfis;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+            err = cudaMalloc(&d_targets, batch_size * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup_anfis;
+    }
     err = cudaMalloc(&d_mf_params, mf_params_size);
-    if (err != cudaSuccess) goto cleanup_anfis;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+            err = cudaMalloc(&d_mf_params, mf_params_size);
+        }
+        if (err != cudaSuccess) goto cleanup_anfis;
+    }
     err = cudaMalloc(&d_consequent, consequent_size);
-    if (err != cudaSuccess) goto cleanup_anfis;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+            err = cudaMalloc(&d_consequent, consequent_size);
+        }
+        if (err != cudaSuccess) goto cleanup_anfis;
+    }
     err = cudaMalloc(&d_layer1, layer1_size);
-    if (err != cudaSuccess) goto cleanup_anfis;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+            err = cudaMalloc(&d_layer1, layer1_size);
+        }
+        if (err != cudaSuccess) goto cleanup_anfis;
+    }
     err = cudaMalloc(&d_layer2, layer2_size);
-    if (err != cudaSuccess) goto cleanup_anfis;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+            err = cudaMalloc(&d_layer2, layer2_size);
+        }
+        if (err != cudaSuccess) goto cleanup_anfis;
+    }
     err = cudaMalloc(&d_layer3, layer2_size);
-    if (err != cudaSuccess) goto cleanup_anfis;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+            err = cudaMalloc(&d_layer3, layer2_size);
+        }
+        if (err != cudaSuccess) goto cleanup_anfis;
+    }
     err = cudaMalloc(&d_layer4, layer2_size);
-    if (err != cudaSuccess) goto cleanup_anfis;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+            err = cudaMalloc(&d_layer4, layer2_size);
+        }
+        if (err != cudaSuccess) goto cleanup_anfis;
+    }
     err = cudaMalloc(&d_output, batch_size * sizeof(float));
-    if (err != cudaSuccess) goto cleanup_anfis;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+            err = cudaMalloc(&d_output, batch_size * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup_anfis;
+    }
     err = cudaMalloc(&d_errors, batch_size * sizeof(float));
-    if (err != cudaSuccess) goto cleanup_anfis;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+            err = cudaMalloc(&d_errors, batch_size * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup_anfis;
+    }
     err = cudaMalloc(&d_loss, sizeof(float));
-    if (err != cudaSuccess) goto cleanup_anfis;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+            err = cudaMalloc(&d_loss, sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup_anfis;
+    }
     err = cudaMalloc(&d_grad_mf, mf_params_size);
-    if (err != cudaSuccess) goto cleanup_anfis;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+            err = cudaMalloc(&d_grad_mf, mf_params_size);
+        }
+        if (err != cudaSuccess) goto cleanup_anfis;
+    }
     err = cudaMalloc(&d_grad_consequent, consequent_size);
-    if (err != cudaSuccess) goto cleanup_anfis;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+            err = cudaMalloc(&d_grad_consequent, consequent_size);
+        }
+        if (err != cudaSuccess) goto cleanup_anfis;
+    }
 
     // Copy inputs and targets (direct float* pointers from host)
-    cudaMemcpy(d_inputs, train_inputs, inputs_size, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_targets, train_targets, batch_size * sizeof(float),
-               cudaMemcpyHostToDevice);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(d_inputs, train_inputs, inputs_size, cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(d_targets, train_targets, batch_size * sizeof(float),
+               cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     // Initialize parameters
     {
@@ -609,8 +697,8 @@ bool nimcp_gpu_anfis_train_raw(
             }
         }
 
-        cudaMemcpy(d_mf_params, h_mf_params, mf_params_size, cudaMemcpyHostToDevice);
-        cudaMemcpy(d_consequent, h_consequent, consequent_size, cudaMemcpyHostToDevice);
+        NIMCP_CUDA_RECOVER(cudaMemcpy(d_mf_params, h_mf_params, mf_params_size, cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
+        NIMCP_CUDA_RECOVER(cudaMemcpy(d_consequent, h_consequent, consequent_size, cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
         free(h_mf_params);
         free(h_consequent);
@@ -726,19 +814,31 @@ nimcp_gpu_anfis_state_t* nimcp_gpu_anfis_create(
     nimcp_gpu_context_t* ctx,
     const nimcp_gpu_anfis_create_params_t* params)
 {
+    // Initialize recovery system if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    // Parameter validation with recovery attempt
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
-        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context for ANFIS creation");
-        return NULL;
+        nimcp_gpu_recovery_result_t result;
+        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_CONTEXT_INVALID, cudaSuccess, &result)) {
+            NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context for ANFIS creation");
+            return NULL;
+        }
     }
     if (!params) {
         NIMCP_THROW_GPU(NIMCP_ERROR_NULL_POINTER, 0, 0, "NULL parameters for ANFIS creation");
         return NULL;
     }
     if (params->num_inputs == 0 || params->num_mfs_per_input == 0) {
-        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0,
-            "Invalid ANFIS config: num_inputs=%u, num_mfs=%u",
-            params->num_inputs, params->num_mfs_per_input);
-        return NULL;
+        nimcp_gpu_recovery_result_t result;
+        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_INVALID_PARAMS, cudaSuccess, &result)) {
+            NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0,
+                "Invalid ANFIS config: num_inputs=%u, num_mfs=%u",
+                params->num_inputs, params->num_mfs_per_input);
+            return NULL;
+        }
     }
 
     anfis_gpu_state_t* state = (anfis_gpu_state_t*)calloc(1, sizeof(anfis_gpu_state_t));
@@ -762,10 +862,16 @@ nimcp_gpu_anfis_state_t* nimcp_gpu_anfis_create(
     uint32_t mf_param_count = params->num_inputs * params->num_mfs_per_input * 3;
     cudaError_t err = cudaMalloc(&state->d_mf_params, mf_param_count * sizeof(float));
     if (err != cudaSuccess) {
-        NIMCP_THROW_GPU(NIMCP_ERROR_NO_MEMORY, 0, (int)err,
-            "Failed to allocate ANFIS MF params: %s", cudaGetErrorString(err));
-        free(state);
-        return NULL;
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+            err = cudaMalloc(&state->d_mf_params, mf_param_count * sizeof(float));
+        }
+        if (err != cudaSuccess) {
+            NIMCP_THROW_GPU(NIMCP_ERROR_NO_MEMORY, 0, (int)err,
+                "Failed to allocate ANFIS MF params: %s", cudaGetErrorString(err));
+            free(state);
+            return NULL;
+        }
     }
 
     // Initialize MF params with reasonable defaults
@@ -786,19 +892,25 @@ nimcp_gpu_anfis_state_t* nimcp_gpu_anfis_create(
             h_mf_params[idx + 2] = 1.0f;  // height
         }
     }
-    cudaMemcpy(state->d_mf_params, h_mf_params, mf_param_count * sizeof(float),
-               cudaMemcpyHostToDevice);
+    NIMCP_CUDA_RECOVER_NULL(cudaMemcpy(state->d_mf_params, h_mf_params, mf_param_count * sizeof(float),
+               cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
     free(h_mf_params);
 
     // Allocate consequent params (Sugeno: num_rules * (num_inputs + 1))
     uint32_t cons_param_count = state->num_rules * (params->num_inputs + 1);
     err = cudaMalloc(&state->d_consequent_params, cons_param_count * sizeof(float));
     if (err != cudaSuccess) {
-        NIMCP_THROW_GPU(NIMCP_ERROR_NO_MEMORY, 0, (int)err,
-            "Failed to allocate ANFIS consequent params: %s", cudaGetErrorString(err));
-        cudaFree(state->d_mf_params);
-        free(state);
-        return NULL;
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+            err = cudaMalloc(&state->d_consequent_params, cons_param_count * sizeof(float));
+        }
+        if (err != cudaSuccess) {
+            NIMCP_THROW_GPU(NIMCP_ERROR_NO_MEMORY, 0, (int)err,
+                "Failed to allocate ANFIS consequent params: %s", cudaGetErrorString(err));
+            cudaFree(state->d_mf_params);
+            free(state);
+            return NULL;
+        }
     }
 
     // Initialize consequent params to small random values
@@ -814,8 +926,8 @@ nimcp_gpu_anfis_state_t* nimcp_gpu_anfis_create(
     for (uint32_t i = 0; i < cons_param_count; i++) {
         h_cons[i] = ((float)rand() / RAND_MAX - 0.5f) * 0.1f;
     }
-    cudaMemcpy(state->d_consequent_params, h_cons, cons_param_count * sizeof(float),
-               cudaMemcpyHostToDevice);
+    NIMCP_CUDA_RECOVER_NULL(cudaMemcpy(state->d_consequent_params, h_cons, cons_param_count * sizeof(float),
+               cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
     free(h_cons);
 
     state->initialized = true;
@@ -849,14 +961,26 @@ bool nimcp_gpu_anfis_train(
     float* out_initial_error,
     float* out_final_error)
 {
+    // Initialize recovery system if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    // Parameter validation with recovery attempt
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
-        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context for ANFIS training");
-        return false;
+        nimcp_gpu_recovery_result_t result;
+        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_CONTEXT_INVALID, cudaSuccess, &result)) {
+            NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context for ANFIS training");
+            return false;
+        }
     }
     anfis_gpu_state_t* anfis = (anfis_gpu_state_t*)anfis_pub;
     if (!anfis || !anfis->initialized) {
-        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_STATE, 0, 0, "Invalid or uninitialized ANFIS state");
-        return false;
+        nimcp_gpu_recovery_result_t result;
+        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_INVALID_PARAMS, cudaSuccess, &result)) {
+            NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_STATE, 0, 0, "Invalid or uninitialized ANFIS state");
+            return false;
+        }
     }
     if (!train_inputs || !train_targets) {
         NIMCP_THROW_GPU(NIMCP_ERROR_NULL_POINTER, 0, 0, "NULL training tensors for ANFIS");
@@ -915,23 +1039,77 @@ bool nimcp_gpu_anfis_train(
     uint32_t err_grid = (batch_size + 255) / 256;
 
     cerr = cudaMalloc(&d_layer1, layer1_size);
-    if (cerr != cudaSuccess) goto train_cleanup;
+    if (cerr != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, cerr, &result)) {
+            cerr = cudaMalloc(&d_layer1, layer1_size);
+        }
+        if (cerr != cudaSuccess) goto train_cleanup;
+    }
     cerr = cudaMalloc(&d_layer2, layer2_size);
-    if (cerr != cudaSuccess) goto train_cleanup;
+    if (cerr != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, cerr, &result)) {
+            cerr = cudaMalloc(&d_layer2, layer2_size);
+        }
+        if (cerr != cudaSuccess) goto train_cleanup;
+    }
     cerr = cudaMalloc(&d_layer3, layer2_size);
-    if (cerr != cudaSuccess) goto train_cleanup;
+    if (cerr != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, cerr, &result)) {
+            cerr = cudaMalloc(&d_layer3, layer2_size);
+        }
+        if (cerr != cudaSuccess) goto train_cleanup;
+    }
     cerr = cudaMalloc(&d_layer4, layer2_size);
-    if (cerr != cudaSuccess) goto train_cleanup;
+    if (cerr != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, cerr, &result)) {
+            cerr = cudaMalloc(&d_layer4, layer2_size);
+        }
+        if (cerr != cudaSuccess) goto train_cleanup;
+    }
     cerr = cudaMalloc(&d_output, batch_size * sizeof(float));
-    if (cerr != cudaSuccess) goto train_cleanup;
+    if (cerr != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, cerr, &result)) {
+            cerr = cudaMalloc(&d_output, batch_size * sizeof(float));
+        }
+        if (cerr != cudaSuccess) goto train_cleanup;
+    }
     cerr = cudaMalloc(&d_errors, batch_size * sizeof(float));
-    if (cerr != cudaSuccess) goto train_cleanup;
+    if (cerr != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, cerr, &result)) {
+            cerr = cudaMalloc(&d_errors, batch_size * sizeof(float));
+        }
+        if (cerr != cudaSuccess) goto train_cleanup;
+    }
     cerr = cudaMalloc(&d_loss, sizeof(float));
-    if (cerr != cudaSuccess) goto train_cleanup;
+    if (cerr != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, cerr, &result)) {
+            cerr = cudaMalloc(&d_loss, sizeof(float));
+        }
+        if (cerr != cudaSuccess) goto train_cleanup;
+    }
     cerr = cudaMalloc(&d_grad_mf, mf_param_count * sizeof(float));
-    if (cerr != cudaSuccess) goto train_cleanup;
+    if (cerr != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, cerr, &result)) {
+            cerr = cudaMalloc(&d_grad_mf, mf_param_count * sizeof(float));
+        }
+        if (cerr != cudaSuccess) goto train_cleanup;
+    }
     cerr = cudaMalloc(&d_grad_consequent, cons_param_count * sizeof(float));
-    if (cerr != cudaSuccess) goto train_cleanup;
+    if (cerr != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, cerr, &result)) {
+            cerr = cudaMalloc(&d_grad_consequent, cons_param_count * sizeof(float));
+        }
+        if (cerr != cudaSuccess) goto train_cleanup;
+    }
 
     // Training loop using actual CUDA kernels
     for (uint32_t epoch = 0; epoch < params->num_epochs; epoch++) {
@@ -1032,14 +1210,26 @@ bool nimcp_gpu_anfis_forward(
     const nimcp_gpu_tensor_t* inputs,
     nimcp_gpu_tensor_t* outputs)
 {
+    // Initialize recovery system if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    // Parameter validation with recovery attempt
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
-        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context for ANFIS forward");
-        return false;
+        nimcp_gpu_recovery_result_t result;
+        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_CONTEXT_INVALID, cudaSuccess, &result)) {
+            NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context for ANFIS forward");
+            return false;
+        }
     }
     anfis_gpu_state_t* anfis = (anfis_gpu_state_t*)anfis_pub;
     if (!anfis || !anfis->initialized) {
-        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_STATE, 0, 0, "Invalid or uninitialized ANFIS state");
-        return false;
+        nimcp_gpu_recovery_result_t result;
+        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_INVALID_PARAMS, cudaSuccess, &result)) {
+            NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_STATE, 0, 0, "Invalid or uninitialized ANFIS state");
+            return false;
+        }
     }
     if (!inputs || !outputs) {
         NIMCP_THROW_GPU(NIMCP_ERROR_NULL_POINTER, 0, 0, "NULL tensor for ANFIS forward");
@@ -1084,13 +1274,37 @@ bool nimcp_gpu_anfis_forward(
     dim3 l2_grid;
 
     cerr = cudaMalloc(&d_layer1, layer1_size);
-    if (cerr != cudaSuccess) goto forward_cleanup;
+    if (cerr != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, cerr, &result)) {
+            cerr = cudaMalloc(&d_layer1, layer1_size);
+        }
+        if (cerr != cudaSuccess) goto forward_cleanup;
+    }
     cerr = cudaMalloc(&d_layer2, layer2_size);
-    if (cerr != cudaSuccess) goto forward_cleanup;
+    if (cerr != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, cerr, &result)) {
+            cerr = cudaMalloc(&d_layer2, layer2_size);
+        }
+        if (cerr != cudaSuccess) goto forward_cleanup;
+    }
     cerr = cudaMalloc(&d_layer3, layer2_size);
-    if (cerr != cudaSuccess) goto forward_cleanup;
+    if (cerr != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, cerr, &result)) {
+            cerr = cudaMalloc(&d_layer3, layer2_size);
+        }
+        if (cerr != cudaSuccess) goto forward_cleanup;
+    }
     cerr = cudaMalloc(&d_layer4, layer2_size);
-    if (cerr != cudaSuccess) goto forward_cleanup;
+    if (cerr != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, cerr, &result)) {
+            cerr = cudaMalloc(&d_layer4, layer2_size);
+        }
+        if (cerr != cudaSuccess) goto forward_cleanup;
+    }
 
     // Forward pass using CUDA kernels
     l1_grid = dim3(batch_size, num_inputs);

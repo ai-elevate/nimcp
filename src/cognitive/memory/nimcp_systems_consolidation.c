@@ -35,6 +35,7 @@
 #include "utils/memory/nimcp_memory_pool.h"
 #include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
 #include "utils/logging/nimcp_logging.h"
+#include "utils/containers/nimcp_vector.h"
 #include <string.h>
 #include <math.h>
 
@@ -139,62 +140,7 @@ static int systems_consolidation_wiring_handler_callback(
 // Internal Helper Functions
 //=============================================================================
 
-/**
- * @brief Compute cosine similarity between two feature vectors
- *
- * WHAT: Measures semantic similarity between memory representations
- * WHY:  Cortex groups similar concepts via lateral connections
- * HOW:  Normalized dot product (cosine of angle between vectors)
- *
- * @param features_a First feature vector
- * @param features_b Second feature vector
- * @param dim Dimensionality
- * @return Similarity score (0.0-1.0), or 0.0 on error
- */
-static float compute_cosine_similarity(
-    const float* features_a,
-    const float* features_b,
-    uint32_t dim)
-{
-    // WHAT: Guard against invalid input
-    if (!features_a || !features_b || dim == 0) {
-        return 0.0F;
-    }
-
-    // WHAT: Compute dot product and magnitudes
-    float dot_product = 0.0F;
-    float magnitude_a = 0.0F;
-    float magnitude_b = 0.0F;
-
-    for (uint32_t i = 0; i < dim; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && dim > 256) {
-            consolidation_heartbeat("consolidatio_loop",
-                             (float)(i + 1) / (float)dim);
-        }
-
-        dot_product += features_a[i] * features_b[i];
-        magnitude_a += features_a[i] * features_a[i];
-        magnitude_b += features_b[i] * features_b[i];
-    }
-
-    magnitude_a = sqrtf(magnitude_a);
-    magnitude_b = sqrtf(magnitude_b);
-
-    // WHAT: Avoid division by zero
-    if (magnitude_a < 1e-6F || magnitude_b < 1e-6F) {
-        return 0.0F;
-    }
-
-    // WHAT: Normalize dot product to get cosine
-    float similarity = dot_product / (magnitude_a * magnitude_b);
-
-    // WHAT: Clamp to [0, 1] range
-    if (similarity < 0.0F) similarity = 0.0F;
-    if (similarity > 1.0F) similarity = 1.0F;
-
-    return similarity;
-}
+/* Cosine similarity uses nimcp_vector_cosine_similarity from utils/containers/nimcp_vector.h */
 
 /**
  * @brief Generate unique ID for cortical memory node
@@ -837,7 +783,7 @@ uint64_t systems_consolidation_transfer_to_cortex(
     // WHY: Cortex groups related concepts (lateral connections)
     for (uint32_t i = 0; i < system->node_count - 1; i++) {
         cortical_memory_node_t* other_node = system->cortical_nodes[i];
-        float similarity = compute_cosine_similarity(
+        float similarity = nimcp_vector_cosine_similarity(
             new_node->features,
             other_node->features,
             SEMANTIC_DIM
@@ -990,7 +936,7 @@ uint32_t systems_consolidation_find_similar(
         }
 
         // WHAT: Compute similarity
-        float similarity = compute_cosine_similarity(
+        float similarity = nimcp_vector_cosine_similarity(
             query_features,
             node->features,
             feature_dim

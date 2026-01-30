@@ -12,6 +12,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/statistics/nimcp_statistics.h"
 
 #include <string.h>
 #include <math.h>
@@ -898,27 +899,30 @@ int knowledge_plasticity_get_state(
     state->active_synapses = bridge->synapse_count;
     state->learning_rate_effective = bridge->learning_rate_effective;
 
-    /* Calculate mean weight and variance */
-    float sum = 0.0f;
-    float sum_sq = 0.0f;
-    for (uint32_t i = 0; i < bridge->max_synapses; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
-            knowledge_plasticity_bridge_heartbeat("knowledge_pl_loop",
-                             (float)(i + 1) / (float)bridge->max_synapses);
-        }
-
-        if (bridge->synapses[i].in_use) {
-            float w = bridge->synapses[i].synapse.weight;
-            sum += w;
-            sum_sq += w * w;
-        }
-    }
-
+    /* Calculate mean weight and variance using statistics module */
     if (bridge->synapse_count > 0) {
-        state->mean_weight = sum / bridge->synapse_count;
-        state->weight_variance = (sum_sq / bridge->synapse_count) -
-                                (state->mean_weight * state->mean_weight);
+        /* Collect active synapse weights to temporary array */
+        float* weights = (float*)nimcp_malloc(bridge->synapse_count * sizeof(float));
+        if (weights) {
+            uint32_t weight_idx = 0;
+            for (uint32_t i = 0; i < bridge->max_synapses && weight_idx < bridge->synapse_count; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && bridge->max_synapses > 256) {
+                    knowledge_plasticity_bridge_heartbeat("knowledge_pl_loop",
+                                     (float)(i + 1) / (float)bridge->max_synapses);
+                }
+
+                if (bridge->synapses[i].in_use) {
+                    weights[weight_idx++] = bridge->synapses[i].synapse.weight;
+                }
+            }
+            state->mean_weight = nimcp_stats_mean(weights, bridge->synapse_count);
+            state->weight_variance = nimcp_stats_variance_population(weights, bridge->synapse_count);
+            nimcp_free(weights);
+        } else {
+            state->mean_weight = 0.0f;
+            state->weight_variance = 0.0f;
+        }
     } else {
         state->mean_weight = 0.0f;
         state->weight_variance = 0.0f;

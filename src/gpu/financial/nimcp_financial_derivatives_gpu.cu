@@ -29,6 +29,8 @@
 #include "gpu/financial/nimcp_financial_gpu.h"
 #include "gpu/financial/nimcp_financial_derivatives_gpu.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Thread-Local Error Storage
@@ -422,16 +424,24 @@ bool fin_derivatives_gpu_binomial_tree(
     const fin_derivatives_gpu_params_t* params,
     fin_derivatives_gpu_result_t* result)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
         set_deriv_error("Invalid GPU context");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context");
         return false;
     }
     if (!params || !result) {
         set_deriv_error("Invalid parameters");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid parameters");
         return false;
     }
     if (params->tree_steps == 0) {
         set_deriv_error("Zero tree steps");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Zero tree steps");
         return false;
     }
 
@@ -449,7 +459,7 @@ bool fin_derivatives_gpu_binomial_tree(
     bool is_call = (params->option_type == FIN_OPT_CALL);
     bool is_american = (params->option_style == FIN_OPT_STYLE_AMERICAN);
 
-    // Allocate two buffers for ping-pong
+    // Allocate two buffers for ping-pong with recovery
     float* d_values_a = NULL;
     float* d_values_b = NULL;
 
@@ -457,15 +467,29 @@ bool fin_derivatives_gpu_binomial_tree(
 
     err = cudaMalloc(&d_values_a, (N + 1) * sizeof(float));
     if (err != cudaSuccess) {
-        set_deriv_error("Failed to allocate tree buffer A");
-        return false;
+        nimcp_gpu_recovery_result_t recovery_result = {0};
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &recovery_result)) {
+            err = cudaMalloc(&d_values_a, (N + 1) * sizeof(float));
+        }
+        if (err != cudaSuccess) {
+            set_deriv_error("Failed to allocate tree buffer A");
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, err, "Failed to allocate tree buffer A");
+            return false;
+        }
     }
 
     err = cudaMalloc(&d_values_b, (N + 1) * sizeof(float));
     if (err != cudaSuccess) {
-        cudaFree(d_values_a);
-        set_deriv_error("Failed to allocate tree buffer B");
-        return false;
+        nimcp_gpu_recovery_result_t recovery_result = {0};
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &recovery_result)) {
+            err = cudaMalloc(&d_values_b, (N + 1) * sizeof(float));
+        }
+        if (err != cudaSuccess) {
+            cudaFree(d_values_a);
+            set_deriv_error("Failed to allocate tree buffer B");
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, err, "Failed to allocate tree buffer B");
+            return false;
+        }
     }
 
     uint32_t grid_size = NIMCP_CUDA_GRID_SIZE(N + 1, block_size);
@@ -556,16 +580,24 @@ bool fin_derivatives_gpu_black_scholes_batch(
     const float* volatilities,
     float* prices)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
         set_deriv_error("Invalid GPU context");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context");
         return false;
     }
     if (!chain || !volatilities || !prices) {
         set_deriv_error("Invalid parameters");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid parameters");
         return false;
     }
     if (chain->num_options == 0) {
         set_deriv_error("Empty option chain");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Empty option chain");
         return false;
     }
 
@@ -627,7 +659,7 @@ bool fin_derivatives_gpu_black_scholes_batch(
     kernel_black_scholes_batch<<<grid_size, block_size, 0, stream>>>(
         d_spots, d_strikes, d_rates, d_vols, d_times, d_types, d_prices, n);
 
-    NIMCP_CUDA_CHECK_LAST();
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Copy results
     cudaMemcpy(prices, d_prices, n * sizeof(float), cudaMemcpyDeviceToHost);
@@ -664,12 +696,19 @@ bool fin_derivatives_gpu_greeks_batch(
     const float* volatilities,
     fin_option_chain_result_t* result)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
         set_deriv_error("Invalid GPU context");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context");
         return false;
     }
     if (!chain || !volatilities || !result) {
         set_deriv_error("Invalid parameters");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid parameters");
         return false;
     }
 
@@ -760,7 +799,7 @@ bool fin_derivatives_gpu_greeks_batch(
         d_spots, d_strikes, d_rates, d_vols, d_times, d_types,
         d_deltas, d_gammas, d_thetas, d_vegas, d_rhos, n);
 
-    NIMCP_CUDA_CHECK_LAST();
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Copy results back
     cudaMemcpy(result->prices, d_prices, n * sizeof(float), cudaMemcpyDeviceToHost);
@@ -811,12 +850,19 @@ bool fin_derivatives_gpu_implied_vol_batch(
     const fin_option_chain_t* chain,
     float* implied_vols)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
         set_deriv_error("Invalid GPU context");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context");
         return false;
     }
     if (!market_prices || !chain || !implied_vols) {
         set_deriv_error("Invalid parameters");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid parameters");
         return false;
     }
 
@@ -882,7 +928,7 @@ bool fin_derivatives_gpu_implied_vol_batch(
         100,     // Max iterations
         n);
 
-    NIMCP_CUDA_CHECK_LAST();
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     cudaMemcpy(implied_vols, d_ivs, n * sizeof(float), cudaMemcpyDeviceToHost);
 

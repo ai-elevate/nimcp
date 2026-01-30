@@ -32,6 +32,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/rng/nimcp_rand.h"
 
 #define LOG_MODULE "cognitive.personality"
 
@@ -154,17 +155,16 @@ static void personality_bio_cleanup(void) {
  *
  * WHAT: Set up RNG with seed
  * WHY:  Reproducible randomness for testing
- * HOW:  Use seed if non-zero, otherwise use time
+ * HOW:  Use nimcp_rand_seed() for central RNG module
  *
- * @param seed Seed value (0 = use time)
+ * @param seed Seed value (0 = use entropy/time)
  *
  * COMPLEXITY: O(1)
  */
 static void init_rng(uint32_t seed) {
-    if (seed == 0) {
-        seed = (uint32_t)time(NULL);
-    }
-    srand(seed);
+    /* Use the central RNG module for seeding to ensure reproducibility
+     * when the same seed is used. nimcp_rand_seed(0) uses entropy. */
+    nimcp_rand_seed((uint64_t)seed);
 }
 
 /**
@@ -172,22 +172,22 @@ static void init_rng(uint32_t seed) {
  *
  * WHAT: Uniform random number generation
  * WHY:  Need random values for trait generation
- * HOW:  Scale rand() output
+ * HOW:  Use nimcp_rand_uniform() from central RNG module
  *
  * @return Random float in [0, 1]
  *
  * COMPLEXITY: O(1)
  */
 static float random_uniform(void) {
-    return (float)rand() / (float)RAND_MAX;
+    return nimcp_rand_uniform();
 }
 
 /**
- * @brief Generate Gaussian random value (Box-Muller transform)
+ * @brief Generate Gaussian random value using centralized RNG module
  *
  * WHAT: Normal distribution random number
  * WHY:  Personality traits follow normal distribution
- * HOW:  Box-Muller transform of uniform random
+ * HOW:  Delegates to nimcp_rand_normal() for thread-safe Box-Muller
  *
  * @param mean Mean of distribution
  * @param stddev Standard deviation
@@ -195,16 +195,8 @@ static float random_uniform(void) {
  *
  * COMPLEXITY: O(1)
  */
-static float random_gaussian(float mean, float stddev) {
-    // Box-Muller transform
-    float u1 = random_uniform();
-    float u2 = random_uniform();
-
-    // Avoid log(0)
-    u1 = (u1 < 1e-10F) ? 1e-10F : u1;
-
-    float z = sqrtf(-2.0F * logf(u1)) * cosf(2.0F * (float)PI * u2);
-    return mean + stddev * z;
+static inline float random_gaussian(float mean, float stddev) {
+    return nimcp_rand_normal(mean, stddev);
 }
 
 /**

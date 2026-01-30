@@ -21,6 +21,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "SLEEP_GPU"
 
@@ -168,7 +169,7 @@ bool nimcp_gpu_nrem_slow_oscillation(
         params->slow_wave_freq,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -229,7 +230,7 @@ bool nimcp_gpu_nrem_replay(
         state->buffer_size,
         state->memory_dim);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -322,7 +323,7 @@ bool nimcp_gpu_rem_memory_integration(
         params->integration_rate,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -409,7 +410,7 @@ bool nimcp_gpu_synaptic_downscaling(
         params->min_weight,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -468,7 +469,7 @@ bool nimcp_gpu_synapse_pruning(
         params->min_weight,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 

@@ -27,6 +27,18 @@
 
 #define LOG_MODULE "TENSORRT_EXPORT"
 
+// GPU Recovery Integration
+#include "gpu/recovery/nimcp_gpu_recovery.h"
+
+//=============================================================================
+// Recovery Initialization Helper
+//=============================================================================
+static void ensure_recovery_initialized(void) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+}
+
 //=============================================================================
 // TensorRT Implementation (when available)
 //=============================================================================
@@ -86,9 +98,21 @@ public:
         mBatchSize(batch_size),
         mInputSize(input_size),
         mCachePath(cache_path ? cache_path : ""),
-        mCurrentBatch(0)
+        mCurrentBatch(0),
+        mDeviceInput(nullptr)
     {
-        cudaMalloc(&mDeviceInput, batch_size * input_size * sizeof(float));
+        cudaError_t err = cudaMalloc(&mDeviceInput, batch_size * input_size * sizeof(float));
+        if (err != cudaSuccess) {
+            nimcp_gpu_recovery_result_t result;
+            if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+                // Retry after recovery
+                err = cudaMalloc(&mDeviceInput, batch_size * input_size * sizeof(float));
+            }
+            if (err != cudaSuccess) {
+                nimcp_gpu_recovery_report_error(GPU_ERROR_OUT_OF_MEMORY, err, __FILE__, __LINE__);
+                LOG_ERROR("Failed to allocate calibration buffer: %s", cudaGetErrorString(err));
+            }
+        }
     }
 
     ~NimcpInt8Calibrator() {
@@ -104,15 +128,31 @@ public:
             return false;
         }
 
-        // Copy calibration data to device
+        // Copy calibration data to device with recovery
         int start = mCurrentBatch * mBatchSize;
         for (int i = 0; i < mBatchSize && (start + i) < mNumSamples; i++) {
-            cudaMemcpy(
+            cudaError_t err = cudaMemcpy(
                 (float*)mDeviceInput + i * mInputSize,
                 mCalibrationData[start + i],
                 mInputSize * sizeof(float),
                 cudaMemcpyHostToDevice
             );
+            if (err != cudaSuccess) {
+                nimcp_gpu_recovery_result_t result;
+                if (nimcp_gpu_try_recover(NULL, GPU_ERROR_CUDA_RUNTIME, err, &result)) {
+                    // Retry after recovery
+                    err = cudaMemcpy(
+                        (float*)mDeviceInput + i * mInputSize,
+                        mCalibrationData[start + i],
+                        mInputSize * sizeof(float),
+                        cudaMemcpyHostToDevice
+                    );
+                }
+                if (err != cudaSuccess) {
+                    nimcp_gpu_recovery_report_error(GPU_ERROR_CUDA_RUNTIME, err, __FILE__, __LINE__);
+                    return false;
+                }
+            }
         }
 
         bindings[0] = mDeviceInput;
@@ -186,6 +226,7 @@ struct nimcp_trt_exporter_s {
 extern "C" {
 
 int nimcp_trt_default_config(nimcp_trt_config_t* config) {
+    ensure_recovery_initialized();
     if (!config) return -1;
 
     memset(config, 0, sizeof(nimcp_trt_config_t));
@@ -252,7 +293,13 @@ int nimcp_trt_validate_config(const nimcp_trt_config_t* config) {
 }
 
 nimcp_trt_network_def_t* nimcp_trt_network_create(const char* name, int num_layers) {
-    if (num_layers <= 0) return NULL;
+    ensure_recovery_initialized();
+
+    // Parameter validation with recovery
+    if (num_layers <= 0) {
+        nimcp_gpu_recovery_report_error(GPU_ERROR_INVALID_PARAMS, cudaSuccess, __FILE__, __LINE__);
+        return NULL;
+    }
 
     nimcp_trt_network_def_t* network = (nimcp_trt_network_def_t*)calloc(1, sizeof(nimcp_trt_network_def_t));
     if (!network) return NULL;
@@ -497,7 +544,12 @@ nimcp_trt_exporter_t* nimcp_trt_exporter_create(
     nimcp_gpu_context_t* ctx,
     const nimcp_trt_config_t* config)
 {
-    if (!ctx || !config) return NULL;
+    ensure_recovery_initialized();
+
+    if (!ctx || !config) {
+        nimcp_gpu_recovery_report_error(GPU_ERROR_INVALID_PARAMS, cudaSuccess, __FILE__, __LINE__);
+        return NULL;
+    }
 
     if (nimcp_trt_validate_config(config) != 0) {
         return NULL;
@@ -607,7 +659,12 @@ int nimcp_trt_export(
     const nimcp_trt_network_def_t* network,
     nimcp_trt_export_result_t* result)
 {
-    if (!exporter || !network || !result) return -1;
+    ensure_recovery_initialized();
+
+    if (!exporter || !network || !result) {
+        nimcp_gpu_recovery_report_error(GPU_ERROR_INVALID_PARAMS, cudaSuccess, __FILE__, __LINE__);
+        return -1;
+    }
 
     memset(result, 0, sizeof(nimcp_trt_export_result_t));
 
@@ -827,7 +884,12 @@ int nimcp_trt_export_int8_model(
     int num_inputs,
     nimcp_trt_export_result_t* result)
 {
-    if (!exporter || !model || !result) return -1;
+    ensure_recovery_initialized();
+
+    if (!exporter || !model || !result) {
+        nimcp_gpu_recovery_report_error(GPU_ERROR_INVALID_PARAMS, cudaSuccess, __FILE__, __LINE__);
+        return -1;
+    }
 
     // Create network definition from INT8 model
     nimcp_trt_network_def_t* network = nimcp_trt_network_create(
@@ -893,7 +955,12 @@ bool nimcp_export_tensorrt(
     const nimcp_int8_model_t* model,
     const char* output_path)
 {
-    if (!ctx || !model || !output_path) return false;
+    ensure_recovery_initialized();
+
+    if (!ctx || !model || !output_path) {
+        nimcp_gpu_recovery_report_error(GPU_ERROR_INVALID_PARAMS, cudaSuccess, __FILE__, __LINE__);
+        return false;
+    }
 
     nimcp_trt_config_t config;
     nimcp_trt_default_config(&config);
@@ -951,9 +1018,17 @@ bool nimcp_trt_available(void) {
 }
 
 bool nimcp_trt_int8_supported(nimcp_gpu_context_t* ctx) {
-    if (!ctx) return false;
+    ensure_recovery_initialized();
+
+    if (!ctx) {
+        nimcp_gpu_recovery_report_error(GPU_ERROR_CONTEXT_INVALID, cudaSuccess, __FILE__, __LINE__);
+        return false;
+    }
     IBuilder* builder = createInferBuilder(gLogger);
-    if (!builder) return false;
+    if (!builder) {
+        nimcp_gpu_recovery_report_error(GPU_ERROR_LIBRARY, cudaSuccess, __FILE__, __LINE__);
+        return false;
+    }
     bool supported = builder->platformHasFastInt8();
     builder->destroy();
     return supported;

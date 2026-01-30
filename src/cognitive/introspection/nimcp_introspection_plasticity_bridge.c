@@ -12,6 +12,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/statistics/nimcp_statistics.h"
 
 #include <string.h>
 #include <math.h>
@@ -861,25 +862,26 @@ int introspection_plasticity_get_state(
     state->state = bridge->state;
     state->active_synapses = bridge->num_synapses;
 
-    /* Calculate mean weight and variance */
-    float sum = 0.0f;
-    float sum_sq = 0.0f;
-
-    for (uint32_t i = 0; i < bridge->num_synapses; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
-            introspection_plasticity_bridge_heartbeat("introspectio_loop",
-                             (float)(i + 1) / (float)bridge->num_synapses);
-        }
-
-        sum += bridge->synapses[i].weight;
-        sum_sq += bridge->synapses[i].weight * bridge->synapses[i].weight;
-    }
-
+    /* Calculate mean weight and variance using statistics module */
     if (bridge->num_synapses > 0) {
-        state->mean_weight = sum / bridge->num_synapses;
-        state->weight_variance = (sum_sq / bridge->num_synapses) -
-                                (state->mean_weight * state->mean_weight);
+        /* Collect synapse weights to temporary array */
+        float* weights = (float*)nimcp_malloc(bridge->num_synapses * sizeof(float));
+        if (weights) {
+            for (uint32_t i = 0; i < bridge->num_synapses; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && bridge->num_synapses > 256) {
+                    introspection_plasticity_bridge_heartbeat("introspectio_loop",
+                                     (float)(i + 1) / (float)bridge->num_synapses);
+                }
+                weights[i] = bridge->synapses[i].weight;
+            }
+            state->mean_weight = nimcp_stats_mean(weights, bridge->num_synapses);
+            state->weight_variance = nimcp_stats_variance_population(weights, bridge->num_synapses);
+            nimcp_free(weights);
+        } else {
+            state->mean_weight = 0.0f;
+            state->weight_variance = 0.0f;
+        }
     } else {
         state->mean_weight = 0.0f;
         state->weight_variance = 0.0f;

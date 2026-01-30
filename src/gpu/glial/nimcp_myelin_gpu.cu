@@ -37,6 +37,7 @@
 
 #include "gpu/glial/nimcp_myelin_gpu.h"
 #include "gpu/context/nimcp_gpu_context.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
@@ -1080,6 +1081,10 @@ extern "C" myelin_gpu_context_t* myelin_gpu_create(
     nimcp_gpu_context_t* gpu_ctx,
     const myelin_gpu_config_t* config
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!gpu_ctx) {
         LOG_ERROR("NULL GPU context");
         return NULL;
@@ -1215,8 +1220,12 @@ extern "C" void myelin_gpu_destroy(myelin_gpu_context_t* ctx) {
 }
 
 extern "C" bool myelin_gpu_synchronize(myelin_gpu_context_t* ctx) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx) return false;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(ctx->stream), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
@@ -1277,6 +1286,10 @@ extern "C" bool myelin_gpu_upload_axon_properties(
     const float* internode_lengths,
     uint32_t n_axons
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !axon_diameters || !internode_lengths) return false;
     if (n_axons > ctx->config.max_axons) {
         LOG_ERROR("n_axons (%u) exceeds max_axons (%u)", n_axons, ctx->config.max_axons);
@@ -1286,17 +1299,17 @@ extern "C" bool myelin_gpu_upload_axon_properties(
     ctx->n_axons = n_axons;
 
     // Upload axon diameters
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->axon_diameters->data, axon_diameters,
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(ctx->axon_diameters->data, axon_diameters,
                                n_axons * sizeof(float),
-                               cudaMemcpyHostToDevice, ctx->stream));
+                               cudaMemcpyHostToDevice, ctx->stream), GPU_ERROR_CUDA_RUNTIME);
 
     // Upload internode lengths
     size_t internode_bytes = n_axons * ctx->n_internodes * sizeof(float);
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->internode_lengths->data, internode_lengths,
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(ctx->internode_lengths->data, internode_lengths,
                                internode_bytes,
-                               cudaMemcpyHostToDevice, ctx->stream));
+                               cudaMemcpyHostToDevice, ctx->stream), GPU_ERROR_CUDA_RUNTIME);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(ctx->stream), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
@@ -1304,6 +1317,10 @@ extern "C" bool myelin_gpu_upload_lamellae(
     myelin_gpu_context_t* ctx,
     const uint32_t* lamellae
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !lamellae) return false;
 
     // Convert uint32_t to float for GPU processing
@@ -1315,17 +1332,17 @@ extern "C" bool myelin_gpu_upload_lamellae(
         h_lamellae_f[i] = (float)lamellae[i];
     }
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->num_lamellae->data, h_lamellae_f,
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(ctx->num_lamellae->data, h_lamellae_f,
                                total * sizeof(float),
-                               cudaMemcpyHostToDevice, ctx->stream));
+                               cudaMemcpyHostToDevice, ctx->stream), GPU_ERROR_CUDA_RUNTIME);
 
     // Also copy to fractional for plasticity tracking
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->lamellae_fractional->data, h_lamellae_f,
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(ctx->lamellae_fractional->data, h_lamellae_f,
                                total * sizeof(float),
-                               cudaMemcpyHostToDevice, ctx->stream));
+                               cudaMemcpyHostToDevice, ctx->stream), GPU_ERROR_CUDA_RUNTIME);
 
     free(h_lamellae_f);
-    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(ctx->stream), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
@@ -1333,14 +1350,18 @@ extern "C" bool myelin_gpu_upload_integrity(
     myelin_gpu_context_t* ctx,
     const float* integrity
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !integrity) return false;
 
     size_t total = ctx->n_axons * ctx->n_internodes;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->integrity->data, integrity,
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(ctx->integrity->data, integrity,
                                total * sizeof(float),
-                               cudaMemcpyHostToDevice, ctx->stream));
+                               cudaMemcpyHostToDevice, ctx->stream), GPU_ERROR_CUDA_RUNTIME);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(ctx->stream), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
@@ -1348,11 +1369,15 @@ extern "C" bool myelin_gpu_download_velocities(
     const myelin_gpu_context_t* ctx,
     float* velocities
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !velocities) return false;
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(velocities, ctx->conduction_velocities->data,
+    NIMCP_CUDA_RECOVER(cudaMemcpy(velocities, ctx->conduction_velocities->data,
                           ctx->n_axons * sizeof(float),
-                          cudaMemcpyDeviceToHost));
+                          cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
@@ -1361,6 +1386,10 @@ extern "C" bool myelin_gpu_download_velocities(
 //=============================================================================
 
 extern "C" bool myelin_gpu_compute_g_ratios(myelin_gpu_context_t* ctx) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || ctx->n_axons == 0) return false;
 
     kernel_rushton_g_ratio<<<GRID_SIZE(ctx->n_axons), BLOCK_SIZE, 0, ctx->stream>>>(
@@ -1371,11 +1400,15 @@ extern "C" bool myelin_gpu_compute_g_ratios(myelin_gpu_context_t* ctx) {
 
     ctx->kernel_launches++;
     ctx->g_ratio_computations++;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(ctx->stream), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
 extern "C" bool myelin_gpu_compute_cable_params(myelin_gpu_context_t* ctx) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || ctx->n_axons == 0) return false;
 
     uint32_t total = ctx->n_axons * ctx->n_internodes;
@@ -1392,11 +1425,15 @@ extern "C" bool myelin_gpu_compute_cable_params(myelin_gpu_context_t* ctx) {
     );
 
     ctx->kernel_launches++;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(ctx->stream), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
 extern "C" bool myelin_gpu_compute_velocities(myelin_gpu_context_t* ctx) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || ctx->n_axons == 0) return false;
 
     uint32_t total = ctx->n_axons * ctx->n_internodes;
@@ -1430,7 +1467,7 @@ extern "C" bool myelin_gpu_compute_velocities(myelin_gpu_context_t* ctx) {
 
     ctx->kernel_launches += 2;
     ctx->velocity_computations++;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(ctx->stream), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
@@ -1439,6 +1476,10 @@ extern "C" bool myelin_gpu_apply_plasticity(
     const nimcp_gpu_tensor_t* activity,
     float dt
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !activity || ctx->n_axons == 0) return false;
 
     uint32_t total = ctx->n_axons * ctx->n_internodes;
@@ -1457,11 +1498,15 @@ extern "C" bool myelin_gpu_apply_plasticity(
 
     ctx->kernel_launches++;
     ctx->plasticity_updates++;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(ctx->stream), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
 extern "C" bool myelin_gpu_commit_lamellae(myelin_gpu_context_t* ctx) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || ctx->n_axons == 0) return false;
 
     uint32_t total = ctx->n_axons * ctx->n_internodes;
@@ -1474,11 +1519,15 @@ extern "C" bool myelin_gpu_commit_lamellae(myelin_gpu_context_t* ctx) {
     );
 
     ctx->kernel_launches++;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(ctx->stream), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
 extern "C" bool myelin_gpu_compute_block_probabilities(myelin_gpu_context_t* ctx) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || ctx->n_axons == 0) return false;
 
     uint32_t total = ctx->n_axons * ctx->n_internodes;
@@ -1492,11 +1541,15 @@ extern "C" bool myelin_gpu_compute_block_probabilities(myelin_gpu_context_t* ctx
     );
 
     ctx->kernel_launches++;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(ctx->stream), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
 extern "C" bool myelin_gpu_apply_blocks(myelin_gpu_context_t* ctx, uint64_t seed) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || ctx->n_axons == 0) return false;
 
     uint32_t total = ctx->n_axons * ctx->n_internodes;
@@ -1510,7 +1563,7 @@ extern "C" bool myelin_gpu_apply_blocks(myelin_gpu_context_t* ctx, uint64_t seed
     );
 
     ctx->kernel_launches++;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(ctx->stream), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
@@ -1537,7 +1590,7 @@ extern "C" bool myelin_gpu_compute_g_efficiency(
     );
 
     ctx->kernel_launches++;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(ctx->stream), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
@@ -1559,7 +1612,7 @@ extern "C" bool myelin_gpu_compute_attenuation(
     );
 
     ctx->kernel_launches++;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(ctx->stream), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
@@ -1584,7 +1637,7 @@ extern "C" bool myelin_gpu_compute_segment_velocities(myelin_gpu_context_t* ctx)
     );
 
     ctx->kernel_launches++;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(ctx->stream), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
@@ -1617,7 +1670,7 @@ extern "C" bool myelin_gpu_compute_total_delays(
     );
 
     ctx->kernel_launches++;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(ctx->stream), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
@@ -1640,7 +1693,7 @@ extern "C" bool myelin_gpu_update_activity_ema(
     );
 
     ctx->kernel_launches++;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(ctx->stream), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
@@ -1677,7 +1730,7 @@ extern "C" bool myelin_gpu_apply_damage(
     );
 
     ctx->kernel_launches++;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(ctx->stream), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
@@ -1695,7 +1748,7 @@ extern "C" bool myelin_gpu_apply_repair(myelin_gpu_context_t* ctx, float repair_
     );
 
     ctx->kernel_launches++;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(ctx->stream), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
@@ -1713,7 +1766,7 @@ extern "C" bool myelin_gpu_apply_decay(myelin_gpu_context_t* ctx, float decay_ra
     );
 
     ctx->kernel_launches++;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(ctx->stream));
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(ctx->stream), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
@@ -1726,6 +1779,10 @@ extern "C" bool myelin_gpu_step(
     const nimcp_gpu_tensor_t* activity,
     float dt
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || ctx->n_axons == 0) return false;
 
     // 1. Compute cable parameters

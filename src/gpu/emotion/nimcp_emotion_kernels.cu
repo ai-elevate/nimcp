@@ -28,6 +28,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "EMOTION_GPU"
 
@@ -175,7 +176,7 @@ bool nimcp_gpu_amygdala_threat_detection(
         n,
         n_ctx);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -245,7 +246,7 @@ bool nimcp_gpu_amygdala_fear_conditioning(
         dt,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -307,7 +308,7 @@ bool nimcp_gpu_amygdala_extinction(
         dt,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -365,7 +366,7 @@ bool nimcp_gpu_amygdala_prefrontal_inhibition(
         params->basal_threshold,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -437,7 +438,7 @@ bool nimcp_gpu_ofc_compute_values(
         n_options,
         n_features);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -502,7 +503,7 @@ bool nimcp_gpu_ofc_value_update(
         dt,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -569,7 +570,7 @@ bool nimcp_gpu_ofc_choice_probabilities(
         temperature,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -632,7 +633,7 @@ bool nimcp_gpu_ofc_reversal_learning(
         dt,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -682,7 +683,7 @@ bool nimcp_gpu_nacc_reward_prediction(
         params->reward_sensitivity,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -746,7 +747,7 @@ bool nimcp_gpu_nacc_compute_motivation(
         params->hedonic_baseline,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -815,7 +816,7 @@ bool nimcp_gpu_nacc_msn_update(
         dt,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -863,7 +864,7 @@ bool nimcp_gpu_nacc_go_nogo(
         (const float*)state->msn_d2_activity->data,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -928,7 +929,7 @@ bool nimcp_gpu_acc_conflict_detection(
         params->conflict_threshold,
         state->n_responses);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -976,7 +977,7 @@ bool nimcp_gpu_acc_error_signal(
         params->prediction_weight,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1036,7 +1037,7 @@ bool nimcp_gpu_acc_effort_allocation(
         params->control_gain,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1138,7 +1139,7 @@ bool nimcp_gpu_emotion_compute_state(
         (const float*)system->acc->conflict_signal->data,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1219,7 +1220,7 @@ bool nimcp_gpu_emotion_categorize(
         (const float*)arousal->data,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1281,7 +1282,7 @@ bool nimcp_gpu_emotion_cognitive_modulation(
         (const float*)system->arousal_level->data,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 

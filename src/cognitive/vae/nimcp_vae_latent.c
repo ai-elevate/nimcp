@@ -215,6 +215,19 @@ int vae_latent_sample_with_noise(const nimcp_tensor_t* mu,
  * Distribution Operations Implementation
  * ============================================================================ */
 
+/**
+ * @brief VAE-specific KL divergence: KL[N(μ, σ²) || N(0, 1)]
+ *
+ * NOTE: This is a closed-form analytical KL divergence specific to VAEs.
+ * It computes: -0.5 * sum(1 + log_var - mu^2 - exp(log_var))
+ *
+ * This is DIFFERENT from nimcp_stats_kl_divergence() in the central statistics
+ * module, which computes general discrete KL divergence D_KL(P||Q) between
+ * two probability distributions. The VAE formula is the analytical solution
+ * for Gaussian-to-Gaussian KL when the target is the standard normal N(0,1).
+ *
+ * DO NOT replace with nimcp_stats_kl_divergence() - they serve different purposes.
+ */
 float vae_latent_kl_divergence(const nimcp_tensor_t* mu,
                                const nimcp_tensor_t* log_var,
                                float* kl_per_dim) {

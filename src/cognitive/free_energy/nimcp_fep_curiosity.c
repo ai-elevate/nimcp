@@ -15,6 +15,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/statistics/nimcp_statistics.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
@@ -123,22 +124,23 @@ static inline float safe_log(float x) {
     return logf(x);
 }
 
+/**
+ * @brief Compute entropy using central statistics module
+ *
+ * Note: nimcp_stats_entropy returns entropy in bits (log2).
+ * The original used natural log, so we convert: H_nats = H_bits * ln(2)
+ */
 static float compute_entropy(const float* probs, size_t n) {
     if (!probs || n == 0) return 0.0f;
 
-    float h = 0.0f;
-    for (size_t i = 0; i < n; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && n > 256) {
-            fep_curiosity_heartbeat("fep_curiosit_loop",
-                             (float)(i + 1) / (float)n);
-        }
-
-        if (probs[i] > 1e-10f) {
-            h -= probs[i] * safe_log(probs[i]);
-        }
+    /* Phase 8: Heartbeat at operation start */
+    if (n > 256) {
+        fep_curiosity_heartbeat("fep_curiosit_entropy", 0.5f);
     }
-    return h;
+
+    /* nimcp_stats_entropy returns bits; convert to nats for compatibility */
+    float entropy_bits = nimcp_stats_entropy(probs, (uint32_t)n);
+    return entropy_bits * 0.693147f;  /* ln(2) to convert bits to nats */
 }
 
 static uint32_t hash_state(const float* state, size_t dim) {

@@ -29,6 +29,8 @@
 #include "gpu/fuzzy/nimcp_fuzzy_gpu_types.h"
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/common/nimcp_device_utils.cuh"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Shared Memory Reduction Helpers
@@ -497,17 +499,32 @@ bool nimcp_gpu_fuzzy_defuzzify_batch(
     float* outputs,
     const nimcp_gpu_defuzz_params_t* params)
 {
+    // Initialize recovery system if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    // Parameter validation with recovery attempt
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
-        set_defuzz_error("Invalid GPU context");
-        return false;
+        nimcp_gpu_recovery_result_t result;
+        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_CONTEXT_INVALID, cudaSuccess, &result)) {
+            set_defuzz_error("Invalid GPU context");
+            NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context");
+            return false;
+        }
     }
     if (!aggregated || !outputs) {
         set_defuzz_error("NULL input/output pointers");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "NULL input/output pointers");
         return false;
     }
     if (params->num_samples == 0 || params->resolution == 0) {
-        set_defuzz_error("Zero samples or resolution");
-        return false;
+        nimcp_gpu_recovery_result_t result;
+        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_INVALID_PARAMS, cudaSuccess, &result)) {
+            set_defuzz_error("Zero samples or resolution");
+            NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Zero samples or resolution");
+            return false;
+        }
     }
 
     cudaStream_t stream = nimcp_gpu_get_compute_stream(ctx);
@@ -553,11 +570,12 @@ bool nimcp_gpu_fuzzy_defuzzify_batch(
 
         default:
             set_defuzz_error("Unsupported defuzzification method: %u", params->method);
+            NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Unsupported defuzzification method: %u", params->method);
             return false;
     }
 
-    NIMCP_CUDA_CHECK_LAST();
-    NIMCP_CUDA_CHECK(cudaStreamSynchronize(stream));
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
 
     return true;
 }
@@ -570,8 +588,23 @@ bool nimcp_gpu_fuzzy_defuzzify_multi_method(
     float* outputs,
     const nimcp_gpu_defuzz_params_t* params)
 {
-    if (!ctx || !methods || !outputs) {
+    // Initialize recovery system if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    // Parameter validation with recovery attempt
+    if (!ctx) {
+        nimcp_gpu_recovery_result_t result;
+        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_CONTEXT_INVALID, cudaSuccess, &result)) {
+            set_defuzz_error("NULL context");
+            NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "NULL context");
+            return false;
+        }
+    }
+    if (!methods || !outputs) {
         set_defuzz_error("NULL pointers");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "NULL pointers");
         return false;
     }
 

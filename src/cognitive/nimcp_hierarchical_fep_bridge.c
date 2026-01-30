@@ -17,6 +17,15 @@
 
 #define LOG_MODULE "hierarchical_fep_bridge"
 
+/**
+ * Inline EWMA update macro - equivalent to nimcp_ewma_update() from streaming statistics.
+ * Formula: EWMA_t = alpha * x_t + (1 - alpha) * EWMA_{t-1}
+ * Using alpha=0.01 for stable long-term averaging (equivalent ~99-sample window).
+ * @see include/utils/statistics/nimcp_streaming_statistics.h for full EWMA API
+ */
+#define NIMCP_EWMA_UPDATE(avg, new_val, alpha) \
+    ((avg) = ((avg) * (1.0f - (alpha))) + ((new_val) * (alpha)))
+
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -181,8 +190,8 @@ int hierarchical_fep_bridge_update(hierarchical_fep_bridge_t* bridge) {
     NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "bridge or fep_system is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state.current_free_energy = fep_get_free_energy(bridge->fep_system);
-    bridge->stats.avg_free_energy =
-        (bridge->stats.avg_free_energy * 0.99f) + (bridge->state.current_free_energy * 0.01f);
+    /* EWMA update for running average free energy (alpha=0.01, ~99-sample window) */
+    NIMCP_EWMA_UPDATE(bridge->stats.avg_free_energy, bridge->state.current_free_energy, 0.01f);
     bridge->stats.prediction_events++;
     nimcp_mutex_unlock(bridge->base.mutex);
     return 0;

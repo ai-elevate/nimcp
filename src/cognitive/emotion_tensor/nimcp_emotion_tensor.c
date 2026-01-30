@@ -16,6 +16,7 @@
 #include "cognitive/nimcp_emotion_tensor.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/statistics/nimcp_statistics.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -286,13 +287,16 @@ static float compute_aggregate_arousal(const float* channels) {
 }
 
 /**
- * @brief Compute Shannon entropy of emotion distribution
+ * @brief Compute normalized Shannon entropy of emotion distribution
  *
  * WHAT: Measure diversity of active emotions
  * WHY:  High entropy = mixed emotions, low = focused
- * HOW:  Shannon entropy of normalized activations
+ * HOW:  Normalize activations to probabilities, use central stats entropy
+ *
+ * Uses nimcp_stats_entropy() from utils/statistics for the core computation.
  */
-static float compute_entropy(const float* channels) {
+static float compute_emotion_entropy(const float* channels) {
+    /* Compute total for normalization */
     float total = 0.0F;
     for (int i = 0; i < EMOTION_TENSOR_PRIMARY_COUNT; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -300,7 +304,6 @@ static float compute_entropy(const float* channels) {
             emotion_tensor_heartbeat("emotion_tens_loop",
                              (float)(i + 1) / (float)EMOTION_TENSOR_PRIMARY_COUNT);
         }
-
         total += channels[i];
     }
 
@@ -308,23 +311,18 @@ static float compute_entropy(const float* channels) {
         return 0.0F;
     }
 
-    float entropy = 0.0F;
+    /* Normalize to probability distribution */
+    float probs[EMOTION_TENSOR_PRIMARY_COUNT];
     for (int i = 0; i < EMOTION_TENSOR_PRIMARY_COUNT; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && EMOTION_TENSOR_PRIMARY_COUNT > 256) {
-            emotion_tensor_heartbeat("emotion_tens_loop",
-                             (float)(i + 1) / (float)EMOTION_TENSOR_PRIMARY_COUNT);
-        }
-
-        float p = channels[i] / total;
-        if (p > 0.001F) {
-            entropy -= p * log2f(p);
-        }
+        probs[i] = channels[i] / total;
     }
+
+    /* Use central statistics module for entropy computation */
+    float entropy = nimcp_stats_entropy(probs, EMOTION_TENSOR_PRIMARY_COUNT);
 
     /* Normalize to [0, 1] - max entropy is log2(N) */
     float max_entropy = log2f((float)EMOTION_TENSOR_PRIMARY_COUNT);
-    return entropy / max_entropy;
+    return (max_entropy > 0.0F) ? (entropy / max_entropy) : 0.0F;
 }
 
 /**
@@ -375,7 +373,7 @@ static void find_dominant_emotions(const float* channels,
 static void update_aggregates(emotion_tensor_t* tensor) {
     tensor->overall_valence = compute_aggregate_valence(tensor->channels);
     tensor->overall_arousal = compute_aggregate_arousal(tensor->channels);
-    tensor->emotional_entropy = compute_entropy(tensor->channels);
+    tensor->emotional_entropy = compute_emotion_entropy(tensor->channels);
 
     find_dominant_emotions(tensor->channels,
                           &tensor->primary_emotion,

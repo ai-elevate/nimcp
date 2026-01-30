@@ -30,6 +30,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "OMNI_GPU"
 
@@ -636,6 +637,10 @@ nimcp_omni_gpu_state_t* nimcp_omni_gpu_create(
     uint32_t num_patterns,
     uint32_t num_levels)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
         LOG_ERROR("Invalid GPU context");
         return NULL;
@@ -790,6 +795,9 @@ bool nimcp_omni_gpu_predict(
     if (!nimcp_omni_gpu_is_valid(state) || !input || !output) {
         return false;
     }
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     nimcp_gpu_tensor_t* weights = NULL;
     nimcp_gpu_tensor_t* bias = NULL;
@@ -835,8 +843,8 @@ bool nimcp_omni_gpu_predict(
         (const float*)bias->data,
         batch_size, in_dim, out_dim
     );
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -864,6 +872,9 @@ bool nimcp_omni_gpu_predict_precision(
 {
     if (!nimcp_omni_gpu_is_valid(state) || !input || !precision || !output) {
         return false;
+    }
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
     }
 
     nimcp_gpu_tensor_t* weights = NULL;
@@ -905,8 +916,8 @@ bool nimcp_omni_gpu_predict_precision(
         (const float*)precision->data,
         batch_size, in_dim, out_dim
     );
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -922,6 +933,9 @@ bool nimcp_omni_gpu_hopfield_init(
     nimcp_hopfield_gpu_mode_t mode)
 {
     if (!nimcp_omni_gpu_is_valid(state)) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     state->hopfield->pattern_dim = pattern_dim;
     state->hopfield->capacity = capacity;
@@ -961,6 +975,9 @@ int nimcp_omni_gpu_hopfield_store(
     const nimcp_gpu_tensor_t* pattern)
 {
     if (!nimcp_omni_gpu_is_valid(state) || !pattern) return -1;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     if (state->hopfield->pattern_count >= state->hopfield->capacity) {
         LOG_WARN("Hopfield memory at capacity");
@@ -971,12 +988,12 @@ int nimcp_omni_gpu_hopfield_store(
     uint32_t dim = state->hopfield->pattern_dim;
     size_t offset = idx * dim * sizeof(float);
 
-    CUDA_CHECK_INT(cudaMemcpy(
+    NIMCP_CUDA_RECOVER(cudaMemcpy(
         (char*)state->hopfield->patterns->data + offset,
         pattern->data,
         dim * sizeof(float),
         cudaMemcpyDeviceToDevice
-    ), -1);
+    ), GPU_ERROR_CUDA_RUNTIME);
 
     state->hopfield->pattern_count++;
     return (int)idx;
@@ -988,6 +1005,9 @@ int nimcp_omni_gpu_hopfield_store_batch(
     uint32_t num_patterns)
 {
     if (!nimcp_omni_gpu_is_valid(state) || !patterns) return -1;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     uint32_t available = state->hopfield->capacity - state->hopfield->pattern_count;
     uint32_t to_store = (num_patterns < available) ? num_patterns : available;
@@ -997,12 +1017,12 @@ int nimcp_omni_gpu_hopfield_store_batch(
     uint32_t dim = state->hopfield->pattern_dim;
     size_t offset = state->hopfield->pattern_count * dim * sizeof(float);
 
-    CUDA_CHECK_INT(cudaMemcpy(
+    NIMCP_CUDA_RECOVER(cudaMemcpy(
         (char*)state->hopfield->patterns->data + offset,
         patterns->data,
         to_store * dim * sizeof(float),
         cudaMemcpyDeviceToDevice
-    ), -1);
+    ), GPU_ERROR_CUDA_RUNTIME);
 
     state->hopfield->pattern_count += to_store;
     return (int)to_store;
@@ -1015,6 +1035,9 @@ bool nimcp_omni_gpu_hopfield_retrieve(
     uint32_t max_iterations)
 {
     if (!nimcp_omni_gpu_is_valid(state) || !query || !output) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
     if (state->hopfield->pattern_count == 0) return false;
 
     cudaStream_t stream = nimcp_gpu_get_compute_stream(state->ctx);
@@ -1023,12 +1046,12 @@ bool nimcp_omni_gpu_hopfield_retrieve(
     float beta = state->hopfield->beta;
 
     /* Copy query to working buffer */
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(
+    NIMCP_CUDA_RECOVER(cudaMemcpy(
         state->hopfield->output->data,
         query->data,
         pattern_dim * sizeof(float),
         cudaMemcpyDeviceToDevice
-    ));
+    ), GPU_ERROR_CUDA_RUNTIME);
 
     for (uint32_t iter = 0; iter < max_iterations; iter++) {
         /* Compute similarities */
@@ -1041,6 +1064,7 @@ bool nimcp_omni_gpu_hopfield_retrieve(
             (const float*)state->hopfield->patterns->data,
             pattern_count, pattern_dim, beta
         );
+        NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
         /* Softmax attention */
         size_t shared_mem = BLOCK_SIZE * sizeof(float);
@@ -1049,6 +1073,7 @@ bool nimcp_omni_gpu_hopfield_retrieve(
             (const float*)state->hopfield->similarities->data,
             pattern_count
         );
+        NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
         /* Weighted retrieval */
         dim3 block3(BLOCK_SIZE);
@@ -1060,15 +1085,16 @@ bool nimcp_omni_gpu_hopfield_retrieve(
             (const float*)state->hopfield->attention->data,
             pattern_count, pattern_dim
         );
+        NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     }
 
     /* Copy result to output */
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(
+    NIMCP_CUDA_RECOVER(cudaMemcpy(
         output->data,
         state->hopfield->output->data,
         pattern_dim * sizeof(float),
         cudaMemcpyDeviceToDevice
-    ));
+    ), GPU_ERROR_CUDA_RUNTIME);
 
     return true;
 }
@@ -1079,10 +1105,13 @@ bool nimcp_omni_gpu_hopfield_energy(
     float* energy)
 {
     if (!nimcp_omni_gpu_is_valid(state) || !pattern || !energy) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     float* d_energy;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_energy, sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_energy, 0, sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_energy, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMemset(d_energy, 0, sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
 
     cudaStream_t stream = nimcp_gpu_get_compute_stream(state->ctx);
     size_t shared_mem = BLOCK_SIZE * sizeof(float);
@@ -1095,8 +1124,9 @@ bool nimcp_omni_gpu_hopfield_energy(
         state->hopfield->pattern_dim,
         state->hopfield->beta
     );
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(energy, d_energy, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(energy, d_energy, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
     cudaFree(d_energy);
 
     return true;
@@ -1114,6 +1144,9 @@ bool nimcp_omni_gpu_hierarchy_init(
 {
     if (!nimcp_omni_gpu_is_valid(state) || !level_dims || num_levels == 0) {
         return false;
+    }
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
     }
 
     state->hierarchy->num_levels = num_levels;
@@ -1152,8 +1185,8 @@ bool nimcp_omni_gpu_hierarchy_init(
         /* Initialize precision to 1.0 */
         float* h_ones = (float*)malloc(level_dims[i] * sizeof(float));
         for (uint32_t j = 0; j < level_dims[i]; j++) h_ones[j] = 1.0f;
-        cudaMemcpy(state->hierarchy->precisions[i]->data, h_ones,
-                   level_dims[i] * sizeof(float), cudaMemcpyHostToDevice);
+        NIMCP_CUDA_RECOVER(cudaMemcpy(state->hierarchy->precisions[i]->data, h_ones,
+                   level_dims[i] * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
         free(h_ones);
 
         if (!state->hierarchy->predictions[i] || !state->hierarchy->errors[i] ||
@@ -1169,6 +1202,9 @@ bool nimcp_omni_gpu_hierarchy_init(
 bool nimcp_omni_gpu_hierarchy_compute_errors(nimcp_omni_gpu_state_t* state)
 {
     if (!nimcp_omni_gpu_is_valid(state)) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     cudaStream_t stream = nimcp_gpu_get_compute_stream(state->ctx);
 
@@ -1184,9 +1220,9 @@ bool nimcp_omni_gpu_hierarchy_compute_errors(nimcp_omni_gpu_state_t* state)
             (const float*)state->hierarchy->precisions[level]->data,
             dim
         );
+        NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     }
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1195,6 +1231,9 @@ bool nimcp_omni_gpu_hierarchy_update_states(
     float learning_rate)
 {
     if (!nimcp_omni_gpu_is_valid(state)) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     cudaStream_t stream = nimcp_gpu_get_compute_stream(state->ctx);
 
@@ -1209,9 +1248,9 @@ bool nimcp_omni_gpu_hierarchy_update_states(
             learning_rate,
             dim
         );
+        NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     }
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1219,6 +1258,9 @@ bool nimcp_omni_gpu_hierarchy_update_precision(nimcp_omni_gpu_state_t* state)
 {
     if (!nimcp_omni_gpu_is_valid(state)) return false;
     if (state->hierarchy->precision_mode == NIMCP_PRECISION_GPU_FIXED) return true;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     cudaStream_t stream = nimcp_gpu_get_compute_stream(state->ctx);
     float decay = 0.99f;
@@ -1236,9 +1278,9 @@ bool nimcp_omni_gpu_hierarchy_update_precision(nimcp_omni_gpu_state_t* state)
             decay, min_prec, max_prec,
             dim
         );
+        NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     }
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -1247,10 +1289,13 @@ bool nimcp_omni_gpu_hierarchy_free_energy(
     float* free_energy)
 {
     if (!nimcp_omni_gpu_is_valid(state) || !free_energy) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     float* d_total_fe;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_total_fe, sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_total_fe, 0, sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_total_fe, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMemset(d_total_fe, 0, sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
 
     cudaStream_t stream = nimcp_gpu_get_compute_stream(state->ctx);
     size_t shared_mem = BLOCK_SIZE * sizeof(float);
@@ -1266,9 +1311,10 @@ bool nimcp_omni_gpu_hierarchy_free_energy(
             (const float*)state->hierarchy->precisions[level]->data,
             dim
         );
+        NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     }
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(free_energy, d_total_fe, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(free_energy, d_total_fe, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
     cudaFree(d_total_fe);
 
     return true;
@@ -1285,6 +1331,9 @@ bool nimcp_omni_gpu_replay_init(
     uint32_t sequence_len)
 {
     if (!nimcp_omni_gpu_is_valid(state)) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     state->replay->state_dim = state_dim;
     state->replay->capacity = capacity;
@@ -1309,8 +1358,8 @@ bool nimcp_omni_gpu_replay_init(
     float uniform = 1.0f / capacity;
     float* h_prio = (float*)malloc(capacity * sizeof(float));
     for (uint32_t i = 0; i < capacity; i++) h_prio[i] = uniform;
-    cudaMemcpy(state->replay->priorities->data, h_prio,
-               capacity * sizeof(float), cudaMemcpyHostToDevice);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(state->replay->priorities->data, h_prio,
+               capacity * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
     free(h_prio);
 
     LOG_INFO("Initialized replay GPU: dim=%u, capacity=%u, seq_len=%u",
@@ -1324,26 +1373,29 @@ int nimcp_omni_gpu_replay_store(
     float priority)
 {
     if (!nimcp_omni_gpu_is_valid(state) || !sequence) return -1;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     uint32_t idx = state->replay->head;
     uint32_t seq_len = state->replay->sequence_len;
     uint32_t dim = state->replay->state_dim;
     size_t offset = idx * seq_len * dim * sizeof(float);
 
-    CUDA_CHECK_INT(cudaMemcpy(
+    NIMCP_CUDA_RECOVER(cudaMemcpy(
         (char*)state->replay->sequences->data + offset,
         sequence->data,
         seq_len * dim * sizeof(float),
         cudaMemcpyDeviceToDevice
-    ), -1);
+    ), GPU_ERROR_CUDA_RUNTIME);
 
     /* Update priority */
-    CUDA_CHECK_INT(cudaMemcpy(
+    NIMCP_CUDA_RECOVER(cudaMemcpy(
         (float*)state->replay->priorities->data + idx,
         &priority,
         sizeof(float),
         cudaMemcpyHostToDevice
-    ), -1);
+    ), GPU_ERROR_CUDA_RUNTIME);
 
     state->replay->head = (state->replay->head + 1) % state->replay->capacity;
     if (state->replay->count < state->replay->capacity) {
@@ -1361,6 +1413,9 @@ bool nimcp_omni_gpu_replay_forward_sweep(
     nimcp_gpu_tensor_t* sweep_output)
 {
     if (!nimcp_omni_gpu_is_valid(state) || !sweep_output) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     cudaStream_t stream = nimcp_gpu_get_compute_stream(state->ctx);
     uint32_t total = length * state->replay->state_dim;
@@ -1375,7 +1430,7 @@ bool nimcp_omni_gpu_replay_forward_sweep(
         state->replay->state_dim
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1387,6 +1442,9 @@ bool nimcp_omni_gpu_replay_backward_sweep(
     nimcp_gpu_tensor_t* sweep_output)
 {
     if (!nimcp_omni_gpu_is_valid(state) || !sweep_output) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     cudaStream_t stream = nimcp_gpu_get_compute_stream(state->ctx);
     uint32_t total = length * state->replay->state_dim;
@@ -1401,7 +1459,7 @@ bool nimcp_omni_gpu_replay_backward_sweep(
         state->replay->state_dim
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1418,10 +1476,13 @@ bool nimcp_omni_gpu_compute_free_energy(
     if (!nimcp_omni_gpu_is_valid(state) || !prediction_error || !precision || !total_fe) {
         return false;
     }
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     float* d_fe;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_fe, sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_fe, 0, sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_fe, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMemset(d_fe, 0, sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
 
     uint32_t dim = prediction_error->dims[0];
     cudaStream_t stream = nimcp_gpu_get_compute_stream(state->ctx);
@@ -1435,8 +1496,9 @@ bool nimcp_omni_gpu_compute_free_energy(
         (const float*)precision->data,
         dim
     );
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(total_fe, d_fe, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(total_fe, d_fe, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
     cudaFree(d_fe);
 
     return true;
@@ -1451,6 +1513,9 @@ bool nimcp_omni_gpu_compute_fe_gradient(
     if (!nimcp_omni_gpu_is_valid(state) || !prediction_error || !precision || !gradient) {
         return false;
     }
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     uint32_t dim = prediction_error->dims[0];
     cudaStream_t stream = nimcp_gpu_get_compute_stream(state->ctx);
@@ -1464,7 +1529,7 @@ bool nimcp_omni_gpu_compute_fe_gradient(
         dim
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 

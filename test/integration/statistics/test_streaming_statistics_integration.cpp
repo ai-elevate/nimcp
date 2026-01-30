@@ -34,7 +34,6 @@
 #include "utils/memory/nimcp_memory.h"
 
 // Core types
-#include "common/nimcp_types.h"
 
 //=============================================================================
 // Test Configuration

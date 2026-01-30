@@ -47,6 +47,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "SPEECH_CORTEX_GPU"
 
@@ -1293,7 +1294,12 @@ extern "C" void nimcp_speech_gpu_destroy(nimcp_speech_gpu_state_t* state) {
 
 extern "C" bool nimcp_speech_gpu_synchronize(nimcp_speech_gpu_state_t* state) {
     if (!state || !state->ctx) return false;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaDeviceSynchronize());
+
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    NIMCP_CUDA_RECOVER(cudaDeviceSynchronize(), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
@@ -1314,6 +1320,10 @@ extern "C" nimcp_gpu_tensor_t* nimcp_speech_gpu_compute_spectrogram(
     nimcp_gpu_tensor_t* audio
 ) {
     if (!state || !audio) return NULL;
+
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     int num_samples = audio->dims[audio->ndim - 1];
     int num_frames = nimcp_speech_gpu_get_num_frames(state, num_samples);
@@ -1348,7 +1358,7 @@ extern "C" nimcp_gpu_tensor_t* nimcp_speech_gpu_compute_spectrogram(
 
     // Allocate complex FFT output
     cufftComplex* d_fft_out;
-    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_fft_out, num_frames * state->fft_bins * sizeof(cufftComplex)));
+    NIMCP_CUDA_RECOVER_NULL(cudaMalloc(&d_fft_out, num_frames * state->fft_bins * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
 
     // Execute batched FFT
     cufftHandle batch_plan;
@@ -2246,12 +2256,16 @@ extern "C" bool nimcp_speech_gpu_apply_cmn(
 ) {
     if (!state || !features || features->ndim < 2) return false;
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     int num_frames = features->dims[0];
     int feature_dim = features->dims[1];
 
     // Allocate mean vector
     float* d_mean;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_mean, feature_dim * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_mean, feature_dim * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     // Compute mean
     kernel_compute_mean<<<GRID_SIZE(feature_dim), BLOCK_SIZE>>>(

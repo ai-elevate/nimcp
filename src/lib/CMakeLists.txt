@@ -2171,6 +2171,9 @@ set(NIMCP_CORE_SOURCES
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/statistics/nimcp_streaming_statistics_kernels.cu>
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/statistics/nimcp_survival_bayesian_kernels.cu>
 
+    # GPU Recovery Infrastructure (self-healing for all GPU modules)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/recovery/nimcp_gpu_recovery.cu>
+
     # Graph DAO and GraphQL utilities (CPU-side, always compiled)
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/graph/nimcp_graph_dao.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/graphql/nimcp_graphql_utils.c
@@ -2755,8 +2758,14 @@ if(CUDAToolkit_FOUND)
         ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/neuron/nimcp_gpu_kernels.cu
         ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/synapse_compute/nimcp_synapse_compute_gpu.cu
         ${CMAKE_CURRENT_SOURCE_DIR}/../core/neuron_types/nimcp_neural_logic_kernels.cu
+        ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/fuzzy/nimcp_fuzzy_kernels.cu
+        ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/fuzzy/nimcp_fuzzy_defuzz_kernels.cu
+        ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/fuzzy/nimcp_fuzzy_inference_kernels.cu
+        ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/fuzzy/nimcp_fuzzy_relation_kernels.cu
+        ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/fuzzy/nimcp_fuzzy_anfis_kernels.cu
+        ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/recovery/nimcp_gpu_recovery.cu
         PROPERTIES
-        COMPILE_OPTIONS "--expt-relaxed-constexpr;-Xcompiler=-fPIC,-fstack-protector-strong,-Wformat,-Wformat-security,-fno-common"
+        COMPILE_OPTIONS "--expt-relaxed-constexpr;-Xcompiler=-fPIC,-fstack-protector-strong,-Wformat,-Wformat-security,-fno-common;-I${CMAKE_SOURCE_DIR}/include;-I${CMAKE_SOURCE_DIR}/src"
         COMPILE_FLAGS ""
     )
 endif()
@@ -2789,6 +2798,7 @@ if(CUDAToolkit_FOUND)
         CUDA::cublas
         CUDA::cufft
         CUDA::curand
+        CUDA::cusolver
     )
 endif()
 

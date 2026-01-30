@@ -26,6 +26,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "OSCILLATIONS_GPU"
 
@@ -346,12 +347,12 @@ bool nimcp_gpu_phase_locking_value(
 
     // Allocate temporary buffers
     float *d_cos_diff, *d_sin_diff, *d_sum_cos, *d_sum_sin;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_cos_diff, n_samples * sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_sin_diff, n_samples * sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_sum_cos, sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_sum_sin, sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_sum_cos, 0, sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_sum_sin, 0, sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_cos_diff, n_samples * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_sin_diff, n_samples * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_sum_cos, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_sum_sin, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMemset(d_sum_cos, 0, sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemset(d_sum_sin, 0, sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
 
     // Compute exp(i * (phase1 - phase2))
     kernel_phase_diff_exp<<<GRID_SIZE(n_samples), BLOCK_SIZE>>>(
@@ -367,8 +368,8 @@ bool nimcp_gpu_phase_locking_value(
 
     // Copy results to host
     float h_sum_cos, h_sum_sin;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&h_sum_cos, d_sum_cos, sizeof(float), cudaMemcpyDeviceToHost));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&h_sum_sin, d_sum_sin, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(&h_sum_cos, d_sum_cos, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(&h_sum_sin, d_sum_sin, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     // PLV = |mean(exp(i * diff))|
     float mean_cos = h_sum_cos / (float)n_samples;
@@ -381,7 +382,7 @@ bool nimcp_gpu_phase_locking_value(
     cudaFree(d_sum_cos);
     cudaFree(d_sum_sin);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -425,9 +426,9 @@ bool nimcp_gpu_phase_lag_index(
 
     // Allocate temporary buffers
     float *d_signs, *d_sum;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_signs, n_samples * sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_sum, sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_sum, 0, sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_signs, n_samples * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_sum, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMemset(d_sum, 0, sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
 
     // Compute sign of imaginary part of phase difference
     kernel_phase_diff_sign<<<GRID_SIZE(n_samples), BLOCK_SIZE>>>(
@@ -441,7 +442,7 @@ bool nimcp_gpu_phase_lag_index(
 
     // Copy result to host
     float h_sum;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&h_sum, d_sum, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(&h_sum, d_sum, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     // PLI = |mean(sign(imag(exp(i*diff))))|
     *pli = fabsf(h_sum / (float)n_samples);
@@ -450,7 +451,7 @@ bool nimcp_gpu_phase_lag_index(
     cudaFree(d_signs);
     cudaFree(d_sum);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -520,8 +521,8 @@ bool nimcp_gpu_global_sync_index(
 
     // Allocate temporary buffers for complex order parameter
     float *d_sync_re, *d_sync_im;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_sync_re, n_samples * sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_sync_im, n_samples * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_sync_re, n_samples * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_sync_im, n_samples * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     // Compute Kuramoto order parameter: R = |mean(exp(i * phases))|
     kernel_kuramoto_order_parameter<<<GRID_SIZE(n_samples), BLOCK_SIZE>>>(
@@ -538,7 +539,7 @@ bool nimcp_gpu_global_sync_index(
     cudaFree(d_sync_re);
     cudaFree(d_sync_im);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1107,17 +1108,17 @@ bool nimcp_gpu_pac_modulation_index(
 
     if (ret == 0) {
         // Store modulation index
-        NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(pac_values->data, &result.modulation_index,
-                              sizeof(float), cudaMemcpyHostToDevice));
+        NIMCP_CUDA_RECOVER(cudaMemcpy(pac_values->data, &result.modulation_index,
+                              sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
         LOG_DEBUG("PAC modulation index: %.4f, MVL: %.4f",
                   result.modulation_index, result.mean_vector_length);
     } else {
         float zero = 0.0f;
-        NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(pac_values->data, &zero, sizeof(float), cudaMemcpyHostToDevice));
+        NIMCP_CUDA_RECOVER(cudaMemcpy(pac_values->data, &zero, sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
         LOG_WARN("PAC computation failed, returning zero");
     }
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return ret == 0;
 }
 
@@ -1280,13 +1281,13 @@ bool nimcp_gpu_hilbert_phase(
     // Allocate complex spectrum buffer
     cufftComplex *d_spectrum;
     float *d_filter;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_spectrum, n * sizeof(cufftComplex)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_filter, n * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_spectrum, n * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_filter, n * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     // Copy signal to complex buffer (real part)
     float *d_signal_copy;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_signal_copy, n * sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(d_signal_copy, signal->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_signal_copy, n * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(d_signal_copy, signal->data, n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     // Create FFT plan
     cufftHandle plan;
@@ -1310,7 +1311,7 @@ bool nimcp_gpu_hilbert_phase(
 
     // Inverse FFT to get analytic signal
     float *d_analytic_im;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_analytic_im, n * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_analytic_im, n * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
     CUFFT_CHECK(cufftExecC2R(plan_inv, d_spectrum, d_analytic_im));
 
     // Normalize inverse FFT (cuFFT doesn't normalize)
@@ -1331,7 +1332,7 @@ bool nimcp_gpu_hilbert_phase(
     cudaFree(d_signal_copy);
     cudaFree(d_analytic_im);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1354,8 +1355,8 @@ bool nimcp_gpu_hilbert_amplitude(
 
     // Allocate complex buffers for C2C FFT
     cufftComplex *d_complex_signal, *d_spectrum;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_complex_signal, n * sizeof(cufftComplex)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_spectrum, n * sizeof(cufftComplex)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_complex_signal, n * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_spectrum, n * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
 
     // Copy real signal to complex (imaginary = 0)
     kernel_real_to_complex<<<GRID_SIZE(n), BLOCK_SIZE>>>(
@@ -1374,7 +1375,7 @@ bool nimcp_gpu_hilbert_amplitude(
     // - Nyquist (k=N/2): multiply by 1
     // - Negative freqs (k=N/2+1 to N-1): multiply by 0
     float *d_filter;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_filter, n * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_filter, n * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
     kernel_create_hilbert_filter<<<GRID_SIZE(n), BLOCK_SIZE>>>(d_filter, n);
     kernel_apply_spectrum_filter<<<GRID_SIZE(n), BLOCK_SIZE>>>(
         (float*)d_spectrum, d_filter, n);
@@ -1394,7 +1395,7 @@ bool nimcp_gpu_hilbert_amplitude(
     cudaFree(d_spectrum);
     cudaFree(d_filter);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1474,7 +1475,7 @@ bool nimcp_gpu_band_power(
 
     // Allocate FFT buffers
     cufftComplex *d_spectrum;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_spectrum, n_channels * (n_fft / 2 + 1) * sizeof(cufftComplex)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_spectrum, n_channels * (n_fft / 2 + 1) * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
 
     // Create batched FFT plan
     cufftHandle plan;
@@ -1506,7 +1507,7 @@ bool nimcp_gpu_band_power(
     cufftDestroy(plan);
     cudaFree(d_spectrum);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1578,11 +1579,11 @@ bool nimcp_gpu_power_spectral_density(
     // Allocate buffers
     float *d_windowed;
     cufftComplex *d_spectrum;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_windowed, n_fft * sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_spectrum, n_freqs * sizeof(cufftComplex)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_windowed, n_fft * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_spectrum, n_freqs * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
 
     // Zero PSD accumulator
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(psd->data, 0, n_freqs * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMemset(psd->data, 0, n_freqs * sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
 
     // Create FFT plan
     cufftHandle plan;
@@ -1610,7 +1611,7 @@ bool nimcp_gpu_power_spectral_density(
     for (uint32_t k = 0; k < n_freqs; k++) {
         h_freqs[k] = k * freq_resolution;
     }
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(freqs->data, h_freqs, n_freqs * sizeof(float), cudaMemcpyHostToDevice));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(freqs->data, h_freqs, n_freqs * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
     free(h_freqs);
 
     // Cleanup
@@ -1618,7 +1619,7 @@ bool nimcp_gpu_power_spectral_density(
     cudaFree(d_windowed);
     cudaFree(d_spectrum);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1651,8 +1652,8 @@ bool nimcp_gpu_spectrogram(
     // Allocate buffers
     float *d_windowed;
     cufftComplex *d_spectrum;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_windowed, n_fft * sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_spectrum, n_freqs * sizeof(cufftComplex)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_windowed, n_fft * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_spectrum, n_freqs * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
 
     // Create FFT plan
     cufftHandle plan;
@@ -1680,7 +1681,7 @@ bool nimcp_gpu_spectrogram(
     cudaFree(d_windowed);
     cudaFree(d_spectrum);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1774,18 +1775,18 @@ bool nimcp_gpu_coherence(
     cufftComplex *d_spectrum1, *d_spectrum2, *d_cross;
     float *d_psd1, *d_psd2;
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_windowed1, n_fft * sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_windowed2, n_fft * sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_spectrum1, n_freqs * sizeof(cufftComplex)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_spectrum2, n_freqs * sizeof(cufftComplex)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_cross, n_freqs * sizeof(cufftComplex)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_psd1, n_freqs * sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_psd2, n_freqs * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_windowed1, n_fft * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_windowed2, n_fft * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_spectrum1, n_freqs * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_spectrum2, n_freqs * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_cross, n_freqs * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_psd1, n_freqs * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_psd2, n_freqs * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     // Zero accumulators
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_cross, 0, n_freqs * sizeof(cufftComplex)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_psd1, 0, n_freqs * sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_psd2, 0, n_freqs * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMemset(d_cross, 0, n_freqs * sizeof(cufftComplex)), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemset(d_psd1, 0, n_freqs * sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemset(d_psd2, 0, n_freqs * sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
 
     // Create FFT plan
     cufftHandle plan;
@@ -1794,9 +1795,9 @@ bool nimcp_gpu_coherence(
     // Temporary cross-spectrum for accumulation
     cufftComplex *d_cross_temp;
     float *d_psd1_temp, *d_psd2_temp;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_cross_temp, n_freqs * sizeof(cufftComplex)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_psd1_temp, n_freqs * sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_psd2_temp, n_freqs * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_cross_temp, n_freqs * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_psd1_temp, n_freqs * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_psd2_temp, n_freqs * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     // Process each segment
     for (uint32_t seg = 0; seg < n_segments; seg++) {
@@ -1837,7 +1838,7 @@ bool nimcp_gpu_coherence(
     cudaFree(d_psd1_temp);
     cudaFree(d_psd2_temp);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1885,9 +1886,9 @@ bool nimcp_gpu_coherence_matrix(
 
     for (uint32_t i = 0; i < n_channels; i++) {
         // Copy channel i
-        NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(signal1->data,
+        NIMCP_CUDA_RECOVER(cudaMemcpy(signal1->data,
                               (const float*)signals->data + i * n_samples,
-                              n_samples * sizeof(float), cudaMemcpyDeviceToDevice));
+                              n_samples * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
 
         for (uint32_t j = i; j < n_channels; j++) {
             if (i == j) {
@@ -1896,9 +1897,9 @@ bool nimcp_gpu_coherence_matrix(
             }
 
             // Copy channel j
-            NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(signal2->data,
+            NIMCP_CUDA_RECOVER(cudaMemcpy(signal2->data,
                                   (const float*)signals->data + j * n_samples,
-                                  n_samples * sizeof(float), cudaMemcpyDeviceToDevice));
+                                  n_samples * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
 
             // Compute coherence spectrum
             if (!nimcp_gpu_coherence(ctx, signal1, signal2, coh_spectrum, params)) {
@@ -1908,8 +1909,8 @@ bool nimcp_gpu_coherence_matrix(
 
             // Average coherence across frequency band
             float *h_coh_spectrum = (float*)malloc(coh_dims[0] * sizeof(float));
-            NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(h_coh_spectrum, coh_spectrum->data,
-                                  coh_dims[0] * sizeof(float), cudaMemcpyDeviceToHost));
+            NIMCP_CUDA_RECOVER(cudaMemcpy(h_coh_spectrum, coh_spectrum->data,
+                                  coh_dims[0] * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
             float avg_coh = 0.0f;
             uint32_t count = 0;
@@ -1931,8 +1932,8 @@ bool nimcp_gpu_coherence_matrix(
     }
 
     // Copy result to device
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(coh_matrix->data, h_coh_matrix,
-                          n_channels * n_channels * sizeof(float), cudaMemcpyHostToDevice));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(coh_matrix->data, h_coh_matrix,
+                          n_channels * n_channels * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     // Cleanup
     free(h_coh_matrix);
@@ -1940,7 +1941,7 @@ bool nimcp_gpu_coherence_matrix(
     nimcp_gpu_tensor_destroy(signal2);
     nimcp_gpu_tensor_destroy(coh_spectrum);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -2004,18 +2005,18 @@ bool nimcp_gpu_imaginary_coherence(
     cufftComplex *d_spectrum1, *d_spectrum2, *d_cross;
     float *d_psd1, *d_psd2;
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_windowed1, n_fft * sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_windowed2, n_fft * sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_spectrum1, n_freqs * sizeof(cufftComplex)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_spectrum2, n_freqs * sizeof(cufftComplex)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_cross, n_freqs * sizeof(cufftComplex)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_psd1, n_freqs * sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_psd2, n_freqs * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_windowed1, n_fft * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_windowed2, n_fft * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_spectrum1, n_freqs * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_spectrum2, n_freqs * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_cross, n_freqs * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_psd1, n_freqs * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_psd2, n_freqs * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     // Zero accumulators
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_cross, 0, n_freqs * sizeof(cufftComplex)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_psd1, 0, n_freqs * sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_psd2, 0, n_freqs * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMemset(d_cross, 0, n_freqs * sizeof(cufftComplex)), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemset(d_psd1, 0, n_freqs * sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemset(d_psd2, 0, n_freqs * sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
 
     // Create FFT plan
     cufftHandle plan;
@@ -2049,7 +2050,7 @@ bool nimcp_gpu_imaginary_coherence(
     cudaFree(d_psd1);
     cudaFree(d_psd2);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -2113,10 +2114,10 @@ bool nimcp_gpu_bandpass_filter(
 
     // Allocate spectrum buffer
     cufftComplex *d_spectrum;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_spectrum, n_freqs * sizeof(cufftComplex)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_spectrum, n_freqs * sizeof(cufftComplex)), GPU_ERROR_OUT_OF_MEMORY);
 
     // Copy signal for in-place processing
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(filtered->data, signal->data, n * sizeof(float), cudaMemcpyDeviceToDevice));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(filtered->data, signal->data, n * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     // Forward FFT
     cufftHandle plan_fwd, plan_inv;
@@ -2140,7 +2141,7 @@ bool nimcp_gpu_bandpass_filter(
     cufftDestroy(plan_inv);
     cudaFree(d_spectrum);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -2187,7 +2188,7 @@ bool nimcp_gpu_relative_band_power(
             continue;
         }
 
-        NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&h_band_powers[i], band_power->data, sizeof(float), cudaMemcpyDeviceToHost));
+        NIMCP_CUDA_RECOVER(cudaMemcpy(&h_band_powers[i], band_power->data, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
         total_power += h_band_powers[i];
     }
 
@@ -2199,13 +2200,13 @@ bool nimcp_gpu_relative_band_power(
     }
 
     // Copy to output
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(relative_power->data, h_band_powers, n_bands * sizeof(float), cudaMemcpyHostToDevice));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(relative_power->data, h_band_powers, n_bands * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     // Cleanup
     free(h_band_powers);
     nimcp_gpu_tensor_destroy(band_power);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -2249,9 +2250,9 @@ bool nimcp_gpu_plv_matrix(
     // Compute pairwise PLV
     for (uint32_t i = 0; i < n_channels; i++) {
         // Copy channel i phase
-        NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(phase1->data,
+        NIMCP_CUDA_RECOVER(cudaMemcpy(phase1->data,
                               (const float*)phases->data + i * n_samples,
-                              n_samples * sizeof(float), cudaMemcpyDeviceToDevice));
+                              n_samples * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
 
         for (uint32_t j = i; j < n_channels; j++) {
             if (i == j) {
@@ -2260,9 +2261,9 @@ bool nimcp_gpu_plv_matrix(
             }
 
             // Copy channel j phase
-            NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(phase2->data,
+            NIMCP_CUDA_RECOVER(cudaMemcpy(phase2->data,
                                   (const float*)phases->data + j * n_samples,
-                                  n_samples * sizeof(float), cudaMemcpyDeviceToDevice));
+                                  n_samples * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
 
             // Compute PLV
             float plv;
@@ -2277,15 +2278,15 @@ bool nimcp_gpu_plv_matrix(
     }
 
     // Copy result to device
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(plv_matrix->data, h_plv_matrix,
-                          n_channels * n_channels * sizeof(float), cudaMemcpyHostToDevice));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(plv_matrix->data, h_plv_matrix,
+                          n_channels * n_channels * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     // Cleanup
     free(h_plv_matrix);
     nimcp_gpu_tensor_destroy(phase1);
     nimcp_gpu_tensor_destroy(phase2);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -2343,20 +2344,20 @@ bool nimcp_gpu_pac_comodulogram(
                 continue;
             }
 
-            NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&h_comodulogram[i * n_amp_freqs + j],
-                                  pac_val->data, sizeof(float), cudaMemcpyDeviceToHost));
+            NIMCP_CUDA_RECOVER(cudaMemcpy(&h_comodulogram[i * n_amp_freqs + j],
+                                  pac_val->data, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
         }
     }
 
     // Copy result to device
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(comodulogram->data, h_comodulogram,
-                          n_phase_freqs * n_amp_freqs * sizeof(float), cudaMemcpyHostToDevice));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(comodulogram->data, h_comodulogram,
+                          n_phase_freqs * n_amp_freqs * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     // Cleanup
     free(h_comodulogram);
     nimcp_gpu_tensor_destroy(pac_val);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 

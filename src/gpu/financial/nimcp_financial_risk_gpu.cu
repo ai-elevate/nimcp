@@ -29,6 +29,9 @@
 #include "gpu/financial/nimcp_financial_gpu.h"
 #include "gpu/financial/nimcp_financial_risk_gpu.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "gpu/statistics/nimcp_statistics_gpu.h"  // Central GPU statistics module
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Thread-Local Error Storage
@@ -185,9 +188,32 @@ __global__ void kernel_bitonic_sort_shared(
 //=============================================================================
 // Statistical Kernels
 //=============================================================================
+//
+// NOTE ON STATISTICS KERNEL ARCHITECTURE:
+// These kernels implement a two-pass mean/variance algorithm specifically
+// designed for financial risk metrics. The central GPU statistics module
+// (src/gpu/statistics/nimcp_statistics_kernels.cu) provides alternative
+// implementations:
+//
+//   - kernel_mean_partial(): Multi-variable batch mean computation
+//   - kernel_welford_stats(): Numerically stable single-pass mean/variance
+//   - kernel_reduce_sum_sq(): Fused sum and sum-of-squares reduction
+//
+// The two-pass algorithm used here (mean first, then variance) was retained
+// because:
+// 1. Risk calculations often need the mean separately for VaR computation
+// 2. The two-pass approach can be more numerically stable for certain
+//    financial return distributions with extreme values
+// 3. The kernel signatures are optimized for single-variable risk metrics
+//
+// For new development, consider using the central statistics module's
+// nimcp_stats_gpu_variance_batch() for batch multi-variable operations.
+//=============================================================================
 
 /**
- * @brief Compute mean and variance using two-pass algorithm
+ * @brief Compute mean using two-pass algorithm (pass 1: sum reduction)
+ *
+ * @note Related: kernel_mean_partial() in nimcp_statistics_kernels.cu
  */
 static __global__ void kernel_compute_mean(
     const float* __restrict__ data,
@@ -219,7 +245,9 @@ static __global__ void kernel_compute_mean(
 }
 
 /**
- * @brief Compute variance given mean
+ * @brief Compute variance given pre-computed mean (pass 2: squared deviation reduction)
+ *
+ * @note Related: kernel_welford_stats() provides single-pass alternative
  */
 __global__ void kernel_compute_variance(
     const float* __restrict__ data,
@@ -590,16 +618,24 @@ bool fin_risk_gpu_compute(
     const fin_risk_gpu_params_t* params,
     fin_risk_gpu_result_t* result)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
         set_risk_error("Invalid GPU context");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context");
         return false;
     }
     if (!returns || !params || !result) {
         set_risk_error("Invalid parameters");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid parameters");
         return false;
     }
     if (params->num_returns == 0) {
         set_risk_error("Zero returns");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Zero returns");
         return false;
     }
 
@@ -618,23 +654,44 @@ bool fin_risk_gpu_compute(
 
     err = cudaMalloc(&d_returns, n * sizeof(float));
     if (err != cudaSuccess) {
-        set_risk_error("Failed to allocate returns");
-        return false;
+        nimcp_gpu_recovery_result_t recovery_result = {0};
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &recovery_result)) {
+            err = cudaMalloc(&d_returns, n * sizeof(float));
+        }
+        if (err != cudaSuccess) {
+            set_risk_error("Failed to allocate returns");
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, err, "Failed to allocate returns");
+            return false;
+        }
     }
 
     err = cudaMalloc(&d_sorted, n * sizeof(float));
     if (err != cudaSuccess) {
-        cudaFree(d_returns);
-        set_risk_error("Failed to allocate sorted array");
-        return false;
+        nimcp_gpu_recovery_result_t recovery_result = {0};
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &recovery_result)) {
+            err = cudaMalloc(&d_sorted, n * sizeof(float));
+        }
+        if (err != cudaSuccess) {
+            cudaFree(d_returns);
+            set_risk_error("Failed to allocate sorted array");
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, err, "Failed to allocate sorted array");
+            return false;
+        }
     }
 
     err = cudaMalloc(&d_partial, reduce_blocks * sizeof(float));
     if (err != cudaSuccess) {
-        cudaFree(d_returns);
-        cudaFree(d_sorted);
-        set_risk_error("Failed to allocate partial sums");
-        return false;
+        nimcp_gpu_recovery_result_t recovery_result = {0};
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &recovery_result)) {
+            err = cudaMalloc(&d_partial, reduce_blocks * sizeof(float));
+        }
+        if (err != cudaSuccess) {
+            cudaFree(d_returns);
+            cudaFree(d_sorted);
+            set_risk_error("Failed to allocate partial sums");
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, err, "Failed to allocate partial sums");
+            return false;
+        }
     }
 
     // Copy returns to device
@@ -722,12 +779,19 @@ bool fin_risk_gpu_volatility(
     fin_vol_method_t method,
     float* volatility)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
         set_risk_error("Invalid GPU context");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context");
         return false;
     }
     if (!prices || n < 2 || !volatility) {
         set_risk_error("Invalid parameters");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid parameters");
         return false;
     }
 
@@ -839,12 +903,19 @@ bool fin_risk_gpu_volatility_ohlc(
     fin_vol_method_t method,
     float* volatility)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
         set_risk_error("Invalid GPU context");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context");
         return false;
     }
     if (!open_prices || !high_prices || !low_prices || !close_prices || n < 2) {
         set_risk_error("Invalid OHLC data");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid OHLC data");
         return false;
     }
 
@@ -988,6 +1059,11 @@ static bool fin_risk_gpu_rolling_simple(
     float* rolling_var,
     float* rolling_vol)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
         set_risk_error("Invalid GPU context");
         return false;
@@ -1062,16 +1138,24 @@ bool fin_risk_gpu_rolling(
     const fin_risk_gpu_params_t* params,
     fin_risk_rolling_result_t* result)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
         set_risk_error("Invalid GPU context");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context");
         return false;
     }
     if (!returns || num_returns == 0 || window == 0 || window > num_returns) {
         set_risk_error("Invalid parameters");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid parameters");
         return false;
     }
     if (!params || !result) {
         set_risk_error("Null parameters or result");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Null parameters or result");
         return false;
     }
 

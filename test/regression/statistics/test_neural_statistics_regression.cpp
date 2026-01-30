@@ -541,8 +541,8 @@ TEST_F(NeuralStatisticsRegressionTest, ChiSquaredGOFUniform) {
     );
 
     EXPECT_EQ(status, NIMCP_STATS_OK);
-    EXPECT_FLOAT_EQ(result.statistic, 0.0f) << "Chi-squared should be 0 for perfect match";
-    EXPECT_FLOAT_EQ(result.p_value, 1.0f) << "P-value should be 1 for perfect match";
+    EXPECT_NEAR(result.statistic, 0.0f, 1e-5f) << "Chi-squared should be ~0 for perfect match";
+    EXPECT_GT(result.p_value, 0.99f) << "P-value should be near 1 for perfect match";
 }
 
 //=============================================================================

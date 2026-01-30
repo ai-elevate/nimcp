@@ -18,6 +18,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/statistics/nimcp_statistics.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -177,13 +178,17 @@ static float cosine_similarity(const float* a, const float* b, uint32_t dim) {
 
 /**
  * @brief Compute pattern entropy (measure of structure)
+ *
+ * Computes histogram-based entropy from raw data, normalized to [0,1].
+ * Uses central statistics module for the actual entropy calculation.
  */
 static float compute_entropy(const float* data, uint32_t dim) {
-    if (dim == 0) return 0.0f;
+    if (dim == 0 || !data) return 0.0f;
 
     /* Compute histogram-based entropy */
     const int NUM_BINS = 16;
     int bins[16] = {0};
+    float probs[16];
 
     float min_val = data[0], max_val = data[0];
     for (uint32_t i = 1; i < dim; i++) {
@@ -206,19 +211,13 @@ static float compute_entropy(const float* data, uint32_t dim) {
         bins[bin]++;
     }
 
-    float entropy = 0.0f;
+    /* Convert counts to probabilities for nimcp_stats_entropy() */
     for (int i = 0; i < NUM_BINS; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && NUM_BINS > 256) {
-            intuitive_reasoning_heartbeat("intuitive_re_loop",
-                             (float)(i + 1) / (float)NUM_BINS);
-        }
-
-        if (bins[i] > 0) {
-            float p = (float)bins[i] / dim;
-            entropy -= p * log2f(p);
-        }
+        probs[i] = (float)bins[i] / (float)dim;
     }
+
+    /* nimcp_stats_entropy returns entropy in bits */
+    float entropy = nimcp_stats_entropy(probs, NUM_BINS);
 
     return entropy / log2f(NUM_BINS);  /* Normalize to [0,1] */
 }

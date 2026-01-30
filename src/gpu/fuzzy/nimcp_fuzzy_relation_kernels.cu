@@ -28,6 +28,8 @@
 
 #include "gpu/fuzzy/nimcp_fuzzy_gpu.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Thread-Local Error Storage
@@ -474,17 +476,32 @@ bool nimcp_gpu_fuzzy_relation_compose(
     float* rel_out,
     const nimcp_gpu_relation_params_t* params)
 {
+    // Initialize recovery system if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    // Parameter validation with recovery attempt
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
-        set_relation_error("Invalid GPU context");
-        return false;
+        nimcp_gpu_recovery_result_t result;
+        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_CONTEXT_INVALID, cudaSuccess, &result)) {
+            set_relation_error("Invalid GPU context");
+            NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context");
+            return false;
+        }
     }
     if (!rel_a || !rel_b || !rel_out) {
         set_relation_error("Invalid relation pointers");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid relation pointers");
         return false;
     }
     if (rows_a == 0 || cols_a == 0 || cols_b == 0) {
-        set_relation_error("Invalid relation dimensions");
-        return false;
+        nimcp_gpu_recovery_result_t result;
+        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_INVALID_PARAMS, cudaSuccess, &result)) {
+            set_relation_error("Invalid relation dimensions");
+            NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid relation dimensions");
+            return false;
+        }
     }
 
     cudaStream_t stream = nimcp_gpu_get_compute_stream(ctx);
@@ -503,19 +520,37 @@ bool nimcp_gpu_fuzzy_relation_compose(
     cudaError_t err;
 
     err = cudaMalloc(&d_rel_a, rows_a * cols_a * sizeof(float));
-    if (err != cudaSuccess) goto cleanup_compose;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+            err = cudaMalloc(&d_rel_a, rows_a * cols_a * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup_compose;
+    }
 
     err = cudaMalloc(&d_rel_b, cols_a * cols_b * sizeof(float));
-    if (err != cudaSuccess) goto cleanup_compose;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+            err = cudaMalloc(&d_rel_b, cols_a * cols_b * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup_compose;
+    }
 
     err = cudaMalloc(&d_rel_out, rows_a * cols_b * sizeof(float));
-    if (err != cudaSuccess) goto cleanup_compose;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+            err = cudaMalloc(&d_rel_out, rows_a * cols_b * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup_compose;
+    }
 
     // Copy to device
-    cudaMemcpyAsync(d_rel_a, rel_a, rows_a * cols_a * sizeof(float),
-                    cudaMemcpyHostToDevice, stream);
-    cudaMemcpyAsync(d_rel_b, rel_b, cols_a * cols_b * sizeof(float),
-                    cudaMemcpyHostToDevice, stream);
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_rel_a, rel_a, rows_a * cols_a * sizeof(float),
+                    cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_rel_b, rel_b, cols_a * cols_b * sizeof(float),
+                    cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
     if (params) {
         // Use tnorm field to select composition type
         // tnorm=0 (MIN) => MAX_MIN, tnorm=1 (PRODUCT) => MAX_PRODUCT, etc.
@@ -543,11 +578,11 @@ bool nimcp_gpu_fuzzy_relation_compose(
                 d_rel_a, d_rel_b, d_rel_out, rows_a, cols_a, cols_b);
     }
 
-    NIMCP_CUDA_CHECK_LAST();
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Copy result back
-    cudaMemcpy(rel_out, d_rel_out, rows_a * cols_b * sizeof(float),
-               cudaMemcpyDeviceToHost);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(rel_out, d_rel_out, rows_a * cols_b * sizeof(float),
+               cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     cudaFree(d_rel_a);
     cudaFree(d_rel_b);
@@ -560,6 +595,7 @@ cleanup_compose:
     cudaFree(d_rel_b);
     cudaFree(d_rel_out);
     set_relation_error("Memory allocation failed");
+    NIMCP_THROW_GPU(NIMCP_ERROR_NO_MEMORY, 0, (int)err, "Memory allocation failed");
     return false;
 }
 
@@ -572,12 +608,23 @@ bool nimcp_gpu_fuzzy_relation_cartesian(
     uint32_t n_b,
     bool use_product)
 {
+    // Initialize recovery system if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    // Parameter validation with recovery attempt
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
-        set_relation_error("Invalid GPU context");
-        return false;
+        nimcp_gpu_recovery_result_t result;
+        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_CONTEXT_INVALID, cudaSuccess, &result)) {
+            set_relation_error("Invalid GPU context");
+            NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context");
+            return false;
+        }
     }
     if (!set_a || !set_b || !relation) {
         set_relation_error("Invalid pointers");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid pointers");
         return false;
     }
 
@@ -594,18 +641,36 @@ bool nimcp_gpu_fuzzy_relation_cartesian(
     dim3 grid((n_b + 15) / 16, (n_a + 15) / 16);
 
     err = cudaMalloc(&d_set_a, n_a * sizeof(float));
-    if (err != cudaSuccess) goto cleanup_cartesian;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+            err = cudaMalloc(&d_set_a, n_a * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup_cartesian;
+    }
 
     err = cudaMalloc(&d_set_b, n_b * sizeof(float));
-    if (err != cudaSuccess) goto cleanup_cartesian;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+            err = cudaMalloc(&d_set_b, n_b * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup_cartesian;
+    }
 
     err = cudaMalloc(&d_relation, n_a * n_b * sizeof(float));
-    if (err != cudaSuccess) goto cleanup_cartesian;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+            err = cudaMalloc(&d_relation, n_a * n_b * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup_cartesian;
+    }
 
-    cudaMemcpyAsync(d_set_a, set_a, n_a * sizeof(float),
-                    cudaMemcpyHostToDevice, stream);
-    cudaMemcpyAsync(d_set_b, set_b, n_b * sizeof(float),
-                    cudaMemcpyHostToDevice, stream);
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_set_a, set_a, n_a * sizeof(float),
+                    cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_set_b, set_b, n_b * sizeof(float),
+                    cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
 
     if (use_product) {
         kernel_relation_cartesian_product<<<grid, block, 0, stream>>>(
@@ -615,10 +680,10 @@ bool nimcp_gpu_fuzzy_relation_cartesian(
             d_set_a, d_set_b, d_relation, n_a, n_b);
     }
 
-    NIMCP_CUDA_CHECK_LAST();
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
-    cudaMemcpy(relation, d_relation, n_a * n_b * sizeof(float),
-               cudaMemcpyDeviceToHost);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(relation, d_relation, n_a * n_b * sizeof(float),
+               cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     cudaFree(d_set_a);
     cudaFree(d_set_b);
@@ -631,6 +696,7 @@ cleanup_cartesian:
     cudaFree(d_set_b);
     cudaFree(d_relation);
     set_relation_error("Memory allocation failed");
+    NIMCP_THROW_GPU(NIMCP_ERROR_NO_MEMORY, 0, (int)err, "Memory allocation failed");
     return false;
 }
 
@@ -642,12 +708,23 @@ bool nimcp_gpu_fuzzy_relation_project(
     uint32_t cols,
     bool project_first)
 {
+    // Initialize recovery system if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    // Parameter validation with recovery attempt
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
-        set_relation_error("Invalid GPU context");
-        return false;
+        nimcp_gpu_recovery_result_t result;
+        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_CONTEXT_INVALID, cudaSuccess, &result)) {
+            set_relation_error("Invalid GPU context");
+            NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context");
+            return false;
+        }
     }
     if (!relation || !projection) {
         set_relation_error("Invalid pointers");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid pointers");
         return false;
     }
 
@@ -663,13 +740,25 @@ bool nimcp_gpu_fuzzy_relation_project(
     uint32_t proj_size = project_first ? rows : cols;
 
     err = cudaMalloc(&d_relation, rows * cols * sizeof(float));
-    if (err != cudaSuccess) goto cleanup_project;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+            err = cudaMalloc(&d_relation, rows * cols * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup_project;
+    }
 
     err = cudaMalloc(&d_projection, proj_size * sizeof(float));
-    if (err != cudaSuccess) goto cleanup_project;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+            err = cudaMalloc(&d_projection, proj_size * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup_project;
+    }
 
-    cudaMemcpyAsync(d_relation, relation, rows * cols * sizeof(float),
-                    cudaMemcpyHostToDevice, stream);
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_relation, relation, rows * cols * sizeof(float),
+                    cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
 
     if (project_first) {
         kernel_relation_project_first<<<rows, block_size,
@@ -681,10 +770,10 @@ bool nimcp_gpu_fuzzy_relation_project(
             d_relation, d_projection, rows, cols);
     }
 
-    NIMCP_CUDA_CHECK_LAST();
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
-    cudaMemcpy(projection, d_projection, proj_size * sizeof(float),
-               cudaMemcpyDeviceToHost);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(projection, d_projection, proj_size * sizeof(float),
+               cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     cudaFree(d_relation);
     cudaFree(d_projection);
@@ -695,6 +784,7 @@ cleanup_project:
     cudaFree(d_relation);
     cudaFree(d_projection);
     set_relation_error("Memory allocation failed");
+    NIMCP_THROW_GPU(NIMCP_ERROR_NO_MEMORY, 0, (int)err, "Memory allocation failed");
     return false;
 }
 

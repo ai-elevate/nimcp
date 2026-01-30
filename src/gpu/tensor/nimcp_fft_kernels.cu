@@ -23,14 +23,24 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "FFT_GPU"
 
+// cuFFT check with recovery support
 #define CUFFT_CHECK(call) do { \
-    cufftResult result = call; \
-    if (result != CUFFT_SUCCESS) { \
-        LOG_ERROR("cuFFT error at %s:%d: %d", __FILE__, __LINE__, result); \
-        return false; \
+    cufftResult _result = (call); \
+    if (_result != CUFFT_SUCCESS) { \
+        nimcp_gpu_recovery_result_t _rec_result = {0}; \
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_LIBRARY, cudaErrorUnknown, &_rec_result)) { \
+            _result = (call); \
+        } \
+        if (_result != CUFFT_SUCCESS) { \
+            LOG_ERROR("cuFFT error at %s:%d: %d (unrecoverable)", __FILE__, __LINE__, _result); \
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, 0, \
+                "cuFFT error (unrecoverable): %d", _result); \
+            return false; \
+        } \
     } \
 } while(0)
 
@@ -44,6 +54,11 @@ bool nimcp_gpu_fft_1d(
     nimcp_gpu_tensor_t* out,
     bool inverse)
 {
+    // Initialize GPU recovery system if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !x || !out) {
         LOG_ERROR("Invalid parameters for FFT");
         return false;
@@ -101,6 +116,11 @@ bool nimcp_gpu_fft_2d(
     nimcp_gpu_tensor_t* out,
     bool inverse)
 {
+    // Initialize GPU recovery system if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !x || !out) {
         LOG_ERROR("Invalid parameters for 2D FFT");
         return false;
@@ -156,6 +176,11 @@ bool nimcp_gpu_rfft(
     const nimcp_gpu_tensor_t* x,
     nimcp_gpu_tensor_t* out)
 {
+    // Initialize GPU recovery system if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !x || !out) {
         LOG_ERROR("Invalid parameters for RFFT");
         return false;
@@ -193,6 +218,11 @@ bool nimcp_gpu_irfft(
     const nimcp_gpu_tensor_t* x,
     nimcp_gpu_tensor_t* out)
 {
+    // Initialize GPU recovery system if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !x || !out) {
         LOG_ERROR("Invalid parameters for IRFFT");
         return false;
@@ -245,6 +275,11 @@ bool nimcp_gpu_stft(
     int hop_length,
     const nimcp_gpu_tensor_t* window)
 {
+    // Initialize GPU recovery system if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !audio || !out) {
         LOG_ERROR("Invalid parameters for STFT");
         return false;

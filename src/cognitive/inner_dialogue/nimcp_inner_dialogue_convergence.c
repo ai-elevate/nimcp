@@ -29,6 +29,7 @@
 #include "cognitive/inner_dialogue/nimcp_inner_dialogue_convergence.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/statistics/nimcp_statistics.h"
 
 #include <string.h>
 #include <math.h>
@@ -84,11 +85,13 @@ static inline bool is_nan_f(float v) {
 }
 
 /**
- * @brief Shannon entropy from frequency array
+ * @brief Shannon entropy from frequency count array
  *
  * WHAT: H = -sum(p_i * log2(p_i)) for p_i > 0
  * WHY:  Measures diversity of a distribution
- * HOW:  Normalise counts, sum -p*log2(p)
+ * HOW:  Convert counts to probabilities, delegate to central stats module
+ *
+ * Uses nimcp_stats_entropy() from utils/statistics for core computation.
  *
  * This is the classical Shannon entropy.  For future quantum integration,
  * this function could delegate to quantum_shannon_entropy() when the
@@ -96,16 +99,18 @@ static inline bool is_nan_f(float v) {
  */
 static float compute_entropy_internal(const uint32_t* counts, uint32_t bins,
                                        uint32_t total) {
-    if (total == 0 || !counts) return 0.0f;
-    float h = 0.0f;
+    if (total == 0 || !counts || bins == 0) return 0.0f;
+
+    /* Convert counts to probability distribution */
+    float probs[16];  /* bins is always 16 in this module */
     float inv = 1.0f / (float)total;
-    for (uint32_t i = 0; i < bins; i++) {
-        if (counts[i] > 0) {
-            float p = (float)counts[i] * inv;
-            h -= p * log2f(p);
-        }
+
+    for (uint32_t i = 0; i < bins && i < 16; i++) {
+        probs[i] = (float)counts[i] * inv;
     }
-    return h;
+
+    /* Delegate to central statistics module */
+    return nimcp_stats_entropy(probs, bins < 16 ? bins : 16);
 }
 
 /**

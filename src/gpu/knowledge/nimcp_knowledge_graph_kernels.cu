@@ -31,16 +31,17 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "KNOWLEDGE_GPU"
 
 //=============================================================================
-// CUDA Error Checking - Using immune-integrated macros
+// CUDA Error Checking - Using recovery-integrated macros for self-healing
 //=============================================================================
 
-// Map legacy macros to immune-integrated versions
-#define CUDA_CHECK(call) NIMCP_CUDA_CHECK_IMMUNE(call)
-#define CUDA_CHECK_NULL(call) NIMCP_CUDA_CHECK_IMMUNE_NULL(call)
+// Map legacy macros to recovery-integrated versions
+#define CUDA_CHECK(call) NIMCP_CUDA_RECOVER(call, GPU_ERROR_CUDA_RUNTIME)
+#define CUDA_CHECK_NULL(call) NIMCP_CUDA_RECOVER_NULL(call, GPU_ERROR_OUT_OF_MEMORY)
 // CUDA_CHECK_VOID uses warning only since void functions can't propagate errors
 #define CUDA_CHECK_VOID(call) NIMCP_CUDA_CHECK_WARN(call)
 
@@ -150,6 +151,10 @@ nimcp_gpu_knowledge_graph_t* nimcp_gpu_knowledge_graph_create(
     uint32_t num_edges,
     uint32_t embed_dim)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !row_offsets || !col_indices) {
         LOG_ERROR("Invalid parameters for graph creation");
         return NULL;
@@ -235,6 +240,10 @@ bool nimcp_gpu_knowledge_graph_set_embeddings(
     nimcp_gpu_knowledge_graph_t* graph,
     const float* embeddings)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !embeddings) {
         LOG_ERROR("Invalid parameters for set_embeddings");
         return false;
@@ -256,6 +265,10 @@ bool nimcp_gpu_knowledge_graph_set_hyperbolic_embeddings(
     nimcp_gpu_knowledge_graph_t* graph,
     const float* embeddings)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!nimcp_gpu_knowledge_graph_set_embeddings(graph, embeddings)) {
         return false;
     }
@@ -371,6 +384,10 @@ bool nimcp_gpu_bfs(
     int32_t max_depth,
     nimcp_graph_traversal_result_t* result)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !result) {
         LOG_ERROR("Invalid parameters for BFS");
         return false;
@@ -476,6 +493,10 @@ bool nimcp_gpu_bfs_multi_source(
     int32_t max_depth,
     nimcp_graph_traversal_result_t* result)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !source_nodes || !result || num_sources == 0) {
         LOG_ERROR("Invalid parameters for multi-source BFS");
         return false;
@@ -663,6 +684,10 @@ bool nimcp_gpu_dfs(
     int32_t max_depth,
     nimcp_graph_traversal_result_t* result)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !result) {
         LOG_ERROR("Invalid parameters for DFS");
         return false;
@@ -771,6 +796,10 @@ bool nimcp_gpu_shortest_path(
     uint32_t* path_out,
     uint32_t* path_length)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !path_out || !path_length) {
         LOG_ERROR("Invalid parameters for shortest_path");
         return false;
@@ -957,6 +986,10 @@ bool nimcp_gpu_node_similarity(
     uint32_t node_b,
     float* similarity)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !similarity) {
         LOG_ERROR("Invalid parameters for node_similarity");
         return false;
@@ -995,6 +1028,10 @@ bool nimcp_gpu_pairwise_similarity(
     uint32_t num_nodes,
     nimcp_gpu_tensor_t* similarity_matrix)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !node_indices || !similarity_matrix) {
         LOG_ERROR("Invalid parameters for pairwise_similarity");
         return false;
@@ -1110,6 +1147,10 @@ bool nimcp_gpu_knn_similarity(
     uint32_t k,
     nimcp_similarity_result_t* result)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !result) {
         LOG_ERROR("Invalid parameters for knn_similarity");
         return false;
@@ -1174,6 +1215,10 @@ bool nimcp_gpu_knn_similarity_embedding(
     uint32_t k,
     nimcp_similarity_result_t* result)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !query_embedding || !result) {
         LOG_ERROR("Invalid parameters for knn_similarity_embedding");
         return false;
@@ -1267,6 +1312,10 @@ bool nimcp_gpu_embedding_update(
     const nimcp_gpu_tensor_t* gradients,
     float learning_rate)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !gradients) {
         LOG_ERROR("Invalid parameters for embedding_update");
         return false;
@@ -1340,6 +1389,10 @@ bool nimcp_gpu_triplet_loss(
     float margin,
     float* loss_out)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !anchors || !positives || !negatives || !loss_out) {
         LOG_ERROR("Invalid parameters for triplet_loss");
         return false;
@@ -1442,6 +1495,10 @@ __global__ void kernel_normalize_embeddings(
 
 bool nimcp_gpu_normalize_embeddings(nimcp_gpu_knowledge_graph_t* graph)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph) {
         LOG_ERROR("Invalid graph parameter");
         return false;
@@ -1605,6 +1662,10 @@ bool nimcp_gpu_aggregate_neighbors(
     nimcp_aggregate_mode_t mode,
     nimcp_gpu_tensor_t* output)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !output) {
         LOG_ERROR("Invalid parameters for aggregate_neighbors");
         return false;
@@ -1761,6 +1822,10 @@ bool nimcp_gpu_aggregate_attention(
     const nimcp_gpu_tensor_t* key_weights,
     nimcp_gpu_tensor_t* output)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !query_weights || !key_weights || !output) {
         LOG_ERROR("Invalid parameters for aggregate_attention");
         return false;
@@ -1800,6 +1865,10 @@ bool nimcp_gpu_multi_hop_aggregate(
     nimcp_aggregate_mode_t mode,
     nimcp_gpu_tensor_t* output)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !output || num_hops == 0) {
         LOG_ERROR("Invalid parameters for multi_hop_aggregate");
         return false;
@@ -1855,6 +1924,10 @@ bool nimcp_gpu_subgraph_match(
     uint32_t max_matches,
     nimcp_subgraph_match_result_t* result)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !pattern || !result) {
         LOG_ERROR("Invalid parameters for subgraph_match");
         return false;
@@ -1889,6 +1962,10 @@ bool nimcp_gpu_subgraph_match_approximate(
     uint32_t max_matches,
     nimcp_subgraph_match_result_t* result)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !pattern || !result) {
         LOG_ERROR("Invalid parameters for approximate subgraph_match");
         return false;
@@ -1986,6 +2063,10 @@ bool nimcp_gpu_hyperbolic_distance(
     uint32_t node_b,
     float* distance)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !distance) {
         LOG_ERROR("Invalid parameters for hyperbolic_distance");
         return false;
@@ -2053,6 +2134,10 @@ bool nimcp_gpu_hyperbolic_pairwise_distance(
     uint32_t num_nodes,
     nimcp_gpu_tensor_t* distance_matrix)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !node_indices || !distance_matrix) {
         LOG_ERROR("Invalid parameters for hyperbolic_pairwise_distance");
         return false;
@@ -2161,6 +2246,10 @@ bool nimcp_gpu_hyperbolic_sgd_step(
     const nimcp_gpu_tensor_t* euclidean_gradients,
     float learning_rate)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !euclidean_gradients) {
         LOG_ERROR("Invalid parameters for hyperbolic_sgd_step");
         return false;
@@ -2242,6 +2331,10 @@ __global__ void kernel_euclidean_to_hyperbolic(
 
 bool nimcp_gpu_euclidean_to_hyperbolic(nimcp_gpu_knowledge_graph_t* graph)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph) {
         LOG_ERROR("Invalid graph parameter");
         return false;
@@ -2287,6 +2380,11 @@ bool nimcp_gpu_hyperbolic_knn(
     uint32_t k,
     nimcp_similarity_result_t* result)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !result) {
         LOG_ERROR("Invalid parameters for hyperbolic_knn");
         return false;
@@ -2406,6 +2504,11 @@ bool nimcp_gpu_knowledge_graph_stats(
     uint32_t* max_degree,
     float* embedding_norm)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph) {
         LOG_ERROR("Invalid graph parameter");
         return false;

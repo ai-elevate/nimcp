@@ -17,6 +17,7 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/statistics/nimcp_statistics.h"
 #include <math.h>
 #include <string.h>
 #include <time.h>
@@ -1031,20 +1032,25 @@ static void compute_hub_metrics(neural_network_t network, uint32_t* num_hubs, fl
         return;
     }
 
-    float sum_degree = 0.0F;
-    float sum_degree_sq = 0.0F;
     uint32_t total_synapses = 0;
+    float* degree_floats = (float*)nimcp_malloc(num_neurons * sizeof(float));
 
     for (uint32_t i = 0; i < num_neurons; i++) {
         neuron_t* neuron = neural_network_get_neuron(network, i);
         degrees[i] = neuron ? neuron->num_synapses : 0;
-        sum_degree += (float)degrees[i];
-        sum_degree_sq += (float)(degrees[i] * degrees[i]);
         total_synapses += degrees[i];
+        if (degree_floats) {
+            degree_floats[i] = (float)degrees[i];
+        }
     }
 
-    float avg_degree = sum_degree / (float)num_neurons;
-    float variance = (sum_degree_sq / (float)num_neurons) - (avg_degree * avg_degree);
+    float avg_degree = 0.0F;
+    float variance = 0.0F;
+    if (degree_floats) {
+        avg_degree = nimcp_stats_mean(degree_floats, num_neurons);
+        variance = nimcp_stats_variance_population(degree_floats, num_neurons);
+        nimcp_free(degree_floats);
+    }
     float std_degree = sqrtf(fmaxf(0.0F, variance));
 
     // Hub threshold: mean + 2*std, or 90th percentile, whichever is lower

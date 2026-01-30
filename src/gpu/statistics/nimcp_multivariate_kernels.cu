@@ -25,6 +25,7 @@
 
 #include "utils/statistics/nimcp_multivariate.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "MULTIVARIATE_GPU"
@@ -43,21 +44,69 @@
 // cuSOLVER Check Macro
 //=============================================================================
 
-#define CUSOLVER_CHECK(call) do { \
+/* GPU recovery-enabled error checking macros */
+#define CUSOLVER_CHECK_MV(call) do { \
     cusolverStatus_t status = call; \
     if (status != CUSOLVER_STATUS_SUCCESS) { \
-        fprintf(stderr, "[NIMCP cuSOLVER ERROR] %s:%d: error %d\n", \
-                __FILE__, __LINE__, status); \
-        return NIMCP_MV_ERROR_GPU; \
+        nimcp_gpu_recovery_result_t _result = {0}; \
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_LIBRARY, cudaErrorUnknown, &_result)) { \
+            status = call; \
+        } \
+        if (status != CUSOLVER_STATUS_SUCCESS) { \
+            fprintf(stderr, "[NIMCP cuSOLVER UNRECOVERABLE] %s:%d: error %d\n", \
+                    __FILE__, __LINE__, status); \
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, 0, \
+                "cuSOLVER error (unrecoverable): %s returned %d", #call, status); \
+            return NIMCP_MV_ERROR_GPU; \
+        } \
     } \
 } while(0)
 
 #define CUBLAS_CHECK_MV(call) do { \
     cublasStatus_t status = call; \
     if (status != CUBLAS_STATUS_SUCCESS) { \
-        fprintf(stderr, "[NIMCP cuBLAS ERROR] %s:%d: error %d\n", \
-                __FILE__, __LINE__, status); \
-        return NIMCP_MV_ERROR_GPU; \
+        nimcp_gpu_recovery_result_t _result = {0}; \
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_LIBRARY, cudaErrorUnknown, &_result)) { \
+            status = call; \
+        } \
+        if (status != CUBLAS_STATUS_SUCCESS) { \
+            fprintf(stderr, "[NIMCP cuBLAS UNRECOVERABLE] %s:%d: error %d\n", \
+                    __FILE__, __LINE__, status); \
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, 0, \
+                "cuBLAS error (unrecoverable): %s returned %d", #call, status); \
+            return NIMCP_MV_ERROR_GPU; \
+        } \
+    } \
+} while(0)
+
+#define CUDA_CHECK_MV(call) do { \
+    cudaError_t _err = (call); \
+    if (_err != cudaSuccess) { \
+        nimcp_gpu_recovery_result_t _result = {0}; \
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_CUDA_RUNTIME, _err, &_result)) { \
+            _err = (call); \
+        } \
+        if (_err != cudaSuccess) { \
+            fprintf(stderr, "[NIMCP CUDA UNRECOVERABLE] %s:%d: %s returned %s\n", \
+                    __FILE__, __LINE__, #call, cudaGetErrorString(_err)); \
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, _err, \
+                "GPU error (unrecoverable): %s - %s", #call, cudaGetErrorString(_err)); \
+            return NIMCP_MV_ERROR_GPU; \
+        } \
+    } \
+} while(0)
+
+#define CUDA_CHECK_MV_LAST() do { \
+    cudaError_t _err = cudaGetLastError(); \
+    if (_err != cudaSuccess) { \
+        nimcp_gpu_recovery_result_t _result = {0}; \
+        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_KERNEL_LAUNCH, _err, &_result)) { \
+            fprintf(stderr, "[NIMCP CUDA UNRECOVERABLE] %s:%d: %s\n", \
+                    __FILE__, __LINE__, cudaGetErrorString(_err)); \
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, _err, \
+                "GPU kernel error (unrecoverable): %s", cudaGetErrorString(_err)); \
+            return NIMCP_MV_ERROR_GPU; \
+        } \
     } \
 } while(0)
 
@@ -79,7 +128,7 @@ typedef struct nimcp_mv_gpu_context {
 /**
  * @brief Center data by subtracting mean
  */
-__global__ void kernel_center_data(
+__global__ void kernel_mv_center_data(
     const float* X,
     const float* mean,
     float* X_centered,
@@ -415,6 +464,11 @@ nimcp_mv_result_t nimcp_mv_covariance_gpu(
     uint32_t ddof,
     void* gpu_ctx)
 {
+    /* Initialize GPU recovery if not already done */
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!X || !cov || !gpu_ctx) {
         return NIMCP_MV_ERROR_NULL;
     }
@@ -433,20 +487,20 @@ nimcp_mv_result_t nimcp_mv_covariance_gpu(
     size_t mean_size = n_features * sizeof(float);
     size_t cov_size = n_features * n_features * sizeof(float);
 
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_X, X_size));
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_mean, mean_size));
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_X_centered, X_size));
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_cov, cov_size));
+    CUDA_CHECK_MV(cudaMalloc(&d_X, X_size));
+    CUDA_CHECK_MV(cudaMalloc(&d_mean, mean_size));
+    CUDA_CHECK_MV(cudaMalloc(&d_X_centered, X_size));
+    CUDA_CHECK_MV(cudaMalloc(&d_cov, cov_size));
 
-    NIMCP_CUDA_CHECK(cudaMemcpy(d_X, X, X_size, cudaMemcpyHostToDevice));
+    CUDA_CHECK_MV(cudaMemcpy(d_X, X, X_size, cudaMemcpyHostToDevice));
 
     kernel_column_mean<<<n_features, BLOCK_SIZE, BLOCK_SIZE * sizeof(float)>>>(
         d_X, d_mean, n_samples, n_features);
-    NIMCP_CUDA_CHECK_LAST();
+    CUDA_CHECK_MV_LAST();
 
-    kernel_center_data<<<GRID_SIZE(n_samples * n_features), BLOCK_SIZE>>>(
+    kernel_mv_center_data<<<GRID_SIZE(n_samples * n_features), BLOCK_SIZE>>>(
         d_X, d_mean, d_X_centered, n_samples, n_features);
-    NIMCP_CUDA_CHECK_LAST();
+    CUDA_CHECK_MV_LAST();
 
     float alpha = 1.0f / (float)(n_samples - ddof);
     float beta = 0.0f;
@@ -460,7 +514,7 @@ nimcp_mv_result_t nimcp_mv_covariance_gpu(
                              &beta,
                              d_cov, n_features));
 
-    NIMCP_CUDA_CHECK(cudaMemcpy(cov, d_cov, cov_size, cudaMemcpyDeviceToHost));
+    CUDA_CHECK_MV(cudaMemcpy(cov, d_cov, cov_size, cudaMemcpyDeviceToHost));
 
     cudaFree(d_X);
     cudaFree(d_mean);
@@ -480,6 +534,11 @@ nimcp_mv_result_t nimcp_mv_svd_gpu(
     bool full_matrices,
     void* gpu_ctx)
 {
+    /* Initialize GPU recovery if not already done */
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!A || !S || !gpu_ctx) {
         return NIMCP_MV_ERROR_NULL;
     }
@@ -508,15 +567,15 @@ nimcp_mv_result_t nimcp_mv_svd_gpu(
     size_t U_size = m * (full_matrices ? m : min_mn) * sizeof(float);
     size_t Vt_size = (full_matrices ? n : min_mn) * n * sizeof(float);
 
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_A, A_size));
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_A_col, A_size));
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_S, S_size));
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_info, sizeof(int)));
+    CUDA_CHECK_MV(cudaMalloc(&d_A, A_size));
+    CUDA_CHECK_MV(cudaMalloc(&d_A_col, A_size));
+    CUDA_CHECK_MV(cudaMalloc(&d_S, S_size));
+    CUDA_CHECK_MV(cudaMalloc(&d_info, sizeof(int)));
 
-    if (U) NIMCP_CUDA_CHECK(cudaMalloc(&d_U, U_size));
-    if (Vt) NIMCP_CUDA_CHECK(cudaMalloc(&d_Vt, Vt_size));
+    if (U) CUDA_CHECK_MV(cudaMalloc(&d_U, U_size));
+    if (Vt) CUDA_CHECK_MV(cudaMalloc(&d_Vt, Vt_size));
 
-    NIMCP_CUDA_CHECK(cudaMemcpy(d_A, A, A_size, cudaMemcpyHostToDevice));
+    CUDA_CHECK_MV(cudaMemcpy(d_A, A, A_size, cudaMemcpyHostToDevice));
 
     float alpha_t = 1.0f;
     float beta_t = 0.0f;
@@ -531,13 +590,13 @@ nimcp_mv_result_t nimcp_mv_svd_gpu(
     signed char jobu = full_matrices ? 'A' : 'S';
     signed char jobvt = full_matrices ? 'A' : 'S';
 
-    CUSOLVER_CHECK(cusolverDnSgesvd_bufferSize(ctx->cusolver, M, N, &lwork));
+    CUSOLVER_CHECK_MV(cusolverDnSgesvd_bufferSize(ctx->cusolver, M, N, &lwork));
 
     float* d_work = nullptr;
     float* d_rwork = nullptr;
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_work, lwork * sizeof(float)));
+    CUDA_CHECK_MV(cudaMalloc(&d_work, lwork * sizeof(float)));
 
-    CUSOLVER_CHECK(cusolverDnSgesvd(
+    CUSOLVER_CHECK_MV(cusolverDnSgesvd(
         ctx->cusolver,
         jobu, jobvt,
         M, N,
@@ -550,38 +609,38 @@ nimcp_mv_result_t nimcp_mv_svd_gpu(
         d_info));
 
     int h_info;
-    NIMCP_CUDA_CHECK(cudaMemcpy(&h_info, d_info, sizeof(int), cudaMemcpyDeviceToHost));
+    CUDA_CHECK_MV(cudaMemcpy(&h_info, d_info, sizeof(int), cudaMemcpyDeviceToHost));
     if (h_info != 0) {
         cudaFree(d_A); cudaFree(d_A_col); cudaFree(d_S);
         cudaFree(d_U); cudaFree(d_Vt); cudaFree(d_work); cudaFree(d_info);
         return NIMCP_MV_ERROR_LAPACK;
     }
 
-    NIMCP_CUDA_CHECK(cudaMemcpy(S, d_S, S_size, cudaMemcpyDeviceToHost));
+    CUDA_CHECK_MV(cudaMemcpy(S, d_S, S_size, cudaMemcpyDeviceToHost));
 
     if (U && d_U) {
         float* d_U_row = nullptr;
-        NIMCP_CUDA_CHECK(cudaMalloc(&d_U_row, U_size));
+        CUDA_CHECK_MV(cudaMalloc(&d_U_row, U_size));
         CUBLAS_CHECK_MV(cublasSgeam(ctx->cublas,
                                  CUBLAS_OP_T, CUBLAS_OP_N,
                                  (full_matrices ? m : min_mn), m,
                                  &alpha_t, d_U, m,
                                  &beta_t, d_U, (full_matrices ? m : min_mn),
                                  d_U_row, (full_matrices ? m : min_mn)));
-        NIMCP_CUDA_CHECK(cudaMemcpy(U, d_U_row, U_size, cudaMemcpyDeviceToHost));
+        CUDA_CHECK_MV(cudaMemcpy(U, d_U_row, U_size, cudaMemcpyDeviceToHost));
         cudaFree(d_U_row);
     }
 
     if (Vt && d_Vt) {
         float* d_Vt_row = nullptr;
-        NIMCP_CUDA_CHECK(cudaMalloc(&d_Vt_row, Vt_size));
+        CUDA_CHECK_MV(cudaMalloc(&d_Vt_row, Vt_size));
         CUBLAS_CHECK_MV(cublasSgeam(ctx->cublas,
                                  CUBLAS_OP_T, CUBLAS_OP_N,
                                  n, (full_matrices ? n : min_mn),
                                  &alpha_t, d_Vt, (full_matrices ? n : min_mn),
                                  &beta_t, d_Vt, n,
                                  d_Vt_row, n));
-        NIMCP_CUDA_CHECK(cudaMemcpy(Vt, d_Vt_row, Vt_size, cudaMemcpyDeviceToHost));
+        CUDA_CHECK_MV(cudaMemcpy(Vt, d_Vt_row, Vt_size, cudaMemcpyDeviceToHost));
         cudaFree(d_Vt_row);
     }
 
@@ -603,6 +662,11 @@ nimcp_mv_result_t nimcp_mv_eigh_gpu(
     float* eigenvectors,
     void* gpu_ctx)
 {
+    /* Initialize GPU recovery if not already done */
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!A || !eigenvalues || !gpu_ctx) {
         return NIMCP_MV_ERROR_NULL;
     }
@@ -620,37 +684,37 @@ nimcp_mv_result_t nimcp_mv_eigh_gpu(
     float* d_W = nullptr;
     int* d_info = nullptr;
 
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_A, A_size));
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_W, W_size));
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_info, sizeof(int)));
+    CUDA_CHECK_MV(cudaMalloc(&d_A, A_size));
+    CUDA_CHECK_MV(cudaMalloc(&d_W, W_size));
+    CUDA_CHECK_MV(cudaMalloc(&d_info, sizeof(int)));
 
-    NIMCP_CUDA_CHECK(cudaMemcpy(d_A, A, A_size, cudaMemcpyHostToDevice));
+    CUDA_CHECK_MV(cudaMemcpy(d_A, A, A_size, cudaMemcpyHostToDevice));
 
     int lwork = 0;
     cusolverEigMode_t jobz = eigenvectors ? CUSOLVER_EIG_MODE_VECTOR : CUSOLVER_EIG_MODE_NOVECTOR;
     cublasFillMode_t uplo = CUBLAS_FILL_MODE_UPPER;
 
-    CUSOLVER_CHECK(cusolverDnSsyevd_bufferSize(
+    CUSOLVER_CHECK_MV(cusolverDnSsyevd_bufferSize(
         ctx->cusolver, jobz, uplo, N, d_A, N, d_W, &lwork));
 
     float* d_work = nullptr;
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_work, lwork * sizeof(float)));
+    CUDA_CHECK_MV(cudaMalloc(&d_work, lwork * sizeof(float)));
 
-    CUSOLVER_CHECK(cusolverDnSsyevd(
+    CUSOLVER_CHECK_MV(cusolverDnSsyevd(
         ctx->cusolver, jobz, uplo, N, d_A, N, d_W, d_work, lwork, d_info));
 
     int h_info;
-    NIMCP_CUDA_CHECK(cudaMemcpy(&h_info, d_info, sizeof(int), cudaMemcpyDeviceToHost));
+    CUDA_CHECK_MV(cudaMemcpy(&h_info, d_info, sizeof(int), cudaMemcpyDeviceToHost));
     if (h_info != 0) {
         cudaFree(d_A); cudaFree(d_W); cudaFree(d_work); cudaFree(d_info);
         return NIMCP_MV_ERROR_LAPACK;
     }
 
-    NIMCP_CUDA_CHECK(cudaMemcpy(eigenvalues, d_W, W_size, cudaMemcpyDeviceToHost));
+    CUDA_CHECK_MV(cudaMemcpy(eigenvalues, d_W, W_size, cudaMemcpyDeviceToHost));
 
     if (eigenvectors) {
         float* d_V_row = nullptr;
-        NIMCP_CUDA_CHECK(cudaMalloc(&d_V_row, A_size));
+        CUDA_CHECK_MV(cudaMalloc(&d_V_row, A_size));
         float alpha = 1.0f, beta = 0.0f;
         CUBLAS_CHECK_MV(cublasSgeam(ctx->cublas,
                                  CUBLAS_OP_T, CUBLAS_OP_N,
@@ -658,7 +722,7 @@ nimcp_mv_result_t nimcp_mv_eigh_gpu(
                                  &alpha, d_A, n,
                                  &beta, d_A, n,
                                  d_V_row, n));
-        NIMCP_CUDA_CHECK(cudaMemcpy(eigenvectors, d_V_row, A_size, cudaMemcpyDeviceToHost));
+        CUDA_CHECK_MV(cudaMemcpy(eigenvectors, d_V_row, A_size, cudaMemcpyDeviceToHost));
         cudaFree(d_V_row);
     }
 
@@ -677,6 +741,11 @@ nimcp_mv_result_t nimcp_pca_fit_gpu(
     uint32_t n_features,
     void* gpu_ctx)
 {
+    /* Initialize GPU recovery if not already done */
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!pca || !X || !gpu_ctx) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL in PCA GPU fit");
         return NIMCP_MV_ERROR_NULL;
@@ -712,21 +781,21 @@ nimcp_mv_result_t nimcp_pca_fit_gpu(
     float* d_mean = nullptr;
     float* d_X_centered = nullptr;
 
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_X, X_size));
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_mean, n_features * sizeof(float)));
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_X_centered, X_size));
+    CUDA_CHECK_MV(cudaMalloc(&d_X, X_size));
+    CUDA_CHECK_MV(cudaMalloc(&d_mean, n_features * sizeof(float)));
+    CUDA_CHECK_MV(cudaMalloc(&d_X_centered, X_size));
 
-    NIMCP_CUDA_CHECK(cudaMemcpy(d_X, X, X_size, cudaMemcpyHostToDevice));
+    CUDA_CHECK_MV(cudaMemcpy(d_X, X, X_size, cudaMemcpyHostToDevice));
 
     kernel_column_mean<<<n_features, BLOCK_SIZE, BLOCK_SIZE * sizeof(float)>>>(
         d_X, d_mean, n_samples, n_features);
-    NIMCP_CUDA_CHECK_LAST();
+    CUDA_CHECK_MV_LAST();
 
-    kernel_center_data<<<GRID_SIZE(n_samples * n_features), BLOCK_SIZE>>>(
+    kernel_mv_center_data<<<GRID_SIZE(n_samples * n_features), BLOCK_SIZE>>>(
         d_X, d_mean, d_X_centered, n_samples, n_features);
-    NIMCP_CUDA_CHECK_LAST();
+    CUDA_CHECK_MV_LAST();
 
-    NIMCP_CUDA_CHECK(cudaMemcpy(pca->mean, d_mean, n_features * sizeof(float),
+    CUDA_CHECK_MV(cudaMemcpy(pca->mean, d_mean, n_features * sizeof(float),
                                 cudaMemcpyDeviceToHost));
 
     float* X_centered = (float*)malloc(X_size);
@@ -734,7 +803,7 @@ nimcp_mv_result_t nimcp_pca_fit_gpu(
         cudaFree(d_X); cudaFree(d_mean); cudaFree(d_X_centered);
         return NIMCP_MV_ERROR_MEMORY;
     }
-    NIMCP_CUDA_CHECK(cudaMemcpy(X_centered, d_X_centered, X_size, cudaMemcpyDeviceToHost));
+    CUDA_CHECK_MV(cudaMemcpy(X_centered, d_X_centered, X_size, cudaMemcpyDeviceToHost));
 
     uint32_t min_mn = (n_samples < n_features) ? n_samples : n_features;
     float* U = (float*)malloc(n_samples * min_mn * sizeof(float));
@@ -796,6 +865,11 @@ nimcp_mv_result_t nimcp_pca_transform_gpu(
     float* X_transformed,
     void* gpu_ctx)
 {
+    /* Initialize GPU recovery if not already done */
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!pca || !X || !X_transformed || !gpu_ctx) {
         return NIMCP_MV_ERROR_NULL;
     }
@@ -816,17 +890,17 @@ nimcp_mv_result_t nimcp_pca_transform_gpu(
     float* d_components = nullptr;
     float* d_out = nullptr;
 
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_X, X_size));
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_mean, mean_size));
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_X_centered, X_size));
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_components, comp_size));
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_out, out_size));
+    CUDA_CHECK_MV(cudaMalloc(&d_X, X_size));
+    CUDA_CHECK_MV(cudaMalloc(&d_mean, mean_size));
+    CUDA_CHECK_MV(cudaMalloc(&d_X_centered, X_size));
+    CUDA_CHECK_MV(cudaMalloc(&d_components, comp_size));
+    CUDA_CHECK_MV(cudaMalloc(&d_out, out_size));
 
-    NIMCP_CUDA_CHECK(cudaMemcpy(d_X, X, X_size, cudaMemcpyHostToDevice));
-    NIMCP_CUDA_CHECK(cudaMemcpy(d_mean, pca->mean, mean_size, cudaMemcpyHostToDevice));
-    NIMCP_CUDA_CHECK(cudaMemcpy(d_components, pca->components, comp_size, cudaMemcpyHostToDevice));
+    CUDA_CHECK_MV(cudaMemcpy(d_X, X, X_size, cudaMemcpyHostToDevice));
+    CUDA_CHECK_MV(cudaMemcpy(d_mean, pca->mean, mean_size, cudaMemcpyHostToDevice));
+    CUDA_CHECK_MV(cudaMemcpy(d_components, pca->components, comp_size, cudaMemcpyHostToDevice));
 
-    kernel_center_data<<<GRID_SIZE(n_samples * pca->n_features), BLOCK_SIZE>>>(
+    kernel_mv_center_data<<<GRID_SIZE(n_samples * pca->n_features), BLOCK_SIZE>>>(
         d_X, d_mean, d_X_centered, n_samples, pca->n_features);
 
     dim3 block(TILE_SIZE, TILE_SIZE);
@@ -836,9 +910,9 @@ nimcp_mv_result_t nimcp_pca_transform_gpu(
     kernel_pca_transform<<<grid, block>>>(
         d_X_centered, d_components, d_out,
         n_samples, pca->n_features, pca->n_components);
-    NIMCP_CUDA_CHECK_LAST();
+    CUDA_CHECK_MV_LAST();
 
-    NIMCP_CUDA_CHECK(cudaMemcpy(X_transformed, d_out, out_size, cudaMemcpyDeviceToHost));
+    CUDA_CHECK_MV(cudaMemcpy(X_transformed, d_out, out_size, cudaMemcpyDeviceToHost));
 
     cudaFree(d_X);
     cudaFree(d_mean);

@@ -18,6 +18,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #include <string.h>
 #include <math.h>
@@ -373,6 +374,9 @@ bool occipital_gpu_upload_input(
     if (!bridge || !input || !input->data) {
         return false;
     }
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     /* Initialize tensors for this size if needed */
     if (!occipital_gpu_bridge_init_size(bridge, input->width, input->height, input->channels)) {
@@ -384,23 +388,13 @@ bool occipital_gpu_upload_input(
 
     if (input->channels == 1) {
         /* Grayscale input */
-        cudaError_t err = cudaMemcpy(bridge->d_input_gray->data, input->data,
-                                      size, cudaMemcpyHostToDevice);
-        if (err != cudaSuccess) {
-            LOG_ERROR(OCCIPITAL_GPU_LOG_MODULE, "Failed to upload grayscale input: %s",
-                      cudaGetErrorString(err));
-            return false;
-        }
+        NIMCP_CUDA_RECOVER(cudaMemcpy(bridge->d_input_gray->data, input->data,
+                                      size, cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
     } else if (input->channels >= 3) {
         /* RGB input - upload to RGB tensor */
         size_t rgb_size = size * 3;
-        cudaError_t err = cudaMemcpy(bridge->d_input_rgb->data, input->data,
-                                      rgb_size, cudaMemcpyHostToDevice);
-        if (err != cudaSuccess) {
-            LOG_ERROR(OCCIPITAL_GPU_LOG_MODULE, "Failed to upload RGB input: %s",
-                      cudaGetErrorString(err));
-            return false;
-        }
+        NIMCP_CUDA_RECOVER(cudaMemcpy(bridge->d_input_rgb->data, input->data,
+                                      rgb_size, cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
         /* Also create grayscale version for V1 processing */
         /* For now, we'll do this on CPU - could add a GPU kernel */
@@ -411,7 +405,7 @@ bool occipital_gpu_upload_input(
                                input->data[input->width * input->height + i] +
                                input->data[2 * input->width * input->height + i]) / 3.0f;
             }
-            cudaMemcpy(bridge->d_input_gray->data, gray_data, size, cudaMemcpyHostToDevice);
+            NIMCP_CUDA_RECOVER(cudaMemcpy(bridge->d_input_gray->data, gray_data, size, cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
             nimcp_free(gray_data);
         }
     }
@@ -433,6 +427,9 @@ bool occipital_gpu_download_features(
     if (!bridge || !features || !num_features) {
         return false;
     }
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     *num_features = 0;
 
@@ -446,12 +443,8 @@ bool occipital_gpu_download_features(
     float* edge_data = (float*)nimcp_malloc(size);
     if (!edge_data) return false;
 
-    cudaError_t err = cudaMemcpy(edge_data, bridge->d_v1_edges->data,
-                                  size, cudaMemcpyDeviceToHost);
-    if (err != cudaSuccess) {
-        nimcp_free(edge_data);
-        return false;
-    }
+    NIMCP_CUDA_RECOVER(cudaMemcpy(edge_data, bridge->d_v1_edges->data,
+                                  size, cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     /* Extract features from edge map */
     uint32_t count = 0;
@@ -493,6 +486,9 @@ bool occipital_gpu_download_motion(
     if (!bridge || !vectors || !num_vectors) {
         return false;
     }
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     *num_vectors = 0;
 
@@ -511,8 +507,8 @@ bool occipital_gpu_download_motion(
         return false;
     }
 
-    cudaMemcpy(flow_u, bridge->d_v5_flow_u->data, size, cudaMemcpyDeviceToHost);
-    cudaMemcpy(flow_v, bridge->d_v5_flow_v->data, size, cudaMemcpyDeviceToHost);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(flow_u, bridge->d_v5_flow_u->data, size, cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(flow_v, bridge->d_v5_flow_v->data, size, cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     /* Extract motion vectors from flow field */
     uint32_t count = 0;
@@ -555,6 +551,9 @@ bool occipital_gpu_process_v1(occipital_gpu_bridge_t* bridge) {
     if (!bridge || !bridge->tensors_allocated || bridge->gpu_disabled) {
         return false;
     }
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     if (!bridge->config.enable_gpu_v1) {
         return false;
@@ -589,6 +588,9 @@ bool occipital_gpu_process_v1(occipital_gpu_bridge_t* bridge) {
 bool occipital_gpu_process_v2(occipital_gpu_bridge_t* bridge) {
     if (!bridge || !bridge->tensors_allocated || bridge->gpu_disabled) {
         return false;
+    }
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
     }
 
     if (!bridge->config.enable_gpu_v2) {
@@ -628,6 +630,9 @@ bool occipital_gpu_process_v2(occipital_gpu_bridge_t* bridge) {
 bool occipital_gpu_process_v4(occipital_gpu_bridge_t* bridge) {
     if (!bridge || !bridge->tensors_allocated || bridge->gpu_disabled) {
         return false;
+    }
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
     }
 
     if (!bridge->config.enable_gpu_v4) {
@@ -678,6 +683,9 @@ bool occipital_gpu_process_v4(occipital_gpu_bridge_t* bridge) {
 bool occipital_gpu_process_v5(occipital_gpu_bridge_t* bridge) {
     if (!bridge || !bridge->tensors_allocated || bridge->gpu_disabled) {
         return false;
+    }
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
     }
 
     if (!bridge->config.enable_gpu_v5) {
@@ -737,6 +745,9 @@ bool occipital_gpu_compute_saliency(occipital_gpu_bridge_t* bridge) {
     if (!bridge || !bridge->tensors_allocated || bridge->gpu_disabled) {
         return false;
     }
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     if (!bridge->config.enable_gpu_saliency) {
         return false;
@@ -772,6 +783,9 @@ bool occipital_gpu_process(
 
     if (!bridge || !result) {
         return false;
+    }
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
     }
 
     memset(result, 0, sizeof(*result));
@@ -854,6 +868,9 @@ bool occipital_gpu_process_input(
 
     if (!bridge || !input || !result) {
         return false;
+    }
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
     }
 
     /* Upload input to GPU */

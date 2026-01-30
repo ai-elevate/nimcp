@@ -21,6 +21,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "PORTIA_GPU"
 
@@ -137,6 +138,9 @@ bool nimcp_gpu_portia_compute_salience(
         LOG_ERROR("Invalid parameters for salience computation");
         return false;
     }
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     dim3 block(16, 16);
     dim3 grid((state->map_width + 15) / 16, (state->map_height + 15) / 16);
@@ -150,7 +154,7 @@ bool nimcp_gpu_portia_compute_salience(
         state->map_width,
         state->map_height);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -209,6 +213,9 @@ bool nimcp_gpu_portia_update_attention(
         LOG_ERROR("Invalid parameters for attention update");
         return false;
     }
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     kernel_update_attention<<<1, 1>>>(
         (float*)state->attention_focus->data,
@@ -218,7 +225,7 @@ bool nimcp_gpu_portia_update_attention(
         state->map_width,
         state->map_height);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -319,6 +326,9 @@ bool nimcp_gpu_portia_plan_route(
         LOG_ERROR("Invalid parameters for route planning");
         return false;
     }
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     int map_size = state->map_size;
 
@@ -331,7 +341,7 @@ bool nimcp_gpu_portia_plan_route(
         map_size,
         params->planning_depth);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -436,6 +446,9 @@ bool nimcp_gpu_portia_match_prey(
         LOG_ERROR("Invalid parameters for prey matching");
         return false;
     }
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     kernel_match_prey<<<GRID_SIZE(state->n_templates), BLOCK_SIZE>>>(
         (float*)state->detection_confidence->data,
@@ -445,7 +458,7 @@ bool nimcp_gpu_portia_match_prey(
         state->n_templates,
         state->template_dim);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 

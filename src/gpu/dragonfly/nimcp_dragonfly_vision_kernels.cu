@@ -32,6 +32,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "DFV_GPU"
 
@@ -622,6 +623,9 @@ bool dfv_gpu_kalman_predict(
     const dfv_kalman_params_t* params)
 {
     if (!gpu_ctx || !state || !params) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
     if (state->n_targets == 0) return true;
 
     kernel_kalman_predict<<<GRID_SIZE(state->n_targets), BLOCK_SIZE>>>(
@@ -632,7 +636,7 @@ bool dfv_gpu_kalman_predict(
         params->process_noise,
         state->n_targets);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -726,6 +730,9 @@ bool dfv_gpu_kalman_update(
     const dfv_kalman_params_t* params)
 {
     if (!gpu_ctx || !state || !measurements || !measurement_valid || !params) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
     if (state->n_targets == 0) return true;
 
     kernel_kalman_update<<<GRID_SIZE(state->n_targets), BLOCK_SIZE>>>(
@@ -737,7 +744,7 @@ bool dfv_gpu_kalman_update(
         params->measurement_noise,
         state->n_targets);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -861,6 +868,9 @@ bool dfv_gpu_optical_flow_lk(
     const nimcp_gpu_tensor_t* current_frame)
 {
     if (!gpu_ctx || !state || !current_frame) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     dim3 block(BLOCK_SIZE_2D, BLOCK_SIZE_2D);
     dim3 grid(GRID_SIZE_2D(state->width), GRID_SIZE_2D(state->height));
@@ -875,12 +885,12 @@ bool dfv_gpu_optical_flow_lk(
         state->height,
         state->window_size);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Copy current frame to prev_frame for next iteration
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(state->prev_frame->data, current_frame->data,
+    NIMCP_CUDA_RECOVER(cudaMemcpy(state->prev_frame->data, current_frame->data,
                           state->width * state->height * sizeof(float),
-                          cudaMemcpyDeviceToDevice));
+                          cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     return true;
 }
@@ -890,6 +900,9 @@ bool dfv_gpu_compute_motion_field(
     dfv_optical_flow_state_t* state)
 {
     if (!gpu_ctx || !state) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     dim3 block(BLOCK_SIZE_2D, BLOCK_SIZE_2D);
     dim3 grid(GRID_SIZE_2D(state->width), GRID_SIZE_2D(state->height));
@@ -902,7 +915,7 @@ bool dfv_gpu_compute_motion_field(
         state->width,
         state->height);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1010,6 +1023,9 @@ bool dfv_gpu_detect_looming(
     nimcp_gpu_tensor_t* focus_of_expansion)
 {
     if (!gpu_ctx || !flow || !looming_map || !focus_of_expansion) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     uint32_t width = flow->width;
     uint32_t height = flow->height;
@@ -1022,7 +1038,7 @@ bool dfv_gpu_detect_looming(
     nimcp_gpu_tensor_t* foe_votes = nimcp_gpu_tensor_create(gpu_ctx, vote_dims, 2, NIMCP_GPU_PRECISION_FP32);
     if (!foe_votes) return false;
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(foe_votes->data, 0, width * height * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMemset(foe_votes->data, 0, width * height * sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
 
     // Find FOE by voting
     kernel_find_foe<<<grid, block>>>(
@@ -1032,7 +1048,7 @@ bool dfv_gpu_detect_looming(
         (float*)foe_votes->data,
         width, height);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Find max vote location (simple reduction on host for now)
     float* h_votes = (float*)malloc(width * height * sizeof(float));
@@ -1041,8 +1057,8 @@ bool dfv_gpu_detect_looming(
         return false;
     }
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(h_votes, foe_votes->data,
-                          width * height * sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(h_votes, foe_votes->data,
+                          width * height * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     float max_vote = 0.0f;
     float foe_x = width / 2.0f;
@@ -1063,7 +1079,7 @@ bool dfv_gpu_detect_looming(
 
     // Store FOE
     float foe_data[] = {foe_x, foe_y};
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(focus_of_expansion->data, foe_data, 2 * sizeof(float), cudaMemcpyHostToDevice));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(focus_of_expansion->data, foe_data, 2 * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     // Compute looming map using FOE
     kernel_detect_looming<<<grid, block>>>(
@@ -1074,7 +1090,7 @@ bool dfv_gpu_detect_looming(
         foe_x, foe_y,
         width, height);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1128,10 +1144,13 @@ bool dfv_gpu_compute_attention_map(
     uint32_t n_targets)
 {
     if (!gpu_ctx || !state || !target_positions || !target_priorities) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
     if (n_targets == 0) {
         // Clear attention map
-        NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(state->attention_map->data, 0,
-                              state->attention_map->numel * sizeof(float)));
+        NIMCP_CUDA_RECOVER(cudaMemset(state->attention_map->data, 0,
+                              state->attention_map->numel * sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
         return true;
     }
 
@@ -1148,7 +1167,7 @@ bool dfv_gpu_compute_attention_map(
         (const float*)target_priorities->data,
         n_targets, width, height);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1159,10 +1178,13 @@ bool dfv_gpu_plan_saccade(
     float target_el)
 {
     if (!gpu_ctx || !state) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     float saccade[2] = {target_az, target_el};
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(state->saccade_target->data, saccade,
-                          2 * sizeof(float), cudaMemcpyHostToDevice));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(state->saccade_target->data, saccade,
+                          2 * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     state->saccade_in_progress = true;
     return true;
@@ -1193,13 +1215,16 @@ bool dfv_gpu_smooth_pursuit(
     const nimcp_gpu_tensor_t* target_velocity)
 {
     if (!gpu_ctx || !state || !target_velocity) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     kernel_smooth_pursuit<<<1, 1>>>(
         (const float*)target_velocity->data,
         (float*)state->pursuit_velocity->data,
         state->pursuit_gain);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1290,6 +1315,9 @@ bool dfv_gpu_stmd_detect(
     const nimcp_gpu_tensor_t* frame)
 {
     if (!gpu_ctx || !state || !frame) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     uint32_t height = (uint32_t)frame->dims[0];
     uint32_t width = (uint32_t)frame->dims[1];
@@ -1301,7 +1329,7 @@ bool dfv_gpu_stmd_detect(
     size_t frame_size = width * height * sizeof(float);
     float* buffer_ptr = (float*)state->temporal_buffer->data +
                         state->current_frame * width * height;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(buffer_ptr, frame->data, frame_size, cudaMemcpyDeviceToDevice));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(buffer_ptr, frame->data, frame_size, cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     kernel_stmd_detect<<<grid, block>>>(
         (const float*)frame->data,
@@ -1314,7 +1342,7 @@ bool dfv_gpu_stmd_detect(
         state->optimal_size_deg,
         state->optimal_velocity_dps);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Update frame index
     state->current_frame = (state->current_frame + 1) % state->buffer_depth;
@@ -1379,6 +1407,9 @@ bool dfv_gpu_figure_ground(
     const nimcp_gpu_tensor_t* optical_flow)
 {
     if (!gpu_ctx || !state || !optical_flow) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     uint32_t height = (uint32_t)state->stmd_response->dims[0];
     uint32_t width = (uint32_t)state->stmd_response->dims[1];
@@ -1392,7 +1423,7 @@ bool dfv_gpu_figure_ground(
 
     // Assuming optical_flow contains interleaved u,v or we use flow_u/flow_v separately
     // For this implementation, we'll use the stmd response only for figure-ground
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(state->fg_mask->data, 0, width * height * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMemset(state->fg_mask->data, 0, width * height * sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
 
     return true;
 }
@@ -1439,6 +1470,9 @@ bool dfv_gpu_velocity_filter(
     float max_velocity)
 {
     if (!gpu_ctx || !state) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     uint32_t height = (uint32_t)state->stmd_response->dims[0];
     uint32_t width = (uint32_t)state->stmd_response->dims[1];
@@ -1447,8 +1481,8 @@ bool dfv_gpu_velocity_filter(
     dim3 grid(GRID_SIZE_2D(width), GRID_SIZE_2D(height));
 
     // Would need flow magnitude - for now just copy STMD response
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(state->velocity_tuning->data, state->stmd_response->data,
-                          width * height * sizeof(float), cudaMemcpyDeviceToDevice));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(state->velocity_tuning->data, state->stmd_response->data,
+                          width * height * sizeof(float), cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     return true;
 }
@@ -1519,6 +1553,9 @@ bool dfv_gpu_compute_ttc(
     const nimcp_gpu_tensor_t* optical_flow)
 {
     if (!gpu_ctx || !state || !depth_map) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     uint32_t height = (uint32_t)depth_map->dims[0];
     uint32_t width = (uint32_t)depth_map->dims[1];
@@ -1531,8 +1568,8 @@ bool dfv_gpu_compute_ttc(
     // For now, use zeros
     size_t zeros_size = width * height * sizeof(float);
     float* dummy_flow;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&dummy_flow, zeros_size));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(dummy_flow, 0, zeros_size));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&dummy_flow, zeros_size), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMemset(dummy_flow, 0, zeros_size), GPU_ERROR_CUDA_RUNTIME);
 
     kernel_compute_ttc<<<grid, block>>>(
         (const float*)depth_map->data,
@@ -1543,8 +1580,8 @@ bool dfv_gpu_compute_ttc(
         state->min_ttc_threshold,
         width, height);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaFree(dummy_flow));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER(cudaFree(dummy_flow), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     return true;
 }
@@ -1607,6 +1644,9 @@ bool dfv_gpu_plan_escape(
     nimcp_gpu_tensor_t* escape_direction)
 {
     if (!gpu_ctx || !state || !current_heading || !escape_direction) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     bool has_pursuit = (pursuit_direction != NULL);
     const float* pursuit_ptr = has_pursuit ? (const float*)pursuit_direction->data : NULL;
@@ -1618,7 +1658,7 @@ bool dfv_gpu_plan_escape(
         (float*)escape_direction->data,
         has_pursuit);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1630,6 +1670,9 @@ bool dfv_gpu_check_path_clearance(
     float* min_clearance)
 {
     if (!gpu_ctx || !state || !trajectory || !min_clearance) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
     if (n_points == 0) {
         *min_clearance = FLT_MAX;
         return true;
@@ -1639,8 +1682,8 @@ bool dfv_gpu_check_path_clearance(
     // In practice, this would raycast through the TTC map
 
     float h_sector_clearance[DFV_ATTENTION_SECTORS];
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(h_sector_clearance, state->sector_clearance->data,
-                          DFV_ATTENTION_SECTORS * sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(h_sector_clearance, state->sector_clearance->data,
+                          DFV_ATTENTION_SECTORS * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     float min_clear = FLT_MAX;
     for (int i = 0; i < DFV_ATTENTION_SECTORS; i++) {
@@ -1702,6 +1745,9 @@ bool dfv_gpu_tsdn_encode(
     const nimcp_gpu_tensor_t* target_direction)
 {
     if (!gpu_ctx || !state || !target_direction) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     kernel_tsdn_encode<<<1, BLOCK_SIZE>>>(
         (const float*)target_direction->data,
@@ -1712,7 +1758,7 @@ bool dfv_gpu_tsdn_encode(
         state->tuning_exponent,
         state->gain);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1765,13 +1811,16 @@ bool dfv_gpu_tsdn_decode(
     nimcp_gpu_tensor_t* decoded_direction)
 {
     if (!gpu_ctx || !state || !decoded_direction) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     kernel_tsdn_decode<<<1, BLOCK_SIZE>>>(
         (const float*)state->firing_rates->data,
         (const float*)state->preferred_dirs->data,
         (float*)decoded_direction->data);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1810,6 +1859,9 @@ bool dfv_gpu_tsdn_facilitate(
     float facilitation_strength)
 {
     if (!gpu_ctx || !state || !predicted_direction) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     facilitation_strength = fminf(fmaxf(facilitation_strength, 0.0f), 1.0f);
 
@@ -1820,7 +1872,7 @@ bool dfv_gpu_tsdn_facilitate(
         facilitation_strength,
         state->tuning_width);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1834,6 +1886,9 @@ bool dfv_gpu_process_frame(
     float dt)
 {
     if (!ctx || !frame || !ctx->initialized) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     nimcp_gpu_context_t* gpu_ctx = ctx->gpu_ctx;
 
@@ -1882,6 +1937,9 @@ bool dfv_gpu_get_primary_target(
     float* confidence)
 {
     if (!ctx || !position || !velocity || !confidence) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
     if (!ctx->targets || ctx->targets->n_targets == 0) return false;
 
     // Find target with highest priority
@@ -1925,6 +1983,9 @@ bool dfv_gpu_get_collision_command(
     float* escape_dir)
 {
     if (!ctx || !min_ttc || !escape_dir) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
     if (!ctx->collision) return false;
 
     // Get minimum TTC from sector clearances
@@ -2036,14 +2097,17 @@ bool dfv_gpu_data_association(
     nimcp_gpu_tensor_t* association)
 {
     if (!gpu_ctx || !state || !detections || !association) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
     if (n_detections == 0 || state->n_targets == 0) {
         // All detections are new tracks
         int* h_assoc = (int*)malloc(n_detections * sizeof(int));
         for (uint32_t i = 0; i < n_detections; i++) {
             h_assoc[i] = -1;
         }
-        NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(association->data, h_assoc,
-                              n_detections * sizeof(int), cudaMemcpyHostToDevice));
+        NIMCP_CUDA_RECOVER(cudaMemcpy(association->data, h_assoc,
+                              n_detections * sizeof(int), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
         free(h_assoc);
         return true;
     }
@@ -2068,8 +2132,8 @@ bool dfv_gpu_data_association(
     float* h_state = (float*)malloc(state->n_targets * 6 * sizeof(float));
     float* h_pred = (float*)malloc(state->n_targets * 3 * sizeof(float));
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(h_state, state->state->data,
-                          state->n_targets * 6 * sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(h_state, state->state->data,
+                          state->n_targets * 6 * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     for (uint32_t i = 0; i < state->n_targets; i++) {
         h_pred[i * 3 + 0] = h_state[i * 6 + 0];
@@ -2077,8 +2141,8 @@ bool dfv_gpu_data_association(
         h_pred[i * 3 + 2] = h_state[i * 6 + 2];
     }
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(predictions->data, h_pred,
-                          state->n_targets * 3 * sizeof(float), cudaMemcpyHostToDevice));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(predictions->data, h_pred,
+                          state->n_targets * 3 * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     free(h_state);
     free(h_pred);
@@ -2095,7 +2159,7 @@ bool dfv_gpu_data_association(
         state->n_targets,
         n_detections);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Greedy assignment
     float gate_threshold = 50.0f;  // pixels
@@ -2107,7 +2171,7 @@ bool dfv_gpu_data_association(
         n_detections,
         gate_threshold);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     nimcp_gpu_tensor_destroy(cost_matrix);
     nimcp_gpu_tensor_destroy(predictions);
@@ -2127,21 +2191,24 @@ bool dfv_gpu_track_management(
     uint32_t n_detections)
 {
     if (!gpu_ctx || !state || !association || !detections) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     // Read association results
     int* h_assoc = (int*)malloc(n_detections * sizeof(int));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(h_assoc, association->data,
-                          n_detections * sizeof(int), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(h_assoc, association->data,
+                          n_detections * sizeof(int), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     // Read detections
     float* h_dets = (float*)malloc(n_detections * 3 * sizeof(float));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(h_dets, detections->data,
-                          n_detections * 3 * sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(h_dets, detections->data,
+                          n_detections * 3 * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     // Read current state
     float* h_state = (float*)malloc(state->max_targets * 6 * sizeof(float));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(h_state, state->state->data,
-                          state->n_targets * 6 * sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(h_state, state->state->data,
+                          state->n_targets * 6 * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     // Create new tracks for unassigned detections
     for (uint32_t d = 0; d < n_detections; d++) {
@@ -2161,8 +2228,8 @@ bool dfv_gpu_track_management(
     }
 
     // Write back state
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(state->state->data, h_state,
-                          state->n_targets * 6 * sizeof(float), cudaMemcpyHostToDevice));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(state->state->data, h_state,
+                          state->n_targets * 6 * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     free(h_assoc);
     free(h_dets);
@@ -2184,6 +2251,9 @@ bool dfv_gpu_detect_targets(
     uint32_t* n_detections)
 {
     if (!ctx || !frame || !detections || !scores || !n_detections) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     // Use STMD detection map to find targets
     if (!ctx->stmd) return false;
@@ -2193,8 +2263,8 @@ bool dfv_gpu_detect_targets(
 
     // Copy detection map to host for analysis
     float* h_detection = (float*)malloc(width * height * sizeof(float));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(h_detection, ctx->stmd->detection_map->data,
-                          width * height * sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(h_detection, ctx->stmd->detection_map->data,
+                          width * height * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     // Find local maxima in detection map
     float* h_dets = (float*)malloc(DFV_MAX_TARGETS * 3 * sizeof(float));
@@ -2234,10 +2304,10 @@ bool dfv_gpu_detect_targets(
     *n_detections = det_count;
 
     if (det_count > 0) {
-        NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(detections->data, h_dets,
-                              det_count * 3 * sizeof(float), cudaMemcpyHostToDevice));
-        NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(scores->data, h_scores,
-                              det_count * sizeof(float), cudaMemcpyHostToDevice));
+        NIMCP_CUDA_RECOVER(cudaMemcpy(detections->data, h_dets,
+                              det_count * 3 * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
+        NIMCP_CUDA_RECOVER(cudaMemcpy(scores->data, h_scores,
+                              det_count * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
     }
 
     free(h_detection);

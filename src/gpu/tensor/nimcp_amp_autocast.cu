@@ -34,14 +34,24 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "AMP_AUTOCAST"
 
+// cuBLAS check with recovery (returns NULL variant)
 #define CUBLAS_CHECK(call) do { \
-    cublasStatus_t status = call; \
-    if (status != CUBLAS_STATUS_SUCCESS) { \
-        LOG_ERROR("cuBLAS error at %s:%d: %d", __FILE__, __LINE__, status); \
-        return NULL; \
+    cublasStatus_t _status = (call); \
+    if (_status != CUBLAS_STATUS_SUCCESS) { \
+        nimcp_gpu_recovery_result_t _result = {0}; \
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_LIBRARY, cudaErrorUnknown, &_result)) { \
+            _status = (call); \
+        } \
+        if (_status != CUBLAS_STATUS_SUCCESS) { \
+            LOG_ERROR("cuBLAS error at %s:%d: %d (unrecoverable)", __FILE__, __LINE__, _status); \
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, 0, \
+                "cuBLAS error (unrecoverable): %d", _status); \
+            return NULL; \
+        } \
     } \
 } while(0)
 
@@ -755,6 +765,11 @@ void nimcp_autocast_default_config(nimcp_autocast_config_t* config,
 nimcp_autocast_ctx_t* nimcp_autocast_create(nimcp_gpu_context_t* gpu_ctx,
                                              nimcp_autocast_mode_t mode)
 {
+    // Initialize GPU recovery system if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     nimcp_autocast_config_t config;
     nimcp_autocast_default_config(&config, mode);
     return nimcp_autocast_create_with_config(gpu_ctx, &config);
@@ -764,6 +779,11 @@ nimcp_autocast_ctx_t* nimcp_autocast_create_with_config(
     nimcp_gpu_context_t* gpu_ctx,
     const nimcp_autocast_config_t* config)
 {
+    // Initialize GPU recovery system if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!gpu_ctx || !config) {
         LOG_ERROR("Invalid parameters for autocast creation");
         return NULL;

@@ -19,6 +19,7 @@
 
 // Now include our headers (which have extern "C" blocks)
 #include "gpu/cnn/nimcp_cnn_gpu.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
@@ -83,6 +84,10 @@ bool nimcp_gpu_conv2d_forward(
     nimcp_gpu_tensor_t* output,
     const nimcp_conv_params_t* params)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !input || !weight || !output || !params) return false;
 
     int N = input->dims[0];
@@ -110,7 +115,7 @@ bool nimcp_gpu_conv2d_forward(
         params->pad_h, params->pad_w, params->dilation_h, params->dilation_w,
         params->groups);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -284,6 +289,10 @@ bool nimcp_gpu_im2col(
     int pH, int pW,
     int outH, int outW)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !input || !col) return false;
 
     int total = C * kH * kW * outH * outW;
@@ -293,7 +302,7 @@ bool nimcp_gpu_im2col(
     kernel_im2col<<<grid_size, block_size>>>(
         input, col, C, H, W, kH, kW, sH, sW, pH, pW, outH, outW);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -306,6 +315,10 @@ bool nimcp_gpu_col2im(
     int pH, int pW,
     int outH, int outW)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !col || !input_grad) return false;
 
     int total = C * H * W;
@@ -315,7 +328,7 @@ bool nimcp_gpu_col2im(
     kernel_col2im<<<grid_size, block_size>>>(
         col, input_grad, C, H, W, kH, kW, sH, sW, pH, pW, outH, outW);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -329,6 +342,10 @@ nimcp_conv2d_backward_ctx_t* nimcp_conv2d_backward_create(
     int out_channels, int kernel_h, int kernel_w,
     int stride_h, int stride_w, int pad_h, int pad_w)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx) return NULL;
 
     nimcp_conv2d_backward_ctx_t* bwd_ctx =
@@ -433,7 +450,7 @@ int nimcp_conv2d_backward(
     // Compute bias gradient: sum over N and spatial dimensions
     kernel_conv2d_bias_grad<<<C_out, 256>>>(
         output_grad, bwd_ctx->d_bias_grad, N, C_out, spatial_out);
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // For each sample in batch
     for (int n = 0; n < N; n++) {
@@ -454,7 +471,7 @@ int nimcp_conv2d_backward(
         kernel_conv2d_weight_grad<<<wg_blocks, 256>>>(
             bwd_ctx->d_col_buffer, grad_out_n,
             bwd_ctx->d_weight_grad, C_out, col_size, spatial_out);
-        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+        NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
         // 3. Input gradient: col_grad = W^T @ grad_out
         //    Then col2im to get input gradient
@@ -592,6 +609,10 @@ bool nimcp_gpu_conv1d_forward(
     nimcp_gpu_tensor_t* output,
     uint32_t kernel_size, uint32_t stride, uint32_t padding, uint32_t dilation)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !input || !weight || !output) return false;
 
     int N = input->dims[0];
@@ -608,7 +629,7 @@ bool nimcp_gpu_conv1d_forward(
         bias ? (const float*)bias->data : NULL, (float*)output->data,
         N, C_in, L_in, C_out, L_out, kernel_size, stride, padding, dilation);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -653,6 +674,10 @@ bool nimcp_gpu_depthwise_conv2d(
     nimcp_gpu_tensor_t* output,
     const nimcp_conv_params_t* params)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !input || !weight || !output || !params) return false;
 
     int N = input->dims[0];
@@ -673,7 +698,7 @@ bool nimcp_gpu_depthwise_conv2d(
         N, C, H_in, W_in, H_out, W_out,
         kH, kW, params->stride_h, params->stride_w, params->pad_h, params->pad_w);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -724,6 +749,10 @@ bool nimcp_gpu_maxpool2d(
     nimcp_gpu_tensor_t* indices,
     const nimcp_pool_params_t* params)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !input || !output || !params) return false;
 
     int N = input->dims[0];
@@ -743,7 +772,7 @@ bool nimcp_gpu_maxpool2d(
         params->kernel_h, params->kernel_w, params->stride_h, params->stride_w,
         params->pad_h, params->pad_w);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -784,6 +813,10 @@ bool nimcp_gpu_avgpool2d(
     nimcp_gpu_tensor_t* output,
     const nimcp_pool_params_t* params)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !input || !output || !params) return false;
 
     int N = input->dims[0];
@@ -802,7 +835,7 @@ bool nimcp_gpu_avgpool2d(
         params->kernel_h, params->kernel_w, params->stride_h, params->stride_w,
         params->pad_h, params->pad_w);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -825,6 +858,10 @@ bool nimcp_gpu_global_avgpool(
     const nimcp_gpu_tensor_t* input,
     nimcp_gpu_tensor_t* output)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !input || !output) return false;
 
     int N = input->dims[0];
@@ -837,7 +874,7 @@ bool nimcp_gpu_global_avgpool(
     kernel_global_avgpool<<<grid, block>>>(
         (const float*)input->data, (float*)output->data, N, C, HW);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -929,6 +966,10 @@ bool nimcp_gpu_batchnorm2d_forward(
     nimcp_gpu_tensor_t* running_var,
     float momentum, float eps, bool training)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !input || !output) return false;
 
     int N = input->dims[0];
@@ -944,7 +985,7 @@ bool nimcp_gpu_batchnorm2d_forward(
         running_var ? (float*)running_var->data : NULL,
         N, C, HW, momentum, eps, training);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1254,7 +1295,7 @@ bool nimcp_gpu_layernorm_forward(
         NULL, NULL,  // Don't cache mean/var
         batch_size, normalized_size, eps);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1585,7 +1626,7 @@ bool nimcp_gpu_instancenorm_forward(
         NULL, NULL,  // Don't cache mean/var
         N, C, HW, eps, affine);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 

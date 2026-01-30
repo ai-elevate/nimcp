@@ -6,6 +6,17 @@
  * WHY:  GPU acceleration for large-scale neural network topology operations
  * HOW:  Custom kernels for Louvain, graph metrics, shortest paths, generation
  *
+ * RNG ARCHITECTURE:
+ * =================
+ * Uses kernel_init_random for stochastic graph generation algorithms.
+ * The pattern follows the central GPU statistics module:
+ *   - See: gpu/statistics/nimcp_statistics_gpu.h for stats_gpu_rng_create/destroy
+ *   - See: gpu/common/nimcp_device_utils.cuh for shared device RNG functions
+ *
+ * Local RNG state is used for:
+ *   1. Random graph generation (Erdos-Renyi, Barabasi-Albert, etc.)
+ *   2. Stochastic community detection algorithms
+ *
  * @version 1.0
  * @author NIMCP Development Team
  * @date 2025
@@ -30,6 +41,7 @@
 #include <thrust/fill.h>
 
 #include "gpu/topology/nimcp_topology_gpu.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
@@ -970,6 +982,10 @@ nimcp_graph_gpu_t* nimcp_graph_gpu_create(
     int num_nodes,
     bool sparse)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || num_nodes <= 0) {
         LOG_ERROR("Invalid parameters for graph creation");
         return NULL;
@@ -1117,6 +1133,10 @@ bool nimcp_topology_compute_degree(
     nimcp_graph_gpu_t* graph,
     nimcp_gpu_tensor_t* degree_out)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !graph || !degree_out) return false;
 
     if (graph->is_sparse) {
@@ -1141,6 +1161,10 @@ bool nimcp_topology_compute_weighted_degree(
     nimcp_graph_gpu_t* graph,
     nimcp_gpu_tensor_t* weighted_degree_out)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !graph || !weighted_degree_out) return false;
     if (!graph->is_sparse || !graph->edge_weights) {
         LOG_WARN("Weighted degree requires sparse graph with weights");
@@ -1162,6 +1186,10 @@ bool nimcp_topology_compute_clustering(
     nimcp_graph_gpu_t* graph,
     nimcp_gpu_tensor_t* clustering_out)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !graph || !clustering_out || !graph->is_sparse) {
         return false;
     }
@@ -1203,6 +1231,10 @@ bool nimcp_topology_compute_pagerank(
     float tolerance,
     nimcp_gpu_tensor_t* pagerank_out)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !graph || !pagerank_out || !graph->is_sparse) {
         return false;
     }
@@ -1272,6 +1304,10 @@ bool nimcp_shortest_path_bfs(
     int source,
     nimcp_shortest_path_result_gpu_t* result)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !graph || !result || !graph->is_sparse) {
         return false;
     }
@@ -1351,6 +1387,10 @@ bool nimcp_shortest_path_floyd_warshall(
     nimcp_graph_gpu_t* graph,
     nimcp_apsp_result_gpu_t* result)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !graph || !result || graph->is_sparse) {
         LOG_ERROR("Floyd-Warshall requires dense graph");
         return false;
@@ -1407,6 +1447,10 @@ nimcp_community_result_gpu_t* nimcp_community_detect_louvain(
     int max_iterations,
     float min_modularity_gain)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !graph || !graph->is_sparse) {
         LOG_ERROR("Louvain requires sparse graph");
         return NULL;
@@ -1522,6 +1566,10 @@ nimcp_community_result_gpu_t* nimcp_community_detect_label_prop(
     nimcp_graph_gpu_t* graph,
     int max_iter)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !graph || !graph->is_sparse) {
         return NULL;
     }

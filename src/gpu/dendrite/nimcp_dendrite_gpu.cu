@@ -36,6 +36,7 @@
 #include "gpu/dendrite/nimcp_dendrite_gpu.h"
 #include "gpu/context/nimcp_gpu_context.h"
 #include "gpu/tensor/nimcp_tensor_gpu.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
@@ -533,6 +534,10 @@ extern "C" dendrite_gpu_context_t* dendrite_gpu_create(
     nimcp_gpu_context_t* gpu_ctx,
     const dendrite_gpu_config_t* config
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!gpu_ctx) {
         LOG_ERROR("NULL GPU context");
         return NULL;
@@ -655,8 +660,12 @@ extern "C" void dendrite_gpu_destroy(dendrite_gpu_context_t* ctx) {
 }
 
 extern "C" bool dendrite_gpu_synchronize(dendrite_gpu_context_t* ctx) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx) return false;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize((cudaStream_t)ctx->stream));
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize((cudaStream_t)ctx->stream), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
@@ -670,6 +679,10 @@ extern "C" bool dendrite_gpu_upload_segments(
     uint32_t num_dendrites,
     uint32_t segments_per_dendrite
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !segments) return false;
     if (num_dendrites > ctx->config.max_dendrites ||
         segments_per_dendrite > ctx->config.max_segments_per_dendrite) {
@@ -714,20 +727,20 @@ extern "C" bool dendrite_gpu_upload_segments(
     }
 
     // Upload to GPU tensors
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ctx->segment_voltages->data, h_voltages,
-                          total * sizeof(float), cudaMemcpyHostToDevice));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ctx->segment_lengths->data, h_lengths,
-                          total * sizeof(float), cudaMemcpyHostToDevice));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ctx->segment_diameters->data, h_diameters,
-                          total * sizeof(float), cudaMemcpyHostToDevice));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ctx->segment_distances->data, h_distances,
-                          total * sizeof(float), cudaMemcpyHostToDevice));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ctx->segment_parents->data, h_parents,
-                          total * sizeof(uint32_t), cudaMemcpyHostToDevice));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ctx->segment_active->data, h_active,
-                          total * sizeof(uint32_t), cudaMemcpyHostToDevice));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ctx->cable_params->data, h_cable,
-                          num_dendrites * 3 * sizeof(float), cudaMemcpyHostToDevice));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(ctx->segment_voltages->data, h_voltages,
+                          total * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(ctx->segment_lengths->data, h_lengths,
+                          total * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(ctx->segment_diameters->data, h_diameters,
+                          total * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(ctx->segment_distances->data, h_distances,
+                          total * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(ctx->segment_parents->data, h_parents,
+                          total * sizeof(uint32_t), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(ctx->segment_active->data, h_active,
+                          total * sizeof(uint32_t), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(ctx->cable_params->data, h_cable,
+                          num_dendrites * 3 * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     ctx->num_dendrites = num_dendrites;
     ctx->num_segments = segments_per_dendrite;
@@ -745,6 +758,10 @@ extern "C" bool dendrite_gpu_upload_spines(
     uint32_t num_dendrites,
     uint32_t spines_per_dendrite
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !spines) return false;
     if (num_dendrites > ctx->config.max_dendrites ||
         spines_per_dendrite > ctx->config.max_spines_per_dendrite) {
@@ -777,16 +794,16 @@ extern "C" bool dendrite_gpu_upload_spines(
     }
 
     // Upload to GPU
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ctx->calcium_levels->data, h_calcium,
-                          total * sizeof(float), cudaMemcpyHostToDevice));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ctx->spine_weights->data, h_weights,
-                          total * sizeof(float), cudaMemcpyHostToDevice));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ctx->spine_segments->data, h_segments,
-                          total * sizeof(uint32_t), cudaMemcpyHostToDevice));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ctx->pre_traces->data, h_pre,
-                          total * sizeof(float), cudaMemcpyHostToDevice));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ctx->post_traces->data, h_post,
-                          total * sizeof(float), cudaMemcpyHostToDevice));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(ctx->calcium_levels->data, h_calcium,
+                          total * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(ctx->spine_weights->data, h_weights,
+                          total * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(ctx->spine_segments->data, h_segments,
+                          total * sizeof(uint32_t), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(ctx->pre_traces->data, h_pre,
+                          total * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(ctx->post_traces->data, h_post,
+                          total * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     ctx->num_spines = spines_per_dendrite;
 
@@ -804,6 +821,10 @@ extern "C" bool dendrite_gpu_upload_cable_params(
     const float* ra,
     uint32_t num_dendrites
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !rm || !cm || !ra) return false;
 
     float* h_cable = (float*)malloc(num_dendrites * 3 * sizeof(float));
@@ -815,8 +836,8 @@ extern "C" bool dendrite_gpu_upload_cable_params(
         h_cable[d * 3 + 2] = ra[d];
     }
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(ctx->cable_params->data, h_cable,
-                          num_dendrites * 3 * sizeof(float), cudaMemcpyHostToDevice));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(ctx->cable_params->data, h_cable,
+                          num_dendrites * 3 * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     free(h_cable);
     return true;
@@ -830,10 +851,14 @@ extern "C" bool dendrite_gpu_download_voltages(
     dendrite_gpu_context_t* ctx,
     float* voltages
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !voltages) return false;
     uint32_t total = ctx->num_dendrites * ctx->num_segments;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(voltages, ctx->segment_voltages->data,
-                          total * sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(voltages, ctx->segment_voltages->data,
+                          total * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
@@ -841,10 +866,14 @@ extern "C" bool dendrite_gpu_download_calcium(
     dendrite_gpu_context_t* ctx,
     float* calcium
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !calcium) return false;
     uint32_t total = ctx->num_dendrites * ctx->num_spines;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(calcium, ctx->calcium_levels->data,
-                          total * sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(calcium, ctx->calcium_levels->data,
+                          total * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
@@ -852,10 +881,14 @@ extern "C" bool dendrite_gpu_download_weights(
     dendrite_gpu_context_t* ctx,
     float* weights
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !weights) return false;
     uint32_t total = ctx->num_dendrites * ctx->num_spines;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(weights, ctx->spine_weights->data,
-                          total * sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(weights, ctx->spine_weights->data,
+                          total * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
@@ -863,10 +896,14 @@ extern "C" bool dendrite_gpu_download_nmda_states(
     dendrite_gpu_context_t* ctx,
     float* nmda_states
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !nmda_states) return false;
     uint32_t total = ctx->num_dendrites * ctx->num_segments;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(nmda_states, ctx->nmda_states->data,
-                          total * sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(nmda_states, ctx->nmda_states->data,
+                          total * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
@@ -878,6 +915,10 @@ extern "C" bool dendrite_gpu_integrate(
     dendrite_gpu_context_t* ctx,
     float dt_ms
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx) return false;
 
     uint32_t total_segments = ctx->num_dendrites * ctx->num_segments;
@@ -892,7 +933,7 @@ extern "C" bool dendrite_gpu_integrate(
         dt_ms
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     ctx->integrate_calls++;
     return true;
 }
@@ -901,6 +942,10 @@ extern "C" bool dendrite_gpu_update_calcium(
     dendrite_gpu_context_t* ctx,
     float dt_ms
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx) return false;
 
     uint32_t total_spines = ctx->num_dendrites * ctx->num_spines;
@@ -920,7 +965,7 @@ extern "C" bool dendrite_gpu_update_calcium(
         ctx->config.calcium_decay_tau_ms
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     ctx->calcium_updates++;
     return true;
 }
@@ -928,6 +973,10 @@ extern "C" bool dendrite_gpu_update_calcium(
 extern "C" bool dendrite_gpu_detect_nmda_spikes(
     dendrite_gpu_context_t* ctx
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx) return false;
 
     uint32_t total_segments = ctx->num_dendrites * ctx->num_segments;
@@ -942,7 +991,7 @@ extern "C" bool dendrite_gpu_detect_nmda_spikes(
         ctx->config.nmda_threshold_mv
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     ctx->nmda_detections++;
     return true;
 }
@@ -953,6 +1002,10 @@ extern "C" bool dendrite_gpu_apply_stdp(
     uint32_t num_events,
     uint64_t timestamp
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx) return false;
     if (!events || num_events == 0) return true;  // No-op is valid
 
@@ -960,10 +1013,10 @@ extern "C" bool dendrite_gpu_apply_stdp(
 
     // Upload events to GPU
     dendrite_gpu_stdp_event_t* d_events;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_events, num_events * sizeof(dendrite_gpu_stdp_event_t)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(d_events, events,
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_events, num_events * sizeof(dendrite_gpu_stdp_event_t)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_events, events,
                                num_events * sizeof(dendrite_gpu_stdp_event_t),
-                               cudaMemcpyHostToDevice, stream));
+                               cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
 
     kernel_dendrite_stdp<<<GRID_SIZE(num_events), BLOCK_SIZE, 0, stream>>>(
         (float*)ctx->spine_weights->data,
@@ -979,8 +1032,8 @@ extern "C" bool dendrite_gpu_apply_stdp(
         timestamp
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
-    NIMCP_CUDA_CHECK_IMMUNE(cudaFree(d_events));
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    NIMCP_CUDA_RECOVER(cudaFree(d_events), GPU_ERROR_OUT_OF_MEMORY);
 
     ctx->stdp_updates++;
     return true;
@@ -991,6 +1044,10 @@ extern "C" bool dendrite_gpu_propagate_bap(
     float amplitude_mv,
     float dt_ms
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx) return false;
 
     uint32_t total_segments = ctx->num_dendrites * ctx->num_segments;
@@ -1007,13 +1064,17 @@ extern "C" bool dendrite_gpu_propagate_bap(
         dt_ms
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
 extern "C" bool dendrite_gpu_compute_axial_currents(
     dendrite_gpu_context_t* ctx
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx) return false;
 
     uint32_t total_segments = ctx->num_dendrites * ctx->num_segments;
@@ -1030,7 +1091,7 @@ extern "C" bool dendrite_gpu_compute_axial_currents(
         ctx->num_segments
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1041,6 +1102,10 @@ extern "C" bool dendrite_gpu_inject_currents(
     const float* currents,
     uint32_t num_inputs
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !spine_indices || !dendrite_indices || !currents || num_inputs == 0) {
         return false;
     }
@@ -1052,19 +1117,19 @@ extern "C" bool dendrite_gpu_inject_currents(
     uint32_t* d_dendrite_indices;
     float* d_currents;
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_spine_indices, num_inputs * sizeof(uint32_t)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_dendrite_indices, num_inputs * sizeof(uint32_t)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_currents, num_inputs * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_spine_indices, num_inputs * sizeof(uint32_t)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_dendrite_indices, num_inputs * sizeof(uint32_t)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_currents, num_inputs * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(d_spine_indices, spine_indices,
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_spine_indices, spine_indices,
                                num_inputs * sizeof(uint32_t),
-                               cudaMemcpyHostToDevice, stream));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(d_dendrite_indices, dendrite_indices,
+                               cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_dendrite_indices, dendrite_indices,
                                num_inputs * sizeof(uint32_t),
-                               cudaMemcpyHostToDevice, stream));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(d_currents, currents,
+                               cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_currents, currents,
                                num_inputs * sizeof(float),
-                               cudaMemcpyHostToDevice, stream));
+                               cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
 
     kernel_inject_currents<<<GRID_SIZE(num_inputs), BLOCK_SIZE, 0, stream>>>(
         (float*)ctx->calcium_levels->data,
@@ -1076,11 +1141,11 @@ extern "C" bool dendrite_gpu_inject_currents(
         ctx->num_spines
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaFree(d_spine_indices));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaFree(d_dendrite_indices));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaFree(d_currents));
+    NIMCP_CUDA_RECOVER(cudaFree(d_spine_indices), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaFree(d_dendrite_indices), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaFree(d_currents), GPU_ERROR_OUT_OF_MEMORY);
 
     return true;
 }
@@ -1089,6 +1154,10 @@ extern "C" bool dendrite_gpu_decay_traces(
     dendrite_gpu_context_t* ctx,
     float dt_ms
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx) return false;
 
     uint32_t total_spines = ctx->num_dendrites * ctx->num_spines;
@@ -1105,7 +1174,7 @@ extern "C" bool dendrite_gpu_decay_traces(
         ctx->config.stdp_tau_minus_ms
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1114,6 +1183,10 @@ extern "C" bool dendrite_gpu_step(
     float dt_ms,
     uint64_t timestamp
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx) return false;
 
     // 1. Compute axial currents

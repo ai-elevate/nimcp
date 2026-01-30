@@ -38,6 +38,8 @@
 
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/common/nimcp_device_utils.cuh"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Constants
@@ -900,8 +902,15 @@ int nimcp_info_gpu_shannon_entropy(
     float* result,
     cudaStream_t stream)
 {
+    /* Initialize GPU recovery if not already done */
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!d_probabilities || !result) {
         set_info_gpu_error("NULL argument");
+        NIMCP_THROW_GPU(NIMCP_ERROR_NULL_POINTER, 0, 0,
+            "NULL argument in nimcp_info_gpu_shannon_entropy");
         return -1;
     }
 
@@ -909,20 +918,20 @@ int nimcp_info_gpu_shannon_entropy(
     n_blocks = (n_blocks > 256) ? 256 : n_blocks;
 
     float* d_partial;
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_partial, n_blocks * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_partial, n_blocks * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     size_t shared_size = INFO_GPU_BLOCK_SIZE / INFO_GPU_WARP_SIZE * sizeof(float);
 
     kernel_shannon_entropy<<<n_blocks, INFO_GPU_BLOCK_SIZE, shared_size, stream>>>(
         d_probabilities, d_partial, n);
 
-    NIMCP_CUDA_CHECK_LAST();
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     /* Final reduction on host */
     float* h_partial = (float*)malloc(n_blocks * sizeof(float));
-    NIMCP_CUDA_CHECK(cudaMemcpyAsync(h_partial, d_partial, n_blocks * sizeof(float),
-                                      cudaMemcpyDeviceToHost, stream));
-    NIMCP_CUDA_CHECK(cudaStreamSynchronize(stream));
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(h_partial, d_partial, n_blocks * sizeof(float),
+                                      cudaMemcpyDeviceToHost, stream), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
 
     float h = 0.0f;
     for (uint32_t i = 0; i < n_blocks; i++) {
@@ -947,8 +956,15 @@ int nimcp_info_gpu_renyi_entropy(
     float* result,
     cudaStream_t stream)
 {
+    /* Initialize GPU recovery if not already done */
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!d_probabilities || !result) {
         set_info_gpu_error("NULL argument");
+        NIMCP_THROW_GPU(NIMCP_ERROR_NULL_POINTER, 0, 0,
+            "NULL argument in nimcp_info_gpu_renyi_entropy");
         return -1;
     }
 
@@ -961,19 +977,19 @@ int nimcp_info_gpu_renyi_entropy(
     n_blocks = (n_blocks > 256) ? 256 : n_blocks;
 
     float* d_partial;
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_partial, n_blocks * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_partial, n_blocks * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     size_t shared_size = INFO_GPU_BLOCK_SIZE / INFO_GPU_WARP_SIZE * sizeof(float);
 
     kernel_renyi_entropy<<<n_blocks, INFO_GPU_BLOCK_SIZE, shared_size, stream>>>(
         d_probabilities, d_partial, n, alpha);
 
-    NIMCP_CUDA_CHECK_LAST();
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     float* h_partial = (float*)malloc(n_blocks * sizeof(float));
-    NIMCP_CUDA_CHECK(cudaMemcpyAsync(h_partial, d_partial, n_blocks * sizeof(float),
-                                      cudaMemcpyDeviceToHost, stream));
-    NIMCP_CUDA_CHECK(cudaStreamSynchronize(stream));
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(h_partial, d_partial, n_blocks * sizeof(float),
+                                      cudaMemcpyDeviceToHost, stream), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
 
     float sum = 0.0f;
     for (uint32_t i = 0; i < n_blocks; i++) {
@@ -1007,8 +1023,8 @@ int nimcp_info_gpu_mutual_information(
     /* Allocate marginals */
     float* d_marginal_x;
     float* d_marginal_y;
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_marginal_x, n_x * sizeof(float)));
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_marginal_y, n_y * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_marginal_x, n_x * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_marginal_y, n_y * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     uint32_t max_dim = (n_x > n_y) ? n_x : n_y;
     uint32_t n_blocks_marginal = (max_dim + INFO_GPU_BLOCK_SIZE - 1) / INFO_GPU_BLOCK_SIZE;
@@ -1016,7 +1032,7 @@ int nimcp_info_gpu_mutual_information(
     kernel_extract_marginals<<<n_blocks_marginal, INFO_GPU_BLOCK_SIZE, 0, stream>>>(
         d_joint_prob, d_marginal_x, d_marginal_y, n_x, n_y);
 
-    NIMCP_CUDA_CHECK_LAST();
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     /* Compute MI */
     uint32_t total = n_x * n_y;
@@ -1024,19 +1040,19 @@ int nimcp_info_gpu_mutual_information(
     n_blocks = (n_blocks > 256) ? 256 : n_blocks;
 
     float* d_partial;
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_partial, n_blocks * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_partial, n_blocks * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     size_t shared_size = INFO_GPU_BLOCK_SIZE / INFO_GPU_WARP_SIZE * sizeof(float);
 
     kernel_mutual_information<<<n_blocks, INFO_GPU_BLOCK_SIZE, shared_size, stream>>>(
         d_joint_prob, d_marginal_x, d_marginal_y, d_partial, n_x, n_y);
 
-    NIMCP_CUDA_CHECK_LAST();
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     float* h_partial = (float*)malloc(n_blocks * sizeof(float));
-    NIMCP_CUDA_CHECK(cudaMemcpyAsync(h_partial, d_partial, n_blocks * sizeof(float),
-                                      cudaMemcpyDeviceToHost, stream));
-    NIMCP_CUDA_CHECK(cudaStreamSynchronize(stream));
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(h_partial, d_partial, n_blocks * sizeof(float),
+                                      cudaMemcpyDeviceToHost, stream), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
 
     float mi = 0.0f;
     for (uint32_t i = 0; i < n_blocks; i++) {
@@ -1076,24 +1092,24 @@ int nimcp_info_gpu_discretize(
 
     float* d_partial_min;
     float* d_partial_max;
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_partial_min, n_blocks * sizeof(float)));
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_partial_max, n_blocks * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_partial_min, n_blocks * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_partial_max, n_blocks * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     size_t shared_size = 2 * INFO_GPU_BLOCK_SIZE * sizeof(float);
 
     kernel_find_minmax<<<n_blocks, INFO_GPU_BLOCK_SIZE, shared_size, stream>>>(
         d_data, d_partial_min, d_partial_max, n);
 
-    NIMCP_CUDA_CHECK_LAST();
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     /* Final reduction on host */
     float* h_partial_min = (float*)malloc(n_blocks * sizeof(float));
     float* h_partial_max = (float*)malloc(n_blocks * sizeof(float));
-    NIMCP_CUDA_CHECK(cudaMemcpyAsync(h_partial_min, d_partial_min, n_blocks * sizeof(float),
-                                      cudaMemcpyDeviceToHost, stream));
-    NIMCP_CUDA_CHECK(cudaMemcpyAsync(h_partial_max, d_partial_max, n_blocks * sizeof(float),
-                                      cudaMemcpyDeviceToHost, stream));
-    NIMCP_CUDA_CHECK(cudaStreamSynchronize(stream));
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(h_partial_min, d_partial_min, n_blocks * sizeof(float),
+                                      cudaMemcpyDeviceToHost, stream), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(h_partial_max, d_partial_max, n_blocks * sizeof(float),
+                                      cudaMemcpyDeviceToHost, stream), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
 
     float min_val = h_partial_min[0];
     float max_val = h_partial_max[0];
@@ -1114,7 +1130,7 @@ int nimcp_info_gpu_discretize(
     kernel_discretize<<<n_blocks, INFO_GPU_BLOCK_SIZE, 0, stream>>>(
         d_data, d_bins, n, min_val, bin_width, n_bins);
 
-    NIMCP_CUDA_CHECK_LAST();
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     if (min_val_out) *min_val_out = min_val;
     if (max_val_out) *max_val_out = max_val;
@@ -1141,19 +1157,19 @@ int nimcp_info_gpu_kl_divergence(
     n_blocks = (n_blocks > 256) ? 256 : n_blocks;
 
     float* d_partial;
-    NIMCP_CUDA_CHECK(cudaMalloc(&d_partial, n_blocks * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_partial, n_blocks * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     size_t shared_size = INFO_GPU_BLOCK_SIZE / INFO_GPU_WARP_SIZE * sizeof(float);
 
     kernel_kl_divergence<<<n_blocks, INFO_GPU_BLOCK_SIZE, shared_size, stream>>>(
         d_p, d_q, d_partial, n);
 
-    NIMCP_CUDA_CHECK_LAST();
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     float* h_partial = (float*)malloc(n_blocks * sizeof(float));
-    NIMCP_CUDA_CHECK(cudaMemcpyAsync(h_partial, d_partial, n_blocks * sizeof(float),
-                                      cudaMemcpyDeviceToHost, stream));
-    NIMCP_CUDA_CHECK(cudaStreamSynchronize(stream));
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(h_partial, d_partial, n_blocks * sizeof(float),
+                                      cudaMemcpyDeviceToHost, stream), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
 
     float kl = 0.0f;
     for (uint32_t i = 0; i < n_blocks; i++) {

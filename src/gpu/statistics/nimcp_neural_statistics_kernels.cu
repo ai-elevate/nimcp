@@ -32,8 +32,9 @@
 // Now include our headers
 #include "utils/statistics/nimcp_neural_statistics.h"
 #include "utils/logging/nimcp_logging.h"
-#include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "NEURAL_STATS_GPU"
 
@@ -639,6 +640,11 @@ extern "C" neural_stats_result_t nimcp_neural_isi_distribution_batch_gpu_impl(
     uint32_t n_trains,
     neural_isi_distribution_t* results)
 {
+    /* Initialize recovery system if needed */
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!spike_trains || !results || n_trains == 0) {
         return NEURAL_STATS_ERROR_NULL;
     }
@@ -698,29 +704,78 @@ extern "C" neural_stats_result_t nimcp_neural_isi_distribution_batch_gpu_impl(
     uint32_t total_isis = total_spikes - n_trains;
 
     cudaError_t err;
+    nimcp_gpu_recovery_result_t rec_result = {0};
 
     err = cudaMalloc(&d_spikes, total_spikes * sizeof(float));
-    if (err != cudaSuccess) goto cleanup;
+    if (err != cudaSuccess) {
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &rec_result)) {
+            err = cudaMalloc(&d_spikes, total_spikes * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup;
+    }
 
     err = cudaMalloc(&d_offsets, (n_trains + 1) * sizeof(uint32_t));
-    if (err != cudaSuccess) goto cleanup;
+    if (err != cudaSuccess) {
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &rec_result)) {
+            err = cudaMalloc(&d_offsets, (n_trains + 1) * sizeof(uint32_t));
+        }
+        if (err != cudaSuccess) goto cleanup;
+    }
 
     err = cudaMalloc(&d_lengths, n_trains * sizeof(uint32_t));
-    if (err != cudaSuccess) goto cleanup;
+    if (err != cudaSuccess) {
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &rec_result)) {
+            err = cudaMalloc(&d_lengths, n_trains * sizeof(uint32_t));
+        }
+        if (err != cudaSuccess) goto cleanup;
+    }
 
     err = cudaMalloc(&d_isis, total_isis * sizeof(float));
-    if (err != cudaSuccess) goto cleanup;
+    if (err != cudaSuccess) {
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &rec_result)) {
+            err = cudaMalloc(&d_isis, total_isis * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup;
+    }
 
     err = cudaMalloc(&d_stats, n_trains * 4 * sizeof(float));
-    if (err != cudaSuccess) goto cleanup;
+    if (err != cudaSuccess) {
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &rec_result)) {
+            err = cudaMalloc(&d_stats, n_trains * 4 * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup;
+    }
 
     err = cudaMalloc(&d_cv2, n_trains * sizeof(float));
-    if (err != cudaSuccess) goto cleanup;
+    if (err != cudaSuccess) {
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &rec_result)) {
+            err = cudaMalloc(&d_cv2, n_trains * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup;
+    }
 
     // Copy to device
-    cudaMemcpy(d_spikes, h_spikes, total_spikes * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_offsets, h_offsets, (n_trains + 1) * sizeof(uint32_t), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_lengths, h_lengths, n_trains * sizeof(uint32_t), cudaMemcpyHostToDevice);
+    err = cudaMemcpy(d_spikes, h_spikes, total_spikes * sizeof(float), cudaMemcpyHostToDevice);
+    if (err != cudaSuccess) {
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_CUDA_RUNTIME, err, &rec_result)) {
+            err = cudaMemcpy(d_spikes, h_spikes, total_spikes * sizeof(float), cudaMemcpyHostToDevice);
+        }
+        if (err != cudaSuccess) goto cleanup;
+    }
+    err = cudaMemcpy(d_offsets, h_offsets, (n_trains + 1) * sizeof(uint32_t), cudaMemcpyHostToDevice);
+    if (err != cudaSuccess) {
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_CUDA_RUNTIME, err, &rec_result)) {
+            err = cudaMemcpy(d_offsets, h_offsets, (n_trains + 1) * sizeof(uint32_t), cudaMemcpyHostToDevice);
+        }
+        if (err != cudaSuccess) goto cleanup;
+    }
+    err = cudaMemcpy(d_lengths, h_lengths, n_trains * sizeof(uint32_t), cudaMemcpyHostToDevice);
+    if (err != cudaSuccess) {
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_CUDA_RUNTIME, err, &rec_result)) {
+            err = cudaMemcpy(d_lengths, h_lengths, n_trains * sizeof(uint32_t), cudaMemcpyHostToDevice);
+        }
+        if (err != cudaSuccess) goto cleanup;
+    }
 
     // Launch kernels
     kernel_isi_compute<<<n_trains, BLOCK_SIZE>>>(
@@ -797,6 +852,11 @@ extern "C" neural_stats_result_t nimcp_neural_cross_correlogram_batch_gpu_impl(
     float max_lag,
     neural_cross_correlogram_t* results)
 {
+    /* Initialize recovery system if needed */
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!trains1 || !trains2 || !results || n_pairs == 0) {
         return NEURAL_STATS_ERROR_NULL;
     }
@@ -963,6 +1023,11 @@ extern "C" neural_stats_result_t nimcp_neural_fisher_information_batch_gpu_impl(
     uint32_t n_stimuli,
     neural_fisher_info_t* results)
 {
+    /* Initialize recovery system if needed */
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!tuning_curves || !stimulus_values || !results) {
         return NEURAL_STATS_ERROR_NULL;
     }

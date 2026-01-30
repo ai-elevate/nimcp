@@ -24,6 +24,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "GRADIENT_GPU"
 
@@ -94,12 +95,17 @@ bool nimcp_gpu_loss_mse(
 {
     if (!ctx || !pred || !target || !loss) return false;
 
+    // Initialize GPU recovery if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     size_t n = pred->numel;
 
     // Allocate device memory for loss sum
     float* d_loss_sum;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_loss_sum, sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_loss_sum, 0, sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_loss_sum, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMemset(d_loss_sum, 0, sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
 
     // Compute forward loss
     int grid = GRID_SIZE(n);
@@ -109,7 +115,7 @@ bool nimcp_gpu_loss_mse(
 
     // Copy result back
     float loss_sum;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
     *loss = loss_sum / (float)n;
 
     cudaFree(d_loss_sum);
@@ -120,7 +126,7 @@ bool nimcp_gpu_loss_mse(
         kernel_mse_loss_backward<<<GRID_SIZE(n), BLOCK_SIZE>>>(
             (const float*)pred->data, (const float*)target->data,
             (float*)grad->data, scale, n);
-        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+        NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     }
 
     return true;
@@ -177,10 +183,15 @@ bool nimcp_gpu_loss_mae(
 {
     if (!ctx || !pred || !target || !loss) return false;
 
+    // Initialize GPU recovery if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     size_t n = pred->numel;
     float* d_loss_sum;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_loss_sum, sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_loss_sum, 0, sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_loss_sum, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMemset(d_loss_sum, 0, sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
 
     int grid = GRID_SIZE(n);
     grid = grid > 256 ? 256 : grid;
@@ -188,7 +199,7 @@ bool nimcp_gpu_loss_mae(
         (const float*)pred->data, (const float*)target->data, d_loss_sum, n);
 
     float loss_sum;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
     *loss = loss_sum / (float)n;
 
     cudaFree(d_loss_sum);
@@ -198,7 +209,7 @@ bool nimcp_gpu_loss_mae(
         kernel_mae_loss_backward<<<GRID_SIZE(n), BLOCK_SIZE>>>(
             (const float*)pred->data, (const float*)target->data,
             (float*)grad->data, scale, n);
-        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+        NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     }
 
     return true;
@@ -318,19 +329,24 @@ bool nimcp_gpu_loss_cross_entropy(
 {
     if (!ctx || !logits || !target || !loss) return false;
 
+    // Initialize GPU recovery if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     size_t num_classes = logits->dims[logits->ndim - 1];
     size_t batch_size = logits->numel / num_classes;
 
     float* d_loss_sum;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_loss_sum, sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_loss_sum, 0, sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_loss_sum, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMemset(d_loss_sum, 0, sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
 
     kernel_cross_entropy_forward<<<batch_size, BLOCK_SIZE>>>(
         (const float*)logits->data, (const float*)target->data,
         d_loss_sum, batch_size, num_classes);
 
     float loss_sum;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     if (reduction == 1) {  // mean
         *loss = loss_sum / (float)batch_size;
@@ -347,7 +363,7 @@ bool nimcp_gpu_loss_cross_entropy(
         kernel_cross_entropy_backward<<<batch_size, BLOCK_SIZE>>>(
             (const float*)logits->data, (const float*)target->data,
             (float*)grad->data, batch_size, num_classes, scale);
-        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+        NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     }
 
     return true;
@@ -403,10 +419,15 @@ bool nimcp_gpu_loss_bce(
 {
     if (!ctx || !pred || !target || !loss) return false;
 
+    // Initialize GPU recovery if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     size_t n = pred->numel;
     float* d_loss_sum;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_loss_sum, sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_loss_sum, 0, sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_loss_sum, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMemset(d_loss_sum, 0, sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
 
     int grid = GRID_SIZE(n);
     grid = grid > 256 ? 256 : grid;
@@ -414,7 +435,7 @@ bool nimcp_gpu_loss_bce(
         (const float*)pred->data, (const float*)target->data, d_loss_sum, n);
 
     float loss_sum;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
     *loss = loss_sum / (float)n;
 
     cudaFree(d_loss_sum);
@@ -424,7 +445,7 @@ bool nimcp_gpu_loss_bce(
         kernel_bce_loss_backward<<<GRID_SIZE(n), BLOCK_SIZE>>>(
             (const float*)pred->data, (const float*)target->data,
             (float*)grad->data, scale, n);
-        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+        NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     }
 
     return true;
@@ -474,10 +495,15 @@ bool nimcp_gpu_loss_focal(
 {
     if (!ctx || !pred || !target || !loss) return false;
 
+    // Initialize GPU recovery if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     size_t n = pred->numel;
     float* d_loss_sum;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_loss_sum, sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_loss_sum, 0, sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_loss_sum, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMemset(d_loss_sum, 0, sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
 
     int grid = GRID_SIZE(n);
     grid = grid > 256 ? 256 : grid;
@@ -486,7 +512,7 @@ bool nimcp_gpu_loss_focal(
         d_loss_sum, alpha, gamma, n);
 
     float loss_sum;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
     *loss = loss_sum / (float)n;
 
     cudaFree(d_loss_sum);
@@ -559,10 +585,15 @@ bool nimcp_gpu_loss_huber(
 {
     if (!ctx || !pred || !target || !loss) return false;
 
+    // Initialize GPU recovery if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     size_t n = pred->numel;
     float* d_loss_sum;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_loss_sum, sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_loss_sum, 0, sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_loss_sum, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMemset(d_loss_sum, 0, sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
 
     int grid = GRID_SIZE(n);
     grid = grid > 256 ? 256 : grid;
@@ -570,7 +601,7 @@ bool nimcp_gpu_loss_huber(
         (const float*)pred->data, (const float*)target->data, d_loss_sum, delta, n);
 
     float loss_sum;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(&loss_sum, d_loss_sum, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
     *loss = loss_sum / (float)n;
 
     cudaFree(d_loss_sum);
@@ -580,7 +611,7 @@ bool nimcp_gpu_loss_huber(
         kernel_huber_loss_backward<<<GRID_SIZE(n), BLOCK_SIZE>>>(
             (const float*)pred->data, (const float*)target->data,
             (float*)grad->data, delta, scale, n);
-        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+        NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     }
 
     return true;
@@ -605,9 +636,14 @@ bool nimcp_gpu_gradient_accumulate(
 {
     if (!ctx || !grad || !accum) return false;
 
+    // Initialize GPU recovery if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     kernel_gradient_accumulate<<<GRID_SIZE(grad->numel), BLOCK_SIZE>>>(
         (const float*)grad->data, (float*)accum->data, grad->numel);
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -626,9 +662,14 @@ bool nimcp_gpu_gradient_scale(
 {
     if (!ctx || !grad) return false;
 
+    // Initialize GPU recovery if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     kernel_gradient_scale<<<GRID_SIZE(grad->numel), BLOCK_SIZE>>>(
         (float*)grad->data, scale, grad->numel);
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -640,6 +681,11 @@ bool nimcp_gpu_gradient_clip_norm(
     float* total_norm)
 {
     if (!ctx || !grads || n_grads == 0 || !total_norm) return false;
+
+    // Initialize GPU recovery if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     // Compute total norm across all gradients
     float norm_sq = 0.0f;
@@ -679,9 +725,14 @@ bool nimcp_gpu_gradient_clip_value(
 {
     if (!ctx || !grad) return false;
 
+    // Initialize GPU recovery if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     kernel_gradient_clip_value<<<GRID_SIZE(grad->numel), BLOCK_SIZE>>>(
         (float*)grad->data, clip_value, grad->numel);
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -690,7 +741,13 @@ bool nimcp_gpu_gradient_zero(
     nimcp_gpu_tensor_t* grad)
 {
     if (!ctx || !grad) return false;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(grad->data, 0, grad->numel * grad->elem_size));
+
+    // Initialize GPU recovery if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    NIMCP_CUDA_RECOVER(cudaMemset(grad->data, 0, grad->numel * grad->elem_size), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 

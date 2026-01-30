@@ -22,6 +22,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "REASONING_GPU"
 
@@ -188,6 +189,10 @@ bool nimcp_gpu_logic_evaluate(
         return false;
     }
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     size_t n = formula->n_clauses;
 
     kernel_logic_evaluate<<<GRID_SIZE(n), BLOCK_SIZE>>>(
@@ -201,7 +206,7 @@ bool nimcp_gpu_logic_evaluate(
         params->fuzzy_or_type,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -263,6 +268,10 @@ bool nimcp_gpu_logic_propagate(
         return false;
     }
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     size_t n = formula->n_clauses;
 
     for (int iter = 0; iter < max_iterations; iter++) {
@@ -277,7 +286,7 @@ bool nimcp_gpu_logic_propagate(
             params->fuzzy_or_type,
             n);
 
-        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+        NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     }
 
     return true;
@@ -338,6 +347,10 @@ bool nimcp_gpu_fuzzy_logic(
         return false;
     }
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     size_t n = input1->numel;
 
     kernel_fuzzy_logic<<<GRID_SIZE(n), BLOCK_SIZE>>>(
@@ -349,7 +362,7 @@ bool nimcp_gpu_fuzzy_logic(
         params->fuzzy_or_type,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -362,6 +375,10 @@ bool nimcp_gpu_sat_step(
     if (!ctx || !formula || !conflict || !params) {
         LOG_ERROR("Invalid parameters for SAT step");
         return false;
+    }
+
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
     }
 
     // Perform unit propagation via logic propagate
@@ -436,6 +453,10 @@ bool nimcp_gpu_rule_match(
         return false;
     }
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     size_t n = rules->n_rules;
 
     kernel_rule_match<<<GRID_SIZE(n), BLOCK_SIZE>>>(
@@ -448,7 +469,7 @@ bool nimcp_gpu_rule_match(
         wm->n_facts,
         rules->pattern_dim);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -502,6 +523,10 @@ bool nimcp_gpu_rule_fire(
         return false;
     }
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     size_t n = wm->n_facts;
 
     kernel_rule_fire<<<GRID_SIZE(n), BLOCK_SIZE>>>(
@@ -514,7 +539,7 @@ bool nimcp_gpu_rule_fire(
         wm->n_facts,
         wm->fact_dim);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -528,6 +553,10 @@ bool nimcp_gpu_forward_chain(
     if (!ctx || !rules || !wm || !params) {
         LOG_ERROR("Invalid parameters for forward chaining");
         return false;
+    }
+
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
     }
 
     // Allocate match scores
@@ -560,6 +589,10 @@ bool nimcp_gpu_backward_chain(
     if (!ctx || !rules || !wm || !goal || !proof || !params) {
         LOG_ERROR("Invalid parameters for backward chaining");
         return false;
+    }
+
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
     }
 
     // Backward chaining is more complex and typically recursive
@@ -603,6 +636,10 @@ bool nimcp_gpu_rule_learning(
         return false;
     }
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     size_t n = rules->n_rules;
 
     kernel_rule_learning<<<GRID_SIZE(n), BLOCK_SIZE>>>(
@@ -611,7 +648,7 @@ bool nimcp_gpu_rule_learning(
         learning_rate,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -629,12 +666,16 @@ bool nimcp_gpu_csp_init(
         return false;
     }
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     // Copy initial domains
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(
+    NIMCP_CUDA_RECOVER(cudaMemcpy(
         state->domains->data,
         initial_domains->data,
         initial_domains->numel * sizeof(float),
-        cudaMemcpyDeviceToDevice));
+        cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     return true;
 }
@@ -708,12 +749,16 @@ bool nimcp_gpu_csp_arc_consistency(
         return false;
     }
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     bool* d_changed;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_changed, sizeof(bool)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_changed, sizeof(bool)), GPU_ERROR_OUT_OF_MEMORY);
 
     for (int iter = 0; iter < params->max_iterations; iter++) {
         bool h_changed = false;
-        NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(d_changed, &h_changed, sizeof(bool), cudaMemcpyHostToDevice));
+        NIMCP_CUDA_RECOVER(cudaMemcpy(d_changed, &h_changed, sizeof(bool), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
         dim3 grid(state->n_variables);
         dim3 block(state->domain_size);
@@ -726,14 +771,14 @@ bool nimcp_gpu_csp_arc_consistency(
             state->domain_size,
             d_changed);
 
-        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+        NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
-        NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&h_changed, d_changed, sizeof(bool), cudaMemcpyDeviceToHost));
+        NIMCP_CUDA_RECOVER(cudaMemcpy(&h_changed, d_changed, sizeof(bool), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
         if (!h_changed) break;
     }
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaFree(d_changed));
+    cudaFree(d_changed);
     return true;
 }
 
@@ -783,8 +828,12 @@ bool nimcp_gpu_csp_check_constraints(
         return false;
     }
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     // Reset violations count
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(n_violations->data, 0, sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMemset(n_violations->data, 0, sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
 
     dim3 grid(state->n_variables);
     dim3 block(state->n_variables);
@@ -796,7 +845,7 @@ bool nimcp_gpu_csp_check_constraints(
         state->n_variables,
         state->domain_size);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -810,6 +859,10 @@ bool nimcp_gpu_csp_select(
     if (!ctx || !state || !variable_idx || !value_idx || !params) {
         LOG_ERROR("Invalid parameters for CSP select");
         return false;
+    }
+
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
     }
 
     // MRV (Minimum Remaining Values) heuristic
@@ -830,6 +883,10 @@ bool nimcp_gpu_csp_step(
     if (!ctx || !state || !solved || !failed || !params) {
         LOG_ERROR("Invalid parameters for CSP step");
         return false;
+    }
+
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
     }
 
     // Run arc consistency
@@ -909,6 +966,10 @@ bool nimcp_gpu_analogy_structural_similarity(
         return false;
     }
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     size_t feature_dim = state->source_features->numel / state->source_size;
 
     dim3 grid(state->source_size);
@@ -926,7 +987,7 @@ bool nimcp_gpu_analogy_structural_similarity(
         state->target_size,
         feature_dim);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -938,6 +999,10 @@ bool nimcp_gpu_analogy_find_mapping(
     if (!ctx || !state || !params) {
         LOG_ERROR("Invalid parameters for analogy mapping");
         return false;
+    }
+
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
     }
 
     // Simplified: greedy assignment based on similarity
@@ -996,6 +1061,10 @@ bool nimcp_gpu_analogy_transfer(
         return false;
     }
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     size_t inf_dim = source_inferences->numel / state->source_size;
 
     kernel_analogy_transfer<<<GRID_SIZE(state->target_size), BLOCK_SIZE>>>(
@@ -1008,7 +1077,7 @@ bool nimcp_gpu_analogy_transfer(
         state->target_size,
         inf_dim);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1021,6 +1090,10 @@ bool nimcp_gpu_analogy_evaluate(
     if (!ctx || !state || !quality_score || !params) {
         LOG_ERROR("Invalid parameters for analogy evaluation");
         return false;
+    }
+
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
     }
 
     *quality_score = 0.5f;  // Placeholder
@@ -1087,6 +1160,10 @@ bool nimcp_gpu_causal_propagate(
         return false;
     }
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     size_t n = state->n_nodes;
 
     kernel_causal_propagate<<<GRID_SIZE(n), BLOCK_SIZE>>>(
@@ -1098,7 +1175,7 @@ bool nimcp_gpu_causal_propagate(
         params->noise_level,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1139,6 +1216,10 @@ bool nimcp_gpu_causal_intervene(
         return false;
     }
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     kernel_causal_intervene<<<1, state->n_nodes>>>(
         (float*)state->node_values->data,
         (float*)state->interventions->data,
@@ -1147,7 +1228,7 @@ bool nimcp_gpu_causal_intervene(
         intervention_value,
         state->n_nodes);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Propagate effects
     for (int i = 0; i < params->max_path_length; i++) {
@@ -1171,27 +1252,31 @@ bool nimcp_gpu_causal_counterfactual(
         return false;
     }
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     // Three-step counterfactual:
     // 1. Abduction: infer exogenous noise from factual
     // 2. Action: apply intervention
     // 3. Prediction: propagate with noise
 
     // Copy factual values
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(
+    NIMCP_CUDA_RECOVER(cudaMemcpy(
         state->node_values->data,
         factual_values->data,
         state->n_nodes * sizeof(float),
-        cudaMemcpyDeviceToDevice));
+        cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     // Apply intervention
     nimcp_gpu_causal_intervene(ctx, state, intervention_node, counterfactual_value, params);
 
     // Copy result
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(
+    NIMCP_CUDA_RECOVER(cudaMemcpy(
         counterfactual_outcome->data,
         state->node_values->data,
         state->n_nodes * sizeof(float),
-        cudaMemcpyDeviceToDevice));
+        cudaMemcpyDeviceToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     return true;
 }
@@ -1209,15 +1294,19 @@ bool nimcp_gpu_causal_identify_effect(
         return false;
     }
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     // Simplified: direct edge weight
     // Full version would use backdoor/frontdoor adjustment
 
     float* h_weights = (float*)malloc(state->n_nodes * state->n_nodes * sizeof(float));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(
+    NIMCP_CUDA_RECOVER(cudaMemcpy(
         h_weights,
         state->edge_weights->data,
         state->n_nodes * state->n_nodes * sizeof(float),
-        cudaMemcpyDeviceToHost));
+        cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     *causal_effect = h_weights[cause_node * state->n_nodes + effect_node];
 
@@ -1234,6 +1323,10 @@ bool nimcp_gpu_causal_discover(
     if (!ctx || !observational_data || !state || !params) {
         LOG_ERROR("Invalid parameters for causal discovery");
         return false;
+    }
+
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
     }
 
     // Placeholder for PC/FCI algorithm

@@ -11,6 +11,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/rng/nimcp_rand.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -104,32 +105,15 @@ static void set_error(const char* msg) {
 }
 
 /**
- * @brief Simple xorshift RNG for reproducible noise
+ * @brief Generate Gaussian noise using centralized RNG module
+ *
+ * Note: The ns parameter is kept for API compatibility but the internal
+ * rng_state is no longer used. Thread-local RNG is now used instead.
+ * For strict reproducibility, call nimcp_rand_seed() before operations.
  */
-static uint32_t xorshift32(uint32_t* state) {
-    uint32_t x = *state;
-    x ^= x << 13;
-    x ^= x >> 17;
-    x ^= x << 5;
-    *state = x;
-    return x;
-}
-
-/**
- * @brief Generate Gaussian noise using Box-Muller transform
- */
-static float gaussian_noise(number_sense_t* ns, float sigma) {
-    /* Generate two uniform random numbers */
-    float u1 = (float)(xorshift32(&ns->rng_state) & 0xFFFFFF) / (float)0xFFFFFF;
-    float u2 = (float)(xorshift32(&ns->rng_state) & 0xFFFFFF) / (float)0xFFFFFF;
-
-    /* Avoid log(0) */
-    if (u1 < 1e-10f) u1 = 1e-10f;
-
-    /* Box-Muller transform */
-    float z0 = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * 3.14159265f * u2);
-
-    return z0 * sigma;
+static inline float gaussian_noise(number_sense_t* ns, float sigma) {
+    (void)ns;  /* rng_state no longer used - using thread-local RNG */
+    return nimcp_rand_normal(0.0f, sigma);
 }
 
 /**

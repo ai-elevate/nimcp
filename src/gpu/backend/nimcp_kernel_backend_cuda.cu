@@ -21,6 +21,8 @@
 
 // Now include our headers (which have extern "C" blocks)
 #include "gpu/backend/nimcp_kernel_backend.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/tensor/nimcp_tensor_gpu.h"
 #include "gpu/training/nimcp_training_gpu.h"
 #include "gpu/snn/nimcp_snn_gpu.h"
@@ -841,6 +843,11 @@ static nimcp_kernel_error_t cuda_matmul_int8(
 extern "C" void init_cuda_backend_ops(nimcp_kernel_backend_t* backend)
 {
     if (!backend) return;
+
+    // Initialize GPU recovery system if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     LOG_INFO("Registering CUDA backend operations");
 

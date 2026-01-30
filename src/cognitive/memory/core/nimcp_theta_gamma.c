@@ -20,6 +20,7 @@
 #include "utils/signal/nimcp_hilbert.h"
 #include "utils/signal/nimcp_signal_filter.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/statistics/nimcp_statistics.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -240,21 +241,21 @@ static float compute_stddev(const float* data, uint32_t n, float mean) {
  *
  * H = -sum(p[i] * log(p[i]))
  * For uniform distribution: H_max = log(n)
+ *
+ * Delegates to nimcp_stats_entropy() which returns bits.
+ * Converts to nats for compatibility with existing code that uses logf(n).
  */
 static float compute_entropy(const float* probs, uint32_t n) {
-    float h = 0.0f;
-    for (uint32_t i = 0; i < n; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && n > 256) {
-            theta_gamma_heartbeat("theta_gamma_loop",
-                             (float)(i + 1) / (float)n);
-        }
+    if (!probs || n == 0) return 0.0f;
 
-        if (probs[i] > 1e-10f) {
-            h -= probs[i] * logf(probs[i]);
-        }
+    /* Phase 8: Heartbeat at operation start */
+    if (n > 256) {
+        theta_gamma_heartbeat("theta_gamma_entropy", 0.5f);
     }
-    return h;
+
+    /* nimcp_stats_entropy returns bits; convert to nats for compatibility */
+    float entropy_bits = nimcp_stats_entropy(probs, n);
+    return entropy_bits * 0.693147f;  /* ln(2) to convert bits to nats */
 }
 
 /**

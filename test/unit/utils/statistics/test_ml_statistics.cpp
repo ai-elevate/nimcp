@@ -422,12 +422,13 @@ TEST_F(HMMTest, StationaryDistribution) {
     // Test convergence to stationary distribution
     std::vector<std::vector<float>> trans = {{0.7f, 0.3f}, {0.4f, 0.6f}};
 
-    // Stationary: pi * P = pi
-    // For 2-state: pi_0 = 0.3 / (0.3 + 0.4) = 0.4286
-    //              pi_1 = 0.4 / (0.3 + 0.4) = 0.5714
+    // Stationary: pi = pi * P
+    // For 2-state with P[0][1]=0.3, P[1][0]=0.4:
+    //   pi_0 = P[1][0] / (P[0][1] + P[1][0]) = 0.4 / 0.7 ≈ 0.5714
+    //   pi_1 = P[0][1] / (P[0][1] + P[1][0]) = 0.3 / 0.7 ≈ 0.4286
 
-    float expected_pi0 = 0.3f / (0.3f + 0.4f);
-    float expected_pi1 = 0.4f / (0.3f + 0.4f);
+    float expected_pi0 = 0.4f / (0.3f + 0.4f);  // P[1][0] / sum
+    float expected_pi1 = 0.3f / (0.3f + 0.4f);  // P[0][1] / sum
 
     EXPECT_NEAR(expected_pi0 + expected_pi1, 1.0f, TOLERANCE);
 
@@ -437,16 +438,18 @@ TEST_F(HMMTest, StationaryDistribution) {
 }
 
 TEST_F(HMMTest, ObservationLikelihood_Positive) {
-    // Observation likelihood should always be positive
+    // Observation likelihood should be positive near the mean (avoiding underflow at extremes)
     std::vector<float> means = {0.0f, 5.0f};
     std::vector<float> stds = {1.0f, 1.0f};
 
-    for (float x = -10.0f; x <= 15.0f; x += 0.5f) {
+    // Test within 4 standard deviations of each mean to avoid float underflow
+    for (float x = -4.0f; x <= 4.0f; x += 0.5f) {
         float p0 = gaussianPDF(x, means[0], stds[0]);
+        EXPECT_GT(p0, 0.0f) << "p0 at x=" << x;
+    }
+    for (float x = 1.0f; x <= 9.0f; x += 0.5f) {
         float p1 = gaussianPDF(x, means[1], stds[1]);
-
-        EXPECT_GT(p0, 0.0f);
-        EXPECT_GT(p1, 0.0f);
+        EXPECT_GT(p1, 0.0f) << "p1 at x=" << x;
     }
 }
 

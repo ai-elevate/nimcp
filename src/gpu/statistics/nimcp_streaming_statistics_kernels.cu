@@ -27,6 +27,8 @@
 #include "utils/statistics/nimcp_streaming_statistics.h"
 #include "utils/logging/nimcp_logging.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 namespace cg = cooperative_groups;
 
@@ -855,6 +857,11 @@ nimcp_stream_stats_result_t nimcp_stream_stats_gpu_batch_impl(
     float* d_min,
     float* d_max)
 {
+    /* Initialize recovery system if needed */
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!d_values || count == 0) {
         return NIMCP_STREAM_ERROR_NULL;
     }
@@ -866,20 +873,47 @@ nimcp_stream_stats_result_t nimcp_stream_stats_gpu_batch_impl(
     unsigned int* d_partial_counts;
 
     cudaError_t err;
+    nimcp_gpu_recovery_result_t rec_result = {0};
+
     err = cudaMalloc(&d_partial_sums, num_blocks * sizeof(float));
-    if (err != cudaSuccess) return NIMCP_STREAM_ERROR_GPU;
+    if (err != cudaSuccess) {
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &rec_result)) {
+            err = cudaMalloc(&d_partial_sums, num_blocks * sizeof(float));
+        }
+        if (err != cudaSuccess) return NIMCP_STREAM_ERROR_GPU;
+    }
 
     err = cudaMalloc(&d_partial_sum_sqs, num_blocks * sizeof(float));
-    if (err != cudaSuccess) { cudaFree(d_partial_sums); return NIMCP_STREAM_ERROR_GPU; }
+    if (err != cudaSuccess) {
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &rec_result)) {
+            err = cudaMalloc(&d_partial_sum_sqs, num_blocks * sizeof(float));
+        }
+        if (err != cudaSuccess) { cudaFree(d_partial_sums); return NIMCP_STREAM_ERROR_GPU; }
+    }
 
     err = cudaMalloc(&d_partial_mins, num_blocks * sizeof(float));
-    if (err != cudaSuccess) { cudaFree(d_partial_sums); cudaFree(d_partial_sum_sqs); return NIMCP_STREAM_ERROR_GPU; }
+    if (err != cudaSuccess) {
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &rec_result)) {
+            err = cudaMalloc(&d_partial_mins, num_blocks * sizeof(float));
+        }
+        if (err != cudaSuccess) { cudaFree(d_partial_sums); cudaFree(d_partial_sum_sqs); return NIMCP_STREAM_ERROR_GPU; }
+    }
 
     err = cudaMalloc(&d_partial_maxs, num_blocks * sizeof(float));
-    if (err != cudaSuccess) { cudaFree(d_partial_sums); cudaFree(d_partial_sum_sqs); cudaFree(d_partial_mins); return NIMCP_STREAM_ERROR_GPU; }
+    if (err != cudaSuccess) {
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &rec_result)) {
+            err = cudaMalloc(&d_partial_maxs, num_blocks * sizeof(float));
+        }
+        if (err != cudaSuccess) { cudaFree(d_partial_sums); cudaFree(d_partial_sum_sqs); cudaFree(d_partial_mins); return NIMCP_STREAM_ERROR_GPU; }
+    }
 
     err = cudaMalloc(&d_partial_counts, num_blocks * sizeof(unsigned int));
-    if (err != cudaSuccess) { cudaFree(d_partial_sums); cudaFree(d_partial_sum_sqs); cudaFree(d_partial_mins); cudaFree(d_partial_maxs); return NIMCP_STREAM_ERROR_GPU; }
+    if (err != cudaSuccess) {
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &rec_result)) {
+            err = cudaMalloc(&d_partial_counts, num_blocks * sizeof(unsigned int));
+        }
+        if (err != cudaSuccess) { cudaFree(d_partial_sums); cudaFree(d_partial_sum_sqs); cudaFree(d_partial_mins); cudaFree(d_partial_maxs); return NIMCP_STREAM_ERROR_GPU; }
+    }
 
     /* Launch reduction kernel */
     kernel_stream_stats_reduce<<<num_blocks, BLOCK_SIZE>>>(
@@ -915,6 +949,11 @@ nimcp_stream_stats_result_t nimcp_stream_cov_gpu_batch_impl(
     uint32_t count,
     float* d_covariance)
 {
+    /* Initialize recovery system if needed */
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!d_x || !d_y || !d_covariance || count == 0) {
         return NIMCP_STREAM_ERROR_NULL;
     }
@@ -927,20 +966,51 @@ nimcp_stream_stats_result_t nimcp_stream_cov_gpu_batch_impl(
     unsigned int* d_partial_counts;
 
     cudaError_t err;
+    nimcp_gpu_recovery_result_t rec_result = {0};
     size_t alloc_size = num_blocks * sizeof(float);
 
     err = cudaMalloc(&d_partial_sum_x, alloc_size);
-    if (err != cudaSuccess) return NIMCP_STREAM_ERROR_GPU;
+    if (err != cudaSuccess) {
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &rec_result)) {
+            err = cudaMalloc(&d_partial_sum_x, alloc_size);
+        }
+        if (err != cudaSuccess) return NIMCP_STREAM_ERROR_GPU;
+    }
     err = cudaMalloc(&d_partial_sum_y, alloc_size);
-    if (err != cudaSuccess) { cudaFree(d_partial_sum_x); return NIMCP_STREAM_ERROR_GPU; }
+    if (err != cudaSuccess) {
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &rec_result)) {
+            err = cudaMalloc(&d_partial_sum_y, alloc_size);
+        }
+        if (err != cudaSuccess) { cudaFree(d_partial_sum_x); return NIMCP_STREAM_ERROR_GPU; }
+    }
     err = cudaMalloc(&d_partial_sum_xy, alloc_size);
-    if (err != cudaSuccess) { cudaFree(d_partial_sum_x); cudaFree(d_partial_sum_y); return NIMCP_STREAM_ERROR_GPU; }
+    if (err != cudaSuccess) {
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &rec_result)) {
+            err = cudaMalloc(&d_partial_sum_xy, alloc_size);
+        }
+        if (err != cudaSuccess) { cudaFree(d_partial_sum_x); cudaFree(d_partial_sum_y); return NIMCP_STREAM_ERROR_GPU; }
+    }
     err = cudaMalloc(&d_partial_sum_x2, alloc_size);
-    if (err != cudaSuccess) { cudaFree(d_partial_sum_x); cudaFree(d_partial_sum_y); cudaFree(d_partial_sum_xy); return NIMCP_STREAM_ERROR_GPU; }
+    if (err != cudaSuccess) {
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &rec_result)) {
+            err = cudaMalloc(&d_partial_sum_x2, alloc_size);
+        }
+        if (err != cudaSuccess) { cudaFree(d_partial_sum_x); cudaFree(d_partial_sum_y); cudaFree(d_partial_sum_xy); return NIMCP_STREAM_ERROR_GPU; }
+    }
     err = cudaMalloc(&d_partial_sum_y2, alloc_size);
-    if (err != cudaSuccess) { cudaFree(d_partial_sum_x); cudaFree(d_partial_sum_y); cudaFree(d_partial_sum_xy); cudaFree(d_partial_sum_x2); return NIMCP_STREAM_ERROR_GPU; }
+    if (err != cudaSuccess) {
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &rec_result)) {
+            err = cudaMalloc(&d_partial_sum_y2, alloc_size);
+        }
+        if (err != cudaSuccess) { cudaFree(d_partial_sum_x); cudaFree(d_partial_sum_y); cudaFree(d_partial_sum_xy); cudaFree(d_partial_sum_x2); return NIMCP_STREAM_ERROR_GPU; }
+    }
     err = cudaMalloc(&d_partial_counts, num_blocks * sizeof(unsigned int));
-    if (err != cudaSuccess) { cudaFree(d_partial_sum_x); cudaFree(d_partial_sum_y); cudaFree(d_partial_sum_xy); cudaFree(d_partial_sum_x2); cudaFree(d_partial_sum_y2); return NIMCP_STREAM_ERROR_GPU; }
+    if (err != cudaSuccess) {
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &rec_result)) {
+            err = cudaMalloc(&d_partial_counts, num_blocks * sizeof(unsigned int));
+        }
+        if (err != cudaSuccess) { cudaFree(d_partial_sum_x); cudaFree(d_partial_sum_y); cudaFree(d_partial_sum_xy); cudaFree(d_partial_sum_x2); cudaFree(d_partial_sum_y2); return NIMCP_STREAM_ERROR_GPU; }
+    }
 
     /* Launch kernels */
     kernel_stream_cov_reduce<<<num_blocks, BLOCK_SIZE>>>(

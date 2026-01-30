@@ -21,6 +21,7 @@
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/statistics/nimcp_statistics.h"
 #include <string.h>
 #include <math.h>
 #include <float.h>
@@ -370,20 +371,20 @@ static void apply_decay(nimcp_gt_tom_t ctx, tom_opponent_record_t* record) {
     }
 }
 
+/**
+ * @brief Compute entropy using central statistics module
+ *
+ * Delegates to nimcp_stats_entropy() which returns Shannon entropy in bits.
+ */
 static float compute_entropy(const float* probs, uint32_t n) {
-    float entropy = 0.0f;
-    for (uint32_t i = 0; i < n; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && n > 256) {
-            gt_tom_heartbeat("gt_tom_loop",
-                             (float)(i + 1) / (float)n);
-        }
+    if (!probs || n == 0) return 0.0f;
 
-        if (probs[i] > EPSILON) {
-            entropy -= probs[i] * logf(probs[i]) * LOG2_E;
-        }
+    /* Phase 8: Heartbeat at operation start */
+    if (n > 256) {
+        gt_tom_heartbeat("gt_tom_entropy", 0.5f);
     }
-    return entropy;
+
+    return nimcp_stats_entropy(probs, n);
 }
 
 static void normalize_probs(float* probs, uint32_t n) {

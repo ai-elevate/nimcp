@@ -12,6 +12,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/epistemic/nimcp_epistemic_snn_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/statistics/nimcp_statistics.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -724,31 +725,23 @@ int epistemic_snn_decode_assessment(
     output->source_reliability = clamp(combined_reliability, 0.0f, 1.0f);
     output->bias_magnitude = clamp(bias_activity, 0.0f, 1.0f);
 
-    // Compute uncertainty from variance in output membrane potentials
-    float mean_potential = 0.0f;
-    for (uint32_t i = 0; i < bridge->num_output_neurons; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && bridge->num_output_neurons > 256) {
-            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
-                             (float)(i + 1) / (float)bridge->num_output_neurons);
-        }
-
-        mean_potential += bridge->output_neurons[i].membrane_potential;
-    }
-    mean_potential /= bridge->num_output_neurons;
-
+    // Compute uncertainty from variance in output membrane potentials using statistics module
     float variance = 0.0f;
-    for (uint32_t i = 0; i < bridge->num_output_neurons; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && bridge->num_output_neurons > 256) {
-            epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
-                             (float)(i + 1) / (float)bridge->num_output_neurons);
+    if (bridge->num_output_neurons > 0) {
+        float* potentials = (float*)malloc(bridge->num_output_neurons * sizeof(float));
+        if (potentials) {
+            for (uint32_t i = 0; i < bridge->num_output_neurons; i++) {
+                /* Phase 8: Loop progress heartbeat */
+                if ((i & 0xFF) == 0 && bridge->num_output_neurons > 256) {
+                    epistemic_snn_bridge_heartbeat("epistemic_sn_loop",
+                                     (float)(i + 1) / (float)bridge->num_output_neurons);
+                }
+                potentials[i] = bridge->output_neurons[i].membrane_potential;
+            }
+            variance = nimcp_stats_variance_population(potentials, bridge->num_output_neurons);
+            free(potentials);
         }
-
-        float diff = bridge->output_neurons[i].membrane_potential - mean_potential;
-        variance += diff * diff;
     }
-    variance /= bridge->num_output_neurons;
     // Higher variance means less certainty; also factor in evidence quality
     output->uncertainty = clamp(1.0f - output->epistemic_quality + sqrtf(variance), 0.0f, 1.0f);
 

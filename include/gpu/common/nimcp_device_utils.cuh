@@ -363,6 +363,108 @@ __device__ __forceinline__ float nimcp_device_hash_to_float(unsigned int hash)
     return (float)hash / 4294967296.0f;
 }
 
+//=============================================================================
+// GPU RNG Device Functions
+//=============================================================================
+// NOTE: For production code, prefer using the central GPU statistics RNG:
+//   - stats_gpu_rng_create/destroy/reseed (see gpu/statistics/nimcp_statistics_gpu.h)
+//   - nimcp_stats_gpu_sample_normal/uniform for batch sampling
+//
+// These device functions provide lightweight inline RNG for cases where:
+//   1. Per-thread state is managed manually (e.g., kernel_init_rng pattern)
+//   2. Simple stochastic operations in kernels
+//   3. cuRAND dependency should be avoided
+//
+// For cuRAND-based kernels, use the standard pattern:
+//   curandState state;
+//   curand_init(seed, idx, 0, &state);
+//   float uniform = curand_uniform(&state);
+//   float normal = curand_normal(&state);
+//=============================================================================
+
+/**
+ * @brief Linear Congruential Generator (LCG) for device-side RNG
+ *
+ * Generates uniform random float in [0, 1).
+ * Parameters from Numerical Recipes (period 2^32).
+ *
+ * Usage:
+ *   uint32_t state = seed + threadIdx.x * 1237u;
+ *   float r = nimcp_device_lcg_uniform(&state);
+ *
+ * @param state Pointer to RNG state (modified in-place)
+ * @return Uniform random value in [0, 1)
+ *
+ * @note For high-quality randomness, prefer cuRAND. This LCG is suitable
+ *       for simple stochastic noise but not for Monte Carlo simulations.
+ */
+__device__ __forceinline__ float nimcp_device_lcg_uniform(uint32_t* state)
+{
+    *state = *state * 1664525u + 1013904223u;
+    return (float)(*state) / 4294967296.0f;
+}
+
+/**
+ * @brief Box-Muller transform for Gaussian noise using LCG
+ *
+ * Generates standard normal random value (mean=0, stddev=1).
+ *
+ * @param state Pointer to RNG state (modified in-place)
+ * @return Standard normal random value
+ *
+ * @note Consumes two uniform samples per call.
+ */
+__device__ __forceinline__ float nimcp_device_lcg_normal(uint32_t* state)
+{
+    float u1 = nimcp_device_lcg_uniform(state);
+    float u2 = nimcp_device_lcg_uniform(state);
+    // Avoid log(0)
+    u1 = fmaxf(u1, 1e-10f);
+    return sqrtf(-2.0f * logf(u1)) * cosf(NIMCP_2PI * u2);
+}
+
+/**
+ * @brief Gaussian noise with specified standard deviation using LCG
+ *
+ * @param state Pointer to RNG state (modified in-place)
+ * @param stddev Standard deviation
+ * @return Normal random value with mean=0 and given stddev
+ */
+__device__ __forceinline__ float nimcp_device_lcg_gaussian(uint32_t* state, float stddev)
+{
+    return nimcp_device_lcg_normal(state) * stddev;
+}
+
+/**
+ * @brief Exponential random value using LCG
+ *
+ * @param state Pointer to RNG state (modified in-place)
+ * @param lambda Rate parameter (1/mean)
+ * @return Exponential random value
+ */
+__device__ __forceinline__ float nimcp_device_lcg_exponential(uint32_t* state, float lambda)
+{
+    float u = nimcp_device_lcg_uniform(state);
+    // Avoid log(0)
+    u = fmaxf(u, 1e-10f);
+    return -logf(u) / lambda;
+}
+
+/**
+ * @brief Initialize per-thread RNG state for deterministic replay
+ *
+ * Combines seed with thread index for unique but reproducible sequences.
+ *
+ * @param seed Base seed
+ * @param thread_idx Thread index (use blockIdx.x * blockDim.x + threadIdx.x)
+ * @return Initial RNG state for this thread
+ */
+__device__ __forceinline__ uint32_t nimcp_device_rng_init(uint32_t seed, uint32_t thread_idx)
+{
+    // Combine seed and thread index with different multipliers to avoid correlation
+    return seed + thread_idx * 1237u + nimcp_device_hash(seed ^ thread_idx);
+}
+
 #endif // __CUDACC__
 
 #endif // NIMCP_DEVICE_UTILS_CUH

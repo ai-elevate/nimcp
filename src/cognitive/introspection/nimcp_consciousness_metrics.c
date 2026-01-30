@@ -29,6 +29,7 @@
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/statistics/nimcp_statistics.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
@@ -147,35 +148,13 @@ typedef struct {
  * ======================================================================== */
 
 /**
- * WHAT: Compute Shannon entropy of probability distribution
- * WHY: Needed for mutual information calculation
- * HOW: H(X) = -Σ p(x) log₂ p(x)
- */
-static float compute_entropy(const float* probs, uint32_t size) {
-    if (!probs || size == 0) {
-        return 0.0f;
-    }
-
-    float entropy = 0.0f;
-    for (uint32_t i = 0; i < size; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && size > 256) {
-            consciousness_metrics_heartbeat("consciousnes_loop",
-                             (float)(i + 1) / (float)size);
-        }
-
-        if (probs[i] > 1e-10f) {
-            entropy -= probs[i] * log2f(probs[i]);
-        }
-    }
-
-    return entropy;
-}
-
-/**
  * WHAT: Compute mutual information I(X;Y)
  * WHY: Measures information shared between partitions
- * HOW: I(X;Y) = H(X) + H(Y) - H(X,Y)
+ * HOW: Delegates to nimcp_stats_mutual_information() from central statistics module
+ *
+ * NOTE: This wrapper exists for backward compatibility. The marginal parameters
+ * are now ignored as the central function computes them internally from the
+ * joint distribution.
  */
 static float compute_mutual_information(
     const float* joint_probs,
@@ -184,15 +163,17 @@ static float compute_mutual_information(
     uint32_t size_x,
     uint32_t size_y
 ) {
-    if (!joint_probs || !marginal_x || !marginal_y) {
+    /* Marginal parameters kept for API compatibility but not used;
+     * central function derives marginals from joint distribution */
+    (void)marginal_x;
+    (void)marginal_y;
+
+    if (!joint_probs) {
         return 0.0f;
     }
 
-    float h_x = compute_entropy(marginal_x, size_x);
-    float h_y = compute_entropy(marginal_y, size_y);
-    float h_xy = compute_entropy(joint_probs, size_x * size_y);
-
-    return h_x + h_y - h_xy;
+    /* Use central statistics module for mutual information computation */
+    return nimcp_stats_mutual_information(joint_probs, size_x, size_y);
 }
 
 /**

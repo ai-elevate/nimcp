@@ -21,6 +21,7 @@
 
 /* Include headers outside CUDA check for types to be available */
 #include "gpu/hypothalamus/nimcp_hypothalamus_gpu.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
@@ -490,7 +491,7 @@ bool nimcp_hypo_gpu_capability(int* major, int* minor)
     if (!nimcp_hypo_gpu_available()) return false;
 
     cudaDeviceProp prop;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetDeviceProperties(&prop, 0));
+    NIMCP_CUDA_RECOVER(cudaGetDeviceProperties(&prop, 0), GPU_ERROR_CUDA_RUNTIME);
 
     if (major) *major = prop.major;
     if (minor) *minor = prop.minor;
@@ -503,6 +504,10 @@ bool nimcp_hypo_gpu_drive_integrate(
     float dt,
     const nimcp_hypo_gpu_dynamics_config_t* config)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !state->state) return false;
 
     size_t total = state->batch_size * NIMCP_HYPO_GPU_DRIVE_COUNT;
@@ -533,7 +538,7 @@ bool nimcp_hypo_gpu_drive_integrate(
             break;
     }
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -543,6 +548,10 @@ bool nimcp_hypo_gpu_compute_urgency(
     const nimcp_hypo_gpu_setpoints_t* setpoints,
     float arousal)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !setpoints) return false;
 
     size_t total = state->batch_size * NIMCP_HYPO_GPU_DRIVE_COUNT;
@@ -556,7 +565,7 @@ bool nimcp_hypo_gpu_compute_urgency(
         urgency_ptr, levels, setpoints_ptr, NULL, arousal,
         state->batch_size, NIMCP_HYPO_GPU_DRIVE_COUNT);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -565,6 +574,10 @@ bool nimcp_hypo_gpu_compute_deviation(
     nimcp_hypo_gpu_drive_state_t* state,
     const nimcp_hypo_gpu_setpoints_t* setpoints)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !setpoints) return false;
 
     size_t total = state->batch_size * NIMCP_HYPO_GPU_DRIVE_COUNT;
@@ -578,7 +591,7 @@ bool nimcp_hypo_gpu_compute_deviation(
         deviation_ptr, levels, setpoints_ptr,
         state->batch_size, NIMCP_HYPO_GPU_DRIVE_COUNT);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -589,6 +602,10 @@ bool nimcp_hypo_gpu_compute_reward(
     nimcp_hypo_gpu_reward_output_t* output,
     const nimcp_hypo_gpu_reward_config_t* config)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !setpoints || !output) return false;
 
     int grid = GRID_SIZE(state->batch_size);
@@ -620,7 +637,7 @@ bool nimcp_hypo_gpu_compute_reward(
             break;
     }
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -641,7 +658,7 @@ bool nimcp_hypo_gpu_compute_rpe(
 
     kernel_compute_rpe<<<grid, BLOCK_SIZE>>>(rpe_ptr, actual_ptr, expected_ptr, n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -662,7 +679,7 @@ bool nimcp_hypo_gpu_find_priority(
         priority_ptr, max_ptr, urgency_ptr,
         state->batch_size, NIMCP_HYPO_GPU_DRIVE_COUNT);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -694,7 +711,7 @@ bool nimcp_hypo_gpu_controller_update(
         cfg.integral_limit, cfg.output_min, cfg.output_max,
         dt, n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 

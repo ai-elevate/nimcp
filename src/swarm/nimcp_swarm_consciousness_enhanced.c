@@ -25,6 +25,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/statistics/nimcp_statistics.h"
 #include "security/nimcp_bbb_helpers.h"
 #include "api/nimcp_api_exception.h"
 #include "async/nimcp_bio_async.h"
@@ -1739,43 +1740,11 @@ static float compute_autocorrelation(const float* data, uint32_t count, uint32_t
 }
 
 static float estimate_entropy(const float* data, uint32_t count, uint32_t bins, float bin_width) {
+    (void)bin_width;  /* bin_width handled internally by statistics module */
     if (!data || count == 0 || bins == 0) return 0.0f;
 
-    // Find min/max
-    float min_val = data[0];
-    float max_val = data[0];
-    for (uint32_t i = 1; i < count; i++) {
-        if (data[i] < min_val) min_val = data[i];
-        if (data[i] > max_val) max_val = data[i];
-    }
-
-    float range = max_val - min_val;
-    if (range < 1e-10f) return 0.0f;
-
-    float actual_bin_width = range / bins;
-    if (bin_width > 0) actual_bin_width = bin_width;
-
-    // Count bins
-    uint32_t* bin_counts = (uint32_t*)nimcp_calloc(bins, sizeof(uint32_t));
-    if (!bin_counts) return 0.0f;
-
-    for (uint32_t i = 0; i < count; i++) {
-        uint32_t bin = (uint32_t)((data[i] - min_val) / actual_bin_width);
-        if (bin >= bins) bin = bins - 1;
-        bin_counts[bin]++;
-    }
-
-    // Compute entropy
-    float entropy = 0.0f;
-    for (uint32_t b = 0; b < bins; b++) {
-        if (bin_counts[b] > 0) {
-            float p = (float)bin_counts[b] / count;
-            entropy -= p * logf(p);
-        }
-    }
-
-    nimcp_free(bin_counts);
-    return entropy;
+    /* Use central statistics module for differential entropy estimation */
+    return nimcp_stats_differential_entropy(data, count, bins);
 }
 
 static float estimate_joint_entropy(const float* data1, const float* data2,

@@ -6,6 +6,12 @@
  * WHY:  GPU acceleration for sparse neural network computations
  * HOW:  cuSPARSE for SpMM/SpMV, custom kernels for pruning and masking
  *
+ * RNG USAGE:
+ * ==========
+ * Uses inline curand_init for stochastic sparse tensor initialization.
+ * For general GPU statistics RNG, see: gpu/statistics/nimcp_statistics_gpu.h
+ * For shared device RNG functions, see: gpu/common/nimcp_device_utils.cuh
+ *
  * @version 1.0
  * @author NIMCP Development Team
  * @date 2025
@@ -32,6 +38,7 @@
 
 // Now include our headers (which have extern "C" blocks)
 #include "gpu/sparse/nimcp_sparse_gpu.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
@@ -68,6 +75,10 @@
 
 nimcp_sparse_ctx_t* nimcp_sparse_ctx_create(nimcp_gpu_context_t* gpu_ctx)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!gpu_ctx) {
         LOG_ERROR("NULL GPU context provided");
         return NULL;
@@ -579,6 +590,10 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_dense(
     nimcp_sparse_format_t format,
     float threshold)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !dense) {
         LOG_ERROR("Invalid parameters for sparse_from_dense");
         return NULL;
@@ -595,8 +610,8 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_dense(
 
     // Count non-zeros
     int* d_nnz_count;
-    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_nnz_count, sizeof(int)));
-    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMemset(d_nnz_count, 0, sizeof(int)));
+    NIMCP_CUDA_RECOVER_NULL(cudaMalloc(&d_nnz_count, sizeof(int)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER_NULL(cudaMemset(d_nnz_count, 0, sizeof(int)), GPU_ERROR_CUDA_RUNTIME);
 
     int grid = GRID_SIZE(total);
     grid = min(grid, 256);
@@ -604,7 +619,7 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_dense(
         (const float*)dense->data, d_nnz_count, threshold, total);
 
     int nnz;
-    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMemcpy(&nnz, d_nnz_count, sizeof(int), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER_NULL(cudaMemcpy(&nnz, d_nnz_count, sizeof(int), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
     cudaFree(d_nnz_count);
 
     if (nnz == 0) {
@@ -630,10 +645,10 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_dense(
     int* d_col_indices;
     int* d_nnz_counter;
 
-    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_values, nnz * sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_row_indices, nnz * sizeof(int)));
-    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_col_indices, nnz * sizeof(int)));
-    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_nnz_counter, sizeof(int)));
+    NIMCP_CUDA_RECOVER_NULL(cudaMalloc(&d_values, nnz * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER_NULL(cudaMalloc(&d_row_indices, nnz * sizeof(int)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER_NULL(cudaMalloc(&d_col_indices, nnz * sizeof(int)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER_NULL(cudaMalloc(&d_nnz_counter, sizeof(int)), GPU_ERROR_OUT_OF_MEMORY);
     cudaMemset(d_nnz_counter, 0, sizeof(int));
 
     // Extract COO data
@@ -678,7 +693,7 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_dense(
     else if (format == SPARSE_FORMAT_CSR) {
         // Convert COO to CSR
         int* d_row_ptrs;
-        NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_row_ptrs, (rows + 1) * sizeof(int)));
+        NIMCP_CUDA_RECOVER_NULL(cudaMalloc(&d_row_ptrs, (rows + 1) * sizeof(int)), GPU_ERROR_OUT_OF_MEMORY);
 
         // Use cuSPARSE for COO to CSR conversion
         size_t bufferSize = 0;
@@ -711,7 +726,7 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_dense(
         sparse->format = SPARSE_FORMAT_CSR;
 
         int* d_row_ptrs;
-        NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_row_ptrs, (rows + 1) * sizeof(int)));
+        NIMCP_CUDA_RECOVER_NULL(cudaMalloc(&d_row_ptrs, (rows + 1) * sizeof(int)), GPU_ERROR_OUT_OF_MEMORY);
 
         cusparseXcoo2csr(ctx->cusparse_handle,
             d_row_indices, nnz, rows,
@@ -747,6 +762,10 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_coo(
     int nnz,
     nimcp_sparse_format_t target_format)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !values || !row_idx || !col_idx) {
         LOG_ERROR("Invalid parameters for sparse_from_coo");
         return NULL;
@@ -765,9 +784,9 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_coo(
     int* d_row_indices;
     int* d_col_indices;
 
-    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_values, nnz * sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_row_indices, nnz * sizeof(int)));
-    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_col_indices, nnz * sizeof(int)));
+    NIMCP_CUDA_RECOVER_NULL(cudaMalloc(&d_values, nnz * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER_NULL(cudaMalloc(&d_row_indices, nnz * sizeof(int)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER_NULL(cudaMalloc(&d_col_indices, nnz * sizeof(int)), GPU_ERROR_OUT_OF_MEMORY);
 
     cudaMemcpy(d_values, values, nnz * sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(d_row_indices, row_idx, nnz * sizeof(int), cudaMemcpyHostToDevice);
@@ -789,7 +808,7 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_coo(
     else if (target_format == SPARSE_FORMAT_CSR) {
         // Convert to CSR
         int* d_row_ptrs;
-        NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&d_row_ptrs, (rows + 1) * sizeof(int)));
+        NIMCP_CUDA_RECOVER_NULL(cudaMalloc(&d_row_ptrs, (rows + 1) * sizeof(int)), GPU_ERROR_OUT_OF_MEMORY);
 
         // Sort COO by row first
         thrust::device_ptr<int> row_ptr(d_row_indices);
@@ -839,6 +858,10 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_csr(
     int cols,
     int nnz)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !values || !col_indices || !row_ptrs) {
         LOG_ERROR("Invalid parameters for sparse_from_csr");
         return NULL;
@@ -853,9 +876,9 @@ nimcp_sparse_tensor_t* nimcp_sparse_from_csr(
     sparse->owns_data = true;
 
     // Allocate and copy CSR data to device
-    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&sparse->data.csr.values, nnz * sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&sparse->data.csr.col_indices, nnz * sizeof(int)));
-    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaMalloc(&sparse->data.csr.row_ptrs, (rows + 1) * sizeof(int)));
+    NIMCP_CUDA_RECOVER_NULL(cudaMalloc(&sparse->data.csr.values, nnz * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER_NULL(cudaMalloc(&sparse->data.csr.col_indices, nnz * sizeof(int)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER_NULL(cudaMalloc(&sparse->data.csr.row_ptrs, (rows + 1) * sizeof(int)), GPU_ERROR_OUT_OF_MEMORY);
 
     cudaMemcpy(sparse->data.csr.values, values, nnz * sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(sparse->data.csr.col_indices, col_indices, nnz * sizeof(int), cudaMemcpyHostToDevice);
@@ -882,6 +905,10 @@ nimcp_gpu_tensor_t* nimcp_sparse_to_dense(
     nimcp_sparse_ctx_t* ctx,
     nimcp_sparse_tensor_t* sparse)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !sparse) {
         LOG_ERROR("Invalid parameters for sparse_to_dense");
         return NULL;
@@ -941,6 +968,10 @@ nimcp_sparse_tensor_t* nimcp_sparse_tensor_clone(
     nimcp_sparse_ctx_t* ctx,
     const nimcp_sparse_tensor_t* tensor)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !tensor) return NULL;
 
     nimcp_sparse_tensor_t* clone = (nimcp_sparse_tensor_t*)calloc(1, sizeof(nimcp_sparse_tensor_t));
@@ -1473,7 +1504,7 @@ bool nimcp_sparse_attention(
         (float*)output->data,
         batch, heads, seq_len, head_dim);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1500,7 +1531,7 @@ bool nimcp_sparse_apply_mask(
         mask->data.csr.col_indices,
         rows, cols);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1526,7 +1557,7 @@ bool nimcp_sparse_grad_accumulate(
         (float*)dense_grad->data,
         rows, cols);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1940,9 +1971,9 @@ bool nimcp_sparse_to_host_csr(
     int nnz = tensor->data.csr.nnz;
     int rows = tensor->data.csr.rows;
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(values, tensor->data.csr.values, nnz * sizeof(float), cudaMemcpyDeviceToHost));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(col_indices, tensor->data.csr.col_indices, nnz * sizeof(int), cudaMemcpyDeviceToHost));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(row_ptrs, tensor->data.csr.row_ptrs, (rows + 1) * sizeof(int), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(values, tensor->data.csr.values, nnz * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(col_indices, tensor->data.csr.col_indices, nnz * sizeof(int), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(row_ptrs, tensor->data.csr.row_ptrs, (rows + 1) * sizeof(int), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     return true;
 }
@@ -1958,9 +1989,9 @@ bool nimcp_sparse_to_host_coo(
 
     int nnz = tensor->data.coo.nnz;
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(values, tensor->data.coo.values, nnz * sizeof(float), cudaMemcpyDeviceToHost));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(row_indices, tensor->data.coo.row_indices, nnz * sizeof(int), cudaMemcpyDeviceToHost));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(col_indices, tensor->data.coo.col_indices, nnz * sizeof(int), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(values, tensor->data.coo.values, nnz * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(row_indices, tensor->data.coo.row_indices, nnz * sizeof(int), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(col_indices, tensor->data.coo.col_indices, nnz * sizeof(int), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     return true;
 }

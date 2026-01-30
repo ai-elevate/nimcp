@@ -36,6 +36,7 @@
 
 #include "gpu/axon/nimcp_axon_gpu.h"
 #include "gpu/context/nimcp_gpu_context.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
@@ -491,6 +492,10 @@ extern "C" axon_gpu_context_t* axon_gpu_create(
     nimcp_gpu_context_t* gpu_ctx,
     const axon_gpu_config_t* config
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!gpu_ctx) {
         LOG_ERROR("NULL GPU context");
         return NULL;
@@ -574,8 +579,12 @@ extern "C" void axon_gpu_destroy(axon_gpu_context_t* ctx) {
 }
 
 extern "C" bool axon_gpu_synchronize(axon_gpu_context_t* ctx) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx) return false;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize((cudaStream_t)ctx->stream));
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize((cudaStream_t)ctx->stream), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
@@ -588,6 +597,10 @@ extern "C" bool axon_gpu_init_tensors(
     uint32_t num_axons,
     uint32_t num_segments
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || num_axons == 0 || num_segments == 0) return false;
     if (num_axons > ctx->config.max_axons) {
         LOG_ERROR("Too many axons: %u > %u", num_axons, ctx->config.max_axons);
@@ -666,25 +679,29 @@ extern "C" bool axon_gpu_upload_properties(
     const float* myelination,
     uint32_t num_axons
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !diameters || !lengths || !myelination) return false;
     if (num_axons > ctx->num_axons) return false;
 
     cudaStream_t stream = (cudaStream_t)ctx->stream;
 
     // Upload diameters
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->diameters->data, diameters,
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(ctx->diameters->data, diameters,
                                num_axons * sizeof(float),
-                               cudaMemcpyHostToDevice, stream));
+                               cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
 
     // Upload lengths
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->lengths->data, lengths,
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(ctx->lengths->data, lengths,
                                num_axons * sizeof(float),
-                               cudaMemcpyHostToDevice, stream));
+                               cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
 
     // Upload myelination [num_axons * num_segments]
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->myelination->data, myelination,
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(ctx->myelination->data, myelination,
                                num_axons * ctx->num_segments * sizeof(float),
-                               cudaMemcpyHostToDevice, stream));
+                               cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
 
     // Calculate segment lengths (uniform distribution for now)
     float* seg_lengths_host = (float*)malloc(num_axons * ctx->num_segments * sizeof(float));
@@ -694,12 +711,12 @@ extern "C" bool axon_gpu_upload_properties(
             seg_lengths_host[a * ctx->num_segments + s] = seg_len;
         }
     }
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->seg_lengths->data, seg_lengths_host,
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(ctx->seg_lengths->data, seg_lengths_host,
                                num_axons * ctx->num_segments * sizeof(float),
-                               cudaMemcpyHostToDevice, stream));
+                               cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
     free(seg_lengths_host);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(stream));
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
 
     // Update velocities based on new properties
     return axon_gpu_update_velocities(ctx);
@@ -711,20 +728,24 @@ extern "C" bool axon_gpu_upload_connectivity(
     const uint32_t* target_synapses,
     uint32_t num_axons
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !source_neurons || !target_synapses) return false;
     if (num_axons > ctx->num_axons) return false;
 
     cudaStream_t stream = (cudaStream_t)ctx->stream;
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->source_neurons->data, source_neurons,
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(ctx->source_neurons->data, source_neurons,
                                num_axons * sizeof(uint32_t),
-                               cudaMemcpyHostToDevice, stream));
+                               cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->target_synapses->data, target_synapses,
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(ctx->target_synapses->data, target_synapses,
                                num_axons * sizeof(uint32_t),
-                               cudaMemcpyHostToDevice, stream));
+                               cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(stream));
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
@@ -736,6 +757,10 @@ extern "C" bool axon_gpu_propagate(
     axon_gpu_context_t* ctx,
     float dt
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || ctx->num_axons == 0) return false;
 
     cudaStream_t stream = (cudaStream_t)ctx->stream;
@@ -762,22 +787,26 @@ extern "C" bool axon_gpu_initiate_spikes(
     uint32_t count,
     uint64_t current_time
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !axon_indices || count == 0) return false;
 
     cudaStream_t stream = (cudaStream_t)ctx->stream;
 
     // Upload indices
     uint32_t* d_indices;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMallocAsync(&d_indices, count * sizeof(uint32_t), stream));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(d_indices, axon_indices, count * sizeof(uint32_t),
-                               cudaMemcpyHostToDevice, stream));
+    NIMCP_CUDA_RECOVER(cudaMallocAsync(&d_indices, count * sizeof(uint32_t), stream), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_indices, axon_indices, count * sizeof(uint32_t),
+                               cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
 
     // Upload amplitudes if provided
     float* d_amplitudes = NULL;
     if (amplitudes) {
-        NIMCP_CUDA_CHECK_IMMUNE(cudaMallocAsync(&d_amplitudes, count * sizeof(float), stream));
-        NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(d_amplitudes, amplitudes, count * sizeof(float),
-                                   cudaMemcpyHostToDevice, stream));
+        NIMCP_CUDA_RECOVER(cudaMallocAsync(&d_amplitudes, count * sizeof(float), stream), GPU_ERROR_OUT_OF_MEMORY);
+        NIMCP_CUDA_RECOVER(cudaMemcpyAsync(d_amplitudes, amplitudes, count * sizeof(float),
+                                   cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
     }
 
     kernel_initiate_spikes<<<GRID_SIZE(count), BLOCK_SIZE, 0, stream>>>(
@@ -796,9 +825,9 @@ extern "C" bool axon_gpu_initiate_spikes(
     );
 
     // Cleanup
-    NIMCP_CUDA_CHECK_IMMUNE(cudaFreeAsync(d_indices, stream));
+    NIMCP_CUDA_RECOVER(cudaFreeAsync(d_indices, stream), GPU_ERROR_OUT_OF_MEMORY);
     if (d_amplitudes) {
-        NIMCP_CUDA_CHECK_IMMUNE(cudaFreeAsync(d_amplitudes, stream));
+        NIMCP_CUDA_RECOVER(cudaFreeAsync(d_amplitudes, stream), GPU_ERROR_OUT_OF_MEMORY);
     }
 
     ctx->total_spikes += count;
@@ -812,6 +841,10 @@ extern "C" bool axon_gpu_check_arrivals(
     uint32_t max_arrivals,
     uint32_t* arrival_count
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !arrived_indices || !arrival_count) return false;
 
     cudaStream_t stream = (cudaStream_t)ctx->stream;
@@ -819,9 +852,9 @@ extern "C" bool axon_gpu_check_arrivals(
     // Allocate device memory for results
     uint32_t* d_arrived;
     uint32_t* d_counter;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMallocAsync(&d_arrived, max_arrivals * sizeof(uint32_t), stream));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMallocAsync(&d_counter, sizeof(uint32_t), stream));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemsetAsync(d_counter, 0, sizeof(uint32_t), stream));
+    NIMCP_CUDA_RECOVER(cudaMallocAsync(&d_arrived, max_arrivals * sizeof(uint32_t), stream), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMallocAsync(&d_counter, sizeof(uint32_t), stream), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMemsetAsync(d_counter, 0, sizeof(uint32_t), stream), GPU_ERROR_CUDA_RUNTIME);
 
     kernel_check_arrivals<<<GRID_SIZE(ctx->num_axons), BLOCK_SIZE, 0, stream>>>(
         (float*)ctx->signals->data,
@@ -836,18 +869,18 @@ extern "C" bool axon_gpu_check_arrivals(
     );
 
     // Download results
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(arrival_count, d_counter, sizeof(uint32_t),
-                               cudaMemcpyDeviceToHost, stream));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(stream));
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(arrival_count, d_counter, sizeof(uint32_t),
+                               cudaMemcpyDeviceToHost, stream), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
 
     if (*arrival_count > 0) {
         uint32_t copy_count = (*arrival_count > max_arrivals) ? max_arrivals : *arrival_count;
-        NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(arrived_indices, d_arrived, copy_count * sizeof(uint32_t),
-                              cudaMemcpyDeviceToHost));
+        NIMCP_CUDA_RECOVER(cudaMemcpy(arrived_indices, d_arrived, copy_count * sizeof(uint32_t),
+                              cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
     }
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaFreeAsync(d_arrived, stream));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaFreeAsync(d_counter, stream));
+    NIMCP_CUDA_RECOVER(cudaFreeAsync(d_arrived, stream), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaFreeAsync(d_counter, stream), GPU_ERROR_OUT_OF_MEMORY);
 
     return true;
 }
@@ -859,6 +892,10 @@ extern "C" bool axon_gpu_check_arrivals(
 extern "C" bool axon_gpu_update_velocities(
     axon_gpu_context_t* ctx
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || ctx->num_axons == 0) return false;
 
     cudaStream_t stream = (cudaStream_t)ctx->stream;
@@ -892,6 +929,10 @@ extern "C" bool axon_gpu_update_velocities(
 extern "C" bool axon_gpu_apply_myelination(
     axon_gpu_context_t* ctx
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || ctx->num_axons == 0) return false;
 
     cudaStream_t stream = (cudaStream_t)ctx->stream;
@@ -915,6 +956,10 @@ extern "C" bool axon_gpu_update_myelination(
     const float* new_myelination,
     uint32_t count
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !axon_indices || !new_myelination || count == 0) return false;
 
     cudaStream_t stream = (cudaStream_t)ctx->stream;
@@ -922,9 +967,9 @@ extern "C" bool axon_gpu_update_myelination(
     // Update myelination on host side and re-upload
     // (For simplicity - could be optimized with a kernel)
     float* h_myelination = (float*)malloc(ctx->num_axons * ctx->num_segments * sizeof(float));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(h_myelination, ctx->myelination->data,
+    NIMCP_CUDA_RECOVER(cudaMemcpy(h_myelination, ctx->myelination->data,
                           ctx->num_axons * ctx->num_segments * sizeof(float),
-                          cudaMemcpyDeviceToHost));
+                          cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     for (uint32_t i = 0; i < count; i++) {
         uint32_t axon_idx = axon_indices[i];
@@ -944,9 +989,9 @@ extern "C" bool axon_gpu_update_myelination(
         }
     }
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(ctx->myelination->data, h_myelination,
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(ctx->myelination->data, h_myelination,
                                ctx->num_axons * ctx->num_segments * sizeof(float),
-                               cudaMemcpyHostToDevice, stream));
+                               cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
     free(h_myelination);
 
     // Recalculate velocities
@@ -961,6 +1006,10 @@ extern "C" bool axon_gpu_update_refractory(
     axon_gpu_context_t* ctx,
     float dt
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || ctx->num_axons == 0) return false;
 
     cudaStream_t stream = (cudaStream_t)ctx->stream;
@@ -979,13 +1028,17 @@ extern "C" bool axon_gpu_get_available(
     uint8_t* available,
     uint32_t num_axons
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !available) return false;
     if (num_axons > ctx->num_axons) num_axons = ctx->num_axons;
 
     cudaStream_t stream = (cudaStream_t)ctx->stream;
 
     uint8_t* d_available;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMallocAsync(&d_available, num_axons * sizeof(uint8_t), stream));
+    NIMCP_CUDA_RECOVER(cudaMallocAsync(&d_available, num_axons * sizeof(uint8_t), stream), GPU_ERROR_OUT_OF_MEMORY);
 
     kernel_get_available<<<GRID_SIZE(num_axons), BLOCK_SIZE, 0, stream>>>(
         (float*)ctx->refractory->data,
@@ -993,10 +1046,10 @@ extern "C" bool axon_gpu_get_available(
         num_axons
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpyAsync(available, d_available, num_axons * sizeof(uint8_t),
-                               cudaMemcpyDeviceToHost, stream));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaStreamSynchronize(stream));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaFreeAsync(d_available, stream));
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(available, d_available, num_axons * sizeof(uint8_t),
+                               cudaMemcpyDeviceToHost, stream), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaFreeAsync(d_available, stream), GPU_ERROR_OUT_OF_MEMORY);
 
     return true;
 }
@@ -1015,6 +1068,10 @@ extern "C" bool axon_gpu_update_atp(
     float dt,
     float regeneration_rate
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || ctx->num_axons == 0) return false;
 
     cudaStream_t stream = (cudaStream_t)ctx->stream;
@@ -1038,6 +1095,10 @@ extern "C" bool axon_gpu_step(
     float dt,
     uint64_t current_time
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || ctx->num_axons == 0) return false;
 
     cudaStream_t stream = (cudaStream_t)ctx->stream;
@@ -1069,11 +1130,15 @@ extern "C" bool axon_gpu_get_velocities(
     float* velocities,
     uint32_t num_axons
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !velocities) return false;
     if (num_axons > ctx->num_axons) num_axons = ctx->num_axons;
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(velocities, ctx->velocities->data,
-                          num_axons * sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(velocities, ctx->velocities->data,
+                          num_axons * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
@@ -1082,14 +1147,18 @@ extern "C" bool axon_gpu_get_delays(
     float* delays,
     uint32_t num_axons
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !delays) return false;
     if (num_axons > ctx->num_axons) num_axons = ctx->num_axons;
 
     // Calculate total delay from segment delays (last segment cumulative)
     float* h_seg_delays = (float*)malloc(num_axons * ctx->num_segments * sizeof(float));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(h_seg_delays, ctx->seg_delays->data,
+    NIMCP_CUDA_RECOVER(cudaMemcpy(h_seg_delays, ctx->seg_delays->data,
                           num_axons * ctx->num_segments * sizeof(float),
-                          cudaMemcpyDeviceToHost));
+                          cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     for (uint32_t a = 0; a < num_axons; a++) {
         delays[a] = h_seg_delays[a * ctx->num_segments + ctx->num_segments - 1];
@@ -1104,12 +1173,16 @@ extern "C" bool axon_gpu_get_myelination(
     float* myelination,
     uint32_t num_axons
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !myelination) return false;
     if (num_axons > ctx->num_axons) num_axons = ctx->num_axons;
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(myelination, ctx->myelination->data,
+    NIMCP_CUDA_RECOVER(cudaMemcpy(myelination, ctx->myelination->data,
                           num_axons * ctx->num_segments * sizeof(float),
-                          cudaMemcpyDeviceToHost));
+                          cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 
@@ -1118,12 +1191,16 @@ extern "C" bool axon_gpu_get_signals(
     float* signals,
     uint32_t num_axons
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !signals) return false;
     if (num_axons > ctx->num_axons) num_axons = ctx->num_axons;
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(signals, ctx->signals->data,
+    NIMCP_CUDA_RECOVER(cudaMemcpy(signals, ctx->signals->data,
                           num_axons * ctx->num_segments * sizeof(float),
-                          cudaMemcpyDeviceToHost));
+                          cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 

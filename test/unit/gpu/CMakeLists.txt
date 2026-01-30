@@ -147,3 +147,53 @@ endif()
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/statistics/CMakeLists.txt)
     add_subdirectory(statistics)
 endif()
+
+# Include recovery GPU tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/recovery/CMakeLists.txt)
+    add_subdirectory(recovery)
+endif()
+
+# Include perception GPU tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/perception/CMakeLists.txt)
+    add_subdirectory(perception)
+endif()
+
+# Include inference GPU tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/inference/CMakeLists.txt)
+    add_subdirectory(inference)
+endif()
+
+# Include neural GPU tests (SNN, LNN, CNN recovery)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/neural/CMakeLists.txt)
+    add_subdirectory(neural)
+endif()
+
+# Include swarm GPU tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/swarm/CMakeLists.txt)
+    add_subdirectory(swarm)
+endif()
+
+# Include hypothalamus GPU tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/hypothalamus/CMakeLists.txt)
+    add_subdirectory(hypothalamus)
+endif()
+
+# Include quantum GPU tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/quantum/CMakeLists.txt)
+    add_subdirectory(quantum)
+endif()
+
+# Include graph GPU recovery tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/graph/CMakeLists.txt)
+    add_subdirectory(graph)
+endif()
+
+# Include misc GPU recovery integration tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/misc/CMakeLists.txt)
+    add_subdirectory(misc)
+endif()
+
+# Include training GPU unit tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/training/CMakeLists.txt)
+    add_subdirectory(training)
+endif()

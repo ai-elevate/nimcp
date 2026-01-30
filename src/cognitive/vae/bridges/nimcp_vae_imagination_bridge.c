@@ -19,6 +19,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/tensor/nimcp_tensor_internal.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/rng/nimcp_rand.h"
 
 #include <string.h>
 #include <math.h>
@@ -43,32 +44,18 @@ static uint64_t get_time_us(void) {
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
 }
 
-static float box_muller_normal(void) {
-    static bool has_spare = false;
-    static float spare;
-
-    if (has_spare) {
-        has_spare = false;
-        return spare;
-    }
-
-    float u, v, s;
-    do {
-        u = ((float)rand() / RAND_MAX) * 2.0f - 1.0f;
-        v = ((float)rand() / RAND_MAX) * 2.0f - 1.0f;
-        s = u * u + v * v;
-    } while (s >= 1.0f || s == 0.0f);
-
-    s = sqrtf(-2.0f * logf(s) / s);
-    spare = v * s;
-    has_spare = true;
-    return u * s;
+/**
+ * @brief Sample from standard normal N(0,1) using centralized RNG module
+ */
+static inline float box_muller_normal(void) {
+    return nimcp_rand_normal(0.0f, 1.0f);
 }
 
-static void sample_gaussian(float* out, uint32_t dim, float mean, float std) {
-    for (uint32_t i = 0; i < dim; i++) {
-        out[i] = mean + std * box_muller_normal();
-    }
+/**
+ * @brief Fill array with Gaussian samples using centralized RNG module
+ */
+static inline void sample_gaussian(float* out, uint32_t dim, float mean, float std) {
+    nimcp_rand_normal_array(out, dim, mean, std);
 }
 
 static float compute_norm(const float* vec, uint32_t dim) {

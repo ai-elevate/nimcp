@@ -25,6 +25,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "AUDIO_GPU"
 
@@ -965,6 +966,10 @@ bool nimcp_gpu_mel_filterbank(
 {
     if (!ctx || !spectrogram || !mel_spec) return false;
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     int batch = spectrogram->dims[0];
     int time_frames = spectrogram->dims[1];
     int n_bins = spectrogram->dims[2];
@@ -972,7 +977,7 @@ bool nimcp_gpu_mel_filterbank(
 
     // Create filterbank
     float* d_filterbank;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_filterbank, n_mels * n_bins * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_filterbank, n_mels * n_bins * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     kernel_mel_filterbank_create<<<(n_mels + BLOCK_SIZE - 1) / BLOCK_SIZE, BLOCK_SIZE>>>(
         d_filterbank, n_mels, n_fft, fmin, fmax, sample_rate);
@@ -984,7 +989,7 @@ bool nimcp_gpu_mel_filterbank(
         (float*)mel_spec->data, batch, time_frames, n_bins, n_mels);
 
     cudaFree(d_filterbank);
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1020,6 +1025,10 @@ bool nimcp_gpu_mfcc(
 {
     if (!ctx || !mel_spec || !mfcc) return false;
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     int batch = mel_spec->dims[0];
     int time_frames = mel_spec->dims[1];
     int n_mels = mel_spec->dims[2];
@@ -1031,7 +1040,7 @@ bool nimcp_gpu_mfcc(
 
     // Create DCT matrix
     float* d_dct;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_dct, n_mfcc * n_mels * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_dct, n_mfcc * n_mels * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     dim3 dct_block(16, 16);
     dim3 dct_grid((n_mfcc + 15) / 16, (n_mels + 15) / 16);
@@ -1044,7 +1053,7 @@ bool nimcp_gpu_mfcc(
 
     cudaFree(d_dct);
     nimcp_gpu_tensor_destroy(log_mel);
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1082,17 +1091,21 @@ bool nimcp_gpu_stft(
 {
     if (!ctx || !audio || !stft_out) return false;
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     int audio_len = audio->dims[audio->ndim - 1];
     int n_frames = (audio_len - n_fft) / hop_length + 1;
 
     // Create Hann window
     float* d_window;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_window, n_fft * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_window, n_fft * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
     kernel_hann_window<<<(n_fft + BLOCK_SIZE - 1) / BLOCK_SIZE, BLOCK_SIZE>>>(d_window, n_fft);
 
     // Frame audio
     float* d_frames;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_frames, n_frames * n_fft * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_frames, n_frames * n_fft * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
     kernel_frame_audio<<<n_frames, n_fft>>>(
         (const float*)audio->data, d_frames, d_window,
         audio_len, n_fft, hop_length, n_frames);
@@ -1105,7 +1118,7 @@ bool nimcp_gpu_stft(
 
     cudaFree(d_window);
     cudaFree(d_frames);
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1130,13 +1143,17 @@ bool nimcp_gpu_spectrogram(
     nimcp_gpu_tensor_t* spectrogram,
     int n_fft, int hop_length, bool power)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     // First compute STFT
     size_t n_frames = (audio->dims[audio->ndim - 1] - n_fft) / hop_length + 1;
     size_t n_bins = n_fft / 2 + 1;
 
     // Allocate complex STFT output
     float2* d_stft;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_stft, n_frames * n_bins * sizeof(float2)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_stft, n_frames * n_bins * sizeof(float2)), GPU_ERROR_OUT_OF_MEMORY);
 
     // TODO: Implement full STFT pipeline
     // For now, compute magnitude
@@ -1151,7 +1168,7 @@ bool nimcp_gpu_spectrogram(
     }
 
     cudaFree(d_stft);
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 

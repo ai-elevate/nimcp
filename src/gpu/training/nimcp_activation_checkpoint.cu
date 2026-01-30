@@ -25,6 +25,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "ACTIVATION_CKPT"
 
@@ -165,6 +166,11 @@ nimcp_sequential_checkpoint_t* nimcp_sequential_checkpoint_create_with_config(
         LOG_ERROR("Invalid parameters: gpu_ctx=%p, num_layers=%d",
                   (void*)gpu_ctx, num_layers);
         return NULL;
+    }
+
+    // Initialize GPU recovery if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
     }
 
     nimcp_sequential_checkpoint_t* ckpt = (nimcp_sequential_checkpoint_t*)calloc(1,
@@ -410,6 +416,11 @@ nimcp_gpu_tensor_t* nimcp_sequential_checkpoint_forward(
         return NULL;
     }
 
+    // Initialize GPU recovery if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     // Begin forward pass
     nimcp_checkpoint_begin_forward(ckpt->ckpt_ctx);
 
@@ -586,6 +597,11 @@ nimcp_gpu_tensor_t* nimcp_sequential_checkpoint_backward_with_recompute(
     if (!ckpt || !grad_output || !layer_backward) {
         LOG_ERROR("Invalid parameters to sequential backward");
         return NULL;
+    }
+
+    // Initialize GPU recovery if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
     }
 
     // Begin backward pass
@@ -949,6 +965,11 @@ nimcp_transformer_checkpoint_t* nimcp_transformer_checkpoint_create(
     size_t memory_budget)
 {
     if (!gpu_ctx || num_blocks <= 0) return NULL;
+
+    // Initialize GPU recovery if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     nimcp_transformer_checkpoint_t* ckpt = (nimcp_transformer_checkpoint_t*)calloc(1,
         sizeof(nimcp_transformer_checkpoint_t));

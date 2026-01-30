@@ -23,6 +23,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "OPTIMIZER_GPU"
 
@@ -169,6 +170,11 @@ bool nimcp_gpu_optim_sgd(
 {
     if (!ctx || !param || !grad || !state) return false;
 
+    // Initialize GPU recovery if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     size_t n = param->numel;
 
     if (state->momentum != 0.0f && state->m) {
@@ -181,7 +187,7 @@ bool nimcp_gpu_optim_sgd(
             state->lr, state->weight_decay, n);
     }
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     state->t++;
     return true;
 }
@@ -233,6 +239,11 @@ bool nimcp_gpu_optim_adam(
         return false;
     }
 
+    // Initialize GPU recovery if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     state->t++;
     size_t n = param->numel;
 
@@ -242,7 +253,7 @@ bool nimcp_gpu_optim_adam(
         state->lr, state->beta1, state->beta2, state->eps,
         state->weight_decay, state->t, n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -291,6 +302,11 @@ bool nimcp_gpu_optim_adamw(
         return false;
     }
 
+    // Initialize GPU recovery if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     state->t++;
     size_t n = param->numel;
 
@@ -300,7 +316,7 @@ bool nimcp_gpu_optim_adamw(
         state->lr, state->beta1, state->beta2, state->eps,
         state->weight_decay, state->t, n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -340,6 +356,11 @@ bool nimcp_gpu_optim_rmsprop(
         return false;
     }
 
+    // Initialize GPU recovery if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     size_t n = param->numel;
 
     // RMSprop uses beta2 as alpha (decay factor)
@@ -347,7 +368,7 @@ bool nimcp_gpu_optim_rmsprop(
         (float*)param->data, (const float*)grad->data, (float*)state->v->data,
         state->lr, state->beta2, state->eps, state->weight_decay, n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     state->t++;
     return true;
 }
@@ -388,13 +409,18 @@ bool nimcp_gpu_optim_adagrad(
         return false;
     }
 
+    // Initialize GPU recovery if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     size_t n = param->numel;
 
     kernel_adagrad_step<<<GRID_SIZE(n), BLOCK_SIZE>>>(
         (float*)param->data, (const float*)grad->data, (float*)state->v->data,
         state->lr, state->eps, state->weight_decay, n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     state->t++;
     return true;
 }

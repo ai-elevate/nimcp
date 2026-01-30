@@ -17,6 +17,15 @@
 
 #define LOG_MODULE "personality_fep_bridge"
 
+/**
+ * Inline EWMA update macro - equivalent to nimcp_ewma_update() from streaming statistics.
+ * Formula: EWMA_t = alpha * x_t + (1 - alpha) * EWMA_{t-1}
+ * Using alpha=0.01 for stable long-term averaging (equivalent ~99-sample window).
+ * @see include/utils/statistics/nimcp_streaming_statistics.h for full EWMA API
+ */
+#define NIMCP_EWMA_UPDATE(avg, new_val, alpha) \
+    ((avg) = ((avg) * (1.0f - (alpha))) + ((new_val) * (alpha)))
+
 //=============================================================================
 #include <stddef.h>  /* for NULL */
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
@@ -176,8 +185,8 @@ int personality_fep_bridge_update(personality_fep_bridge_t* bridge) {
             1.0f + (bridge->personality->traits.neuroticism - 0.5f);
         bridge->state.precision_modifier = bridge->fep_effects.neuroticism_precision_modifier;
     }
-    bridge->stats.avg_free_energy =
-        (bridge->stats.avg_free_energy * 0.99f) + (bridge->state.current_free_energy * 0.01f);
+    /* EWMA update for running average free energy (alpha=0.01, ~99-sample window) */
+    NIMCP_EWMA_UPDATE(bridge->stats.avg_free_energy, bridge->state.current_free_energy, 0.01f);
     bridge->stats.modulation_events++;
     nimcp_mutex_unlock(bridge->base.mutex);
     return 0;

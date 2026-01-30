@@ -25,6 +25,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "CHECKPOINT_GPU"
 
@@ -271,6 +272,11 @@ nimcp_checkpoint_ctx_t* nimcp_checkpoint_ctx_create(
         LOG_ERROR("Invalid parameters: gpu_ctx=%p, total_layers=%d",
                   (void*)gpu_ctx, total_layers);
         return NULL;
+    }
+
+    // Initialize GPU recovery if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
     }
 
     nimcp_checkpoint_ctx_t* ctx = (nimcp_checkpoint_ctx_t*)calloc(1, sizeof(nimcp_checkpoint_ctx_t));
@@ -724,6 +730,11 @@ bool nimcp_checkpoint_recompute_segment(
         return false;
     }
 
+    // Initialize GPU recovery if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     nimcp_checkpoint_segment_t* seg = &ctx->segments[segment_idx];
 
     if (!seg->needs_recompute) {
@@ -877,6 +888,11 @@ nimcp_gpu_tensor_t* nimcp_checkpoint_function(
 {
     if (!ctx || !fn || !input) return NULL;
 
+    // Initialize GPU recovery if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     // Save input for backward pass recomputation
     if (fn->saved_input) {
         nimcp_gpu_tensor_destroy(fn->saved_input);
@@ -936,6 +952,11 @@ bool nimcp_checkpoint_function_backward(
     nimcp_gpu_tensor_t* grad_input)
 {
     if (!ctx || !fn || !grad_output || !grad_input) return false;
+
+    // Initialize GPU recovery if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     if (!fn->saved_input) {
         LOG_ERROR("No saved input for backward pass - was forward called?");

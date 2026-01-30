@@ -21,6 +21,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "REGIONS_GPU"
 
@@ -206,7 +207,7 @@ bool nimcp_gpu_column_update(
         state->n_columns,
         state->n_neurons);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -335,7 +336,7 @@ bool nimcp_gpu_pfc_wm_update(
         state->n_slots,
         state->slot_dim);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -358,7 +359,7 @@ bool nimcp_gpu_pfc_gating(
         params->dopamine_modulation,
         state->n_slots);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -493,7 +494,7 @@ bool nimcp_gpu_motor_population_code(
         n_neurons,
         direction->numel);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 

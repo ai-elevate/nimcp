@@ -19,21 +19,28 @@
 #include "gpu/backend/nimcp_kernel_backend.h"
 #include "gpu/tensor/nimcp_tensor_gpu.h"
 #include "gpu/context/nimcp_gpu_context.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
 
 #define BLOCK_SIZE 256
 #define GRID_SIZE(n) (((n) + BLOCK_SIZE - 1) / BLOCK_SIZE)
 
-// Use immune-integrated CUDA check for kernel error checks (logs to immune, returns error code)
-#define CUDA_CHECK_KERNEL(call) do { \
+// Use recovery-integrated CUDA check for kernel error checks
+#define CUDA_CHECK_KERNEL_RECOVER(call, error_cat) do { \
     cudaError_t _err = (call); \
     if (_err != cudaSuccess) { \
-        const char* _err_str = cudaGetErrorString(_err); \
-        fprintf(stderr, "[NIMCP CUDA ERROR] %s:%d: %s returned %s\n", \
-                __FILE__, __LINE__, #call, _err_str); \
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "CUDA kernel error: %s - %s", #call, _err_str); \
-        return NIMCP_KERNEL_ERROR_DEVICE; \
+        nimcp_gpu_recovery_result_t _result = {0}; \
+        if (nimcp_gpu_try_recover(NULL, (error_cat), _err, &_result)) { \
+            _err = (call); \
+        } \
+        if (_err != cudaSuccess) { \
+            const char* _err_str = cudaGetErrorString(_err); \
+            fprintf(stderr, "[NIMCP CUDA UNRECOVERABLE] %s:%d: %s returned %s\n", \
+                    __FILE__, __LINE__, #call, _err_str); \
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_GPU, "CUDA kernel error (unrecoverable): %s - %s", #call, _err_str); \
+            return NIMCP_KERNEL_ERROR_DEVICE; \
+        } \
     } \
 } while(0)
 
@@ -655,6 +662,10 @@ nimcp_kernel_error_t cuda_axon_propagate(
     nimcp_gpu_tensor_t* delays,
     float dt
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !input_signals || !velocities || !myelination ||
         !lengths || !output_signals || !delays) {
         return NIMCP_KERNEL_ERROR_NULL_PTR;
@@ -673,7 +684,7 @@ nimcp_kernel_error_t cuda_axon_propagate(
         n, dt
     );
 
-    CUDA_CHECK_KERNEL(cudaGetLastError());
+    CUDA_CHECK_KERNEL_RECOVER(cudaGetLastError(), GPU_ERROR_KERNEL_LAUNCH);
     return NIMCP_KERNEL_SUCCESS;
 }
 
@@ -684,6 +695,10 @@ nimcp_kernel_error_t cuda_axon_refractory(
     float refractory_period,
     float dt
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !refractory_state || !spikes) {
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
@@ -697,7 +712,7 @@ nimcp_kernel_error_t cuda_axon_refractory(
         n, refractory_period, dt
     );
 
-    CUDA_CHECK_KERNEL(cudaGetLastError());
+    CUDA_CHECK_KERNEL_RECOVER(cudaGetLastError(), GPU_ERROR_KERNEL_LAUNCH);
     return NIMCP_KERNEL_SUCCESS;
 }
 
@@ -714,6 +729,10 @@ nimcp_kernel_error_t cuda_dendrite_cable_integrate(
     nimcp_gpu_tensor_t* voltages,
     float dt
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !inputs || !cable_Rm || !cable_Cm || !cable_Ra || !voltages) {
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
@@ -735,7 +754,7 @@ nimcp_kernel_error_t cuda_dendrite_cable_integrate(
         n_dend, n_seg, dt
     );
 
-    CUDA_CHECK_KERNEL(cudaGetLastError());
+    CUDA_CHECK_KERNEL_RECOVER(cudaGetLastError(), GPU_ERROR_KERNEL_LAUNCH);
     return NIMCP_KERNEL_SUCCESS;
 }
 
@@ -747,6 +766,10 @@ nimcp_kernel_error_t cuda_dendrite_nmda(
     nimcp_gpu_tensor_t* nmda_spikes,
     float nmda_threshold
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !voltages || !mg_block || !nmda_current || !nmda_spikes) {
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
@@ -770,7 +793,7 @@ nimcp_kernel_error_t cuda_dendrite_nmda(
         n_dend, n_seg, nmda_threshold
     );
 
-    CUDA_CHECK_KERNEL(cudaGetLastError());
+    CUDA_CHECK_KERNEL_RECOVER(cudaGetLastError(), GPU_ERROR_KERNEL_LAUNCH);
     return NIMCP_KERNEL_SUCCESS;
 }
 
@@ -783,6 +806,10 @@ nimcp_kernel_error_t cuda_dendrite_calcium(
     float tau_calcium,
     float dt
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !nmda_current || !vgcc_current || !calcium || !calcium_decay) {
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
@@ -798,7 +825,7 @@ nimcp_kernel_error_t cuda_dendrite_calcium(
         n, tau_calcium, dt
     );
 
-    CUDA_CHECK_KERNEL(cudaGetLastError());
+    CUDA_CHECK_KERNEL_RECOVER(cudaGetLastError(), GPU_ERROR_KERNEL_LAUNCH);
     return NIMCP_KERNEL_SUCCESS;
 }
 
@@ -810,6 +837,10 @@ nimcp_kernel_error_t cuda_dendrite_bap(
     float bap_velocity,
     float dt
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !soma_spike || !attenuation || !bap_signal) {
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
@@ -829,7 +860,7 @@ nimcp_kernel_error_t cuda_dendrite_bap(
         n_dend, n_seg, bap_velocity, dt
     );
 
-    CUDA_CHECK_KERNEL(cudaGetLastError());
+    CUDA_CHECK_KERNEL_RECOVER(cudaGetLastError(), GPU_ERROR_KERNEL_LAUNCH);
     return NIMCP_KERNEL_SUCCESS;
 }
 
@@ -844,6 +875,10 @@ nimcp_kernel_error_t cuda_myelin_g_ratio(
     nimcp_gpu_tensor_t* g_ratio,
     nimcp_gpu_tensor_t* is_optimal
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !axon_diameter || !fiber_diameter || !g_ratio || !is_optimal) {
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
@@ -859,7 +894,7 @@ nimcp_kernel_error_t cuda_myelin_g_ratio(
         n
     );
 
-    CUDA_CHECK_KERNEL(cudaGetLastError());
+    CUDA_CHECK_KERNEL_RECOVER(cudaGetLastError(), GPU_ERROR_KERNEL_LAUNCH);
     return NIMCP_KERNEL_SUCCESS;
 }
 
@@ -870,6 +905,10 @@ nimcp_kernel_error_t cuda_myelin_conduction_velocity(
     const nimcp_gpu_tensor_t* temperature,
     nimcp_gpu_tensor_t* velocity
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !g_ratio || !internode_length || !temperature || !velocity) {
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
@@ -887,7 +926,7 @@ nimcp_kernel_error_t cuda_myelin_conduction_velocity(
         n, scalar_temp
     );
 
-    CUDA_CHECK_KERNEL(cudaGetLastError());
+    CUDA_CHECK_KERNEL_RECOVER(cudaGetLastError(), GPU_ERROR_KERNEL_LAUNCH);
     return NIMCP_KERNEL_SUCCESS;
 }
 
@@ -900,6 +939,10 @@ nimcp_kernel_error_t cuda_myelin_plasticity(
     float learning_rate,
     float dt
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !activity || !oligodendrocyte_signal ||
         !myelin_thickness || !sheath_length) {
         return NIMCP_KERNEL_ERROR_NULL_PTR;
@@ -916,7 +959,7 @@ nimcp_kernel_error_t cuda_myelin_plasticity(
         n, learning_rate, dt
     );
 
-    CUDA_CHECK_KERNEL(cudaGetLastError());
+    CUDA_CHECK_KERNEL_RECOVER(cudaGetLastError(), GPU_ERROR_KERNEL_LAUNCH);
     return NIMCP_KERNEL_SUCCESS;
 }
 
@@ -930,6 +973,10 @@ nimcp_kernel_error_t cuda_neuromod_decay(
     const nimcp_gpu_tensor_t* decay_rates,
     float dt
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !concentrations || !decay_rates) {
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
@@ -948,7 +995,7 @@ nimcp_kernel_error_t cuda_neuromod_decay(
         n_pools, n_types, dt
     );
 
-    CUDA_CHECK_KERNEL(cudaGetLastError());
+    CUDA_CHECK_KERNEL_RECOVER(cudaGetLastError(), GPU_ERROR_KERNEL_LAUNCH);
     return NIMCP_KERNEL_SUCCESS;
 }
 
@@ -960,6 +1007,10 @@ nimcp_kernel_error_t cuda_neuromod_release(
     nimcp_gpu_tensor_t* concentrations,
     uint32_t n_events
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !release_sites || !release_types ||
         !release_amounts || !concentrations) {
         return NIMCP_KERNEL_ERROR_NULL_PTR;
@@ -977,7 +1028,7 @@ nimcp_kernel_error_t cuda_neuromod_release(
         n_events, n_types
     );
 
-    CUDA_CHECK_KERNEL(cudaGetLastError());
+    CUDA_CHECK_KERNEL_RECOVER(cudaGetLastError(), GPU_ERROR_KERNEL_LAUNCH);
     return NIMCP_KERNEL_SUCCESS;
 }
 
@@ -987,6 +1038,10 @@ nimcp_kernel_error_t cuda_neuromod_effect(
     const nimcp_gpu_tensor_t* receptor_density,
     nimcp_gpu_tensor_t* modulation
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !concentrations || !receptor_density || !modulation) {
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
@@ -1004,7 +1059,7 @@ nimcp_kernel_error_t cuda_neuromod_effect(
         n_synapses, n_types, n_pools
     );
 
-    CUDA_CHECK_KERNEL(cudaGetLastError());
+    CUDA_CHECK_KERNEL_RECOVER(cudaGetLastError(), GPU_ERROR_KERNEL_LAUNCH);
     return NIMCP_KERNEL_SUCCESS;
 }
 
@@ -1017,6 +1072,10 @@ nimcp_kernel_error_t cuda_neuromod_phasic_tonic(
     float phasic_decay,
     float dt
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !phasic_input || !tonic_level || !total_level) {
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
@@ -1036,7 +1095,7 @@ nimcp_kernel_error_t cuda_neuromod_phasic_tonic(
         n_pools, n_types, tonic_tau, phasic_decay, dt
     );
 
-    CUDA_CHECK_KERNEL(cudaGetLastError());
+    CUDA_CHECK_KERNEL_RECOVER(cudaGetLastError(), GPU_ERROR_KERNEL_LAUNCH);
     return NIMCP_KERNEL_SUCCESS;
 }
 
@@ -1053,6 +1112,10 @@ nimcp_kernel_error_t cuda_astrocyte_calcium_wave(
     float diffusion_rate,
     float dt
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !ip3_levels || !gap_junctions || !calcium || !wave_front) {
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
@@ -1070,7 +1133,7 @@ nimcp_kernel_error_t cuda_astrocyte_calcium_wave(
         n_astro, n_neighbors, diffusion_rate, dt
     );
 
-    CUDA_CHECK_KERNEL(cudaGetLastError());
+    CUDA_CHECK_KERNEL_RECOVER(cudaGetLastError(), GPU_ERROR_KERNEL_LAUNCH);
     return NIMCP_KERNEL_SUCCESS;
 }
 
@@ -1081,6 +1144,10 @@ nimcp_kernel_error_t cuda_astrocyte_release(
     nimcp_gpu_tensor_t* glutamate_release,
     nimcp_gpu_tensor_t* atp_release
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !calcium || !threshold || !glutamate_release || !atp_release) {
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
@@ -1096,7 +1163,7 @@ nimcp_kernel_error_t cuda_astrocyte_release(
         n
     );
 
-    CUDA_CHECK_KERNEL(cudaGetLastError());
+    CUDA_CHECK_KERNEL_RECOVER(cudaGetLastError(), GPU_ERROR_KERNEL_LAUNCH);
     return NIMCP_KERNEL_SUCCESS;
 }
 
@@ -1109,6 +1176,10 @@ nimcp_kernel_error_t cuda_microglia_activation(
     float activation_threshold,
     float dt
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !damage_signals || !anti_inflam ||
         !activation_state || !phagocytic_activity) {
         return NIMCP_KERNEL_ERROR_NULL_PTR;
@@ -1125,7 +1196,7 @@ nimcp_kernel_error_t cuda_microglia_activation(
         n, activation_threshold, dt
     );
 
-    CUDA_CHECK_KERNEL(cudaGetLastError());
+    CUDA_CHECK_KERNEL_RECOVER(cudaGetLastError(), GPU_ERROR_KERNEL_LAUNCH);
     return NIMCP_KERNEL_SUCCESS;
 }
 
@@ -1137,6 +1208,10 @@ nimcp_kernel_error_t cuda_oligodendrocyte_differentiation(
     nimcp_gpu_tensor_t* myelin_production,
     float dt
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !activity_signal || !growth_factors ||
         !differentiation_state || !myelin_production) {
         return NIMCP_KERNEL_ERROR_NULL_PTR;
@@ -1153,7 +1228,7 @@ nimcp_kernel_error_t cuda_oligodendrocyte_differentiation(
         n, dt
     );
 
-    CUDA_CHECK_KERNEL(cudaGetLastError());
+    CUDA_CHECK_KERNEL_RECOVER(cudaGetLastError(), GPU_ERROR_KERNEL_LAUNCH);
     return NIMCP_KERNEL_SUCCESS;
 }
 
@@ -1169,6 +1244,10 @@ nimcp_kernel_error_t cuda_metabolic_effects(
     nimcp_gpu_tensor_t* capacity,
     nimcp_gpu_tensor_t* fatigue
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !atp_levels || !oxygen_levels || !glucose_levels ||
         !capacity || !fatigue) {
         return NIMCP_KERNEL_ERROR_NULL_PTR;
@@ -1186,7 +1265,7 @@ nimcp_kernel_error_t cuda_metabolic_effects(
         n
     );
 
-    CUDA_CHECK_KERNEL(cudaGetLastError());
+    CUDA_CHECK_KERNEL_RECOVER(cudaGetLastError(), GPU_ERROR_KERNEL_LAUNCH);
     return NIMCP_KERNEL_SUCCESS;
 }
 
@@ -1199,6 +1278,10 @@ nimcp_kernel_error_t cuda_metabolic_update(
     float recovery_rate,
     float dt
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !neural_activity || !atp_levels || !lactate_levels) {
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
@@ -1213,7 +1296,7 @@ nimcp_kernel_error_t cuda_metabolic_update(
         n, consumption_rate, recovery_rate, dt
     );
 
-    CUDA_CHECK_KERNEL(cudaGetLastError());
+    CUDA_CHECK_KERNEL_RECOVER(cudaGetLastError(), GPU_ERROR_KERNEL_LAUNCH);
     return NIMCP_KERNEL_SUCCESS;
 }
 

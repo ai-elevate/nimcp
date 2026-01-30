@@ -27,6 +27,9 @@
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 
+#include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "utils/exception/nimcp_exception_macros.h"
+
 //=============================================================================
 // CUDA Constants
 //=============================================================================
@@ -362,6 +365,10 @@ cudaError_t launch_synapse_compute_kernel(
     const gpu_synapse_compute_context_t* d_context,
     uint32_t num_synapses)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     // Configure launch parameters
     int block_size = SYNAPSE_BLOCK_SIZE;
     int grid_size = (num_synapses + block_size - 1) / block_size;
@@ -370,7 +377,15 @@ cudaError_t launch_synapse_compute_kernel(
     gpu_synapse_compute_context_t context;
     cudaError_t err = cudaMemcpy(&context, d_context, sizeof(gpu_synapse_compute_context_t),
                                 cudaMemcpyDeviceToHost);
-    if (err != cudaSuccess) return err;
+    if (err != cudaSuccess) {
+        // Try recovery for CUDA runtime errors
+        nimcp_gpu_recovery_result_t result = {0};
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_CUDA_RUNTIME, err, &result)) {
+            err = cudaMemcpy(&context, d_context, sizeof(gpu_synapse_compute_context_t),
+                            cudaMemcpyDeviceToHost);
+        }
+        if (err != cudaSuccess) return err;
+    }
 
     // Launch kernel
     kernel_compute_synapses<<<grid_size, block_size>>>(
@@ -381,8 +396,13 @@ cudaError_t launch_synapse_compute_kernel(
         num_synapses
     );
 
-    // Check for launch errors
-    return cudaGetLastError();
+    // Check for launch errors with recovery
+    err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result = {0};
+        nimcp_gpu_try_recover(NULL, GPU_ERROR_KERNEL_LAUNCH, err, &result);
+    }
+    return err;
 }
 
 /**
@@ -402,6 +422,10 @@ cudaError_t launch_attention_kernel(
     uint32_t seq_len,
     uint32_t d_model)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     // Configure 2D grid for attention matrix
     dim3 block_size(16, 16);
     dim3 grid_size(
@@ -419,7 +443,11 @@ cudaError_t launch_attention_kernel(
     );
 
     cudaError_t err = cudaGetLastError();
-    if (err != cudaSuccess) return err;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result = {0};
+        nimcp_gpu_try_recover(NULL, GPU_ERROR_KERNEL_LAUNCH, err, &result);
+        return err;
+    }
 
     // Launch softmax kernel
     int softmax_grid = seq_len;
@@ -430,7 +458,12 @@ cudaError_t launch_attention_kernel(
         seq_len
     );
 
-    return cudaGetLastError();
+    err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result = {0};
+        nimcp_gpu_try_recover(NULL, GPU_ERROR_KERNEL_LAUNCH, err, &result);
+    }
+    return err;
 }
 
 /**
@@ -444,6 +477,10 @@ cudaError_t launch_embedding_lookup_kernel(
     uint32_t embedding_dim,
     uint32_t vocab_size)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     uint32_t total_elements = sequence_length * embedding_dim;
     int block_size = 256;
     int grid_size = (total_elements + block_size - 1) / block_size;
@@ -457,7 +494,12 @@ cudaError_t launch_embedding_lookup_kernel(
         vocab_size
     );
 
-    return cudaGetLastError();
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result = {0};
+        nimcp_gpu_try_recover(NULL, GPU_ERROR_KERNEL_LAUNCH, err, &result);
+    }
+    return err;
 }
 
 } // extern "C"

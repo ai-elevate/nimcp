@@ -111,11 +111,14 @@ lib/python/nimcp.so: src/python/CMakeFiles/nimcp_python.dir/build.make
 lib/python/nimcp.so: lib/libnimcp.so.2.6.2
 lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libpython3.12.so
 lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libcudart.so
-lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libcublas.so
-lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libcublasLt.so
-lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libculibos.a
 lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libcufft.so
 lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libcurand.so
+lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libcusolver.so
+lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libcublas.so
+lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libculibos.a
+lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libcublasLt.so
+lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libcusparse.so
+lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libnvJitLink.so
 lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libssl.so
 lib/python/nimcp.so: /usr/lib/x86_64-linux-gnu/libcrypto.so
 lib/python/nimcp.so: src/python/CMakeFiles/nimcp_python.dir/link.txt

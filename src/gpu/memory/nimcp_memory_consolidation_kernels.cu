@@ -32,14 +32,16 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/common/nimcp_device_utils.cuh"  // For nimcp_device_lcg_* RNG functions
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "MEMORY_GPU"
 
 //-----------------------------------------------------------------------------
-// Helper Macros - Using immune-integrated versions
+// Helper Macros - Using self-healing recovery versions
 //-----------------------------------------------------------------------------
 
-#define CUDA_CHECK(call) NIMCP_CUDA_CHECK_IMMUNE_BOOL(call)
+#define CUDA_CHECK(call) NIMCP_CUDA_RECOVER(call, GPU_ERROR_CUDA_RUNTIME)
 // CUDA_CHECK_VOID uses warning only since void functions can't propagate errors
 #define CUDA_CHECK_VOID(call) NIMCP_CUDA_CHECK_WARN(call)
 
@@ -302,28 +304,28 @@ __device__ inline float device_clamp(float x, float min_val, float max_val)
 }
 
 /**
- * @brief Generate random number using cuRAND-style LCG
+ * @brief Generate random number using LCG
  *
- * Simple linear congruential generator for stochastic replay
+ * NOTE: Uses centralized RNG functions from nimcp_device_utils.cuh
+ * For production Monte Carlo simulations, prefer cuRAND via:
+ *   - stats_gpu_rng_create() (see gpu/statistics/nimcp_statistics_gpu.h)
+ *   - nimcp_stats_gpu_sample_normal/uniform for batch sampling
+ *
+ * The LCG is suitable for simple stochastic noise in replay operations.
  */
 __device__ inline float device_random(uint32_t* state)
 {
-    // LCG parameters (Numerical Recipes)
-    *state = *state * 1664525u + 1013904223u;
-    return ((float)(*state) / 4294967296.0f);
+    return nimcp_device_lcg_uniform(state);
 }
 
 /**
  * @brief Box-Muller transform for Gaussian noise
+ *
+ * NOTE: Uses centralized RNG functions from nimcp_device_utils.cuh
  */
 __device__ inline float device_gaussian(uint32_t* state, float stddev)
 {
-    float u1 = device_random(state);
-    float u2 = device_random(state);
-    // Avoid log(0)
-    u1 = fmaxf(u1, 1e-10f);
-    float z = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * 3.14159265f * u2);
-    return z * stddev;
+    return nimcp_device_lcg_gaussian(state, stddev);
 }
 
 //=============================================================================
@@ -403,6 +405,10 @@ bool nimcp_gpu_hippocampal_replay(
     nimcp_gpu_tensor_t* output,
     const nimcp_replay_params_t* params)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !engrams || !replay_events || !output || !params) {
         LOG_ERROR("NULL parameter in hippocampal replay");
         return false;
@@ -442,7 +448,7 @@ bool nimcp_gpu_hippocampal_replay(
         n_engrams,
         seed);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -565,6 +571,10 @@ bool nimcp_gpu_pattern_completion(
     nimcp_gpu_tensor_t* match_scores,
     float completion_threshold)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !engrams || !cue_patterns || !cue_masks ||
         !completed_patterns || !match_scores) {
         LOG_ERROR("NULL parameter in pattern completion");
@@ -590,7 +600,7 @@ bool nimcp_gpu_pattern_completion(
         n_engrams,
         max_neurons);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Phase 2: Complete patterns
     kernel_pattern_complete<<<GRID_SIZE(n_queries), BLOCK_SIZE>>>(
@@ -604,7 +614,7 @@ bool nimcp_gpu_pattern_completion(
         n_engrams,
         max_neurons);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -701,6 +711,10 @@ bool nimcp_gpu_systems_consolidation(
     float replay_strength,
     const nimcp_consolidation_params_t* params)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !engrams || !cortical_nodes || !params) {
         LOG_ERROR("NULL parameter in systems consolidation");
         return false;
@@ -729,7 +743,7 @@ bool nimcp_gpu_systems_consolidation(
         max_neurons,
         feature_dim);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Phase 2: Transfer to cortical representations
     kernel_systems_consolidation<<<GRID_SIZE(batch_size), BLOCK_SIZE>>>(
@@ -792,6 +806,10 @@ bool nimcp_gpu_consolidation_update(
     bool is_sleeping,
     const nimcp_consolidation_params_t* params)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !cortical_nodes || !params) {
         LOG_ERROR("NULL parameter in consolidation update");
         return false;
@@ -806,7 +824,7 @@ bool nimcp_gpu_consolidation_update(
         rate,
         cortical_nodes->batch_size);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -852,6 +870,10 @@ bool nimcp_gpu_memory_decay(
     const nimcp_gpu_tensor_t* last_activation_times,
     float forgetting_rate)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !cortical_nodes || !last_activation_times) {
         LOG_ERROR("NULL parameter in memory decay");
         return false;
@@ -865,7 +887,7 @@ bool nimcp_gpu_memory_decay(
         forgetting_rate,
         cortical_nodes->batch_size);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -954,6 +976,10 @@ bool nimcp_gpu_engram_weight_update(
     const nimcp_gpu_tensor_t* updates,
     const nimcp_engram_update_params_t* params)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !engrams || !updates || !params) {
         LOG_ERROR("NULL parameter in engram weight update");
         return false;
@@ -986,7 +1012,7 @@ bool nimcp_gpu_engram_weight_update(
             engrams->max_neurons);
     }
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1039,6 +1065,10 @@ bool nimcp_gpu_engram_overlap(
     const nimcp_gpu_engram_batch_t* engrams_b,
     nimcp_gpu_tensor_t* overlap_matrix)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !engrams_a || !engrams_b || !overlap_matrix) {
         LOG_ERROR("NULL parameter in engram overlap");
         return false;
@@ -1063,7 +1093,7 @@ bool nimcp_gpu_engram_overlap(
         n_b,
         engrams_a->max_neurons);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1164,6 +1194,11 @@ bool nimcp_gpu_similarity_search(
     nimcp_gpu_tensor_t* result_indices,
     nimcp_gpu_tensor_t* result_similarities)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !cortical_nodes || !query_features ||
         !result_indices || !result_similarities) {
         LOG_ERROR("NULL parameter in similarity search");
@@ -1198,6 +1233,8 @@ bool nimcp_gpu_similarity_search(
 
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
+        // Attempt recovery for kernel launch error
+        nimcp_gpu_try_recover(NULL, GPU_ERROR_KERNEL_LAUNCH, err, NULL);
         nimcp_gpu_tensor_destroy(similarities);
         LOG_ERROR("CUDA error in similarity compute: %s", cudaGetErrorString(err));
         return false;
@@ -1216,6 +1253,8 @@ bool nimcp_gpu_similarity_search(
     nimcp_gpu_tensor_destroy(similarities);
 
     if (err != cudaSuccess) {
+        // Attempt recovery for kernel launch error
+        nimcp_gpu_try_recover(NULL, GPU_ERROR_KERNEL_LAUNCH, err, NULL);
         LOG_ERROR("CUDA error in top-k select: %s", cudaGetErrorString(err));
         return false;
     }
@@ -1293,6 +1332,11 @@ bool nimcp_gpu_build_similarity_graph(
     nimcp_gpu_cortical_batch_t* cortical_nodes,
     float similarity_threshold)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !cortical_nodes) {
         LOG_ERROR("NULL parameter in build similarity graph");
         return false;
@@ -1307,7 +1351,7 @@ bool nimcp_gpu_build_similarity_graph(
         cortical_nodes->feature_dim,
         cortical_nodes->max_neighbors);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1324,6 +1368,11 @@ bool nimcp_gpu_extract_semantic_features(
     nimcp_gpu_tensor_t* semantic_features,
     size_t feature_dim)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !engrams || !semantic_features) {
         LOG_ERROR("NULL parameter in extract semantic features");
         return false;
@@ -1340,7 +1389,7 @@ bool nimcp_gpu_extract_semantic_features(
         max_neurons,
         feature_dim);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1374,6 +1423,11 @@ bool nimcp_gpu_check_semantic_transition(
     float semantic_threshold,
     nimcp_gpu_tensor_t* should_transition)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !cortical_nodes || !should_transition) {
         LOG_ERROR("NULL parameter in check semantic transition");
         return false;
@@ -1386,7 +1440,7 @@ bool nimcp_gpu_check_semantic_transition(
         semantic_threshold,
         cortical_nodes->batch_size);
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 

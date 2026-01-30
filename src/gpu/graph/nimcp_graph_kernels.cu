@@ -24,15 +24,16 @@
 #include "gpu/graph/nimcp_graph_gpu.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 //=============================================================================
-// CUDA Error Checking - Using immune-integrated macros
+// CUDA Error Checking - Using recovery-integrated macros
 //=============================================================================
 
-// Map legacy macros to immune-integrated versions
-#define CUDA_CHECK(call) NIMCP_CUDA_CHECK_IMMUNE(call)
-#define CUDA_CHECK_ERR(call) NIMCP_CUDA_CHECK_IMMUNE_ERROR(call)
-#define CUDA_CHECK_PTR(call) NIMCP_CUDA_CHECK_IMMUNE_NULL(call)
+// Map legacy macros to recovery-integrated versions for self-healing
+#define CUDA_CHECK(call) NIMCP_CUDA_RECOVER(call, GPU_ERROR_CUDA_RUNTIME)
+#define CUDA_CHECK_ERR(call) NIMCP_CUDA_RECOVER_ERROR(call, GPU_ERROR_CUDA_RUNTIME)
+#define CUDA_CHECK_PTR(call) NIMCP_CUDA_RECOVER_NULL(call, GPU_ERROR_OUT_OF_MEMORY)
 
 //=============================================================================
 // Kernel Configuration
@@ -394,6 +395,10 @@ nimcp_gpu_graph_t* nimcp_gpu_graph_create(
     size_t num_vertices,
     size_t num_edges)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
         return NULL;
     }
@@ -450,6 +455,10 @@ nimcp_gpu_graph_t* nimcp_gpu_graph_from_adjacency(
     size_t n,
     float threshold)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !adjacency || n == 0) {
         return NULL;
     }
@@ -513,6 +522,10 @@ nimcp_gpu_graph_t* nimcp_gpu_graph_from_edge_list(
     size_t num_edges,
     size_t num_vertices)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !src_vertices || !dst_vertices || num_edges == 0) {
         return NULL;
     }
@@ -575,6 +588,10 @@ nimcp_gpu_graph_t* nimcp_gpu_graph_from_csr(
     size_t num_vertices,
     size_t num_edges)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !row_offsets || !col_indices) {
         return NULL;
     }
@@ -620,6 +637,10 @@ nimcp_gpu_graph_t* nimcp_gpu_graph_from_csr(
 
 nimcp_gpu_graph_t* nimcp_gpu_graph_clone(const nimcp_gpu_graph_t* graph)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !graph->ctx) {
         return NULL;
     }
@@ -655,6 +676,10 @@ nimcp_error_t nimcp_gpu_graph_set_features(
     const float* features,
     int feature_dim)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !features || feature_dim <= 0) {
         return NIMCP_ERROR_NULL_POINTER;
     }
@@ -681,6 +706,10 @@ nimcp_error_t nimcp_gpu_graph_bfs(
     int source,
     float* distances)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !distances || source < 0 || (size_t)source >= graph->num_vertices) {
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
@@ -749,6 +778,10 @@ nimcp_error_t nimcp_gpu_graph_bfs_full(
     int source,
     nimcp_graph_bfs_result_t** result)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !result || source < 0 || (size_t)source >= graph->num_vertices) {
         return NIMCP_ERROR_INVALID_PARAMETER;
     }
@@ -795,6 +828,10 @@ nimcp_error_t nimcp_gpu_graph_clustering_coeff(
     nimcp_gpu_graph_t* graph,
     float* coefficients)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !coefficients) {
         return NIMCP_ERROR_NULL_POINTER;
     }
@@ -831,6 +868,10 @@ nimcp_error_t nimcp_gpu_graph_avg_clustering(
     nimcp_gpu_graph_t* graph,
     float* avg_clustering)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !avg_clustering) {
         return NIMCP_ERROR_NULL_POINTER;
     }
@@ -870,6 +911,10 @@ nimcp_error_t nimcp_gpu_graph_degree_centrality(
     nimcp_gpu_graph_t* graph,
     float* centrality)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !centrality) {
         return NIMCP_ERROR_NULL_POINTER;
     }
@@ -899,6 +944,10 @@ size_t nimcp_gpu_graph_find_hubs(
     int* hub_ids,
     size_t max_hubs)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !hub_ids || max_hubs == 0) {
         return 0;
     }
@@ -937,6 +986,10 @@ size_t nimcp_gpu_graph_find_hubs(
 
 float nimcp_gpu_graph_small_world_coeff(nimcp_gpu_graph_t* graph)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph) {
         return 0.0f;
     }
@@ -953,6 +1006,10 @@ nimcp_error_t nimcp_gpu_graph_small_world_metrics(
     nimcp_gpu_graph_t* graph,
     nimcp_graph_small_world_t* metrics)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !metrics) {
         return NIMCP_ERROR_NULL_POINTER;
     }
@@ -996,6 +1053,10 @@ nimcp_error_t nimcp_gpu_graph_avg_path_length(
     size_t num_samples,
     float* avg_path_length)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !avg_path_length) {
         return NIMCP_ERROR_NULL_POINTER;
     }
@@ -1055,6 +1116,10 @@ nimcp_error_t nimcp_gpu_graph_modularity(
     const int* community_labels,
     float* modularity)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !community_labels || !modularity) {
         return NIMCP_ERROR_NULL_POINTER;
     }
@@ -1119,6 +1184,10 @@ nimcp_error_t nimcp_gpu_graph_subgraph_match(
     size_t max_matches,
     nimcp_graph_match_result_t** result)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!target || !pattern || !result) {
         return NIMCP_ERROR_NULL_POINTER;
     }
@@ -1163,6 +1232,10 @@ nimcp_error_t nimcp_gpu_graph_compute_degrees(
     nimcp_gpu_graph_t* graph,
     int* degrees)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph || !degrees) {
         return NIMCP_ERROR_NULL_POINTER;
     }
@@ -1182,6 +1255,10 @@ nimcp_error_t nimcp_gpu_graph_stats(
     int* min_degree,
     float* density)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph) {
         return NIMCP_ERROR_NULL_POINTER;
     }
@@ -1228,6 +1305,10 @@ nimcp_error_t nimcp_gpu_graph_to_host(
     int* col_indices,
     float* weights)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!graph) {
         return NIMCP_ERROR_NULL_POINTER;
     }

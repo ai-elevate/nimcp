@@ -138,12 +138,12 @@ TEST_F(FuzzyGPURegressionTest, BatchMFBufferOverflow) {
 
     // Input tensor
     nimcp_gpu_tensor_t* input = nimcp_gpu_tensor_create(
-        ctx_, (size_t[]){batch_size, 1}, 2, NIMCP_GPU_DTYPE_FLOAT32);
+        ctx_, (size_t[]){batch_size, 1}, 2, NIMCP_GPU_PRECISION_FP32);
     ASSERT_NE(input, nullptr);
 
     // Output tensor that's too small (would cause overflow)
     nimcp_gpu_tensor_t* small_output = nimcp_gpu_tensor_create(
-        ctx_, (size_t[]){batch_size / 2, num_mfs}, 2, NIMCP_GPU_DTYPE_FLOAT32);
+        ctx_, (size_t[]){batch_size / 2, num_mfs}, 2, NIMCP_GPU_PRECISION_FP32);
     ASSERT_NE(small_output, nullptr);
 
     // This should fail gracefully, not crash
@@ -190,9 +190,9 @@ TEST_F(FuzzyGPURegressionTest, ParallelInferenceRaceCondition) {
         results[run].resize(batch_size);
 
         nimcp_gpu_tensor_t* input_tensor = nimcp_gpu_tensor_create(
-            ctx_, (size_t[]){batch_size, 1}, 2, NIMCP_GPU_DTYPE_FLOAT32);
+            ctx_, (size_t[]){batch_size, 1}, 2, NIMCP_GPU_PRECISION_FP32);
         nimcp_gpu_tensor_t* output_tensor = nimcp_gpu_tensor_create(
-            ctx_, (size_t[]){batch_size, 1}, 2, NIMCP_GPU_DTYPE_FLOAT32);
+            ctx_, (size_t[]){batch_size, 1}, 2, NIMCP_GPU_PRECISION_FP32);
 
         if (input_tensor && output_tensor) {
             nimcp_gpu_tensor_copy_from_host(input_tensor, inputs.data(),
@@ -287,9 +287,9 @@ TEST_F(FuzzyGPURegressionTest, ANFISNormalizationUnderflow) {
     std::vector<float> extreme_inputs = {1000.0f, 1000.0f};
 
     nimcp_gpu_tensor_t* input = nimcp_gpu_tensor_create(
-        ctx_, (size_t[]){1, 2}, 2, NIMCP_GPU_DTYPE_FLOAT32);
+        ctx_, (size_t[]){1, 2}, 2, NIMCP_GPU_PRECISION_FP32);
     nimcp_gpu_tensor_t* output = nimcp_gpu_tensor_create(
-        ctx_, (size_t[]){1, 1}, 2, NIMCP_GPU_DTYPE_FLOAT32);
+        ctx_, (size_t[]){1, 1}, 2, NIMCP_GPU_PRECISION_FP32);
 
     if (input && output) {
         nimcp_gpu_tensor_copy_from_host(input, extreme_inputs.data(),

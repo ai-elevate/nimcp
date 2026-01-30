@@ -14,6 +14,7 @@
 #include "cognitive/memory/core/nimcp_fractal.h"
 #include "utils/spectral/nimcp_fft.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/statistics/nimcp_statistics.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -178,54 +179,40 @@ bool fractal_config_validate(const fractal_config_t* config) {
 //=============================================================================
 
 /**
- * @brief Compute mean of data array
+ * @brief Compute mean of data array (wrapper for central statistics module)
  */
 static float compute_mean(const float* data, size_t count) {
     if (!data || count == 0) {
         return 0.0f;
     }
-
-    double sum = 0.0;
-    for (size_t i = 0; i < count; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && count > 256) {
-            fractal_heartbeat("fractal_loop",
-                             (float)(i + 1) / (float)count);
-        }
-
-        sum += (double)data[i];
-    }
-    return (float)(sum / (double)count);
+    /* Use central statistics module - cast size_t to uint32_t */
+    return nimcp_stats_mean(data, (uint32_t)count);
 }
 
 /**
- * @brief Compute variance given mean
+ * @brief Compute variance (wrapper for central statistics module)
+ * @note The mean parameter is unused as nimcp_stats_variance computes it internally
  */
 static float compute_variance(const float* data, size_t count, float mean) {
+    (void)mean;  /* Unused - central stats computes mean internally */
     if (!data || count < 2) {
         return 0.0f;
     }
-
-    double sum_sq = 0.0;
-    for (size_t i = 0; i < count; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && count > 256) {
-            fractal_heartbeat("fractal_loop",
-                             (float)(i + 1) / (float)count);
-        }
-
-        double diff = (double)data[i] - (double)mean;
-        sum_sq += diff * diff;
-    }
-    return (float)(sum_sq / (double)(count - 1));
+    /* Use central statistics module - cast size_t to uint32_t */
+    return nimcp_stats_variance(data, (uint32_t)count);
 }
 
 /**
- * @brief Compute standard deviation given mean
+ * @brief Compute standard deviation (wrapper for central statistics module)
+ * @note The mean parameter is unused as nimcp_stats_std_dev computes it internally
  */
 static float compute_std(const float* data, size_t count, float mean) {
-    float var = compute_variance(data, count, mean);
-    return sqrtf(var);
+    (void)mean;  /* Unused - central stats computes mean internally */
+    if (!data || count < 2) {
+        return 0.0f;
+    }
+    /* Use central statistics module - cast size_t to uint32_t */
+    return nimcp_stats_std_dev(data, (uint32_t)count);
 }
 
 /**

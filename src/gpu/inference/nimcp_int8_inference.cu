@@ -38,16 +38,17 @@
 #include <cublasLt.h>
 
 #include "gpu/inference/nimcp_int8_inference.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
 
 //-----------------------------------------------------------------------------
-// Helper Macros - Using immune-integrated versions
+// Helper Macros - Using recovery-enabled versions
 //-----------------------------------------------------------------------------
 
-#define CUDA_CHECK(call) NIMCP_CUDA_CHECK_IMMUNE(call)
-#define CUDA_CHECK_BOOL(call) NIMCP_CUDA_CHECK_IMMUNE_BOOL(call)
+#define CUDA_CHECK(call) NIMCP_CUDA_RECOVER(call, GPU_ERROR_CUDA_RUNTIME)
+#define CUDA_CHECK_BOOL(call) NIMCP_CUDA_RECOVER(call, GPU_ERROR_CUDA_RUNTIME)
 
 //-----------------------------------------------------------------------------
 // Device Helper Functions
@@ -897,6 +898,10 @@ nimcp_int8_tensor_t* nimcp_int8_tensor_create(
     const size_t* dims,
     size_t rank)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !dims || rank == 0) return NULL;
 
     nimcp_int8_tensor_t* tensor = (nimcp_int8_tensor_t*)calloc(1, sizeof(nimcp_int8_tensor_t));
@@ -937,6 +942,10 @@ nimcp_int8_tensor_t* nimcp_int8_tensor_from_fp32(
     const nimcp_gpu_tensor_t* fp32_tensor,
     const nimcp_int8_quant_params_t* params)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!fp32_tensor || !params) return NULL;
 
     nimcp_int8_tensor_t* tensor = nimcp_int8_tensor_create(
@@ -961,7 +970,9 @@ nimcp_int8_tensor_t* nimcp_int8_tensor_from_fp32(
         tensor->numel
     );
 
-    if (cudaGetLastError() != cudaSuccess) {
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_report_error(GPU_ERROR_KERNEL_LAUNCH, err, __FILE__, __LINE__);
         nimcp_int8_tensor_destroy(tensor);
         return NULL;
     }
@@ -970,6 +981,10 @@ nimcp_int8_tensor_t* nimcp_int8_tensor_from_fp32(
 }
 
 nimcp_gpu_tensor_t* nimcp_int8_tensor_to_fp32(const nimcp_int8_tensor_t* int8_tensor) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!int8_tensor) return NULL;
 
     nimcp_gpu_tensor_t* fp32_tensor = nimcp_gpu_tensor_create(
@@ -991,7 +1006,9 @@ nimcp_gpu_tensor_t* nimcp_int8_tensor_to_fp32(const nimcp_int8_tensor_t* int8_te
         int8_tensor->numel
     );
 
-    if (cudaGetLastError() != cudaSuccess) {
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_report_error(GPU_ERROR_KERNEL_LAUNCH, err, __FILE__, __LINE__);
         nimcp_gpu_tensor_destroy(fp32_tensor);
         return NULL;
     }
@@ -1045,6 +1062,10 @@ nimcp_int8_calibrator_t* nimcp_int8_calibrator_create(
     int num_channels,
     int num_bins)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx) return NULL;
     if (per_channel && num_channels <= 0) return NULL;
 
@@ -1148,6 +1169,10 @@ int nimcp_int8_calibrator_observe(
     const float* data,
     size_t numel)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!cal || !data || numel == 0) return -1;
 
     int threads = 256;
@@ -1161,7 +1186,7 @@ int nimcp_int8_calibrator_observe(
         numel
     );
 
-    CUDA_CHECK(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Build histogram if needed
     if (cal->method == INT8_CALIB_HISTOGRAM || cal->method == INT8_CALIB_ENTROPY ||
@@ -1185,7 +1210,7 @@ int nimcp_int8_calibrator_observe(
             cal->num_bins
         );
 
-        CUDA_CHECK(cudaGetLastError());
+        NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     }
 
     cal->num_samples++;

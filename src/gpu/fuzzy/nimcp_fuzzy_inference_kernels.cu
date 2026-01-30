@@ -23,6 +23,8 @@
 #include "gpu/fuzzy/nimcp_fuzzy_gpu_types.h"
 #include "gpu/common/nimcp_cuda_utils.h"
 #include "gpu/common/nimcp_device_utils.cuh"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Thread-Local Error Storage
@@ -409,12 +411,23 @@ nimcp_gpu_fuzzy_inference_state_t* nimcp_gpu_fuzzy_state_create_with_capacity(
     const fuzzy_inference_engine_t* cpu_engine,
     uint32_t batch_capacity)
 {
+    // Initialize recovery system if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    // Parameter validation with recovery attempt
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
-        set_inference_error("Invalid GPU context");
-        return NULL;
+        nimcp_gpu_recovery_result_t result;
+        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_CONTEXT_INVALID, cudaSuccess, &result)) {
+            set_inference_error("Invalid GPU context");
+            NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context");
+            return NULL;
+        }
     }
     if (!cpu_engine) {
         set_inference_error("NULL CPU engine");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "NULL CPU engine");
         return NULL;
     }
 
@@ -422,6 +435,7 @@ nimcp_gpu_fuzzy_inference_state_t* nimcp_gpu_fuzzy_state_create_with_capacity(
         (nimcp_gpu_fuzzy_inference_state_t*)calloc(1, sizeof(nimcp_gpu_fuzzy_inference_state_t));
     if (!state) {
         set_inference_error("Failed to allocate state");
+        NIMCP_THROW_GPU(NIMCP_ERROR_NO_MEMORY, 0, 0, "Failed to allocate inference state");
         return NULL;
     }
 
@@ -465,6 +479,11 @@ int nimcp_gpu_fuzzy_state_sync(
     nimcp_gpu_fuzzy_inference_state_t* state,
     const fuzzy_inference_engine_t* cpu_engine)
 {
+    // Initialize recovery system if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !cpu_engine) {
         return FUZZY_GPU_ERR_NULL_INPUT;
     }
@@ -485,28 +504,48 @@ bool nimcp_gpu_fuzzy_inference_batch(
     nimcp_gpu_fuzzy_tensor_t* outputs,
     const nimcp_gpu_inference_params_t* params)
 {
+    // Initialize recovery system if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
+    // Parameter validation with recovery attempt
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
-        set_inference_error("Invalid GPU context");
-        return false;
+        nimcp_gpu_recovery_result_t result;
+        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_CONTEXT_INVALID, cudaSuccess, &result)) {
+            set_inference_error("Invalid GPU context");
+            NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context");
+            return false;
+        }
     }
     if (!state || !state->is_valid) {
-        set_inference_error("Invalid inference state");
-        return false;
+        nimcp_gpu_recovery_result_t result;
+        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_INVALID_PARAMS, cudaSuccess, &result)) {
+            set_inference_error("Invalid inference state");
+            NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid inference state");
+            return false;
+        }
     }
     if (!inputs || !outputs || !inputs->d_data || !outputs->d_data) {
         set_inference_error("NULL tensor data");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "NULL tensor data");
         return false;
     }
 
     uint32_t batch_size = params ? params->batch_size : inputs->dims[0];
     if (batch_size == 0) {
-        set_inference_error("Zero batch size");
-        return false;
+        nimcp_gpu_recovery_result_t result;
+        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_INVALID_PARAMS, cudaSuccess, &result)) {
+            set_inference_error("Zero batch size");
+            NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Zero batch size");
+            return false;
+        }
     }
 
     // Placeholder: actual implementation needs state to be populated
     if (state->num_rules == 0) {
         set_inference_error("No rules in inference state");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "No rules in inference state");
         return false;
     }
 
@@ -557,8 +596,8 @@ bool nimcp_gpu_fuzzy_inference_batch(
         // Get universe bounds from first output variable
         if (state->d_output_vars && state->num_outputs > 0) {
             fuzzy_gpu_variable_t out_var;
-            cudaMemcpy(&out_var, state->d_output_vars, sizeof(fuzzy_gpu_variable_t),
-                       cudaMemcpyDeviceToHost);
+            NIMCP_CUDA_RECOVER(cudaMemcpy(&out_var, state->d_output_vars, sizeof(fuzzy_gpu_variable_t),
+                       cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
             defuzz_params.x_min = out_var.universe_min;
             defuzz_params.x_max = out_var.universe_max;
         }
@@ -569,8 +608,8 @@ bool nimcp_gpu_fuzzy_inference_batch(
         }
     }
 
-    NIMCP_CUDA_CHECK_LAST();
-    NIMCP_CUDA_CHECK(cudaStreamSynchronize(stream));
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
 
     return true;
 }
@@ -600,6 +639,11 @@ nimcp_gpu_fuzzy_tensor_t nimcp_gpu_fuzzy_tensor_create(
 {
     nimcp_gpu_fuzzy_tensor_t tensor = {0};
 
+    // Initialize recovery system if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !nimcp_gpu_context_is_valid(ctx) || !dims || rank == 0 || rank > 4) {
         return tensor;
     }
@@ -612,10 +656,17 @@ nimcp_gpu_fuzzy_tensor_t nimcp_gpu_fuzzy_tensor_create(
     }
 
     size_t bytes = tensor.total_elements * sizeof(float);
-    if (cudaMalloc(&tensor.d_data, bytes) != cudaSuccess) {
-        tensor.d_data = NULL;
-        tensor.total_elements = 0;
-        return tensor;
+    cudaError_t err = cudaMalloc(&tensor.d_data, bytes);
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t result;
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+            err = cudaMalloc(&tensor.d_data, bytes);
+        }
+        if (err != cudaSuccess) {
+            tensor.d_data = NULL;
+            tensor.total_elements = 0;
+            return tensor;
+        }
     }
 
     tensor.owns_data = true;
@@ -641,6 +692,11 @@ bool nimcp_gpu_fuzzy_tensor_upload(
     nimcp_gpu_fuzzy_tensor_t* tensor,
     const float* host_data)
 {
+    // Initialize recovery system if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !tensor || !tensor->d_data || !host_data) {
         return false;
     }
@@ -648,9 +704,9 @@ bool nimcp_gpu_fuzzy_tensor_upload(
     size_t bytes = tensor->total_elements * sizeof(float);
     cudaStream_t stream = nimcp_gpu_get_compute_stream(ctx);
 
-    NIMCP_CUDA_CHECK(cudaMemcpyAsync(tensor->d_data, host_data, bytes,
-                                      cudaMemcpyHostToDevice, stream));
-    NIMCP_CUDA_CHECK(cudaStreamSynchronize(stream));
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(tensor->d_data, host_data, bytes,
+                                       cudaMemcpyHostToDevice, stream), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
 
     return true;
 }
@@ -660,6 +716,11 @@ bool nimcp_gpu_fuzzy_tensor_download(
     const nimcp_gpu_fuzzy_tensor_t* tensor,
     float* host_data)
 {
+    // Initialize recovery system if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !tensor || !tensor->d_data || !host_data) {
         return false;
     }
@@ -667,9 +728,9 @@ bool nimcp_gpu_fuzzy_tensor_download(
     size_t bytes = tensor->total_elements * sizeof(float);
     cudaStream_t stream = nimcp_gpu_get_compute_stream(ctx);
 
-    NIMCP_CUDA_CHECK(cudaMemcpyAsync(host_data, tensor->d_data, bytes,
-                                      cudaMemcpyDeviceToHost, stream));
-    NIMCP_CUDA_CHECK(cudaStreamSynchronize(stream));
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(host_data, tensor->d_data, bytes,
+                                       cudaMemcpyDeviceToHost, stream), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
 
     return true;
 }

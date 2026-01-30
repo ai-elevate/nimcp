@@ -31,6 +31,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "PLASTICITY_GPU"
 
@@ -181,6 +182,11 @@ bool nimcp_gpu_stdp_update_traces(
     float dt,
     const nimcp_gpu_stdp_params_t* params)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !pre_trace || !post_trace || !pre_spikes || !post_spikes || !params) {
         LOG_ERROR("Invalid parameters for STDP trace update");
         return false;
@@ -198,7 +204,7 @@ bool nimcp_gpu_stdp_update_traces(
         params->tau_minus,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -269,6 +275,11 @@ bool nimcp_gpu_stdp_apply(
     const nimcp_gpu_tensor_t* post_trace,
     const nimcp_gpu_stdp_params_t* params)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !weights || !pre_spikes || !post_spikes || !pre_trace || !post_trace || !params) {
         LOG_ERROR("Invalid parameters for STDP apply");
         return false;
@@ -293,7 +304,7 @@ bool nimcp_gpu_stdp_apply(
         n_pre,
         n_post);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -363,6 +374,11 @@ bool nimcp_gpu_stdp_apply_modulated(
     const nimcp_gpu_tensor_t* dopamine,
     const nimcp_gpu_stdp_params_t* params)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !weights || !pre_spikes || !post_spikes ||
         !pre_trace || !post_trace || !dopamine || !params) {
         LOG_ERROR("Invalid parameters for modulated STDP");
@@ -389,7 +405,7 @@ bool nimcp_gpu_stdp_apply_modulated(
         n_pre,
         n_post);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -447,6 +463,11 @@ bool nimcp_gpu_triplet_stdp_update_traces(
     float dt,
     const nimcp_gpu_triplet_stdp_params_t* params)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !r1_pre || !r2_pre || !o1_post || !o2_post ||
         !pre_spikes || !post_spikes || !params) {
         LOG_ERROR("Invalid parameters for triplet STDP trace update");
@@ -472,7 +493,7 @@ bool nimcp_gpu_triplet_stdp_update_traces(
         n_pre,
         n_post);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -541,6 +562,11 @@ bool nimcp_gpu_triplet_stdp_apply(
     const nimcp_gpu_tensor_t* o2_post,
     const nimcp_gpu_triplet_stdp_params_t* params)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !weights || !pre_spikes || !post_spikes ||
         !r1_pre || !r2_pre || !o1_post || !o2_post || !params) {
         LOG_ERROR("Invalid parameters for triplet STDP apply");
@@ -568,7 +594,7 @@ bool nimcp_gpu_triplet_stdp_apply(
         n_pre,
         n_post);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -666,6 +692,11 @@ bool nimcp_gpu_bcm_update_threshold(
     float dt,
     const nimcp_gpu_bcm_params_t* params)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !thresholds || !post_activity || !params) {
         LOG_ERROR("Invalid parameters for BCM threshold update");
         return false;
@@ -683,7 +714,7 @@ bool nimcp_gpu_bcm_update_threshold(
         params->max_threshold,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -728,6 +759,11 @@ bool nimcp_gpu_bcm_apply(
     float dt,
     const nimcp_gpu_bcm_params_t* params)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !weights || !pre_activity || !post_activity || !thresholds || !params) {
         LOG_ERROR("Invalid parameters for BCM apply");
         return false;
@@ -747,7 +783,7 @@ bool nimcp_gpu_bcm_apply(
         n_pre,
         n_post);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -792,6 +828,11 @@ bool nimcp_gpu_bcm_apply_modulated(
     float dt,
     const nimcp_gpu_bcm_params_t* params)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !weights || !pre_activity || !post_activity || !thresholds || !params) {
         LOG_ERROR("Invalid parameters for modulated BCM apply");
         return false;
@@ -812,7 +853,7 @@ bool nimcp_gpu_bcm_apply_modulated(
         n_pre,
         n_post);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -899,6 +940,11 @@ bool nimcp_gpu_homeostatic_update_rates(
     float dt,
     const nimcp_gpu_scaling_params_t* params)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !avg_rates || !spikes || !params) {
         LOG_ERROR("Invalid parameters for homeostatic rate update");
         return false;
@@ -913,7 +959,7 @@ bool nimcp_gpu_homeostatic_update_rates(
         params->rate_tau,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -954,6 +1000,11 @@ bool nimcp_gpu_homeostatic_compute_scaling(
     const nimcp_gpu_tensor_t* avg_rates,
     const nimcp_gpu_scaling_params_t* params)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !scaling_factors || !avg_rates || !params) {
         LOG_ERROR("Invalid parameters for scaling factor computation");
         return false;
@@ -970,7 +1021,7 @@ bool nimcp_gpu_homeostatic_compute_scaling(
         params->max_scale,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1008,6 +1059,11 @@ bool nimcp_gpu_homeostatic_apply_scaling(
     float w_min,
     float w_max)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !weights || !scaling_factors) {
         LOG_ERROR("Invalid parameters for scaling application");
         return false;
@@ -1025,7 +1081,7 @@ bool nimcp_gpu_homeostatic_apply_scaling(
         n_pre,
         n_post);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1065,6 +1121,11 @@ bool nimcp_gpu_intrinsic_plasticity_update(
     float dt,
     const nimcp_gpu_intrinsic_params_t* params)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !thresholds || !avg_rates || !params) {
         LOG_ERROR("Invalid parameters for intrinsic plasticity update");
         return false;
@@ -1082,7 +1143,7 @@ bool nimcp_gpu_intrinsic_plasticity_update(
         params->max_threshold,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1168,6 +1229,11 @@ bool nimcp_gpu_stp_update(
     nimcp_gpu_stp_state_t* state,
     float dt)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) {
         LOG_ERROR("Invalid parameters for STP update");
         return false;
@@ -1185,7 +1251,7 @@ bool nimcp_gpu_stp_update(
         p->tau_F,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1223,6 +1289,11 @@ bool nimcp_gpu_stp_process_spikes(
     nimcp_gpu_stp_state_t* state,
     const nimcp_gpu_tensor_t* spikes)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !spikes) {
         LOG_ERROR("Invalid parameters for STP spike processing");
         return false;
@@ -1237,7 +1308,7 @@ bool nimcp_gpu_stp_process_spikes(
         state->params.U,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1263,6 +1334,11 @@ bool nimcp_gpu_stp_get_modulation(
     const nimcp_gpu_stp_state_t* state,
     nimcp_gpu_tensor_t* modulation)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !modulation) {
         LOG_ERROR("Invalid parameters for STP modulation");
         return false;
@@ -1276,7 +1352,7 @@ bool nimcp_gpu_stp_get_modulation(
         (float*)modulation->data,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1304,6 +1380,11 @@ bool nimcp_gpu_stp_apply(
     const nimcp_gpu_stp_state_t* state,
     nimcp_gpu_tensor_t* effective_weights)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !base_weights || !state || !effective_weights) {
         LOG_ERROR("Invalid parameters for STP apply");
         return false;
@@ -1318,7 +1399,7 @@ bool nimcp_gpu_stp_apply(
         (float*)effective_weights->data,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1326,6 +1407,11 @@ bool nimcp_gpu_stp_reset(
     nimcp_gpu_context_t* ctx,
     nimcp_gpu_stp_state_t* state)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) {
         LOG_ERROR("Invalid parameters for STP reset");
         return false;
@@ -1422,6 +1508,11 @@ bool nimcp_gpu_calcium_update(
     nimcp_gpu_calcium_state_t* state,
     float dt)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) {
         LOG_ERROR("Invalid parameters for calcium update");
         return false;
@@ -1439,7 +1530,7 @@ bool nimcp_gpu_calcium_update(
         p->buffer_capacity,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1492,6 +1583,11 @@ bool nimcp_gpu_calcium_nmda_influx(
     const nimcp_gpu_tensor_t* nmda_activation,
     const nimcp_gpu_tensor_t* postsynaptic_voltage)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !nmda_activation || !postsynaptic_voltage) {
         LOG_ERROR("Invalid parameters for calcium NMDA influx");
         return false;
@@ -1509,7 +1605,7 @@ bool nimcp_gpu_calcium_nmda_influx(
         p->max_conc,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1557,6 +1653,11 @@ bool nimcp_gpu_calcium_compute_learning_rate(
     nimcp_gpu_context_t* ctx,
     nimcp_gpu_calcium_state_t* state)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) {
         LOG_ERROR("Invalid parameters for calcium learning rate computation");
         return false;
@@ -1574,7 +1675,7 @@ bool nimcp_gpu_calcium_compute_learning_rate(
         p->omega_power,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1612,6 +1713,11 @@ bool nimcp_gpu_calcium_apply_plasticity(
     const nimcp_gpu_tensor_t* pre_activity,
     const nimcp_gpu_tensor_t* post_activity)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !weights || !state || !pre_activity || !post_activity) {
         LOG_ERROR("Invalid parameters for calcium plasticity");
         return false;
@@ -1629,7 +1735,7 @@ bool nimcp_gpu_calcium_apply_plasticity(
         n_pre,
         n_post);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1637,6 +1743,11 @@ bool nimcp_gpu_calcium_reset(
     nimcp_gpu_context_t* ctx,
     nimcp_gpu_calcium_state_t* state)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) {
         LOG_ERROR("Invalid parameters for calcium reset");
         return false;
@@ -1671,6 +1782,11 @@ bool nimcp_gpu_calcium_mg_block(
     const nimcp_gpu_tensor_t* voltage,
     nimcp_gpu_tensor_t* mg_block)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !voltage || !mg_block) {
         LOG_ERROR("Invalid parameters for Mg block computation");
         return false;
@@ -1683,7 +1799,7 @@ bool nimcp_gpu_calcium_mg_block(
         (float*)mg_block->data,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1731,6 +1847,11 @@ bool nimcp_gpu_calcium_get_regime(
     nimcp_gpu_tensor_t* regime,
     const nimcp_gpu_calcium_params_t* params)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !concentration || !regime || !params) {
         LOG_ERROR("Invalid parameters for calcium regime detection");
         return false;
@@ -1746,7 +1867,7 @@ bool nimcp_gpu_calcium_get_regime(
         params->threshold_sat,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 

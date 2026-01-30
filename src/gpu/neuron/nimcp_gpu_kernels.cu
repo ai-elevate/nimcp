@@ -35,6 +35,8 @@
 #include <device_launch_parameters.h>
 #include "gpu/nimcp_gpu_neuron.h"
 #include "gpu/nimcp_spike_event.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 //=============================================================================
 // CUDA Device Constants
@@ -687,6 +689,11 @@ extern "C" void launch_kernel_update_neurons_tensor(
     uint32_t block_size,
     cudaStream_t stream)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     // Validate parameters
     if (!neuron_states || !neuron_meta || !synapses || num_neurons == 0) {
         return;
@@ -726,6 +733,11 @@ extern "C" void launch_kernel_apply_stdp_tensor(
     uint32_t block_size,
     cudaStream_t stream)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     // Validate parameters
     if (!neuron_states || !neuron_meta || !synapses || num_neurons == 0) {
         return;

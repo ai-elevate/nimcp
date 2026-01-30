@@ -14,6 +14,18 @@
  * 4. Policy Kernels: Softmax, REINFORCE, gradient updates
  * 5. Alignment Kernels: Constraint checking and penalty computation
  *
+ * RNG ARCHITECTURE:
+ * =================
+ * This module uses cuRAND (XORWOW generator) for high-quality Monte Carlo sampling.
+ * The kernel_init_rng pattern follows the central GPU statistics module:
+ *   - See: gpu/statistics/nimcp_statistics_gpu.h for stats_gpu_rng_create/destroy
+ *   - See: gpu/common/nimcp_device_utils.cuh for shared device RNG functions
+ *
+ * Module-local RNG state is used because:
+ *   1. QMC requires independent, reproducible sequences per trajectory
+ *   2. Drive trajectory sampling needs deterministic replay for debugging
+ *   3. Performance-critical per-thread state management
+ *
  * @version Phase 18: GPU Acceleration
  * @date 2026-01-04
  */
@@ -21,6 +33,9 @@
 /* Include headers before CUDA check so types are available for all builds */
 #include "gpu/hypothalamus/nimcp_hypothalamus_qmc_gpu.h"
 #include "gpu/hypothalamus/nimcp_hypothalamus_gpu.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -1002,6 +1017,10 @@ bool nimcp_hypo_qmc_sample_trajectories(
     const nimcp_hypo_qmc_dynamics_t* dynamics,
     const nimcp_hypo_qmc_efe_config_t* config)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !initial_state || !dynamics || !config) {
         return false;
     }
@@ -1032,7 +1051,8 @@ bool nimcp_hypo_qmc_sample_trajectories(
         num_drives,
         state->horizon);
 
-    return cudaGetLastError() == cudaSuccess;
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
 }
 
 bool nimcp_hypo_qmc_compute_risk(
@@ -1041,6 +1061,10 @@ bool nimcp_hypo_qmc_compute_risk(
     const nimcp_hypo_gpu_setpoints_t* setpoints,
     const nimcp_hypo_qmc_efe_config_t* config)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !setpoints || !config) {
         return false;
     }
@@ -1063,7 +1087,8 @@ bool nimcp_hypo_qmc_compute_risk(
         num_drives,
         state->horizon);
 
-    return cudaGetLastError() == cudaSuccess;
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
 }
 
 bool nimcp_hypo_qmc_compute_ambiguity(
@@ -1072,6 +1097,10 @@ bool nimcp_hypo_qmc_compute_ambiguity(
     const nimcp_hypo_qmc_dynamics_t* dynamics,
     const nimcp_hypo_qmc_efe_config_t* config)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !dynamics || !config) {
         return false;
     }
@@ -1093,7 +1122,8 @@ bool nimcp_hypo_qmc_compute_ambiguity(
         num_drives,
         state->horizon);
 
-    return cudaGetLastError() == cudaSuccess;
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
 }
 
 bool nimcp_hypo_qmc_compute_efe(
@@ -1102,6 +1132,10 @@ bool nimcp_hypo_qmc_compute_efe(
     nimcp_gpu_tensor_t* efe_out,
     const nimcp_hypo_qmc_efe_config_t* config)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !efe_out || !config) {
         return false;
     }
@@ -1121,7 +1155,8 @@ bool nimcp_hypo_qmc_compute_efe(
         config->ambiguity_weight,
         state->num_samples);
 
-    return cudaGetLastError() == cudaSuccess;
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
 }
 
 /* Policy optimization */
@@ -1131,6 +1166,10 @@ bool nimcp_hypo_qmc_softmax_policy(
     nimcp_gpu_tensor_t* policy_probs,
     float temperature)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !efe_values || !policy_probs || temperature <= 0.0f) {
         return false;
     }
@@ -1145,7 +1184,8 @@ bool nimcp_hypo_qmc_softmax_policy(
         temperature,
         num_policies);
 
-    return cudaGetLastError() == cudaSuccess;
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
 }
 
 bool nimcp_hypo_qmc_policy_gradient(
@@ -1178,7 +1218,8 @@ bool nimcp_hypo_qmc_policy_gradient(
         policy_state->num_policies,
         0);  /* selected_policy - would come from sampling */
 
-    return cudaGetLastError() == cudaSuccess;
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
 }
 
 bool nimcp_hypo_qmc_policy_update(
@@ -1205,7 +1246,8 @@ bool nimcp_hypo_qmc_policy_update(
         (const float*)policy_state->policy_probs,
         policy_state->num_policies);
 
-    return cudaGetLastError() == cudaSuccess;
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
 }
 
 bool nimcp_hypo_qmc_update_baseline(
@@ -1236,7 +1278,8 @@ bool nimcp_hypo_qmc_update_baseline(
         return_val,
         learning_rate);
 
-    return cudaGetLastError() == cudaSuccess;
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
 }
 
 /* Active inference integration */
@@ -1262,7 +1305,8 @@ bool nimcp_hypo_qmc_precision_error(
         (float*)error_out,
         size);
 
-    return cudaGetLastError() == cudaSuccess;
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
 }
 
 bool nimcp_hypo_qmc_belief_update(
@@ -1285,7 +1329,8 @@ bool nimcp_hypo_qmc_belief_update(
         learning_rate,
         size);
 
-    return cudaGetLastError() == cudaSuccess;
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
 }
 
 /* Alignment-aware EFE */
@@ -1354,7 +1399,8 @@ bool nimcp_hypo_qmc_aligned_efe(
     cudaFree(penalties);
     cudaFree(base_efe);
 
-    return cudaGetLastError() == cudaSuccess;
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
 }
 
 bool nimcp_hypo_qmc_check_alignment(

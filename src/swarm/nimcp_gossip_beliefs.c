@@ -20,6 +20,7 @@
 #include "utils/validation/nimcp_common.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/containers/nimcp_hash_table.h"
+#include "utils/statistics/nimcp_statistics.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
@@ -1038,15 +1039,21 @@ float gossip_calculate_entropy(gossip_beliefs_t* gb)
     };
     hash_table_iterate(gb->all_beliefs, collect_belief_iter_cb, &collect_ctx);
 
-    /* Shannon entropy: H = -sum(p * log2(p)) */
-    float entropy = 0.0F;
+    /* Build probability distribution from certainties */
+    float* probs = (float*)nimcp_malloc(sizeof(float) * collected);
+    if (!probs) {
+        nimcp_free(beliefs);
+        nimcp_platform_mutex_unlock(gb->mutex);
+        return 0.0F;
+    }
     for (uint32_t i = 0; i < collected; i++) {
-        float p = beliefs[i]->certainty / ctx.total_certainty_sum;
-        if (p > 0.0F) {
-            entropy -= p * log2f(p);
-        }
+        probs[i] = beliefs[i]->certainty / ctx.total_certainty_sum;
     }
 
+    /* Use central statistics module for Shannon entropy */
+    float entropy = nimcp_stats_entropy(probs, collected);
+
+    nimcp_free(probs);
     nimcp_free(beliefs);
     nimcp_platform_mutex_unlock(gb->mutex);
 

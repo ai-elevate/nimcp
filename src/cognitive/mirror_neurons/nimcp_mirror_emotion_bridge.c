@@ -14,6 +14,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/tensor/nimcp_tensor_simd.h"
+#include "utils/containers/nimcp_vector.h"
 #include "utils/thread/nimcp_thread.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -103,69 +104,7 @@ struct mirror_emotion_bridge {
 /* Security integration */
 BRIDGE_DEFINE_SECURITY_SETTERS(mirror_emotion_bridge)
 
-//=============================================================================
-// SIMD Helper Functions
-//=============================================================================
-
-/**
- * @brief SIMD-optimized dot product
- */
-static double simd_dot_product(const float* a, const float* b, uint32_t dim) {
-    if (dim >= MIRROR_EMOTION_SIMD_THRESHOLD) {
-        return tensor_simd_dot_f32(a, b, dim);
-    }
-
-    /* Scalar fallback for small vectors */
-    double sum = 0.0;
-    for (uint32_t i = 0; i < dim; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && dim > 256) {
-            mirror_emotion_bridge_heartbeat("mirror_emoti_loop",
-                             (float)(i + 1) / (float)dim);
-        }
-
-        sum += (double)a[i] * (double)b[i];
-    }
-    return sum;
-}
-
-/**
- * @brief SIMD-optimized sum of squares
- */
-static double simd_sum_sq(const float* a, uint32_t dim) {
-    if (dim >= MIRROR_EMOTION_SIMD_THRESHOLD) {
-        return tensor_simd_sum_sq_f32(a, dim);
-    }
-
-    double sum = 0.0;
-    for (uint32_t i = 0; i < dim; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && dim > 256) {
-            mirror_emotion_bridge_heartbeat("mirror_emoti_loop",
-                             (float)(i + 1) / (float)dim);
-        }
-
-        sum += (double)a[i] * (double)a[i];
-    }
-    return sum;
-}
-
-/**
- * @brief Compute cosine similarity using SIMD
- */
-static float compute_cosine_similarity(const float* a, const float* b, uint32_t dim) {
-    if (dim == 0) return 0.0f;
-
-    double dot = simd_dot_product(a, b, dim);
-    double norm_a = sqrt(simd_sum_sq(a, dim));
-    double norm_b = sqrt(simd_sum_sq(b, dim));
-
-    if (norm_a < 1e-10 || norm_b < 1e-10) {
-        return 0.0f;
-    }
-
-    return (float)(dot / (norm_a * norm_b));
-}
+/* Cosine similarity uses nimcp_vector_cosine_similarity from utils/containers/nimcp_vector.h */
 
 //=============================================================================
 // Emotion Templates (Basic Emotions AU Patterns)
@@ -256,8 +195,8 @@ static uint32_t match_emotion_from_aus(const float* aus, float* confidence) {
                              (float)(i + 1) / (float)MIRROR_EMOTION_BASIC_COUNT);
         }
 
-        float sim = compute_cosine_similarity(aus, EMOTION_AU_TEMPLATES[i],
-                                               MIRROR_EMOTION_ACTION_UNITS);
+        float sim = nimcp_vector_cosine_similarity(aus, EMOTION_AU_TEMPLATES[i],
+                                                   MIRROR_EMOTION_ACTION_UNITS);
         if (sim > best_score) {
             best_score = sim;
             best_emotion = i;
@@ -880,7 +819,7 @@ float mirror_emotion_simd_similarity(
     mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_simd_", 0.0f);
 
 
-    return compute_cosine_similarity(features_a, features_b, dim);
+    return nimcp_vector_cosine_similarity(features_a, features_b, dim);
 }
 
 void mirror_emotion_simd_au_compare(
@@ -900,7 +839,7 @@ void mirror_emotion_simd_au_compare(
                              (float)(i + 1) / (float)count);
         }
 
-        similarities[i] = compute_cosine_similarity(
+        similarities[i] = nimcp_vector_cosine_similarity(
             observed_aus + i * MIRROR_EMOTION_ACTION_UNITS,
             template_aus,
             MIRROR_EMOTION_ACTION_UNITS

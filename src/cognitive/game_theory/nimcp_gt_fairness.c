@@ -12,6 +12,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/statistics/nimcp_statistics.h"
 #include <string.h>
 #include <math.h>
 #include <float.h>
@@ -86,22 +87,11 @@ static const char* s_allocation_property_names[] = {
 //=============================================================================
 
 /**
- * @brief Compute mean of values
+ * @brief Compute mean of values (wrapper for central statistics module)
  */
 static float compute_mean(const float* values, uint32_t n) {
     if (!values || n == 0) return 0.0f;
-
-    float sum = 0.0f;
-    for (uint32_t i = 0; i < n; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && n > 256) {
-            gt_fairness_heartbeat("gt_fairness_loop",
-                             (float)(i + 1) / (float)n);
-        }
-
-        sum += values[i];
-    }
-    return sum / (float)n;
+    return nimcp_stats_mean(values, n);
 }
 
 /**

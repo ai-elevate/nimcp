@@ -15,6 +15,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/tensor/nimcp_tensor_simd.h"
+#include "utils/containers/nimcp_vector.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "security/nimcp_bbb_helpers.h"
 #include "async/nimcp_bio_messages.h"
@@ -121,27 +122,6 @@ BRIDGE_DEFINE_SECURITY_SETTERS_TYPE(mirror_tom_bridge, struct mirror_tom_bridge)
  * ============================================================================ */
 
 /**
- * @brief SIMD-optimized dot product
- */
-static double simd_dot_product(const float* a, const float* b, uint32_t dim) {
-    if (dim >= MIRROR_TOM_SIMD_BATCH_THRESHOLD) {
-        return tensor_simd_dot_f32(a, b, dim);
-    }
-    /* Scalar fallback for small vectors */
-    double sum = 0.0;
-    for (uint32_t i = 0; i < dim; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && dim > 256) {
-            mirror_tom_bridge_heartbeat("mirror_tom_b_loop",
-                             (float)(i + 1) / (float)dim);
-        }
-
-        sum += (double)a[i] * (double)b[i];
-    }
-    return sum;
-}
-
-/**
  * @brief SIMD-optimized sum of squares
  */
 static double simd_sum_sq(const float* v, uint32_t dim) {
@@ -162,24 +142,7 @@ static double simd_sum_sq(const float* v, uint32_t dim) {
     return sum;
 }
 
-/**
- * @brief Compute cosine similarity using SIMD where beneficial
- */
-static float compute_cosine_similarity(const float* a, const float* b,
-                                        uint32_t dim, bool* used_simd) {
-    if (!a || !b || dim == 0) return 0.0f;
-
-    bool use_simd = dim >= MIRROR_TOM_SIMD_BATCH_THRESHOLD;
-    if (used_simd) *used_simd = use_simd;
-
-    double dot = simd_dot_product(a, b, dim);
-    double norm_a = sqrt(simd_sum_sq(a, dim));
-    double norm_b = sqrt(simd_sum_sq(b, dim));
-
-    if (norm_a < EPSILON || norm_b < EPSILON) return 0.0f;
-
-    return (float)(dot / (norm_a * norm_b));
-}
+/* Cosine similarity uses nimcp_vector_cosine_similarity from utils/containers/nimcp_vector.h */
 
 /* ============================================================================
  * Internal Helper Functions
@@ -349,11 +312,10 @@ static void add_intention_to_history(mirror_tom_agent_state_t* agent,
         float total_sim = 0.0f;
         uint32_t comparisons = 0;
         for (uint32_t i = 0; i < agent->intention_count - 1; i++) {
-            bool used_simd;
-            float sim = compute_cosine_similarity(
+            float sim = nimcp_vector_cosine_similarity(
                 agent->intention_history[i],
                 agent->intention_history[i + 1],
-                copy_dim, &used_simd);
+                copy_dim);
             total_sim += sim;
             comparisons++;
         }
@@ -824,9 +786,7 @@ float mirror_tom_simd_similarity(const float* action,
     /* Phase 8: Heartbeat at operation start */
     mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_simd_simi", 0.0f);
 
-
-    bool used_simd;
-    return compute_cosine_similarity(action, intention, dim, &used_simd);
+    return nimcp_vector_cosine_similarity(action, intention, dim);
 }
 
 int mirror_tom_batch_belief_similarity(const float** belief_states,
@@ -861,9 +821,8 @@ int mirror_tom_batch_belief_similarity(const float** belief_states,
                 continue;
             }
 
-            bool used_simd;
-            float sim = compute_cosine_similarity(belief_states[i], belief_states[j],
-                                                   belief_dim, &used_simd);
+            float sim = nimcp_vector_cosine_similarity(belief_states[i], belief_states[j],
+                                                       belief_dim);
             out_similarity[i * num_agents + j] = sim;
             out_similarity[j * num_agents + i] = sim;
         }

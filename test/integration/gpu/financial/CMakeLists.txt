@@ -3,68 +3,69 @@
 # ============================================================================
 # WHAT: Build configuration for financial GPU integration tests
 # WHY:  Enable testing of financial GPU pipelines and workflows
-# HOW:  Link against Check framework and nimcp library
+# HOW:  Link against GTest framework and nimcp library
 # ============================================================================
 
-# Guard: Check if Check framework is available
-find_package(Check QUIET)
-if(NOT Check_FOUND)
-    message(STATUS "Check framework not found - skipping financial GPU integration tests")
-    return()
-endif()
+# Find GTest
+find_package(GTest QUIET)
 
-# ============================================================================
-# Test: Financial GPU Integration
-# ============================================================================
-add_executable(integration_financial_gpu
-    test_financial_gpu_integration.c
-)
+if(GTest_FOUND AND CUDAToolkit_FOUND)
+    message(STATUS "Adding financial GPU integration tests (GTest)...")
 
-target_link_libraries(integration_financial_gpu
-    PRIVATE
-        nimcp
-        Check::check
-        m
-        pthread
-)
-
-target_include_directories(integration_financial_gpu
-    PRIVATE
-        ${CMAKE_SOURCE_DIR}/include
-        ${CMAKE_SOURCE_DIR}/src
-)
-
-add_test(NAME integration_financial_gpu COMMAND integration_financial_gpu)
-set_tests_properties(integration_financial_gpu PROPERTIES
-    TIMEOUT 300
-    LABELS "integration;gpu;financial"
-)
-
-# ============================================================================
-# Test: Financial CPU/GPU Equivalence (if exists)
-# ============================================================================
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_financial_cpu_gpu_equivalence.c)
-    add_executable(integration_financial_cpu_gpu_equiv
-        test_financial_cpu_gpu_equivalence.c
+    # ========================================================================
+    # Test: Financial GPU Integration
+    # ========================================================================
+    add_executable(integration_gpu_financial_test_integration
+        test_financial_gpu_integration.cpp
     )
 
-    target_link_libraries(integration_financial_cpu_gpu_equiv
+    target_link_libraries(integration_gpu_financial_test_integration
         PRIVATE
             nimcp
-            Check::check
+            GTest::gtest
+            GTest::gtest_main
+            ${CUDA_LIBRARIES}
             m
             pthread
     )
 
-    target_include_directories(integration_financial_cpu_gpu_equiv
+    target_include_directories(integration_gpu_financial_test_integration
         PRIVATE
             ${CMAKE_SOURCE_DIR}/include
             ${CMAKE_SOURCE_DIR}/src
+            ${CUDA_INCLUDE_DIRS}
     )
 
-    add_test(NAME integration_financial_cpu_gpu_equiv COMMAND integration_financial_cpu_gpu_equiv)
-    set_tests_properties(integration_financial_cpu_gpu_equiv PROPERTIES
-        TIMEOUT 180
-        LABELS "integration;gpu;financial;equivalence"
+    add_test(NAME integration_gpu_financial COMMAND integration_gpu_financial_test_integration)
+    set_tests_properties(integration_gpu_financial PROPERTIES
+        TIMEOUT 300
+        LABELS "integration;gpu;financial"
     )
+
+else()
+    if(NOT GTest_FOUND)
+        message(STATUS "GTest not found - skipping financial GPU integration tests")
+    endif()
+    if(NOT CUDAToolkit_FOUND)
+        message(STATUS "CUDA toolkit not found - skipping financial GPU integration tests")
+    endif()
+endif()
+
+# ============================================================================
+# Legacy Check-based tests (if available)
+# ============================================================================
+find_package(Check QUIET)
+if(Check_FOUND)
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_financial_gpu_integration.c)
+        add_executable(integration_financial_gpu_check
+            test_financial_gpu_integration.c
+        )
+        target_link_libraries(integration_financial_gpu_check
+            PRIVATE nimcp Check::check m pthread
+        )
+        target_include_directories(integration_financial_gpu_check
+            PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src
+        )
+        add_test(NAME integration_financial_gpu_check COMMAND integration_financial_gpu_check)
+    endif()
 endif()

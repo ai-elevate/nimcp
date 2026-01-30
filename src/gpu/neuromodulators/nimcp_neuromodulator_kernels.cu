@@ -27,6 +27,7 @@
 
 // Now include our headers (which have extern "C" blocks)
 #include "gpu/neuromodulators/nimcp_neuromodulator_gpu.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
@@ -158,6 +159,10 @@ bool nimcp_gpu_dopamine_update(
     float dt,
     const nimcp_gpu_dopamine_params_t* params)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !spikes || !params) {
         LOG_ERROR("Invalid parameters for dopamine update");
         return false;
@@ -177,7 +182,7 @@ bool nimcp_gpu_dopamine_update(
         dt,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -220,6 +225,10 @@ bool nimcp_gpu_dopamine_compute_rpe(
     nimcp_gpu_tensor_t* rpe_out,
     const nimcp_gpu_dopamine_params_t* params)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !reward || !predicted || !rpe_out || !params) {
         LOG_ERROR("Invalid parameters for RPE computation");
         return false;
@@ -236,7 +245,7 @@ bool nimcp_gpu_dopamine_compute_rpe(
         params->phasic_amplitude,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -293,7 +302,7 @@ bool nimcp_gpu_dopamine_receptor_update(
         dt,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -354,7 +363,7 @@ bool nimcp_gpu_dopamine_modulate_plasticity(
         learning_rate,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -414,6 +423,10 @@ bool nimcp_gpu_serotonin_update(
     float dt,
     const nimcp_gpu_serotonin_params_t* params)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !spikes || !params) {
         LOG_ERROR("Invalid parameters for serotonin update");
         return false;
@@ -434,7 +447,7 @@ bool nimcp_gpu_serotonin_update(
         dt,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -489,7 +502,7 @@ bool nimcp_gpu_serotonin_receptor_update(
         dt,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -548,7 +561,7 @@ bool nimcp_gpu_serotonin_modulate_behavior(
         params->baseline,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -608,6 +621,10 @@ bool nimcp_gpu_acetylcholine_update(
     float dt,
     const nimcp_gpu_acetylcholine_params_t* params)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !spikes || !params) {
         LOG_ERROR("Invalid parameters for ACh update");
         return false;
@@ -627,7 +644,7 @@ bool nimcp_gpu_acetylcholine_update(
         dt,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -701,7 +718,7 @@ bool nimcp_gpu_acetylcholine_receptor_update(
         dt,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -759,7 +776,7 @@ bool nimcp_gpu_acetylcholine_compute_attention(
         params->baseline,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -806,7 +823,7 @@ bool nimcp_gpu_acetylcholine_modulate_learning(
         max_modulation,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -867,6 +884,10 @@ bool nimcp_gpu_norepinephrine_update(
     float dt,
     const nimcp_gpu_norepinephrine_params_t* params)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !spikes || !params) {
         LOG_ERROR("Invalid parameters for NE update");
         return false;
@@ -887,7 +908,7 @@ bool nimcp_gpu_norepinephrine_update(
         dt,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -948,7 +969,7 @@ bool nimcp_gpu_norepinephrine_receptor_update(
         dt,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1020,7 +1041,7 @@ bool nimcp_gpu_norepinephrine_compute_arousal(
         params->stress_gain,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1072,7 +1093,7 @@ bool nimcp_gpu_norepinephrine_modulate_gain(
         gain_sensitivity,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1158,7 +1179,7 @@ bool nimcp_gpu_neuromod_interactions(
     // For now, apply interactions in-place to concentration effects
     // In a full implementation, this would update the interaction matrix
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1171,6 +1192,10 @@ bool nimcp_gpu_neuromod_system_update(
     const nimcp_gpu_tensor_t* ne_spikes,
     float dt)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !system) {
         LOG_ERROR("Invalid system update parameters");
         return false;
@@ -1274,7 +1299,7 @@ bool nimcp_gpu_neuromod_apply_combined(
         (const float*)system->norepinephrine->concentration->data,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1339,7 +1364,7 @@ bool nimcp_gpu_vesicle_dynamics(
         dt,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1399,7 +1424,7 @@ bool nimcp_gpu_receptor_kinetics(
         dt,
         n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 

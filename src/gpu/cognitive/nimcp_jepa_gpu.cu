@@ -11,6 +11,12 @@
  * 2. Inverse model: Action inference from state transitions
  * 3. Masking operations: Contrastive learning mask application
  *
+ * RNG USAGE:
+ * ==========
+ * Uses inline curand_init for random mask generation.
+ * For general GPU statistics RNG, see: gpu/statistics/nimcp_statistics_gpu.h
+ * For shared device RNG functions, see: gpu/common/nimcp_device_utils.cuh
+ *
  * @version 1.0
  * @author NIMCP Development Team
  * @date 2025
@@ -29,6 +35,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "JEPA_GPU"
 
@@ -562,6 +569,10 @@ nimcp_jepa_gpu_predictor_t* nimcp_jepa_gpu_predictor_create(
     uint32_t num_layers,
     nimcp_jepa_gpu_activation_t activation)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || input_dim == 0 || output_dim == 0 || num_layers == 0) {
         LOG_ERROR("Invalid parameters for GPU predictor creation");
         return NULL;
@@ -678,13 +689,16 @@ bool nimcp_jepa_gpu_predictor_upload_weights(
     if (!predictor || layer_idx >= predictor->num_layers || !weights || !bias) {
         return false;
     }
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     nimcp_jepa_gpu_layer_t* layer = &predictor->layers[layer_idx];
     size_t weight_bytes = layer->in_dim * layer->out_dim * sizeof(float);
     size_t bias_bytes = layer->out_dim * sizeof(float);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(layer->weights->data, weights, weight_bytes, cudaMemcpyHostToDevice));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(layer->bias->data, bias, bias_bytes, cudaMemcpyHostToDevice));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(layer->weights->data, weights, weight_bytes, cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(layer->bias->data, bias, bias_bytes, cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     return true;
 }
@@ -698,13 +712,16 @@ bool nimcp_jepa_gpu_predictor_download_weights(
     if (!predictor || layer_idx >= predictor->num_layers || !weights || !bias) {
         return false;
     }
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     const nimcp_jepa_gpu_layer_t* layer = &predictor->layers[layer_idx];
     size_t weight_bytes = layer->in_dim * layer->out_dim * sizeof(float);
     size_t bias_bytes = layer->out_dim * sizeof(float);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(weights, layer->weights->data, weight_bytes, cudaMemcpyDeviceToHost));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(bias, layer->bias->data, bias_bytes, cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(weights, layer->weights->data, weight_bytes, cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(bias, layer->bias->data, bias_bytes, cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     return true;
 }
@@ -715,6 +732,9 @@ bool nimcp_jepa_gpu_forward_predict(
     nimcp_gpu_tensor_t* prediction)
 {
     if (!predictor || !context || !prediction) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     // Determine batch size from input
     uint32_t batch_size = (context->ndim > 1) ? context->dims[0] : 1;
@@ -742,12 +762,7 @@ bool nimcp_jepa_gpu_forward_predict(
             layer->in_dim,
             layer->out_dim,
             layer->activation);
-
-        cudaError_t err = cudaGetLastError();
-        if (err != cudaSuccess) {
-            LOG_ERROR("JEPA forward kernel error: %s", cudaGetErrorString(err));
-            return false;
-        }
+        NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
         current_input = output;
     }
@@ -762,6 +777,9 @@ bool nimcp_jepa_gpu_forward_conditioned(
     nimcp_gpu_tensor_t* next_state)
 {
     if (!predictor || !state || !action || !next_state) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     // For conditioned prediction, first layer expects concatenated input
     uint32_t batch_size = (state->ndim > 1) ? state->dims[0] : 1;
@@ -782,8 +800,7 @@ bool nimcp_jepa_gpu_forward_conditioned(
         action_dim,
         first_layer->out_dim,
         first_layer->activation);
-
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Continue with remaining layers
     const nimcp_gpu_tensor_t* current_input = predictor->activations[0];
@@ -804,8 +821,8 @@ bool nimcp_jepa_gpu_forward_conditioned(
             layer->in_dim,
             layer->out_dim,
             layer->activation);
+        NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
-        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
         current_input = output;
     }
 
@@ -823,6 +840,10 @@ nimcp_jepa_gpu_inverse_t* nimcp_jepa_gpu_inverse_create(
     uint32_t hidden_dim,
     uint32_t num_layers)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || state_dim == 0 || action_dim == 0) return NULL;
 
     nimcp_jepa_gpu_inverse_t* inv = (nimcp_jepa_gpu_inverse_t*)calloc(1, sizeof(nimcp_jepa_gpu_inverse_t));
@@ -889,6 +910,9 @@ bool nimcp_jepa_gpu_inverse_infer(
     nimcp_gpu_tensor_t* action)
 {
     if (!inverse || !state_t || !state_next || !action) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     uint32_t batch_size = (state_t->ndim > 1) ? state_t->dims[0] : 1;
     uint32_t total_outputs = batch_size * inverse->action_dim;
@@ -903,8 +927,8 @@ bool nimcp_jepa_gpu_inverse_infer(
         batch_size,
         inverse->state_dim,
         inverse->action_dim);
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -919,6 +943,9 @@ bool nimcp_jepa_gpu_apply_mask(
     nimcp_gpu_tensor_t* masked)
 {
     if (!ctx || !latent || !mask || !masked) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     size_t n = latent->numel;
     bool broadcast = (mask->numel < latent->numel);
@@ -931,8 +958,8 @@ bool nimcp_jepa_gpu_apply_mask(
         n,
         broadcast,
         dim);
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -943,6 +970,9 @@ bool nimcp_jepa_gpu_generate_block_mask(
     float mask_ratio)
 {
     if (!ctx || !mask || block_size == 0) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     uint32_t batch_size = (mask->ndim > 1) ? mask->dims[0] : 1;
     uint32_t dim = mask->dims[mask->ndim - 1];
@@ -957,8 +987,8 @@ bool nimcp_jepa_gpu_generate_block_mask(
         block_size,
         mask_ratio,
         seed);
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -969,6 +999,9 @@ bool nimcp_jepa_gpu_apply_soft_mask(
     nimcp_gpu_tensor_t* masked)
 {
     if (!ctx || !latent || !weights || !masked) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     size_t n = latent->numel;
 
@@ -977,8 +1010,8 @@ bool nimcp_jepa_gpu_apply_soft_mask(
         (const float*)latent->data,
         (const float*)weights->data,
         n);
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
     return true;
 }
 
@@ -994,12 +1027,15 @@ bool nimcp_jepa_gpu_compute_loss(
     float* loss)
 {
     if (!ctx || !prediction || !target || !loss) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     size_t n = prediction->numel;
     int num_blocks = GRID_SIZE(n);
 
     float* d_partial_sums;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_partial_sums, num_blocks * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_partial_sums, num_blocks * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     kernel_jepa_mse_loss<<<num_blocks, BLOCK_SIZE, BLOCK_SIZE * sizeof(float)>>>(
         (const float*)prediction->data,
@@ -1007,12 +1043,11 @@ bool nimcp_jepa_gpu_compute_loss(
         mask ? (const float*)mask->data : NULL,
         d_partial_sums,
         n);
-
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Reduce partial sums on host
     float* h_partial_sums = (float*)malloc(num_blocks * sizeof(float));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(h_partial_sums, d_partial_sums, num_blocks * sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(h_partial_sums, d_partial_sums, num_blocks * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     double total = 0.0;
     for (int i = 0; i < num_blocks; i++) {
@@ -1034,12 +1069,15 @@ bool nimcp_jepa_gpu_compute_precision_loss(
     float* loss)
 {
     if (!ctx || !prediction || !target || !precision || !loss) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     size_t n = prediction->numel;
     int num_blocks = GRID_SIZE(n);
 
     float* d_partial_sums;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_partial_sums, num_blocks * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_partial_sums, num_blocks * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     kernel_jepa_precision_loss<<<num_blocks, BLOCK_SIZE, BLOCK_SIZE * sizeof(float)>>>(
         (const float*)prediction->data,
@@ -1047,11 +1085,10 @@ bool nimcp_jepa_gpu_compute_precision_loss(
         (const float*)precision->data,
         d_partial_sums,
         n);
-
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     float* h_partial_sums = (float*)malloc(num_blocks * sizeof(float));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(h_partial_sums, d_partial_sums, num_blocks * sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(h_partial_sums, d_partial_sums, num_blocks * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     double total = 0.0;
     for (int i = 0; i < num_blocks; i++) {
@@ -1075,6 +1112,9 @@ bool nimcp_jepa_gpu_backward(
     nimcp_gpu_tensor_t* grad_input)
 {
     if (!predictor || !grad_output) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     uint32_t batch_size = (grad_output->ndim > 1) ? grad_output->dims[0] : 1;
     const nimcp_gpu_tensor_t* current_grad = grad_output;
@@ -1093,7 +1133,7 @@ bool nimcp_jepa_gpu_backward(
                 (const float*)pre_act->data,
                 n,
                 layer->activation);
-            NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+            NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
             current_grad = pre_act;
         }
 
@@ -1107,7 +1147,7 @@ bool nimcp_jepa_gpu_backward(
             batch_size,
             layer->in_dim,
             layer->out_dim);
-        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+        NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
         // Compute input gradient for next layer
         if (i > 0 || grad_input) {
@@ -1122,7 +1162,7 @@ bool nimcp_jepa_gpu_backward(
                     batch_size,
                     layer->in_dim,
                     layer->out_dim);
-                NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+                NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
                 current_grad = next_grad;
             }
         }
@@ -1137,6 +1177,9 @@ bool nimcp_jepa_gpu_update_weights(
     float weight_decay)
 {
     if (!predictor) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     for (uint32_t i = 0; i < predictor->num_layers; i++) {
         nimcp_jepa_gpu_layer_t* layer = &predictor->layers[i];
@@ -1149,7 +1192,7 @@ bool nimcp_jepa_gpu_update_weights(
             learning_rate,
             weight_decay,
             weight_n);
-        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+        NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
         // Update biases (no weight decay)
         kernel_jepa_weight_update<<<GRID_SIZE(layer->out_dim), BLOCK_SIZE>>>(
@@ -1158,7 +1201,7 @@ bool nimcp_jepa_gpu_update_weights(
             learning_rate,
             0.0f,
             layer->out_dim);
-        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+        NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
         // Zero gradients
         nimcp_gpu_zeros(predictor->ctx, layer->grad_w);
@@ -1196,9 +1239,12 @@ bool nimcp_jepa_gpu_upload_latent(
     nimcp_gpu_tensor_t* gpu_latent)
 {
     if (!ctx || !cpu_data || !gpu_latent) return false;
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
 
     size_t n = (gpu_latent->numel < num_elements) ? gpu_latent->numel : num_elements;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(gpu_latent->data, cpu_data, n * sizeof(float), cudaMemcpyHostToDevice));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(gpu_latent->data, cpu_data, n * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
     return true;
 }
 

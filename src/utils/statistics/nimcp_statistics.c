@@ -11,6 +11,8 @@
  */
 
 #include "utils/statistics/nimcp_statistics.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -223,7 +225,7 @@ float nimcp_stats_sum(const float* data, uint32_t n) {
 float nimcp_stats_median(const float* data, uint32_t n) {
     if (!data || n == 0) return NAN;
 
-    float* sorted = (float*)malloc(n * sizeof(float));
+    float* sorted = (float*)nimcp_malloc(n * sizeof(float));
     if (!sorted) return NAN;
     memcpy(sorted, data, n * sizeof(float));
 
@@ -236,14 +238,14 @@ float nimcp_stats_median(const float* data, uint32_t n) {
         result = (a + b) / 2.0f;
     }
 
-    free(sorted);
+    nimcp_free(sorted);
     return result;
 }
 
 float nimcp_stats_quantile(const float* data, uint32_t n, float p) {
     if (!data || n == 0 || p < 0.0f || p > 1.0f) return NAN;
 
-    float* sorted = (float*)malloc(n * sizeof(float));
+    float* sorted = (float*)nimcp_malloc(n * sizeof(float));
     if (!sorted) return NAN;
     memcpy(sorted, data, n * sizeof(float));
     qsort(sorted, n, sizeof(float), float_compare);
@@ -260,7 +262,7 @@ float nimcp_stats_quantile(const float* data, uint32_t n, float p) {
         result = sorted[lower] * (1.0f - frac) + sorted[upper] * frac;
     }
 
-    free(sorted);
+    nimcp_free(sorted);
     return result;
 }
 
@@ -363,7 +365,7 @@ float nimcp_stats_mode(const float* data, uint32_t n, float bin_width) {
         }
     }
 
-    free(counts);
+    nimcp_free(counts);
     return min_val + (max_bin + 0.5f) * bin_width;
 }
 
@@ -1374,7 +1376,7 @@ nimcp_stats_result_t nimcp_stats_ttest_paired(
     if (!data1 || !data2 || !result) return NIMCP_STATS_ERROR_NULL;
     if (n < 2) return NIMCP_STATS_ERROR_SIZE;
 
-    float* diff = (float*)malloc(n * sizeof(float));
+    float* diff = (float*)nimcp_malloc(n * sizeof(float));
     if (!diff) return NIMCP_STATS_ERROR_MEMORY;
 
     for (uint32_t i = 0; i < n; i++) {
@@ -1382,7 +1384,7 @@ nimcp_stats_result_t nimcp_stats_ttest_paired(
     }
 
     nimcp_stats_result_t res = nimcp_stats_ttest_one_sample(diff, n, 0.0f, type, confidence, result);
-    free(diff);
+    nimcp_free(diff);
     return res;
 }
 
@@ -1513,7 +1515,7 @@ nimcp_stats_result_t nimcp_stats_correlation_pearson(
  */
 static void compute_ranks(const float* data, float* ranks, uint32_t n) {
     // Create index array
-    uint32_t* indices = (uint32_t*)malloc(n * sizeof(uint32_t));
+    uint32_t* indices = (uint32_t*)nimcp_malloc(n * sizeof(uint32_t));
     for (uint32_t i = 0; i < n; i++) {
         indices[i] = i;
     }
@@ -1545,7 +1547,7 @@ static void compute_ranks(const float* data, float* ranks, uint32_t n) {
         i = j + 1;
     }
 
-    free(indices);
+    nimcp_free(indices);
 }
 
 nimcp_stats_result_t nimcp_stats_correlation_spearman(
@@ -1558,11 +1560,11 @@ nimcp_stats_result_t nimcp_stats_correlation_spearman(
     if (n < 3) return NIMCP_STATS_ERROR_SIZE;
 
     // Allocate rank arrays
-    float* rank_x = (float*)malloc(n * sizeof(float));
-    float* rank_y = (float*)malloc(n * sizeof(float));
+    float* rank_x = (float*)nimcp_malloc(n * sizeof(float));
+    float* rank_y = (float*)nimcp_malloc(n * sizeof(float));
     if (!rank_x || !rank_y) {
-        free(rank_x);
-        free(rank_y);
+        nimcp_free(rank_x);
+        nimcp_free(rank_y);
         return NIMCP_STATS_ERROR_MEMORY;
     }
 
@@ -1588,8 +1590,8 @@ nimcp_stats_result_t nimcp_stats_correlation_spearman(
         sum_y2 += dy * dy;
     }
 
-    free(rank_x);
-    free(rank_y);
+    nimcp_free(rank_x);
+    nimcp_free(rank_y);
 
     if (sum_x2 == 0.0f || sum_y2 == 0.0f) {
         result->r = 0.0f;
@@ -1634,7 +1636,7 @@ nimcp_stats_result_t nimcp_stats_covariance_matrix(
     if (n_obs < 2 || n_vars == 0) return NIMCP_STATS_ERROR_SIZE;
 
     // Compute means
-    float* means = (float*)malloc(n_vars * sizeof(float));
+    float* means = (float*)nimcp_malloc(n_vars * sizeof(float));
     if (!means) return NIMCP_STATS_ERROR_MEMORY;
 
     for (uint32_t j = 0; j < n_vars; j++) {
@@ -1658,7 +1660,7 @@ nimcp_stats_result_t nimcp_stats_covariance_matrix(
         }
     }
 
-    free(means);
+    nimcp_free(means);
     return NIMCP_STATS_OK;
 }
 
@@ -1714,15 +1716,35 @@ nimcp_stats_result_t nimcp_stats_regression_linear(
 
     result->n_coefficients = 2;
 
+    // AIC and BIC (k = 2 parameters: intercept + slope)
+    float k = 2.0f;
+    float mse = ss_res / n;
+    if (mse > 0.0f) {
+        result->aic = n * logf(mse) + 2.0f * k;
+        result->bic = n * logf(mse) + k * logf((float)n);
+    }
+
+    // Durbin-Watson statistic for autocorrelation
+    float sum_diff_sq = 0.0f;
+    float prev_res = (y[0] - (result->intercept + result->slope * x[0]));
+    for (uint32_t i = 1; i < n; i++) {
+        float y_pred = result->intercept + result->slope * x[i];
+        float res = y[i] - y_pred;
+        float diff = res - prev_res;
+        sum_diff_sq += diff * diff;
+        prev_res = res;
+    }
+    result->durbin_watson = (ss_res > 0.0f) ? sum_diff_sq / ss_res : 2.0f;
+
     return NIMCP_STATS_OK;
 }
 
-void nimcp_stats_regression_free(nimcp_regression_result_t* result) {
+void nimcp_stats_regression_nimcp_free(nimcp_regression_result_t* result) {
     if (!result) return;
-    if (result->coefficients) free(result->coefficients);
-    if (result->se_coefficients) free(result->se_coefficients);
-    if (result->t_statistics) free(result->t_statistics);
-    if (result->p_values) free(result->p_values);
+    if (result->coefficients) nimcp_free(result->coefficients);
+    if (result->se_coefficients) nimcp_free(result->se_coefficients);
+    if (result->t_statistics) nimcp_free(result->t_statistics);
+    if (result->p_values) nimcp_free(result->p_values);
     memset(result, 0, sizeof(nimcp_regression_result_t));
 }
 
@@ -1774,7 +1796,7 @@ float nimcp_stats_conditional_entropy(const float* joint_prob, uint32_t n_x, uin
     float h_xy = nimcp_stats_joint_entropy(joint_prob, n_x, n_y);
 
     // Compute marginal P(X)
-    float* p_x = (float*)calloc(n_x, sizeof(float));
+    float* p_x = (float*)nimcp_calloc(n_x, sizeof(float));
     if (!p_x) return NAN;
 
     for (uint32_t i = 0; i < n_x; i++) {
@@ -1784,7 +1806,7 @@ float nimcp_stats_conditional_entropy(const float* joint_prob, uint32_t n_x, uin
     }
 
     float h_x = nimcp_stats_entropy(p_x, n_x);
-    free(p_x);
+    nimcp_free(p_x);
 
     return h_xy - h_x;
 }
@@ -1805,7 +1827,7 @@ float nimcp_stats_kl_divergence(const float* p, const float* q, uint32_t n) {
 float nimcp_stats_js_divergence(const float* p, const float* q, uint32_t n) {
     if (!p || !q || n == 0) return NAN;
 
-    float* m = (float*)malloc(n * sizeof(float));
+    float* m = (float*)nimcp_malloc(n * sizeof(float));
     if (!m) return NAN;
 
     for (uint32_t i = 0; i < n; i++) {
@@ -1815,7 +1837,7 @@ float nimcp_stats_js_divergence(const float* p, const float* q, uint32_t n) {
     float js = 0.5f * nimcp_stats_kl_divergence(p, m, n) +
                0.5f * nimcp_stats_kl_divergence(q, m, n);
 
-    free(m);
+    nimcp_free(m);
     return js;
 }
 
@@ -1836,11 +1858,11 @@ float nimcp_stats_mutual_information(const float* joint_prob, uint32_t n_x, uint
     if (!joint_prob || n_x == 0 || n_y == 0) return NAN;
 
     // Compute marginals
-    float* p_x = (float*)calloc(n_x, sizeof(float));
-    float* p_y = (float*)calloc(n_y, sizeof(float));
+    float* p_x = (float*)nimcp_calloc(n_x, sizeof(float));
+    float* p_y = (float*)nimcp_calloc(n_y, sizeof(float));
     if (!p_x || !p_y) {
-        free(p_x);
-        free(p_y);
+        nimcp_free(p_x);
+        nimcp_free(p_y);
         return NAN;
     }
 
@@ -1862,8 +1884,8 @@ float nimcp_stats_mutual_information(const float* joint_prob, uint32_t n_x, uint
         }
     }
 
-    free(p_x);
-    free(p_y);
+    nimcp_free(p_x);
+    nimcp_free(p_y);
     return mi;
 }
 
@@ -1892,30 +1914,130 @@ nimcp_stats_result_t nimcp_stats_bayesian_beta_binomial(
         (post_alpha - 1) / (post_alpha + post_beta - 2) : result->posterior_mean;
     result->credible_level = credible_level;
 
-    // Credible interval using beta quantiles
-    float alpha_ci = (1.0f - credible_level) / 2.0f;
+    // Credible interval using beta quantiles via bisection (more robust than Newton-Raphson)
+    float alpha_lower = (1.0f - credible_level) / 2.0f;
+    float alpha_upper = 1.0f - alpha_lower;
 
-    // Newton-Raphson for beta quantiles
-    result->credible_lower = alpha_ci;  // Approximate
-    result->credible_upper = 1.0f - alpha_ci;
-
-    // Iterate to find actual quantiles
-    for (int iter = 0; iter < 20; iter++) {
-        float cdf_l = nimcp_stats_cdf_beta(result->credible_lower, post_alpha, post_beta);
-        float pdf_l = nimcp_stats_pdf_beta(result->credible_lower, post_alpha, post_beta);
-        if (pdf_l > 1e-10f) {
-            result->credible_lower -= (cdf_l - alpha_ci) / pdf_l;
-            if (result->credible_lower < 0) result->credible_lower = 0.001f;
-            if (result->credible_lower > 1) result->credible_lower = 0.001f;
+    // Find lower quantile using bisection
+    float lo = 0.0f, hi = result->posterior_mean;
+    for (int iter = 0; iter < 50; iter++) {
+        float mid = (lo + hi) / 2.0f;
+        float cdf = nimcp_stats_cdf_beta(mid, post_alpha, post_beta);
+        if (cdf < alpha_lower) {
+            lo = mid;
+        } else {
+            hi = mid;
         }
+        if (hi - lo < 1e-6f) break;
+    }
+    result->credible_lower = (lo + hi) / 2.0f;
 
-        float cdf_u = nimcp_stats_cdf_beta(result->credible_upper, post_alpha, post_beta);
-        float pdf_u = nimcp_stats_pdf_beta(result->credible_upper, post_alpha, post_beta);
-        if (pdf_u > 1e-10f) {
-            result->credible_upper -= (cdf_u - (1.0f - alpha_ci)) / pdf_u;
-            if (result->credible_upper < 0) result->credible_upper = 0.999f;
-            if (result->credible_upper > 1) result->credible_upper = 0.999f;
+    // Find upper quantile using bisection
+    lo = result->posterior_mean;
+    hi = 1.0f;
+    for (int iter = 0; iter < 50; iter++) {
+        float mid = (lo + hi) / 2.0f;
+        float cdf = nimcp_stats_cdf_beta(mid, post_alpha, post_beta);
+        if (cdf < alpha_upper) {
+            lo = mid;
+        } else {
+            hi = mid;
         }
+        if (hi - lo < 1e-6f) break;
+    }
+    result->credible_upper = (lo + hi) / 2.0f;
+
+    return NIMCP_STATS_OK;
+}
+
+nimcp_stats_result_t nimcp_stats_bayesian_normal(
+    float prior_mean,
+    float prior_variance,
+    const float* data,
+    uint32_t n,
+    float known_variance,
+    float credible_level,
+    nimcp_bayesian_result_t* result
+) {
+    if (!result) return NIMCP_STATS_ERROR_NULL;
+    if (!data && n > 0) return NIMCP_STATS_ERROR_NULL;
+    if (prior_variance <= 0.0f || known_variance <= 0.0f) return NIMCP_STATS_ERROR_PARAMS;
+    if (credible_level <= 0.0f || credible_level >= 1.0f) return NIMCP_STATS_ERROR_PARAMS;
+
+    // Compute sample mean
+    float sample_mean = 0.0f;
+    for (uint32_t i = 0; i < n; i++) {
+        sample_mean += data[i];
+    }
+    sample_mean = (n > 0) ? sample_mean / n : 0.0f;
+
+    // Posterior precision = prior precision + n / known_variance
+    float prior_precision = 1.0f / prior_variance;
+    float data_precision = (float)n / known_variance;
+    float post_precision = prior_precision + data_precision;
+    float post_variance = 1.0f / post_precision;
+
+    // Posterior mean = weighted average of prior mean and sample mean
+    float post_mean = (prior_precision * prior_mean + data_precision * sample_mean) / post_precision;
+
+    result->posterior_mean = post_mean;
+    result->posterior_variance = post_variance;
+    result->posterior_mode = post_mean;  // Normal is symmetric
+    result->credible_level = credible_level;
+
+    // Credible interval using normal quantiles
+    float alpha = (1.0f - credible_level) / 2.0f;
+    float z = nimcp_stats_quantile_normal(1.0f - alpha, 0.0f, 1.0f);
+    float post_std = sqrtf(post_variance);
+
+    result->credible_lower = post_mean - z * post_std;
+    result->credible_upper = post_mean + z * post_std;
+
+    return NIMCP_STATS_OK;
+}
+
+nimcp_stats_result_t nimcp_stats_bayesian_gamma_poisson(
+    float prior_shape,
+    float prior_rate,
+    uint32_t events,
+    float exposure,
+    float credible_level,
+    nimcp_bayesian_result_t* result
+) {
+    if (!result) return NIMCP_STATS_ERROR_NULL;
+    if (prior_shape <= 0.0f || prior_rate <= 0.0f) return NIMCP_STATS_ERROR_PARAMS;
+    if (exposure < 0.0f) return NIMCP_STATS_ERROR_PARAMS;
+    if (credible_level <= 0.0f || credible_level >= 1.0f) return NIMCP_STATS_ERROR_PARAMS;
+
+    // Posterior parameters: Gamma(shape + events, rate + exposure)
+    float post_shape = prior_shape + (float)events;
+    float post_rate = prior_rate + exposure;
+
+    // Gamma distribution moments
+    result->posterior_mean = post_shape / post_rate;
+    result->posterior_variance = post_shape / (post_rate * post_rate);
+    result->posterior_mode = (post_shape >= 1.0f) ? (post_shape - 1.0f) / post_rate : 0.0f;
+    result->credible_level = credible_level;
+
+    // Approximate credible interval using gamma quantiles
+    // Using chi-square relationship: 2*rate*X ~ chi^2(2*shape) where X ~ Gamma(shape, rate)
+    float alpha = (1.0f - credible_level) / 2.0f;
+
+    // Lower bound: chi^2(2*shape, alpha) / (2 * rate)
+    // Upper bound: chi^2(2*shape, 1-alpha) / (2 * rate)
+    // Approximate using normal approximation for large shape
+    if (post_shape > 10.0f) {
+        float z_low = nimcp_stats_quantile_normal(alpha, 0.0f, 1.0f);
+        float z_high = nimcp_stats_quantile_normal(1.0f - alpha, 0.0f, 1.0f);
+        float std = sqrtf(result->posterior_variance);
+        result->credible_lower = fmaxf(0.0f, result->posterior_mean + z_low * std);
+        result->credible_upper = result->posterior_mean + z_high * std;
+    } else {
+        // Simple approximation for small shape
+        float cv = 1.0f / sqrtf(post_shape);  // Coefficient of variation
+        result->credible_lower = result->posterior_mean * (1.0f - 2.0f * cv);
+        result->credible_upper = result->posterior_mean * (1.0f + 2.0f * cv);
+        if (result->credible_lower < 0.0f) result->credible_lower = 0.0f;
     }
 
     return NIMCP_STATS_OK;
@@ -2107,11 +2229,11 @@ float nimcp_stats_transfer_entropy(
     if (n <= k + 1) return NAN;
 
     // Discretize time series
-    uint32_t* x_bins = (uint32_t*)malloc(n * sizeof(uint32_t));
-    uint32_t* y_bins = (uint32_t*)malloc(n * sizeof(uint32_t));
+    uint32_t* x_bins = (uint32_t*)nimcp_malloc(n * sizeof(uint32_t));
+    uint32_t* y_bins = (uint32_t*)nimcp_malloc(n * sizeof(uint32_t));
     if (!x_bins || !y_bins) {
-        free(x_bins);
-        free(y_bins);
+        nimcp_free(x_bins);
+        nimcp_free(y_bins);
         return NAN;
     }
 
@@ -2130,8 +2252,8 @@ float nimcp_stats_transfer_entropy(
     uint32_t* counts_y = (uint32_t*)calloc(n_bins, sizeof(uint32_t));
 
     if (!counts_yyx || !counts_yx || !counts_yy || !counts_y) {
-        free(x_bins); free(y_bins);
-        free(counts_yyx); free(counts_yx); free(counts_yy); free(counts_y);
+        nimcp_free(x_bins); nimcp_free(y_bins);
+        nimcp_free(counts_yyx); nimcp_free(counts_yx); nimcp_free(counts_yy); nimcp_free(counts_y);
         return NAN;
     }
 
@@ -2177,8 +2299,8 @@ float nimcp_stats_transfer_entropy(
         }
     }
 
-    free(x_bins); free(y_bins);
-    free(counts_yyx); free(counts_yx); free(counts_yy); free(counts_y);
+    nimcp_free(x_bins); nimcp_free(y_bins);
+    nimcp_free(counts_yyx); nimcp_free(counts_yx); nimcp_free(counts_yy); nimcp_free(counts_y);
 
     return fmaxf(0.0f, te);  // TE should be non-negative
 }
@@ -2197,7 +2319,7 @@ float nimcp_stats_effective_information(
     float p_uniform = 1.0f / n_states;
 
     // Compute output distribution (marginal over rows assuming uniform input)
-    float* p_output = (float*)calloc(n_states, sizeof(float));
+    float* p_output = (float*)nimcp_calloc(n_states, sizeof(float));
     if (!p_output) return NAN;
 
     for (uint32_t i = 0; i < n_states; i++) {
@@ -2217,7 +2339,7 @@ float nimcp_stats_effective_information(
         h_cond += p_uniform * h_row;
     }
 
-    free(p_output);
+    nimcp_free(p_output);
 
     // EI = H(output) - H(output|input) = I(input; output)
     return h_output - h_cond;
@@ -2291,14 +2413,14 @@ float nimcp_stats_information_bottleneck(
     if (beta <= 0.0f) return NAN;
 
     // Compute marginals
-    float* p_x = (float*)calloc(n_x, sizeof(float));
-    float* p_y = (float*)calloc(n_y, sizeof(float));
-    float* p_y_given_x = (float*)malloc(n_x * n_y * sizeof(float));
-    float* q_y_given_t = (float*)calloc(n_t * n_y, sizeof(float));
-    float* p_t = (float*)calloc(n_t, sizeof(float));
+    float* p_x = (float*)nimcp_calloc(n_x, sizeof(float));
+    float* p_y = (float*)nimcp_calloc(n_y, sizeof(float));
+    float* p_y_given_x = (float*)nimcp_malloc(n_x * n_y * sizeof(float));
+    float* q_y_given_t = (float*)nimcp_calloc(n_t * n_y, sizeof(float));
+    float* p_t = (float*)nimcp_calloc(n_t, sizeof(float));
 
     if (!p_x || !p_y || !p_y_given_x || !q_y_given_t || !p_t) {
-        free(p_x); free(p_y); free(p_y_given_x); free(q_y_given_t); free(p_t);
+        nimcp_free(p_x); nimcp_free(p_y); nimcp_free(p_y_given_x); nimcp_free(q_y_given_t); nimcp_free(p_t);
         return NAN;
     }
 
@@ -2383,7 +2505,7 @@ float nimcp_stats_information_bottleneck(
     float mi_xy = nimcp_stats_mutual_information(joint_xy, n_x, n_y);
 
     // Build p(t,y) joint
-    float* joint_ty = (float*)calloc(n_t * n_y, sizeof(float));
+    float* joint_ty = (float*)nimcp_calloc(n_t * n_y, sizeof(float));
     if (joint_ty) {
         for (uint32_t t = 0; t < n_t; t++) {
             for (uint32_t j = 0; j < n_y; j++) {
@@ -2396,7 +2518,2039 @@ float nimcp_stats_information_bottleneck(
 
     float mi_ty = (joint_ty) ? nimcp_stats_mutual_information(joint_ty, n_t, n_y) : 0.0f;
 
-    free(p_x); free(p_y); free(p_y_given_x); free(q_y_given_t); free(p_t); free(joint_ty);
+    nimcp_free(p_x); nimcp_free(p_y); nimcp_free(p_y_given_x); nimcp_free(q_y_given_t); nimcp_free(p_t); nimcp_free(joint_ty);
 
     return (mi_xy > 0.0f) ? mi_ty / mi_xy : 0.0f;
+}
+
+//=============================================================================
+// Bootstrap Methods
+//=============================================================================
+
+// Simple LCG random for bootstrap sampling
+static uint32_t bootstrap_rand_state = 12345;
+static uint32_t bootstrap_rand(void) {
+    bootstrap_rand_state = bootstrap_rand_state * 1103515245 + 12345;
+    return (bootstrap_rand_state >> 16) & 0x7FFF;
+}
+
+static void bootstrap_seed(uint32_t seed) {
+    bootstrap_rand_state = seed;
+}
+
+// Helper: compute Pearson correlation coefficient (inline to avoid circular dep)
+static float compute_pearson_r(const float* x, const float* y, uint32_t n) {
+    if (n < 2) return 0.0f;
+    float mean_x = 0.0f, mean_y = 0.0f;
+    for (uint32_t i = 0; i < n; i++) {
+        mean_x += x[i];
+        mean_y += y[i];
+    }
+    mean_x /= n;
+    mean_y /= n;
+
+    float cov = 0.0f, var_x = 0.0f, var_y = 0.0f;
+    for (uint32_t i = 0; i < n; i++) {
+        float dx = x[i] - mean_x;
+        float dy = y[i] - mean_y;
+        cov += dx * dy;
+        var_x += dx * dx;
+        var_y += dy * dy;
+    }
+
+    float denom = sqrtf(var_x * var_y);
+    return (denom > 1e-10f) ? cov / denom : 0.0f;
+}
+
+nimcp_stats_result_t nimcp_stats_bootstrap_mean(
+    const float* data,
+    uint32_t n,
+    uint32_t n_replicates,
+    float confidence,
+    nimcp_bootstrap_result_t* result
+) {
+    if (!data || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_stats_bootstrap_mean: null pointer");
+        return NIMCP_STATS_ERROR_NULL;
+    }
+    if (n == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_bootstrap_mean: n=0");
+        return NIMCP_STATS_ERROR_SIZE;
+    }
+    if (n_replicates == 0 || confidence <= 0.0f || confidence >= 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_bootstrap_mean: invalid params");
+        return NIMCP_STATS_ERROR_PARAMS;
+    }
+
+    float* boot_means = (float*)nimcp_malloc(n_replicates * sizeof(float));
+    float* boot_sample = (float*)nimcp_malloc(n * sizeof(float));
+    if (!boot_means || !boot_sample) {
+        nimcp_free(boot_means);
+        nimcp_free(boot_sample);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_stats_bootstrap_mean: allocation failed");
+        return NIMCP_STATS_ERROR_MEMORY;
+    }
+
+    bootstrap_seed((uint32_t)(data[0] * 1000));
+
+    for (uint32_t r = 0; r < n_replicates; r++) {
+        for (uint32_t i = 0; i < n; i++) {
+            boot_sample[i] = data[bootstrap_rand() % n];
+        }
+        boot_means[r] = nimcp_stats_mean(boot_sample, n);
+    }
+
+    // Sort for percentile CI
+    for (uint32_t i = 0; i < n_replicates - 1; i++) {
+        for (uint32_t j = i + 1; j < n_replicates; j++) {
+            if (boot_means[j] < boot_means[i]) {
+                float tmp = boot_means[i];
+                boot_means[i] = boot_means[j];
+                boot_means[j] = tmp;
+            }
+        }
+    }
+
+    result->estimate = nimcp_stats_mean(data, n);
+    result->bias = nimcp_stats_mean(boot_means, n_replicates) - result->estimate;
+    result->std_error = nimcp_stats_std_dev(boot_means, n_replicates);
+
+    float alpha = (1.0f - confidence) / 2.0f;
+    uint32_t lower_idx = (uint32_t)(alpha * n_replicates);
+    uint32_t upper_idx = (uint32_t)((1.0f - alpha) * n_replicates);
+    if (upper_idx >= n_replicates) upper_idx = n_replicates - 1;
+
+    result->ci_lower_percentile = boot_means[lower_idx];
+    result->ci_upper_percentile = boot_means[upper_idx];
+    result->ci_lower_bca = boot_means[lower_idx];  // Simplified BCa
+    result->ci_upper_bca = boot_means[upper_idx];
+    result->confidence_level = confidence;
+    result->n_replicates = n_replicates;
+
+    nimcp_free(boot_means);
+    nimcp_free(boot_sample);
+    return NIMCP_STATS_OK;
+}
+
+nimcp_stats_result_t nimcp_stats_bootstrap_median(
+    const float* data,
+    uint32_t n,
+    uint32_t n_replicates,
+    float confidence,
+    nimcp_bootstrap_result_t* result
+) {
+    if (!data || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_stats_bootstrap_median: null pointer");
+        return NIMCP_STATS_ERROR_NULL;
+    }
+    if (n == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_bootstrap_median: n=0");
+        return NIMCP_STATS_ERROR_SIZE;
+    }
+    if (n_replicates == 0 || confidence <= 0.0f || confidence >= 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_bootstrap_median: invalid params");
+        return NIMCP_STATS_ERROR_PARAMS;
+    }
+
+    float* boot_medians = (float*)nimcp_malloc(n_replicates * sizeof(float));
+    float* boot_sample = (float*)nimcp_malloc(n * sizeof(float));
+    if (!boot_medians || !boot_sample) {
+        nimcp_free(boot_medians);
+        nimcp_free(boot_sample);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_stats_bootstrap_median: allocation failed");
+        return NIMCP_STATS_ERROR_MEMORY;
+    }
+
+    bootstrap_seed((uint32_t)(data[0] * 1000 + 1));
+
+    for (uint32_t r = 0; r < n_replicates; r++) {
+        for (uint32_t i = 0; i < n; i++) {
+            boot_sample[i] = data[bootstrap_rand() % n];
+        }
+        boot_medians[r] = nimcp_stats_median(boot_sample, n);
+    }
+
+    for (uint32_t i = 0; i < n_replicates - 1; i++) {
+        for (uint32_t j = i + 1; j < n_replicates; j++) {
+            if (boot_medians[j] < boot_medians[i]) {
+                float tmp = boot_medians[i];
+                boot_medians[i] = boot_medians[j];
+                boot_medians[j] = tmp;
+            }
+        }
+    }
+
+    result->estimate = nimcp_stats_median(data, n);
+    result->bias = nimcp_stats_mean(boot_medians, n_replicates) - result->estimate;
+    result->std_error = nimcp_stats_std_dev(boot_medians, n_replicates);
+
+    float alpha = (1.0f - confidence) / 2.0f;
+    uint32_t lower_idx = (uint32_t)(alpha * n_replicates);
+    uint32_t upper_idx = (uint32_t)((1.0f - alpha) * n_replicates);
+    if (upper_idx >= n_replicates) upper_idx = n_replicates - 1;
+
+    result->ci_lower_percentile = boot_medians[lower_idx];
+    result->ci_upper_percentile = boot_medians[upper_idx];
+    result->ci_lower_bca = boot_medians[lower_idx];
+    result->ci_upper_bca = boot_medians[upper_idx];
+    result->confidence_level = confidence;
+    result->n_replicates = n_replicates;
+
+    nimcp_free(boot_medians);
+    nimcp_free(boot_sample);
+    return NIMCP_STATS_OK;
+}
+
+nimcp_stats_result_t nimcp_stats_bootstrap_correlation(
+    const float* x,
+    const float* y,
+    uint32_t n,
+    uint32_t n_replicates,
+    float confidence,
+    nimcp_bootstrap_result_t* result
+) {
+    if (!x || !y || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_stats_bootstrap_correlation: null pointer");
+        return NIMCP_STATS_ERROR_NULL;
+    }
+    if (n < 3) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_bootstrap_correlation: n<3");
+        return NIMCP_STATS_ERROR_SIZE;
+    }
+    if (n_replicates == 0 || confidence <= 0.0f || confidence >= 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_bootstrap_correlation: invalid params");
+        return NIMCP_STATS_ERROR_PARAMS;
+    }
+
+    float* boot_corrs = (float*)nimcp_malloc(n_replicates * sizeof(float));
+    float* boot_x = (float*)nimcp_malloc(n * sizeof(float));
+    float* boot_y = (float*)nimcp_malloc(n * sizeof(float));
+    if (!boot_corrs || !boot_x || !boot_y) {
+        nimcp_free(boot_corrs);
+        nimcp_free(boot_x);
+        nimcp_free(boot_y);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_stats_bootstrap_correlation: allocation failed");
+        return NIMCP_STATS_ERROR_MEMORY;
+    }
+
+    bootstrap_seed((uint32_t)(x[0] * 1000 + y[0] * 100));
+
+    for (uint32_t r = 0; r < n_replicates; r++) {
+        for (uint32_t i = 0; i < n; i++) {
+            uint32_t idx = bootstrap_rand() % n;
+            boot_x[i] = x[idx];
+            boot_y[i] = y[idx];
+        }
+        boot_corrs[r] = compute_pearson_r(boot_x, boot_y, n);
+    }
+
+    for (uint32_t i = 0; i < n_replicates - 1; i++) {
+        for (uint32_t j = i + 1; j < n_replicates; j++) {
+            if (boot_corrs[j] < boot_corrs[i]) {
+                float tmp = boot_corrs[i];
+                boot_corrs[i] = boot_corrs[j];
+                boot_corrs[j] = tmp;
+            }
+        }
+    }
+
+    result->estimate = compute_pearson_r(x, y, n);
+    result->bias = nimcp_stats_mean(boot_corrs, n_replicates) - result->estimate;
+    result->std_error = nimcp_stats_std_dev(boot_corrs, n_replicates);
+
+    float alpha = (1.0f - confidence) / 2.0f;
+    uint32_t lower_idx = (uint32_t)(alpha * n_replicates);
+    uint32_t upper_idx = (uint32_t)((1.0f - alpha) * n_replicates);
+    if (upper_idx >= n_replicates) upper_idx = n_replicates - 1;
+
+    result->ci_lower_percentile = boot_corrs[lower_idx];
+    result->ci_upper_percentile = boot_corrs[upper_idx];
+    result->ci_lower_bca = boot_corrs[lower_idx];
+    result->ci_upper_bca = boot_corrs[upper_idx];
+    result->confidence_level = confidence;
+    result->n_replicates = n_replicates;
+
+    nimcp_free(boot_corrs);
+    nimcp_free(boot_x);
+    nimcp_free(boot_y);
+    return NIMCP_STATS_OK;
+}
+
+//=============================================================================
+// ANOVA
+//=============================================================================
+
+nimcp_stats_result_t nimcp_stats_anova_one_way(
+    const float* const* groups,
+    const uint32_t* sizes,
+    uint32_t n_groups,
+    float alpha,
+    nimcp_anova_result_t* result
+) {
+    if (!groups || !sizes || !result) return NIMCP_STATS_ERROR_NULL;
+    if (n_groups < 2) return NIMCP_STATS_ERROR_PARAMS;
+    if (alpha <= 0.0f || alpha >= 1.0f) return NIMCP_STATS_ERROR_PARAMS;
+
+    // Compute group means and total mean
+    uint32_t n_total = 0;
+    float grand_sum = 0.0f;
+
+    float* group_means = (float*)nimcp_malloc(n_groups * sizeof(float));
+    if (!group_means) return NIMCP_STATS_ERROR_MEMORY;
+
+    for (uint32_t g = 0; g < n_groups; g++) {
+        if (sizes[g] == 0 || !groups[g]) {
+            nimcp_free(group_means);
+            return NIMCP_STATS_ERROR_NULL;
+        }
+        group_means[g] = nimcp_stats_mean(groups[g], sizes[g]);
+        n_total += sizes[g];
+        for (uint32_t i = 0; i < sizes[g]; i++) {
+            grand_sum += groups[g][i];
+        }
+    }
+
+    float grand_mean = grand_sum / n_total;
+
+    // Between-group sum of squares (SSB)
+    float ssb = 0.0f;
+    for (uint32_t g = 0; g < n_groups; g++) {
+        float diff = group_means[g] - grand_mean;
+        ssb += sizes[g] * diff * diff;
+    }
+
+    // Within-group sum of squares (SSW)
+    float ssw = 0.0f;
+    for (uint32_t g = 0; g < n_groups; g++) {
+        for (uint32_t i = 0; i < sizes[g]; i++) {
+            float diff = groups[g][i] - group_means[g];
+            ssw += diff * diff;
+        }
+    }
+
+    nimcp_free(group_means);
+
+    // Degrees of freedom
+    uint32_t df_between = n_groups - 1;
+    uint32_t df_within = n_total - n_groups;
+
+    if (df_within == 0) return NIMCP_STATS_ERROR_PARAMS;
+
+    // Mean squares
+    float msb = ssb / df_between;
+    float msw = ssw / df_within;
+
+    // F statistic
+    float f_stat = (msw > 0.0f) ? msb / msw : INFINITY;
+
+    // P-value from F distribution (approximation)
+    float p_value = 1.0f - nimcp_stats_cdf_f(f_stat, (float)df_between, (float)df_within);
+
+    result->f_statistic = f_stat;
+    result->p_value = p_value;
+    result->df_between = df_between;
+    result->df_within = df_within;
+    result->ss_between = ssb;
+    result->ss_within = ssw;
+    result->ss_total = ssb + ssw;
+    result->ms_between = msb;
+    result->ms_within = msw;
+    result->eta_squared = ssb / (ssb + ssw);
+    result->omega_squared = (ssb - (df_between * msw)) / (ssb + ssw + msw);
+    result->significant = (p_value < alpha);
+
+    return NIMCP_STATS_OK;
+}
+
+//=============================================================================
+// Polynomial Regression
+//=============================================================================
+
+nimcp_stats_result_t nimcp_stats_regression_polynomial(
+    const float* x,
+    const float* y,
+    uint32_t n,
+    uint32_t degree,
+    nimcp_regression_result_t* result
+) {
+    if (!x || !y || !result) return NIMCP_STATS_ERROR_NULL;
+    if (n < degree + 1) return NIMCP_STATS_ERROR_SIZE;
+    if (degree == 0 || degree > 10) return NIMCP_STATS_ERROR_PARAMS;
+
+    uint32_t p = degree + 1;  // Number of coefficients
+
+    // Build design matrix X (Vandermonde)
+    float* X = (float*)nimcp_calloc(n * p, sizeof(float));
+    float* XtX = (float*)nimcp_calloc(p * p, sizeof(float));
+    float* Xty = (float*)nimcp_calloc(p, sizeof(float));
+    float* beta = (float*)nimcp_calloc(p, sizeof(float));
+
+    if (!X || !XtX || !Xty || !beta) {
+        nimcp_free(X); nimcp_free(XtX); nimcp_free(Xty); nimcp_free(beta);
+        return NIMCP_STATS_ERROR_MEMORY;
+    }
+
+    // Fill design matrix: X[i,j] = x[i]^j
+    for (uint32_t i = 0; i < n; i++) {
+        float xpow = 1.0f;
+        for (uint32_t j = 0; j < p; j++) {
+            X[i * p + j] = xpow;
+            xpow *= x[i];
+        }
+    }
+
+    // Compute X'X
+    for (uint32_t i = 0; i < p; i++) {
+        for (uint32_t j = 0; j < p; j++) {
+            float sum = 0.0f;
+            for (uint32_t k = 0; k < n; k++) {
+                sum += X[k * p + i] * X[k * p + j];
+            }
+            XtX[i * p + j] = sum;
+        }
+    }
+
+    // Compute X'y
+    for (uint32_t i = 0; i < p; i++) {
+        float sum = 0.0f;
+        for (uint32_t k = 0; k < n; k++) {
+            sum += X[k * p + i] * y[k];
+        }
+        Xty[i] = sum;
+    }
+
+    // Solve using Gauss-Jordan elimination
+    float* aug = (float*)nimcp_calloc(p * (p + 1), sizeof(float));
+    if (!aug) {
+        nimcp_free(X); nimcp_free(XtX); nimcp_free(Xty); nimcp_free(beta);
+        return NIMCP_STATS_ERROR_MEMORY;
+    }
+
+    for (uint32_t i = 0; i < p; i++) {
+        for (uint32_t j = 0; j < p; j++) {
+            aug[i * (p + 1) + j] = XtX[i * p + j];
+        }
+        aug[i * (p + 1) + p] = Xty[i];
+    }
+
+    // Forward elimination with partial pivoting
+    for (uint32_t col = 0; col < p; col++) {
+        // Find pivot
+        uint32_t max_row = col;
+        float max_val = fabsf(aug[col * (p + 1) + col]);
+        for (uint32_t row = col + 1; row < p; row++) {
+            if (fabsf(aug[row * (p + 1) + col]) > max_val) {
+                max_val = fabsf(aug[row * (p + 1) + col]);
+                max_row = row;
+            }
+        }
+
+        // Swap rows
+        if (max_row != col) {
+            for (uint32_t j = 0; j <= p; j++) {
+                float tmp = aug[col * (p + 1) + j];
+                aug[col * (p + 1) + j] = aug[max_row * (p + 1) + j];
+                aug[max_row * (p + 1) + j] = tmp;
+            }
+        }
+
+        float pivot = aug[col * (p + 1) + col];
+        if (fabsf(pivot) < 1e-10f) {
+            nimcp_free(X); nimcp_free(XtX); nimcp_free(Xty); nimcp_free(beta); nimcp_free(aug);
+            return NIMCP_STATS_ERROR_SINGULAR;
+        }
+
+        // Scale pivot row
+        for (uint32_t j = col; j <= p; j++) {
+            aug[col * (p + 1) + j] /= pivot;
+        }
+
+        // Eliminate column
+        for (uint32_t row = 0; row < p; row++) {
+            if (row != col) {
+                float factor = aug[row * (p + 1) + col];
+                for (uint32_t j = col; j <= p; j++) {
+                    aug[row * (p + 1) + j] -= factor * aug[col * (p + 1) + j];
+                }
+            }
+        }
+    }
+
+    // Extract solution
+    for (uint32_t i = 0; i < p; i++) {
+        beta[i] = aug[i * (p + 1) + p];
+    }
+
+    // Compute R-squared and Durbin-Watson
+    float y_mean = nimcp_stats_mean(y, n);
+    float ss_tot = 0.0f, ss_res = 0.0f;
+    float sum_diff_sq = 0.0f;
+    float prev_res = 0.0f;
+    for (uint32_t i = 0; i < n; i++) {
+        float y_pred = 0.0f;
+        float xpow = 1.0f;
+        for (uint32_t j = 0; j < p; j++) {
+            y_pred += beta[j] * xpow;
+            xpow *= x[i];
+        }
+        float res = y[i] - y_pred;
+        ss_res += res * res;
+        ss_tot += (y[i] - y_mean) * (y[i] - y_mean);
+
+        // Durbin-Watson calculation
+        if (i > 0) {
+            float diff = res - prev_res;
+            sum_diff_sq += diff * diff;
+        }
+        prev_res = res;
+    }
+
+    result->intercept = beta[0];
+    result->slope = (degree >= 1) ? beta[1] : 0.0f;
+
+    // Allocate and copy coefficients
+    result->coefficients = (float*)nimcp_malloc(p * sizeof(float));
+    if (result->coefficients) {
+        memcpy(result->coefficients, beta, p * sizeof(float));
+    }
+    result->n_coefficients = p;
+    result->r_squared = (ss_tot > 0.0f) ? 1.0f - ss_res / ss_tot : 0.0f;
+    result->adj_r_squared = 1.0f - (1.0f - result->r_squared) * (n - 1) / (n - p);
+    result->std_error = sqrtf(ss_res / (n - p));
+    result->f_statistic = 0.0f;
+    result->p_value = 0.0f;
+    result->se_coefficients = NULL;
+    result->t_statistics = NULL;
+    result->p_values = NULL;
+    float mse = ss_res / n;
+    result->aic = (mse > 0.0f) ? n * logf(mse) + 2.0f * p : 0.0f;
+    result->bic = (mse > 0.0f) ? n * logf(mse) + p * logf((float)n) : 0.0f;
+    result->durbin_watson = (ss_res > 0.0f) ? sum_diff_sq / ss_res : 2.0f;
+
+    nimcp_free(X); nimcp_free(XtX); nimcp_free(Xty); nimcp_free(beta); nimcp_free(aug);
+    return NIMCP_STATS_OK;
+}
+
+//=============================================================================
+// Partial Correlation
+//=============================================================================
+
+nimcp_stats_result_t nimcp_stats_correlation_partial(
+    const float* x,
+    const float* y,
+    const float* z,
+    uint32_t n,
+    nimcp_correlation_result_t* result
+) {
+    if (!x || !y || !z || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_stats_correlation_partial: null pointer");
+        return NIMCP_STATS_ERROR_NULL;
+    }
+    if (n < 4) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_correlation_partial: n<4");
+        return NIMCP_STATS_ERROR_SIZE;
+    }
+
+    // Compute pairwise correlations using local helper
+    float r_xy = compute_pearson_r(x, y, n);
+    float r_xz = compute_pearson_r(x, z, n);
+    float r_yz = compute_pearson_r(y, z, n);
+
+    // Partial correlation formula: r_xy.z = (r_xy - r_xz * r_yz) / sqrt((1-r_xz^2)(1-r_yz^2))
+    float denom_x = 1.0f - r_xz * r_xz;
+    float denom_y = 1.0f - r_yz * r_yz;
+
+    if (denom_x < 1e-10f || denom_y < 1e-10f) {
+        result->r = 0.0f;
+        result->r_squared = 0.0f;
+        result->p_value = 1.0f;
+        result->t_statistic = 0.0f;
+        result->n = n;
+        result->df = (float)(n - 3);
+        result->ci_lower = 0.0f;
+        result->ci_upper = 0.0f;
+        return NIMCP_STATS_OK;
+    }
+
+    float r_partial = (r_xy - r_xz * r_yz) / sqrtf(denom_x * denom_y);
+
+    // Clamp to valid range
+    if (r_partial > 1.0f) r_partial = 1.0f;
+    if (r_partial < -1.0f) r_partial = -1.0f;
+
+    // t-statistic with n-3 degrees of freedom
+    float df = (float)(n - 3);
+    float t_stat = r_partial * sqrtf(df / (1.0f - r_partial * r_partial + 1e-10f));
+
+    // Two-tailed p-value
+    float p_value = 2.0f * (1.0f - nimcp_stats_cdf_student_t(fabsf(t_stat), df));
+
+    result->r = r_partial;
+    result->r_squared = r_partial * r_partial;
+    result->t_statistic = t_stat;
+    result->p_value = p_value;
+    result->n = n;
+    result->df = df;
+    result->ci_lower = 0.0f;  // Would need Fisher z-transform
+    result->ci_upper = 0.0f;
+
+    return NIMCP_STATS_OK;
+}
+
+//=============================================================================
+// Winsorization
+//=============================================================================
+
+nimcp_stats_result_t nimcp_stats_winsorize(
+    const float* data,
+    uint32_t n,
+    float lower_pct,
+    float upper_pct,
+    float* out
+) {
+    if (!data || !out) return NIMCP_STATS_ERROR_NULL;
+    if (n == 0) return NIMCP_STATS_ERROR_SIZE;
+    if (lower_pct < 0.0f || upper_pct > 1.0f || lower_pct >= upper_pct) {
+        return NIMCP_STATS_ERROR_PARAMS;
+    }
+
+    // Create sorted copy to find percentiles
+    float* sorted = (float*)nimcp_malloc(n * sizeof(float));
+    if (!sorted) return NIMCP_STATS_ERROR_MEMORY;
+
+    memcpy(sorted, data, n * sizeof(float));
+    for (uint32_t i = 0; i < n - 1; i++) {
+        for (uint32_t j = i + 1; j < n; j++) {
+            if (sorted[j] < sorted[i]) {
+                float tmp = sorted[i];
+                sorted[i] = sorted[j];
+                sorted[j] = tmp;
+            }
+        }
+    }
+
+    // Find percentile values
+    uint32_t lower_idx = (uint32_t)(lower_pct * (n - 1));
+    uint32_t upper_idx = (uint32_t)(upper_pct * (n - 1));
+    float lower_val = sorted[lower_idx];
+    float upper_val = sorted[upper_idx];
+
+    // Apply winsorization
+    for (uint32_t i = 0; i < n; i++) {
+        if (data[i] < lower_val) {
+            out[i] = lower_val;
+        } else if (data[i] > upper_val) {
+            out[i] = upper_val;
+        } else {
+            out[i] = data[i];
+        }
+    }
+
+    nimcp_free(sorted);
+    return NIMCP_STATS_OK;
+}
+
+//=============================================================================
+// Regression Result Cleanup
+//=============================================================================
+
+void nimcp_stats_regression_free(nimcp_regression_result_t* result) {
+    if (!result) return;
+
+    if (result->coefficients) {
+        nimcp_free(result->coefficients);
+        result->coefficients = NULL;
+    }
+    if (result->se_coefficients) {
+        nimcp_free(result->se_coefficients);
+        result->se_coefficients = NULL;
+    }
+    if (result->t_statistics) {
+        nimcp_free(result->t_statistics);
+        result->t_statistics = NULL;
+    }
+    if (result->p_values) {
+        nimcp_free(result->p_values);
+        result->p_values = NULL;
+    }
+    result->n_coefficients = 0;
+}
+
+//=============================================================================
+// Ranking Functions
+//=============================================================================
+
+/**
+ * @brief Compute statistical ranks with tie-handling
+ * @param data Input data
+ * @param n Number of elements
+ * @param ranks Output ranks (must be pre-allocated with n elements)
+ * @param handle_ties Method: 'a' = average, 'f' = first, 'm' = min, 'M' = max
+ */
+nimcp_stats_result_t nimcp_stats_rank(
+    const float* data,
+    uint32_t n,
+    float* ranks,
+    char handle_ties
+) {
+    if (!data || !ranks) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_stats_rank: null pointer");
+        return NIMCP_STATS_ERROR_NULL;
+    }
+    if (n == 0) {
+        return NIMCP_STATS_OK;
+    }
+
+    // Create index array for sorting
+    uint32_t* indices = (uint32_t*)nimcp_malloc(n * sizeof(uint32_t));
+    if (!indices) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_stats_rank: allocation failed");
+        return NIMCP_STATS_ERROR_MEMORY;
+    }
+
+    for (uint32_t i = 0; i < n; i++) {
+        indices[i] = i;
+    }
+
+    // Sort indices by data values (simple insertion sort for stability)
+    for (uint32_t i = 1; i < n; i++) {
+        uint32_t key = indices[i];
+        float key_val = data[key];
+        int32_t j = (int32_t)i - 1;
+        while (j >= 0 && data[indices[j]] > key_val) {
+            indices[j + 1] = indices[j];
+            j--;
+        }
+        indices[j + 1] = key;
+    }
+
+    // Assign ranks based on tie-handling method
+    uint32_t i = 0;
+    while (i < n) {
+        // Find the end of the tie group
+        uint32_t tie_start = i;
+        uint32_t tie_end = i;
+        float current_val = data[indices[i]];
+
+        while (tie_end < n - 1 && data[indices[tie_end + 1]] == current_val) {
+            tie_end++;
+        }
+
+        uint32_t tie_count = tie_end - tie_start + 1;
+
+        if (tie_count == 1) {
+            // No tie - rank is position + 1
+            ranks[indices[i]] = (float)(i + 1);
+        } else {
+            // Handle ties based on method
+            switch (handle_ties) {
+                case 'a': // Average rank
+                {
+                    float avg_rank = 0.0f;
+                    for (uint32_t j = tie_start; j <= tie_end; j++) {
+                        avg_rank += (float)(j + 1);
+                    }
+                    avg_rank /= tie_count;
+                    for (uint32_t j = tie_start; j <= tie_end; j++) {
+                        ranks[indices[j]] = avg_rank;
+                    }
+                    break;
+                }
+                case 'f': // First (sequential in order of appearance)
+                    for (uint32_t j = tie_start; j <= tie_end; j++) {
+                        ranks[indices[j]] = (float)(j + 1);
+                    }
+                    break;
+                case 'm': // Minimum rank
+                {
+                    float min_rank = (float)(tie_start + 1);
+                    for (uint32_t j = tie_start; j <= tie_end; j++) {
+                        ranks[indices[j]] = min_rank;
+                    }
+                    break;
+                }
+                case 'M': // Maximum rank
+                {
+                    float max_rank = (float)(tie_end + 1);
+                    for (uint32_t j = tie_start; j <= tie_end; j++) {
+                        ranks[indices[j]] = max_rank;
+                    }
+                    break;
+                }
+                default: // Default to average
+                {
+                    float avg_rank = 0.0f;
+                    for (uint32_t j = tie_start; j <= tie_end; j++) {
+                        avg_rank += (float)(j + 1);
+                    }
+                    avg_rank /= tie_count;
+                    for (uint32_t j = tie_start; j <= tie_end; j++) {
+                        ranks[indices[j]] = avg_rank;
+                    }
+                    break;
+                }
+            }
+        }
+
+        i = tie_end + 1;
+    }
+
+    nimcp_free(indices);
+    return NIMCP_STATS_OK;
+}
+
+//=============================================================================
+// Normality Tests
+//=============================================================================
+
+/**
+ * @brief Shapiro-Wilk test for normality
+ * @param data Input data
+ * @param n Sample size (3 <= n <= 5000)
+ * @param result Output test result
+ *
+ * Uses the Royston (1992) approximation for larger samples.
+ */
+nimcp_stats_result_t nimcp_stats_shapiro_wilk(
+    const float* data,
+    uint32_t n,
+    nimcp_test_result_t* result
+) {
+    if (!data || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_stats_shapiro_wilk: null pointer");
+        return NIMCP_STATS_ERROR_NULL;
+    }
+    if (n < 3) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_shapiro_wilk: n must be >= 3");
+        return NIMCP_STATS_ERROR_SIZE;
+    }
+
+    // Sort the data
+    float* sorted = (float*)nimcp_malloc(n * sizeof(float));
+    if (!sorted) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_stats_shapiro_wilk: allocation failed");
+        return NIMCP_STATS_ERROR_MEMORY;
+    }
+
+    memcpy(sorted, data, n * sizeof(float));
+
+    // Simple insertion sort
+    for (uint32_t i = 1; i < n; i++) {
+        float key = sorted[i];
+        int32_t j = (int32_t)i - 1;
+        while (j >= 0 && sorted[j] > key) {
+            sorted[j + 1] = sorted[j];
+            j--;
+        }
+        sorted[j + 1] = key;
+    }
+
+    // Compute mean
+    float mean = 0.0f;
+    for (uint32_t i = 0; i < n; i++) {
+        mean += data[i];
+    }
+    mean /= n;
+
+    // Compute sum of squares
+    float ss = 0.0f;
+    for (uint32_t i = 0; i < n; i++) {
+        float diff = data[i] - mean;
+        ss += diff * diff;
+    }
+
+    if (ss < 1e-10f) {
+        // All values are identical - not normally distributed (degenerate)
+        nimcp_free(sorted);
+        result->statistic = 0.0f;
+        result->p_value = 0.0f;
+        result->df = (float)n;
+        return NIMCP_STATS_OK;
+    }
+
+    // Compute Shapiro-Wilk a coefficients using Royston's approximation
+    // For simplicity, use polynomial approximations for expected normal order statistics
+    float* a = (float*)nimcp_malloc(n * sizeof(float));
+    if (!a) {
+        nimcp_free(sorted);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_stats_shapiro_wilk: allocation failed");
+        return NIMCP_STATS_ERROR_MEMORY;
+    }
+
+    // Compute expected normal order statistics using Blom's approximation
+    // E(Z(i)) ≈ Φ^(-1)((i - 3/8) / (n + 1/4))
+    float* m = (float*)nimcp_malloc(n * sizeof(float));
+    if (!m) {
+        nimcp_free(sorted);
+        nimcp_free(a);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_stats_shapiro_wilk: allocation failed");
+        return NIMCP_STATS_ERROR_MEMORY;
+    }
+
+    float m_sum_sq = 0.0f;
+    for (uint32_t i = 0; i < n; i++) {
+        // Blom's approximation for expected normal order statistics
+        float p = ((float)(i + 1) - 0.375f) / ((float)n + 0.25f);
+        // Approximate inverse normal CDF using Hastings' approximation
+        float t;
+        if (p < 0.5f) {
+            t = sqrtf(-2.0f * logf(p));
+            m[i] = -(t - (2.515517f + 0.802853f * t + 0.010328f * t * t) /
+                    (1.0f + 1.432788f * t + 0.189269f * t * t + 0.001308f * t * t * t));
+        } else {
+            t = sqrtf(-2.0f * logf(1.0f - p));
+            m[i] = t - (2.515517f + 0.802853f * t + 0.010328f * t * t) /
+                   (1.0f + 1.432788f * t + 0.189269f * t * t + 0.001308f * t * t * t);
+        }
+        m_sum_sq += m[i] * m[i];
+    }
+
+    // Normalize to get a coefficients: a = m / ||m||
+    float m_norm = sqrtf(m_sum_sq);
+    for (uint32_t i = 0; i < n; i++) {
+        a[i] = m[i] / m_norm;
+    }
+
+    // Compute W statistic: W = (Σ a_i * x_(i))² / SS
+    float numerator = 0.0f;
+    for (uint32_t i = 0; i < n; i++) {
+        numerator += a[i] * sorted[i];
+    }
+    numerator = numerator * numerator;
+
+    float W = numerator / ss;
+
+    // Clamp W to valid range
+    if (W > 1.0f) W = 1.0f;
+    if (W < 0.0f) W = 0.0f;
+
+    // Compute p-value using Royston's approximation
+    // Transform W to approximately normal using log transformation
+    float p_value;
+
+    if (n <= 11) {
+        // For small samples, use polynomial approximation
+        float gamma = 0.459f * (float)n - 2.273f;
+        float w_star = -logf(1.0f - W);
+        float mu = -0.0006714f * (float)n * (float)n * (float)n +
+                    0.025054f * (float)n * (float)n -
+                    0.39978f * (float)n + 0.5440f;
+        float sigma = expf(-0.0020322f * (float)n * (float)n * (float)n +
+                          0.062767f * (float)n * (float)n -
+                          0.77857f * (float)n + 1.3822f);
+        float z = (powf(w_star, gamma) - mu) / sigma;
+        // Convert z to p-value using standard normal CDF approximation
+        if (z < -6.0f) {
+            p_value = 1.0f;
+        } else if (z > 6.0f) {
+            p_value = 0.0f;
+        } else {
+            float t_val = 1.0f / (1.0f + 0.2316419f * fabsf(z));
+            float d = 0.3989423f * expf(-z * z / 2.0f);
+            float p_norm = d * t_val * (0.3193815f + t_val * (-0.3565638f + t_val * (1.781478f +
+                          t_val * (-1.821256f + t_val * 1.330274f))));
+            p_value = (z > 0.0f) ? p_norm : 1.0f - p_norm;
+        }
+    } else {
+        // For larger samples, use log-normal approximation
+        float ln_W = logf(1.0f - W);
+        float mu = 0.0038915f * logf((float)n) * logf((float)n) * logf((float)n) -
+                   0.083751f * logf((float)n) * logf((float)n) -
+                   0.31082f * logf((float)n) - 1.5861f;
+        float sigma = expf(0.0030302f * logf((float)n) * logf((float)n) -
+                          0.082676f * logf((float)n) - 0.4803f);
+        float z = (ln_W - mu) / sigma;
+        // Convert z to p-value
+        if (z < -6.0f) {
+            p_value = 1.0f;
+        } else if (z > 6.0f) {
+            p_value = 0.0f;
+        } else {
+            float t_val = 1.0f / (1.0f + 0.2316419f * fabsf(z));
+            float d = 0.3989423f * expf(-z * z / 2.0f);
+            float p_norm = d * t_val * (0.3193815f + t_val * (-0.3565638f + t_val * (1.781478f +
+                          t_val * (-1.821256f + t_val * 1.330274f))));
+            p_value = (z > 0.0f) ? p_norm : 1.0f - p_norm;
+        }
+    }
+
+    // Clamp p-value to valid range
+    if (p_value < 0.0f) p_value = 0.0f;
+    if (p_value > 1.0f) p_value = 1.0f;
+
+    result->statistic = W;
+    result->p_value = p_value;
+    result->df = (float)n;
+
+    nimcp_free(sorted);
+    nimcp_free(a);
+    nimcp_free(m);
+
+    return NIMCP_STATS_OK;
+}
+
+/**
+ * @brief Kolmogorov-Smirnov test for normality
+ * @param data Input data
+ * @param n Sample size
+ * @param result Output test result
+ */
+nimcp_stats_result_t nimcp_stats_ks_normality(
+    const float* data,
+    uint32_t n,
+    nimcp_test_result_t* result
+) {
+    if (!data || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_stats_ks_normality: null pointer");
+        return NIMCP_STATS_ERROR_NULL;
+    }
+    if (n < 3) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_ks_normality: n must be >= 3");
+        return NIMCP_STATS_ERROR_SIZE;
+    }
+
+    // Sort the data
+    float* sorted = (float*)nimcp_malloc(n * sizeof(float));
+    if (!sorted) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_stats_ks_normality: allocation failed");
+        return NIMCP_STATS_ERROR_MEMORY;
+    }
+    memcpy(sorted, data, n * sizeof(float));
+
+    // Simple insertion sort
+    for (uint32_t i = 1; i < n; i++) {
+        float key = sorted[i];
+        int32_t j = (int32_t)i - 1;
+        while (j >= 0 && sorted[j] > key) {
+            sorted[j + 1] = sorted[j];
+            j--;
+        }
+        sorted[j + 1] = key;
+    }
+
+    // Compute sample mean and standard deviation
+    float mean = 0.0f;
+    for (uint32_t i = 0; i < n; i++) {
+        mean += data[i];
+    }
+    mean /= n;
+
+    float var = 0.0f;
+    for (uint32_t i = 0; i < n; i++) {
+        float diff = data[i] - mean;
+        var += diff * diff;
+    }
+    float std_dev = sqrtf(var / (n - 1));
+
+    if (std_dev < 1e-10f) {
+        nimcp_free(sorted);
+        result->statistic = 1.0f;
+        result->p_value = 0.0f;
+        result->df = (float)n;
+        return NIMCP_STATS_OK;
+    }
+
+    // Compute KS statistic D = max|F_n(x) - F(x)|
+    float D = 0.0f;
+    for (uint32_t i = 0; i < n; i++) {
+        // Standardize to compare with standard normal
+        float z = (sorted[i] - mean) / std_dev;
+
+        // Compute standard normal CDF using approximation
+        float F_z;
+        if (z < -6.0f) {
+            F_z = 0.0f;
+        } else if (z > 6.0f) {
+            F_z = 1.0f;
+        } else {
+            float t = 1.0f / (1.0f + 0.2316419f * fabsf(z));
+            float d = 0.3989423f * expf(-z * z / 2.0f);
+            float p_norm = d * t * (0.3193815f + t * (-0.3565638f + t * (1.781478f +
+                          t * (-1.821256f + t * 1.330274f))));
+            F_z = (z > 0.0f) ? (1.0f - p_norm) : p_norm;
+        }
+
+        // Empirical CDF at this point
+        float F_n = (float)(i + 1) / n;
+        float F_n_minus = (float)i / n;
+
+        // D+ = max(F_n(x) - F(x))
+        // D- = max(F(x) - F_{n-1}(x))
+        float d_plus = fabsf(F_n - F_z);
+        float d_minus = fabsf(F_z - F_n_minus);
+
+        if (d_plus > D) D = d_plus;
+        if (d_minus > D) D = d_minus;
+    }
+
+    // Compute p-value using asymptotic distribution
+    // For the Lilliefors test (KS with estimated parameters), use modified critical values
+    // P(D > d) ≈ 2 * sum_{k=1}^inf (-1)^(k-1) * exp(-2k²n²d²)
+    float sqrt_n = sqrtf((float)n);
+    float lambda = (sqrt_n + 0.12f + 0.11f / sqrt_n) * D;
+
+    float p_value = 0.0f;
+    float sign = 1.0f;
+    for (int k = 1; k <= 100; k++) {
+        float term = sign * expf(-2.0f * k * k * lambda * lambda);
+        p_value += term;
+        sign = -sign;
+        if (fabsf(term) < 1e-10f) break;
+    }
+    p_value = 2.0f * p_value;
+
+    // Clamp p-value
+    if (p_value < 0.0f) p_value = 0.0f;
+    if (p_value > 1.0f) p_value = 1.0f;
+
+    result->statistic = D;
+    result->p_value = p_value;
+    result->df = (float)n;
+
+    nimcp_free(sorted);
+    return NIMCP_STATS_OK;
+}
+
+//=============================================================================
+// Logistic Regression
+//=============================================================================
+
+/**
+ * @brief Sigmoid function for logistic regression
+ */
+static float sigmoid(float x) {
+    // Clip to avoid overflow
+    if (x > 20.0f) return 1.0f;
+    if (x < -20.0f) return 0.0f;
+    return 1.0f / (1.0f + expf(-x));
+}
+
+/**
+ * @brief Logistic regression using iteratively reweighted least squares (IRLS)
+ * @param X Design matrix (n x p, stored row-major)
+ * @param y Binary response (0 or 1)
+ * @param n Number of observations
+ * @param p Number of predictors (including intercept if desired)
+ * @param coefficients Output coefficients (size p)
+ * @param max_iter Maximum iterations for convergence
+ */
+nimcp_stats_result_t nimcp_stats_regression_logistic(
+    const float* X,
+    const uint8_t* y,
+    uint32_t n,
+    uint32_t p,
+    float* coefficients,
+    uint32_t max_iter
+) {
+    if (!X || !y || !coefficients) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_stats_regression_logistic: null pointer");
+        return NIMCP_STATS_ERROR_NULL;
+    }
+    if (n < p || p == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_regression_logistic: invalid dimensions");
+        return NIMCP_STATS_ERROR_SIZE;
+    }
+
+    // Initialize coefficients to zero
+    for (uint32_t j = 0; j < p; j++) {
+        coefficients[j] = 0.0f;
+    }
+
+    // Allocate working arrays
+    float* prob = (float*)nimcp_malloc(n * sizeof(float));
+    float* grad = (float*)nimcp_malloc(p * sizeof(float));
+    float* hess = (float*)nimcp_malloc(p * p * sizeof(float));
+    float* delta = (float*)nimcp_malloc(p * sizeof(float));
+
+    if (!prob || !grad || !hess || !delta) {
+        if (prob) nimcp_free(prob);
+        if (grad) nimcp_free(grad);
+        if (hess) nimcp_free(hess);
+        if (delta) nimcp_free(delta);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_stats_regression_logistic: allocation failed");
+        return NIMCP_STATS_ERROR_MEMORY;
+    }
+
+    float tol = 1e-6f;
+
+    for (uint32_t iter = 0; iter < max_iter; iter++) {
+        // Compute probabilities p_i = sigmoid(X_i * beta)
+        for (uint32_t i = 0; i < n; i++) {
+            float linear = 0.0f;
+            for (uint32_t j = 0; j < p; j++) {
+                linear += X[i * p + j] * coefficients[j];
+            }
+            prob[i] = sigmoid(linear);
+        }
+
+        // Compute gradient: grad = X^T (y - p)
+        for (uint32_t j = 0; j < p; j++) {
+            grad[j] = 0.0f;
+            for (uint32_t i = 0; i < n; i++) {
+                grad[j] += X[i * p + j] * ((float)y[i] - prob[i]);
+            }
+        }
+
+        // Compute Hessian: H = -X^T W X where W = diag(p_i * (1 - p_i))
+        for (uint32_t j = 0; j < p; j++) {
+            for (uint32_t k = 0; k < p; k++) {
+                hess[j * p + k] = 0.0f;
+                for (uint32_t i = 0; i < n; i++) {
+                    float w = prob[i] * (1.0f - prob[i]);
+                    // Avoid division by zero
+                    if (w < 1e-10f) w = 1e-10f;
+                    hess[j * p + k] -= X[i * p + j] * w * X[i * p + k];
+                }
+            }
+        }
+
+        // Solve H * delta = -grad using simple Gauss-Jordan for small p
+        // For Newton step: beta_new = beta - H^(-1) * grad
+        // Since H is negative definite, we solve -H * delta = grad
+
+        // Copy -H to working matrix and grad to delta for in-place solve
+        for (uint32_t j = 0; j < p; j++) {
+            for (uint32_t k = 0; k < p; k++) {
+                hess[j * p + k] = -hess[j * p + k];
+            }
+            delta[j] = grad[j];
+        }
+
+        // Gauss-Jordan elimination
+        for (uint32_t j = 0; j < p; j++) {
+            // Find pivot
+            float max_val = fabsf(hess[j * p + j]);
+            uint32_t max_row = j;
+            for (uint32_t i = j + 1; i < p; i++) {
+                if (fabsf(hess[i * p + j]) > max_val) {
+                    max_val = fabsf(hess[i * p + j]);
+                    max_row = i;
+                }
+            }
+
+            // Swap rows if needed
+            if (max_row != j) {
+                for (uint32_t k = 0; k < p; k++) {
+                    float tmp = hess[j * p + k];
+                    hess[j * p + k] = hess[max_row * p + k];
+                    hess[max_row * p + k] = tmp;
+                }
+                float tmp = delta[j];
+                delta[j] = delta[max_row];
+                delta[max_row] = tmp;
+            }
+
+            float pivot = hess[j * p + j];
+            if (fabsf(pivot) < 1e-10f) {
+                // Singular matrix - add regularization
+                pivot = 1e-6f;
+                hess[j * p + j] = pivot;
+            }
+
+            // Scale pivot row
+            for (uint32_t k = j; k < p; k++) {
+                hess[j * p + k] /= pivot;
+            }
+            delta[j] /= pivot;
+
+            // Eliminate column
+            for (uint32_t i = 0; i < p; i++) {
+                if (i != j) {
+                    float factor = hess[i * p + j];
+                    for (uint32_t k = j; k < p; k++) {
+                        hess[i * p + k] -= factor * hess[j * p + k];
+                    }
+                    delta[i] -= factor * delta[j];
+                }
+            }
+        }
+
+        // Update coefficients: beta = beta + delta
+        float max_change = 0.0f;
+        for (uint32_t j = 0; j < p; j++) {
+            coefficients[j] += delta[j];
+            if (fabsf(delta[j]) > max_change) {
+                max_change = fabsf(delta[j]);
+            }
+        }
+
+        // Check convergence
+        if (max_change < tol) {
+            break;
+        }
+    }
+
+    nimcp_free(prob);
+    nimcp_free(grad);
+    nimcp_free(hess);
+    nimcp_free(delta);
+
+    return NIMCP_STATS_OK;
+}
+
+//=============================================================================
+// Kendall Correlation
+//=============================================================================
+
+/**
+ * @brief Kendall's tau correlation coefficient
+ * @param x First variable
+ * @param y Second variable
+ * @param n Sample size
+ * @param result Output correlation result
+ */
+nimcp_stats_result_t nimcp_stats_correlation_kendall(
+    const float* x,
+    const float* y,
+    uint32_t n,
+    nimcp_correlation_result_t* result
+) {
+    if (!x || !y || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_stats_correlation_kendall: null pointer");
+        return NIMCP_STATS_ERROR_NULL;
+    }
+    if (n < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_correlation_kendall: n must be >= 2");
+        return NIMCP_STATS_ERROR_SIZE;
+    }
+
+    // Count concordant and discordant pairs
+    int32_t concordant = 0;
+    int32_t discordant = 0;
+    int32_t ties_x = 0;
+    int32_t ties_y = 0;
+
+    for (uint32_t i = 0; i < n - 1; i++) {
+        for (uint32_t j = i + 1; j < n; j++) {
+            float dx = x[j] - x[i];
+            float dy = y[j] - y[i];
+
+            if (fabsf(dx) < 1e-10f && fabsf(dy) < 1e-10f) {
+                // Tied on both
+                ties_x++;
+                ties_y++;
+            } else if (fabsf(dx) < 1e-10f) {
+                // Tied on x only
+                ties_x++;
+            } else if (fabsf(dy) < 1e-10f) {
+                // Tied on y only
+                ties_y++;
+            } else if ((dx > 0 && dy > 0) || (dx < 0 && dy < 0)) {
+                concordant++;
+            } else {
+                discordant++;
+            }
+        }
+    }
+
+    // Total pairs
+    int64_t n_pairs = (int64_t)n * (n - 1) / 2;
+
+    // Kendall's tau-b (handles ties)
+    float tau;
+    float denom = sqrtf((float)(n_pairs - ties_x) * (float)(n_pairs - ties_y));
+    if (denom < 1e-10f) {
+        tau = 0.0f;
+    } else {
+        tau = (float)(concordant - discordant) / denom;
+    }
+
+    // Compute z-score for p-value (large sample approximation)
+    float var_tau = (float)(2 * (2 * n + 5)) / (float)(9 * n * (n - 1));
+    float z = tau / sqrtf(var_tau);
+
+    // Convert z to p-value (two-tailed)
+    float p_value;
+    float abs_z = fabsf(z);
+    if (abs_z > 6.0f) {
+        p_value = 0.0f;
+    } else {
+        float t = 1.0f / (1.0f + 0.2316419f * abs_z);
+        float d = 0.3989423f * expf(-abs_z * abs_z / 2.0f);
+        float p_one_tail = d * t * (0.3193815f + t * (-0.3565638f + t * (1.781478f +
+                          t * (-1.821256f + t * 1.330274f))));
+        p_value = 2.0f * p_one_tail;  // Two-tailed
+    }
+
+    result->r = tau;
+    result->r_squared = tau * tau;
+    result->p_value = p_value;
+    result->t_statistic = z;
+    result->n = n;
+    result->df = (float)(n - 2);
+    result->ci_lower = tau - 1.96f * sqrtf(var_tau);
+    result->ci_upper = tau + 1.96f * sqrtf(var_tau);
+
+    return NIMCP_STATS_OK;
+}
+
+//=============================================================================
+// Point-Biserial Correlation
+//=============================================================================
+
+/**
+ * @brief Point-biserial correlation between continuous and binary variable
+ * @param continuous Continuous variable
+ * @param binary Binary variable (0 or 1)
+ * @param n Sample size
+ * @param result Output correlation result
+ */
+nimcp_stats_result_t nimcp_stats_correlation_point_biserial(
+    const float* continuous,
+    const uint8_t* binary,
+    uint32_t n,
+    nimcp_correlation_result_t* result
+) {
+    if (!continuous || !binary || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_stats_correlation_point_biserial: null pointer");
+        return NIMCP_STATS_ERROR_NULL;
+    }
+    if (n < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_correlation_point_biserial: n must be >= 2");
+        return NIMCP_STATS_ERROR_SIZE;
+    }
+
+    // Compute means for each group
+    float sum_0 = 0.0f, sum_1 = 0.0f;
+    uint32_t n_0 = 0, n_1 = 0;
+
+    for (uint32_t i = 0; i < n; i++) {
+        if (binary[i] == 0) {
+            sum_0 += continuous[i];
+            n_0++;
+        } else {
+            sum_1 += continuous[i];
+            n_1++;
+        }
+    }
+
+    if (n_0 == 0 || n_1 == 0) {
+        // All values in one group - correlation is undefined
+        result->r = 0.0f;
+        result->r_squared = 0.0f;
+        result->p_value = 1.0f;
+        result->t_statistic = 0.0f;
+        result->n = n;
+        result->df = (float)(n - 2);
+        result->ci_lower = 0.0f;
+        result->ci_upper = 0.0f;
+        return NIMCP_STATS_OK;
+    }
+
+    float mean_0 = sum_0 / n_0;
+    float mean_1 = sum_1 / n_1;
+
+    // Compute overall mean and standard deviation
+    float mean_total = (sum_0 + sum_1) / n;
+    float ss_total = 0.0f;
+    for (uint32_t i = 0; i < n; i++) {
+        float diff = continuous[i] - mean_total;
+        ss_total += diff * diff;
+    }
+    float sd = sqrtf(ss_total / (n - 1));
+
+    if (sd < 1e-10f) {
+        result->r = 0.0f;
+        result->r_squared = 0.0f;
+        result->p_value = 1.0f;
+        result->t_statistic = 0.0f;
+        result->n = n;
+        result->df = (float)(n - 2);
+        result->ci_lower = 0.0f;
+        result->ci_upper = 0.0f;
+        return NIMCP_STATS_OK;
+    }
+
+    // Point-biserial correlation formula:
+    // r_pb = (M1 - M0) / sd * sqrt(n0 * n1 / (n * n))
+    float r = (mean_1 - mean_0) / sd * sqrtf((float)n_0 * n_1 / ((float)n * n));
+
+    // Compute t-statistic
+    float t_stat = r * sqrtf((n - 2) / (1.0f - r * r));
+
+    // Compute p-value from t-distribution (approximation using normal for large n)
+    float abs_t = fabsf(t_stat);
+    float p_value;
+    if (abs_t > 10.0f) {
+        p_value = 0.0f;
+    } else {
+        // Use normal approximation for simplicity
+        float z = abs_t;
+        float t = 1.0f / (1.0f + 0.2316419f * z);
+        float d = 0.3989423f * expf(-z * z / 2.0f);
+        float p_one_tail = d * t * (0.3193815f + t * (-0.3565638f + t * (1.781478f +
+                          t * (-1.821256f + t * 1.330274f))));
+        p_value = 2.0f * p_one_tail;
+    }
+
+    result->r = r;
+    result->r_squared = r * r;
+    result->p_value = p_value;
+    result->t_statistic = t_stat;
+    result->n = n;
+    result->df = (float)(n - 2);
+
+    // Confidence interval using Fisher's z transformation
+    float z_r = 0.5f * logf((1.0f + r) / (1.0f - r + 1e-10f));
+    float se_z = 1.0f / sqrtf((float)(n - 3));
+    float z_lower = z_r - 1.96f * se_z;
+    float z_upper = z_r + 1.96f * se_z;
+    result->ci_lower = (expf(2.0f * z_lower) - 1.0f) / (expf(2.0f * z_lower) + 1.0f);
+    result->ci_upper = (expf(2.0f * z_upper) - 1.0f) / (expf(2.0f * z_upper) + 1.0f);
+
+    return NIMCP_STATS_OK;
+}
+
+//=============================================================================
+// Multiple Regression
+//=============================================================================
+
+/**
+ * @brief Multiple linear regression using OLS
+ * @param X Design matrix (n x p, row-major, should include column of 1s for intercept)
+ * @param y Response variable
+ * @param n Number of observations
+ * @param p Number of predictors (including intercept column if present)
+ * @param result Output regression result (coefficients array will be allocated)
+ */
+nimcp_stats_result_t nimcp_stats_regression_multiple(
+    const float* X,
+    const float* y,
+    uint32_t n,
+    uint32_t p,
+    nimcp_regression_result_t* result
+) {
+    if (!X || !y || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_stats_regression_multiple: null pointer");
+        return NIMCP_STATS_ERROR_NULL;
+    }
+    if (n <= p || p == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_regression_multiple: n must be > p");
+        return NIMCP_STATS_ERROR_SIZE;
+    }
+
+    // Allocate result arrays
+    result->coefficients = (float*)nimcp_malloc(p * sizeof(float));
+    result->se_coefficients = (float*)nimcp_malloc(p * sizeof(float));
+    result->t_statistics = (float*)nimcp_malloc(p * sizeof(float));
+    result->p_values = (float*)nimcp_malloc(p * sizeof(float));
+
+    if (!result->coefficients || !result->se_coefficients ||
+        !result->t_statistics || !result->p_values) {
+        if (result->coefficients) nimcp_free(result->coefficients);
+        if (result->se_coefficients) nimcp_free(result->se_coefficients);
+        if (result->t_statistics) nimcp_free(result->t_statistics);
+        if (result->p_values) nimcp_free(result->p_values);
+        result->coefficients = NULL;
+        result->se_coefficients = NULL;
+        result->t_statistics = NULL;
+        result->p_values = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_stats_regression_multiple: allocation failed");
+        return NIMCP_STATS_ERROR_MEMORY;
+    }
+    result->n_coefficients = p;
+
+    // Compute X^T X (p x p matrix)
+    float* XtX = (float*)nimcp_malloc(p * p * sizeof(float));
+    float* Xty = (float*)nimcp_malloc(p * sizeof(float));
+
+    if (!XtX || !Xty) {
+        if (XtX) nimcp_free(XtX);
+        if (Xty) nimcp_free(Xty);
+        nimcp_stats_regression_free(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_stats_regression_multiple: allocation failed");
+        return NIMCP_STATS_ERROR_MEMORY;
+    }
+
+    // Compute X^T X
+    for (uint32_t i = 0; i < p; i++) {
+        for (uint32_t j = 0; j < p; j++) {
+            float sum = 0.0f;
+            for (uint32_t k = 0; k < n; k++) {
+                sum += X[k * p + i] * X[k * p + j];
+            }
+            XtX[i * p + j] = sum;
+        }
+    }
+
+    // Compute X^T y
+    for (uint32_t i = 0; i < p; i++) {
+        float sum = 0.0f;
+        for (uint32_t k = 0; k < n; k++) {
+            sum += X[k * p + i] * y[k];
+        }
+        Xty[i] = sum;
+    }
+
+    // Solve (X^T X) β = X^T y using Gauss-Jordan elimination
+    // Augment XtX with Xty
+    float* aug = (float*)nimcp_malloc(p * (p + 1) * sizeof(float));
+    if (!aug) {
+        nimcp_free(XtX);
+        nimcp_free(Xty);
+        nimcp_stats_regression_free(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_stats_regression_multiple: allocation failed");
+        return NIMCP_STATS_ERROR_MEMORY;
+    }
+
+    for (uint32_t i = 0; i < p; i++) {
+        for (uint32_t j = 0; j < p; j++) {
+            aug[i * (p + 1) + j] = XtX[i * p + j];
+        }
+        aug[i * (p + 1) + p] = Xty[i];
+    }
+
+    // Gauss-Jordan with pivoting
+    for (uint32_t col = 0; col < p; col++) {
+        // Find pivot
+        float max_val = fabsf(aug[col * (p + 1) + col]);
+        uint32_t max_row = col;
+        for (uint32_t row = col + 1; row < p; row++) {
+            if (fabsf(aug[row * (p + 1) + col]) > max_val) {
+                max_val = fabsf(aug[row * (p + 1) + col]);
+                max_row = row;
+            }
+        }
+
+        // Swap rows
+        if (max_row != col) {
+            for (uint32_t k = 0; k <= p; k++) {
+                float tmp = aug[col * (p + 1) + k];
+                aug[col * (p + 1) + k] = aug[max_row * (p + 1) + k];
+                aug[max_row * (p + 1) + k] = tmp;
+            }
+        }
+
+        float pivot = aug[col * (p + 1) + col];
+        if (fabsf(pivot) < 1e-10f) {
+            // Singular matrix - add regularization
+            pivot = 1e-6f;
+            aug[col * (p + 1) + col] = pivot;
+        }
+
+        // Scale pivot row
+        for (uint32_t k = col; k <= p; k++) {
+            aug[col * (p + 1) + k] /= pivot;
+        }
+
+        // Eliminate column
+        for (uint32_t row = 0; row < p; row++) {
+            if (row != col) {
+                float factor = aug[row * (p + 1) + col];
+                for (uint32_t k = col; k <= p; k++) {
+                    aug[row * (p + 1) + k] -= factor * aug[col * (p + 1) + k];
+                }
+            }
+        }
+    }
+
+    // Extract coefficients
+    for (uint32_t i = 0; i < p; i++) {
+        result->coefficients[i] = aug[i * (p + 1) + p];
+    }
+
+    // Set intercept and slope for simple regression compatibility
+    result->intercept = result->coefficients[0];
+    result->slope = (p > 1) ? result->coefficients[1] : 0.0f;
+
+    // Compute residuals and statistics
+    float y_mean = 0.0f;
+    for (uint32_t i = 0; i < n; i++) {
+        y_mean += y[i];
+    }
+    y_mean /= n;
+
+    float ss_res = 0.0f;  // Residual sum of squares
+    float ss_tot = 0.0f;  // Total sum of squares
+
+    for (uint32_t i = 0; i < n; i++) {
+        // Compute prediction
+        float y_pred = 0.0f;
+        for (uint32_t j = 0; j < p; j++) {
+            y_pred += X[i * p + j] * result->coefficients[j];
+        }
+
+        float residual = y[i] - y_pred;
+        ss_res += residual * residual;
+        ss_tot += (y[i] - y_mean) * (y[i] - y_mean);
+    }
+
+    // R-squared
+    result->r_squared = (ss_tot > 1e-10f) ? (1.0f - ss_res / ss_tot) : 0.0f;
+
+    // Adjusted R-squared
+    float df_res = (float)(n - p);
+    float df_tot = (float)(n - 1);
+    result->adj_r_squared = 1.0f - (1.0f - result->r_squared) * df_tot / df_res;
+
+    // Standard error of estimate
+    float mse = ss_res / df_res;
+    result->std_error = sqrtf(mse);
+
+    // F-statistic
+    float ss_reg = ss_tot - ss_res;
+    float df_reg = (float)(p - 1);
+    if (df_reg > 0 && mse > 1e-10f) {
+        result->f_statistic = (ss_reg / df_reg) / mse;
+    } else {
+        result->f_statistic = 0.0f;
+    }
+
+    // Compute (X^T X)^(-1) for standard errors
+    // We need to invert XtX - do another Gauss-Jordan pass
+    float* inv = (float*)nimcp_malloc(p * p * sizeof(float));
+    if (inv) {
+        // Initialize augmented matrix [XtX | I]
+        float* aug2 = (float*)nimcp_malloc(p * 2 * p * sizeof(float));
+        if (aug2) {
+            for (uint32_t i = 0; i < p; i++) {
+                for (uint32_t j = 0; j < p; j++) {
+                    aug2[i * 2 * p + j] = XtX[i * p + j];
+                    aug2[i * 2 * p + p + j] = (i == j) ? 1.0f : 0.0f;
+                }
+            }
+
+            // Gauss-Jordan
+            for (uint32_t col = 0; col < p; col++) {
+                float max_val = fabsf(aug2[col * 2 * p + col]);
+                uint32_t max_row = col;
+                for (uint32_t row = col + 1; row < p; row++) {
+                    if (fabsf(aug2[row * 2 * p + col]) > max_val) {
+                        max_val = fabsf(aug2[row * 2 * p + col]);
+                        max_row = row;
+                    }
+                }
+
+                if (max_row != col) {
+                    for (uint32_t k = 0; k < 2 * p; k++) {
+                        float tmp = aug2[col * 2 * p + k];
+                        aug2[col * 2 * p + k] = aug2[max_row * 2 * p + k];
+                        aug2[max_row * 2 * p + k] = tmp;
+                    }
+                }
+
+                float pivot = aug2[col * 2 * p + col];
+                if (fabsf(pivot) < 1e-10f) pivot = 1e-6f;
+
+                for (uint32_t k = 0; k < 2 * p; k++) {
+                    aug2[col * 2 * p + k] /= pivot;
+                }
+
+                for (uint32_t row = 0; row < p; row++) {
+                    if (row != col) {
+                        float factor = aug2[row * 2 * p + col];
+                        for (uint32_t k = 0; k < 2 * p; k++) {
+                            aug2[row * 2 * p + k] -= factor * aug2[col * 2 * p + k];
+                        }
+                    }
+                }
+            }
+
+            // Extract inverse
+            for (uint32_t i = 0; i < p; i++) {
+                for (uint32_t j = 0; j < p; j++) {
+                    inv[i * p + j] = aug2[i * 2 * p + p + j];
+                }
+            }
+            nimcp_free(aug2);
+
+            // Compute standard errors: se_j = sqrt(MSE * (X^T X)^(-1)_jj)
+            for (uint32_t j = 0; j < p; j++) {
+                result->se_coefficients[j] = sqrtf(mse * inv[j * p + j]);
+                if (result->se_coefficients[j] > 1e-10f) {
+                    result->t_statistics[j] = result->coefficients[j] / result->se_coefficients[j];
+                    // P-value from t-distribution (normal approximation)
+                    float abs_t = fabsf(result->t_statistics[j]);
+                    if (abs_t > 10.0f) {
+                        result->p_values[j] = 0.0f;
+                    } else {
+                        float t = 1.0f / (1.0f + 0.2316419f * abs_t);
+                        float d = 0.3989423f * expf(-abs_t * abs_t / 2.0f);
+                        result->p_values[j] = 2.0f * d * t * (0.3193815f + t * (-0.3565638f +
+                                             t * (1.781478f + t * (-1.821256f + t * 1.330274f))));
+                    }
+                } else {
+                    result->t_statistics[j] = 0.0f;
+                    result->p_values[j] = 1.0f;
+                }
+            }
+        }
+        nimcp_free(inv);
+    }
+
+    // P-value for F-test (using chi-squared approximation)
+    if (result->f_statistic > 0.0f && df_reg > 0) {
+        // Very rough approximation
+        float x = result->f_statistic * df_reg / df_res;
+        result->p_value = expf(-0.5f * x);
+    } else {
+        result->p_value = 1.0f;
+    }
+
+    // AIC and BIC
+    float log_lik = -(float)n / 2.0f * (logf(2.0f * 3.14159265f * mse) + 1.0f);
+    result->aic = -2.0f * log_lik + 2.0f * p;
+    result->bic = -2.0f * log_lik + logf((float)n) * p;
+
+    // Durbin-Watson statistic (for autocorrelation)
+    float dw_num = 0.0f;
+    float dw_denom = 0.0f;
+    float prev_resid = 0.0f;
+    for (uint32_t i = 0; i < n; i++) {
+        float y_pred = 0.0f;
+        for (uint32_t j = 0; j < p; j++) {
+            y_pred += X[i * p + j] * result->coefficients[j];
+        }
+        float resid = y[i] - y_pred;
+        dw_denom += resid * resid;
+        if (i > 0) {
+            float diff = resid - prev_resid;
+            dw_num += diff * diff;
+        }
+        prev_resid = resid;
+    }
+    result->durbin_watson = (dw_denom > 1e-10f) ? (dw_num / dw_denom) : 2.0f;
+
+    nimcp_free(XtX);
+    nimcp_free(Xty);
+    nimcp_free(aug);
+
+    return NIMCP_STATS_OK;
+}
+
+//=============================================================================
+// Information Theory Functions
+//=============================================================================
+
+/**
+ * @brief Differential entropy of continuous data using histogram estimation
+ * @param data Continuous data
+ * @param n Number of samples
+ * @param n_bins Number of histogram bins
+ * @return Differential entropy estimate in nats
+ */
+float nimcp_stats_differential_entropy(
+    const float* data,
+    uint32_t n,
+    uint32_t n_bins
+) {
+    if (!data || n < 2) {
+        return 0.0f;
+    }
+
+    // Use Sturges' rule for default bin count: k = ceil(log2(n) + 1)
+    if (n_bins == 0) {
+        n_bins = (uint32_t)ceilf(log2f((float)n) + 1.0f);
+        if (n_bins < 5) n_bins = 5;
+        if (n_bins > 100) n_bins = 100;
+    }
+
+    // Find min and max
+    float min_val = data[0];
+    float max_val = data[0];
+    for (uint32_t i = 1; i < n; i++) {
+        if (data[i] < min_val) min_val = data[i];
+        if (data[i] > max_val) max_val = data[i];
+    }
+
+    float range = max_val - min_val;
+    if (range < 1e-10f) {
+        return -INFINITY;  // All values are identical
+    }
+
+    float bin_width = range / n_bins;
+
+    // Compute histogram
+    uint32_t* counts = (uint32_t*)nimcp_calloc(n_bins, sizeof(uint32_t));
+    if (!counts) return 0.0f;
+
+    for (uint32_t i = 0; i < n; i++) {
+        uint32_t bin = (uint32_t)((data[i] - min_val) / bin_width);
+        if (bin >= n_bins) bin = n_bins - 1;
+        counts[bin]++;
+    }
+
+    // Compute entropy (in bits using log2 for consistency with nimcp_stats_entropy)
+    // For differential entropy: h(X) ≈ -Σ p_i * log2(p_i / Δx)
+    //                               = -Σ p_i * log2(p_i) + log2(Δx)
+    float entropy = 0.0f;
+    for (uint32_t i = 0; i < n_bins; i++) {
+        if (counts[i] > 0) {
+            float p = (float)counts[i] / n;
+            entropy -= p * log2f(p);
+        }
+    }
+    entropy += log2f(bin_width);
+
+    nimcp_free(counts);
+    return entropy;
+}
+
+/**
+ * @brief Normalized mutual information
+ * @param joint_prob Joint probability table (n_x x n_y, row-major)
+ * @param n_x Number of outcomes for X
+ * @param n_y Number of outcomes for Y
+ * @return Normalized MI (0-1 scale)
+ */
+float nimcp_stats_normalized_mi(
+    const float* joint_prob,
+    uint32_t n_x,
+    uint32_t n_y
+) {
+    if (!joint_prob || n_x == 0 || n_y == 0) {
+        return 0.0f;
+    }
+
+    // Compute marginals
+    float* p_x = (float*)nimcp_calloc(n_x, sizeof(float));
+    float* p_y = (float*)nimcp_calloc(n_y, sizeof(float));
+    if (!p_x || !p_y) {
+        if (p_x) nimcp_free(p_x);
+        if (p_y) nimcp_free(p_y);
+        return 0.0f;
+    }
+
+    for (uint32_t i = 0; i < n_x; i++) {
+        for (uint32_t j = 0; j < n_y; j++) {
+            p_x[i] += joint_prob[i * n_y + j];
+            p_y[j] += joint_prob[i * n_y + j];
+        }
+    }
+
+    // Compute entropies
+    float h_x = 0.0f;
+    for (uint32_t i = 0; i < n_x; i++) {
+        if (p_x[i] > 1e-10f) {
+            h_x -= p_x[i] * log2f(p_x[i]);
+        }
+    }
+
+    float h_y = 0.0f;
+    for (uint32_t j = 0; j < n_y; j++) {
+        if (p_y[j] > 1e-10f) {
+            h_y -= p_y[j] * log2f(p_y[j]);
+        }
+    }
+
+    // Compute joint entropy
+    float h_xy = 0.0f;
+    for (uint32_t i = 0; i < n_x; i++) {
+        for (uint32_t j = 0; j < n_y; j++) {
+            float p_ij = joint_prob[i * n_y + j];
+            if (p_ij > 1e-10f) {
+                h_xy -= p_ij * log2f(p_ij);
+            }
+        }
+    }
+
+    nimcp_free(p_x);
+    nimcp_free(p_y);
+
+    // Mutual information: I(X;Y) = H(X) + H(Y) - H(X,Y)
+    float mi = h_x + h_y - h_xy;
+    if (mi < 0.0f) mi = 0.0f;  // Numerical correction
+
+    // Normalized MI: NMI = 2 * I(X;Y) / (H(X) + H(Y))
+    float denom = h_x + h_y;
+    if (denom < 1e-10f) {
+        return 0.0f;
+    }
+    return 2.0f * mi / denom;
+}
+
+/**
+ * @brief Compute all information-theoretic measures for a joint distribution
+ * @param joint_prob Joint probability table (n_x x n_y, row-major)
+ * @param n_x Number of outcomes for X
+ * @param n_y Number of outcomes for Y
+ * @param result Output information result
+ */
+nimcp_stats_result_t nimcp_stats_info_measures(
+    const float* joint_prob,
+    uint32_t n_x,
+    uint32_t n_y,
+    nimcp_info_result_t* result
+) {
+    if (!joint_prob || !result) {
+        if (result) memset(result, 0, sizeof(nimcp_info_result_t));
+        return NIMCP_STATS_ERROR_NULL;
+    }
+    if (n_x == 0 || n_y == 0) {
+        memset(result, 0, sizeof(nimcp_info_result_t));
+        return NIMCP_STATS_ERROR_SIZE;
+    }
+
+    // Compute marginals
+    float* p_x = (float*)nimcp_calloc(n_x, sizeof(float));
+    float* p_y = (float*)nimcp_calloc(n_y, sizeof(float));
+    if (!p_x || !p_y) {
+        if (p_x) nimcp_free(p_x);
+        if (p_y) nimcp_free(p_y);
+        memset(result, 0, sizeof(nimcp_info_result_t));
+        return NIMCP_STATS_ERROR_MEMORY;
+    }
+
+    for (uint32_t i = 0; i < n_x; i++) {
+        for (uint32_t j = 0; j < n_y; j++) {
+            p_x[i] += joint_prob[i * n_y + j];
+            p_y[j] += joint_prob[i * n_y + j];
+        }
+    }
+
+    // Compute H(X)
+    float h_x = 0.0f;
+    for (uint32_t i = 0; i < n_x; i++) {
+        if (p_x[i] > 1e-10f) {
+            h_x -= p_x[i] * log2f(p_x[i]);
+        }
+    }
+    result->entropy = h_x;
+
+    // Compute H(Y)
+    float h_y = 0.0f;
+    for (uint32_t j = 0; j < n_y; j++) {
+        if (p_y[j] > 1e-10f) {
+            h_y -= p_y[j] * log2f(p_y[j]);
+        }
+    }
+
+    // Compute H(X,Y)
+    float h_xy = 0.0f;
+    for (uint32_t i = 0; i < n_x; i++) {
+        for (uint32_t j = 0; j < n_y; j++) {
+            float p_ij = joint_prob[i * n_y + j];
+            if (p_ij > 1e-10f) {
+                h_xy -= p_ij * log2f(p_ij);
+            }
+        }
+    }
+    result->joint_entropy = h_xy;
+
+    // Conditional entropy: H(X|Y) = H(X,Y) - H(Y)
+    result->conditional_entropy = h_xy - h_y;
+    if (result->conditional_entropy < 0.0f) {
+        result->conditional_entropy = 0.0f;  // Numerical correction
+    }
+
+    // Mutual information: I(X;Y) = H(X) + H(Y) - H(X,Y)
+    result->mutual_information = h_x + h_y - h_xy;
+    if (result->mutual_information < 0.0f) {
+        result->mutual_information = 0.0f;  // Numerical correction
+    }
+
+    // Normalized MI: NMI = 2 * I(X;Y) / (H(X) + H(Y))
+    float denom = h_x + h_y;
+    result->normalized_mi = (denom > 1e-10f) ? (2.0f * result->mutual_information / denom) : 0.0f;
+
+    // Variation of Information: VI = H(X|Y) + H(Y|X) = 2*H(X,Y) - H(X) - H(Y)
+    result->variation_of_info = 2.0f * h_xy - h_x - h_y;
+    if (result->variation_of_info < 0.0f) {
+        result->variation_of_info = 0.0f;  // Numerical correction
+    }
+
+    nimcp_free(p_x);
+    nimcp_free(p_y);
+
+    return NIMCP_STATS_OK;
 }

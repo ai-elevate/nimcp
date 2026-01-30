@@ -12,6 +12,7 @@
 #include "cognitive/parietal/nimcp_financial_uncertainty_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/statistics/nimcp_statistics.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -154,25 +155,7 @@ static float clampf(float val, float lo, float hi) {
     return val;
 }
 
-static float compute_mean(const float* values, uint32_t count) {
-    if (count == 0) return 0.0f;
-    float sum = 0.0f;
-    for (uint32_t i = 0; i < count; i++) {
-        sum += values[i];
-    }
-    return sum / (float)count;
-}
-
-static float compute_variance(const float* values, uint32_t count, float mean) {
-    if (count <= 1) return 0.0f;
-    float sum_sq = 0.0f;
-    for (uint32_t i = 0; i < count; i++) {
-        float diff = values[i] - mean;
-        sum_sq += diff * diff;
-    }
-    return sum_sq / (float)(count - 1);
-}
-
+/* Weighted mean/variance kept local as central stats module doesn't provide weighted variants */
 static float compute_weighted_mean(const float* values, const float* weights, uint32_t count) {
     if (count == 0) return 0.0f;
     float sum = 0.0f;
@@ -616,9 +599,9 @@ int financial_uncertainty_bridge_decompose(
             aleatoric_var = total_aleatoric / weight_sum;
         }
     } else {
-        /* Unweighted decomposition */
-        mean_pred = compute_mean(prediction->values, prediction->count);
-        epistemic_var = compute_variance(prediction->values, prediction->count, mean_pred);
+        /* Unweighted decomposition - use central statistics module */
+        mean_pred = nimcp_stats_mean(prediction->values, prediction->count);
+        epistemic_var = nimcp_stats_variance(prediction->values, prediction->count);
 
         /* Without confidences, estimate aleatoric from prediction spread */
         /* Use heuristic: aleatoric ~ 0.5 * epistemic for financial data */
@@ -745,11 +728,10 @@ int financial_uncertainty_bridge_decompose_ensemble(
     }
 
     /* Aleatoric: E[Var(Y|X)] - average of within-model variances */
-    float aleatoric_var = compute_mean(member_vars, M);
+    float aleatoric_var = nimcp_stats_mean(member_vars, M);
 
     /* Epistemic: Var(E[Y|X]) - variance of model means */
-    float grand_mean = compute_mean(member_means, M);
-    float epistemic_var = compute_variance(member_means, M, grand_mean);
+    float epistemic_var = nimcp_stats_variance(member_means, M);
 
     free(member_means);
     free(member_vars);
@@ -982,13 +964,11 @@ int financial_uncertainty_bridge_analyze(
 
     /* Step 3: Compute prediction statistics */
     if (prediction->count > 0 && prediction->values) {
-        analysis->mean_prediction = compute_mean(prediction->values, prediction->count);
-        float var = compute_variance(prediction->values, prediction->count,
-                                      analysis->mean_prediction);
-        analysis->std_prediction = sqrtf(var);
+        analysis->mean_prediction = nimcp_stats_mean(prediction->values, prediction->count);
+        analysis->std_prediction = nimcp_stats_std_dev(prediction->values, prediction->count);
 
         if (prediction->confidences) {
-            analysis->mean_confidence = compute_mean(prediction->confidences, prediction->count);
+            analysis->mean_confidence = nimcp_stats_mean(prediction->confidences, prediction->count);
         } else {
             analysis->mean_confidence = 0.5f;  /* Default */
         }

@@ -15,6 +15,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/tensor/nimcp_tensor_internal.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/containers/nimcp_vector.h"
 
 #include <string.h>
 #include <math.h>
@@ -38,31 +39,8 @@ static uint64_t get_time_us(void) {
     return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
 }
 
-static float compute_cosine_similarity(const float* a, const float* b, uint32_t dim) {
-    if (!a || !b || dim == 0) return 0.0f;
-
-    float dot = 0.0f, norm_a = 0.0f, norm_b = 0.0f;
-    for (uint32_t i = 0; i < dim; i++) {
-        dot += a[i] * b[i];
-        norm_a += a[i] * a[i];
-        norm_b += b[i] * b[i];
-    }
-
-    float denom = sqrtf(norm_a) * sqrtf(norm_b);
-    if (denom < 1e-8f) return 0.0f;
-    return dot / denom;
-}
-
-static float compute_euclidean_distance(const float* a, const float* b, uint32_t dim) {
-    if (!a || !b || dim == 0) return FLT_MAX;
-
-    float sum = 0.0f;
-    for (uint32_t i = 0; i < dim; i++) {
-        float diff = a[i] - b[i];
-        sum += diff * diff;
-    }
-    return sqrtf(sum);
-}
+/* Cosine similarity uses nimcp_vector_cosine_similarity from utils/containers/nimcp_vector.h */
+/* Euclidean distance uses nimcp_vector_euclidean_distance from utils/containers/nimcp_vector.h */
 
 static float compute_sparsity(const float* vec, uint32_t dim, float threshold) {
     if (!vec || dim == 0) return 0.0f;
@@ -359,9 +337,9 @@ int vae_hippo_encode_episode(vae_hippo_bridge_t* bridge,
 
     float novelty_score = 0.0f;
     if (bridge->config.encode.compute_novelty && bridge->baseline_samples > 0) {
-        float dist = compute_euclidean_distance(bridge->latent_buffer,
-                                                bridge->latent_mean_baseline,
-                                                bridge->vae_latent_dim);
+        float dist = nimcp_vector_euclidean_distance(bridge->latent_buffer,
+                                                     bridge->latent_mean_baseline,
+                                                     bridge->vae_latent_dim);
         novelty_score = 1.0f - expf(-dist * 0.5f);
     }
 
@@ -1216,8 +1194,8 @@ int vae_hippo_compute_novelty(vae_hippo_bridge_t* bridge,
 
     float* mu_data = (float*)nimcp_tensor_data(mu_tensor);
 
-    float distance = compute_euclidean_distance(mu_data, bridge->latent_mean_baseline,
-                                                bridge->vae_latent_dim);
+    float distance = nimcp_vector_euclidean_distance(mu_data, bridge->latent_mean_baseline,
+                                                     bridge->vae_latent_dim);
 
     *novelty_score = 1.0f - expf(-distance * 0.5f);
     if (*novelty_score > 1.0f) *novelty_score = 1.0f;

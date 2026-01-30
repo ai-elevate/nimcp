@@ -22,6 +22,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "VISUAL_GPU"
 
@@ -99,13 +100,17 @@ bool nimcp_gpu_gabor_filterbank(
 {
     if (!ctx || !input || !output) return false;
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     int batch = input->dims[0];
     int height = input->dims[input->ndim - 2];
     int width = input->dims[input->ndim - 1];
 
     // Create Gabor filter bank
     float* d_filters;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_filters, n_orientations * kernel_size * kernel_size * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_filters, n_orientations * kernel_size * kernel_size * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     dim3 filter_block(BLOCK_SIZE, BLOCK_SIZE);
     dim3 filter_grid((kernel_size + BLOCK_SIZE - 1) / BLOCK_SIZE,
@@ -128,7 +133,7 @@ bool nimcp_gpu_gabor_filterbank(
         batch, height, width, n_orientations, kernel_size);
 
     cudaFree(d_filters);
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -881,6 +886,10 @@ bool nimcp_gpu_sobel_edge_detect(
 {
     if (!ctx || !input || !magnitude) return false;
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     int height = input->dims[input->ndim - 2];
     int width = input->dims[input->ndim - 1];
 
@@ -892,8 +901,8 @@ bool nimcp_gpu_sobel_edge_detect(
     float* d_grad_y = NULL;
 
     if (direction) {
-        NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_grad_x, height * width * sizeof(float)));
-        NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_grad_y, height * width * sizeof(float)));
+        NIMCP_CUDA_RECOVER(cudaMalloc(&d_grad_x, height * width * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+        NIMCP_CUDA_RECOVER(cudaMalloc(&d_grad_y, height * width * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
     }
 
     kernel_sobel_edge<<<grid, block>>>(
@@ -910,7 +919,7 @@ bool nimcp_gpu_sobel_edge_detect(
     if (d_grad_x) cudaFree(d_grad_x);
     if (d_grad_y) cudaFree(d_grad_y);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -952,15 +961,19 @@ bool nimcp_gpu_optical_flow_lk(
 {
     if (!ctx || !frame1 || !frame2 || !flow_u || !flow_v) return false;
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     int height = frame1->dims[frame1->ndim - 2];
     int width = frame1->dims[frame1->ndim - 1];
 
     // Allocate gradient buffers
     float *d_Ix, *d_Iy, *d_It;
     size_t size = height * width * sizeof(float);
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_Ix, size));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_Iy, size));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_It, size));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_Ix, size), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_Iy, size), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_It, size), GPU_ERROR_OUT_OF_MEMORY);
 
     dim3 block(BLOCK_SIZE, BLOCK_SIZE);
     dim3 grid((width + BLOCK_SIZE - 1) / BLOCK_SIZE,
@@ -977,7 +990,7 @@ bool nimcp_gpu_optical_flow_lk(
     cudaFree(d_Iy);
     cudaFree(d_It);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1018,6 +1031,10 @@ bool nimcp_gpu_color_opponent(
 {
     if (!ctx || !rgb || !rg || !yb || !luminance) return false;
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     int height = rgb->dims[rgb->ndim - 2];
     int width = rgb->dims[rgb->ndim - 1];
 
@@ -1030,7 +1047,7 @@ bool nimcp_gpu_color_opponent(
         (float*)yb->data, (float*)luminance->data,
         height, width);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 

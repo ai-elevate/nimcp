@@ -17,6 +17,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/signal/nimcp_signal_handler.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -554,6 +555,111 @@ nimcp_gpu_exception_t* nimcp_gpu_exception_create(
 
 #include <stddef.h>  /* for NULL */
 
+/**
+ * @brief Map signal number to NIMCP error code
+ */
+static nimcp_error_t signal_to_error_code(int signal_number) {
+    switch (signal_number) {
+        case SIGSEGV: return NIMCP_ERROR_SIGSEGV;
+        case SIGABRT: return NIMCP_ERROR_SIGABRT;
+        case SIGFPE:  return NIMCP_ERROR_SIGFPE;
+        case SIGBUS:  return NIMCP_ERROR_SIGBUS;
+        case SIGILL:  return NIMCP_ERROR_SIGILL;
+        default:      return NIMCP_ERROR_SIGNAL_RECEIVED;
+    }
+}
+
+nimcp_signal_exception_t* nimcp_signal_exception_create(
+    int signal_number,
+    void* fault_address,
+    const char* file,
+    int line,
+    const char* func,
+    const char* format,
+    ...
+) {
+    nimcp_signal_exception_t* ex = nimcp_calloc(1, sizeof(nimcp_signal_exception_t));
+    if (!ex) return NULL;
+
+    ex->base.type = EXCEPTION_TYPE_SIGNAL;
+    ex->base.category = EXCEPTION_CATEGORY_SIGNAL;
+    ex->base.code = signal_to_error_code(signal_number);
+    ex->base.severity = EXCEPTION_SEVERITY_CRITICAL;
+    ex->base.file = file;
+    ex->base.line = line;
+    ex->base.function = func;
+    ex->base.timestamp_us = get_timestamp_us();
+    ex->base.ref_count = 1;
+    ex->base.suggested_action = EXCEPTION_RECOVERY_RETRY;
+
+    ex->signal_number = signal_number;
+    ex->fault_address = fault_address;
+    ex->instruction_pointer = NULL;
+    ex->stack_pointer = NULL;
+    ex->base_pointer = NULL;
+    ex->recovery_attempted = false;
+    ex->siglongjmp_executed = false;
+    ex->retry_count = 0;
+
+    if (format) {
+        va_list args;
+        va_start(args, format);
+        vsnprintf(ex->base.message, NIMCP_EXCEPTION_MAX_MESSAGE, format, args);
+        va_end(args);
+    }
+
+    nimcp_exception_capture_stack_trace(&ex->base.stack_trace, 2);
+    nimcp_exception_generate_epitope(&ex->base);
+
+    return ex;
+}
+
+nimcp_signal_exception_t* nimcp_signal_exception_create_from_context(
+    const struct signal_crash_context* ctx
+) {
+    if (!ctx) return NULL;
+
+    nimcp_signal_exception_t* ex = nimcp_calloc(1, sizeof(nimcp_signal_exception_t));
+    if (!ex) return NULL;
+
+    ex->base.type = EXCEPTION_TYPE_SIGNAL;
+    ex->base.category = EXCEPTION_CATEGORY_SIGNAL;
+    ex->base.code = signal_to_error_code(ctx->signal);
+    ex->base.severity = EXCEPTION_SEVERITY_CRITICAL;
+    ex->base.file = NULL;  /* Not available in crash context */
+    ex->base.line = 0;
+    ex->base.function = NULL;
+    ex->base.timestamp_us = get_timestamp_us();
+    ex->base.ref_count = 1;
+    ex->base.suggested_action = EXCEPTION_RECOVERY_RETRY;
+
+    ex->signal_number = ctx->signal;
+    ex->fault_address = ctx->fault_address;
+    ex->instruction_pointer = ctx->instruction_pointer;
+    ex->stack_pointer = ctx->stack_pointer;
+    ex->base_pointer = ctx->base_pointer;
+    ex->recovery_attempted = false;  /* Not tracked in crash context */
+    ex->siglongjmp_executed = false;
+    ex->retry_count = 0;
+
+    /* Copy memory region info */
+    if (ctx->memory_region[0] != '\0') {
+        strncpy(ex->memory_region, ctx->memory_region, NIMCP_SIGNAL_EXCEPTION_MEMORY_REGION_SIZE - 1);
+        ex->memory_region[NIMCP_SIGNAL_EXCEPTION_MEMORY_REGION_SIZE - 1] = '\0';
+    }
+
+    snprintf(ex->base.message, NIMCP_EXCEPTION_MAX_MESSAGE,
+             "Signal %d (%s) at %p",
+             ctx->signal,
+             strsignal(ctx->signal),
+             ctx->fault_address);
+
+    nimcp_exception_capture_stack_trace(&ex->base.stack_trace, 2);
+    nimcp_exception_generate_epitope(&ex->base);
+
+    return ex;
+}
+
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)
 //=============================================================================
@@ -844,34 +950,6 @@ void nimcp_exception_clear_current(void) {
         nimcp_exception_unref(tl_current_exception);
         tl_current_exception = NULL;
     }
-}
-
-/* ============================================================================
- * Signal Exception from Context
- * ============================================================================ */
-
-nimcp_signal_exception_t* nimcp_signal_exception_create_from_context(
-    const struct signal_crash_context* ctx
-) {
-    /* signal_crash_context is forward-declared only - if NULL just return NULL */
-    if (!ctx) return NULL;
-
-    nimcp_signal_exception_t* ex = nimcp_calloc(1, sizeof(nimcp_signal_exception_t));
-    if (!ex) return NULL;
-
-    ex->base.type = EXCEPTION_TYPE_SIGNAL;
-    ex->base.category = EXCEPTION_CATEGORY_SIGNAL;
-    ex->base.severity = EXCEPTION_SEVERITY_FATAL;
-    ex->base.timestamp_us = get_timestamp_us();
-    ex->base.ref_count = 1;
-    ex->base.suggested_action = EXCEPTION_RECOVERY_EMERGENCY_SAVE;
-    snprintf(ex->base.message, NIMCP_EXCEPTION_MAX_MESSAGE,
-             "Signal exception from crash context");
-
-    nimcp_exception_capture_stack_trace(&ex->base.stack_trace, 2);
-    nimcp_exception_generate_epitope(&ex->base);
-
-    return ex;
 }
 
 /* ============================================================================

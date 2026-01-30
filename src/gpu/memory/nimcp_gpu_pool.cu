@@ -33,6 +33,7 @@
 #endif
 
 #include "gpu/memory/nimcp_gpu_pool.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -1381,6 +1382,10 @@ nimcp_gpu_pool_t* nimcp_gpu_pool_create(
     nimcp_gpu_context_t* ctx,
     const nimcp_gpu_pool_config_t* config
 ) {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx) {
         LOG_ERROR("NULL GPU context");
         return NULL;

@@ -16,6 +16,7 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/statistics/nimcp_statistics.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
@@ -2513,21 +2514,11 @@ float nimcp_compute_entropy(const float* frequencies, uint32_t n) {
     /* Phase 8: Heartbeat at operation start */
     gt_spatial_heartbeat("gt_spatial_compute_entropy", 0.0f);
 
-
-    float entropy = 0.0f;
-    for (uint32_t i = 0; i < n; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && n > 256) {
-            gt_spatial_heartbeat("gt_spatial_loop",
-                             (float)(i + 1) / (float)n);
-        }
-
-        if (frequencies[i] > MIN_FREQUENCY) {
-            entropy -= frequencies[i] * log2f(frequencies[i]);
-        }
-    }
-
-    return entropy;
+    /* Delegate to central statistics module.
+     * nimcp_stats_entropy expects a probability distribution.
+     * The frequencies array in game theory contexts represents strategy
+     * frequencies which should sum to 1 (probability distribution). */
+    return nimcp_stats_entropy(frequencies, n);
 }
 
 void nimcp_evolutionary_result_cleanup(nimcp_evolutionary_result_t* result) {

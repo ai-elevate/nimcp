@@ -112,3 +112,8 @@ endif()
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/statistics/CMakeLists.txt)
     add_subdirectory(statistics)
 endif()
+
+# Include recovery GPU regression tests subdirectory
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/recovery/CMakeLists.txt)
+    add_subdirectory(recovery)
+endif()

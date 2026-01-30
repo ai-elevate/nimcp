@@ -31,6 +31,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "SWARM_MEMORY_GPU"
 
@@ -1465,6 +1466,11 @@ extern "C" void nimcp_replay_buffer_gpu_destroy(nimcp_replay_buffer_gpu_t* buffe
 
 extern "C" bool nimcp_replay_buffer_gpu_clear(nimcp_replay_buffer_gpu_t* buffer)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!buffer) return false;
 
     buffer->current_size = 0;
@@ -1680,6 +1686,11 @@ extern "C" bool nimcp_swarm_memory_gpu_store(
     nimcp_gpu_tensor_t* next_state,
     bool done)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!mem || !mem->replay_buffer || !state || !action || !next_state) {
         return false;
     }
@@ -1710,7 +1721,7 @@ extern "C" bool nimcp_swarm_memory_gpu_store(
         (int)buf->action_dim
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Update sum-tree if PER enabled
     if (buf->use_per && buf->sum_tree) {
@@ -1720,7 +1731,7 @@ extern "C" bool nimcp_swarm_memory_gpu_store(
             buf->max_priority,
             (int)buf->capacity
         );
-        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+        NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     }
 
     // Update indices
@@ -1742,6 +1753,11 @@ extern "C" bool nimcp_swarm_memory_gpu_store_batch(
     nimcp_gpu_tensor_t* dones,
     size_t batch_size)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!mem || !mem->replay_buffer || !states || !actions ||
         !rewards || !next_states || !dones) {
         return false;
@@ -1774,7 +1790,7 @@ extern "C" bool nimcp_swarm_memory_gpu_store_batch(
         (int)buf->action_dim
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Update indices
     buf->write_idx = (buf->write_idx + batch_size) % buf->capacity;
@@ -1797,6 +1813,11 @@ extern "C" bool nimcp_swarm_memory_gpu_sample(
     size_t batch_size,
     nimcp_replay_batch_t* batch)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!mem || !mem->replay_buffer || !batch || batch_size == 0) {
         return false;
     }
@@ -1838,7 +1859,7 @@ extern "C" bool nimcp_swarm_memory_gpu_sample(
             (int)batch_size,
             (int)buf->capacity
         );
-        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+        NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     } else {
         // Uniform random sampling
         int* host_indices = (int*)malloc(batch_size * sizeof(int));
@@ -1897,7 +1918,7 @@ extern "C" bool nimcp_swarm_memory_gpu_sample(
         (int)batch_size
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Compute IS weights for PER
     if (buf->use_per) {
@@ -1916,7 +1937,7 @@ extern "C" bool nimcp_swarm_memory_gpu_sample(
             (int)buf->current_size,
             (int)batch_size
         );
-        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+        NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
         // Find max weight for normalization
         float max_weight = 1.0f;  // Simplified - in production use reduction kernel
@@ -1926,7 +1947,7 @@ extern "C" bool nimcp_swarm_memory_gpu_sample(
             max_weight,
             (int)batch_size
         );
-        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+        NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     } else {
         // Uniform weights
         nimcp_gpu_ones(mem->ctx, batch->weights);
@@ -1942,6 +1963,11 @@ extern "C" bool nimcp_swarm_memory_gpu_update_priorities(
     nimcp_gpu_tensor_t* td_errors,
     size_t batch_size)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!mem || !mem->replay_buffer || !indices || !td_errors) {
         return false;
     }
@@ -1966,7 +1992,7 @@ extern "C" bool nimcp_swarm_memory_gpu_update_priorities(
         (int)batch_size,
         (int)buf->capacity
     );
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Rebuild sum-tree to propagate changes
     int tree_size = 2 * buf->capacity - 1;
@@ -1976,7 +2002,7 @@ extern "C" bool nimcp_swarm_memory_gpu_update_priorities(
         (float*)buf->sum_tree->data,
         tree_size
     );
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Update max priority
     float max_td = 0.0f;  // Would need reduction kernel for accuracy
@@ -2004,6 +2030,11 @@ extern "C" bool nimcp_swarm_memory_gpu_consolidate(
     nimcp_swarm_memory_gpu_t* mem,
     float dt)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!mem) return false;
 
     nimcp_cuda_stream_t stream = nimcp_gpu_get_compute_stream(mem->ctx);
@@ -2021,7 +2052,7 @@ extern "C" bool nimcp_swarm_memory_gpu_consolidate(
                 mem->consolidation_params.min_strength,
                 (int)n
             );
-            NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+            NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
         }
     }
 
@@ -2035,6 +2066,11 @@ extern "C" bool nimcp_swarm_memory_gpu_decay(
     float decay_rate,
     float min_strength)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !memory_strength) return false;
 
     size_t n = memory_strength->numel;
@@ -2050,7 +2086,7 @@ extern "C" bool nimcp_swarm_memory_gpu_decay(
         (int)n
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -2061,6 +2097,11 @@ extern "C" bool nimcp_swarm_memory_gpu_selective_consolidate(
     nimcp_gpu_tensor_t* consolidated,
     float threshold)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !memories || !importance || !consolidated) return false;
 
     // Assume memories is [num_memories, memory_dim]
@@ -2081,7 +2122,7 @@ extern "C" bool nimcp_swarm_memory_gpu_selective_consolidate(
         (int)memory_dim
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -2093,6 +2134,11 @@ extern "C" bool nimcp_swarm_memory_gpu_hippocampal_compress(
     size_t state_dim,
     float compression_ratio)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !sequence || !compressed || compression_ratio <= 1.0f) return false;
 
     size_t compressed_len = (size_t)(seq_len / compression_ratio);
@@ -2111,7 +2157,7 @@ extern "C" bool nimcp_swarm_memory_gpu_hippocampal_compress(
         (int)compressed_len
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -2122,6 +2168,11 @@ extern "C" bool nimcp_swarm_memory_gpu_systems_consolidation(
     const nimcp_gpu_tensor_t* consolidation_gate,
     float learning_rate)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !hippocampal_mem || !cortical_weights || !consolidation_gate) return false;
 
     size_t batch_size = hippocampal_mem->dims[0];
@@ -2143,7 +2194,7 @@ extern "C" bool nimcp_swarm_memory_gpu_systems_consolidation(
         (int)batch_size
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -2155,6 +2206,11 @@ extern "C" bool nimcp_swarm_memory_gpu_sws_replay(
     size_t num_memories,
     size_t replay_count)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !memories || !replay_order || !importance_scores) return false;
 
     // Simple implementation: copy top-k importance scores to replay order
@@ -2198,6 +2254,11 @@ extern "C" bool nimcp_swarm_memory_gpu_sws_replay(
 
 extern "C" bool nimcp_swarm_memory_gpu_sync_agents(nimcp_swarm_memory_gpu_t* mem)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!mem || !mem->agent_memories || !mem->shared_knowledge) return false;
 
     // Create uniform weights
@@ -2231,6 +2292,11 @@ extern "C" bool nimcp_swarm_memory_gpu_aggregate_memories(
     int num_agents,
     int memory_dim)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !agent_memories || !aggregated || !agent_weights) return false;
 
     nimcp_cuda_stream_t stream = nimcp_gpu_get_compute_stream(ctx);
@@ -2246,7 +2312,7 @@ extern "C" bool nimcp_swarm_memory_gpu_aggregate_memories(
         memory_dim
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -2257,6 +2323,11 @@ extern "C" bool nimcp_swarm_memory_gpu_federated_average(
     int num_agents,
     int knowledge_dim)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !agent_updates || !shared_knowledge) return false;
 
     nimcp_cuda_stream_t stream = nimcp_gpu_get_compute_stream(ctx);
@@ -2271,7 +2342,7 @@ extern "C" bool nimcp_swarm_memory_gpu_federated_average(
         knowledge_dim
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -2283,6 +2354,11 @@ extern "C" bool nimcp_swarm_memory_gpu_broadcast(
     int num_targets,
     int memory_dim)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !source_memory || !target_memories || !target_agents) return false;
 
     nimcp_cuda_stream_t stream = nimcp_gpu_get_compute_stream(ctx);
@@ -2298,7 +2374,7 @@ extern "C" bool nimcp_swarm_memory_gpu_broadcast(
         memory_dim
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -2310,6 +2386,11 @@ extern "C" bool nimcp_swarm_memory_gpu_conflict_resolution(
     int num_agents,
     int memory_dim)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !memories || !confidence || !resolved) return false;
 
     nimcp_cuda_stream_t stream = nimcp_gpu_get_compute_stream(ctx);
@@ -2325,7 +2406,7 @@ extern "C" bool nimcp_swarm_memory_gpu_conflict_resolution(
         memory_dim
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -2340,6 +2421,11 @@ extern "C" bool nimcp_swarm_memory_gpu_store_episode(
     nimcp_gpu_tensor_t* rewards,
     size_t episode_len)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!mem || !episode) return false;
 
     // Lazy initialize episode buffer
@@ -2380,7 +2466,7 @@ extern "C" bool nimcp_swarm_memory_gpu_store_episode(
         (int)max_len
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Update episode length
     float len_f = (float)episode_len;
@@ -2406,6 +2492,11 @@ extern "C" bool nimcp_swarm_memory_gpu_episode_similarity(
     size_t episode_len,
     size_t state_dim)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !query || !episodes || !similarities) return false;
 
     nimcp_cuda_stream_t stream = nimcp_gpu_get_compute_stream(ctx);
@@ -2422,7 +2513,7 @@ extern "C" bool nimcp_swarm_memory_gpu_episode_similarity(
         (int)state_dim
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -2437,6 +2528,11 @@ extern "C" bool nimcp_swarm_memory_gpu_episode_replay(
     size_t state_dim,
     size_t action_dim)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !episodes || !replay_indices || !replayed_states) return false;
 
     nimcp_cuda_stream_t stream = nimcp_gpu_get_compute_stream(ctx);
@@ -2453,7 +2549,7 @@ extern "C" bool nimcp_swarm_memory_gpu_episode_replay(
         (int)state_dim
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -2467,6 +2563,11 @@ extern "C" bool nimcp_swarm_memory_gpu_build_sum_tree(
     nimcp_gpu_tensor_t* sum_tree,
     size_t capacity)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !priorities || !sum_tree) return false;
 
     nimcp_cuda_stream_t stream = nimcp_gpu_get_compute_stream(ctx);
@@ -2480,7 +2581,7 @@ extern "C" bool nimcp_swarm_memory_gpu_build_sum_tree(
         (const float*)priorities->data,
         (int)capacity
     );
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Build internal nodes level by level (bottom-up)
     int tree_size = 2 * capacity - 1;
@@ -2494,7 +2595,7 @@ extern "C" bool nimcp_swarm_memory_gpu_build_sum_tree(
             level_start,
             level_size
         );
-        NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+        NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
         if (level_start == 0) break;
         level_size = (level_start + 1) / 2;
@@ -2511,6 +2612,11 @@ extern "C" bool nimcp_swarm_memory_gpu_update_sum_tree(
     float new_priority,
     size_t capacity)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !sum_tree) return false;
 
     nimcp_cuda_stream_t stream = nimcp_gpu_get_compute_stream(ctx);
@@ -2522,7 +2628,7 @@ extern "C" bool nimcp_swarm_memory_gpu_update_sum_tree(
         (int)capacity
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -2534,6 +2640,11 @@ extern "C" bool nimcp_swarm_memory_gpu_sample_sum_tree(
     size_t batch_size,
     size_t capacity)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !sum_tree || !random_vals || !sampled_indices) return false;
 
     nimcp_cuda_stream_t stream = nimcp_gpu_get_compute_stream(ctx);
@@ -2549,7 +2660,7 @@ extern "C" bool nimcp_swarm_memory_gpu_sample_sum_tree(
         (int)capacity
     );
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 

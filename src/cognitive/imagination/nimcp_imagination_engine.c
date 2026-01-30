@@ -22,6 +22,7 @@
 #include "utils/containers/nimcp_darray.h"
 #include "utils/algorithms/nimcp_monte_carlo.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/rng/nimcp_rand.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -71,7 +72,7 @@ static inline void imagination_engine_heartbeat_instance(
 
 
 
-/* Thread-local RNG seed for imagination engine */
+/* Thread-local RNG seed for imagination engine - used by mc_random_uniform */
 static __thread uint32_t g_imagination_rand_seed = 0;
 
 /*============================================================================
@@ -129,30 +130,14 @@ static void tensor_fill_zero(nimcp_tensor_t* t) {
 }
 
 /**
- * @brief Generate Gaussian noise
+ * @brief Generate Gaussian noise using centralized RNG module
+ *
+ * WHAT: Generate random value from N(0, stddev^2)
+ * WHY:  Add stochasticity to imagination simulations
+ * HOW:  Delegates to nimcp_rand_normal() for thread-safe Box-Muller
  */
-static float gaussian_noise(float stddev) {
-    /* Box-Muller transform */
-    static int has_spare = 0;
-    static float spare;
-
-    if (has_spare) {
-        has_spare = 0;
-        return spare * stddev;
-    }
-
-    float u, v, s;
-    do {
-        u = mc_random_uniform(&g_imagination_rand_seed) * 2.0f - 1.0f;
-        v = mc_random_uniform(&g_imagination_rand_seed) * 2.0f - 1.0f;
-        s = u * u + v * v;
-    } while (s >= 1.0f || s == 0.0f);
-
-    s = sqrtf(-2.0f * logf(s) / s);
-    spare = v * s;
-    has_spare = 1;
-
-    return u * s * stddev;
+static inline float gaussian_noise(float stddev) {
+    return nimcp_rand_normal(0.0f, stddev);
 }
 
 /**

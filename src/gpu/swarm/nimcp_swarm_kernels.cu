@@ -26,6 +26,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "SWARM_GPU"
 
@@ -1201,6 +1202,11 @@ extern "C" bool nimcp_gpu_flocking_compute_forces(
     nimcp_gpu_context_t* ctx,
     nimcp_flocking_gpu_state_t* state)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) return false;
 
     kernel_flocking_forces<<<GRID_SIZE(state->n_agents), BLOCK_SIZE>>>(
@@ -1216,7 +1222,7 @@ extern "C" bool nimcp_gpu_flocking_compute_forces(
         state->params.cohesion_weight, state->params.cohesion_radius,
         state->params.max_force);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1225,6 +1231,11 @@ extern "C" bool nimcp_gpu_flocking_update(
     nimcp_flocking_gpu_state_t* state,
     float dt)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) return false;
 
     float timestep = (dt > 0.0f) ? dt : state->params.dt;
@@ -1237,7 +1248,7 @@ extern "C" bool nimcp_gpu_flocking_update(
         timestep,
         state->params.max_speed);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1268,6 +1279,11 @@ extern "C" bool nimcp_gpu_flocking_find_neighbors(
     nimcp_flocking_gpu_state_t* state,
     float radius)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) return false;
 
     kernel_find_neighbors_brute<<<GRID_SIZE(state->n_agents), BLOCK_SIZE>>>(
@@ -1278,7 +1294,7 @@ extern "C" bool nimcp_gpu_flocking_find_neighbors(
         state->max_neighbors,
         radius);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1340,6 +1356,11 @@ extern "C" bool nimcp_spatial_hash_clear(
     nimcp_gpu_context_t* ctx,
     nimcp_spatial_hash_t* hash)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !hash) return false;
 
     nimcp_gpu_zeros(ctx, hash->cell_start);
@@ -1354,6 +1375,11 @@ extern "C" bool nimcp_gpu_spatial_hash_build(
     const nimcp_gpu_tensor_t* positions,
     size_t n_agents)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !hash || !positions) return false;
 
     kernel_compute_cell_ids<<<GRID_SIZE(n_agents), BLOCK_SIZE>>>(
@@ -1364,7 +1390,7 @@ extern "C" bool nimcp_gpu_spatial_hash_build(
         hash->grid_dim_x, hash->grid_dim_y, hash->grid_dim_z,
         hash->origin_x, hash->origin_y, hash->origin_z);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1433,6 +1459,11 @@ extern "C" bool nimcp_gpu_consensus_averaging(
     nimcp_gpu_context_t* ctx,
     nimcp_consensus_gpu_state_t* state)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) return false;
 
     kernel_consensus_averaging<<<GRID_SIZE(state->n_agents), BLOCK_SIZE>>>(
@@ -1449,7 +1480,7 @@ extern "C" bool nimcp_gpu_consensus_averaging(
     state->beliefs = state->new_beliefs;
     state->new_beliefs = tmp;
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1457,6 +1488,11 @@ extern "C" bool nimcp_gpu_consensus_belief_propagation(
     nimcp_gpu_context_t* ctx,
     nimcp_consensus_gpu_state_t* state)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) return false;
 
     kernel_consensus_belief_propagation<<<GRID_SIZE(state->n_agents), BLOCK_SIZE>>>(
@@ -1470,7 +1506,7 @@ extern "C" bool nimcp_gpu_consensus_belief_propagation(
     state->beliefs = state->new_beliefs;
     state->new_beliefs = tmp;
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1478,6 +1514,11 @@ extern "C" bool nimcp_gpu_consensus_opinion_dynamics(
     nimcp_gpu_context_t* ctx,
     nimcp_consensus_gpu_state_t* state)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) return false;
 
     float confidence_threshold = 0.5f;  // Bounded confidence model threshold
@@ -1494,7 +1535,7 @@ extern "C" bool nimcp_gpu_consensus_opinion_dynamics(
     state->beliefs = state->new_beliefs;
     state->new_beliefs = tmp;
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1504,11 +1545,16 @@ extern "C" bool nimcp_gpu_consensus_check_convergence(
     bool* converged,
     float* variance)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !converged || !variance) return false;
 
     // Allocate device memory for variances
     float* d_variances;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_variances, state->belief_dim * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_variances, state->belief_dim * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     size_t shared_size = BLOCK_SIZE * sizeof(float);
     kernel_consensus_variance<<<state->belief_dim, BLOCK_SIZE, shared_size>>>(
@@ -1519,8 +1565,8 @@ extern "C" bool nimcp_gpu_consensus_check_convergence(
 
     // Copy back and compute total variance
     float* h_variances = (float*)malloc(state->belief_dim * sizeof(float));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(h_variances, d_variances, state->belief_dim * sizeof(float),
-                          cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(h_variances, d_variances, state->belief_dim * sizeof(float),
+                          cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     float total_var = 0.0f;
     for (size_t d = 0; d < state->belief_dim; d++) {
@@ -1607,6 +1653,11 @@ extern "C" bool nimcp_gpu_pheromone_diffusion(
     nimcp_pheromone_gpu_state_t* state,
     float dt)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) return false;
 
     size_t total_cells = (size_t)state->grid_x * state->grid_y * state->grid_z;
@@ -1624,7 +1675,7 @@ extern "C" bool nimcp_gpu_pheromone_diffusion(
     state->concentration = state->temp_buffer;
     state->temp_buffer = tmp;
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1633,13 +1684,18 @@ extern "C" bool nimcp_gpu_pheromone_decay(
     nimcp_pheromone_gpu_state_t* state,
     float dt)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) return false;
 
     // Upload decay rates
     float* d_decay_rates;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_decay_rates, SWARM_GPU_MAX_PHEROMONE_TYPES * sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(d_decay_rates, state->params.decay_rates,
-                          SWARM_GPU_MAX_PHEROMONE_TYPES * sizeof(float), cudaMemcpyHostToDevice));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_decay_rates, SWARM_GPU_MAX_PHEROMONE_TYPES * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(d_decay_rates, state->params.decay_rates,
+                          SWARM_GPU_MAX_PHEROMONE_TYPES * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     size_t total_cells = (size_t)state->grid_x * state->grid_y * state->grid_z;
 
@@ -1651,7 +1707,7 @@ extern "C" bool nimcp_gpu_pheromone_decay(
         dt);
 
     cudaFree(d_decay_rates);
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1663,6 +1719,11 @@ extern "C" bool nimcp_gpu_pheromone_deposit(
     const nimcp_gpu_tensor_t* amounts,
     size_t n_deposits)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !positions || !types || !amounts) return false;
 
     kernel_pheromone_deposit<<<GRID_SIZE(n_deposits), BLOCK_SIZE>>>(
@@ -1677,7 +1738,7 @@ extern "C" bool nimcp_gpu_pheromone_deposit(
         state->origin_x, state->origin_y, state->origin_z,
         state->params.max_concentration);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1688,6 +1749,11 @@ extern "C" bool nimcp_gpu_pheromone_sample(
     uint32_t type,
     nimcp_gpu_tensor_t* output)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !positions || !output) return false;
 
     size_t n_samples = positions->dims[0];  // First dimension is number of samples
@@ -1703,7 +1769,7 @@ extern "C" bool nimcp_gpu_pheromone_sample(
         state->voxel_size,
         state->origin_x, state->origin_y, state->origin_z);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1714,6 +1780,11 @@ extern "C" bool nimcp_gpu_pheromone_gradient(
     uint32_t type,
     nimcp_gpu_tensor_t* gradients)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !positions || !gradients) return false;
 
     size_t n_samples = positions->dims[0];  // First dimension is number of samples
@@ -1729,7 +1800,7 @@ extern "C" bool nimcp_gpu_pheromone_gradient(
         state->voxel_size,
         state->origin_x, state->origin_y, state->origin_z);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1813,6 +1884,11 @@ extern "C" bool nimcp_gpu_quorum_compute_concentration(
     nimcp_gpu_context_t* ctx,
     nimcp_quorum_gpu_state_t* state)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) return false;
 
     size_t shared_size = BLOCK_SIZE * sizeof(float);
@@ -1822,7 +1898,7 @@ extern "C" bool nimcp_gpu_quorum_compute_concentration(
         state->n_agents,
         state->n_signal_types);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1830,6 +1906,11 @@ extern "C" bool nimcp_gpu_quorum_check_thresholds(
     nimcp_gpu_context_t* ctx,
     nimcp_quorum_gpu_state_t* state)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) return false;
 
     kernel_quorum_check_thresholds<<<GRID_SIZE(state->n_signal_types), BLOCK_SIZE>>>(
@@ -1839,7 +1920,7 @@ extern "C" bool nimcp_gpu_quorum_check_thresholds(
         state->params.base_threshold,
         state->n_agents);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1847,6 +1928,11 @@ extern "C" bool nimcp_gpu_quorum_update_commitments(
     nimcp_gpu_context_t* ctx,
     nimcp_quorum_gpu_state_t* state)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) return false;
 
     kernel_quorum_update_commitments<<<GRID_SIZE(state->n_agents), BLOCK_SIZE>>>(
@@ -1860,7 +1946,7 @@ extern "C" bool nimcp_gpu_quorum_update_commitments(
         state->params.amplification,
         state->params.inhibition);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1869,6 +1955,11 @@ extern "C" bool nimcp_gpu_quorum_decay_signals(
     nimcp_quorum_gpu_state_t* state,
     float dt)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) return false;
 
     size_t total = state->n_agents * state->n_signal_types;
@@ -1880,7 +1971,7 @@ extern "C" bool nimcp_gpu_quorum_decay_signals(
         state->params.decay_rate,
         dt);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1964,6 +2055,11 @@ extern "C" bool nimcp_gpu_task_compute_matches(
     nimcp_gpu_context_t* ctx,
     nimcp_task_alloc_gpu_state_t* state)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) return false;
 
     size_t total = state->n_agents * state->n_tasks;
@@ -1976,7 +2072,7 @@ extern "C" bool nimcp_gpu_task_compute_matches(
         state->n_tasks,
         state->n_capability_types);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1984,6 +2080,11 @@ extern "C" bool nimcp_gpu_task_auction_round(
     nimcp_gpu_context_t* ctx,
     nimcp_task_alloc_gpu_state_t* state)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) return false;
 
     // Clear best bids
@@ -1999,7 +2100,7 @@ extern "C" bool nimcp_gpu_task_auction_round(
         state->n_tasks,
         state->params.epsilon);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -2007,6 +2108,11 @@ extern "C" bool nimcp_gpu_task_update_prices(
     nimcp_gpu_context_t* ctx,
     nimcp_task_alloc_gpu_state_t* state)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) return false;
 
     kernel_task_update_prices<<<GRID_SIZE(state->n_tasks), BLOCK_SIZE>>>(
@@ -2014,7 +2120,7 @@ extern "C" bool nimcp_gpu_task_update_prices(
         (const float*)state->best_bids->data,
         state->n_tasks);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -2022,6 +2128,11 @@ extern "C" bool nimcp_gpu_task_finalize_assignments(
     nimcp_gpu_context_t* ctx,
     nimcp_task_alloc_gpu_state_t* state)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) return false;
 
     kernel_task_finalize<<<GRID_SIZE(state->n_agents), BLOCK_SIZE>>>(
@@ -2031,7 +2142,7 @@ extern "C" bool nimcp_gpu_task_finalize_assignments(
         state->n_agents,
         state->n_tasks);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -2111,6 +2222,11 @@ extern "C" bool nimcp_gpu_collision_detect(
     nimcp_gpu_context_t* ctx,
     nimcp_collision_gpu_state_t* state)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) return false;
 
     // Reset pair count
@@ -2128,7 +2244,7 @@ extern "C" bool nimcp_gpu_collision_detect(
         state->params.collision_radius,
         state->params.use_variable_radius);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -2138,6 +2254,11 @@ extern "C" bool nimcp_gpu_pairwise_distances(
     nimcp_gpu_tensor_t* distances,
     size_t n_agents)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !positions || !distances) return false;
 
     size_t total = n_agents * n_agents;
@@ -2147,7 +2268,7 @@ extern "C" bool nimcp_gpu_pairwise_distances(
         (float*)distances->data,
         n_agents);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -2158,17 +2279,22 @@ extern "C" bool nimcp_gpu_collision_get_pairs(
     size_t max_pairs,
     size_t* count_out)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !pairs_out || !count_out) return false;
 
     uint32_t h_count;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&h_count, state->pair_count->data, sizeof(uint32_t), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(&h_count, state->pair_count->data, sizeof(uint32_t), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     size_t copy_count = (h_count < max_pairs) ? h_count : max_pairs;
     *count_out = copy_count;
 
     if (copy_count > 0) {
-        NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(pairs_out, state->collision_pairs->data,
-                              copy_count * 2 * sizeof(uint32_t), cudaMemcpyDeviceToHost));
+        NIMCP_CUDA_RECOVER(cudaMemcpy(pairs_out, state->collision_pairs->data,
+                              copy_count * 2 * sizeof(uint32_t), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
     }
 
     return true;

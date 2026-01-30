@@ -14,6 +14,15 @@
  *   - Path-dependent options (Asian, Lookback, Barrier)
  *   - Multi-asset correlated simulation
  *
+ * RNG ARCHITECTURE:
+ * =================
+ * Uses local cuRAND state management for path simulation reproducibility.
+ * For general statistics RNG, see: gpu/statistics/nimcp_statistics_gpu.h
+ * For device-level RNG helpers, see: gpu/common/nimcp_device_utils.cuh
+ *
+ * This module also uses the central statistics reduction kernels for
+ * mean/variance computation of path payoffs.
+ *
  * @author NIMCP Development Team
  * @date 2025
  */
@@ -32,6 +41,18 @@
 #include "gpu/financial/nimcp_financial_gpu.h"
 #include "gpu/financial/nimcp_financial_monte_carlo_gpu.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "gpu/statistics/nimcp_statistics_gpu.h"
+#include "utils/exception/nimcp_exception_macros.h"
+
+// Forward declaration of central statistics kernel for mean/variance reduction
+// This kernel is defined in nimcp_statistics_kernels.cu and computes
+// partial sums and partial sum-of-squares in a single pass
+extern __global__ void kernel_reduce_sum_sq(
+    const float* __restrict__ input,
+    float* __restrict__ partial_sums,
+    float* __restrict__ partial_sq_sums,
+    uint32_t n);
 
 //=============================================================================
 // RNG Initialization Kernel (local static)
@@ -560,56 +581,17 @@ __global__ void kernel_multi_asset_gbm_simulate(
 //=============================================================================
 // Statistical Reduction Kernels
 //=============================================================================
-
-/**
- * @brief Compute mean and variance of payoffs using parallel reduction
- */
-__global__ void kernel_reduce_mean_variance(
-    const float* __restrict__ values,
-    float* __restrict__ partial_sums,
-    float* __restrict__ partial_sq_sums,
-    uint32_t n)
-{
-    extern __shared__ float sdata[];
-    float* s_sum = sdata;
-    float* s_sq_sum = &sdata[blockDim.x];
-
-    uint32_t tid = threadIdx.x;
-    uint32_t i = blockIdx.x * blockDim.x * 2 + threadIdx.x;
-
-    float sum = 0.0f;
-    float sq_sum = 0.0f;
-
-    // Load and add first elements
-    if (i < n) {
-        float val = values[i];
-        sum = val;
-        sq_sum = val * val;
-    }
-    if (i + blockDim.x < n) {
-        float val = values[i + blockDim.x];
-        sum += val;
-        sq_sum += val * val;
-    }
-
-    s_sum[tid] = sum;
-    s_sq_sum[tid] = sq_sum;
-    __syncthreads();
-
-    // Parallel reduction
-    for (uint32_t s = blockDim.x / 2; s > 0; s >>= 1) {
-        if (tid < s) {
-            s_sum[tid] += s_sum[tid + s];
-            s_sq_sum[tid] += s_sq_sum[tid + s];
-        }
-        __syncthreads();
-    }
-
-    if (tid == 0) {
-        partial_sums[blockIdx.x] = s_sum[0];
-        partial_sq_sums[blockIdx.x] = s_sq_sum[0];
-    }
-}
+//
+// NOTE: Mean/variance reduction has been migrated to the central GPU statistics
+// module. The kernel_reduce_sum_sq() function from nimcp_statistics_kernels.cu
+// provides identical functionality with numerically equivalent results.
+//
+// This migration reduces code duplication and ensures consistent statistical
+// implementations across the codebase. The kernel computes partial sums and
+// partial sum-of-squares in a single pass using parallel reduction.
+//
+// See: src/gpu/statistics/nimcp_statistics_kernels.cu:kernel_reduce_sum_sq()
+//=============================================================================
 
 //=============================================================================
 // Host API Implementation
@@ -623,20 +605,29 @@ bool fin_monte_carlo_gpu_simulate(
     const fin_monte_carlo_gpu_params_t* params,
     fin_monte_carlo_gpu_result_t* result)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
         set_mc_error("Invalid GPU context");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context");
         return false;
     }
     if (!rng) {
         set_mc_error("Invalid RNG");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid RNG");
         return false;
     }
     if (!params || !result) {
         set_mc_error("Invalid parameters or result");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid parameters or result");
         return false;
     }
     if (params->num_paths == 0 || params->num_steps == 0) {
         set_mc_error("Zero paths or steps");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Zero paths or steps");
         return false;
     }
 
@@ -644,12 +635,19 @@ bool fin_monte_carlo_gpu_simulate(
     uint32_t block_size = 256;
     uint32_t grid_size = NIMCP_CUDA_GRID_SIZE(params->num_paths, block_size);
 
-    // Allocate device memory for terminal values
+    // Allocate device memory for terminal values with recovery
     float* d_terminal_values = NULL;
     cudaError_t err = cudaMalloc(&d_terminal_values, params->num_paths * sizeof(float));
     if (err != cudaSuccess) {
-        set_mc_error("Failed to allocate terminal values: %s", cudaGetErrorString(err));
-        return false;
+        nimcp_gpu_recovery_result_t recovery_result = {0};
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &recovery_result)) {
+            err = cudaMalloc(&d_terminal_values, params->num_paths * sizeof(float));
+        }
+        if (err != cudaSuccess) {
+            set_mc_error("Failed to allocate terminal values: %s", cudaGetErrorString(err));
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, err, "Failed to allocate terminal values: %s", cudaGetErrorString(err));
+            return false;
+        }
     }
 
     // Get RNG states
@@ -657,9 +655,16 @@ bool fin_monte_carlo_gpu_simulate(
     // Note: In real implementation, get from rng->d_states
     err = cudaMalloc(&d_rng_states, params->num_paths * sizeof(curandState));
     if (err != cudaSuccess) {
-        cudaFree(d_terminal_values);
-        set_mc_error("Failed to allocate RNG states: %s", cudaGetErrorString(err));
-        return false;
+        nimcp_gpu_recovery_result_t recovery_result = {0};
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &recovery_result)) {
+            err = cudaMalloc(&d_rng_states, params->num_paths * sizeof(curandState));
+        }
+        if (err != cudaSuccess) {
+            cudaFree(d_terminal_values);
+            set_mc_error("Failed to allocate RNG states: %s", cudaGetErrorString(err));
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, err, "Failed to allocate RNG states: %s", cudaGetErrorString(err));
+            return false;
+        }
     }
 
     // Initialize RNG states
@@ -683,7 +688,7 @@ bool fin_monte_carlo_gpu_simulate(
             dt, params->num_steps, params->num_paths);
     }
 
-    NIMCP_CUDA_CHECK_LAST();
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Compute statistics using reduction
     {
@@ -706,7 +711,7 @@ bool fin_monte_carlo_gpu_simulate(
             goto cleanup;
         }
 
-        kernel_reduce_mean_variance<<<reduce_blocks, block_size,
+        kernel_reduce_sum_sq<<<reduce_blocks, block_size,
                                       2 * block_size * sizeof(float), stream>>>(
             d_terminal_values, d_partial_sums, d_partial_sq_sums, params->num_paths);
 
@@ -723,13 +728,13 @@ bool fin_monte_carlo_gpu_simulate(
             goto cleanup;
         }
 
-        NIMCP_CUDA_CHECK(cudaMemcpyAsync(h_partial_sums, d_partial_sums,
+        NIMCP_CUDA_RECOVER(cudaMemcpyAsync(h_partial_sums, d_partial_sums,
                                           reduce_blocks * sizeof(float),
-                                          cudaMemcpyDeviceToHost, stream));
-        NIMCP_CUDA_CHECK(cudaMemcpyAsync(h_partial_sq_sums, d_partial_sq_sums,
+                                          cudaMemcpyDeviceToHost, stream), GPU_ERROR_CUDA_RUNTIME);
+        NIMCP_CUDA_RECOVER(cudaMemcpyAsync(h_partial_sq_sums, d_partial_sq_sums,
                                           reduce_blocks * sizeof(float),
-                                          cudaMemcpyDeviceToHost, stream));
-        NIMCP_CUDA_CHECK(cudaStreamSynchronize(stream));
+                                          cudaMemcpyDeviceToHost, stream), GPU_ERROR_CUDA_RUNTIME);
+        NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
 
         // Final reduction on CPU
         for (uint32_t i = 0; i < reduce_blocks; i++) {
@@ -774,12 +779,19 @@ bool fin_monte_carlo_gpu_option_price(
     const fin_mc_option_params_t* params,
     fin_mc_option_result_t* result)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
         set_mc_error("Invalid GPU context");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context");
         return false;
     }
     if (!rng || !params || !result) {
         set_mc_error("Invalid parameters");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid parameters");
         return false;
     }
 
@@ -790,21 +802,35 @@ bool fin_monte_carlo_gpu_option_price(
     float dt = params->base.time_horizon / (float)params->base.num_steps;
     bool is_call = (params->option_type == FIN_OPT_CALL);
 
-    // Allocate payoffs
+    // Allocate payoffs with recovery
     float* d_payoffs = NULL;
     cudaError_t err = cudaMalloc(&d_payoffs, params->base.num_paths * sizeof(float));
     if (err != cudaSuccess) {
-        set_mc_error("Failed to allocate payoffs: %s", cudaGetErrorString(err));
-        return false;
+        nimcp_gpu_recovery_result_t recovery_result = {0};
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &recovery_result)) {
+            err = cudaMalloc(&d_payoffs, params->base.num_paths * sizeof(float));
+        }
+        if (err != cudaSuccess) {
+            set_mc_error("Failed to allocate payoffs: %s", cudaGetErrorString(err));
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, err, "Failed to allocate payoffs: %s", cudaGetErrorString(err));
+            return false;
+        }
     }
 
-    // Allocate and initialize RNG states
+    // Allocate and initialize RNG states with recovery
     curandState* d_rng_states = NULL;
     err = cudaMalloc(&d_rng_states, params->base.num_paths * sizeof(curandState));
     if (err != cudaSuccess) {
-        cudaFree(d_payoffs);
-        set_mc_error("Failed to allocate RNG states: %s", cudaGetErrorString(err));
-        return false;
+        nimcp_gpu_recovery_result_t recovery_result = {0};
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &recovery_result)) {
+            err = cudaMalloc(&d_rng_states, params->base.num_paths * sizeof(curandState));
+        }
+        if (err != cudaSuccess) {
+            cudaFree(d_payoffs);
+            set_mc_error("Failed to allocate RNG states: %s", cudaGetErrorString(err));
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, err, "Failed to allocate RNG states: %s", cudaGetErrorString(err));
+            return false;
+        }
     }
 
     kernel_init_rng_states<<<grid_size, block_size, 0, stream>>>(
@@ -851,7 +877,7 @@ bool fin_monte_carlo_gpu_option_price(
             break;
     }
 
-    NIMCP_CUDA_CHECK_LAST();
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Compute mean payoff using reduction
     uint32_t reduce_blocks = (params->base.num_paths + block_size * 2 - 1) / (block_size * 2);
@@ -872,7 +898,7 @@ bool fin_monte_carlo_gpu_option_price(
         return false;
     }
 
-    kernel_reduce_mean_variance<<<reduce_blocks, block_size,
+    kernel_reduce_sum_sq<<<reduce_blocks, block_size,
                                   2 * block_size * sizeof(float), stream>>>(
         d_payoffs, d_partial_sums, d_partial_sq_sums, params->base.num_paths);
 
@@ -880,13 +906,13 @@ bool fin_monte_carlo_gpu_option_price(
     float* h_partial_sums = (float*)malloc(reduce_blocks * sizeof(float));
     float* h_partial_sq_sums = (float*)malloc(reduce_blocks * sizeof(float));
 
-    NIMCP_CUDA_CHECK(cudaMemcpyAsync(h_partial_sums, d_partial_sums,
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(h_partial_sums, d_partial_sums,
                                       reduce_blocks * sizeof(float),
-                                      cudaMemcpyDeviceToHost, stream));
-    NIMCP_CUDA_CHECK(cudaMemcpyAsync(h_partial_sq_sums, d_partial_sq_sums,
+                                      cudaMemcpyDeviceToHost, stream), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpyAsync(h_partial_sq_sums, d_partial_sq_sums,
                                       reduce_blocks * sizeof(float),
-                                      cudaMemcpyDeviceToHost, stream));
-    NIMCP_CUDA_CHECK(cudaStreamSynchronize(stream));
+                                      cudaMemcpyDeviceToHost, stream), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
 
     float total_sum = 0.0f;
     float total_sq_sum = 0.0f;
@@ -924,12 +950,19 @@ bool fin_monte_carlo_gpu_heston(
     const fin_heston_params_t* params,
     fin_monte_carlo_gpu_result_t* result)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
         set_mc_error("Invalid GPU context");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context");
         return false;
     }
     if (!rng || !params || !result) {
         set_mc_error("Invalid parameters");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid parameters");
         return false;
     }
 
@@ -940,21 +973,35 @@ bool fin_monte_carlo_gpu_heston(
 
     float dt = params->base.time_horizon / (float)params->base.num_steps;
 
-    // Allocate terminal values
+    // Allocate terminal values with recovery
     float* d_terminal_values = NULL;
     cudaError_t err = cudaMalloc(&d_terminal_values, num_paths * sizeof(float));
     if (err != cudaSuccess) {
-        set_mc_error("Failed to allocate terminal values");
-        return false;
+        nimcp_gpu_recovery_result_t recovery_result = {0};
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &recovery_result)) {
+            err = cudaMalloc(&d_terminal_values, num_paths * sizeof(float));
+        }
+        if (err != cudaSuccess) {
+            set_mc_error("Failed to allocate terminal values");
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, err, "Failed to allocate terminal values");
+            return false;
+        }
     }
 
-    // Allocate RNG states
+    // Allocate RNG states with recovery
     curandState* d_rng_states = NULL;
     err = cudaMalloc(&d_rng_states, num_paths * sizeof(curandState));
     if (err != cudaSuccess) {
-        cudaFree(d_terminal_values);
-        set_mc_error("Failed to allocate RNG states");
-        return false;
+        nimcp_gpu_recovery_result_t recovery_result = {0};
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &recovery_result)) {
+            err = cudaMalloc(&d_rng_states, num_paths * sizeof(curandState));
+        }
+        if (err != cudaSuccess) {
+            cudaFree(d_terminal_values);
+            set_mc_error("Failed to allocate RNG states");
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, err, "Failed to allocate RNG states");
+            return false;
+        }
     }
 
     kernel_init_rng_states<<<grid_size, block_size, 0, stream>>>(
@@ -969,7 +1016,7 @@ bool fin_monte_carlo_gpu_heston(
         params->xi, params->rho, dt,
         params->base.num_steps, num_paths);
 
-    NIMCP_CUDA_CHECK_LAST();
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Compute statistics
     uint32_t reduce_blocks = (num_paths + block_size * 2 - 1) / (block_size * 2);
@@ -979,7 +1026,7 @@ bool fin_monte_carlo_gpu_heston(
     cudaMalloc(&d_partial_sums, reduce_blocks * sizeof(float));
     cudaMalloc(&d_partial_sq_sums, reduce_blocks * sizeof(float));
 
-    kernel_reduce_mean_variance<<<reduce_blocks, block_size,
+    kernel_reduce_sum_sq<<<reduce_blocks, block_size,
                                   2 * block_size * sizeof(float), stream>>>(
         d_terminal_values, d_partial_sums, d_partial_sq_sums, num_paths);
 
@@ -1025,12 +1072,19 @@ bool fin_monte_carlo_gpu_multi_asset(
     const fin_multi_asset_params_t* params,
     float* terminal_values)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
         set_mc_error("Invalid GPU context");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context");
         return false;
     }
     if (!rng || !params || !terminal_values) {
         set_mc_error("Invalid parameters");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid parameters");
         return false;
     }
 
@@ -1090,7 +1144,7 @@ bool fin_monte_carlo_gpu_multi_asset(
         d_rng_states, d_terminal, d_initial, d_drifts, d_vols, d_cholesky,
         dt, params->base.num_steps, num_paths, n_assets);
 
-    NIMCP_CUDA_CHECK_LAST();
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     // Copy results back
     cudaMemcpy(terminal_values, d_terminal, num_paths * n_assets * sizeof(float),

@@ -22,6 +22,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "SPEECH_GPU"
 
@@ -77,13 +78,17 @@ bool nimcp_gpu_pitch_detect(
 {
     if (!ctx || !audio || !pitch) return false;
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     int signal_len = audio->dims[audio->ndim - 1];
     int max_lag = (int)(sample_rate / min_f0);
     int min_lag = (int)(sample_rate / max_f0);
 
     // Compute autocorrelation
     float* d_autocorr;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_autocorr, max_lag * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_autocorr, max_lag * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     kernel_autocorrelation<<<(max_lag + BLOCK_SIZE - 1) / BLOCK_SIZE, BLOCK_SIZE>>>(
         (const float*)audio->data, d_autocorr, signal_len, max_lag);
@@ -95,7 +100,7 @@ bool nimcp_gpu_pitch_detect(
         1, max_lag, min_lag, max_lag);
 
     cudaFree(d_autocorr);
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -135,12 +140,16 @@ bool nimcp_gpu_vad(
 {
     if (!ctx || !audio || !vad) return false;
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     int audio_len = audio->dims[audio->ndim - 1];
     int n_frames = (audio_len - frame_len) / hop_len + 1;
 
     // Compute frame energy
     float* d_energy;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_energy, n_frames * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_energy, n_frames * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     kernel_frame_energy<<<(n_frames + BLOCK_SIZE - 1) / BLOCK_SIZE, BLOCK_SIZE>>>(
         (const float*)audio->data, d_energy, n_frames, frame_len, hop_len);
@@ -150,7 +159,7 @@ bool nimcp_gpu_vad(
         d_energy, (float*)vad->data, n_frames, threshold);
 
     cudaFree(d_energy);
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -830,18 +839,22 @@ bool nimcp_gpu_formant_extract(
 {
     if (!ctx || !audio || !formants) return false;
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     int signal_len = audio->dims[audio->ndim - 1];
 
     // Apply pre-emphasis
     float* d_preemph;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_preemph, signal_len * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_preemph, signal_len * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     kernel_preemphasis<<<(signal_len + BLOCK_SIZE - 1) / BLOCK_SIZE, BLOCK_SIZE>>>(
         (const float*)audio->data, d_preemph, signal_len, 0.97f);
 
     // Compute LPC autocorrelation
     float* d_autocorr;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_autocorr, (lpc_order + 1) * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_autocorr, (lpc_order + 1) * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     kernel_lpc_autocorr<<<1, lpc_order + 1>>>(d_preemph, d_autocorr, signal_len, lpc_order);
 
@@ -849,9 +862,9 @@ bool nimcp_gpu_formant_extract(
     float* d_lpc;
     float* d_reflection;
     float* d_error;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_lpc, lpc_order * sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_reflection, lpc_order * sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_error, sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_lpc, lpc_order * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_reflection, lpc_order * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_error, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     // Run Levinson-Durbin (single frame for now)
     kernel_levinson_durbin_single<<<1, 1>>>(
@@ -862,14 +875,14 @@ bool nimcp_gpu_formant_extract(
     float* d_roots_imag;
     float* d_freqs;
     float* d_bandwidths;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_roots_real, lpc_order * sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_roots_imag, lpc_order * sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_freqs, n_formants * sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_bandwidths, n_formants * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_roots_real, lpc_order * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_roots_imag, lpc_order * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_freqs, n_formants * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_bandwidths, n_formants * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     // Build companion matrix and find roots via Durand-Kerner method
     float* d_companion;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_companion, lpc_order * lpc_order * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_companion, lpc_order * lpc_order * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
     kernel_build_companion_matrix_single<<<1, lpc_order>>>(d_lpc, d_companion, lpc_order);
     kernel_durand_kerner_roots<<<1, lpc_order>>>(d_lpc, d_roots_real, d_roots_imag, lpc_order, 100);
 
@@ -890,7 +903,7 @@ bool nimcp_gpu_formant_extract(
     cudaFree(d_bandwidths);
     cudaFree(d_companion);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -928,6 +941,10 @@ bool nimcp_gpu_delta_features(
 {
     if (!ctx || !features || !delta) return false;
 
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     int n_frames = features->dims[0];
     int n_features = features->dims[1];
 
@@ -938,7 +955,7 @@ bool nimcp_gpu_delta_features(
         (const float*)features->data, (float*)delta->data,
         n_frames, n_features, context);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 

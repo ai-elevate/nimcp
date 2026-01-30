@@ -15,6 +15,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/statistics/nimcp_statistics.h"
 #include "api/nimcp_api_exception.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
@@ -320,15 +321,17 @@ static void recompute_collective_state(emotional_contagion_t* ec) {
         ec->collective.dominant_intensity = dominant_total / dominant_count;
     }
 
-    /* Calculate emotional diversity (Shannon entropy) */
+    /* Calculate emotional diversity (Shannon entropy) using central stats module */
     if (ec->agent_count > 0) {
-        float entropy = 0.0F;
+        /* Build probability distribution from emotion counts */
+        float probs[EMOTION_TYPE_COUNT];
         for (size_t i = 0; i < EMOTION_TYPE_COUNT; i++) {
-            if (emotion_counts[i] > 0) {
-                float p = (float)emotion_counts[i] / (float)ec->agent_count;
-                entropy -= p * log2f(p);
-            }
+            probs[i] = (float)emotion_counts[i] / (float)ec->agent_count;
         }
+
+        /* Use central statistics module for Shannon entropy */
+        float entropy = nimcp_stats_entropy(probs, EMOTION_TYPE_COUNT);
+
         /* Normalize by maximum entropy */
         float max_entropy = log2f((float)EMOTION_TYPE_COUNT);
         ec->collective.emotional_diversity = (max_entropy > EPSILON) ?
@@ -1113,6 +1116,16 @@ nimcp_result_t emotional_contagion_get_stats(
 
     nimcp_platform_mutex_lock(&ec->mutex);
     *stats = ec->stats;
+    nimcp_platform_mutex_unlock(&ec->mutex);
+
+    return NIMCP_SUCCESS;
+}
+
+nimcp_result_t emotional_contagion_reset_stats(emotional_contagion_t* ec) {
+    NIMCP_CHECK_THROW(ec, NIMCP_ERROR_NULL_POINTER, "emotional contagion context is NULL");
+
+    nimcp_platform_mutex_lock(&ec->mutex);
+    memset(&ec->stats, 0, sizeof(emotional_contagion_stats_t));
     nimcp_platform_mutex_unlock(&ec->mutex);
 
     return NIMCP_SUCCESS;

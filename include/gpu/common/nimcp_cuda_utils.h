@@ -503,6 +503,266 @@ static inline void nimcp_cuda_print_device_info(void) {}
 
 #endif // NIMCP_ENABLE_CUDA
 
+//=============================================================================
+// Self-Healing Recovery Macros
+//=============================================================================
+//
+// WHAT: CUDA error macros that attempt recovery before failing
+// WHY:  Enable self-healing GPU operations that don't halt the system
+// HOW:  On error: categorize -> select strategy -> execute recovery -> retry
+//
+// These macros require including:
+//   - gpu/recovery/nimcp_gpu_recovery.h
+//   - utils/exception/nimcp_exception_macros.h
+//
+// Example:
+//   #include "gpu/recovery/nimcp_gpu_recovery.h"
+//   NIMCP_CUDA_RECOVER(cudaMalloc(&ptr, size), GPU_ERROR_OUT_OF_MEMORY);
+//
+
+#ifdef NIMCP_ENABLE_CUDA
+
+/**
+ * @brief CUDA call with full recovery support, returns false on unrecoverable failure
+ *
+ * Attempts recovery on failure before returning. If recovery succeeds,
+ * retries the operation. Only fails if recovery is exhausted.
+ *
+ * @param call CUDA call to execute
+ * @param error_cat Error category for recovery strategy selection
+ */
+#define NIMCP_CUDA_RECOVER(call, error_cat) do { \
+    cudaError_t _err = (call); \
+    if (_err != cudaSuccess) { \
+        nimcp_gpu_recovery_result_t _result = {0}; \
+        if (nimcp_gpu_try_recover(NULL, (error_cat), _err, &_result)) { \
+            /* Recovery succeeded - retry */ \
+            _err = (call); \
+        } \
+        if (_err != cudaSuccess) { \
+            const char* _err_str = cudaGetErrorString(_err); \
+            fprintf(stderr, "[NIMCP CUDA UNRECOVERABLE] %s:%d: %s - %s\n", \
+                    __FILE__, __LINE__, #call, _err_str); \
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, _err, \
+                "GPU error (unrecoverable): %s - %s", #call, _err_str); \
+            return false; \
+        } \
+    } \
+} while(0)
+
+/**
+ * @brief CUDA call with recovery, returns NULL on unrecoverable failure
+ */
+#define NIMCP_CUDA_RECOVER_NULL(call, error_cat) do { \
+    cudaError_t _err = (call); \
+    if (_err != cudaSuccess) { \
+        nimcp_gpu_recovery_result_t _result = {0}; \
+        if (nimcp_gpu_try_recover(NULL, (error_cat), _err, &_result)) { \
+            _err = (call); \
+        } \
+        if (_err != cudaSuccess) { \
+            const char* _err_str = cudaGetErrorString(_err); \
+            fprintf(stderr, "[NIMCP CUDA UNRECOVERABLE] %s:%d: %s - %s\n", \
+                    __FILE__, __LINE__, #call, _err_str); \
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, _err, \
+                "GPU error (unrecoverable): %s - %s", #call, _err_str); \
+            return NULL; \
+        } \
+    } \
+} while(0)
+
+/**
+ * @brief CUDA call with recovery, returns error code on unrecoverable failure
+ */
+#define NIMCP_CUDA_RECOVER_ERROR(call, error_cat) do { \
+    cudaError_t _err = (call); \
+    if (_err != cudaSuccess) { \
+        nimcp_gpu_recovery_result_t _result = {0}; \
+        if (nimcp_gpu_try_recover(NULL, (error_cat), _err, &_result)) { \
+            _err = (call); \
+        } \
+        if (_err != cudaSuccess) { \
+            const char* _err_str = cudaGetErrorString(_err); \
+            fprintf(stderr, "[NIMCP CUDA UNRECOVERABLE] %s:%d: %s - %s\n", \
+                    __FILE__, __LINE__, #call, _err_str); \
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, _err, \
+                "GPU error (unrecoverable): %s - %s", #call, _err_str); \
+            return NIMCP_ERROR_GPU; \
+        } \
+    } \
+} while(0)
+
+/**
+ * @brief Check last CUDA error with recovery
+ */
+#define NIMCP_CUDA_RECOVER_LAST(error_cat) do { \
+    cudaError_t _err = cudaGetLastError(); \
+    if (_err != cudaSuccess) { \
+        nimcp_gpu_recovery_result_t _result = {0}; \
+        if (!nimcp_gpu_try_recover(NULL, (error_cat), _err, &_result)) { \
+            const char* _err_str = cudaGetErrorString(_err); \
+            fprintf(stderr, "[NIMCP CUDA UNRECOVERABLE] %s:%d: kernel error - %s\n", \
+                    __FILE__, __LINE__, _err_str); \
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, _err, \
+                "GPU kernel error (unrecoverable): %s", _err_str); \
+            return false; \
+        } \
+    } \
+} while(0)
+
+/**
+ * @brief Check last CUDA error with recovery, returning NULL on failure
+ * Use in functions that return pointers instead of bool
+ */
+#define NIMCP_CUDA_RECOVER_LAST_NULL(error_cat) do { \
+    cudaError_t _err = cudaGetLastError(); \
+    if (_err != cudaSuccess) { \
+        nimcp_gpu_recovery_result_t _result = {0}; \
+        if (!nimcp_gpu_try_recover(NULL, (error_cat), _err, &_result)) { \
+            const char* _err_str = cudaGetErrorString(_err); \
+            fprintf(stderr, "[NIMCP CUDA UNRECOVERABLE] %s:%d: kernel error - %s\n", \
+                    __FILE__, __LINE__, _err_str); \
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, _err, \
+                "GPU kernel error (unrecoverable): %s", _err_str); \
+            return NULL; \
+        } \
+    } \
+} while(0)
+
+/**
+ * @brief CUDA call with recovery and goto cleanup on unrecoverable failure
+ */
+#define NIMCP_CUDA_RECOVER_GOTO(call, error_cat, label) do { \
+    cudaError_t _err = (call); \
+    if (_err != cudaSuccess) { \
+        nimcp_gpu_recovery_result_t _result = {0}; \
+        if (nimcp_gpu_try_recover(NULL, (error_cat), _err, &_result)) { \
+            _err = (call); \
+        } \
+        if (_err != cudaSuccess) { \
+            const char* _err_str = cudaGetErrorString(_err); \
+            fprintf(stderr, "[NIMCP CUDA UNRECOVERABLE] %s:%d: %s - %s\n", \
+                    __FILE__, __LINE__, #call, _err_str); \
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, _err, \
+                "GPU error (unrecoverable): %s - %s", #call, _err_str); \
+            goto label; \
+        } \
+    } \
+} while(0)
+
+/**
+ * @brief cuBLAS call with recovery
+ */
+#define NIMCP_CUBLAS_RECOVER(call, error_cat) do { \
+    cublasStatus_t _status = (call); \
+    if (_status != CUBLAS_STATUS_SUCCESS) { \
+        nimcp_gpu_recovery_result_t _result = {0}; \
+        if (nimcp_gpu_try_recover(NULL, (error_cat), cudaErrorUnknown, &_result)) { \
+            _status = (call); \
+        } \
+        if (_status != CUBLAS_STATUS_SUCCESS) { \
+            fprintf(stderr, "[NIMCP cuBLAS UNRECOVERABLE] %s:%d: %s returned %d\n", \
+                    __FILE__, __LINE__, #call, _status); \
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, 0, \
+                "cuBLAS error (unrecoverable): %s returned %d", #call, _status); \
+            return false; \
+        } \
+    } \
+} while(0)
+
+/**
+ * @brief cuRAND call with recovery
+ */
+#define NIMCP_CURAND_RECOVER(call, error_cat) do { \
+    curandStatus_t _status = (call); \
+    if (_status != CURAND_STATUS_SUCCESS) { \
+        nimcp_gpu_recovery_result_t _result = {0}; \
+        if (nimcp_gpu_try_recover(NULL, (error_cat), cudaErrorUnknown, &_result)) { \
+            _status = (call); \
+        } \
+        if (_status != CURAND_STATUS_SUCCESS) { \
+            fprintf(stderr, "[NIMCP cuRAND UNRECOVERABLE] %s:%d: %s returned %d\n", \
+                    __FILE__, __LINE__, #call, _status); \
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, 0, \
+                "cuRAND error (unrecoverable): %s returned %d", #call, _status); \
+            return false; \
+        } \
+    } \
+} while(0)
+
+/**
+ * @brief cuSOLVER call with recovery
+ */
+#define NIMCP_CUSOLVER_RECOVER(call, error_cat) do { \
+    cusolverStatus_t _status = (call); \
+    if (_status != CUSOLVER_STATUS_SUCCESS) { \
+        nimcp_gpu_recovery_result_t _result = {0}; \
+        if (nimcp_gpu_try_recover(NULL, (error_cat), cudaErrorUnknown, &_result)) { \
+            _status = (call); \
+        } \
+        if (_status != CUSOLVER_STATUS_SUCCESS) { \
+            fprintf(stderr, "[NIMCP cuSOLVER UNRECOVERABLE] %s:%d: %s returned %d\n", \
+                    __FILE__, __LINE__, #call, _status); \
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, 0, \
+                "cuSOLVER error (unrecoverable): %s returned %d", #call, _status); \
+            return false; \
+        } \
+    } \
+} while(0)
+
+/**
+ * @brief Validate parameters and auto-correct if enabled
+ *
+ * Use at the start of GPU functions to validate and auto-correct parameters.
+ * If correction fails, throws to immune system.
+ *
+ * @param cond Condition that must be true for valid params
+ * @param param_name Name of parameter being checked
+ */
+#define NIMCP_GPU_VALIDATE_PARAM(cond, param_name) do { \
+    if (!(cond)) { \
+        nimcp_gpu_recovery_result_t _result = {0}; \
+        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_INVALID_PARAMS, cudaSuccess, &_result)) { \
+            NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, \
+                "Invalid parameter: %s", param_name); \
+            return NULL; \
+        } \
+    } \
+} while(0)
+
+/**
+ * @brief Ensure GPU memory available, attempt recovery if not
+ *
+ * @param bytes Required bytes
+ */
+#define NIMCP_GPU_ENSURE_MEMORY(bytes) do { \
+    if (!nimcp_gpu_ensure_memory_available(bytes)) { \
+        nimcp_gpu_recovery_result_t _result = {0}; \
+        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, cudaErrorMemoryAllocation, &_result)) { \
+            NIMCP_THROW_GPU(NIMCP_ERROR_NO_MEMORY, 0, cudaErrorMemoryAllocation, \
+                "Insufficient GPU memory: need %zu bytes", (size_t)(bytes)); \
+            return NULL; \
+        } \
+    } \
+} while(0)
+
+#else // !NIMCP_ENABLE_CUDA
+
+/* No-op stubs when CUDA disabled */
+#define NIMCP_CUDA_RECOVER(call, error_cat) ((void)0)
+#define NIMCP_CUDA_RECOVER_NULL(call, error_cat) ((void)0)
+#define NIMCP_CUDA_RECOVER_ERROR(call, error_cat) (NIMCP_ERROR_GPU)
+#define NIMCP_CUDA_RECOVER_LAST(error_cat) ((void)0)
+#define NIMCP_CUDA_RECOVER_LAST_NULL(error_cat) ((void)0)
+#define NIMCP_CUDA_RECOVER_GOTO(call, error_cat, label) ((void)0)
+#define NIMCP_CUBLAS_RECOVER(call, error_cat) ((void)0)
+#define NIMCP_CURAND_RECOVER(call, error_cat) ((void)0)
+#define NIMCP_CUSOLVER_RECOVER(call, error_cat) ((void)0)
+#define NIMCP_GPU_VALIDATE_PARAM(cond, param_name) ((void)0)
+#define NIMCP_GPU_ENSURE_MEMORY(bytes) ((void)0)
+
+#endif // NIMCP_ENABLE_CUDA
+
 #ifdef __cplusplus
 }
 #endif

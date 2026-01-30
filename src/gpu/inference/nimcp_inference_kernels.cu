@@ -35,6 +35,9 @@
 // Now include our headers (which have extern "C" blocks)
 #include "gpu/inference/nimcp_inference_gpu.h"
 #include "gpu/tensor/nimcp_tensor_gpu.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 #include "utils/logging/nimcp_logging.h"
 
 //-----------------------------------------------------------------------------
@@ -430,6 +433,10 @@ bool nimcp_gpu_infer_linear_relu(
     const nimcp_gpu_tensor_t* bias,
     nimcp_gpu_tensor_t* output)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !input || !weights || !output) {
         LOG_ERROR("NULL parameter");
         return false;
@@ -471,12 +478,7 @@ bool nimcp_gpu_infer_linear_relu(
         batch
     );
 
-    cudaError_t err = cudaGetLastError();
-    if (err != cudaSuccess) {
-        LOG_ERROR("CUDA kernel failed: %s", cudaGetErrorString(err));
-        return false;
-    }
-
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -487,6 +489,10 @@ bool nimcp_gpu_infer_linear_gelu(
     const nimcp_gpu_tensor_t* bias,
     nimcp_gpu_tensor_t* output)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !input || !weights || !output) return false;
 
     size_t batch = input->dims[0];
@@ -520,7 +526,8 @@ bool nimcp_gpu_infer_linear_gelu(
         batch
     );
 
-    return cudaGetLastError() == cudaSuccess;
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
 }
 
 bool nimcp_gpu_infer_linear_silu(
@@ -530,6 +537,10 @@ bool nimcp_gpu_infer_linear_silu(
     const nimcp_gpu_tensor_t* bias,
     nimcp_gpu_tensor_t* output)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !input || !weights || !output) return false;
 
     size_t batch = input->dims[0];
@@ -563,7 +574,8 @@ bool nimcp_gpu_infer_linear_silu(
         batch
     );
 
-    return cudaGetLastError() == cudaSuccess;
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
 }
 
 bool nimcp_gpu_infer_conv_bn_relu(
@@ -605,6 +617,10 @@ bool nimcp_gpu_infer_quantize_int8(
     nimcp_gpu_tensor_t* output,
     const nimcp_quant_params_t* params)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !input || !output || !params) return false;
 
     size_t n = input->numel;
@@ -619,7 +635,8 @@ bool nimcp_gpu_infer_quantize_int8(
         n
     );
 
-    return cudaGetLastError() == cudaSuccess;
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
 }
 
 bool nimcp_gpu_infer_dequantize_int8(
@@ -628,6 +645,10 @@ bool nimcp_gpu_infer_dequantize_int8(
     nimcp_gpu_tensor_t* output,
     const nimcp_quant_params_t* params)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !input || !output || !params) return false;
 
     size_t n = input->numel;
@@ -642,7 +663,8 @@ bool nimcp_gpu_infer_dequantize_int8(
         n
     );
 
-    return cudaGetLastError() == cudaSuccess;
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
 }
 
 bool nimcp_gpu_infer_gemm_int8(
@@ -677,6 +699,10 @@ bool nimcp_gpu_infer_calibrate(
     nimcp_quant_params_t* params,
     bool symmetric)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !tensor || !params) return false;
 
     // Allocate device memory for min/max
@@ -762,6 +788,10 @@ bool nimcp_gpu_infer_activation_inplace(
     nimcp_gpu_tensor_t* tensor,
     int activation)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !tensor) return false;
 
     size_t n = tensor->numel;
@@ -774,7 +804,8 @@ bool nimcp_gpu_infer_activation_inplace(
         activation
     );
 
-    return cudaGetLastError() == cudaSuccess;
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
 }
 
 bool nimcp_gpu_infer_residual_add(
@@ -785,6 +816,10 @@ bool nimcp_gpu_infer_residual_add(
     float alpha,
     float beta)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !x || !residual || !y) return false;
 
     size_t n = x->numel;
@@ -800,7 +835,8 @@ bool nimcp_gpu_infer_residual_add(
         n
     );
 
-    return cudaGetLastError() == cudaSuccess;
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
 }
 
 bool nimcp_gpu_infer_layernorm(
@@ -811,6 +847,10 @@ bool nimcp_gpu_infer_layernorm(
     nimcp_gpu_tensor_t* output,
     float eps)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !input || !gamma || !beta || !output) return false;
 
     size_t batch_size = input->dims[0];
@@ -830,7 +870,8 @@ bool nimcp_gpu_infer_layernorm(
         eps
     );
 
-    return cudaGetLastError() == cudaSuccess;
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
 }
 
 bool nimcp_gpu_infer_rmsnorm(
@@ -840,6 +881,10 @@ bool nimcp_gpu_infer_rmsnorm(
     nimcp_gpu_tensor_t* output,
     float eps)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !input || !gamma || !output) return false;
 
     size_t batch_size = input->dims[0];
@@ -858,7 +903,8 @@ bool nimcp_gpu_infer_rmsnorm(
         eps
     );
 
-    return cudaGetLastError() == cudaSuccess;
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    return true;
 }
 
 // Session management
@@ -868,6 +914,10 @@ nimcp_infer_session_t* nimcp_infer_session_create(
     nimcp_infer_precision_t precision,
     size_t workspace_size)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx) return NULL;
 
     nimcp_infer_session_t* session = (nimcp_infer_session_t*)calloc(1, sizeof(nimcp_infer_session_t));
@@ -953,6 +1003,10 @@ bool nimcp_gpu_infer_convert_precision(
     nimcp_gpu_tensor_t* output,
     nimcp_infer_precision_t target_precision)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !input || !output) {
         LOG_ERROR("NULL parameter in precision conversion");
         return false;
@@ -1024,12 +1078,7 @@ bool nimcp_gpu_infer_convert_precision(
         return false;
     }
 
-    cudaError_t err = cudaGetLastError();
-    if (err != cudaSuccess) {
-        LOG_ERROR("CUDA error in precision conversion: %s", cudaGetErrorString(err));
-        return false;
-    }
-
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     LOG_DEBUG("Converted %zu elements from precision %d to %d", n, src_prec, dst_prec);
     return true;
 }

@@ -49,6 +49,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/containers/nimcp_vector.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/statistics/nimcp_statistics.h"
 
 // Bio-async messaging infrastructure
 #include "nimcp.h"  // For error codes
@@ -303,7 +304,7 @@ static void bio_broadcast_state_change(introspection_context_t ctx, float cognit
 static uint32_t hash_string(const char* str);
 static pattern_entry_t* pattern_registry_lookup(pattern_registry_t* registry, const char* name);
 static void pattern_registry_update(pattern_registry_t* registry, const char* name, float activity);
-static float compute_entropy(const float* values, uint32_t count);
+static float compute_introspection_entropy(const float* values, uint32_t count);
 static float compute_cosine_similarity(const float* a, const float* b, uint32_t dimension);
 
 /* ========================================================================
@@ -848,7 +849,7 @@ brain_state_t brain_get_internal_state(introspection_context_t context,
 
     /* WHAT: Compute information content (entropy) */
     /* WHY: Measure how much information is in this state */
-    state.information_content = compute_entropy(state.state_vector, sampled_neurons);
+    state.information_content = compute_introspection_entropy(state.state_vector, sampled_neurons);
 
     /* WHAT: Set metadata */
     state.compression_ratio = (float) total_neurons / (float) sampled_neurons;
@@ -2278,17 +2279,19 @@ struct brain_immune_system* introspection_get_immune(introspection_context_t con
 /**
  * WHAT: Compute Shannon entropy of values
  * WHY: Measure information content
- * HOW: H = -sum(p * log2(p))
+ * HOW: Normalize values to probabilities, delegate to central stats
+ *
+ * Uses nimcp_stats_entropy() from utils/statistics for core computation.
  *
  * COMPLEXITY: O(n)
  */
-static float compute_entropy(const float* values, uint32_t count)
+static float compute_introspection_entropy(const float* values, uint32_t count)
 {
     if (values == NULL || count == 0) {
         return 0.0F;
     }
 
-    /* WHAT: Normalize values to probabilities */
+    /* WHAT: Compute sum of absolute values for normalization */
     float sum = 0.0F;
     for (uint32_t i = 0; i < count; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -2296,7 +2299,6 @@ static float compute_entropy(const float* values, uint32_t count)
             introspection_heartbeat("introspectio_loop",
                              (float)(i + 1) / (float)count);
         }
-
         sum += fabsf(values[i]);
     }
 
@@ -2304,19 +2306,28 @@ static float compute_entropy(const float* values, uint32_t count)
         return 0.0F;
     }
 
-    /* WHAT: Compute entropy */
-    float entropy = 0.0F;
-    for (uint32_t i = 0; i < count; i++) {
-        /* Phase 8: Loop progress heartbeat */
-        if ((i & 0xFF) == 0 && count > 256) {
-            introspection_heartbeat("introspectio_loop",
-                             (float)(i + 1) / (float)count);
+    /* WHAT: Normalize values to probability distribution */
+    /* Using VLA for small counts, heap for large */
+    float* probs = NULL;
+    float stack_probs[256];
+    if (count <= 256) {
+        probs = stack_probs;
+    } else {
+        probs = (float*)nimcp_malloc(count * sizeof(float));
+        if (!probs) {
+            return 0.0F;
         }
+    }
 
-        float p = fabsf(values[i]) / sum;
-        if (p > 1e-10F) {
-            entropy -= p * log2f(p);
-        }
+    for (uint32_t i = 0; i < count; i++) {
+        probs[i] = fabsf(values[i]) / sum;
+    }
+
+    /* WHAT: Delegate entropy computation to central statistics module */
+    float entropy = nimcp_stats_entropy(probs, count);
+
+    if (count > 256) {
+        nimcp_free(probs);
     }
 
     return entropy;

@@ -24,6 +24,7 @@
 #include <float.h>
 
 #include "gpu/ternary/nimcp_ternary_gpu.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
@@ -637,6 +638,10 @@ nimcp_ternary_tensor_t* nimcp_ternary_tensor_create(
     int rank,
     nimcp_ternary_pack_t pack_mode)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !dims || rank <= 0) {
         LOG_ERROR("Invalid parameters for ternary tensor creation");
         return NULL;
@@ -742,6 +747,10 @@ nimcp_ternary_tensor_t* nimcp_ternary_from_float(
     const nimcp_ternary_quant_config_t* config,
     nimcp_ternary_pack_t pack_mode)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !src) return NULL;
 
     // Get source dimensions from tensor structure
@@ -808,6 +817,10 @@ bool nimcp_ternary_quantize(
     nimcp_ternary_tensor_t* dst,
     const nimcp_ternary_quant_config_t* config)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !src || !nimcp_ternary_tensor_is_valid(dst)) return false;
 
     const nimcp_ternary_quant_config_t cfg = config ? *config : nimcp_ternary_quant_config_default();
@@ -825,7 +838,7 @@ bool nimcp_ternary_quantize(
             src_data, (uint8_t*)dst->data, numel, threshold);
     }
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaDeviceSynchronize());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -837,6 +850,10 @@ nimcp_ternary_tensor_t* nimcp_ternary_pack_2bit(
     nimcp_gpu_context_t* ctx,
     const nimcp_ternary_tensor_t* src)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!nimcp_ternary_tensor_is_valid(src)) return NULL;
     if (src->pack_mode != TERNARY_PACK_NONE) {
         LOG_ERROR("Source tensor must be unpacked");
@@ -861,6 +878,10 @@ nimcp_ternary_tensor_t* nimcp_ternary_unpack_2bit(
     nimcp_gpu_context_t* ctx,
     const nimcp_ternary_tensor_t* src)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!nimcp_ternary_tensor_is_valid(src)) return NULL;
     if (src->pack_mode != TERNARY_PACK_2BIT) {
         LOG_ERROR("Source tensor must be 2-bit packed");
@@ -884,6 +905,10 @@ nimcp_gpu_tensor_t* nimcp_ternary_to_float(
     nimcp_gpu_context_t* ctx,
     const nimcp_ternary_tensor_t* src)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!nimcp_ternary_tensor_is_valid(src)) return NULL;
 
     // Create output tensor
@@ -920,6 +945,10 @@ nimcp_gpu_tensor_t* nimcp_ternary_gemv(
     const nimcp_gpu_tensor_t* x,
     nimcp_gpu_tensor_t* y)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !nimcp_ternary_tensor_is_valid(A) || !x) return NULL;
     if (A->rank != 2) {
         LOG_ERROR("Matrix A must be 2D");
@@ -947,7 +976,7 @@ nimcp_gpu_tensor_t* nimcp_ternary_gemv(
             (const uint8_t*)A->data, x_data, y_data, M, N);
     }
 
-    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaDeviceSynchronize());
+    NIMCP_CUDA_RECOVER_LAST_NULL(GPU_ERROR_KERNEL_LAUNCH);
     return y;
 }
 
@@ -958,6 +987,10 @@ nimcp_gpu_tensor_t* nimcp_ternary_gemm(
     nimcp_gpu_tensor_t* C,
     const nimcp_ternary_gemm_config_t* config)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !nimcp_ternary_tensor_is_valid(A) || !B) return NULL;
     if (A->rank != 2) {
         LOG_ERROR("Matrix A must be 2D");
@@ -993,7 +1026,7 @@ nimcp_gpu_tensor_t* nimcp_ternary_gemm(
         (const int8_t*)A->data, B_data, C_data,
         M, K, N, cfg.alpha, cfg.beta);
 
-    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaDeviceSynchronize());
+    NIMCP_CUDA_RECOVER_LAST_NULL(GPU_ERROR_KERNEL_LAUNCH);
     return C;
 }
 
@@ -1003,6 +1036,10 @@ nimcp_gpu_tensor_t* nimcp_ternary_gemm_batched(
     const nimcp_gpu_tensor_t* B,
     nimcp_gpu_tensor_t* C)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !nimcp_ternary_tensor_is_valid(A) || !B) return NULL;
     if (A->rank != 2) {
         LOG_ERROR("Matrix A must be 2D");
@@ -1031,7 +1068,7 @@ nimcp_gpu_tensor_t* nimcp_ternary_gemm_batched(
         (const int8_t*)A->data, B_data, C_data,
         M, K, N, batch);
 
-    NIMCP_CUDA_CHECK_IMMUNE_NULL(cudaDeviceSynchronize());
+    NIMCP_CUDA_RECOVER_LAST_NULL(GPU_ERROR_KERNEL_LAUNCH);
     return C;
 }
 
@@ -1045,6 +1082,10 @@ bool nimcp_ternary_mul(
     const nimcp_ternary_tensor_t* B,
     nimcp_ternary_tensor_t* C)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!nimcp_ternary_tensor_is_valid(A) ||
         !nimcp_ternary_tensor_is_valid(B) ||
         !nimcp_ternary_tensor_is_valid(C)) return false;
@@ -1068,7 +1109,7 @@ bool nimcp_ternary_mul(
         (int8_t*)C->data,
         A->numel);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaDeviceSynchronize());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1078,6 +1119,10 @@ bool nimcp_ternary_gate(
     const nimcp_gpu_tensor_t* input,
     nimcp_gpu_tensor_t* output)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!nimcp_ternary_tensor_is_valid(gate) || !input || !output) return false;
 
     int64_t numel = gate->numel;
@@ -1093,7 +1138,7 @@ bool nimcp_ternary_gate(
     ternary_gate_kernel<<<GRID_SIZE(numel), BLOCK_SIZE>>>(
         (const int8_t*)gate->data, in_data, out_data, numel);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaDeviceSynchronize());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1103,6 +1148,10 @@ bool nimcp_ternary_mask(
     const nimcp_gpu_tensor_t* input,
     nimcp_gpu_tensor_t* output)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!nimcp_ternary_tensor_is_valid(mask) || !input || !output) return false;
 
     int64_t numel = mask->numel;
@@ -1118,7 +1167,7 @@ bool nimcp_ternary_mask(
     ternary_mask_kernel<<<GRID_SIZE(numel), BLOCK_SIZE>>>(
         (const int8_t*)mask->data, in_data, out_data, numel);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaDeviceSynchronize());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1224,6 +1273,10 @@ nimcp_ternary_sparse_t* nimcp_ternary_sparse_from_dense(
     nimcp_gpu_context_t* ctx,
     const nimcp_ternary_tensor_t* dense)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !nimcp_ternary_tensor_is_valid(dense)) return NULL;
     if (dense->rank != 2) {
         LOG_ERROR("Sparse conversion requires 2D tensor");
@@ -1303,6 +1356,10 @@ nimcp_gpu_tensor_t* nimcp_ternary_sparse_gemv(
     const nimcp_gpu_tensor_t* x,
     nimcp_gpu_tensor_t* y)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !A || !x) return NULL;
 
     // Create output if needed

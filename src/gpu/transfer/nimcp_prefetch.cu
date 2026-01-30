@@ -21,6 +21,8 @@
 #endif
 
 #include "gpu/transfer/nimcp_prefetch.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "gpu/common/nimcp_cuda_utils.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 
@@ -234,6 +236,11 @@ nimcp_prefetch_manager_t* nimcp_prefetch_create_ex(
     int queue_depth,
     nimcp_transfer_manager_t* transfer_mgr)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!nimcp_gpu_context_is_valid(ctx)) {
         LOG_ERROR("Invalid GPU context");
         return NULL;

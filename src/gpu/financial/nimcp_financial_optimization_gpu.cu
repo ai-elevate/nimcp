@@ -30,6 +30,8 @@
 #include "gpu/financial/nimcp_financial_gpu.h"
 #include "gpu/financial/nimcp_financial_optimization_gpu.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Thread-Local Error Storage
@@ -413,16 +415,24 @@ bool fin_optimization_gpu_mean_variance(
     const fin_optimization_gpu_params_t* params,
     fin_optimization_gpu_result_t* result)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
         set_opt_error("Invalid GPU context");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context");
         return false;
     }
     if (!expected_returns || !covariance_matrix || !params || !result) {
         set_opt_error("Invalid parameters");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid parameters");
         return false;
     }
     if (params->n_assets == 0) {
         set_opt_error("Zero assets");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Zero assets");
         return false;
     }
 
@@ -456,22 +466,58 @@ bool fin_optimization_gpu_mean_variance(
     cudaError_t err;
 
     err = cudaMalloc(&d_returns, n * sizeof(float));
-    if (err != cudaSuccess) goto cleanup_mv;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t recovery_result = {0};
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &recovery_result)) {
+            err = cudaMalloc(&d_returns, n * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup_mv;
+    }
 
     err = cudaMalloc(&d_covariance, n * n * sizeof(float));
-    if (err != cudaSuccess) goto cleanup_mv;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t recovery_result = {0};
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &recovery_result)) {
+            err = cudaMalloc(&d_covariance, n * n * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup_mv;
+    }
 
     err = cudaMalloc(&d_weights, n * sizeof(float));
-    if (err != cudaSuccess) goto cleanup_mv;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t recovery_result = {0};
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &recovery_result)) {
+            err = cudaMalloc(&d_weights, n * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup_mv;
+    }
 
     err = cudaMalloc(&d_gradient, n * sizeof(float));
-    if (err != cudaSuccess) goto cleanup_mv;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t recovery_result = {0};
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &recovery_result)) {
+            err = cudaMalloc(&d_gradient, n * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup_mv;
+    }
 
     err = cudaMalloc(&d_momentum, n * sizeof(float));
-    if (err != cudaSuccess) goto cleanup_mv;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t recovery_result = {0};
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &recovery_result)) {
+            err = cudaMalloc(&d_momentum, n * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup_mv;
+    }
 
     err = cudaMalloc(&d_temp, n * sizeof(float));
-    if (err != cudaSuccess) goto cleanup_mv;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t recovery_result = {0};
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &recovery_result)) {
+            err = cudaMalloc(&d_temp, n * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup_mv;
+    }
 
     // Copy inputs to device
     cudaMemcpyAsync(d_returns, expected_returns, n * sizeof(float),
@@ -599,16 +645,24 @@ bool fin_optimization_gpu_efficient_frontier(
     uint32_t num_points,
     fin_efficient_frontier_result_t* result)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
         set_opt_error("Invalid GPU context");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context");
         return false;
     }
     if (!expected_returns || !covariance_matrix || !params || !result) {
         set_opt_error("Invalid parameters");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid parameters");
         return false;
     }
     if (num_points == 0 || params->n_assets == 0) {
         set_opt_error("Invalid num_points or n_assets");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid num_points or n_assets");
         return false;
     }
 
@@ -679,12 +733,19 @@ bool fin_optimization_gpu_risk_parity(
     const fin_risk_parity_params_t* params,
     fin_optimization_gpu_result_t* result)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
         set_opt_error("Invalid GPU context");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context");
         return false;
     }
     if (!covariance_matrix || !params || !result) {
         set_opt_error("Invalid parameters");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid parameters");
         return false;
     }
 
@@ -713,22 +774,58 @@ bool fin_optimization_gpu_risk_parity(
     cudaError_t err;
 
     err = cudaMalloc(&d_covariance, n * n * sizeof(float));
-    if (err != cudaSuccess) goto cleanup_rp;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t recovery_result = {0};
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &recovery_result)) {
+            err = cudaMalloc(&d_covariance, n * n * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup_rp;
+    }
 
     err = cudaMalloc(&d_weights, n * sizeof(float));
-    if (err != cudaSuccess) goto cleanup_rp;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t recovery_result = {0};
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &recovery_result)) {
+            err = cudaMalloc(&d_weights, n * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup_rp;
+    }
 
     err = cudaMalloc(&d_cov_w, n * sizeof(float));
-    if (err != cudaSuccess) goto cleanup_rp;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t recovery_result = {0};
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &recovery_result)) {
+            err = cudaMalloc(&d_cov_w, n * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup_rp;
+    }
 
     err = cudaMalloc(&d_mrc, n * sizeof(float));
-    if (err != cudaSuccess) goto cleanup_rp;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t recovery_result = {0};
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &recovery_result)) {
+            err = cudaMalloc(&d_mrc, n * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup_rp;
+    }
 
     err = cudaMalloc(&d_rc, n * sizeof(float));
-    if (err != cudaSuccess) goto cleanup_rp;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t recovery_result = {0};
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &recovery_result)) {
+            err = cudaMalloc(&d_rc, n * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup_rp;
+    }
 
     err = cudaMalloc(&d_gradient, n * sizeof(float));
-    if (err != cudaSuccess) goto cleanup_rp;
+    if (err != cudaSuccess) {
+        nimcp_gpu_recovery_result_t recovery_result = {0};
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &recovery_result)) {
+            err = cudaMalloc(&d_gradient, n * sizeof(float));
+        }
+        if (err != cudaSuccess) goto cleanup_rp;
+    }
 
     // Copy covariance to device
     cudaMemcpyAsync(d_covariance, covariance_matrix, n * n * sizeof(float),

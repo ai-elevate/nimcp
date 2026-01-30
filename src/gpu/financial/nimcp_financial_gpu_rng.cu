@@ -6,6 +6,21 @@
  * WHY:  High-quality, efficient random number generation on GPU
  * HOW:  cuRAND device API with XORWOW generator
  *
+ * RNG ARCHITECTURE:
+ * =================
+ * This module provides financial-domain-specific RNG with cuRAND.
+ * The pattern follows the central GPU statistics module:
+ *   - See: gpu/statistics/nimcp_statistics_gpu.h for stats_gpu_rng_create/destroy
+ *   - See: gpu/common/nimcp_device_utils.cuh for shared device RNG functions
+ *
+ * Domain-specific RNG is maintained here because:
+ *   1. Financial simulations require precise seed control for reproducibility
+ *   2. Correlation structures (e.g., Cholesky) are finance-specific
+ *   3. Jump-diffusion and variance-gamma processes need custom sampling
+ *
+ * For general-purpose GPU statistics, prefer stats_gpu_rng_t from
+ * nimcp_statistics_gpu.h.
+ *
  * @author NIMCP Development Team
  * @date 2025
  */
@@ -22,6 +37,8 @@
 
 #include "gpu/financial/nimcp_financial_gpu.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Thread-Local Error Storage
@@ -156,12 +173,19 @@ fin_gpu_rng_t* fin_gpu_rng_create(
     uint32_t n,
     uint64_t seed)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
         set_rng_error("Invalid GPU context");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context");
         return NULL;
     }
     if (n == 0) {
         set_rng_error("Zero RNG states requested");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Zero RNG states requested");
         return NULL;
     }
 
@@ -175,13 +199,20 @@ fin_gpu_rng_t* fin_gpu_rng_create(
     rng->num_states = n;
     rng->seed = (seed == 0) ? (uint64_t)time(NULL) : seed;
 
-    // Allocate device states
+    // Allocate device states with recovery
     size_t states_size = n * sizeof(curandState);
     cudaError_t err = cudaMalloc(&rng->d_states, states_size);
     if (err != cudaSuccess) {
-        set_rng_error("Failed to allocate RNG states: %s", cudaGetErrorString(err));
-        free(rng);
-        return NULL;
+        nimcp_gpu_recovery_result_t result = {0};
+        if (nimcp_gpu_try_recover(NULL, GPU_ERROR_OUT_OF_MEMORY, err, &result)) {
+            err = cudaMalloc(&rng->d_states, states_size);
+        }
+        if (err != cudaSuccess) {
+            set_rng_error("Failed to allocate RNG states: %s", cudaGetErrorString(err));
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, err, "Failed to allocate RNG states: %s", cudaGetErrorString(err));
+            free(rng);
+            return NULL;
+        }
     }
 
     // Initialize states
@@ -194,10 +225,14 @@ fin_gpu_rng_t* fin_gpu_rng_create(
 
     err = cudaGetLastError();
     if (err != cudaSuccess) {
-        set_rng_error("RNG init kernel failed: %s", cudaGetErrorString(err));
-        cudaFree(rng->d_states);
-        free(rng);
-        return NULL;
+        nimcp_gpu_recovery_result_t result = {0};
+        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_KERNEL_LAUNCH, err, &result)) {
+            set_rng_error("RNG init kernel failed: %s", cudaGetErrorString(err));
+            NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, err, "RNG init kernel failed: %s", cudaGetErrorString(err));
+            cudaFree(rng->d_states);
+            free(rng);
+            return NULL;
+        }
     }
 
     cudaStreamSynchronize(stream);
@@ -217,8 +252,14 @@ void fin_gpu_rng_destroy(fin_gpu_rng_t* rng) {
 }
 
 bool fin_gpu_rng_reseed(fin_gpu_rng_t* rng, uint64_t seed) {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!rng || !rng->initialized) {
         set_rng_error("Invalid RNG state");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid RNG state");
         return false;
     }
 
@@ -231,8 +272,8 @@ bool fin_gpu_rng_reseed(fin_gpu_rng_t* rng, uint64_t seed) {
     kernel_init_rng_states<<<grid_size, block_size, 0, stream>>>(
         rng->d_states, rng->seed, rng->num_states);
 
-    NIMCP_CUDA_CHECK_LAST();
-    NIMCP_CUDA_CHECK(cudaStreamSynchronize(stream));
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
 
     return true;
 }
@@ -242,8 +283,14 @@ bool fin_gpu_rng_uniform(
     float* output,
     uint32_t n)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!rng || !rng->initialized || !output) {
         set_rng_error("Invalid RNG or output pointer");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid RNG or output pointer");
         return false;
     }
 
@@ -254,8 +301,8 @@ bool fin_gpu_rng_uniform(
     kernel_generate_uniform<<<grid_size, block_size, 0, stream>>>(
         rng->d_states, output, n);
 
-    NIMCP_CUDA_CHECK_LAST();
-    NIMCP_CUDA_CHECK(cudaStreamSynchronize(stream));
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
 
     return true;
 }
@@ -265,8 +312,14 @@ bool fin_gpu_rng_normal(
     float* output,
     uint32_t n)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!rng || !rng->initialized || !output) {
         set_rng_error("Invalid RNG or output pointer");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid RNG or output pointer");
         return false;
     }
 
@@ -277,8 +330,8 @@ bool fin_gpu_rng_normal(
     kernel_generate_normal<<<grid_size, block_size, 0, stream>>>(
         rng->d_states, output, n);
 
-    NIMCP_CUDA_CHECK_LAST();
-    NIMCP_CUDA_CHECK(cudaStreamSynchronize(stream));
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
 
     return true;
 }
@@ -290,8 +343,14 @@ bool fin_gpu_rng_correlated_normal(
     uint32_t num_sets,
     float* output)
 {
+    // Initialize GPU recovery if not already done
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!rng || !rng->initialized || !cholesky || !output) {
         set_rng_error("Invalid parameters");
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid parameters");
         return false;
     }
 
@@ -302,8 +361,8 @@ bool fin_gpu_rng_correlated_normal(
     kernel_generate_correlated_normal<<<num_sets, block_size, shared_size, stream>>>(
         rng->d_states, cholesky, n, num_sets, output);
 
-    NIMCP_CUDA_CHECK_LAST();
-    NIMCP_CUDA_CHECK(cudaStreamSynchronize(stream));
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
+    NIMCP_CUDA_RECOVER(cudaStreamSynchronize(stream), GPU_ERROR_CUDA_RUNTIME);
 
     return true;
 }

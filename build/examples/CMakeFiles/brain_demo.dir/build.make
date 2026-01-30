@@ -95,11 +95,14 @@ examples/brain_demo: examples/CMakeFiles/brain_demo.dir/build.make
 examples/brain_demo: lib/libnimcp.so.2.6.2
 examples/brain_demo: /usr/lib/x86_64-linux-gnu/libpython3.12.so
 examples/brain_demo: /usr/lib/x86_64-linux-gnu/libcudart.so
-examples/brain_demo: /usr/lib/x86_64-linux-gnu/libcublas.so
-examples/brain_demo: /usr/lib/x86_64-linux-gnu/libcublasLt.so
-examples/brain_demo: /usr/lib/x86_64-linux-gnu/libculibos.a
 examples/brain_demo: /usr/lib/x86_64-linux-gnu/libcufft.so
 examples/brain_demo: /usr/lib/x86_64-linux-gnu/libcurand.so
+examples/brain_demo: /usr/lib/x86_64-linux-gnu/libcusolver.so
+examples/brain_demo: /usr/lib/x86_64-linux-gnu/libcublas.so
+examples/brain_demo: /usr/lib/x86_64-linux-gnu/libculibos.a
+examples/brain_demo: /usr/lib/x86_64-linux-gnu/libcublasLt.so
+examples/brain_demo: /usr/lib/x86_64-linux-gnu/libcusparse.so
+examples/brain_demo: /usr/lib/x86_64-linux-gnu/libnvJitLink.so
 examples/brain_demo: /usr/lib/x86_64-linux-gnu/libssl.so
 examples/brain_demo: /usr/lib/x86_64-linux-gnu/libcrypto.so
 examples/brain_demo: examples/CMakeFiles/brain_demo.dir/link.txt

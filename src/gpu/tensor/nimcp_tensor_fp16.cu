@@ -32,16 +32,12 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "TENSOR_FP16"
 
-#define CUBLAS_CHECK(call) do { \
-    cublasStatus_t status = call; \
-    if (status != CUBLAS_STATUS_SUCCESS) { \
-        LOG_ERROR("cuBLAS error at %s:%d: %d", __FILE__, __LINE__, status); \
-        return false; \
-    } \
-} while(0)
+// Use recovery macro for cuBLAS instead of simple check
+#define CUBLAS_CHECK(call) NIMCP_CUBLAS_RECOVER(call, GPU_ERROR_LIBRARY)
 
 //=============================================================================
 // Kernel Configuration
@@ -590,6 +586,11 @@ nimcp_mp_tensor_t* nimcp_mp_tensor_create(
     nimcp_mp_dtype_t compute_dtype,
     bool keep_master)
 {
+    // Initialize GPU recovery system if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !fp32_tensor) {
         LOG_ERROR("Invalid parameters for mp tensor creation");
         return NULL;
@@ -659,6 +660,11 @@ nimcp_mp_tensor_t* nimcp_mp_tensor_create_empty(
     nimcp_mp_dtype_t compute_dtype,
     bool keep_master)
 {
+    // Initialize GPU recovery system if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !dims || ndim == 0) {
         return NULL;
     }
@@ -721,7 +727,7 @@ bool nimcp_mp_tensor_sync_compute(nimcp_gpu_context_t* ctx, nimcp_mp_tensor_t* t
             (__nv_bfloat16*)tensor->fp16_data->data, n);
     }
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -743,7 +749,7 @@ bool nimcp_mp_tensor_sync_master(nimcp_gpu_context_t* ctx, nimcp_mp_tensor_t* te
             (float*)tensor->fp32_master->data, n);
     }
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -828,7 +834,7 @@ bool nimcp_loss_scaler_unscale_fp16(
     kernel_scale_gradients_fp16<<<GRID_SIZE(n), BLOCK_SIZE>>>(
         (__half*)gradients->data, inv_scale, n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -886,6 +892,11 @@ nimcp_amp_context_t* nimcp_amp_create(
     nimcp_mp_dtype_t compute_dtype,
     bool enable_scaler)
 {
+    // Initialize GPU recovery system if not already initialized
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!gpu_ctx) return NULL;
 
     nimcp_amp_context_t* ctx = (nimcp_amp_context_t*)calloc(1, sizeof(nimcp_amp_context_t));
@@ -1040,7 +1051,7 @@ bool nimcp_fp32_to_fp16(nimcp_gpu_context_t* ctx,
     kernel_fp32_to_fp16<<<GRID_SIZE(src->numel), BLOCK_SIZE>>>(
         (const float*)src->data, (__half*)dst->data, src->numel);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1054,7 +1065,7 @@ bool nimcp_fp16_to_fp32(nimcp_gpu_context_t* ctx,
     kernel_fp16_to_fp32<<<GRID_SIZE(src->numel), BLOCK_SIZE>>>(
         (const __half*)src->data, (float*)dst->data, src->numel);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1068,7 +1079,7 @@ bool nimcp_fp32_to_bf16(nimcp_gpu_context_t* ctx,
     kernel_fp32_to_bf16<<<GRID_SIZE(src->numel), BLOCK_SIZE>>>(
         (const float*)src->data, (__nv_bfloat16*)dst->data, src->numel);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1082,7 +1093,7 @@ bool nimcp_bf16_to_fp32(nimcp_gpu_context_t* ctx,
     kernel_bf16_to_fp32<<<GRID_SIZE(src->numel), BLOCK_SIZE>>>(
         (const __nv_bfloat16*)src->data, (float*)dst->data, src->numel);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1102,7 +1113,7 @@ bool nimcp_fp16_add(nimcp_gpu_context_t* ctx,
         (const __half*)a->data, (const __half*)b->data,
         (__half*)out->data, a->numel);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1118,7 +1129,7 @@ bool nimcp_fp16_mul(nimcp_gpu_context_t* ctx,
         (const __half*)a->data, (const __half*)b->data,
         (__half*)out->data, a->numel);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1133,7 +1144,7 @@ bool nimcp_fp16_scale(nimcp_gpu_context_t* ctx,
     kernel_scale_fp16<<<GRID_SIZE(x->numel), BLOCK_SIZE>>>(
         (const __half*)x->data, (__half*)out->data, scale, x->numel);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1150,7 +1161,7 @@ bool nimcp_fp16_fma(nimcp_gpu_context_t* ctx,
         (const __half*)a->data, (const __half*)b->data,
         (const __half*)c->data, (__half*)out->data, a->numel);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1261,7 +1272,7 @@ bool nimcp_fp16_relu(nimcp_gpu_context_t* ctx,
     kernel_relu_fp16<<<GRID_SIZE(x->numel), BLOCK_SIZE>>>(
         (const __half*)x->data, (__half*)out->data, x->numel);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1274,7 +1285,7 @@ bool nimcp_fp16_gelu(nimcp_gpu_context_t* ctx,
     kernel_gelu_fp16<<<GRID_SIZE(x->numel), BLOCK_SIZE>>>(
         (const __half*)x->data, (__half*)out->data, x->numel);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1287,7 +1298,7 @@ bool nimcp_fp16_sigmoid(nimcp_gpu_context_t* ctx,
     kernel_sigmoid_fp16<<<GRID_SIZE(x->numel), BLOCK_SIZE>>>(
         (const __half*)x->data, (__half*)out->data, x->numel);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1300,7 +1311,7 @@ bool nimcp_fp16_tanh(nimcp_gpu_context_t* ctx,
     kernel_tanh_fp16<<<GRID_SIZE(x->numel), BLOCK_SIZE>>>(
         (const __half*)x->data, (__half*)out->data, x->numel);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1313,7 +1324,7 @@ bool nimcp_fp16_silu(nimcp_gpu_context_t* ctx,
     kernel_silu_fp16<<<GRID_SIZE(x->numel), BLOCK_SIZE>>>(
         (const __half*)x->data, (__half*)out->data, x->numel);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1337,7 +1348,7 @@ bool nimcp_fp16_softmax_stable(nimcp_gpu_context_t* ctx,
     kernel_softmax_stable_fp16<<<batch, BLOCK_SIZE, shared_mem>>>(
         (const __half*)x->data, (__half*)out->data, batch, dim);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1363,7 +1374,7 @@ bool nimcp_fp16_layernorm(nimcp_gpu_context_t* ctx,
         beta ? (const __half*)beta->data : NULL,
         (__half*)out->data, batch, dim, eps);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1396,7 +1407,7 @@ bool nimcp_fp16_batchnorm(nimcp_gpu_context_t* ctx,
         beta ? (const __half*)beta->data : NULL,
         (__half*)out->data, N, C, HW, eps);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1413,7 +1424,7 @@ bool nimcp_fp16_scale_gradients(nimcp_gpu_context_t* ctx,
     kernel_scale_gradients_fp16<<<GRID_SIZE(grads->numel), BLOCK_SIZE>>>(
         (__half*)grads->data, scale, grads->numel);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1425,14 +1436,14 @@ bool nimcp_fp16_check_inf_nan(nimcp_gpu_context_t* ctx,
 
     // Allocate device memory for flag
     int* d_found_inf;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_found_inf, sizeof(int)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_found_inf, 0, sizeof(int)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_found_inf, sizeof(int)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMemset(d_found_inf, 0, sizeof(int)), GPU_ERROR_CUDA_RUNTIME);
 
     kernel_check_inf_nan_fp16<<<GRID_SIZE(data->numel), BLOCK_SIZE>>>(
         (const __half*)data->data, d_found_inf, data->numel);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(found_inf, d_found_inf, sizeof(int), cudaMemcpyDeviceToHost));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaFree(d_found_inf));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(found_inf, d_found_inf, sizeof(int), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaFree(d_found_inf), GPU_ERROR_CUDA_RUNTIME);
 
     return true;
 }
@@ -1469,7 +1480,7 @@ bool nimcp_mp_adam_update(nimcp_gpu_context_t* ctx,
         (float*)v->data,
         lr, beta1, beta2, eps, weight_decay, step, n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -1497,7 +1508,7 @@ bool nimcp_mp_sgd_update(nimcp_gpu_context_t* ctx,
         momentum_buffer ? (float*)momentum_buffer->data : NULL,
         lr, momentum, weight_decay, nesterov, n);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 

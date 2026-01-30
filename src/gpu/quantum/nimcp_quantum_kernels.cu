@@ -6,6 +6,17 @@
  * WHY:  GPU acceleration for Grover's search and quantum annealing
  * HOW:  Custom kernels for quantum state manipulation and optimization
  *
+ * RNG ARCHITECTURE:
+ * =================
+ * Uses kernel_init_rng for quantum annealing spin flip operations.
+ * The pattern follows the central GPU statistics module:
+ *   - See: gpu/statistics/nimcp_statistics_gpu.h for stats_gpu_rng_create/destroy
+ *   - See: gpu/common/nimcp_device_utils.cuh for shared device RNG functions
+ *
+ * Local RNG state is used for:
+ *   1. Metropolis-Hastings acceptance in simulated annealing
+ *   2. Stochastic quantum state perturbations
+ *
  * @version 1.0
  * @author NIMCP Development Team
  * @date 2025
@@ -24,6 +35,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "gpu/common/nimcp_cuda_utils.h"
+#include "gpu/recovery/nimcp_gpu_recovery.h"
 
 #define LOG_MODULE "QUANTUM_GPU"
 
@@ -231,6 +243,10 @@ nimcp_quantum_state_t* nimcp_quantum_state_create(
     nimcp_gpu_context_t* ctx,
     uint32_t n_qubits)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || n_qubits == 0 || n_qubits > 24) {
         LOG_ERROR("Invalid parameters: n_qubits=%u (max 24)", n_qubits);
         return NULL;
@@ -282,6 +298,10 @@ bool nimcp_quantum_state_hadamard_all(
     nimcp_gpu_context_t* ctx,
     nimcp_quantum_state_t* state)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) return false;
 
     float norm_factor = 1.0f / sqrtf((float)state->n_states);
@@ -292,7 +312,7 @@ bool nimcp_quantum_state_hadamard_all(
         state->n_states,
         norm_factor);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -303,6 +323,10 @@ bool nimcp_quantum_apply_gate(
     const float gate_real[2][2],
     const float gate_imag[2][2])
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || qubit_idx >= state->n_qubits) return false;
 
     size_t n_pairs = state->n_states / 2;
@@ -315,7 +339,7 @@ bool nimcp_quantum_apply_gate(
         gate_real[1][0], gate_imag[1][0], gate_real[1][1], gate_imag[1][1],
         state->n_states);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -324,6 +348,10 @@ bool nimcp_quantum_compute_probabilities(
     const nimcp_quantum_state_t* state,
     nimcp_gpu_tensor_t* probabilities)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !probabilities) return false;
 
     kernel_compute_probabilities<<<GRID_SIZE(state->n_states), BLOCK_SIZE>>>(
@@ -332,7 +360,7 @@ bool nimcp_quantum_compute_probabilities(
         (float*)probabilities->data,
         state->n_states);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -342,11 +370,15 @@ bool nimcp_quantum_measure(
     uint32_t* measured_state,
     float* probability)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) return false;
 
     // Compute probabilities
     float* d_probs;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_probs, state->n_states * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_probs, state->n_states * sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
 
     kernel_compute_probabilities<<<GRID_SIZE(state->n_states), BLOCK_SIZE>>>(
         (const float*)state->amplitudes_real->data,
@@ -356,7 +388,7 @@ bool nimcp_quantum_measure(
 
     // Copy probabilities to host for sampling
     float* h_probs = (float*)malloc(state->n_states * sizeof(float));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(h_probs, d_probs, state->n_states * sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(h_probs, d_probs, state->n_states * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     // Generate random number and sample
     float r = (float)rand() / (float)RAND_MAX;
@@ -387,7 +419,7 @@ bool nimcp_quantum_measure(
 
     // Set measured state amplitude to 1
     float one = 1.0f;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy((float*)state->amplitudes_real->data + result, &one, sizeof(float), cudaMemcpyHostToDevice));
+    NIMCP_CUDA_RECOVER(cudaMemcpy((float*)state->amplitudes_real->data + result, &one, sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     cudaFree(d_probs);
     free(h_probs);
@@ -472,12 +504,16 @@ bool nimcp_grover_oracle(
     const uint32_t* marked_states,
     uint32_t n_marked)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !marked_states || n_marked == 0) return false;
 
     // Copy marked states to GPU
     uint32_t* d_marked;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_marked, n_marked * sizeof(uint32_t)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(d_marked, marked_states, n_marked * sizeof(uint32_t), cudaMemcpyHostToDevice));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_marked, n_marked * sizeof(uint32_t)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(d_marked, marked_states, n_marked * sizeof(uint32_t), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     kernel_grover_oracle<<<GRID_SIZE(state->n_states), BLOCK_SIZE>>>(
         (float*)state->amplitudes_real->data,
@@ -485,7 +521,7 @@ bool nimcp_grover_oracle(
         d_marked, n_marked,
         state->n_states);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     cudaFree(d_marked);
 
     return true;
@@ -495,15 +531,19 @@ bool nimcp_grover_diffusion(
     nimcp_gpu_context_t* ctx,
     nimcp_quantum_state_t* state)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state) return false;
 
     // Compute mean amplitude
     float* d_mean_real;
     float* d_mean_imag;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_mean_real, sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMalloc(&d_mean_imag, sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_mean_real, 0, sizeof(float)));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(d_mean_imag, 0, sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_mean_real, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMalloc(&d_mean_imag, sizeof(float)), GPU_ERROR_OUT_OF_MEMORY);
+    NIMCP_CUDA_RECOVER(cudaMemset(d_mean_real, 0, sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemset(d_mean_imag, 0, sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
 
     kernel_compute_mean<<<GRID_SIZE(state->n_states), BLOCK_SIZE, 2 * BLOCK_SIZE * sizeof(float)>>>(
         (const float*)state->amplitudes_real->data,
@@ -512,8 +552,8 @@ bool nimcp_grover_diffusion(
         state->n_states);
 
     float h_mean_real, h_mean_imag;
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&h_mean_real, d_mean_real, sizeof(float), cudaMemcpyDeviceToHost));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(&h_mean_imag, d_mean_imag, sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(&h_mean_real, d_mean_real, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(&h_mean_imag, d_mean_imag, sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     h_mean_real /= (float)state->n_states;
     h_mean_imag /= (float)state->n_states;
@@ -525,7 +565,7 @@ bool nimcp_grover_diffusion(
         h_mean_real, h_mean_imag,
         state->n_states);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
 
     cudaFree(d_mean_real);
     cudaFree(d_mean_imag);
@@ -551,6 +591,10 @@ bool nimcp_grover_search(
     uint32_t* found_state,
     bool* success)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !config || !config->marked_states || !found_state || !success) return false;
 
     // Create quantum state
@@ -714,6 +758,10 @@ nimcp_ising_model_t* nimcp_ising_model_create(
     nimcp_gpu_context_t* ctx,
     uint32_t n_spins)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || n_spins == 0) return NULL;
 
     nimcp_ising_model_t* model = (nimcp_ising_model_t*)calloc(1, sizeof(nimcp_ising_model_t));
@@ -763,14 +811,18 @@ bool nimcp_ising_model_set_params(
     const float* J,
     const float* h)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !model || !J || !h) return false;
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(model->J->data, J,
+    NIMCP_CUDA_RECOVER(cudaMemcpy(model->J->data, J,
                           model->n_spins * model->n_spins * sizeof(float),
-                          cudaMemcpyHostToDevice));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(model->h->data, h,
+                          cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
+    NIMCP_CUDA_RECOVER(cudaMemcpy(model->h->data, h,
                           model->n_spins * sizeof(float),
-                          cudaMemcpyHostToDevice));
+                          cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
 
     return true;
 }
@@ -806,6 +858,10 @@ bool nimcp_annealing_step(
     float temperature,
     float transverse_field)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !model) return false;
 
     // Initialize RNG states (should be done once, but simplified here)
@@ -838,7 +894,7 @@ bool nimcp_annealing_step(
         d_rng_states,
         model->n_spins);
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaGetLastError());
+    NIMCP_CUDA_RECOVER_LAST(GPU_ERROR_KERNEL_LAUNCH);
     return true;
 }
 
@@ -847,6 +903,10 @@ float nimcp_quantum_anneal(
     nimcp_ising_model_t* model,
     const nimcp_annealing_config_t* config)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !model || !config) return 0.0f;
 
     float T = config->T_initial;
@@ -894,6 +954,10 @@ float nimcp_pimc_anneal(
     const nimcp_annealing_config_t* config,
     uint32_t n_trotter)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !model || !config) return 0.0f;
 
     // Simplified PIMC: use multiple Trotter slices
@@ -928,6 +992,10 @@ bool nimcp_vqc_init_params(
     uint32_t n_layers,
     nimcp_gpu_tensor_t* params)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !params) return false;
 
     size_t n_params = n_layers * n_qubits * 3;  // 3 rotation angles per qubit per layer
@@ -938,7 +1006,7 @@ bool nimcp_vqc_init_params(
         h_params[i] = ((float)rand() / RAND_MAX - 0.5f) * 0.1f;  // Small random values
     }
 
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(params->data, h_params, n_params * sizeof(float), cudaMemcpyHostToDevice));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(params->data, h_params, n_params * sizeof(float), cudaMemcpyHostToDevice), GPU_ERROR_CUDA_RUNTIME);
     free(h_params);
 
     return true;
@@ -949,11 +1017,15 @@ bool nimcp_vqc_apply_layer(
     nimcp_quantum_state_t* state,
     const nimcp_gpu_tensor_t* params)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !params) return false;
 
     // Copy parameters to host for gate construction
     float* h_params = (float*)malloc(state->n_qubits * 3 * sizeof(float));
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemcpy(h_params, params->data, state->n_qubits * 3 * sizeof(float), cudaMemcpyDeviceToHost));
+    NIMCP_CUDA_RECOVER(cudaMemcpy(h_params, params->data, state->n_qubits * 3 * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
 
     // Apply Rx, Ry, Rz to each qubit
     for (uint32_t q = 0; q < state->n_qubits; q++) {
@@ -1006,6 +1078,10 @@ bool nimcp_vqc_parameter_shift_gradient(
     const nimcp_gpu_tensor_t* observable,
     nimcp_gpu_tensor_t* gradients)
 {
+    if (!nimcp_gpu_recovery_is_initialized()) {
+        nimcp_gpu_recovery_init(NULL);
+    }
+
     if (!ctx || !state || !params || !observable || !gradients) return false;
 
     // Simplified parameter shift: gradient = (f(theta + pi/2) - f(theta - pi/2)) / 2
@@ -1013,7 +1089,7 @@ bool nimcp_vqc_parameter_shift_gradient(
     LOG_WARN("Parameter shift gradient not fully implemented - returning zeros");
 
     // Zero out gradients for now
-    NIMCP_CUDA_CHECK_IMMUNE(cudaMemset(gradients->data, 0, gradients->numel * sizeof(float)));
+    NIMCP_CUDA_RECOVER(cudaMemset(gradients->data, 0, gradients->numel * sizeof(float)), GPU_ERROR_CUDA_RUNTIME);
 
     return true;
 }
