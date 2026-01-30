@@ -1775,6 +1775,65 @@ typedef struct {
 
     // === FUZZY LOGIC INTEGRATION ===
     bool enable_fuzzy_logic;                      /**< Enable fuzzy logic utility module (default: true) */
+
+    // === CREATIVE SYSTEM INTEGRATION (Artistic Appreciation & Generation) ===
+    /**
+     * Creative System Configuration
+     *
+     * WHAT: Artistic cognition capabilities for appreciation and generation
+     * WHY:  Enable AI to understand, learn from, and create art
+     * HOW:  Integrates aesthetic evaluation, style learning, content generation
+     *
+     * CAPABILITIES:
+     * - Aesthetic Appreciation: Evaluate art quality using Berlyne aesthetics
+     * - Style Learning: Learn and represent artistic styles via embeddings
+     * - Text Generation: Poetry, prose, screenplay, lyrics
+     * - Music Generation: Composition, arrangement (MIDI/audio export)
+     * - Visual Generation: Images via diffusion models and GANs
+     * - Video Generation: Video synthesis and cinema production
+     * - Multimodal Direction: Full-length film/creative project coordination
+     * - Ethics Validation: Copyright, safety, bias detection
+     *
+     * STYLE ARCHETYPES:
+     * - Literary: Hemingway, Tolstoy, Joyce, Poe, Austen, Shakespeare, etc.
+     * - Musical: Bach, Beethoven, Debussy, John Williams, Miles Davis, etc.
+     * - Visual: Van Gogh, Monet, Picasso, Dali, Warhol, Rembrandt, etc.
+     * - Cinematic: Kubrick, Spielberg, Tarantino, Nolan, Tarkovsky, etc.
+     *
+     * EXTERNAL MODELS:
+     * - Local ONNX: Stable Diffusion XL, StyleGAN2/3, MusicGen
+     * - Cloud APIs: Stability AI, OpenAI DALL-E, Replicate (fallback)
+     *
+     * DEPENDENCIES:
+     * - Emotion System: Aesthetic emotional responses
+     * - Memory System: Artistic experience storage
+     * - Ethics Engine: Content safety validation
+     * - GPU Context: Accelerated generation
+     *
+     * @see cognitive/creative/nimcp_creative.h for main API
+     * @see cognitive/creative/nimcp_creative_orchestrator.h for orchestrator
+     */
+    bool enable_creative_system;                  /**< Enable creative/artistic system (default: false) */
+    bool lazy_creative_init;                      /**< Defer creative system initialization (default: true) */
+
+    // Creative System Component Configuration
+    bool enable_creative_text;                    /**< Enable text generation (poetry, prose, screenplay) */
+    bool enable_creative_music;                   /**< Enable music generation (composition, MIDI/audio) */
+    bool enable_creative_visual;                  /**< Enable visual generation (diffusion, GAN) */
+    bool enable_creative_video;                   /**< Enable video generation and cinema */
+    bool enable_creative_appreciation;            /**< Enable aesthetic appreciation subsystem */
+    bool enable_creative_ethics;                  /**< Enable creative ethics validation (default: true) */
+
+    // Creative Generation Backend Configuration
+    bool creative_use_local_diffusion;            /**< Use local diffusion models (requires ONNX) */
+    bool creative_use_local_gan;                  /**< Use local GAN models (requires ONNX) */
+    bool creative_use_cloud_api;                  /**< Use cloud API fallback (requires API keys) */
+    bool creative_auto_select_backend;            /**< Auto-select best available backend */
+
+    // Creative Quality Configuration
+    float creative_quality_threshold;             /**< Minimum quality score for generation (0-1, default: 0.7) */
+    uint32_t creative_max_regeneration;           /**< Max regeneration attempts on quality fail (default: 3) */
+    float creative_copyright_threshold;           /**< Max similarity to known works (0-1, default: 0.8) */
 } brain_config_t;
 
 /**

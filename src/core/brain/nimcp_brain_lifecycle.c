@@ -51,6 +51,7 @@
 #include "cognitive/ethics/nimcp_core_directives.h"
 #include "core/brain/factory/init/nimcp_brain_init_pr_memory.h"
 #include "core/brain/factory/init/nimcp_brain_init_world_model.h"
+#include "core/brain/factory/init/nimcp_brain_init_creative.h"
 #include "core/medulla/nimcp_medulla.h"
 #include "cognitive/parietal/nimcp_parietal.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
@@ -784,6 +785,9 @@ void brain_destroy(brain_t brain)
 
     // Phase 8: Signal subsystem cleanup phase
     brain_heartbeat(brain, "brain_destroy:subsystems", 0.3f);
+
+    // Cleanup Creative system
+    nimcp_brain_factory_destroy_creative_subsystem(brain);
 
     // Cleanup Prime Resonant memory system
     nimcp_brain_factory_destroy_pr_memory_subsystem(brain);

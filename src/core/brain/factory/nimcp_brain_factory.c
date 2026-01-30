@@ -115,6 +115,7 @@
 #include "core/brain/factory/init/nimcp_brain_init_basal_ganglia.h"
 #include "core/brain/factory/init/nimcp_brain_init_pr_memory.h"
 #include "core/brain/factory/init/nimcp_brain_init_world_model.h"
+#include "core/brain/factory/init/nimcp_brain_init_creative.h"
 #include "core/brain/factory/nimcp_brain_init_state_manager.h"
 #include "core/brain/factory/validation/nimcp_brain_validation.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -260,6 +261,10 @@ extern void set_error(const char* format, ...);
 // Fault Tolerance subsystem macro (intelligent recovery with parietal integration)
 // Fuzzy Logic subsystem macro (cross-cutting utility)
 #define init_fuzzy_subsystem                       nimcp_brain_factory_init_fuzzy_subsystem
+
+// Creative System subsystem macro (artistic appreciation & generation)
+#define init_creative_subsystem                    nimcp_brain_factory_init_creative_subsystem
+#define destroy_creative_subsystem                 nimcp_brain_factory_destroy_creative_subsystem
 
 #define init_fault_tolerance_subsystem              nimcp_brain_factory_init_fault_tolerance_subsystem
 
@@ -851,6 +856,22 @@ brain_t brain_create_custom(const brain_config_t* config)
     // - Plasticity rate scheduling via fuzzy rules
     // BIOLOGICAL: Neural firing rates encode graded activation
     if (!init_fuzzy_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // ========================================================================
+    // CREATIVE SYSTEM (ARTISTIC APPRECIATION & GENERATION)
+    // ========================================================================
+
+    // Initialize creative/artistic cognitive system:
+    // - Aesthetic Appreciation: Evaluate art quality (Berlyne aesthetics)
+    // - Style Learning: Learn and represent artistic styles via embeddings
+    // - Text Generation: Poetry, prose, screenplay, lyrics
+    // - Music Generation: Composition, arrangement (MIDI/audio)
+    // - Visual Generation: Images via diffusion models and GANs
+    // - Video Generation: Video synthesis and cinema production
+    // - Multimodal Direction: Full-length film/creative project coordination
+    // - Ethics Validation: Copyright, safety, bias detection
+    // BIOLOGICAL: Creative cognition integrates perception, emotion, memory, and motor planning
+    if (!init_creative_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // ========================================================================
     // PARIETAL LOBE (MATHEMATICAL/SCIENTIFIC REASONING)

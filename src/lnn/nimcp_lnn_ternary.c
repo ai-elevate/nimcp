@@ -462,7 +462,7 @@ nimcp_tensor_t* lnn_ternary_matrix_to_float(const lnn_ternary_matrix_t* mat) {
 
     /* Create output tensor */
     uint32_t dims[2] = {mat->rows, mat->cols};
-    nimcp_tensor_t* tensor = nimcp_tensor_create(dims, 2, NIMCP_DTYPE_FLOAT32);
+    nimcp_tensor_t* tensor = nimcp_tensor_create(dims, 2, NIMCP_DTYPE_F32);
     if (!tensor) return NULL;
 
     float* data = nimcp_tensor_data(tensor);

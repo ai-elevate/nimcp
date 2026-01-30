@@ -1631,6 +1631,54 @@ struct brain_struct {
     //
     struct fuzzy_bridge* fuzzy_bridge;              // fuzzy_bridge_t* (opaque)
     bool fuzzy_logic_enabled;                       // Enable fuzzy logic integration
+
+    // =========================================================================
+    // CREATIVE SYSTEM INTEGRATION (Artistic Appreciation & Generation)
+    // =========================================================================
+    // The Creative System provides artistic cognition capabilities:
+    // - Aesthetic Appreciation: Evaluate art quality (Berlyne aesthetics)
+    // - Style Learning: Learn and represent artistic styles
+    // - Content Generation: Generate text, music, visual art, video
+    // - Multimodal Direction: Coordinate full creative projects (films)
+    // - Ethics Validation: Ensure content safety and originality
+    //
+    // The creative orchestrator unifies:
+    // - Appreciation Subsystem: Aesthetic evaluation, emotional response
+    // - Inspiration Subsystem: Style embeddings, influence blending
+    // - Generation Subsystem: Text, music, visual, video generators
+    // - External Models: ONNX Runtime, diffusion, GANs, cloud APIs
+    // - Validation Bridges: Quality, ethics, copyright, originality
+    //
+    // Integrates with:
+    // - Emotion System: Aesthetic emotional responses (awe, sublime, joy)
+    // - Memory System: Artistic experience storage and preferences
+    // - Knowledge Graph: Art knowledge, style relationships
+    // - Ethics Engine: Content safety and appropriateness
+    // - Brain Immune System: Validation pipeline health
+    // - Training System: Style learning and preference adaptation
+    // - GPU Context: Accelerated generation via diffusion/GAN
+    //
+    struct creative_orchestrator* creative_orchestrator;    // Master orchestrator
+    struct aesthetic_evaluator* aesthetic_evaluator;        // Aesthetic quality assessment
+    struct style_representer* style_representation;         // Style embeddings/archetypes
+    struct influence_blender* influence_blender;            // Multi-influence blending
+    struct creative_pattern_extractor* creative_pattern_extractor; // Pattern extraction
+    struct text_generator* text_generator;                  // Text/poetry generation
+    struct music_generator* music_generator;                // Music composition
+    struct visual_generator* visual_generator;              // Visual art generation
+    struct video_generator* video_generator;                // Video/cinema generation
+    struct multimodal_director* multimodal_director;        // Full project direction
+    struct creative_bridge* creative_bridge;                // Validation pipeline
+    struct creative_neural_bridge* creative_neural_bridge;  // Neural backend interface
+    struct creative_ethics_bridge* creative_ethics_bridge;  // Ethics validation
+    struct creative_training_bridge* creative_training_bridge; // Training/fine-tuning
+    struct creative_emotion_bridge* creative_emotion_bridge; // Emotion-aesthetic bridge
+    struct creative_memory_bridge* creative_memory_bridge;  // Artistic memory bridge
+    struct creative_knowledge_bridge* creative_knowledge_bridge; // Art KG bridge
+    struct style_perception* style_perception;              // Style recognition
+    bool creative_enabled;                                  // Creative system enabled
+    bool creative_lazy_init;                                // Defer initialization
+    uint64_t last_creative_update_us;                       // Last update timestamp
 };
 
 //=============================================================================

@@ -81,6 +81,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_swarm_module_registry.c  # Swarm Module Registry
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_core_directives.c     # Core Directives subsystem
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_fuzzy.c               # Fuzzy logic subsystem
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_creative.c            # Creative/artistic system
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_parietal.c            # Parietal lobe subsystem
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_dragonfly.c           # Dragonfly target tracking subsystem
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_kg_reader.c           # KG reader for self-awareness
@@ -861,6 +862,37 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_parietal.c               # Parietal orchestrator with Hamiltonian-Lagrangian NN
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_code_generation.c       # Self-repair code generation engine (FT integration)
 
+    # Creative/Artistic System (Phase Creative: Multi-modal art appreciation and generation)
+    # Core Creative Modules
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/creative/nimcp_creative.c                        # Core creative types and utilities
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/creative/nimcp_creative_orchestrator.c           # Master creative orchestrator
+    # Appreciation System
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/creative/appreciation/nimcp_aesthetic_evaluation.c    # Berlyne aesthetics evaluation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/creative/appreciation/nimcp_creative_emotion_bridge.c # Emotion-aesthetic integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/creative/appreciation/nimcp_creative_memory_bridge.c  # Artistic memory/preferences
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/creative/appreciation/nimcp_style_perception.c        # Style recognition/analysis
+    # Inspiration System
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/creative/inspiration/nimcp_style_representation.c     # Style embeddings (archetype pattern)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/creative/inspiration/nimcp_influence_blending.c       # Multi-influence combination
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/creative/inspiration/nimcp_creative_pattern_extractor.c # Pattern extraction from art
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/creative/inspiration/nimcp_creative_knowledge_bridge.c  # KG integration for art knowledge
+    # Generation System
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/creative/generation/nimcp_text_generation.c       # Poetry, screenplay, literature
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/creative/generation/nimcp_music_generation.c      # Composition, arrangement, MIDI export
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/creative/generation/nimcp_visual_generation.c     # Still images, visual art
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/creative/generation/nimcp_video_generation.c      # Video/cinema generation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/creative/generation/nimcp_multimodal_director.c   # Full-length film coordination
+    # External Model Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/creative/external/nimcp_creative_onnx_runtime.c   # ONNX Runtime wrapper
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/creative/external/nimcp_creative_api_client.c     # Cloud API integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/creative/external/nimcp_diffusion_bridge.c        # Diffusion model interface
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/creative/external/nimcp_gan_bridge.c              # GAN model interface
+    # Creative Bridges
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/creative/bridges/nimcp_creative_bridge.c          # Main validation bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/creative/bridges/nimcp_creative_neural_bridge.c   # Neural generation interface
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/creative/bridges/nimcp_creative_ethics_bridge.c   # Copyright/ethics validation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/creative/bridges/nimcp_creative_training_bridge.c # Training/fine-tuning
+
     # Free Energy Principle - Karl Friston's predictive processing framework
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/free_energy/nimcp_free_energy.c  # Core FEP implementation (variational free energy, active inference)
 
@@ -1426,6 +1458,34 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/imagination/nimcp_gw_imagination_bridge.c  # Global workspace-imagination bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/imagination/nimcp_sleep_imagination_bridge.c  # Sleep-imagination bridge
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/imagination/nimcp_imagination_fep_bridge.c  # FEP orchestrator integration bridge
+
+    # Variational Autoencoder (VAE) - Cognitive Generative Model (Phase VAE)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/vae/nimcp_vae.c                              # Core VAE system
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/vae/nimcp_vae_encoder.c                      # VAE encoder network
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/vae/nimcp_vae_decoder.c                      # VAE decoder network
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/vae/nimcp_vae_latent.c                       # Latent space operations
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/vae/nimcp_vae_loss.c                         # VAE loss functions (ELBO, KL divergence)
+    # VAE System Bridges (Phase VAE-3)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/vae/bridges/nimcp_vae_fep_bridge.c           # VAE-FEP integration (latent-belief mapping)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/vae/bridges/nimcp_vae_immune_bridge.c        # VAE-Immune integration (anomaly detection)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/vae/bridges/nimcp_vae_bbb_bridge.c           # VAE-BBB integration (security validation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/vae/bridges/nimcp_vae_logging_bridge.c       # VAE-Logging integration (operational logging)
+    # VAE Cognitive Bridges (Phase VAE-4)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/vae/bridges/nimcp_vae_hippocampus_bridge.c   # VAE-Hippocampus (memory encoding/retrieval)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/vae/bridges/nimcp_vae_imagination_bridge.c   # VAE-Imagination (generative simulation, quantum sampling)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/vae/bridges/nimcp_vae_visual_bridge.c        # VAE-Visual (V1-V5 hierarchy encoding)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/vae/bridges/nimcp_vae_auditory_bridge.c      # VAE-Auditory (mel/MFCC feature encoding)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/vae/bridges/nimcp_vae_emotion_bridge.c       # VAE-Emotion (affect modulation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/vae/bridges/nimcp_vae_introspection_bridge.c # VAE-Introspection (internal state encoding)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/vae/bridges/nimcp_vae_world_model_bridge.c   # VAE-World Model (JEPA latent prediction)
+    # Phase 5: Neural Integration Bridges
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/vae/bridges/nimcp_vae_snn_bridge.c          # VAE-SNN (latent-spike conversion)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/vae/bridges/nimcp_vae_plasticity_bridge.c   # VAE-Plasticity (learning modulation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/vae/bridges/nimcp_vae_training_bridge.c     # VAE-Training (joint VAE+SNN training)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/vae/bridges/nimcp_vae_substrate_bridge.c    # VAE-Substrate (metabolic-aware encoding)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/vae/bridges/nimcp_vae_thalamic_bridge.c     # VAE-Thalamic (attention-gated relay)
+    # Phase 6: Bio-Async Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/vae/nimcp_vae_bio_async.c                  # VAE-BioAsync (message handling)
 
     # Glial cells
     ${CMAKE_CURRENT_SOURCE_DIR}/../glial/astrocytes/nimcp_astrocytes.c

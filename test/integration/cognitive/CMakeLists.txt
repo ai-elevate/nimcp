@@ -255,3 +255,6 @@ add_subdirectory(predictive)
 
 # Inner Dialogue Engine Integration Tests
 add_subdirectory(inner_dialogue)
+
+# VAE-FEP Bridge Integration Tests
+add_subdirectory(vae)
