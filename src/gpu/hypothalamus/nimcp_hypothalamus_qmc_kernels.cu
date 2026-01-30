@@ -73,7 +73,7 @@ __device__ float warp_reduce_max(float val) {
 /**
  * @brief Block-level sum reduction using shared memory
  */
-__device__ float block_reduce_sum(float val, float* shared) {
+static __device__ float block_reduce_sum(float val, float* shared) {
     int lane = threadIdx.x % warpSize;
     int wid = threadIdx.x / warpSize;
 
