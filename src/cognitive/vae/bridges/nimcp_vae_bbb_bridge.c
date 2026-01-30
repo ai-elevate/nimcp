@@ -17,6 +17,7 @@
 #include "utils/tensor/nimcp_tensor_internal.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 /* TODO: Fix immune path #include "immune/nimcp_immune.h" */
 
 #include <math.h>
@@ -152,7 +153,7 @@ static void update_health(vae_bbb_bridge_t* bridge, vae_bbb_result_t result)
 int vae_bbb_bridge_default_config(vae_bbb_bridge_config_t* config)
 {
     if (!config) {
-        NIMCP_THROW_TO_IMMUNE(VAE_BBB_MODULE_ID, NIMCP_ERROR_VAE_BBB_NULL_BRIDGE,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_BBB_MODULE_ID, NIMCP_ERROR_VAE_BBB_NULL_BRIDGE,
                              "NULL config in vae_bbb_bridge_default_config");
         return -1;
     }
@@ -207,7 +208,7 @@ vae_bbb_bridge_t* vae_bbb_bridge_create(const vae_bbb_bridge_config_t* config)
 
     vae_bbb_bridge_t* bridge = nimcp_calloc(1, sizeof(vae_bbb_bridge_t));
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(VAE_BBB_MODULE_ID, NIMCP_ERROR_VAE_NO_MEMORY,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_BBB_MODULE_ID, NIMCP_ERROR_VAE_NO_MEMORY,
                              "Failed to allocate VAE-BBB bridge");
         return NULL;
     }
@@ -260,7 +261,7 @@ void vae_bbb_bridge_destroy(vae_bbb_bridge_t* bridge)
 int vae_bbb_bridge_reset(vae_bbb_bridge_t* bridge)
 {
     if (!bridge || !bridge->is_initialized) {
-        NIMCP_THROW_TO_IMMUNE(VAE_BBB_MODULE_ID, NIMCP_ERROR_VAE_BBB_NULL_BRIDGE,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_BBB_MODULE_ID, NIMCP_ERROR_VAE_BBB_NULL_BRIDGE,
                              "Invalid bridge in reset");
         return -1;
     }
@@ -294,13 +295,13 @@ int vae_bbb_bridge_reset(vae_bbb_bridge_t* bridge)
 int vae_bbb_bridge_connect_vae(vae_bbb_bridge_t* bridge, vae_system_t* vae)
 {
     if (!bridge || !bridge->is_initialized) {
-        NIMCP_THROW_TO_IMMUNE(VAE_BBB_MODULE_ID, NIMCP_ERROR_VAE_BBB_NULL_BRIDGE,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_BBB_MODULE_ID, NIMCP_ERROR_VAE_BBB_NULL_BRIDGE,
                              "Invalid bridge in connect_vae");
         return -1;
     }
 
     if (!vae) {
-        NIMCP_THROW_TO_IMMUNE(VAE_BBB_MODULE_ID, NIMCP_ERROR_VAE_BBB_NO_VAE,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_BBB_MODULE_ID, NIMCP_ERROR_VAE_BBB_NO_VAE,
                              "NULL VAE in connect_vae");
         return -1;
     }
@@ -323,13 +324,13 @@ int vae_bbb_bridge_connect_vae(vae_bbb_bridge_t* bridge, vae_system_t* vae)
 int vae_bbb_bridge_connect_bbb(vae_bbb_bridge_t* bridge, bbb_system_t bbb)
 {
     if (!bridge || !bridge->is_initialized) {
-        NIMCP_THROW_TO_IMMUNE(VAE_BBB_MODULE_ID, NIMCP_ERROR_VAE_BBB_NULL_BRIDGE,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_BBB_MODULE_ID, NIMCP_ERROR_VAE_BBB_NULL_BRIDGE,
                              "Invalid bridge in connect_bbb");
         return -1;
     }
 
     if (!bbb) {
-        NIMCP_THROW_TO_IMMUNE(VAE_BBB_MODULE_ID, NIMCP_ERROR_VAE_BBB_NO_BBB,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_BBB_MODULE_ID, NIMCP_ERROR_VAE_BBB_NO_BBB,
                              "NULL BBB in connect_bbb");
         return -1;
     }

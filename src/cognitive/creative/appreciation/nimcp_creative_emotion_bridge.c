@@ -105,6 +105,12 @@ void creative_emotion_bridge_set_emotion_system(creative_emotion_bridge_t* bridg
     bridge->emotion_system = emotion_system;
 }
 
+/* Alias to match header declaration */
+void creative_emotion_set_emotion_system(creative_emotion_bridge_t* bridge,
+                                          void* emotion_system) {
+    creative_emotion_bridge_set_emotion_system(bridge, emotion_system);
+}
+
 void creative_emotion_bridge_set_hippocampus(creative_emotion_bridge_t* bridge,
                                                void* hippocampus) {
     if (!bridge) return;

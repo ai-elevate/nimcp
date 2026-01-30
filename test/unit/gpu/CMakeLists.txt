@@ -142,3 +142,8 @@ endif()
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/financial/CMakeLists.txt)
     add_subdirectory(financial)
 endif()
+
+# Include statistics GPU tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/statistics/CMakeLists.txt)
+    add_subdirectory(statistics)
+endif()

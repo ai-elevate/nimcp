@@ -542,3 +542,26 @@ void visual_generation_result_free(visual_generation_result_t* result) {
 }
 
 /* video_generation_result_free is in nimcp_video_generation.c */
+
+//=============================================================================
+// Aliased Result Free Functions (for API consistency)
+//=============================================================================
+
+void creative_music_result_free(music_generation_result_t* result) {
+    music_generation_result_free(result);
+}
+
+void creative_blend_result_free(influence_blend_result_t* result) {
+    if (!result) return;
+
+    /* Free blended style embedding */
+    style_embedding_destroy(&result->blended_style);
+
+    /* Free influence weights if allocated */
+    if (result->influence_weights) {
+        nimcp_free(result->influence_weights);
+        result->influence_weights = NULL;
+    }
+
+    result->num_influences = 0;
+}

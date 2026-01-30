@@ -9,6 +9,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/tensor/nimcp_tensor_internal.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -270,9 +271,9 @@ vae_world_bridge_t* vae_world_bridge_create(const vae_world_bridge_config_t* con
     bridge->is_initialized = true;
 
     if (config->enable_logging) {
-        nimcp_log_info("VAE-World Model bridge created (fusion=%d, entities=%s)",
-                       config->fusion_strategy,
-                       config->enable_entity_tracking ? "enabled" : "disabled");
+        LOG_INFO("VAE-World Model bridge created (fusion=%d, entities=%s)",
+                 config->fusion_strategy,
+                 config->enable_entity_tracking ? "enabled" : "disabled");
     }
 
     return bridge;
@@ -368,7 +369,7 @@ int vae_world_bridge_connect_vae(vae_world_bridge_t* bridge, vae_system_t* vae) 
     }
 
     if (bridge->config.enable_logging) {
-        nimcp_log_info("VAE-World bridge connected to VAE");
+        LOG_INFO("VAE-World bridge connected to VAE");
     }
 
     return 0;

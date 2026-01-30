@@ -69,7 +69,7 @@ static nimcp_health_agent_t* g_portia_monitoring_health_agent = NULL;
  * @brief Set health agent for portia_monitoring heartbeats
  * @param agent Health agent (can be NULL to disable)
  */
-static void portia_monitoring_set_health_agent(nimcp_health_agent_t* agent) {
+static void __attribute__((unused)) portia_monitoring_set_health_agent(nimcp_health_agent_t* agent) {
     g_portia_monitoring_health_agent = agent;
 }
 

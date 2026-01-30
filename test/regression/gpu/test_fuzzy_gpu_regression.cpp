@@ -12,7 +12,7 @@
 #include <vector>
 #include <limits>
 
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
 extern "C" {
 #include "gpu/fuzzy/nimcp_fuzzy_gpu.h"
 #include "gpu/fuzzy/nimcp_fuzzy_gpu_types.h"
@@ -27,13 +27,13 @@ constexpr float TOLERANCE = 1e-5f;
 class FuzzyGPURegressionTest : public ::testing::Test {
 protected:
     void SetUp() override {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
         ctx_ = nimcp_gpu_context_create(nullptr);
 #endif
     }
 
     void TearDown() override {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
         if (ctx_) {
             nimcp_gpu_context_destroy(ctx_);
             ctx_ = nullptr;
@@ -41,7 +41,7 @@ protected:
 #endif
     }
 
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     nimcp_gpu_context_t* ctx_ = nullptr;
 #endif
 };
@@ -53,7 +53,7 @@ protected:
  * Fix: Clamp sigma to reasonable range, use numerically stable computation
  */
 TEST_F(FuzzyGPURegressionTest, GaussianMFNumericalOverflow) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required for this test";
 
     // Test cases that previously caused overflow
@@ -96,7 +96,7 @@ TEST_F(FuzzyGPURegressionTest, GaussianMFNumericalOverflow) {
  * Fix: Return universe midpoint when integral is zero
  */
 TEST_F(FuzzyGPURegressionTest, CentroidDefuzzDivisionByZero) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required for this test";
 
     // All-zero membership array
@@ -129,7 +129,7 @@ TEST_F(FuzzyGPURegressionTest, CentroidDefuzzDivisionByZero) {
  * Fix: Validate input dimensions before kernel launch
  */
 TEST_F(FuzzyGPURegressionTest, BatchMFBufferOverflow) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required for this test";
 
     // Create tensors with mismatched sizes
@@ -172,7 +172,7 @@ TEST_F(FuzzyGPURegressionTest, BatchMFBufferOverflow) {
  * Fix: Proper synchronization in reduction operations
  */
 TEST_F(FuzzyGPURegressionTest, ParallelInferenceRaceCondition) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required for this test";
 
     // Run same inference multiple times, results should be identical
@@ -232,7 +232,7 @@ TEST_F(FuzzyGPURegressionTest, ParallelInferenceRaceCondition) {
  * Fix: Flush denormals to zero or handle explicitly
  */
 TEST_F(FuzzyGPURegressionTest, DenormalizedFloatHandling) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required for this test";
 
     // Test with denormalized inputs
@@ -267,7 +267,7 @@ TEST_F(FuzzyGPURegressionTest, DenormalizedFloatHandling) {
  * Fix: Add small epsilon to prevent division by zero
  */
 TEST_F(FuzzyGPURegressionTest, ANFISNormalizationUnderflow) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required for this test";
 
     nimcp_gpu_anfis_params_t params = {
@@ -321,7 +321,7 @@ TEST_F(FuzzyGPURegressionTest, ANFISNormalizationUnderflow) {
  * Fix: Use log-space computation for product t-norm
  */
 TEST_F(FuzzyGPURegressionTest, TnormProductUnderflow) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required for this test";
 
     // Many small membership values that multiply together
@@ -350,7 +350,7 @@ TEST_F(FuzzyGPURegressionTest, TnormProductUnderflow) {
  * Fix: Proper padding and alignment in tiled matrix operations
  */
 TEST_F(FuzzyGPURegressionTest, RelationCompositionAlignment) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required for this test";
 
     // Test with awkward sizes that don't align to typical tile sizes
@@ -401,7 +401,7 @@ TEST_F(FuzzyGPURegressionTest, RelationCompositionAlignment) {
  * Fix: Handle degenerate case explicitly
  */
 TEST_F(FuzzyGPURegressionTest, DefuzzSinglePoint) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required for this test";
 
     std::vector<float> single_membership = {0.7f};
@@ -426,7 +426,7 @@ TEST_F(FuzzyGPURegressionTest, DefuzzSinglePoint) {
  * Fix: Clamp results to [0, 1]
  */
 TEST_F(FuzzyGPURegressionTest, HedgeExtremeValues) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required for this test";
 
     std::vector<float> test_values = {

@@ -73,6 +73,10 @@ typedef struct bbb_system_struct* bbb_system_t;
 typedef struct runtime_adaptation_context_internal* runtime_adaptation_context_t;
 #endif
 
+/* Forward declaration for exception-immune integration bridge
+ * Used by health_agent for exception handling integration */
+typedef struct exception_immune_integration exception_immune_t;
+
 #ifdef __cplusplus
 extern "C" {
 #endif

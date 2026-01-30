@@ -304,6 +304,46 @@ nimcp_tensor_t* nimcp_tensor_create(
 );
 
 /**
+ * @brief Create 1D tensor (vector) convenience wrapper
+ *
+ * WHAT: Create a 1-dimensional tensor
+ * WHY:  Common pattern - simplifies code in VAE bridges
+ * HOW:  Wraps nimcp_tensor_create with rank=1
+ *
+ * @param size Number of elements
+ * @param dtype Data type
+ * @return Tensor handle or NULL on failure
+ */
+static inline nimcp_tensor_t* nimcp_tensor_create_1d(
+    uint32_t size,
+    nimcp_dtype_t dtype
+) {
+    uint32_t dims[1] = {size};
+    return nimcp_tensor_create(dims, 1, dtype);
+}
+
+/**
+ * @brief Create 2D tensor (matrix) convenience wrapper
+ *
+ * WHAT: Create a 2-dimensional tensor
+ * WHY:  Common pattern - simplifies matrix creation
+ * HOW:  Wraps nimcp_tensor_create with rank=2
+ *
+ * @param rows Number of rows
+ * @param cols Number of columns
+ * @param dtype Data type
+ * @return Tensor handle or NULL on failure
+ */
+static inline nimcp_tensor_t* nimcp_tensor_create_2d(
+    uint32_t rows,
+    uint32_t cols,
+    nimcp_dtype_t dtype
+) {
+    uint32_t dims[2] = {rows, cols};
+    return nimcp_tensor_create(dims, 2, dtype);
+}
+
+/**
  * @brief Create tensor initialized to zeros
  */
 nimcp_tensor_t* nimcp_tensor_zeros(
@@ -454,6 +494,17 @@ uint32_t nimcp_tensor_rank(const nimcp_tensor_t* t);
  * @brief Get total number of elements
  */
 size_t nimcp_tensor_numel(const nimcp_tensor_t* t);
+
+/**
+ * @brief Get total number of elements (alias for numel)
+ *
+ * WHAT: Alias for nimcp_tensor_numel
+ * WHY:  Consistency with some code that uses 'size'
+ * HOW:  Inline wrapper
+ */
+static inline size_t nimcp_tensor_size(const nimcp_tensor_t* t) {
+    return nimcp_tensor_numel(t);
+}
 
 /**
  * @brief Get data type

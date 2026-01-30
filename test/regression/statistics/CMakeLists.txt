@@ -25,3 +25,42 @@ endmacro()
 
 # Regression tests
 add_statistics_regression_test(test_statistics_regression)
+
+# =============================================================================
+# Statistics Enhancement Module Regression Tests (Phase STATS-ENH)
+# =============================================================================
+
+# Neural statistics regression tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_neural_statistics_regression.cpp)
+    add_statistics_regression_test(test_neural_statistics_regression)
+endif()
+
+# Information theory regression tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_information_theory_regression.cpp)
+    add_statistics_regression_test(test_information_theory_regression)
+endif()
+
+# Multivariate analysis regression tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_multivariate_regression.cpp)
+    add_statistics_regression_test(test_multivariate_regression)
+endif()
+
+# Time series analysis regression tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_timeseries_regression.cpp)
+    add_statistics_regression_test(test_timeseries_regression)
+endif()
+
+# ML statistics regression tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_ml_statistics_regression.cpp)
+    add_statistics_regression_test(test_ml_statistics_regression)
+endif()
+
+# Streaming statistics regression tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_streaming_statistics_regression.cpp)
+    add_statistics_regression_test(test_streaming_statistics_regression)
+endif()
+
+# Survival and Bayesian combined regression tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_survival_bayesian_regression.cpp)
+    add_statistics_regression_test(test_survival_bayesian_regression)
+endif()

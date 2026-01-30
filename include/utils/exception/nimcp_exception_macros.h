@@ -654,6 +654,27 @@ kg_module_wiring_t* nimcp_exception_create_kg_wiring(void);
     } while (0)
 #endif
 
+/* ============================================================================
+ * Compatibility Macros for module-prefixed error handling
+ * ============================================================================ */
+
+/**
+ * @brief Compatibility macro for 3-argument form (module_id, code, message)
+ *
+ * Some modules (VAE, etc.) use a different calling convention that includes
+ * a module ID. This macro provides compatibility.
+ *
+ * Usage: NIMCP_THROW_TO_IMMUNE_MODULE(0x1234, NIMCP_ERROR_INVALID_PARAM, "message");
+ */
+#define NIMCP_THROW_TO_IMMUNE_MODULE(module_id, code, msg) \
+    NIMCP_THROW_TO_IMMUNE((code), "[0x%04X] %s", (unsigned int)(module_id), (msg))
+
+/* Argument count helper for overloading NIMCP_THROW_TO_IMMUNE */
+#define _NIMCP_THROW_NARG(...) _NIMCP_THROW_NARG_(__VA_ARGS__, _NIMCP_THROW_RSEQ())
+#define _NIMCP_THROW_NARG_(...) _NIMCP_THROW_ARG_N(__VA_ARGS__)
+#define _NIMCP_THROW_ARG_N(_1, _2, _3, _4, _5, _6, _7, _8, N, ...) N
+#define _NIMCP_THROW_RSEQ() 8, 7, 6, 5, 4, 3, 3, 2
+
 #ifdef __cplusplus
 }
 #endif

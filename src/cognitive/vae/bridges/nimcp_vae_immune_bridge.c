@@ -18,6 +18,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/tensor/nimcp_tensor_internal.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include "utils/thread/nimcp_thread.h"
 /* TODO: Fix immune path #include "immune/nimcp_immune.h" */
 
@@ -167,7 +168,7 @@ static void update_health(vae_immune_bridge_t* bridge, bool anomaly_detected)
 int vae_immune_bridge_default_config(vae_immune_bridge_config_t* config)
 {
     if (!config) {
-        NIMCP_THROW_TO_IMMUNE(VAE_IMMUNE_MODULE_ID, NIMCP_ERROR_VAE_IMMUNE_NULL_BRIDGE,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_IMMUNE_MODULE_ID, NIMCP_ERROR_VAE_IMMUNE_NULL_BRIDGE,
                              "NULL config in vae_immune_bridge_default_config");
         return -1;
     }
@@ -219,7 +220,7 @@ vae_immune_bridge_t* vae_immune_bridge_create(const vae_immune_bridge_config_t* 
 
     vae_immune_bridge_t* bridge = nimcp_calloc(1, sizeof(vae_immune_bridge_t));
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(VAE_IMMUNE_MODULE_ID, NIMCP_ERROR_VAE_NO_MEMORY,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_IMMUNE_MODULE_ID, NIMCP_ERROR_VAE_NO_MEMORY,
                              "Failed to allocate VAE-Immune bridge");
         return NULL;
     }
@@ -293,7 +294,7 @@ void vae_immune_bridge_destroy(vae_immune_bridge_t* bridge)
 int vae_immune_bridge_reset(vae_immune_bridge_t* bridge)
 {
     if (!bridge || !bridge->is_initialized) {
-        NIMCP_THROW_TO_IMMUNE(VAE_IMMUNE_MODULE_ID, NIMCP_ERROR_VAE_IMMUNE_NULL_BRIDGE,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_IMMUNE_MODULE_ID, NIMCP_ERROR_VAE_IMMUNE_NULL_BRIDGE,
                              "Invalid bridge in reset");
         return -1;
     }
@@ -339,13 +340,13 @@ int vae_immune_bridge_reset(vae_immune_bridge_t* bridge)
 int vae_immune_bridge_connect_vae(vae_immune_bridge_t* bridge, vae_system_t* vae)
 {
     if (!bridge || !bridge->is_initialized) {
-        NIMCP_THROW_TO_IMMUNE(VAE_IMMUNE_MODULE_ID, NIMCP_ERROR_VAE_IMMUNE_NULL_BRIDGE,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_IMMUNE_MODULE_ID, NIMCP_ERROR_VAE_IMMUNE_NULL_BRIDGE,
                              "Invalid bridge in connect_vae");
         return -1;
     }
 
     if (!vae) {
-        NIMCP_THROW_TO_IMMUNE(VAE_IMMUNE_MODULE_ID, NIMCP_ERROR_VAE_IMMUNE_NO_VAE,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_IMMUNE_MODULE_ID, NIMCP_ERROR_VAE_IMMUNE_NO_VAE,
                              "NULL VAE in connect_vae");
         return -1;
     }
@@ -383,13 +384,13 @@ int vae_immune_bridge_connect_immune(vae_immune_bridge_t* bridge,
                                       brain_immune_system_t* immune)
 {
     if (!bridge || !bridge->is_initialized) {
-        NIMCP_THROW_TO_IMMUNE(VAE_IMMUNE_MODULE_ID, NIMCP_ERROR_VAE_IMMUNE_NULL_BRIDGE,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_IMMUNE_MODULE_ID, NIMCP_ERROR_VAE_IMMUNE_NULL_BRIDGE,
                              "Invalid bridge in connect_immune");
         return -1;
     }
 
     if (!immune) {
-        NIMCP_THROW_TO_IMMUNE(VAE_IMMUNE_MODULE_ID, NIMCP_ERROR_VAE_IMMUNE_NO_IMMUNE,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_IMMUNE_MODULE_ID, NIMCP_ERROR_VAE_IMMUNE_NO_IMMUNE,
                              "NULL immune system in connect_immune");
         return -1;
     }

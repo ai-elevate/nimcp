@@ -256,7 +256,7 @@ vae_emotion_bridge_t* vae_emotion_bridge_create(const vae_emotion_bridge_config_
     bridge->is_initialized = true;
 
     if (config->enable_logging) {
-        nimcp_log_info("VAE-Emotion bridge created (cond_mode=%d)", config->cond_mode);
+        LOG_INFO("VAE-Emotion bridge created (cond_mode=%d)", config->cond_mode);
     }
 
     return bridge;
@@ -311,7 +311,7 @@ int vae_emotion_bridge_connect_vae(vae_emotion_bridge_t* bridge, vae_system_t* v
     }
 
     if (bridge->config.enable_logging) {
-        nimcp_log_info("VAE-Emotion bridge connected to VAE (latent_dim=%u)", latent_dim);
+        LOG_INFO("VAE-Emotion bridge connected to VAE (latent_dim=%u)", latent_dim);
     }
 
     return 0;

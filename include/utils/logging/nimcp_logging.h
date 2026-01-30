@@ -992,6 +992,35 @@ NIMCP_EXPORT bool nimcp_log_is_tty(void);
         } \
     } while(0)
 
+/**
+ * @brief Function-style logging macros with module ID
+ *
+ * These macros provide compatibility with code that uses function-style
+ * logging calls with numeric module IDs. The module_id is prepended to
+ * the log message as [0xXXXX].
+ *
+ * Usage: nimcp_log_debug(0x1234, "message %d", value);
+ */
+#define nimcp_log_debug(module_id, fmt, ...) \
+    nimcp_log_write(NULL, LOG_LEVEL_DEBUG, NULL, __FILE__, __LINE__, \
+                    "[0x%04X] " fmt, (unsigned int)(module_id), ##__VA_ARGS__)
+
+#define nimcp_log_info(module_id, fmt, ...) \
+    nimcp_log_write(NULL, LOG_LEVEL_INFO, NULL, __FILE__, __LINE__, \
+                    "[0x%04X] " fmt, (unsigned int)(module_id), ##__VA_ARGS__)
+
+#define nimcp_log_warning(module_id, fmt, ...) \
+    nimcp_log_write(NULL, LOG_LEVEL_WARN, NULL, __FILE__, __LINE__, \
+                    "[0x%04X] " fmt, (unsigned int)(module_id), ##__VA_ARGS__)
+
+#define nimcp_log_warn(module_id, fmt, ...) \
+    nimcp_log_write(NULL, LOG_LEVEL_WARN, NULL, __FILE__, __LINE__, \
+                    "[0x%04X] " fmt, (unsigned int)(module_id), ##__VA_ARGS__)
+
+#define nimcp_log_error(module_id, fmt, ...) \
+    nimcp_log_write(NULL, LOG_LEVEL_ERROR, NULL, __FILE__, __LINE__, \
+                    "[0x%04X] " fmt, (unsigned int)(module_id), ##__VA_ARGS__)
+
 #ifdef __cplusplus
 }
 #endif

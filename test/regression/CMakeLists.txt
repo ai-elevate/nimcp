@@ -38,3 +38,11 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/statistics/CMakeLists.txt)
     message(STATUS "Adding Statistics Regression tests...")
     add_subdirectory(statistics)
 endif()
+
+# =============================================================================
+# GPU Regression Tests
+# =============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/CMakeLists.txt)
+    message(STATUS "Adding GPU Regression tests...")
+    add_subdirectory(gpu)
+endif()

@@ -65,7 +65,7 @@ __device__ inline float warp_reduce_max(float val) {
 /**
  * @brief Block-level sum reduction
  */
-__device__ float block_reduce_sum(float val) {
+static __device__ float block_reduce_sum(float val) {
     static __shared__ float shared[32];
     int lane = threadIdx.x % WARP_SIZE;
     int wid = threadIdx.x / WARP_SIZE;

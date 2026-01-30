@@ -13,7 +13,7 @@
 #include <random>
 #include <chrono>
 
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
 extern "C" {
 #include "gpu/fuzzy/nimcp_fuzzy_gpu.h"
 #include "gpu/fuzzy/nimcp_fuzzy_anfis_gpu.h"
@@ -30,13 +30,13 @@ constexpr float CONTROL_TOLERANCE = 0.1f;
 class FuzzyControllerE2ETest : public ::testing::Test {
 protected:
     void SetUp() override {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
         ctx_ = nimcp_gpu_context_create(nullptr);
 #endif
     }
 
     void TearDown() override {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
         if (ctx_) {
             nimcp_gpu_context_destroy(ctx_);
             ctx_ = nullptr;
@@ -44,7 +44,7 @@ protected:
 #endif
     }
 
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     nimcp_gpu_context_t* ctx_ = nullptr;
 #endif
 };
@@ -53,7 +53,7 @@ protected:
  * E2E Test: Fuzzy PD Controller for Inverted Pendulum
  * ============================================================================ */
 TEST_F(FuzzyControllerE2ETest, InvertedPendulumControl) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required";
 
     // ==================== Phase 1: Design Fuzzy Inference System ====================
@@ -189,7 +189,7 @@ TEST_F(FuzzyControllerE2ETest, InvertedPendulumControl) {
  * E2E Test: ANFIS Function Approximation
  * ============================================================================ */
 TEST_F(FuzzyControllerE2ETest, ANFISFunctionApproximation) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required";
 
     // ==================== Phase 1: Generate Training Data ====================
@@ -342,7 +342,7 @@ TEST_F(FuzzyControllerE2ETest, ANFISFunctionApproximation) {
  * E2E Test: Real-time Batch Inference Performance
  * ============================================================================ */
 TEST_F(FuzzyControllerE2ETest, RealTimeBatchPerformance) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required";
 
     // Create a reasonably complex FIS

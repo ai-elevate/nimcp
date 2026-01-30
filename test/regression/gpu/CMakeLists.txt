@@ -107,3 +107,8 @@ endif()
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_financial_gpu_regression.cpp)
     add_gpu_regression_test(test_financial_gpu_regression)
 endif()
+
+# Include statistics GPU regression tests subdirectory
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/statistics/CMakeLists.txt)
+    add_subdirectory(statistics)
+endif()

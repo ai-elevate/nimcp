@@ -513,11 +513,11 @@ int vae_plasticity_apply_modulation(vae_plasticity_bridge_t* bridge,
     /* For now, just log the modulation application */
 
     if (bridge->config.enable_logging) {
-        nimcp_log_debug(VAE_PLAST_MODULE_ID,
-                       "Applying modulation to %s: lr_mod=%.3f, thresh_mod=%.3f",
-                       vae_plasticity_mechanism_to_string(mechanism),
-                       bridge->current_modulation.learning_rate_mod,
-                       bridge->current_modulation.threshold_mod);
+        LOG_DEBUG(VAE_PLAST_MODULE_ID,
+                  "Applying modulation to %s: lr_mod=%.3f, thresh_mod=%.3f",
+                  vae_plasticity_mechanism_to_string(mechanism),
+                  bridge->current_modulation.learning_rate_mod,
+                  bridge->current_modulation.threshold_mod);
     }
 
     return 0;

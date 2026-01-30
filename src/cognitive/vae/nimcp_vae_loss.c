@@ -12,6 +12,7 @@
 #include "utils/tensor/nimcp_tensor_internal.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 /* TODO: Fix immune path #include "immune/nimcp_immune.h" */
 #include "utils/fault_tolerance/nimcp_health_agent.h"
 
@@ -91,7 +92,7 @@ vae_loss_ctx_t* vae_loss_ctx_create(const vae_loss_config_t* config)
 {
     if (!config) {
         NIMCP_LOG_ERROR("VAE Loss: NULL config");
-        NIMCP_THROW_TO_IMMUNE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_INVALID_PARAM,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_INVALID_PARAM,
                              "NULL config in vae_loss_ctx_create");
         return NULL;
     }
@@ -99,7 +100,7 @@ vae_loss_ctx_t* vae_loss_ctx_create(const vae_loss_config_t* config)
     vae_loss_ctx_t* ctx = nimcp_calloc(1, sizeof(vae_loss_ctx_t));
     if (!ctx) {
         NIMCP_LOG_ERROR("VAE Loss: Failed to allocate context");
-        NIMCP_THROW_TO_IMMUNE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_VAE_NO_MEMORY,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_VAE_NO_MEMORY,
                              "Failed to allocate loss context");
         return NULL;
     }
@@ -177,14 +178,14 @@ float vae_loss_mse(const nimcp_tensor_t* x,
                    vae_loss_aggregation_t reduction)
 {
     if (!x || !x_recon || !x->data || !x_recon->data) {
-        NIMCP_THROW_TO_IMMUNE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_INVALID_PARAM,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_INVALID_PARAM,
                              "NULL tensor in MSE loss");
         return NAN;
     }
 
     uint32_t total = nimcp_tensor_numel(x);
     if (total == 0 || total != nimcp_tensor_numel(x_recon)) {
-        NIMCP_THROW_TO_IMMUNE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_INVALID_PARAM,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_INVALID_PARAM,
                              "Tensor size mismatch in MSE loss");
         return NAN;
     }
@@ -211,7 +212,7 @@ float vae_loss_bce(const nimcp_tensor_t* x,
                    vae_loss_aggregation_t reduction)
 {
     if (!x || !x_recon || !x->data || !x_recon->data) {
-        NIMCP_THROW_TO_IMMUNE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_INVALID_PARAM,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_INVALID_PARAM,
                              "NULL tensor in BCE loss");
         return NAN;
     }
@@ -246,7 +247,7 @@ float vae_loss_gaussian_nll(const nimcp_tensor_t* x,
                             vae_loss_aggregation_t reduction)
 {
     if (!x || !recon_mu || !x->data || !recon_mu->data) {
-        NIMCP_THROW_TO_IMMUNE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_INVALID_PARAM,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_INVALID_PARAM,
                              "NULL tensor in Gaussian NLL loss");
         return NAN;
     }
@@ -367,7 +368,7 @@ float vae_loss_kl_standard_normal(const nimcp_tensor_t* mu,
                                   vae_loss_aggregation_t batch_reduction)
 {
     if (!mu || !log_var || !mu->data || !log_var->data) {
-        NIMCP_THROW_TO_IMMUNE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_INVALID_PARAM,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_INVALID_PARAM,
                              "NULL tensor in KL divergence");
         return NAN;
     }
@@ -520,13 +521,13 @@ float vae_loss_compute(vae_loss_ctx_t* ctx,
                        vae_loss_breakdown_t* breakdown)
 {
     if (!ctx || !ctx->is_initialized) {
-        NIMCP_THROW_TO_IMMUNE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_INVALID_PARAM,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_INVALID_PARAM,
                              "Invalid loss context");
         return NAN;
     }
 
     if (!x || !x_recon || !mu || !log_var) {
-        NIMCP_THROW_TO_IMMUNE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_INVALID_PARAM,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_INVALID_PARAM,
                              "NULL tensor in loss computation");
         return NAN;
     }
@@ -591,7 +592,7 @@ float vae_loss_compute(vae_loss_ctx_t* ctx,
 
         NIMCP_LOG_WARN("VAE Loss: Invalid loss detected (recon=%.4f, kl=%.4f)",
                        recon_loss, kl_raw);
-        NIMCP_THROW_TO_IMMUNE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_VAE_LOSS_NAN,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_VAE_LOSS_NAN,
                              "Invalid loss value (NaN/Inf)");
     }
 
@@ -884,7 +885,7 @@ int vae_loss_recon_gradient(const nimcp_tensor_t* x,
                             nimcp_tensor_t* d_recon)
 {
     if (!x || !x_recon || !d_recon || !x->data || !x_recon->data || !d_recon->data) {
-        NIMCP_THROW_TO_IMMUNE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_INVALID_PARAM,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_INVALID_PARAM,
                              "NULL tensor in recon gradient");
         return -1;
     }
@@ -948,7 +949,7 @@ int vae_loss_kl_gradient(const nimcp_tensor_t* mu,
                          nimcp_tensor_t* d_log_var)
 {
     if (!mu || !log_var || !mu->data || !log_var->data) {
-        NIMCP_THROW_TO_IMMUNE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_INVALID_PARAM,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_INVALID_PARAM,
                              "NULL tensor in KL gradient");
         return -1;
     }
@@ -990,7 +991,7 @@ vae_loss_breakdown_t* vae_loss_breakdown_create(uint32_t latent_dim)
 {
     vae_loss_breakdown_t* breakdown = nimcp_calloc(1, sizeof(vae_loss_breakdown_t));
     if (!breakdown) {
-        NIMCP_THROW_TO_IMMUNE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_VAE_NO_MEMORY,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_LOSS_MODULE_ID, NIMCP_ERROR_VAE_NO_MEMORY,
                              "Failed to allocate loss breakdown");
         return NULL;
     }

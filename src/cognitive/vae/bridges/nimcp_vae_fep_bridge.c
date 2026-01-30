@@ -18,6 +18,7 @@
 #include "utils/tensor/nimcp_tensor_internal.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 /* TODO: Fix immune path #include "immune/nimcp_immune.h" */
 #include "utils/fault_tolerance/nimcp_health_agent.h"
 
@@ -219,7 +220,7 @@ static void free_mapping_state(vae_fep_mapping_state_t* mapping)
 int vae_fep_bridge_default_config(vae_fep_bridge_config_t* config)
 {
     if (!config) {
-        NIMCP_THROW_TO_IMMUNE(VAE_FEP_MODULE_ID, NIMCP_ERROR_VAE_FEP_NULL_BRIDGE,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_FEP_MODULE_ID, NIMCP_ERROR_VAE_FEP_NULL_BRIDGE,
                              "NULL config in vae_fep_bridge_default_config");
         return -1;
     }
@@ -264,7 +265,7 @@ vae_fep_bridge_t* vae_fep_bridge_create(const vae_fep_bridge_config_t* config)
 
     vae_fep_bridge_t* bridge = nimcp_calloc(1, sizeof(vae_fep_bridge_t));
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(VAE_FEP_MODULE_ID, NIMCP_ERROR_VAE_NO_MEMORY,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_FEP_MODULE_ID, NIMCP_ERROR_VAE_NO_MEMORY,
                              "Failed to allocate VAE-FEP bridge");
         return NULL;
     }
@@ -326,7 +327,7 @@ void vae_fep_bridge_destroy(vae_fep_bridge_t* bridge)
 int vae_fep_bridge_reset(vae_fep_bridge_t* bridge)
 {
     if (!bridge || !bridge->is_initialized) {
-        NIMCP_THROW_TO_IMMUNE(VAE_FEP_MODULE_ID, NIMCP_ERROR_VAE_FEP_NULL_BRIDGE,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_FEP_MODULE_ID, NIMCP_ERROR_VAE_FEP_NULL_BRIDGE,
                              "Invalid bridge in reset");
         return -1;
     }
@@ -366,13 +367,13 @@ int vae_fep_bridge_reset(vae_fep_bridge_t* bridge)
 int vae_fep_bridge_connect_vae(vae_fep_bridge_t* bridge, vae_system_t* vae)
 {
     if (!bridge || !bridge->is_initialized) {
-        NIMCP_THROW_TO_IMMUNE(VAE_FEP_MODULE_ID, NIMCP_ERROR_VAE_FEP_NULL_BRIDGE,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_FEP_MODULE_ID, NIMCP_ERROR_VAE_FEP_NULL_BRIDGE,
                              "Invalid bridge in connect_vae");
         return -1;
     }
 
     if (!vae) {
-        NIMCP_THROW_TO_IMMUNE(VAE_FEP_MODULE_ID, NIMCP_ERROR_VAE_FEP_NO_VAE,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_FEP_MODULE_ID, NIMCP_ERROR_VAE_FEP_NO_VAE,
                              "NULL VAE system in connect_vae");
         return -1;
     }
@@ -399,13 +400,13 @@ int vae_fep_bridge_connect_vae(vae_fep_bridge_t* bridge, vae_system_t* vae)
 int vae_fep_bridge_connect_fep(vae_fep_bridge_t* bridge, fep_system_t* fep)
 {
     if (!bridge || !bridge->is_initialized) {
-        NIMCP_THROW_TO_IMMUNE(VAE_FEP_MODULE_ID, NIMCP_ERROR_VAE_FEP_NULL_BRIDGE,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_FEP_MODULE_ID, NIMCP_ERROR_VAE_FEP_NULL_BRIDGE,
                              "Invalid bridge in connect_fep");
         return -1;
     }
 
     if (!fep) {
-        NIMCP_THROW_TO_IMMUNE(VAE_FEP_MODULE_ID, NIMCP_ERROR_VAE_FEP_NO_FEP,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_FEP_MODULE_ID, NIMCP_ERROR_VAE_FEP_NO_FEP,
                              "NULL FEP system in connect_fep");
         return -1;
     }
@@ -473,13 +474,13 @@ vae_fep_bridge_state_t vae_fep_bridge_get_state(const vae_fep_bridge_t* bridge)
 int vae_fep_sync_latent_to_belief(vae_fep_bridge_t* bridge)
 {
     if (!bridge || !bridge->is_initialized) {
-        NIMCP_THROW_TO_IMMUNE(VAE_FEP_MODULE_ID, NIMCP_ERROR_VAE_FEP_NULL_BRIDGE,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_FEP_MODULE_ID, NIMCP_ERROR_VAE_FEP_NULL_BRIDGE,
                              "Invalid bridge in sync_latent_to_belief");
         return -1;
     }
 
     if (!bridge->vae || !bridge->fep) {
-        NIMCP_THROW_TO_IMMUNE(VAE_FEP_MODULE_ID, NIMCP_ERROR_VAE_FEP_NOT_CONNECTED,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_FEP_MODULE_ID, NIMCP_ERROR_VAE_FEP_NOT_CONNECTED,
                              "Bridge not fully connected for sync");
         return -1;
     }
@@ -602,13 +603,13 @@ cleanup:
 int vae_fep_sync_belief_to_latent(vae_fep_bridge_t* bridge)
 {
     if (!bridge || !bridge->is_initialized) {
-        NIMCP_THROW_TO_IMMUNE(VAE_FEP_MODULE_ID, NIMCP_ERROR_VAE_FEP_NULL_BRIDGE,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_FEP_MODULE_ID, NIMCP_ERROR_VAE_FEP_NULL_BRIDGE,
                              "Invalid bridge in sync_belief_to_latent");
         return -1;
     }
 
     if (!bridge->vae || !bridge->fep) {
-        NIMCP_THROW_TO_IMMUNE(VAE_FEP_MODULE_ID, NIMCP_ERROR_VAE_FEP_NOT_CONNECTED,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_FEP_MODULE_ID, NIMCP_ERROR_VAE_FEP_NOT_CONNECTED,
                              "Bridge not fully connected for sync");
         return -1;
     }
@@ -729,13 +730,13 @@ int vae_fep_bridge_sync_direction(vae_fep_bridge_t* bridge,
 int vae_fep_compute_free_energy(vae_fep_bridge_t* bridge, float* free_energy)
 {
     if (!bridge || !free_energy) {
-        NIMCP_THROW_TO_IMMUNE(VAE_FEP_MODULE_ID, NIMCP_ERROR_VAE_FEP_NULL_BRIDGE,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_FEP_MODULE_ID, NIMCP_ERROR_VAE_FEP_NULL_BRIDGE,
                              "Invalid arguments in compute_free_energy");
         return -1;
     }
 
     if (!vae_fep_bridge_is_connected(bridge)) {
-        NIMCP_THROW_TO_IMMUNE(VAE_FEP_MODULE_ID, NIMCP_ERROR_VAE_FEP_NOT_CONNECTED,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_FEP_MODULE_ID, NIMCP_ERROR_VAE_FEP_NOT_CONNECTED,
                              "Bridge not connected for free energy");
         return -1;
     }

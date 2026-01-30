@@ -15,7 +15,7 @@
 #include <algorithm>
 #include <numeric>
 
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
 extern "C" {
 #include "gpu/financial/nimcp_financial_monte_carlo_gpu.h"
 #include "gpu/financial/nimcp_financial_optimization_gpu.h"
@@ -33,7 +33,7 @@ constexpr float STATISTICAL_TOLERANCE = 0.1f;
 class FinancialWorkflowE2ETest : public ::testing::Test {
 protected:
     void SetUp() override {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
         ctx_ = nimcp_gpu_context_create(nullptr);
         if (ctx_) {
             rng_ = fin_gpu_rng_create(ctx_, 100000, 54321);
@@ -42,7 +42,7 @@ protected:
     }
 
     void TearDown() override {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
         if (rng_) {
             fin_gpu_rng_destroy(rng_);
             rng_ = nullptr;
@@ -54,7 +54,7 @@ protected:
 #endif
     }
 
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     nimcp_gpu_context_t* ctx_ = nullptr;
     fin_gpu_rng_t* rng_ = nullptr;
 #endif
@@ -71,7 +71,7 @@ protected:
  * 5. Price hedging options
  */
 TEST_F(FinancialWorkflowE2ETest, PortfolioManagementWorkflow) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required";
     ASSERT_NE(rng_, nullptr) << "RNG required";
 
@@ -311,7 +311,7 @@ TEST_F(FinancialWorkflowE2ETest, PortfolioManagementWorkflow) {
  * E2E Test: Options Market Making Simulation
  * ============================================================================ */
 TEST_F(FinancialWorkflowE2ETest, OptionsMarketMakingSimulation) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required";
 
     // Simulate a market maker quoting options throughout the day
@@ -442,7 +442,7 @@ TEST_F(FinancialWorkflowE2ETest, OptionsMarketMakingSimulation) {
  * E2E Test: Risk Scenario Analysis
  * ============================================================================ */
 TEST_F(FinancialWorkflowE2ETest, RiskScenarioAnalysis) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required";
     ASSERT_NE(rng_, nullptr) << "RNG required";
 
@@ -541,7 +541,7 @@ TEST_F(FinancialWorkflowE2ETest, RiskScenarioAnalysis) {
  * E2E Test: GPU Performance Benchmark
  * ============================================================================ */
 TEST_F(FinancialWorkflowE2ETest, GPUPerformanceBenchmark) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required";
     ASSERT_NE(rng_, nullptr) << "RNG required";
 

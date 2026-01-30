@@ -34,14 +34,18 @@
 #include "gpu/common/nimcp_cuda_utils.h"
 
 //=============================================================================
-// Forward Declarations
+// RNG Initialization Kernel (local static)
 //=============================================================================
 
-// RNG initialization kernel (defined in nimcp_financial_gpu_rng.cu or locally)
-__global__ void kernel_init_rng_states(
+static __global__ void kernel_init_rng_states(
     curandState* states,
     uint64_t seed,
-    uint32_t num_states);
+    uint32_t num_states)
+{
+    uint32_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= num_states) return;
+    curand_init(seed, idx, 0, &states[idx]);
+}
 
 //=============================================================================
 // Thread-Local Error Storage

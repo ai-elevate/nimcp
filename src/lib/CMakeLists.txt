@@ -1715,6 +1715,15 @@ set(NIMCP_CORE_SOURCES
     # Utils - Statistics (Statistical and probability methods for neural computation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/statistics/nimcp_statistics.c  # Descriptive stats, distributions, hypothesis testing, Bayesian inference
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/statistics/nimcp_quantum_statistics.c  # Quantum entropy, fidelity, entanglement, Fisher information
+    # Statistics Enhancement Modules (Phase STATS-ENH)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/statistics/nimcp_neural_statistics.c       # Neural-specific statistics (spike trains, population codes, tuning curves)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/statistics/nimcp_information_theory.c      # Advanced information theory (transfer entropy, mutual info, synergy)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/statistics/nimcp_multivariate.c            # Multivariate analysis (PCA, ICA, factor analysis, canonical correlation)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/statistics/nimcp_timeseries.c              # Time series analysis (ARIMA, spectral, change-point, forecasting)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/statistics/nimcp_ml_statistics.c           # ML statistics (cross-validation, bootstrap, model selection, calibration)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/statistics/nimcp_streaming_statistics.c    # Streaming statistics (online mean/var, sketches, reservoir sampling)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/statistics/nimcp_survival.c                # Survival analysis (Kaplan-Meier, Cox regression, hazard functions)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/statistics/nimcp_bayesian_advanced.c       # Advanced Bayesian (MCMC, variational inference, Gaussian processes)
 
     # Utils - Signal Processing (Phase 0.5: Band-pass filtering for PAC detection)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/signal/nimcp_signal_filter.c  # FIR/IIR band-pass filtering using windowed sinc method
@@ -2148,6 +2157,19 @@ set(NIMCP_CORE_SOURCES
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/financial/nimcp_financial_optimization_gpu.cu>
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/financial/nimcp_financial_risk_gpu.cu>
     $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/financial/nimcp_financial_derivatives_gpu.cu>
+
+    # Statistics GPU support (CPU-side bridge, always compiled)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/statistics/nimcp_statistics_gpu.c
+
+    # Statistics GPU CUDA kernels (Phase STATS-GPU)
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/statistics/nimcp_statistics_kernels.cu>
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/statistics/nimcp_neural_statistics_kernels.cu>
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/statistics/nimcp_information_theory_kernels.cu>
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/statistics/nimcp_multivariate_kernels.cu>
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/statistics/nimcp_timeseries_kernels.cu>
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/statistics/nimcp_ml_statistics_kernels.cu>
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/statistics/nimcp_streaming_statistics_kernels.cu>
+    $<$<BOOL:${CUDAToolkit_FOUND}>:${CMAKE_CURRENT_SOURCE_DIR}/../gpu/statistics/nimcp_survival_bayesian_kernels.cu>
 
     # Graph DAO and GraphQL utilities (CPU-side, always compiled)
     ${CMAKE_CURRENT_SOURCE_DIR}/../gpu/graph/nimcp_graph_dao.c

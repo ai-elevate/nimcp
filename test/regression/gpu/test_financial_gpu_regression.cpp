@@ -13,7 +13,7 @@
 #include <limits>
 #include <random>
 
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
 extern "C" {
 #include "gpu/financial/nimcp_financial_monte_carlo_gpu.h"
 #include "gpu/financial/nimcp_financial_optimization_gpu.h"
@@ -31,7 +31,7 @@ constexpr float STATISTICAL_TOLERANCE = 0.05f;
 class FinancialGPURegressionTest : public ::testing::Test {
 protected:
     void SetUp() override {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
         ctx_ = nimcp_gpu_context_create(nullptr);
         if (ctx_) {
             rng_ = fin_gpu_rng_create(ctx_, 10000, 12345);
@@ -40,7 +40,7 @@ protected:
     }
 
     void TearDown() override {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
         if (rng_) {
             fin_gpu_rng_destroy(rng_);
             rng_ = nullptr;
@@ -52,7 +52,7 @@ protected:
 #endif
     }
 
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     nimcp_gpu_context_t* ctx_ = nullptr;
     fin_gpu_rng_t* rng_ = nullptr;
 #endif
@@ -65,7 +65,7 @@ protected:
  * Fix: Correct drift term: (mu - 0.5*sigma^2)*dt, not mu*dt
  */
 TEST_F(FinancialGPURegressionTest, MonteCarloGBMDriftCorrection) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required for this test";
     ASSERT_NE(rng_, nullptr) << "RNG required for this test";
 
@@ -118,7 +118,7 @@ TEST_F(FinancialGPURegressionTest, MonteCarloGBMDriftCorrection) {
  * Fix: Use stable sort or handle ties properly in percentile calculation
  */
 TEST_F(FinancialGPURegressionTest, VaRSortingStability) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required for this test";
 
     // Create returns with many duplicate values
@@ -156,7 +156,7 @@ TEST_F(FinancialGPURegressionTest, VaRSortingStability) {
  * Fix: Add regularization or detect singularity
  */
 TEST_F(FinancialGPURegressionTest, OptimizationSingularCovariance) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required for this test";
 
     // Perfectly correlated assets -> singular covariance matrix
@@ -207,7 +207,7 @@ TEST_F(FinancialGPURegressionTest, OptimizationSingularCovariance) {
  * Fix: Handle limit case explicitly
  */
 TEST_F(FinancialGPURegressionTest, BlackScholesNearZeroTime) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required for this test";
 
     // Very small times to maturity
@@ -253,7 +253,7 @@ TEST_F(FinancialGPURegressionTest, BlackScholesNearZeroTime) {
  * Fix: Use bounded bisection as fallback, clamp IV range
  */
 TEST_F(FinancialGPURegressionTest, ImpliedVolDivergence) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required for this test";
 
     // Deep OTM option with very low price -> difficult IV calculation
@@ -294,7 +294,7 @@ TEST_F(FinancialGPURegressionTest, ImpliedVolDivergence) {
  * Fix: Enforce early exercise check at every node
  */
 TEST_F(FinancialGPURegressionTest, AmericanPutIntrinsicBound) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required for this test";
 
     // Deep ITM American put with high interest rate
@@ -333,7 +333,7 @@ TEST_F(FinancialGPURegressionTest, AmericanPutIntrinsicBound) {
  * Fix: Validate inputs and return error
  */
 TEST_F(FinancialGPURegressionTest, NegativeVolatilityHandling) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required for this test";
 
     float spots[] = {100.0f};
@@ -365,7 +365,7 @@ TEST_F(FinancialGPURegressionTest, NegativeVolatilityHandling) {
  * Fix: Proper stream initialization with different seeds
  */
 TEST_F(FinancialGPURegressionTest, RNGStreamIndependence) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required for this test";
 
     // Create two RNGs with different seeds
@@ -423,7 +423,7 @@ TEST_F(FinancialGPURegressionTest, RNGStreamIndependence) {
  * Fix: Make defensive copy or clearly document ownership
  */
 TEST_F(FinancialGPURegressionTest, CVaRMemorySafety) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required for this test";
 
     std::vector<float> returns(1000);
@@ -472,7 +472,7 @@ TEST_F(FinancialGPURegressionTest, CVaRMemorySafety) {
  * Fix: Use adaptive step size based on spot price magnitude
  */
 TEST_F(FinancialGPURegressionTest, GreeksFiniteDifferenceAccuracy) {
-#ifdef NIMCP_CUDA_ENABLED
+#ifdef NIMCP_ENABLE_CUDA
     ASSERT_NE(ctx_, nullptr) << "GPU context required for this test";
 
     // Test with different spot price magnitudes

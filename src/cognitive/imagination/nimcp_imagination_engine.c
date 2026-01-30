@@ -90,12 +90,7 @@ static __thread uint32_t g_imagination_rand_seed = 0;
  * Tensor Helper Functions (local implementations)
  *============================================================================*/
 
-/**
- * @brief Get total number of elements (alias for compatibility)
- */
-static inline size_t nimcp_tensor_size(const nimcp_tensor_t* t) {
-    return nimcp_tensor_numel(t);
-}
+/* nimcp_tensor_size is now defined in nimcp_tensor.h */
 
 /**
  * @brief Copy tensor data from src to dst (must be same size)

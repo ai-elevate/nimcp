@@ -18,6 +18,7 @@
 
 #include "utils/logging/nimcp_logging.h"
 #include "utils/tensor/nimcp_tensor_internal.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 /* TODO: Fix immune path #include "immune/nimcp_immune.h" */
@@ -198,7 +199,7 @@ static void vae_set_state(vae_system_t* vae, vae_state_t new_state)
 int vae_default_config(vae_config_t* config)
 {
     if (!config) {
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NULL_POINTER,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NULL_POINTER,
                              "NULL config in vae_default_config");
         return -1;
     }
@@ -291,13 +292,13 @@ vae_system_t* vae_create(const vae_config_t* config)
 
     /* Validate configuration */
     if (config->encoder.input_dim == 0 || config->encoder.input_dim > VAE_MAX_IO_DIM) {
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_INVALID_DIM,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_INVALID_DIM,
                              "Invalid encoder input dimension");
         return NULL;
     }
 
     if (config->encoder.latent_dim == 0 || config->encoder.latent_dim > VAE_MAX_LATENT_DIM) {
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_INVALID_DIM,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_INVALID_DIM,
                              "Invalid latent dimension");
         return NULL;
     }
@@ -305,7 +306,7 @@ vae_system_t* vae_create(const vae_config_t* config)
     /* Allocate system */
     vae_system_t* vae = nimcp_calloc(1, sizeof(vae_system_t));
     if (!vae) {
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NO_MEMORY,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NO_MEMORY,
                              "Failed to allocate VAE system");
         return NULL;
     }
@@ -327,7 +328,7 @@ vae_system_t* vae_create(const vae_config_t* config)
     vae->encoder = vae_encoder_create(&config->encoder);
     if (!vae->encoder) {
         NIMCP_LOG_ERROR("VAE: Failed to create encoder");
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_ENCODER_FAILED,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_ENCODER_FAILED,
                              "Failed to create encoder");
         nimcp_mutex_destroy(vae->mutex);
         nimcp_free(vae);
@@ -338,7 +339,7 @@ vae_system_t* vae_create(const vae_config_t* config)
     vae->decoder = vae_decoder_create(&config->decoder);
     if (!vae->decoder) {
         NIMCP_LOG_ERROR("VAE: Failed to create decoder");
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_DECODER_FAILED,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_DECODER_FAILED,
                              "Failed to create decoder");
         vae_encoder_destroy(vae->encoder);
         nimcp_mutex_destroy(vae->mutex);
@@ -450,7 +451,7 @@ void vae_destroy(vae_system_t* vae)
 int vae_reset(vae_system_t* vae)
 {
     if (!vae || !vae->is_initialized) {
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NOT_INITIALIZED,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NOT_INITIALIZED,
                              "VAE not initialized for reset");
         return -1;
     }
@@ -502,13 +503,13 @@ int vae_encode(vae_system_t* vae,
                nimcp_tensor_t* log_var)
 {
     if (!vae || !vae->is_initialized) {
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NOT_INITIALIZED,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NOT_INITIALIZED,
                              "VAE not initialized for encode");
         return -1;
     }
 
     if (!input || !mu || !log_var) {
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NULL_POINTER,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NULL_POINTER,
                              "NULL tensor in vae_encode");
         return -1;
     }
@@ -523,7 +524,7 @@ int vae_encode(vae_system_t* vae,
 
     if (result != 0) {
         NIMCP_LOG_ERROR("VAE: Encoder forward failed");
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_ENCODER_FAILED,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_ENCODER_FAILED,
                              "Encoder forward pass failed");
         vae_update_health(vae, false);
         vae_set_state(vae, VAE_STATE_ERROR);
@@ -554,13 +555,13 @@ int vae_sample(vae_system_t* vae,
                nimcp_tensor_t* z)
 {
     if (!vae || !vae->is_initialized) {
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NOT_INITIALIZED,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NOT_INITIALIZED,
                              "VAE not initialized for sample");
         return -1;
     }
 
     if (!mu || !log_var || !z) {
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NULL_POINTER,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NULL_POINTER,
                              "NULL tensor in vae_sample");
         return -1;
     }
@@ -573,7 +574,7 @@ int vae_sample(vae_system_t* vae,
 
     if (result != 0) {
         NIMCP_LOG_ERROR("VAE: Latent sampling failed");
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_SAMPLE_FAILED,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_SAMPLE_FAILED,
                              "Latent sampling failed");
         vae_update_health(vae, false);
         vae_set_state(vae, VAE_STATE_ERROR);
@@ -598,7 +599,7 @@ int vae_sample(vae_system_t* vae,
         vae->stats.variance_explosions++;
 
         if (vae->config.enable_immune_integration) {
-            NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_VARIANCE_EXPLODE,
+            NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_VARIANCE_EXPLODE,
                                  "Variance explosion detected");
         }
     }
@@ -616,13 +617,13 @@ int vae_decode(vae_system_t* vae,
                nimcp_tensor_t* reconstruction)
 {
     if (!vae || !vae->is_initialized) {
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NOT_INITIALIZED,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NOT_INITIALIZED,
                              "VAE not initialized for decode");
         return -1;
     }
 
     if (!z || !reconstruction) {
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NULL_POINTER,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NULL_POINTER,
                              "NULL tensor in vae_decode");
         return -1;
     }
@@ -637,7 +638,7 @@ int vae_decode(vae_system_t* vae,
 
     if (result != 0) {
         NIMCP_LOG_ERROR("VAE: Decoder forward failed");
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_DECODER_FAILED,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_DECODER_FAILED,
                              "Decoder forward pass failed");
         vae_update_health(vae, false);
         vae_set_state(vae, VAE_STATE_ERROR);
@@ -668,13 +669,13 @@ int vae_forward(vae_system_t* vae,
                 vae_latent_state_t* latent)
 {
     if (!vae || !vae->is_initialized) {
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NOT_INITIALIZED,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NOT_INITIALIZED,
                              "VAE not initialized for forward");
         return -1;
     }
 
     if (!input) {
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NULL_POINTER,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NULL_POINTER,
                              "NULL input in vae_forward");
         return -1;
     }
@@ -698,7 +699,7 @@ int vae_forward(vae_system_t* vae,
         if (mu) nimcp_tensor_destroy(mu);
         if (log_var) nimcp_tensor_destroy(log_var);
         if (z) nimcp_tensor_destroy(z);
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NO_MEMORY,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NO_MEMORY,
                              "Failed to allocate tensors for forward");
         nimcp_mutex_unlock(vae->mutex);
         return -1;
@@ -784,13 +785,13 @@ int vae_compute_loss(vae_system_t* vae,
                      vae_loss_t* loss)
 {
     if (!vae || !vae->is_initialized) {
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NOT_INITIALIZED,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NOT_INITIALIZED,
                              "VAE not initialized for loss computation");
         return -1;
     }
 
     if (!input || !reconstruction || !mu || !log_var || !loss) {
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NULL_POINTER,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NULL_POINTER,
                              "NULL argument in vae_compute_loss");
         return -1;
     }
@@ -810,7 +811,7 @@ int vae_compute_loss(vae_system_t* vae,
     float total = vae_loss_compute(vae->loss_ctx, input, reconstruction, mu, log_var, breakdown);
 
     if (vae_loss_is_invalid(total)) {
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_LOSS_NAN,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_LOSS_NAN,
                              "Loss computation returned NaN/Inf");
         vae->stats.anomalies_detected++;
         vae_loss_breakdown_free(breakdown);
@@ -850,13 +851,13 @@ int vae_train_step(vae_system_t* vae,
                    vae_loss_t* loss)
 {
     if (!vae || !vae->is_initialized) {
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NOT_INITIALIZED,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NOT_INITIALIZED,
                              "VAE not initialized for training");
         return -1;
     }
 
     if (!input) {
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NULL_POINTER,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NULL_POINTER,
                              "NULL input in vae_train_step");
         return -1;
     }
@@ -887,7 +888,7 @@ int vae_train_step(vae_system_t* vae,
         if (log_var) nimcp_tensor_destroy(log_var);
         if (z) nimcp_tensor_destroy(z);
         if (recon) nimcp_tensor_destroy(recon);
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NO_MEMORY,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NO_MEMORY,
                              "Failed to allocate tensors for training");
         vae_set_state(vae, VAE_STATE_ERROR);
         nimcp_mutex_unlock(vae->mutex);
@@ -968,7 +969,7 @@ int vae_train_step(vae_system_t* vae,
 
     /* Check for NaN gradients */
     if (vae_encoder_has_nan(vae->encoder) || vae_decoder_has_nan(vae->decoder)) {
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_GRADIENT_NAN,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_GRADIENT_NAN,
                              "NaN detected in gradients");
         vae->stats.gradient_nans++;
         result = -1;
@@ -1081,13 +1082,13 @@ int vae_generate(vae_system_t* vae,
                  nimcp_tensor_t* samples)
 {
     if (!vae || !vae->is_initialized) {
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NOT_INITIALIZED,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NOT_INITIALIZED,
                              "VAE not initialized for generation");
         return -1;
     }
 
     if (!samples || num_samples == 0) {
-        NIMCP_THROW_TO_IMMUNE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NULL_POINTER,
+        NIMCP_THROW_TO_IMMUNE_MODULE(VAE_MODULE_ID, NIMCP_ERROR_VAE_NULL_POINTER,
                              "Invalid samples parameter in vae_generate");
         return -1;
     }

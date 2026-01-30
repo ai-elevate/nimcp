@@ -55,7 +55,7 @@ struct fin_gpu_rng_s {
 /**
  * @brief Initialize cuRAND states
  */
-__global__ void kernel_init_rng_states(
+static __global__ void kernel_init_rng_states(
     curandState* states,
     uint64_t seed,
     uint32_t n)

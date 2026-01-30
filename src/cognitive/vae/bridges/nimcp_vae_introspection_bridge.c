@@ -9,6 +9,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/tensor/nimcp_tensor_internal.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -173,8 +174,8 @@ vae_intro_bridge_t* vae_intro_bridge_create(const vae_intro_bridge_config_t* con
     bridge->is_initialized = true;
 
     if (config->enable_logging) {
-        nimcp_log_info("VAE-Introspection bridge created (strategy=%d, focus=%d)",
-                       config->default_strategy, config->default_focus);
+        LOG_INFO("VAE-Introspection bridge created (strategy=%d, focus=%d)",
+                 config->default_strategy, config->default_focus);
     }
 
     return bridge;
@@ -256,7 +257,7 @@ int vae_intro_bridge_connect_vae(vae_intro_bridge_t* bridge, vae_system_t* vae) 
     }
 
     if (bridge->config.enable_logging) {
-        nimcp_log_info("VAE-Introspection bridge connected to VAE (latent_dim=%u)", latent_dim);
+        LOG_INFO("VAE-Introspection bridge connected to VAE (latent_dim=%u)", latent_dim);
     }
 
     return 0;

@@ -377,7 +377,7 @@ bool qmc_gpu_sample_categorical(
 // Monte Carlo Integration Kernels
 //=============================================================================
 
-__global__ void kernel_reduce_sum(const float* input, float* output, uint32_t n)
+static __global__ void kernel_reduce_sum(const float* input, float* output, uint32_t n)
 {
     extern __shared__ float sdata[];
 
@@ -399,7 +399,7 @@ __global__ void kernel_reduce_sum(const float* input, float* output, uint32_t n)
     }
 }
 
-__global__ void kernel_reduce_sum_sq(const float* input, float mean,
+static __global__ void kernel_reduce_sum_sq(const float* input, float mean,
                                       float* output, uint32_t n)
 {
     extern __shared__ float sdata[];
